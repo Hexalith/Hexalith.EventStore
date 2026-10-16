@@ -1,0 +1,32 @@
+{
+  "authorized_workflow_checks": [
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-1-p1r-5.md",
+      "kind": "workflow-metadata",
+      "exact_approved_snapshot": {
+        "bytes": 11326,
+        "sha256": "d6c40d17a8955ae7914d18b3a56afae7b6e984303d65a47d5091724c39121b63",
+        "mode": 420
+      },
+      "original_binding_verified": true,
+      "passed": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/deferred-work.md",
+      "kind": "nine-review-deferrals",
+      "exact_approved_snapshot": {
+        "bytes": 119320,
+        "sha256": "f70a5c839bdf9c656a7fb2f8abbc7c2ecfc272d7fa30c1f0e465469545600ff8",
+        "mode": 420
+      },
+      "original_binding_verified": true,
+      "passed": true,
+      "prefix_bytes": 115260,
+      "prefix_sha256": "ab2a01617f2e7cf82acfe7799696b40750d0cdc0c7f087aff4c4340864e7ac38",
+      "appended_review_entries": 9
+    }
+  ],
+  "reviewed_source_hashes_unchanged": 23,
+  "original_helpers_controls_receipts_preserved": true,
+  "passed": true
+}

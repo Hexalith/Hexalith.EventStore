@@ -1,0 +1,106 @@
+{
+  "scope": "fresh source/tooling controls only",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_isolation.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T06:28:17.509313+00:00",
+      "duration_seconds": 1.672,
+      "exit_code": 0,
+      "timed_out": false,
+      "log": "python-isolation.log",
+      "log_bytes": 4953,
+      "log_sha256": "8ed12e610d158be65ab9557106ee7f24cb886bcd751a9a6c9372e15e88efcd49",
+      "source_binding": "fresh-source-binding.json",
+      "passed": true
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_qualification.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_published_qualification.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T06:28:17.509672+00:00",
+      "duration_seconds": 10.533,
+      "exit_code": 0,
+      "timed_out": false,
+      "log": "python-published_qualification.log",
+      "log_bytes": 10077,
+      "log_sha256": "77e5f2ecfd95c565e2bd95d26e485ba8b3d219df148952e9e82ae1b56c718e7d",
+      "source_binding": "fresh-source-binding.json",
+      "passed": true
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_qualification.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_qualification.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T06:28:17.510812+00:00",
+      "duration_seconds": 18.897,
+      "exit_code": 0,
+      "timed_out": false,
+      "log": "python-qualification.log",
+      "log_bytes": 5413,
+      "log_sha256": "c249c05216447d2ca6bc3160ab878fab0aa54626e2a264eda1a3dd9d9958aa86",
+      "source_binding": "fresh-source-binding.json",
+      "passed": true
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_published_executor.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T06:28:17.508760+00:00",
+      "duration_seconds": 30.656,
+      "exit_code": 0,
+      "timed_out": false,
+      "log": "python-published_executor.log",
+      "log_bytes": 19414,
+      "log_sha256": "83b363869a4f7a1e9f24a7a68e2ee3e05d8f243281e3ff2da8bf0a3c892a34a8",
+      "source_binding": "fresh-source-binding.json",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

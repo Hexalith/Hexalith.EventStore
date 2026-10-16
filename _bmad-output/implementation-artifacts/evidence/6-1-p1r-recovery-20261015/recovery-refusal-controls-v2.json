@@ -1,0 +1,82 @@
+{
+  "recovery_helper": "recover-reviewed-closure.py",
+  "recovery_helper_sha256": "cbe0a25b086b05fc278ff1eb090f93fcc025069af05804a7dbdf68f8ce4883e9",
+  "fixture_overrides": [
+    "workspace root",
+    "read-only Git responses",
+    "one concurrent destination write"
+  ],
+  "checks": [
+    {
+      "case": "existing-evidence-conflict",
+      "passed": true,
+      "refusal": "existing evidence conflicts: _bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/fixture-000.txt",
+      "destination_preserved": true,
+      "all_other_fixture_bytes_preserved": true,
+      "recovery_outputs_created": false,
+      "scope": "isolated recovery safety fixture; no package qualification or real Git mutation"
+    },
+    {
+      "case": "concurrent-destination-change",
+      "passed": true,
+      "refusal": "concurrent destination change: tools/p1r-published-executor.py",
+      "destination_preserved": true,
+      "all_other_fixture_bytes_preserved": true,
+      "recovery_outputs_created": false,
+      "scope": "isolated recovery safety fixture; no package qualification or real Git mutation"
+    },
+    {
+      "case": "dash-O",
+      "argv": [
+        "/usr/bin/python3",
+        "-B",
+        "-O",
+        "/tmp/p1r-optimized-refusal-n47trsam/worker.py"
+      ],
+      "environment_override": {
+        "PYTHONOPTIMIZE": null
+      },
+      "exit_code": 1,
+      "stdout": "{\"optimization\": 1, \"message\": \"P1R recovery refuses optimized Python; run without -O or PYTHONOPTIMIZE.\", \"audit_events\": []}\n",
+      "stderr": "",
+      "filesystem_actions_after_helper_entry": 0,
+      "all_fixture_bytes_preserved": true,
+      "passed": true
+    },
+    {
+      "case": "PYTHONOPTIMIZE-1",
+      "argv": [
+        "/usr/bin/python3",
+        "-B",
+        "/tmp/p1r-optimized-refusal-6a4loxb4/worker.py"
+      ],
+      "environment_override": {
+        "PYTHONOPTIMIZE": "1"
+      },
+      "exit_code": 1,
+      "stdout": "{\"optimization\": 1, \"message\": \"P1R recovery refuses optimized Python; run without -O or PYTHONOPTIMIZE.\", \"audit_events\": []}\n",
+      "stderr": "",
+      "filesystem_actions_after_helper_entry": 0,
+      "all_fixture_bytes_preserved": true,
+      "passed": true
+    },
+    {
+      "case": "PYTHONOPTIMIZE-2",
+      "argv": [
+        "/usr/bin/python3",
+        "-B",
+        "/tmp/p1r-optimized-refusal-qrkzbsls/worker.py"
+      ],
+      "environment_override": {
+        "PYTHONOPTIMIZE": "2"
+      },
+      "exit_code": 1,
+      "stdout": "{\"optimization\": 2, \"message\": \"P1R recovery refuses optimized Python; run without -O or PYTHONOPTIMIZE.\", \"audit_events\": []}\n",
+      "stderr": "",
+      "filesystem_actions_after_helper_entry": 0,
+      "all_fixture_bytes_preserved": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

@@ -1,0 +1,2 @@
+# Retain exact bytes of source diffs, command captures and their hash manifests.
+** -text -whitespace

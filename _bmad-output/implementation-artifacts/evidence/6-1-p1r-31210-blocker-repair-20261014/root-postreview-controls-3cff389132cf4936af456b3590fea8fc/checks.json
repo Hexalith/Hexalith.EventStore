@@ -1,0 +1,34 @@
+[
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published*.py",
+      "-v"
+    ],
+    "exit_code": 0,
+    "output": "published.txt",
+    "output_sha256": "c96f9511846634e4583a6af31c83c3204bf76d26911f19e769dd0f729b091de6"
+  },
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation.py",
+      "-v"
+    ],
+    "exit_code": 0,
+    "output": "isolation.txt",
+    "output_sha256": "452df8f0dd5a84007ebc3e4dcb9cd7205e9e7b054c0431022561f393f863035a"
+  }
+]

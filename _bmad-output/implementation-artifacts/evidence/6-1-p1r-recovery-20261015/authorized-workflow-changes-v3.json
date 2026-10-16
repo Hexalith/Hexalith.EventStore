@@ -1,0 +1,38 @@
+{
+  "scope": "Exact final done-spec workflow metadata and unchanged-prefix nine-entry ledger append; all other starting bytes remain protected.",
+  "files": [
+    {
+      "repository": "/home/administrator/projects/hexalith/projects",
+      "path": "_bmad-output/implementation-artifacts/spec-6-1-p1r-5.md",
+      "kind": "workflow-metadata",
+      "starting": {
+        "bytes": 6065,
+        "sha256": "8e42c40dbeb796f07f075704878011cb027dde5f9d00fd1548dba942b1f17d59",
+        "mode": 420
+      },
+      "approved": {
+        "bytes": 12251,
+        "sha256": "9a8b6e74367e998470e8fc9f9fe1edfb59f20c6f6d5031e84bdff6ef6c8d71ad",
+        "mode": 420
+      }
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/projects",
+      "path": "_bmad-output/implementation-artifacts/deferred-work.md",
+      "kind": "nine-review-deferrals",
+      "starting": {
+        "bytes": 115260,
+        "sha256": "ab2a01617f2e7cf82acfe7799696b40750d0cdc0c7f087aff4c4340864e7ac38",
+        "mode": 420
+      },
+      "approved": {
+        "bytes": 119320,
+        "sha256": "f70a5c839bdf9c656a7fb2f8abbc7c2ecfc272d7fa30c1f0e465469545600ff8",
+        "mode": 420
+      },
+      "prefix_bytes": 115260,
+      "prefix_sha256": "ab2a01617f2e7cf82acfe7799696b40750d0cdc0c7f087aff4c4340864e7ac38",
+      "appended_review_entries": 9
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "captured_at_utc": "2026-10-16T06:28:51.326408+00:00",
+  "command": [
+    "gh",
+    "api",
+    "--method",
+    "GET",
+    "repos/Hexalith/Hexalith.EventStore/compare/210b90da172cc7ca946fbb06cfd44390bffa707b...746b843a24f18b17a7572be25b76b735fa8e4ca6"
+  ],
+  "exit_code": 0,
+  "response_sha256": "066de5dfb29fb0bac519af97305ed74fb9a41940c27ac2371542ea91c82e585a",
+  "base_commit": "210b90da172cc7ca946fbb06cfd44390bffa707b",
+  "head_commit": "746b843a24f18b17a7572be25b76b735fa8e4ca6",
+  "total_commits": 1,
+  "files": [
+    {
+      "path": "docs/architecture/evidence-secret-scanning.md",
+      "status": "added",
+      "git_blob": "c6a8f7c21236b830caadd6398428965173cdf36a",
+      "patch_sha256": "81029c32895b1a9e21da74e1e10933ef018b1eaea7d446f34af14ab79b1a2fa2"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceIngestion.cs",
+      "status": "added",
+      "git_blob": "647276cab2965ec672465fe14a7f037d863bd613",
+      "patch_sha256": "34afda60af7184908316b45b5ab76b203828cb56cce81c95d98d46c2b1500db7"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceRecognition.cs",
+      "status": "added",
+      "git_blob": "ad340d00a71c59e38dc53ce11ff5a4f52cb45fef",
+      "patch_sha256": "70dac99d5aa35047073ff80a41808fe8bfaea4c83a396b1ab7d58c9298fdcc44"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+      "status": "added",
+      "git_blob": "fba7caa09de8b64f5e47c2c8477c33dc9f83161d",
+      "patch_sha256": "7f3603b1f412972b73be66c335cd467392ad87e4be4fa58c134d3fb442485fae"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "status": "modified",
+      "git_blob": "1fa1b65a5b4821f1e458b7651be79bc2b8500719",
+      "patch_sha256": "2915adaf4aba1f5bd1933d521522ff18f8839794bcaed4b11d02142316f3a2db"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "status": "modified",
+      "git_blob": "1af645101ad47a75f33cddea378335bb21870833",
+      "patch_sha256": "b1c4ec64c6e4086d1b5d5fe92fab8e3e29ed8e7603c78262704f37722be8718a"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_qualification.py",
+      "status": "modified",
+      "git_blob": "40741fba9abd66a679aeab415d80556382bdcc53",
+      "patch_sha256": "e8fe9a172e1ae343ee712933b455a1fc54d07114d13396fe05857d86431c7040"
+    }
+  ],
+  "scope": "read-only comparison of fixed canonical identities from the recovery spec; no current-main or CI qualification claim",
+  "credential_fixture_assessment": [
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "reviewed_closure": true,
+      "canonical_change": "Generate the negative PostgreSQL rendering fixture value at runtime with uuid; rejection behavior is unchanged.",
+      "disposition": "Recovered exact reviewed bytes as required; canonical generated-value fixture must be reconciled during separately authorized landing, then rebind reviewed-source and rerun exact-source CI."
+    },
+    {
+      "path": "tools/tests/test_p1r_published_qualification.py",
+      "reviewed_closure": false,
+      "canonical_change": "Generate the negative PostgreSQL rendering fixture value at runtime with uuid; rejection behavior is unchanged.",
+      "disposition": "Preserved active checkout bytes; outside the 23-path closure. Retain canonical security and test changes during later landing reconciliation."
+    }
+  ],
+  "production_src_modified": false
+}

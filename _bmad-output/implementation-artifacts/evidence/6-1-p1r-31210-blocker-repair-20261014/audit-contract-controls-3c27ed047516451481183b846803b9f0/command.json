@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation.py",
+    "-v"
+  ],
+  "started_utc": "2026-10-14T12:42:22.467003+00:00",
+  "finished_utc": "2026-10-14T12:42:23.715305+00:00",
+  "exit_code": 0,
+  "output_sha256": "021afcf791d937e757c00af8df684af447950e368a4529dd84ab86889415b9f4",
+  "output": "isolation.txt"
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "path": "verify-repair.py",
+    "sha256": "e160b8b16fc16465606da9145f48e386ed623c97d417cf084eba2aa2fa34f470"
+  },
+  {
+    "path": "independent-repair-audit.py",
+    "sha256": "2707aed28862200a907808620bf44d35297890653c814add38c937de14a6b5e1"
+  },
+  {
+    "path": "verify-and-audit.py",
+    "sha256": "ab27081f2952e8873ac108bd9f907eeb1e4fada1f2cf6e7ccf543ce971f6caac"
+  }
+]

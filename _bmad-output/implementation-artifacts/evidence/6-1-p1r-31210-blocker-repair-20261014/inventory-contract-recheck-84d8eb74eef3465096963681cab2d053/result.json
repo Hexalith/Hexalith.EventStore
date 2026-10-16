@@ -1,0 +1,347 @@
+{
+  "checks": [
+    {
+      "id": "actual-twelve-persisted-receipts-accepted",
+      "passed": true
+    },
+    {
+      "id": "foreign-cleanup-invocation-refused",
+      "passed": true,
+      "refusal": "recovery belongs to another measurement invocation"
+    },
+    {
+      "id": "different-embedded-cleanup-invocation-refused",
+      "passed": true,
+      "refusal": "recovery belongs to another measurement invocation"
+    },
+    {
+      "id": "different-embedded-cleanup-receipt-id-refused",
+      "passed": true,
+      "refusal": "recovery belongs to another measurement invocation"
+    },
+    {
+      "id": "different-embedded-cleanup-same-invocation-shared-state-refused",
+      "passed": true,
+      "refusal": "recovery belongs to another measurement invocation"
+    },
+    {
+      "id": "missing-recovery-receipt-refused",
+      "passed": true,
+      "refusal": "exact ten lanes plus cleanup and dependent restore required"
+    },
+    {
+      "id": "duplicate-lane-refused",
+      "passed": true,
+      "refusal": "exact ten distinct repair lanes required"
+    },
+    {
+      "id": "schema-and-witness-outcome:metadata-write",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:retained-covered",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:retained-uncovered",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:missing-event",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:invalid-evidence",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:checkout",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:post-upgrade-restore",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:failure-cleanup",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:reminder-recovery",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:logical-event-evolution",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:hexalith.p1r.cleanup-receipt.v1",
+      "passed": true
+    },
+    {
+      "id": "schema-and-witness-outcome:hexalith.p1r.restore-receipt.v1",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:metadata-write",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:retained-covered",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:retained-uncovered",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:missing-event",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:invalid-evidence",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:checkout",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:post-upgrade-restore",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:failure-cleanup",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:reminder-recovery",
+      "passed": true
+    },
+    {
+      "id": "exact-case-inventory:logical-event-evolution",
+      "passed": true
+    },
+    {
+      "id": "all-reconstructed-assertions-pass",
+      "passed": true
+    },
+    {
+      "id": "summary-counters-and-per-lane-counters-match",
+      "passed": true
+    },
+    {
+      "id": "nonempty-strict-cleanup-equality-and-seven-checks",
+      "passed": true
+    },
+    {
+      "id": "negative-isolation-receipt-schema-and-original-predicate",
+      "passed": true
+    },
+    {
+      "id": "supported-direction-restored:metadata-write/3.110.0-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "supported-direction-restored:metadata-write/3.70.1-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "supported-direction-restored:retained-covered/3.110.0-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "supported-direction-restored:retained-covered/3.70.1-to-3.121.0",
+      "passed": true
+    },
+    {
+      "id": "supported-direction-restored:checkout/retained-covered",
+      "passed": true
+    },
+    {
+      "id": "supported-direction-restored:checkout/metadata-write",
+      "passed": true
+    },
+    {
+      "id": "six-original-cases-and-sixteen-original-checks",
+      "passed": true
+    },
+    {
+      "id": "summary-keeps-acceptance-pending",
+      "passed": true
+    }
+  ],
+  "checks_total": 41,
+  "errors": [],
+  "finished_utc": "2026-10-14T12:43:04.993409+00:00",
+  "passed": true,
+  "receipt_outcomes": [
+    {
+      "assertions": {
+        "attempted": 226,
+        "failed": 0,
+        "passed": 226
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "metadata-write",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/62eed7f7a4eb47f59f74af6e77786618.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "retained-covered",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/eb599eb808354566a1a555614a3f4bbf.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 596,
+        "failed": 0,
+        "passed": 596
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "retained-uncovered",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/41a8319b2e5f41dfb3e73f41ef327c4b.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 540,
+        "failed": 0,
+        "passed": 540
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "missing-event",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/3d62a3ac7fba4f7ebe5314686b533626.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 354,
+        "failed": 0,
+        "passed": 354
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "invalid-evidence",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/a876eb17674d46b6808820de1dff63ae.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 704,
+        "failed": 0,
+        "passed": 704
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "checkout",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/46e36ae860144c42966b138bc23bef76.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 61,
+        "failed": 0,
+        "passed": 61
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "post-upgrade-restore",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/785c2eefd7e54bbc92aa51bbdb111625.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 115,
+        "failed": 0,
+        "passed": 115
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "scenarios",
+      "lane": "failure-cleanup",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/3f55821a3061451493ffa09d4559fe87.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 131,
+        "failed": 0,
+        "passed": 131
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "additions",
+      "lane": "reminder-recovery",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/13110834ba9a4e58ad2c5ea34ebc28a4.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 193,
+        "failed": 0,
+        "passed": 193
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "additions",
+      "lane": "logical-event-evolution",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/416103936b6943fba98d7992cd59a6a7.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 7,
+        "failed": 0,
+        "passed": 7
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "recovery",
+      "lane": "container-cleanup",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/59ff8885e23044c29253f40a5326d363.json",
+      "scope": "operational"
+    },
+    {
+      "assertions": {
+        "attempted": 12,
+        "failed": 0,
+        "passed": 12
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "group": "recovery",
+      "lane": "candidate-restore",
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/84cc75dd1cfa4be6b73538a49ec70e2b.json",
+      "scope": "operational"
+    }
+  ],
+  "reconstructed_assertions": {
+    "attempted": 3218,
+    "failed": 0,
+    "passed": 3218
+  },
+  "reconstructed_cases": 72,
+  "scope": "schema-and-contract-recheck-of-preserved-failed-attempt; no qualification claim",
+  "source_attempt": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt",
+  "started_utc": "2026-10-14T12:43:02.131574+00:00",
+  "tested_source": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/independent-repair-audit.py",
+  "tested_source_sha256": "5ad23a8f26e51f78f870e6382b9920188b908c72278c7db76fcf7877ec68a676"
+}

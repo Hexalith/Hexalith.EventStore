@@ -2,6 +2,7 @@
 """Execute the approved immutable published P1R selection in a fresh owned invocation."""
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -32,14 +33,42 @@ def main(arguments=None):
             reader = postgres_inventory if args.backend == "state.postgresql" else redis_inventory
             sys.stdout.buffer.write(canonical(reader(args.container, args.invocation)))
             return 0
+        # Resolve every path while still in the caller's original working directory.
+        args.out = args.out.absolute()
+        if args.command == "run":
+            args.inputs = args.inputs.absolute()
+            inputs, data, scope = qualification.load_document(args.inputs, qualification.validate_inputs)
+            qualification.require(scope == "owner-selected", "synthetic selections cannot execute published qualification")
+            validate_execution_inputs(inputs)
+        else:
+            args.planning_observations = args.planning_observations.absolute()
+        if not os.environ.get("HEXALITH_P1R_ISOLATION"):
+            from p1r_isolation import IsolatedRunner
+            isolation = IsolatedRunner(args.out.with_name(args.out.name + "-isolation"))
+            forwarded = [args.command, "--out", str(args.out)]
+            forwarded += (["--inputs", str(args.inputs)] if args.command == "run" else
+                          ["--planning-observations", str(args.planning_observations), "--selection-reference", args.selection_reference])
+            code = isolation.run(["python3", str(Path(__file__).resolve()), *forwarded])
+            responses = []
+            for line in isolation.result.get("command_stdout", "").splitlines():
+                try:
+                    value = json.loads(line)
+                    if isinstance(value, dict):
+                        responses.append(value)
+                except json.JSONDecodeError:
+                    pass
+            for value in responses or [{"out": str(args.out), "errors": isolation.result["errors"], "p1r_usable": False}]:
+                print(json.dumps(dict(value, isolation_out=str(isolation.output),
+                                      isolation_passed=isolation.result.get("passed", code == 0),
+                                      isolation_errors=isolation.result["errors"]), sort_keys=True), flush=True)
+            return code
+        from p1r_isolation import private_proof, OUTER_MARKER
+        private_proof(os.environ.get(OUTER_MARKER))
         if args.command == "observe":
             worker = Executor(args.out)
             worker.observe_inputs(json.loads(args.planning_observations.read_bytes()), args.selection_reference)
             worker.cleanup()
         else:
-            inputs, data, scope = qualification.load_document(args.inputs, qualification.validate_inputs)
-            qualification.require(scope == "owner-selected", "synthetic selections cannot execute published qualification")
-            validate_execution_inputs(inputs)
             worker = Executor(args.out, inputs)
             worker.inputs_sha256 = qualification.digest(data)
             worker.result["inputs_sha256"] = worker.inputs_sha256

@@ -1,0 +1,8 @@
+{
+  "path": "protected-files-before.json.gz",
+  "encoding": "gzip of exact UTF-8 JSON",
+  "uncompressed_bytes": 102305745,
+  "uncompressed_sha256": "526dc14f3675c909383a581595aba4f188ea5e46013a0fbdb2e4c269a1d3972e",
+  "compressed_sha256": "f5c83c3df9658f9d3d51c4a11db41f257854eb52a20fec949ca39b840b0555c0",
+  "files": 206456
+}

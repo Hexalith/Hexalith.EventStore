@@ -1,0 +1,131 @@
+{
+  "captured_at_utc": "2026-10-16T06:51:13.933142+00:00",
+  "protected_files_checked": 206456,
+  "protected_mismatches": [],
+  "authorized_workflow_changes": [
+    {
+      "repository": "/home/administrator/projects/hexalith/projects",
+      "path": "_bmad-output/implementation-artifacts/deferred-work.md",
+      "actual": {
+        "bytes": 119320,
+        "sha256": "f70a5c839bdf9c656a7fb2f8abbc7c2ecfc272d7fa30c1f0e465469545600ff8",
+        "mode": 420
+      }
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/projects",
+      "path": "_bmad-output/implementation-artifacts/spec-6-1-p1r-5.md",
+      "actual": {
+        "bytes": 11326,
+        "sha256": "d6c40d17a8955ae7914d18b3a56afae7b6e984303d65a47d5091724c39121b63",
+        "mode": 420
+      }
+    }
+  ],
+  "recovery_files_checked": 2661,
+  "recovery_mismatches": [],
+  "fresh_check_source_inputs": 3376,
+  "changed_check_inputs": [],
+  "repositories": [
+    {
+      "path": "/home/administrator/projects/hexalith/projects",
+      "head": "42c8e7bc3a58d78e7c6ea4273711d697e81175e7",
+      "branch": "main",
+      "head_unchanged": true,
+      "branch_unchanged": true,
+      "gitlinks_unchanged": true,
+      "index_sha256": "6e693309030a773f0907e39db7cc1a311d8f125739f0262deaa30d0a1f04758f",
+      "index_bytes_unchanged": true,
+      "commands": [
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--cached",
+            "--quiet"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--name-only",
+            "--",
+            "src/"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ]
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "head": "5b0df296abc86adf8d37a92fae02e26574d19ad5",
+      "branch": "main",
+      "head_unchanged": true,
+      "branch_unchanged": true,
+      "gitlinks_unchanged": true,
+      "index_sha256": "03a980dcb332041b8c091644e084f8a0e2d8acc110f21ac12f7ef6356114f0b5",
+      "index_bytes_unchanged": true,
+      "commands": [
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--cached",
+            "--quiet"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--name-only",
+            "--",
+            "src/"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ]
+    }
+  ],
+  "passed": true,
+  "package_qualified": false,
+  "p1r_usable": false,
+  "story_6_1": "blocked"
+}

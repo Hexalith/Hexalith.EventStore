@@ -1,0 +1,1212 @@
+{
+  "cleanup": [
+    {
+      "absent_containers": [
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "absent_scratch": [
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws"
+      ],
+      "absent_volumes": [
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "errors": [],
+      "finished_utc": "2026-10-14T20:08:20.308797+00:00",
+      "nested_inventory": {
+        "complete": true,
+        "containers": [],
+        "daemon": "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      },
+      "remaining": [],
+      "started_utc": "2026-10-14T20:08:15.609620+00:00",
+      "targeted": [
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+        "volume:p1r-isolation-ffc03b070e3e43f5a07217650213a5f2",
+        "scratch:/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws"
+      ]
+    },
+    {
+      "absent_containers": [
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "absent_scratch": [
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws"
+      ],
+      "absent_volumes": [
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "errors": [],
+      "finished_utc": "2026-10-14T20:08:23.458320+00:00",
+      "nested_inventory": {
+        "daemon_absent": true,
+        "prior_empty_inventory": true
+      },
+      "remaining": [],
+      "started_utc": "2026-10-14T20:08:20.309874+00:00",
+      "targeted": [
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+        "volume:p1r-isolation-ffc03b070e3e43f5a07217650213a5f2",
+        "scratch:/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws"
+      ]
+    }
+  ],
+  "command_exit_code": 0,
+  "command_started": true,
+  "command_stdout": "{\"scope\": \"source-only private runner and cleanup verification\", \"package_qualified\": false, \"p1r_usable\": false}\n",
+  "commands": [
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "info",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:03.456257+00:00",
+      "output": "afcd365d-1578-410b-af0b-98550207ef1c\n",
+      "output_sha256": "2c5a64404f8657d04ceb14fed02804ae20b868cf6916b7e06e8cf706a85fbe8d",
+      "started_utc": "2026-10-14T20:08:01.282172+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "pull",
+        "--platform",
+        "linux/amd64",
+        "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:03.957216+00:00",
+      "output": "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523: Pulling from dotnet/sdk\nDigest: sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523\nStatus: Image is up to date for mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523\nmcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523\n",
+      "output_sha256": "8ad78c9711d419d54eeab1f997e42b69b305b173eb6d9f084c7802ea9b66fc5f",
+      "started_utc": "2026-10-14T20:08:03.456943+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "pull",
+        "--platform",
+        "linux/amd64",
+        "docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:05.032738+00:00",
+      "output": "docker.io/library/docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314: Pulling from library/docker\nDigest: sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314\nStatus: Image is up to date for docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314\ndocker.io/library/docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314\n",
+      "output_sha256": "2a3e0b58e6f4cc0c14db436f88476b4bb61b9a48bfa9b962faf055d25521bbea",
+      "started_utc": "2026-10-14T20:08:03.957668+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "pull",
+        "--platform",
+        "linux/amd64",
+        "python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:06.019655+00:00",
+      "output": "docker.io/library/python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301: Pulling from library/python\nDigest: sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301\nStatus: Image is up to date for python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301\ndocker.io/library/python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301\n",
+      "output_sha256": "12f02271fba615bd62f7117e6aa6e70caca56b2a4599d15b93b217736e8388d4",
+      "started_utc": "2026-10-14T20:08:05.033143+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "create",
+        "--label",
+        "hexalith.p1r.isolation=ffc03b070e3e43f5a07217650213a5f2",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:06.369645+00:00",
+      "output": "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\n",
+      "output_sha256": "53395a7ecbb27be2e8df88a820509e599bf62d8c4b65a454b4002fa723248647",
+      "started_utc": "2026-10-14T20:08:06.020808+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "create",
+        "--cidfile",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/daemon.cid",
+        "--name",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-daemon",
+        "--label",
+        "hexalith.p1r.isolation=ffc03b070e3e43f5a07217650213a5f2",
+        "--privileged",
+        "--mount",
+        "type=volume,src=p1r-isolation-ffc03b070e3e43f5a07217650213a5f2,dst=/var/lib/docker",
+        "--entrypoint",
+        "dockerd",
+        "docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314",
+        "--host=unix:///var/lib/docker/p1r-run/docker.sock",
+        "--data-root=/var/lib/docker/data",
+        "--exec-root=/var/lib/docker/p1r-exec",
+        "--pidfile=/var/lib/docker/p1r-run/dockerd.pid",
+        "--storage-driver=vfs",
+        "--tls=false"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:06.719660+00:00",
+      "output": "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "6f36a8727427eab546576192a7687b276b9142872846d8c43504e2d2d2c75eb8",
+      "started_utc": "2026-10-14T20:08:06.371376+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:06.951568+00:00",
+      "output": "{\"Id\":\"12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"Image\":\"sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-daemon\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":0,\"Restarting\":false,\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\",\"Status\":\"created\"},\"NetworkMode\":\"bridge\",\"PidMode\":\"\",\"Privileged\":true,\"Ports\":{},\"Mounts\":[{\"Destination\":\"/var/lib/docker\",\"Driver\":\"local\",\"Mode\":\"z\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Propagation\":\"\",\"RW\":true,\"Source\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Type\":\"volume\"}]}\n",
+      "output_sha256": "028c98e99d3d6f50b9f678b5f62c471f573931067af1a8df176952fabc7ed98d",
+      "started_utc": "2026-10-14T20:08:06.720479+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "start",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:07.319005+00:00",
+      "output": "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "6f36a8727427eab546576192a7687b276b9142872846d8c43504e2d2d2c75eb8",
+      "started_utc": "2026-10-14T20:08:06.952862+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "exec",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+        "docker",
+        "--host",
+        "unix:///var/lib/docker/p1r-run/docker.sock",
+        "info",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:07.960486+00:00",
+      "output": "a049acb9-c806-413e-b31c-e4160dd89392\n",
+      "output_sha256": "36918a9f1679913c2fdbedd014ba8a108e0946569dbd41c1268c8b224cd90996",
+      "started_utc": "2026-10-14T20:08:07.319785+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "create",
+        "--cidfile",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/python-tools.cid",
+        "--name",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-python-tools",
+        "--label",
+        "hexalith.p1r.isolation=ffc03b070e3e43f5a07217650213a5f2",
+        "--network",
+        "none",
+        "--entrypoint",
+        "/bin/true",
+        "python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:08.219205+00:00",
+      "output": "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "ea5320bbf54a3dffabbeae6bc8484a09fe459adb718c2ce01c3699179eefe30e",
+      "started_utc": "2026-10-14T20:08:07.961886+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:08.456531+00:00",
+      "output": "{\"Id\":\"c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\",\"Image\":\"sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-python-tools\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":0,\"Restarting\":false,\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\",\"Status\":\"created\"},\"NetworkMode\":\"none\",\"PidMode\":\"\",\"Privileged\":false,\"Ports\":{},\"Mounts\":[]}\n",
+      "output_sha256": "e2e959e7869ee499c043492cae2941e7cd237db436aabacc687fe152dc89b360",
+      "started_utc": "2026-10-14T20:08:08.220094+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "cp",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32:/usr/local",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/python"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:09.771001+00:00",
+      "output": "",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_utc": "2026-10-14T20:08:08.457854+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "cp",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb:/usr/local/bin/docker",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:10.163381+00:00",
+      "output": "",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_utc": "2026-10-14T20:08:09.771732+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "create",
+        "--cidfile",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/sdk.cid",
+        "--name",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-sdk",
+        "--label",
+        "hexalith.p1r.isolation=ffc03b070e3e43f5a07217650213a5f2",
+        "--network",
+        "container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+        "--pid",
+        "container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+        "--cap-add",
+        "SYS_PTRACE",
+        "--mount",
+        "type=volume,src=p1r-isolation-ffc03b070e3e43f5a07217650213a5f2,dst=/var/lib/docker",
+        "--mount",
+        "type=bind,src=/home/administrator/projects/hexalith/projects,dst=/home/administrator/projects/hexalith/projects",
+        "--workdir",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+        "--env",
+        "HEXALITH_P1R_ISOLATION=ffc03b070e3e43f5a07217650213a5f2",
+        "--env",
+        "DOCKER_HOST=unix:///var/lib/docker/p1r-run/docker.sock",
+        "--env",
+        "DOCKER_CONFIG=/var/lib/docker/p1r-client",
+        "--env",
+        "GIT_CONFIG_COUNT=13",
+        "--env",
+        "GIT_CONFIG_KEY_0=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_0=/home/administrator/projects/hexalith/projects",
+        "--env",
+        "GIT_CONFIG_KEY_1=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_1=/home/administrator/projects/hexalith/projects/references/Hexalith.AI.Tools",
+        "--env",
+        "GIT_CONFIG_KEY_2=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_2=/home/administrator/projects/hexalith/projects/references/Hexalith.Builds",
+        "--env",
+        "GIT_CONFIG_KEY_3=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_3=/home/administrator/projects/hexalith/projects/references/Hexalith.Commons",
+        "--env",
+        "GIT_CONFIG_KEY_4=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_4=/home/administrator/projects/hexalith/projects/references/Hexalith.Conversations",
+        "--env",
+        "GIT_CONFIG_KEY_5=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_5=/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+        "--env",
+        "GIT_CONFIG_KEY_6=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_6=/home/administrator/projects/hexalith/projects/references/Hexalith.Folders",
+        "--env",
+        "GIT_CONFIG_KEY_7=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_7=/home/administrator/projects/hexalith/projects/references/Hexalith.FrontComposer",
+        "--env",
+        "GIT_CONFIG_KEY_8=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_8=/home/administrator/projects/hexalith/projects/references/Hexalith.McpCli",
+        "--env",
+        "GIT_CONFIG_KEY_9=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_9=/home/administrator/projects/hexalith/projects/references/Hexalith.Memories",
+        "--env",
+        "GIT_CONFIG_KEY_10=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_10=/home/administrator/projects/hexalith/projects/references/Hexalith.Parties",
+        "--env",
+        "GIT_CONFIG_KEY_11=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_11=/home/administrator/projects/hexalith/projects/references/Hexalith.Platform",
+        "--env",
+        "GIT_CONFIG_KEY_12=safe.directory",
+        "--env",
+        "GIT_CONFIG_VALUE_12=/home/administrator/projects/hexalith/projects/references/Hexalith.Tenants",
+        "--env",
+        "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "--env",
+        "LD_LIBRARY_PATH=/opt/python/lib",
+        "--env",
+        "DOTNET_CLI_TELEMETRY_OPTOUT=1",
+        "--entrypoint",
+        "sleep",
+        "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523",
+        "infinity"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:10.434013+00:00",
+      "output": "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "7ef75450ef948910d725e49775f14f867063e5077f7f56dfff88539ea8571cef",
+      "started_utc": "2026-10-14T20:08:10.167059+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:10.653748+00:00",
+      "output": "{\"Id\":\"e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\",\"Image\":\"sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-sdk\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\",\"org.opencontainers.image.version\":\"24.04\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":0,\"Restarting\":false,\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\",\"Status\":\"created\"},\"NetworkMode\":\"container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"PidMode\":\"container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"Privileged\":false,\"Ports\":{},\"Mounts\":[{\"Destination\":\"/var/lib/docker\",\"Driver\":\"local\",\"Mode\":\"z\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Propagation\":\"\",\"RW\":true,\"Source\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Type\":\"volume\"},{\"Destination\":\"/home/administrator/projects/hexalith/projects\",\"Mode\":\"\",\"Propagation\":\"rprivate\",\"RW\":true,\"Source\":\"/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu-26.04/dc7a98dc215162470cfe6c14ff3801301e0f750a312f01ec3613f2b2325013ab\",\"Type\":\"bind\"}]}\n",
+      "output_sha256": "1665961d21b0424b48e701a57c7d73415ec4dd87bdd366c4a8816ed139dffac3",
+      "started_utc": "2026-10-14T20:08:10.434788+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "cp",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/python",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788:/opt/python"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:11.135635+00:00",
+      "output": "",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_utc": "2026-10-14T20:08:10.655288+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "cp",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788:/usr/local/bin/docker"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:11.462667+00:00",
+      "output": "",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_utc": "2026-10-14T20:08:11.136501+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "start",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:11.786029+00:00",
+      "output": "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "7ef75450ef948910d725e49775f14f867063e5077f7f56dfff88539ea8571cef",
+      "started_utc": "2026-10-14T20:08:11.463507+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:12.009355+00:00",
+      "output": "{\"Id\":\"e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\",\"Image\":\"sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-sdk\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\",\"org.opencontainers.image.version\":\"24.04\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":723760,\"Restarting\":false,\"Running\":true,\"StartedAt\":\"2026-10-14T20:08:11.712621715Z\",\"Status\":\"running\"},\"NetworkMode\":\"container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"PidMode\":\"container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"Privileged\":false,\"Ports\":{},\"Mounts\":[{\"Destination\":\"/var/lib/docker\",\"Driver\":\"local\",\"Mode\":\"z\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Propagation\":\"\",\"RW\":true,\"Source\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Type\":\"volume\"},{\"Destination\":\"/home/administrator/projects/hexalith/projects\",\"Mode\":\"\",\"Propagation\":\"rprivate\",\"RW\":true,\"Source\":\"/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu-26.04/dc7a98dc215162470cfe6c14ff3801301e0f750a312f01ec3613f2b2325013ab\",\"Type\":\"bind\"}]}\n",
+      "output_sha256": "4a6994d575f308052c4951211b266aab214bc59f246fb2224763348e80580d61",
+      "started_utc": "2026-10-14T20:08:11.786847+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "exec",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+        "python3",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r-isolated-runner.py",
+        "_inner",
+        "--out",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/isolation-postreview-live",
+        "--outer-id",
+        "afcd365d-1578-410b-af0b-98550207ef1c",
+        "--",
+        "python3",
+        "-c",
+        "import json; print(json.dumps({\"scope\":\"source-only private runner and cleanup verification\",\"package_qualified\":False,\"p1r_usable\":False}))"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:15.600926+00:00",
+      "output": "{\"scope\": \"source-only private runner and cleanup verification\", \"package_qualified\": false, \"p1r_usable\": false}\n",
+      "output_sha256": "e67486b4af3bd38a23fb3901bbe8bb300d7f7f8b11d62aeb914cc0a181385148",
+      "started_utc": "2026-10-14T20:08:12.011626+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:15.816265+00:00",
+      "output": "{\"Id\":\"12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"Image\":\"sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-daemon\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":723427,\"Restarting\":false,\"Running\":true,\"StartedAt\":\"2026-10-14T20:08:07.190905038Z\",\"Status\":\"running\"},\"NetworkMode\":\"bridge\",\"PidMode\":\"\",\"Privileged\":true,\"Ports\":{},\"Mounts\":[{\"Destination\":\"/var/lib/docker\",\"Driver\":\"local\",\"Mode\":\"z\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Propagation\":\"\",\"RW\":true,\"Source\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Type\":\"volume\"}]}\n",
+      "output_sha256": "14f8fd61f2a78b709bb2c07697b7b4103a07730c766ccea6c96057a2d426ae75",
+      "started_utc": "2026-10-14T20:08:15.609646+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "exec",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+        "docker",
+        "--host",
+        "unix:///var/lib/docker/p1r-run/docker.sock",
+        "ps",
+        "-aq",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:16.065991+00:00",
+      "output": "",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_utc": "2026-10-14T20:08:15.817226+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:16.278949+00:00",
+      "output": "{\"Id\":\"e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\",\"Image\":\"sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-sdk\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\",\"org.opencontainers.image.version\":\"24.04\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":723760,\"Restarting\":false,\"Running\":true,\"StartedAt\":\"2026-10-14T20:08:11.712621715Z\",\"Status\":\"running\"},\"NetworkMode\":\"container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"PidMode\":\"container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"Privileged\":false,\"Ports\":{},\"Mounts\":[{\"Destination\":\"/var/lib/docker\",\"Driver\":\"local\",\"Mode\":\"z\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Propagation\":\"\",\"RW\":true,\"Source\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Type\":\"volume\"},{\"Destination\":\"/home/administrator/projects/hexalith/projects\",\"Mode\":\"\",\"Propagation\":\"rprivate\",\"RW\":true,\"Source\":\"/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu-26.04/dc7a98dc215162470cfe6c14ff3801301e0f750a312f01ec3613f2b2325013ab\",\"Type\":\"bind\"}]}\n",
+      "output_sha256": "4a6994d575f308052c4951211b266aab214bc59f246fb2224763348e80580d61",
+      "started_utc": "2026-10-14T20:08:16.069832+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "rm",
+        "-f",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:16.617907+00:00",
+      "output": "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "7ef75450ef948910d725e49775f14f867063e5077f7f56dfff88539ea8571cef",
+      "started_utc": "2026-10-14T20:08:16.279796+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:16.863211+00:00",
+      "output": "\nerror: no such object: e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "c295c06c7fea6a15e73bcfb8cbf293af8909ea9b442feb327878e3e0e75ba979",
+      "started_utc": "2026-10-14T20:08:16.618802+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:17.102381+00:00",
+      "output": "\nerror: no such object: e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "c295c06c7fea6a15e73bcfb8cbf293af8909ea9b442feb327878e3e0e75ba979",
+      "started_utc": "2026-10-14T20:08:16.864092+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:17.311622+00:00",
+      "output": "{\"Id\":\"c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\",\"Image\":\"sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-python-tools\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":0,\"Restarting\":false,\"Running\":false,\"StartedAt\":\"0001-01-01T00:00:00Z\",\"Status\":\"created\"},\"NetworkMode\":\"none\",\"PidMode\":\"\",\"Privileged\":false,\"Ports\":{},\"Mounts\":[]}\n",
+      "output_sha256": "e2e959e7869ee499c043492cae2941e7cd237db436aabacc687fe152dc89b360",
+      "started_utc": "2026-10-14T20:08:17.103336+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "rm",
+        "-f",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:17.555491+00:00",
+      "output": "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "ea5320bbf54a3dffabbeae6bc8484a09fe459adb718c2ce01c3699179eefe30e",
+      "started_utc": "2026-10-14T20:08:17.312531+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:17.817220+00:00",
+      "output": "\nerror: no such object: c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "a5ad6780050046caf4877fd862b315c8ac071c8849e63bc690502ca43252ee5a",
+      "started_utc": "2026-10-14T20:08:17.556491+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:18.057371+00:00",
+      "output": "\nerror: no such object: c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "a5ad6780050046caf4877fd862b315c8ac071c8849e63bc690502ca43252ee5a",
+      "started_utc": "2026-10-14T20:08:17.818192+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:18.267776+00:00",
+      "output": "{\"Id\":\"12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\",\"Image\":\"sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314\",\"Name\":\"/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-daemon\",\"Labels\":{\"desktop.docker.io/wsl-distro\":\"Ubuntu-26.04\",\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\"},\"State\":{\"Dead\":false,\"Error\":\"\",\"ExitCode\":0,\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"OOMKilled\":false,\"Paused\":false,\"Pid\":723427,\"Restarting\":false,\"Running\":true,\"StartedAt\":\"2026-10-14T20:08:07.190905038Z\",\"Status\":\"running\"},\"NetworkMode\":\"bridge\",\"PidMode\":\"\",\"Privileged\":true,\"Ports\":{},\"Mounts\":[{\"Destination\":\"/var/lib/docker\",\"Driver\":\"local\",\"Mode\":\"z\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Propagation\":\"\",\"RW\":true,\"Source\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Type\":\"volume\"}]}\n",
+      "output_sha256": "14f8fd61f2a78b709bb2c07697b7b4103a07730c766ccea6c96057a2d426ae75",
+      "started_utc": "2026-10-14T20:08:18.058241+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "logs",
+        "--tail",
+        "200",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:18.498367+00:00",
+      "output": "time=\"2026-10-14T20:08:07.539796837Z\" level=info msg=\"Starting up\"\ntime=\"2026-10-14T20:08:07.540633186Z\" level=info msg=\"containerd not running, starting managed containerd\"\ntime=\"2026-10-14T20:08:07.543660580Z\" level=info msg=\"started new containerd process\" address=/var/lib/docker/p1r-exec/containerd/containerd.sock binary=/usr/local/bin/containerd module=supervisor pid=20\ntime=\"2026-10-14T20:08:07Z\" level=warning msg=\"Configuration migrated from version 2, use `containerd config migrate` to avoid migration\" t=\"10.209\u00b5s\"\ntime=\"2026-10-14T20:08:07.655652092Z\" level=info msg=\"starting containerd\" revision=ee2735368117d2eb259779949d5e75cdafec9761 version=v2.3.6\ntime=\"2026-10-14T20:08:07.655998673Z\" level=info msg=\"loading plugin\" id=io.containerd.content.v1.content type=io.containerd.content.v1\ntime=\"2026-10-14T20:08:07.656290518Z\" level=warning msg=\"failed check for fsverity support\" error=\"enable fsverity failed: operation not supported\" path=/var/lib/docker/data/containerd/daemon/io.containerd.content.v1.content\ntime=\"2026-10-14T20:08:07.656334964Z\" level=info msg=\"loading plugin\" id=io.containerd.image-verifier.v1.bindir type=io.containerd.image-verifier.v1\ntime=\"2026-10-14T20:08:07.656346716Z\" level=info msg=\"loading plugin\" id=io.containerd.internal.v1.opt type=io.containerd.internal.v1\ntime=\"2026-10-14T20:08:07.656730098Z\" level=info msg=\"loading plugin\" id=io.containerd.warning.v1.deprecations type=io.containerd.warning.v1\ntime=\"2026-10-14T20:08:07.656756740Z\" level=info msg=\"loading plugin\" id=io.containerd.event.v1.exchange type=io.containerd.event.v1\ntime=\"2026-10-14T20:08:07.657188972Z\" level=info msg=\"loading plugin\" id=io.containerd.mount-handler.v1.erofs type=io.containerd.mount-handler.v1\ntime=\"2026-10-14T20:08:07.657229420Z\" level=info msg=\"loading plugin\" id=io.containerd.snapshotter.v1.blockfile type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657346237Z\" level=info msg=\"skip loading plugin\" error=\"no scratch file generator: skip plugin\" id=io.containerd.snapshotter.v1.blockfile type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657371235Z\" level=info msg=\"loading plugin\" id=io.containerd.snapshotter.v1.devmapper type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657383328Z\" level=info msg=\"skip loading plugin\" error=\"devmapper not configured: skip plugin\" id=io.containerd.snapshotter.v1.devmapper type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657387406Z\" level=info msg=\"loading plugin\" id=io.containerd.snapshotter.v1.erofs type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657604366Z\" level=info msg=\"skip loading plugin\" error=\"EROFS unsupported, please `modprobe erofs`: skip plugin\" id=io.containerd.snapshotter.v1.erofs type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657632931Z\" level=info msg=\"loading plugin\" id=io.containerd.snapshotter.v1.native type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.657897544Z\" level=info msg=\"loading plugin\" id=io.containerd.snapshotter.v1.overlayfs type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.658354388Z\" level=info msg=\"loading plugin\" id=io.containerd.snapshotter.v1.zfs type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.658403142Z\" level=info msg=\"skip loading plugin\" error=\"lstat /var/lib/docker/data/containerd/daemon/io.containerd.snapshotter.v1.zfs: no such file or directory: skip plugin\" id=io.containerd.snapshotter.v1.zfs type=io.containerd.snapshotter.v1\ntime=\"2026-10-14T20:08:07.658412420Z\" level=info msg=\"loading plugin\" id=io.containerd.monitor.task.v1.cgroups type=io.containerd.monitor.task.v1\ntime=\"2026-10-14T20:08:07.658919482Z\" level=info msg=\"loading plugin\" id=io.containerd.metadata.v1.bolt type=io.containerd.metadata.v1\ntime=\"2026-10-14T20:08:07.659046768Z\" level=info msg=\"metadata content store policy set\" policy=shared\ntime=\"2026-10-14T20:08:07.666049778Z\" level=info msg=\"loading plugin\" id=io.containerd.gc.v1.scheduler type=io.containerd.gc.v1\ntime=\"2026-10-14T20:08:07.666461585Z\" level=info msg=\"loading plugin\" id=io.containerd.server.v1.metrics type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.666516131Z\" level=info msg=\"skip loading plugin\" error=\"skip plugin\" id=io.containerd.server.v1.metrics type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.666526280Z\" level=info msg=\"loading plugin\" id=io.containerd.tracing.processor.v1.otlp type=io.containerd.tracing.processor.v1\ntime=\"2026-10-14T20:08:07.666536560Z\" level=info msg=\"skip loading plugin\" error=\"skip plugin: tracing endpoint not configured\" id=io.containerd.tracing.processor.v1.otlp type=io.containerd.tracing.processor.v1\ntime=\"2026-10-14T20:08:07.666541209Z\" level=info msg=\"loading plugin\" id=io.containerd.internal.v1.tracing type=io.containerd.internal.v1\ntime=\"2026-10-14T20:08:07.666545708Z\" level=info msg=\"skip loading plugin\" error=\"skip plugin: tracing endpoint not configured\" id=io.containerd.internal.v1.tracing type=io.containerd.internal.v1\ntime=\"2026-10-14T20:08:07.666548473Z\" level=info msg=\"loading plugin\" id=io.containerd.nri.v1.nri type=io.containerd.nri.v1\ntime=\"2026-10-14T20:08:07.666888898Z\" level=info msg=\"built-in NRI default validator is disabled\"\ntime=\"2026-10-14T20:08:07.666917493Z\" level=info msg=\"runtime interface created\"\ntime=\"2026-10-14T20:08:07.666923835Z\" level=info msg=\"created NRI interface\"\ntime=\"2026-10-14T20:08:07.666928584Z\" level=info msg=\"loading plugin\" id=io.containerd.ttrpc.v1.otelttrpc type=io.containerd.ttrpc.v1\ntime=\"2026-10-14T20:08:07.666940718Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.containers-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.666947772Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.content-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.666951629Z\" level=info msg=\"loading plugin\" id=io.containerd.differ.v1.erofs type=io.containerd.differ.v1\ntime=\"2026-10-14T20:08:07.667018248Z\" level=info msg=\"skip loading plugin\" error=\"failed to check mkfs.erofs availability: failed to run mkfs.erofs --help: exec: \\\"mkfs.erofs\\\": executable file not found in $PATH: skip plugin\" id=io.containerd.differ.v1.erofs type=io.containerd.differ.v1\ntime=\"2026-10-14T20:08:07.667043858Z\" level=info msg=\"loading plugin\" id=io.containerd.mount-manager.v1.bolt type=io.containerd.mount-manager.v1\ntime=\"2026-10-14T20:08:07.670239493Z\" level=info msg=\"loading plugin\" id=io.containerd.differ.v1.walking type=io.containerd.differ.v1\ntime=\"2026-10-14T20:08:07.670305991Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.diff-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.670532144Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.images-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.670573904Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.introspection-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.670584244Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.namespaces-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.670589404Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.snapshots-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.670593382Z\" level=info msg=\"loading plugin\" id=io.containerd.shim.v1.manager type=io.containerd.shim.v1\ntime=\"2026-10-14T20:08:07.670599444Z\" level=info msg=\"loading plugin\" id=io.containerd.runtime.v2.task type=io.containerd.runtime.v2\ntime=\"2026-10-14T20:08:07.670806915Z\" level=info msg=\"loading plugin\" id=io.containerd.service.v1.tasks-service type=io.containerd.service.v1\ntime=\"2026-10-14T20:08:07.670838206Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.containers type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670849909Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.content type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670854628Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.diff type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670860850Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.events type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670876320Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.images type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670884355Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.introspection type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670889585Z\" level=info msg=\"loading plugin\" id=io.containerd.lease.v1.manager type=io.containerd.lease.v1\ntime=\"2026-10-14T20:08:07.670894805Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.leases type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670919303Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.mounts type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670934041Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.namespaces type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.670944522Z\" level=info msg=\"loading plugin\" id=io.containerd.sandbox.controller.v1.shim type=io.containerd.sandbox.controller.v1\ntime=\"2026-10-14T20:08:07.671118208Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.sandbox-controllers type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671156772Z\" level=info msg=\"loading plugin\" id=io.containerd.sandbox.store.v1.local type=io.containerd.sandbox.store.v1\ntime=\"2026-10-14T20:08:07.671165690Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.sandboxes type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671170289Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.snapshots type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671173926Z\" level=info msg=\"loading plugin\" id=io.containerd.streaming.v1.manager type=io.containerd.streaming.v1\ntime=\"2026-10-14T20:08:07.671180579Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.streaming type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671184596Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.tasks type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671190428Z\" level=info msg=\"loading plugin\" id=io.containerd.transfer.v1.local type=io.containerd.transfer.v1\ntime=\"2026-10-14T20:08:07.671280312Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.transfer type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671312173Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.version type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671321842Z\" level=info msg=\"loading plugin\" id=io.containerd.grpc.v1.healthcheck type=io.containerd.grpc.v1\ntime=\"2026-10-14T20:08:07.671326812Z\" level=info msg=\"loading plugin\" id=io.containerd.server.v1.ttrpc type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.671391687Z\" level=info msg=\"loading plugin\" id=io.containerd.monitor.container.v1.restart type=io.containerd.monitor.container.v1\ntime=\"2026-10-14T20:08:07.672047903Z\" level=info msg=\"loading plugin\" id=io.containerd.metrics.v1.grpc-prometheus type=io.containerd.metrics.v1\ntime=\"2026-10-14T20:08:07.672138528Z\" level=info msg=\"loading plugin\" id=io.containerd.metrics.v1.grpc-otel type=io.containerd.metrics.v1\ntime=\"2026-10-14T20:08:07.672162404Z\" level=info msg=\"loading plugin\" id=io.containerd.server.v1.grpc type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.676287138Z\" level=info msg=\"loading plugin\" id=io.containerd.server.v1.grpc-tcp type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.676330772Z\" level=info msg=\"skip loading plugin\" error=\"skip plugin\" id=io.containerd.server.v1.grpc-tcp type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.676340010Z\" level=info msg=\"loading plugin\" id=io.containerd.http.v1.pprof type=io.containerd.http.v1\ntime=\"2026-10-14T20:08:07.676472637Z\" level=info msg=\"loading plugin\" id=io.containerd.server.v1.debug type=io.containerd.server.v1\ntime=\"2026-10-14T20:08:07.678517326Z\" level=info msg=serving... address=/var/lib/docker/p1r-exec/containerd/containerd.sock.ttrpc\ntime=\"2026-10-14T20:08:07.678602100Z\" level=info msg=\"starting GRPC server\" address=/var/lib/docker/p1r-exec/containerd/containerd.sock gid=0 uid=0\ntime=\"2026-10-14T20:08:07.678677045Z\" level=info msg=serving... address=/var/lib/docker/p1r-exec/containerd/containerd.sock\ntime=\"2026-10-14T20:08:07.678761619Z\" level=info msg=serving... address=/var/lib/docker/p1r-exec/containerd/containerd-debug.sock\ntime=\"2026-10-14T20:08:07.678800003Z\" level=info msg=\"containerd successfully booted in 0.024876s\"\ntime=\"2026-10-14T20:08:07.687674379Z\" level=info msg=\"started managed containerd\" binary=/usr/local/bin/containerd module=supervisor pid=20\ntime=\"2026-10-14T20:08:07.689014723Z\" level=info msg=\"OTEL tracing is not configured, using no-op tracer provider\"\ntime=\"2026-10-14T20:08:07.689743404Z\" level=info msg=\"CDI directory does not exist, skipping\" dir=/var/run/cdi\ntime=\"2026-10-14T20:08:07.689763272Z\" level=info msg=\"CDI directory does not exist, skipping\" dir=/etc/cdi\ntime=\"2026-10-14T20:08:07.728637606Z\" level=info msg=\"loaded extension\" extension=org.mobyproject.namesgenerator.legacy.v1 origin=builtin providers=\"[org.mobyproject.extension.containernamegenerator.v0 org.mobyproject.extension.servicenamegenerator.v0]\"\ntime=\"2026-10-14T20:08:07.730485328Z\" level=info msg=\"Creating a containerd client\" address=/var/lib/docker/p1r-exec/containerd/containerd.sock timeout=1m0s\ntime=\"2026-10-14T20:08:07.732922781Z\" level=warning msg=\"failed check for fsverity support\" error=\"enable fsverity failed: operation not supported\" path=/var/lib/docker/data/plugins/storage\ntime=\"2026-10-14T20:08:07.747511679Z\" level=info msg=\"Loading containers: start.\"\ntime=\"2026-10-14T20:08:07.747575893Z\" level=info msg=\"NRI is disabled\"\ntime=\"2026-10-14T20:08:07.747591834Z\" level=info msg=\"[graphdriver] trying configured driver: vfs\"\ntime=\"2026-10-14T20:08:07.751466514Z\" level=info msg=\"Restoring containers: start.\"\ntime=\"2026-10-14T20:08:07.756824404Z\" level=warning msg=\"Failed to find nft tool\" error=\"exec: \\\"nft\\\": executable file not found in $PATH\"\ntime=\"2026-10-14T20:08:07.756863019Z\" level=info msg=\"Deleting nftables IPv4 rules\" error=\"failed to find nft tool: exec: \\\"nft\\\": executable file not found in $PATH\"\ntime=\"2026-10-14T20:08:07.756870443Z\" level=info msg=\"Deleting nftables IPv6 rules\" error=\"failed to find nft tool: exec: \\\"nft\\\": executable file not found in $PATH\"\ntime=\"2026-10-14T20:08:07.877715953Z\" level=info msg=\"Loading containers: done.\"\ntime=\"2026-10-14T20:08:07.886594443Z\" level=info msg=\"Docker daemon\" commit=8af9fe3 containerd-snapshotter=false storage-driver=vfs version=29.8.2\ntime=\"2026-10-14T20:08:07.887145891Z\" level=info msg=\"Initializing buildkit\"\ntime=\"2026-10-14T20:08:07.887548991Z\" level=warning msg=\"failed check for fsverity support\" error=\"enable fsverity failed: operation not supported\" path=/var/lib/docker/data/buildkit/content\ntime=\"2026-10-14T20:08:07.932032893Z\" level=info msg=\"Completed buildkit initialization\"\ntime=\"2026-10-14T20:08:07.937936189Z\" level=info msg=\"Daemon has completed initialization\"\ntime=\"2026-10-14T20:08:07.938016553Z\" level=info msg=\"API listen on /var/lib/docker/p1r-run/docker.sock\"\n",
+      "output_sha256": "e3dd95e91d67a0801933f61a5928f5045c7a3de471a40774c0f650cafe910923",
+      "started_utc": "2026-10-14T20:08:18.268682+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "rm",
+        "-f",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:18.959046+00:00",
+      "output": "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "6f36a8727427eab546576192a7687b276b9142872846d8c43504e2d2d2c75eb8",
+      "started_utc": "2026-10-14T20:08:18.499355+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:19.207319+00:00",
+      "output": "\nerror: no such object: 12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "2702f23f9a179992ac22ba84076f5bb24622db70f4b94d92c0ce33b2584da7f5",
+      "started_utc": "2026-10-14T20:08:18.959992+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:19.446323+00:00",
+      "output": "\nerror: no such object: 12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "2702f23f9a179992ac22ba84076f5bb24622db70f4b94d92c0ce33b2584da7f5",
+      "started_utc": "2026-10-14T20:08:19.208238+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "inspect",
+        "--format",
+        "{{json .}}",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:19.653362+00:00",
+      "output": "{\"CreatedAt\":\"2026-10-14T20:08:06Z\",\"Driver\":\"local\",\"Labels\":{\"hexalith.p1r.isolation\":\"ffc03b070e3e43f5a07217650213a5f2\"},\"Mountpoint\":\"/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data\",\"Name\":\"p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\",\"Options\":null,\"Scope\":\"local\"}\n",
+      "output_sha256": "8ba99a16e499f04e06a3d90aa7f7cd66f9c0ebcc458d1687b2331cd21ae0dbe4",
+      "started_utc": "2026-10-14T20:08:19.447420+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "rm",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T20:08:19.860996+00:00",
+      "output": "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2\n",
+      "output_sha256": "53395a7ecbb27be2e8df88a820509e599bf62d8c4b65a454b4002fa723248647",
+      "started_utc": "2026-10-14T20:08:19.654410+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "inspect",
+        "--format",
+        "{{json .}}",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:20.073477+00:00",
+      "output": "\nError response from daemon: get p1r-isolation-ffc03b070e3e43f5a07217650213a5f2: no such volume\n",
+      "output_sha256": "a9e2ea2e10b19c934c9132b16222459d84cf034c315cc9d5044c3163f0e2682b",
+      "started_utc": "2026-10-14T20:08:19.861860+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "inspect",
+        "--format",
+        "{{json .}}",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:20.278286+00:00",
+      "output": "\nError response from daemon: get p1r-isolation-ffc03b070e3e43f5a07217650213a5f2: no such volume\n",
+      "output_sha256": "a9e2ea2e10b19c934c9132b16222459d84cf034c315cc9d5044c3163f0e2682b",
+      "started_utc": "2026-10-14T20:08:20.074454+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:20.547221+00:00",
+      "output": "\nerror: no such object: 12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "2702f23f9a179992ac22ba84076f5bb24622db70f4b94d92c0ce33b2584da7f5",
+      "started_utc": "2026-10-14T20:08:20.309897+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:20.791448+00:00",
+      "output": "\nerror: no such object: e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "c295c06c7fea6a15e73bcfb8cbf293af8909ea9b442feb327878e3e0e75ba979",
+      "started_utc": "2026-10-14T20:08:20.551473+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:21.031763+00:00",
+      "output": "\nerror: no such object: e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "c295c06c7fea6a15e73bcfb8cbf293af8909ea9b442feb327878e3e0e75ba979",
+      "started_utc": "2026-10-14T20:08:20.792531+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:21.269058+00:00",
+      "output": "\nerror: no such object: e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788\n",
+      "output_sha256": "c295c06c7fea6a15e73bcfb8cbf293af8909ea9b442feb327878e3e0e75ba979",
+      "started_utc": "2026-10-14T20:08:21.032934+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:21.509489+00:00",
+      "output": "\nerror: no such object: c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "a5ad6780050046caf4877fd862b315c8ac071c8849e63bc690502ca43252ee5a",
+      "started_utc": "2026-10-14T20:08:21.270139+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:21.757680+00:00",
+      "output": "\nerror: no such object: c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "a5ad6780050046caf4877fd862b315c8ac071c8849e63bc690502ca43252ee5a",
+      "started_utc": "2026-10-14T20:08:21.510615+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:22.005412+00:00",
+      "output": "\nerror: no such object: c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32\n",
+      "output_sha256": "a5ad6780050046caf4877fd862b315c8ac071c8849e63bc690502ca43252ee5a",
+      "started_utc": "2026-10-14T20:08:21.758983+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:22.253453+00:00",
+      "output": "\nerror: no such object: 12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "2702f23f9a179992ac22ba84076f5bb24622db70f4b94d92c0ce33b2584da7f5",
+      "started_utc": "2026-10-14T20:08:22.006561+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:22.513116+00:00",
+      "output": "\nerror: no such object: 12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "2702f23f9a179992ac22ba84076f5bb24622db70f4b94d92c0ce33b2584da7f5",
+      "started_utc": "2026-10-14T20:08:22.254661+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"Labels\":{{json .Config.Labels}},\"State\":{{json .State}},\"NetworkMode\":{{json .HostConfig.NetworkMode}},\"PidMode\":{{json .HostConfig.PidMode}},\"Privileged\":{{json .HostConfig.Privileged}},\"Ports\":{{json .HostConfig.PortBindings}},\"Mounts\":{{json .Mounts}}}",
+        "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:22.763505+00:00",
+      "output": "\nerror: no such object: 12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb\n",
+      "output_sha256": "2702f23f9a179992ac22ba84076f5bb24622db70f4b94d92c0ce33b2584da7f5",
+      "started_utc": "2026-10-14T20:08:22.514273+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "inspect",
+        "--format",
+        "{{json .}}",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:22.986176+00:00",
+      "output": "\nError response from daemon: get p1r-isolation-ffc03b070e3e43f5a07217650213a5f2: no such volume\n",
+      "output_sha256": "a9e2ea2e10b19c934c9132b16222459d84cf034c315cc9d5044c3163f0e2682b",
+      "started_utc": "2026-10-14T20:08:22.764732+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "inspect",
+        "--format",
+        "{{json .}}",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:23.218106+00:00",
+      "output": "\nError response from daemon: get p1r-isolation-ffc03b070e3e43f5a07217650213a5f2: no such volume\n",
+      "output_sha256": "a9e2ea2e10b19c934c9132b16222459d84cf034c315cc9d5044c3163f0e2682b",
+      "started_utc": "2026-10-14T20:08:22.987392+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "--config",
+        "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws/docker-config",
+        "volume",
+        "inspect",
+        "--format",
+        "{{json .}}",
+        "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T20:08:23.457281+00:00",
+      "output": "\nError response from daemon: get p1r-isolation-ffc03b070e3e43f5a07217650213a5f2: no such volume\n",
+      "output_sha256": "a9e2ea2e10b19c934c9132b16222459d84cf034c315cc9d5044c3163f0e2682b",
+      "started_utc": "2026-10-14T20:08:23.219249+00:00"
+    }
+  ],
+  "daemon": "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+  "errors": [],
+  "finished_utc": "2026-10-14T20:08:23.459091+00:00",
+  "images": {
+    "daemon": "docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314",
+    "python": "python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301",
+    "sdk": "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523"
+  },
+  "inner_command": [
+    "python3",
+    "-c",
+    "import json; print(json.dumps({\"scope\":\"source-only private runner and cleanup verification\",\"package_qualified\":False,\"p1r_usable\":False}))"
+  ],
+  "invocation": "ffc03b070e3e43f5a07217650213a5f2",
+  "nested_empty_before_teardown": true,
+  "outer_daemon_id": "afcd365d-1578-410b-af0b-98550207ef1c",
+  "outer_host": "unix:///var/run/docker.sock",
+  "owned_containers": {
+    "12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb": {
+      "image": "docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314",
+      "role": "daemon"
+    },
+    "c0990e86fb499b576489b5689bd42b2d5500e986210777ac1d960c0f41b16a32": {
+      "image": "python@sha256:2986c55feb36e6cae00fa1fefb454283e4b33f35e75ff8bdd123b134130be301",
+      "role": "python-tools"
+    },
+    "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788": {
+      "image": "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523",
+      "role": "sdk"
+    }
+  },
+  "owned_scratch": "/tmp/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-3dningws",
+  "owned_volume": "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2",
+  "p1r_usable": false,
+  "passed": true,
+  "pending_containers": {},
+  "private_execution": {
+    "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/isolation-postreview-live/private-execution.json",
+    "sha256": "cede01bae36e4011de27f7edef5599f566a42beb61fee1ea5d08bac6e659e3bf"
+  },
+  "runner_proof": {
+    "Id": "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+    "Image": "sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523",
+    "Labels": {
+      "desktop.docker.io/wsl-distro": "Ubuntu-26.04",
+      "hexalith.p1r.isolation": "ffc03b070e3e43f5a07217650213a5f2",
+      "org.opencontainers.image.version": "24.04"
+    },
+    "Mounts": [
+      {
+        "Destination": "/var/lib/docker",
+        "Driver": "local",
+        "Mode": "z",
+        "Name": "p1r-isolation-ffc03b070e3e43f5a07217650213a5f2",
+        "Propagation": "",
+        "RW": true,
+        "Source": "/var/lib/docker/volumes/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2/_data",
+        "Type": "volume"
+      },
+      {
+        "Destination": "/home/administrator/projects/hexalith/projects",
+        "Mode": "",
+        "Propagation": "rprivate",
+        "RW": true,
+        "Source": "/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu-26.04/dc7a98dc215162470cfe6c14ff3801301e0f750a312f01ec3613f2b2325013ab",
+        "Type": "bind"
+      }
+    ],
+    "Name": "/p1r-isolation-ffc03b070e3e43f5a07217650213a5f2-sdk",
+    "NetworkMode": "container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+    "PidMode": "container:12572fdd5dea6d5e905218db7eaa6a7c4f2155df662b62bba3997c063891dcbb",
+    "Ports": {},
+    "Privileged": false,
+    "State": {
+      "Dead": false,
+      "Error": "",
+      "ExitCode": 0,
+      "FinishedAt": "0001-01-01T00:00:00Z",
+      "OOMKilled": false,
+      "Paused": false,
+      "Pid": 723760,
+      "Restarting": false,
+      "Running": true,
+      "StartedAt": "2026-10-14T20:08:11.712621715Z",
+      "Status": "running"
+    }
+  },
+  "schema": "hexalith.p1r.isolation.v1",
+  "scope": "isolated-command-verification",
+  "sdk": "e71f5615a3b570c8b443c540350292b4f2f3d119276cbf28dbdf8fb38625f788",
+  "started_utc": "2026-10-14T20:08:01.264779+00:00"
+}

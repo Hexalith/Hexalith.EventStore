@@ -1,0 +1,17 @@
+testCleanupNeverRemovesAnIdentityWithAChangedOwnershipLabel (test_p1r_isolation.ControllerTests.testCleanupNeverRemovesAnIdentityWithAChangedOwnershipLabel) ... ok
+testCleanupRetriesExactOwnedTargetsAndRetainsTransientFailure (test_p1r_isolation.ControllerTests.testCleanupRetriesExactOwnedTargetsAndRetainsTransientFailure) ... ok
+testFailedStartupPreservesErrorAndRunsBothCleanupAttempts (test_p1r_isolation.ControllerTests.testFailedStartupPreservesErrorAndRunsBothCleanupAttempts) ... ok
+testInterruptedCreationIsRecoveredByExactNameAndLabel (test_p1r_isolation.ControllerTests.testInterruptedCreationIsRecoveredByExactNameAndLabel) ... ok
+testSuccessfulPlanSharesOnlyPrivateNamespacesAndNeverPublishesRunnerPorts (test_p1r_isolation.ControllerTests.testSuccessfulPlanSharesOnlyPrivateNamespacesAndNeverPublishesRunnerPorts) ... ok
+testVolumeRemovalRequiresExactNameAndInvocationLabel (test_p1r_isolation.ControllerTests.testVolumeRemovalRequiresExactNameAndInvocationLabel) ... ok
+testPrivateProofFailurePreventsAnyCommand (test_p1r_isolation.PrivateCommandTests.testPrivateProofFailurePreventsAnyCommand) ... ok
+testStartupErrorAndInterruptionAreNonpassingAndRetained (test_p1r_isolation.PrivateCommandTests.testStartupErrorAndInterruptionAreNonpassingAndRetained) ... ok
+testSuccessfulAndFailedCommandsBothRetainRepeatedCleanup (test_p1r_isolation.PrivateCommandTests.testSuccessfulAndFailedCommandsBothRetainRepeatedCleanup) ... ok
+testMissingIdentityAndAmbientEndpointsAreRefusedBeforeCommandLaunch (test_p1r_isolation.PrivateEndpointTests.testMissingIdentityAndAmbientEndpointsAreRefusedBeforeCommandLaunch) ... ok
+testNewToolsAreInTheExistingSourceClosureInventory (test_p1r_isolation.PrivateEndpointTests.testNewToolsAreInTheExistingSourceClosureInventory) ... ok
+testPrivateEndpointIsFixedAndClientOptionsCannotLeak (test_p1r_isolation.PrivateEndpointTests.testPrivateEndpointIsFixedAndClientOptionsCannotLeak) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.568s
+
+OK

@@ -1,0 +1,23 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-recovery-20261015/verify-recovery-refusals-v2.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-recovery-20261015/verify-final-preservation-controls-v2.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0
+    }
+  ],
+  "scope": "Focused regression controls only; no broader suite rerun"
+}

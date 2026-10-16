@@ -1150,6 +1150,179 @@ def require_owner_binding(receipt, context, reason):
     require(inputs is not None and inputs["scope"] == "owner-selected" and receipt["inputs_sha256"] == inputs["sha256"], reason)
 
 
+def validate_final_isolation(receipt, context):
+    """Bind proposed-successor imports to completed private and outer cleanup evidence."""
+    import p1r_isolation as isolation
+    reference = receipt.get("execution_evidence", {}).get("isolation")
+    require(isinstance(reference, dict) and set(reference) == {"wrapper", "private", "execution"},
+            "proposed successor lacks final isolation evidence")
+    values = {}
+    for name, record in reference.items():
+        require(isinstance(record, dict) and set(record) == {"path", "sha256", "content"}
+                and isinstance(record["path"], str) and Path(record["path"]).is_absolute()
+                and isinstance(record["content"], str)
+                and digest(record["content"].encode()) == record["sha256"]
+                and digest(regular(Path(record["path"]))) == record["sha256"],
+                "final isolation content or physical reference substituted")
+        values[name] = parse_json(record["content"].encode())
+    wrapper, private, execution = (values[name] for name in ("wrapper", "private", "execution"))
+    run_root = Path(reference["execution"]["path"]).parent
+    require(Path(reference["execution"]["path"]).name == "execution.json"
+            and Path(reference["wrapper"]["path"]).name == "isolation.json"
+            and Path(reference["private"]["path"]) == Path(reference["wrapper"]["path"]).with_name("private-execution.json")
+            and wrapper.get("schema") == private.get("schema") == isolation.SCHEMA
+            and wrapper.get("invocation") == private.get("invocation")
+            and bool(HEX32.fullmatch(wrapper.get("invocation", "")))
+            and wrapper.get("passed") is True and private.get("passed") is True
+            and wrapper.get("command_exit_code") == private.get("exit_code") == 0
+            and wrapper.get("errors") == private.get("errors") == []
+            and wrapper.get("finished_utc") and private.get("finished_utc")
+            and private.get("source_checked_after_cleanup") is True
+            and private.get("source_binding") == context["source_binding"],
+            "final isolation invocation, source or successful completion differs")
+    require(wrapper.get("private_execution") == {"path":reference["private"]["path"],"sha256":reference["private"]["sha256"]},
+            "final isolation private receipt hash binding differs")
+    wrapper_start, wrapper_end = validate_times(wrapper)
+    private_start, private_end = validate_times(private)
+    execution_start, execution_end = validate_times(execution)
+    require(wrapper_start <= private_start <= execution_start <= execution_end <= private_end <= wrapper_end,
+            "final isolation teardown timestamps are incomplete or reordered")
+    if receipt["schema"] == LANE_RECEIPT_SCHEMA:
+        start,end = validate_times(receipt)
+        require(execution_start <= start <= end <= execution_end, "lane receipt escapes final executor interval")
+        contained_commands = [command for case in receipt["execution_evidence"].get("cases", []) for command in case.get("commands", [])]
+    else:
+        contained_commands = receipt.get("commands", [])
+    for command in contained_commands:
+        start,end = validate_times(command)
+        require(execution_start <= start <= end <= execution_end, "receipt command escapes final executor interval")
+    cleanup = receipt if receipt["schema"] == runtime.CLEANUP_SCHEMA else receipt.get("cleanup")
+    if cleanup is not None:
+        require(cleanup.get("invocation") == execution.get("invocation"), "cleanup invocation differs from final executor")
+        containers = execution.get("owned_containers")
+        require(isinstance(containers,dict) and {item["id"] for item in cleanup["owned"] if item["kind"] == "container"} == set(containers),
+                "cleanup containers differ from final executor ownership")
+        for attempt in cleanup["attempts"]:
+            start,end = validate_times(attempt)
+            require(execution_start <= start <= end <= execution_end, "cleanup attempt escapes final executor interval")
+    require(wrapper.get("images") == {"sdk":isolation.SDK_IMAGE,"daemon":isolation.DAEMON_IMAGE,"python":isolation.PYTHON_IMAGE}
+            and wrapper.get("pending_containers") == {}, "final isolation image or pending creation differs")
+    command = wrapper.get("inner_command", [])
+    require(command == private.get("command") and len(command) >= 5
+            and command[1] == str(Path(context["source_binding"]["repository"])/"tools/p1r-published-executor.py")
+            and command[2] == "run" and command.count("--out") == 1
+            and command[command.index("--out")+1] == str(run_root),
+            "final isolation executor output or command substituted")
+    source_path = run_root/"executor-source.json"
+    expected_source = json.dumps(context["source_binding"],indent=2,sort_keys=True,allow_nan=False).encode()+b"\n"
+    receipt_path = str(run_root/"receipts"/(receipt["id"]+".json"))
+    require(execution.get("schema") == "hexalith.p1r.executor.v1" and execution.get("finished_utc")
+            and execution.get("errors") == [] and execution.get("inputs_sha256") == receipt["inputs_sha256"]
+            and execution.get("executor_source_sha256") == digest(expected_source) == digest(regular(source_path))
+            and receipt_path in execution.get("receipts", [])
+            and receipt.get("fixture", {}).get("id") == "p1r-"+execution.get("invocation", ""),
+            "final isolation execution, receipt registration or source differs")
+    proof = private.get("proof", {})
+    python = context["source_binding"].get("python", {})
+    require(python.get("path") and python.get("sha256") and python.get("version")
+            and proof.get("executables", {}).get("python") == {"path":python["path"],"sha256":python["sha256"]}
+            and proof.get("python_version") == python["version"],
+            "final isolation Python identity differs from source binding")
+    require(proof.get("outer_daemon_id") == wrapper.get("outer_daemon_id")
+            and bool(wrapper.get("outer_daemon_id")) and proof.get("daemon", {}).get("ID")
+            and proof["daemon"]["ID"] != wrapper["outer_daemon_id"]
+            and proof["daemon"].get("DockerRootDir") == "/var/lib/docker/data" and proof.get("socket") == isolation.SOCKET
+            and all(proof.get("namespaces", {}).get(name) and proof["namespaces"][name] == proof.get("daemon_namespaces", {}).get(name)
+                    for name in ("net", "pid")), "final isolation private daemon or namespaces substituted")
+    owned = wrapper.get("owned_containers", {})
+    runner = wrapper.get("runner_proof", {})
+    sdk, daemon = wrapper.get("sdk"), wrapper.get("daemon")
+    destinations = {item.get("Destination") for item in runner.get("Mounts", [])}
+    require(owned.get(sdk, {}).get("role") == "sdk" and owned[sdk].get("image") == isolation.SDK_IMAGE
+            and owned.get(daemon, {}).get("role") == "daemon" and owned[daemon].get("image") == isolation.DAEMON_IMAGE
+            and runner.get("Id") == sdk and runner.get("Labels", {}).get(isolation.LABEL) == wrapper["invocation"]
+            and runner.get("NetworkMode") == runner.get("PidMode") == "container:"+str(daemon)
+            and runner.get("Ports") == {} and runner.get("Privileged") is False
+            and len(destinations) == 2 and "/var/lib/docker" in destinations
+            and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
+                    for destination in destinations if destination != "/var/lib/docker"),
+            "final isolation runner ownership, mounts or namespace binding differs")
+    for mount in runner["Mounts"]:
+        require(mount.get("Destination") != "/" and not str(mount.get("Source", "")).endswith("docker.sock")
+                and (mount.get("Destination") == "/var/lib/docker" and mount.get("Type") == "volume"
+                     and mount.get("Name") == wrapper.get("owned_volume")
+                     or mount.get("Destination") != "/var/lib/docker" and mount.get("Type") == "bind"
+                     and mount.get("Source") == mount.get("Destination")),
+                "final isolation mounts expose an ambient socket or substituted source")
+    for value in (wrapper, private):
+        attempts = value.get("cleanup", [])
+        require(len(attempts) >= 2 and all(item.get("remaining") == [] and item.get("errors") == [] for item in attempts),
+                "final isolation cleanup is failed or incomplete")
+    command_prefix = ["docker","--host",wrapper.get("outer_host"),"--config",str(Path(wrapper.get("owned_scratch", ""))/"docker-config")]
+    commands = wrapper.get("commands", [])
+    require(isinstance(commands,list) and commands and isinstance(wrapper.get("outer_host"),str),
+            "final isolation lacks literal outer command evidence")
+    for command in commands:
+        require(command.get("argv", [])[:5] == command_prefix and isinstance(command.get("output"),str)
+                and digest(command["output"].encode()) == command.get("output_sha256")
+                and type(command.get("exit_code")) is int, "final isolation outer command or output differs")
+        validate_times(command)
+    require(any(command["argv"][5:] == ["exec",daemon,"docker","--host",isolation.SOCKET,"ps","-aq","--no-trunc"]
+                and command["exit_code"] == 0 and not command["output"].strip() for command in commands),
+            "final isolation private empty inventory lacks literal command proof")
+    previous_end = private_end
+    for attempt in wrapper["cleanup"]:
+        start,end = validate_times(attempt)
+        require(previous_end <= start <= end <= wrapper_end, "outer cleanup precedes private completion or overlaps another attempt")
+        previous_end = end
+        observed = [command for command in commands if start <= validate_times(command)[0] <= validate_times(command)[1] <= end]
+        for identity in owned:
+            require(sum(command["argv"][5:] == ["inspect","--format",isolation.INSPECT,identity]
+                        and command["exit_code"] != 0 and "no such" in command["output"].lower() for command in observed) >= 2,
+                    "final isolation container absence lacks repeated literal observations")
+        require(sum(command["argv"][5:] == ["volume","inspect","--format","{{json .}}",wrapper.get("owned_volume")]
+                    and command["exit_code"] != 0 and "no such volume" in command["output"].lower() for command in observed) >= 2,
+                "final isolation volume absence lacks repeated literal observations")
+        inventory = attempt.get("nested_inventory", {})
+        empty = (inventory.get("complete") is True and inventory.get("containers") == []
+                 or inventory.get("daemon_absent") is True and inventory.get("prior_empty_inventory") is True)
+        if inventory.get("complete") is True:
+            require(any(command["argv"][5:] == ["exec",daemon,"docker","--host",isolation.SOCKET,"ps","-aq","--no-trunc"]
+                        and command["exit_code"] == 0 and not command["output"].strip() for command in observed),
+                    "final isolation private inventory contradicts its literal observation")
+        require(set(attempt.get("absent_containers", [])) == set(owned)
+                and attempt.get("absent_volumes") == [wrapper.get("owned_volume")]
+                and attempt.get("absent_scratch") == [wrapper.get("owned_scratch")]
+                and empty,
+                "final isolation cleanup lacks exact repeated absence or complete private inventory")
+    require(not Path(wrapper["owned_scratch"]).exists(), "final isolation scratch remains")
+
+
+def finalize_isolation_receipts(output, isolation_output, selection):
+    """Attach new successful wrapper evidence after teardown, retaining old receipt schemas."""
+    if selection["candidate"]["version"] != "3.122.1":
+        return
+    output, isolation_output = Path(output), Path(isolation_output)
+    reference = {}
+    for name, path in (("wrapper",isolation_output/"isolation.json"),("private",isolation_output/"private-execution.json"),
+                       ("execution",output/"execution.json")):
+        data = regular(path)
+        reference[name] = {"path":str(path),"sha256":digest(data),"content":data.decode()}
+    execution = parse_json(regular(output/"execution.json"))
+    for name in execution["receipts"]:
+        path = Path(name)
+        require(path.parent == output/"receipts", "isolation receipt escaped executor output")
+        receipt = parse_json(regular(path))
+        if receipt.get("schema") not in (LANE_RECEIPT_SCHEMA, runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA):
+            continue
+        receipt.setdefault("execution_evidence", {})["isolation"] = reference
+        if receipt["schema"] == runtime.RESTORE_SCHEMA:
+            receipt["cleanup"].setdefault("execution_evidence", {})["isolation"] = reference
+        if receipt["schema"] == LANE_RECEIPT_SCHEMA:
+            receipt["output_sha256"] = digest(preparation.canonical(receipt["execution_evidence"]))
+        write_json(path,receipt)
+
+
 def bind_lane(receipt, outcome, context):
     selection = context["inputs"]["value"] if context["inputs"] else None
     if receipt["lane"] in ADDITIONS:
@@ -1157,6 +1330,9 @@ def bind_lane(receipt, outcome, context):
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "published or operational evidence lacks owner-selected inputs")
+    if selection["candidate"]["version"] == "3.122.1" and (outcome["scope"] == "operational"
+            or any(case.get("configurations") for case in receipt.get("execution_evidence", {}).get("cases", []))):
+        validate_final_isolation(receipt,context)
     instrumentation = selection["assertion_instrumentation"]
     require(instrumentation is not None and receipt["instrumentation"] == instrumentation["mechanism"],
             "lane assertions lack the accepted instrumentation")
@@ -1238,6 +1414,8 @@ def bind_recovery(receipt, outcome, lane, context):
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "operational evidence lacks owner-selected inputs")
+    if selection["candidate"]["version"] == "3.122.1":
+        validate_final_isolation(receipt,context)
     runtime.require_operational_profile(selection)
     require(receipt["profile"] == selection["operational_profile"], "operational evidence lacks the selected profile")
     if lane != "container-cleanup":
@@ -1257,11 +1435,21 @@ def receipt_outcome(receipt, context):
         outcome = lane_outcome(receipt)
         bind_lane(receipt, outcome, context)
         return ("scenarios" if receipt["lane"] in SCENARIOS else "additions"), receipt["lane"], outcome
+    if schema in (runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
+        selection = (context.get("inputs") or {}).get("value", {})
+        require(selection.get("candidate", {}).get("version") == "3.122.1"
+                and isinstance(receipt["execution_evidence"],dict)
+                and set(receipt["execution_evidence"]) == {"isolation"}, "recovery isolation extension differs from contract")
     if schema == runtime.RESTORE_SCHEMA:
-        outcome = runtime.restore_outcome(receipt)
+        if "execution_evidence" in receipt.get("cleanup", {}):
+            require(receipt.get("execution_evidence") == receipt["cleanup"]["execution_evidence"],
+                    "restore isolation reference differs from contributing cleanup")
+        runtime_receipt = {key:value for key,value in receipt.items() if key != "execution_evidence"}
+        runtime_receipt["cleanup"] = {key:value for key,value in receipt["cleanup"].items() if key != "execution_evidence"}
+        outcome = runtime.restore_outcome(runtime_receipt)
         lane = receipt["role"] + "-restore"
     elif schema == runtime.CLEANUP_SCHEMA:
-        outcome = runtime.cleanup_outcome(receipt)
+        outcome = runtime.cleanup_outcome({key:value for key,value in receipt.items() if key != "execution_evidence"})
         lane = "container-cleanup"
     else:
         raise InvalidPacket("unsupported receipt contract")

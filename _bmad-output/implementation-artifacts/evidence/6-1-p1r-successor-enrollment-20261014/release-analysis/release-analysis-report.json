@@ -1,0 +1,111 @@
+{
+  "status": "source-readiness investigation only; no package qualification or publication authorization",
+  "proposed_version": "3.122.1",
+  "reason": "Latest canonical stable is 3.122.0. Actual installed commit-analyzer 13.0.1 with canonical default config finds no release for current docs-only delta. Analysis-only hypothetical future fix(p1r): enroll successor snapshot qualification witnesses yields patch -> 3.122.1 and passes pinned commitlint 21.1.0. Future authorized landing and fresh canonical analysis must still yield exactly 3.122.1.",
+  "canonical_main": "210b90da172cc7ca946fbb06cfd44390bffa707b",
+  "latest_stable_tag": "v3.122.0",
+  "latest_stable_tag_type": "lightweight commit ref",
+  "latest_stable_source": "1dac529c4690910c89d4090784a7d46cb9433a9d",
+  "latest_release_run": {
+    "id": 38588597583,
+    "attempt": 1,
+    "conclusion": "success",
+    "source": "1dac529c4690910c89d4090784a7d46cb9433a9d"
+  },
+  "latest_released_source_ci_run": {
+    "id": 38588214862,
+    "event": "push",
+    "branch": "main",
+    "conclusion": "success",
+    "source": "1dac529c4690910c89d4090784a7d46cb9433a9d",
+    "reusable_for_future_source": false
+  },
+  "availability": {
+    "nuget_manifest_index_absence": 14,
+    "nuget_direct_archive_404": 14,
+    "tag_404": true,
+    "release_404": true,
+    "oci_head_status": 401,
+    "oci_absence_established": false,
+    "oci_authentication_available": false,
+    "must_repeat_before_publication": true
+  },
+  "canonical_manifest_matches_local": true,
+  "canonical_manifest_sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae",
+  "canonical_release_workflow_matches_local": true,
+  "observed_builds": [
+    {
+      "role": "local EventStore HEAD gitlink",
+      "commit": "608c164c3637240fed2dd92dbfdaaf581ba9846d",
+      "describe": "4.30.1-33-g608c164"
+    },
+    {
+      "role": "canonical current-main gitlink and actual workspace Builds HEAD",
+      "commit": "9f0121c77e3f085c58f5c926057606db8e6511a7",
+      "describe": "4.31.2-1-g9f0121c"
+    },
+    {
+      "role": "local and canonical release workflow execution identity",
+      "commit": "22a578b576a515d2af214fe81859447fffc97981",
+      "describe": "4.24.0-37-g22a578b"
+    }
+  ],
+  "future_source": null,
+  "future_source_gitlink": null,
+  "future_package_builds": null,
+  "future_approved_execution_builds": null,
+  "authority_blocker": "Both local and current canonical release.yml set HEXALITH_RELEASE_REQUIRE_AUTHORITY=false. The bounded P1R proposal requires one-use authority. Dispatching unchanged workflow does not satisfy it.",
+  "required_future_authority_wiring": {
+    "HEXALITH_RELEASE_REQUIRE_AUTHORITY": "true",
+    "HEXALITH_RELEASE_RESERVED_VERSION": "3.122.1",
+    "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL": "real https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/<positive-id>",
+    "HEXALITH_RELEASE_AUTHORITY_OWNER": "real github:<release-owner>",
+    "comment_schema": "hexalith.release-publication-authority.v1",
+    "comment_exact_fields": [
+      "schema",
+      "role",
+      "identity_sha256",
+      "rationale",
+      "authorized_at",
+      "expires_at",
+      "nonce"
+    ],
+    "comment_role": "release-owner",
+    "comment_identity": "exact future frozen publication-identity SHA256 including repository/version/source/CI/manifest/container/platforms/environment/run identity/Builds/helpers",
+    "comment_rules": "immutable GitHub comment by expected repository writer; canonical nonce; unambiguous; expires within 24 hours; not previously consumed",
+    "gates": "wire in a reviewed future source before freeze, test missing/mismatch/replay refusal, run exact-source CI after wiring; publish phase consumes one exact authority receipt before first NuGet write; container phase requires it"
+  },
+  "required_ci_and_release_gates": [
+    "Authorize landing separately, reconcile local work with canonical upstream while preserving repair and historical evidence; conventional fix commit passing existing commitlint; reanalyze actual landed commits and confirm exactly V",
+    "Freeze exact current main S, source closure/hash, Btag, actual package construction Builds/version/props, separately approved Bexec; no source/tooling edits during qualification",
+    "Require completed successful main push ci.yml at exact S and separate successful p1r-qualification.yml at S, including new enrollment/witness and existing executor/isolation controls; retain commitlint success; use bypass-validation=false",
+    "Require protected production environment approval and release-owner one-use authority wiring/reservation at exact V/S/run; unchanged current workflow is not dispatch-ready",
+    "Require HEXALITH_RELEASE_PUBLISH_ENABLED=true, NuGet trusted publisher user/OIDC key, Zot credentials, npm provenance/signature audit, SDK restore and Release build -warnaserror, package manifest count exactly fourteen",
+    "Repeat source-current-main and successful exact-S push-CI immediately before semantic-release; verify/publish/container preflight must preserve frozen identity and source and require unambiguous authenticated destination absence, registry version floor and single-use authority",
+    "Release packages must validate exact fourteen-family manifest and V, signatures/provenance; container amd64+arm64 child-digest validation and liveness smokes; upload all success/failure hidden release evidence",
+    "Published vV/source/package repository commits must equal S; independently observe five P1R archives, SHA256/content hashes, repository signatures, lock/assets graphs and physical assemblies; owner chooses exact new tuple before full nineteen-lane qualification",
+    "Retain rollback null, comparisons 3.70.1 and 3.110.0, Dapr 1.18.2, pinned PostgreSQL full profile, mechanism p1r-executed-checks-v1, adopted Reminder recovery and logical-event evolution, full shared equality/exact owned cleanup/unowned preservation; all four role decisions/conformance/disposition pending, P1R unusable, Story 6.1 blocked"
+  ],
+  "publication_commands_after_required_future_wiring_and_authorization": [
+    "test \"$(gh api repos/Hexalith/Hexalith.EventStore/git/ref/heads/main --jq .object.sha)\" = \"$S\"",
+    "gh api --method GET repos/Hexalith/Hexalith.EventStore/actions/workflows/ci.yml/runs -f branch=main -f event=push -f head_sha=\"$S\" -f status=success -f per_page=100",
+    "gh workflow run release.yml --repo Hexalith/Hexalith.EventStore --ref main -f bypass-validation=false",
+    "gh run view \"$RELEASE_RUN\" --repo Hexalith/Hexalith.EventStore --json headSha,event,status,conclusion,url",
+    "gh run download \"$RELEASE_RUN\" --repo Hexalith/Hexalith.EventStore --name \"release-evidence-${RELEASE_RUN}-${RELEASE_ATTEMPT}\" --dir \"$NEW_RELEASE_EVIDENCE\""
+  ],
+  "workflow_internal_exact_publication_commands_only": [
+    "npx semantic-release",
+    "HEXALITH_REQUIRE_CONTAINER_PUBLISHER=true bash scripts/validate-release-secrets.sh && bash scripts/validate-publication-preflight.sh 3.122.1 verify >&2",
+    "python3 tools/pack-release-packages.py ./nupkgs 3.122.1 && python3 tools/validate-release-packages.py ./nupkgs 3.122.1",
+    "HEXALITH_REQUIRE_CONTAINER_PUBLISHER=true bash scripts/validate-release-secrets.sh && bash scripts/validate-publication-preflight.sh 3.122.1 publish >&2 && dotnet nuget push \"./nupkgs/Hexalith.EventStore.*.nupkg\" --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_TRUSTED_PUBLISHING_KEY\" && ./.hexalith/release/publish-containers.sh 3.122.1"
+  ],
+  "qualification_commands_after_publication_and_owner_selection": [
+    "python3 tools/p1r-published-executor.py observe --out \"$P1R_NEW/observed\" --planning-observations \"$P1R_PLANNING\" --selection-reference \"$OWNER_SELECTION_REFERENCE\"",
+    "python3 tools/p1r-published-executor.py run --out \"$P1R_NEW/run\" --inputs \"$OWNER_SELECTED_INPUTS\"",
+    "python3 tools/p1r-published-qualification.py measure-boundary --inputs \"$OWNER_SELECTED_INPUTS\" \"${RECEIPT_ARGS[@]}\" --out \"$P1R_NEW/support-boundary.json\"",
+    "python3 tools/p1r-published-qualification.py prepare --out \"$P1R_NEW/packet\" --inputs \"$OWNER_SELECTED_INPUTS\" --decisions \"$OWNER_DECISIONS\" --candidate-evidence \"$P1R_NEW/run/consumers/candidate\" --comparison-evidence \"$P1R_NEW/run/consumers/comparison-3.70.1\" --comparison-evidence \"$P1R_NEW/run/consumers/comparison-3.110.0\" \"${RECEIPT_ARGS[@]}\" --support-boundary \"$P1R_NEW/support-boundary.json\"",
+    "python3 tools/p1r-published-qualification.py validate \"$P1R_NEW/packet\""
+  ],
+  "qualification_argument_rules": "New output paths only. RECEIPT_ARGS contains repeat --receipt <exact-path> for every and only receipt from run/execution.json (all seventeen canonical lanes, both additions, cleanup and dependent restore), never historical receipts. No rollback-evidence because rollback=null. measure-boundary writes disposition pending. prepare/validate must refuse absent required owner authority; structural validation is not usability. Independent final audit must additionally bind wrapper/private/outer cleanup/evidence and prove all exact owned IDs absent.",
+  "observed_at": "2026-10-14T19:22:38.445258+00:00"
+}

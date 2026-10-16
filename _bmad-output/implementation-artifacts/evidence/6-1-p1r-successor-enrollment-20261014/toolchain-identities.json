@@ -1,0 +1,50 @@
+[
+  {
+    "argv": [
+      "dotnet",
+      "--version"
+    ],
+    "exit_code": 0,
+    "stdout": "10.0.401\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "python3",
+      "--version"
+    ],
+    "exit_code": 0,
+    "stdout": "Python 3.14.4\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "node",
+      "--version"
+    ],
+    "exit_code": 0,
+    "stdout": "v26.4.0\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exit_code": 0,
+    "stdout": "5c10a3c73f381abb75016125192401f516818797\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "ls-tree",
+      "HEAD",
+      "references/Hexalith.Builds"
+    ],
+    "exit_code": 0,
+    "stdout": "160000 commit 608c164c3637240fed2dd92dbfdaaf581ba9846d\treferences/Hexalith.Builds\n",
+    "stderr": ""
+  }
+]

@@ -1,0 +1,52 @@
+{
+  "captured_at_utc": "2026-10-16T06:27:41.184246+00:00",
+  "recovery_commit": "b7a1917cec2a59ffe80dc3ee977cf3aa31376b14",
+  "recovery_parent": "210b90da172cc7ca946fbb06cfd44390bffa707b",
+  "authoritative_manifest": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/reviewed-source.json",
+  "manifest_sha256": "a931953956bceb5816006f3eef901c4f75d0cff1010020ce8f32f506220b44c0",
+  "repositories": [
+    {
+      "path": "/home/administrator/projects/hexalith/projects",
+      "head": "42c8e7bc3a58d78e7c6ea4273711d697e81175e7",
+      "branch": "main",
+      "status": " M _bmad-output/implementation-artifacts/spec-6-1-list-and-open-projects-through-supported-authenticated-paths-7.md\n?? _bmad-output/implementation-artifacts/spec-6-1-p1r-5.md\n",
+      "remotes": "origin\thttps://github.com/Hexalith/Hexalith.Projects.git (fetch)\norigin\thttps://github.com/Hexalith/Hexalith.Projects.git (push)\n",
+      "recent_history": "42c8e7b build: sync local changes via /pushall\n7d349a3 build: sync local changes via /pushall\nddf2c04 docs(p1r): record successor enrollment publication handoff\n8a9b739 build: sync local changes via /pushall\n532c0fb feat: add qualification spec for selected EventStore 3.121.0 packages and update subproject commit status\n",
+      "index_sha256": "6e693309030a773f0907e39db7cc1a311d8f125739f0262deaa30d0a1f04758f",
+      "gitlinks": [
+        "160000 commit 3f194e17174994d308ec84af9ee2b5aa68674d0d\treferences/Hexalith.AI.Tools",
+        "160000 commit 9f0121c77e3f085c58f5c926057606db8e6511a7\treferences/Hexalith.Builds",
+        "160000 commit 9e874b1a3c6e7b6ff07b6f40b81d36e4e1403798\treferences/Hexalith.Commons",
+        "160000 commit 3319e062472bb44fda8389a2420af108da58da0a\treferences/Hexalith.Conversations",
+        "160000 commit 5b0df296abc86adf8d37a92fae02e26574d19ad5\treferences/Hexalith.EventStore",
+        "160000 commit ea1e9ac9745ad86aac7f2bf6ea84ee3741fea0ed\treferences/Hexalith.Folders",
+        "160000 commit e0476b71c7623840ba2ab0c276e43800a51fd44a\treferences/Hexalith.FrontComposer",
+        "160000 commit 7e99305a621e1bdf7119b6e924348857e2b5a5a4\treferences/Hexalith.McpCli",
+        "160000 commit 379cb1a2f031f63c4a7148bbf32eb9d4d917dd6a\treferences/Hexalith.Memories",
+        "160000 commit b87ca40b3bf3d75aed56c7e891c2f5b431e263ae\treferences/Hexalith.Parties",
+        "160000 commit 55bee680e6901a45946dd8bf1e4a4060952bd7ea\treferences/Hexalith.Platform",
+        "160000 commit 51f404513f2657e98f949f58f0df43b99b68a7d0\treferences/Hexalith.Tenants"
+      ]
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "head": "5b0df296abc86adf8d37a92fae02e26574d19ad5",
+      "branch": "main",
+      "status": "",
+      "remotes": "origin\thttps://github.com/Hexalith/Hexalith.EventStore.git (fetch)\norigin\thttps://github.com/Hexalith/Hexalith.EventStore.git (push)\n",
+      "recent_history": "5b0df296 build: sync local changes via /pushall\n5c10a3c7 build: sync local changes via /pushall\n21b34c01 fix(tests): stabilize P1R successor CI fixtures\n93982b4e fix: update expected domain list in diagnostics registry test\n2a7b80a4 test: cover human receipt in Dapr invocation\n",
+      "index_sha256": "03a980dcb332041b8c091644e084f8a0e2d8acc110f21ac12f7ef6356114f0b5",
+      "gitlinks": [
+        "160000 commit 3f194e17174994d308ec84af9ee2b5aa68674d0d\treferences/Hexalith.AI.Tools",
+        "160000 commit 608c164c3637240fed2dd92dbfdaaf581ba9846d\treferences/Hexalith.Builds",
+        "160000 commit b247ed116c6523f8c596ec0a933eff8973d11568\treferences/Hexalith.Commons",
+        "160000 commit 99d31edac062e251cb3a90fe2de5f9a92a24a3ab\treferences/Hexalith.FrontComposer",
+        "160000 commit 7e99305a621e1bdf7119b6e924348857e2b5a5a4\treferences/Hexalith.McpCli",
+        "160000 commit 0281b30fb2618668efa9b8904afc75e18820eed8\treferences/Hexalith.Memories",
+        "160000 commit 977f2e01347226ac727b707aee4f140f5dc8b010\treferences/Hexalith.Platform",
+        "160000 commit 98de6e013840ece9f0fa7c68ab7dcdf2bba3b375\treferences/Hexalith.PolymorphicSerializations",
+        "160000 commit bd81ec6e63acdc2301eb82562eed184813f3c808\treferences/Hexalith.Tenants"
+      ]
+    }
+  ]
+}

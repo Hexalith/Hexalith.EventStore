@@ -1,0 +1,144 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "create",
+        "--cidfile",
+        "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/outer-control.cid",
+        "--name",
+        "p1r-outer-control-0835f1f3e5c74e59ab12b1b396f96dd4",
+        "--label",
+        "hexalith.p1r.outer-control=0835f1f3e5c74e59ab12b1b396f96dd4",
+        "--network",
+        "none",
+        "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:26:07.015742+00:00",
+      "output": "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\n",
+      "output_sha256": "6eef9cc05ac31c8a49862c6da854a59655e8cccd5151db3ef77ac3667ab5c364",
+      "started_utc": "2026-10-14T12:25:59.804505+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "start",
+        "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:26:07.203264+00:00",
+      "output": "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\n",
+      "output_sha256": "6eef9cc05ac31c8a49862c6da854a59655e8cccd5151db3ef77ac3667ab5c364",
+      "started_utc": "2026-10-14T12:26:07.016452+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Labels\":{\"hexalith.p1r.outer-control\":{{json (index .Config.Labels \"hexalith.p1r.outer-control\")}}}}",
+        "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:26:07.234844+00:00",
+      "output": "{\"Id\":\"556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-outer-control-0835f1f3e5c74e59ab12b1b396f96dd4\",\"State\":{\"Running\":true,\"StartedAt\":\"2026-10-14T12:26:07.083475129Z\"},\"Labels\":{\"hexalith.p1r.outer-control\":\"0835f1f3e5c74e59ab12b1b396f96dd4\"}}\n",
+      "output_sha256": "2a134b772495fc2dbec2e738074617d44449d042bafad4aa356d827a1db75b1e",
+      "started_utc": "2026-10-14T12:26:07.204164+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "stop",
+        "-t",
+        "1",
+        "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:26:07.437012+00:00",
+      "output": "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\n",
+      "output_sha256": "6eef9cc05ac31c8a49862c6da854a59655e8cccd5151db3ef77ac3667ab5c364",
+      "started_utc": "2026-10-14T12:26:07.236007+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Labels\":{\"hexalith.p1r.outer-control\":{{json (index .Config.Labels \"hexalith.p1r.outer-control\")}}}}",
+        "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:26:07.466372+00:00",
+      "output": "{\"Id\":\"556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\",\"Image\":\"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\",\"Name\":\"/p1r-outer-control-0835f1f3e5c74e59ab12b1b396f96dd4\",\"State\":{\"Running\":false,\"StartedAt\":\"2026-10-14T12:26:07.083475129Z\"},\"Labels\":{\"hexalith.p1r.outer-control\":\"0835f1f3e5c74e59ab12b1b396f96dd4\"}}\n",
+      "output_sha256": "287c07dceed1a6a3fcb1c54f77cbac075e6af2f2b9c49e37f13b8baec11b91c6",
+      "started_utc": "2026-10-14T12:26:07.437763+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "rm",
+        "-f",
+        "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-14T12:26:07.597134+00:00",
+      "output": "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\n",
+      "output_sha256": "6eef9cc05ac31c8a49862c6da854a59655e8cccd5151db3ef77ac3667ab5c364",
+      "started_utc": "2026-10-14T12:26:07.467333+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Labels\":{\"hexalith.p1r.outer-control\":{{json (index .Config.Labels \"hexalith.p1r.outer-control\")}}}}",
+        "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T12:26:07.663017+00:00",
+      "output": "\nerror: no such object: 556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568\n",
+      "output_sha256": "8750c4f93e41a63253118deb29dd2c2e3245f7c8e394ffa79015d10c42349bac",
+      "started_utc": "2026-10-14T12:26:07.597690+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "inspect",
+        "--format",
+        "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Labels\":{\"hexalith.p1r.outer-control\":{{json (index .Config.Labels \"hexalith.p1r.outer-control\")}}}}",
+        "p1r-outer-control-0835f1f3e5c74e59ab12b1b396f96dd4"
+      ],
+      "exit_code": 1,
+      "finished_utc": "2026-10-14T12:26:07.728973+00:00",
+      "output": "\nerror: no such object: p1r-outer-control-0835f1f3e5c74e59ab12b1b396f96dd4\n",
+      "output_sha256": "113a2c642def6576477bb6584ec2fed9836c505fb3c1f0418132c6d58e33b7e7",
+      "started_utc": "2026-10-14T12:26:07.663887+00:00"
+    }
+  ],
+  "container": "556c883caf29e21e4ef3870f0303a6835a386329eab5901ef3469b0494726568",
+  "errors": [],
+  "finished_utc": "2026-10-14T12:26:07.729858+00:00",
+  "label_key": "hexalith.p1r.outer-control",
+  "label_value": "0835f1f3e5c74e59ab12b1b396f96dd4",
+  "name": "p1r-outer-control-0835f1f3e5c74e59ab12b1b396f96dd4",
+  "outer_daemon_id": "afcd365d-1578-410b-af0b-98550207ef1c",
+  "passed": true,
+  "started_utc": "2026-10-14T12:25:59.804460+00:00"
+}

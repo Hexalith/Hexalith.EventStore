@@ -1,0 +1,138 @@
+[
+  {
+    "name": "eventstore-main",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/git/ref/heads/main"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:25.332369+00:00",
+    "sha256": "2ccb97c8edc4bcb14aaa049851e053098a9da7c689e0ef60b171dd14f31a05b3",
+    "stderr": ""
+  },
+  {
+    "name": "latest-release",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/releases/latest"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:25.673764+00:00",
+    "sha256": "aaf6e0eff14d900647ca2066f72b5c4e176cbb149824b74abf2fad80d4459793",
+    "stderr": ""
+  },
+  {
+    "name": "release-tag-31220",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/git/ref/tags/v3.122.0"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:26.042321+00:00",
+    "sha256": "276ab68ae37c05474b2f85fdaad01bf41bd7fbaa25ba4767a28b859682f5ca79",
+    "stderr": ""
+  },
+  {
+    "name": "canonical-since-31220",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/compare/v3.122.0...main"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:26.536257+00:00",
+    "sha256": "98ba27e396a66c9847eb00b740a5f2fb1a843e9e441be87139f8393d2ed8d348",
+    "stderr": ""
+  },
+  {
+    "name": "builds-main",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.Builds/git/ref/heads/main"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:26.929511+00:00",
+    "sha256": "09fc2dda8855d8d75ff9e9a0153d6a92c8f7c4d67a2f3b52e882055c168e335e",
+    "stderr": ""
+  },
+  {
+    "name": "eventstore-main-tree",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/git/trees/210b90da172cc7ca946fbb06cfd44390bffa707b?recursive=1"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:28.485678+00:00",
+    "sha256": "9486901dad4960fa693775d61513a2050420855c7bd1f2d5991387dc1b29d00c",
+    "stderr": ""
+  },
+  {
+    "name": "release-source-tree",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/git/trees/1dac529c4690910c89d4090784a7d46cb9433a9d?recursive=1"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:29.330454+00:00",
+    "sha256": "51f5a75810e176cecc9d789b5a568498794e6cd17ff3e1fce003fe161b6f939f",
+    "stderr": ""
+  },
+  {
+    "name": "release-runs",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/actions/workflows/release.yml/runs?per_page=10"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:29.973638+00:00",
+    "sha256": "6358836b2cf4133c9c15f5f566645abef2cd7005ec7b3a02a0c6984e37cfdfa7",
+    "stderr": ""
+  },
+  {
+    "name": "ci-runs",
+    "command": [
+      "gh",
+      "api",
+      "repos/Hexalith/Hexalith.EventStore/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:30.785164+00:00",
+    "sha256": "b6a6f523edca797c3ce916088935a29968474ccc335df34013ccbc045e66880a",
+    "stderr": ""
+  },
+  {
+    "name": "canonical-releaserc",
+    "command": [
+      "gh",
+      "api",
+      "-H",
+      "Accept: application/vnd.github.raw+json",
+      "repos/Hexalith/Hexalith.EventStore/contents/.releaserc.json?ref=210b90da172cc7ca946fbb06cfd44390bffa707b"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:31.133087+00:00",
+    "sha256": "2d26f9511f4a7e153f3be0c4189e0b07dffd38cae60c84ee20cb04485d3e5907",
+    "stderr": ""
+  },
+  {
+    "name": "canonical-release-workflow",
+    "command": [
+      "gh",
+      "api",
+      "-H",
+      "Accept: application/vnd.github.raw+json",
+      "repos/Hexalith/Hexalith.EventStore/contents/.github/workflows/release.yml?ref=210b90da172cc7ca946fbb06cfd44390bffa707b"
+    ],
+    "exit_code": 0,
+    "observed_at": "2026-10-14T19:18:31.468157+00:00",
+    "sha256": "91f7b28d0ae1e805492af3a937849bafee0f071809f4757024bf380cc6bac31b",
+    "stderr": ""
+  }
+]

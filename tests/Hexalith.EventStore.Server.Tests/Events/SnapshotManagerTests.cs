@@ -785,6 +785,46 @@ public class SnapshotManagerTests(ITestOutputHelper output) {
         result.SequenceNumber.ShouldBe(100);
     }
 
+    /// <summary>Historical folded Counter state is readable, while the same envelope containing a replay DTO remains refused.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HistoricalSnapshotNineDistinguishesFoldedStateFromReplayDtoCollision(bool collision)
+    {
+        (SnapshotManager manager, _) = CreateManager();
+        JsonElement state = JsonSerializer.Deserialize<JsonElement>(collision
+            ? """{"currentSequence":10,"events":[],"snapshotState":null,"count":9}"""
+            : """{"count":9}""");
+        var original = new SnapshotRecord(9, state, DateTimeOffset.UnixEpoch,
+            TestIdentity.Domain, TestIdentity.AggregateId, TestIdentity.TenantId,
+            EventStorePayloadProtectionMetadata.Unprotected());
+        JsonElement raw = JsonSerializer.SerializeToElement(original, JsonSerializerOptions.Web);
+        var memory = new InMemoryStateManager();
+        await memory.SetStateAsync(TestIdentity.SnapshotKey, raw);
+        await memory.SaveStateAsync();
+
+        SnapshotLoadResult loaded = await manager.LoadSnapshotForCommandAsync(
+            TestIdentity, memory, authoritativeHead: 12);
+
+        loaded.Outcome.ShouldBe(collision ? SnapshotLoadOutcome.Corrupt : SnapshotLoadOutcome.Readable);
+        if (collision)
+        {
+            loaded.ReasonCode.ShouldBe("SnapshotStateShapeCollision");
+            loaded.Snapshot.ShouldBeNull();
+            loaded.CoveredSequence.ShouldBe(9);
+        }
+        else
+        {
+            SnapshotRecord readable = loaded.Snapshot.ShouldNotBeNull();
+            readable.SequenceNumber.ShouldBe(9);
+            readable.SnapshotEnvelopeVersion.ShouldBe(0);
+            readable.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(9);
+            readable.ProtectionMetadata.ShouldBe(original.ProtectionMetadata);
+        }
+        JsonElement.DeepEquals(memory.CommittedState[TestIdentity.SnapshotKey].ShouldBeOfType<JsonElement>(), raw).ShouldBeTrue();
+        (await memory.ContainsStateAsync(TestIdentity.SnapshotKey)).ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData("tenant")]
     [InlineData("domain")]

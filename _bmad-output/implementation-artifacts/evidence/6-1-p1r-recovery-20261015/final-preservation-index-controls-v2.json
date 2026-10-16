@@ -1,0 +1,27 @@
+{
+  "verifier": "verify-final-preservation.py",
+  "verifier_sha256": "145ba7d0daea89db5a1f6372d8bbcac232563b80deb18f5adab0ed46beaabba4",
+  "checks": [
+    {
+      "case": "unchanged-index",
+      "passed": true,
+      "exit_code": 0,
+      "index_bytes_unchanged": true,
+      "preservation_verdict": true,
+      "all_other_checks_passed": true,
+      "result_sha256": "8763ef463f8f7482ba8fe34353e66229582abb829f743f39719d7705a8b1d5a2",
+      "scope": "inert temporary index; Git reads mocked; no actual repository mutation"
+    },
+    {
+      "case": "changed-index",
+      "passed": true,
+      "exit_code": 1,
+      "index_bytes_unchanged": false,
+      "preservation_verdict": false,
+      "all_other_checks_passed": true,
+      "result_sha256": "a9eb018cd74d666eae7bbd4386c79c2a3c1b184530227542e692af01c2bdae46",
+      "scope": "inert temporary index; Git reads mocked; no actual repository mutation"
+    }
+  ],
+  "passed": true
+}

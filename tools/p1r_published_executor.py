@@ -320,9 +320,14 @@ class Executor:
             row["timeout_seconds"] = timeout
         if input_bytes is not None:
             row.update(input_sha256=digest(input_bytes), input_bytes=len(input_bytes))
+            if "psql" in row["argv"]:
+                row["provider_sql"] = input_bytes.decode()
         binary = getattr(self, "probe_binaries", {}).get(row["argv"][1] if len(row["argv"]) > 1 else None)
         if row["argv"][:1] == ["dotnet"] and binary is not None:
             row["probe_binary"] = dict(binary)
+        serving = getattr(self, "consumer_binaries", {}).get(row["argv"][1] if len(row["argv"]) > 1 else None)
+        if row["argv"][:1] == ["dotnet"] and serving is not None:
+            row["consumer_binary"] = dict(serving)
         if ownership is not None:
             row.update(process=ownership.root, owned_processes=list(ownership.owned.values()), cleanup=cleanup or [])
             if ownership.cleanup_diagnostics:
@@ -336,6 +341,9 @@ class Executor:
 
     def run(self, argv, cwd=None, env=None, timeout=180, input_bytes=None, retain=True, check=True):
         """Own synchronous trees, including nonce-registered detached descendants."""
+        if os.environ.get("HEXALITH_P1R_ISOLATION"):
+            from p1r_isolation import private_environment
+            env = private_environment(os.environ if env is None else env)
         cwd = Path(cwd or self.scratch)
         started, interrupted, code = stamp(), False, 127
         ownership = preparation.OwnedProcesses()
@@ -452,6 +460,9 @@ class Executor:
         return identity
 
     def launch(self, argv, env):
+        if os.environ.get("HEXALITH_P1R_ISOLATION"):
+            from p1r_isolation import private_environment
+            env = private_environment(env)
         log = self.scratch / ("process-" + uuid.uuid4().hex + ".log")
         ownership = preparation.OwnedProcesses()
         environment = dict(env, HEXALITH_P1R_CONTROL_NONCE=ownership.nonce)
@@ -508,6 +519,7 @@ class Executor:
             props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(ROOT)]
         manifest = {"schema": qualification.EVIDENCE_SCHEMA, "role": role, "fixture": None,
                     "packages_root": "packages", "configuration": configuration, "projects": []}
+        serving_binaries = {}
         for project in PROJECTS:
             csproj = root / project.lower() / (project + ".csproj")
             self.run(["dotnet", "restore", csproj, *props], cwd=root, env=environment, timeout=300)
@@ -525,6 +537,14 @@ class Executor:
                 observed = json.loads(self.run(["dotnet", root / output / "Probe.dll", "identity"], cwd=root, env=environment))
                 identity = observed["observation"]
             else:
+                binary = {"role":role,"configuration":configuration,"project":project,
+                          "path":str(root / output / (project + ".dll")),
+                          "sha256":digest(regular(root / output / (project + ".dll")))}
+                if not hasattr(self, "consumer_binaries"):
+                    self.consumer_binaries = {}
+                self.consumer_binaries[binary["path"]] = binary
+                serving_binaries[project] = binary
+                write_json(root / "serving-binaries.json", serving_binaries)
                 app_port = reserve_port()
                 item = self.launch(["dotnet", root / output / (project + ".dll")],
                                    dict(environment, ASPNETCORE_URLS=f"http://127.0.0.1:{app_port}", ASPNETCORE_ENVIRONMENT="Development"))
@@ -858,9 +878,11 @@ class Executor:
                 changed = True
             if key.endswith(":snapshot") and kind == "snapshot-nine":
                 value["sequenceNumber"] = 9
-                state = value["state"]
-                count_key = "Count" if "Count" in state else "count"
-                state[count_key] = 9
+                # Historical automatic capture serialized DomainServiceCurrentState.
+                # Adding a count leaves that ambiguous replay DTO intact. This
+                # stopped-writer Counter fixture needs the exact folded state;
+                # envelope, identity and protection fields retain their values.
+                value["state"] = {"count": 9}
                 changed = True
             if changed:
                 self.postgres_write(self.redis, key, value)
@@ -876,7 +898,7 @@ class Executor:
             {"candidate": {"version": self.candidate if version == "source" else version}})
         self.last_snapshot_creation = None
         if genuine:
-            require(version in ("3.121.0", "source"), "successor snapshot fixture is not explicitly enabled")
+            require(version in ("3.121.0", "3.122.1", "source"), "successor snapshot fixture is not explicitly enabled")
             registration = self.http("GET", f"http://127.0.0.1:{self.domain_port}/ready")["snapshot_qualification"]
             checks.check("snapshot-fixture-enrolled", registration.get("registered") is True and registration.get("test_only") is True)
             checks.check("snapshot-state-roundtrip-parity", registration.get("state_roundtrip") is True
@@ -1100,7 +1122,7 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
-        if self.candidate == "3.121.0" and getattr(self, "last_snapshot_creation", None) is not None:
+        if self.candidate in ("3.121.0", "3.122.1") and getattr(self, "last_snapshot_creation", None) is not None:
             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
             data = regular(path)
             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}

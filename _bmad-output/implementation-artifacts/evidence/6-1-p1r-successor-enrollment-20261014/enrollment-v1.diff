@@ -1,0 +1,437 @@
+--- a/tools/p1r-published-consumers/Directory.Build.props
++++ b/tools/p1r-published-consumers/Directory.Build.props
+@@ -6,8 +6,8 @@
+     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+     <DefineConstants Condition="'$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_SOURCE</DefineConstants>
+-    <DefineConstants Condition="'$(EventStoreVersion)' == '3.110.0' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CAPABILITIES</DefineConstants>
+-    <DefineConstants Condition="'$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CANDIDATE</DefineConstants>
+-    <DefineConstants Condition="'$(EventStoreVersion)' == '3.121.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_FOLDED_SNAPSHOT</DefineConstants>
++    <DefineConstants Condition="'$(EventStoreVersion)' == '3.110.0' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CAPABILITIES</DefineConstants>
++    <DefineConstants Condition="'$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CANDIDATE</DefineConstants>
++    <DefineConstants Condition="'$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_FOLDED_SNAPSHOT</DefineConstants>
+   </PropertyGroup>
+ </Project>
+--- a/tools/p1r-published-consumers/host/Host.csproj
++++ b/tools/p1r-published-consumers/host/Host.csproj
+@@ -1,11 +1,11 @@
+ <Project Sdk="Microsoft.NET.Sdk.Web">
+   <PropertyGroup></PropertyGroup>
+   <ItemGroup><Compile Include="../PublishedIdentity.cs" Link="PublishedIdentity.cs" /></ItemGroup>
+-  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0'">
++  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1'">
+     <Compile Include="../domain/FixtureEvolutionManifest.cs" Link="FixtureEvolutionManifest.cs" />
+     <Content Include="../domain/fixture-evolution-manifest.json" Link="fixture-evolution-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+   </ItemGroup>
+-  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0'">
++  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1'">
+     <Compile Include="../FixtureSnapshotQualification.cs" Link="FixtureSnapshotQualification.cs" />
+   </ItemGroup>
+   <ItemGroup Condition="'$(UseCurrentSource)' != 'true'">
+--- a/tools/p1r-published-consumers/domain/Domain.csproj
++++ b/tools/p1r-published-consumers/domain/Domain.csproj
+@@ -1,13 +1,13 @@
+ <Project Sdk="Microsoft.NET.Sdk.Web">
+   <PropertyGroup></PropertyGroup>
+   <ItemGroup><Content Update="fixture-evolution-manifest.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+-  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.119.0' and '$(EventStoreVersion)' != '3.121.0'">
++  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.119.0' and '$(EventStoreVersion)' != '3.121.0' and '$(EventStoreVersion)' != '3.122.1'">
+     <Compile Remove="FixtureEvolutionManifest.cs" />
+   </ItemGroup>
+-  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0'">
++  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1'">
+     <Compile Include="../FixtureSnapshotQualification.cs" Link="FixtureSnapshotQualification.cs" />
+   </ItemGroup>
+-  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.121.0'">
++  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.121.0' and '$(EventStoreVersion)' != '3.122.1'">
+     <Compile Remove="CounterSnapshotParity.cs" />
+   </ItemGroup>
+   <ItemGroup><Compile Include="../PublishedIdentity.cs" Link="PublishedIdentity.cs" /></ItemGroup>
+--- a/tools/p1r-published-consumers/README.md
++++ b/tools/p1r-published-consumers/README.md
+@@ -19,13 +19,13 @@
+ and the invocation ownership label; environment and credential fields are
+ never read into retained command output.
+ 
+-The explicitly selected 3.121.0 consumer registers the pinned qualification-only
++The explicitly enrolled 3.121.0 and proposed 3.122.1 consumers register the pinned qualification-only
+ logical evolution manifest and bounded V1 serializer. Live Domain readiness,
+ legacy alias hydration, unknown metadata refusal and unchanged application-envelope
+ readback measure the addition. Historical comparisons retain their own bounded
+ fixtures. The fixture does not create an authoritative gateway pin or readiness decision.
+ 
+-The 3.121.0 and distinct Debug/source consumers enroll the same finite Counter
++The 3.121.0, proposed 3.122.1 and distinct Debug/source consumers enroll the same finite Counter
+ folded-snapshot limits on both hosts. The domain measures detached state
+ round-trip, canonical increment bytes and Apply parity before enrollment. The
+ Counter has no automatic snapshot processor. Snapshot fixtures commit nine real
+@@ -33,7 +33,13 @@
+ persisted version-one envelope and folded count nine, then append three real
+ events. Original event and snapshot hashes must survive those appends. Historical
+ comparison fixtures retain their original stopped-writer snapshot diagnostic;
+-they cannot establish genuine successor snapshot creation.
++they cannot establish genuine successor snapshot creation. Enrollment is a finite
++tooling allowlist; later versions receive no successor compiler definitions or
++snapshot fixture sources, and an unenrolled successor's genuine seed refuses.
++The strict witness checks bind each required case to its selected candidate or
++source writer, including the selected version for post-upgrade restore. They
++require retained shared fixture source, physical consumer binaries, owned launches
++and the stopped-writer provider envelope; missing or substituted proof is refused.
+ 
+ The historical `snapshot-nine` diagnostic replaces the entire snapshot `state`
+ with the folded Counter object `{"count":9}` and sets its covered sequence to
+@@ -144,6 +150,11 @@
+ After independent repair review/verification, propose an immutable successor
+ publication with exact approved version, source/tag, Builds identity and archive
+ hashes, then obtain approval and qualify those newly published bytes under the
+-unchanged runtime/backend profile. No successor version is selected here. All
++unchanged runtime/backend profile. The finite 3.122.1 enrollment is a proposal,
++contingent on an authorized fix landing and repeated canonical release and registry
++availability analysis. It does not select packages, change production snapshot
++enrollment or qualify unpublished bytes. Frozen source/tag and package identities,
++Builds construction/execution identities, successful source CI, publication authority,
++signed public archives and full published qualification remain outstanding gates. All
+ four role acceptances, same-baseline conformance and Solution Architect
+ disposition remain pending; P1R is unusable and Story 6.1 remains blocked.
+--- a/tools/p1r_published_executor.py
++++ b/tools/p1r_published_executor.py
+@@ -884,7 +884,7 @@
+             {"candidate": {"version": self.candidate if version == "source" else version}})
+         self.last_snapshot_creation = None
+         if genuine:
+-            require(version in ("3.121.0", "source"), "successor snapshot fixture is not explicitly enabled")
++            require(version in ("3.121.0", "3.122.1", "source"), "successor snapshot fixture is not explicitly enabled")
+             registration = self.http("GET", f"http://127.0.0.1:{self.domain_port}/ready")["snapshot_qualification"]
+             checks.check("snapshot-fixture-enrolled", registration.get("registered") is True and registration.get("test_only") is True)
+             checks.check("snapshot-state-roundtrip-parity", registration.get("state_roundtrip") is True
+@@ -1108,7 +1108,7 @@
+         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
+                     "configurations": getattr(self, "configurations", [])[start_configuration:],
+                     "check_witnesses": checks.witnesses}
+-        if self.candidate == "3.121.0" and getattr(self, "last_snapshot_creation", None) is not None:
++        if self.candidate in ("3.121.0", "3.122.1") and getattr(self, "last_snapshot_creation", None) is not None:
+             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
+             data = regular(path)
+             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}
+--- a/tools/p1r_check_witnesses.py
++++ b/tools/p1r_check_witnesses.py
+@@ -128,9 +128,9 @@
+ 
+ def requires_qualified_snapshot(candidate_version, lane, identifier):
+     """Derive the genuine successor seed requirement without trusting optional observations."""
+-    return candidate_version == '3.121.0' and (lane == 'post-upgrade-restore' or (
++    return candidate_version in ('3.121.0','3.122.1') and (lane == 'post-upgrade-restore' or (
+         lane in ('snapshot-tail','retained-covered','retained-uncovered','metadata-write')
+-        and identifier.split('-to-',1)[0] in ('3.121.0','source')))
++        and identifier.split('-to-',1)[0] in (candidate_version,'source')))
+ 
+ 
+ def snapshot_profile_limits(evidence, binding):
+@@ -181,7 +181,7 @@
+             except (ValueError,TypeError):
+                 pass
+     role, configuration = ('source','Debug') if writer_version == 'source' else ('candidate','Release')
+-    require(writer_version in ('3.121.0','source'), 'qualified snapshot writer is not the selected successor')
++    require(writer_version in ('3.121.0','3.122.1','source'), 'qualified snapshot writer is not the selected successor')
+     def probe_command(check_prefix, operation):
+         identities = {record.get('command') for record in evidence['check_witnesses']
+                       if record.get('kind') == 'probe' and record.get('id','').startswith(prefix + check_prefix)}
+@@ -527,7 +527,7 @@
+                                  if not incomplete and lane == 'checkout' and row['id'] != 'current-build' else row['id'])
+         if not incomplete and row['operation'] != 'unsupported' and requires_qualified_snapshot(candidate_version, coordinate_lane, coordinate_identifier):
+             validate_qualified_snapshot(observed, prefix, checks, evidence, binding,
+-                '3.121.0' if coordinate_lane == 'post-upgrade-restore' else coordinate_identifier.split('-to-',1)[0])
++                candidate_version if coordinate_lane == 'post-upgrade-restore' else coordinate_identifier.split('-to-',1)[0])
+         if not incomplete and row['operation'] != 'unsupported' and coordinate_lane in ('legacy-metadata','metadata-read'):
+             expected_floor = coordinate_identifier.rsplit('-',1)[1]
+             expected_floor = 1 if expected_floor == 'None' else int(expected_floor)
+--- a/tools/tests/test_p1r_published_executor.py
++++ b/tools/tests/test_p1r_published_executor.py
+@@ -21,21 +21,72 @@
+ 
+ 
+ class QualifiedSnapshotWitnessTests(unittest.TestCase):
++    candidate_version = '3.121.0'
++
+     def setUp(self):
+         self.temporary = tempfile.TemporaryDirectory()
+         self.addCleanup(self.temporary.cleanup)
+ 
+     def testRequirementUsesSelectedCaseAndWriterRatherThanOptionalProof(self):
+-        self.assertTrue(executor.witnesses.requires_qualified_snapshot('3.121.0','post-upgrade-restore','fresh-backup-restore-append-restart'))
+-        self.assertTrue(executor.witnesses.requires_qualified_snapshot('3.121.0','snapshot-tail','3.121.0-to-3.110.0'))
+-        self.assertTrue(executor.witnesses.requires_qualified_snapshot('3.121.0','retained-uncovered','source-to-3.70.1-absent'))
+-        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.121.0','snapshot-tail','3.110.0-to-3.121.0'))
+-        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.119.0','post-upgrade-restore','fresh-backup-restore-append-restart'))
+-
+-    @staticmethod
+-    def validate(fixture):
++        for lane in ('snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
++            for writer in (self.candidate_version,'source'):
++                with self.subTest(lane=lane,writer=writer):
++                    self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-3.110.0'))
++            for writer in ('3.110.0','3.70.1','3.122.2',
++                           '3.121.0' if self.candidate_version == '3.122.1' else '3.122.1'):
++                with self.subTest(lane=lane,writer=writer):
++                    self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
++        self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
++        for version in ('3.119.0','3.122.0','3.122.2'):
++            self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
++            self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'snapshot-tail','source-to-3.110.0'))
++
++    def validate(self,fixture,lane='post-upgrade-restore'):
+         row,evidence,binding,sources = fixture
+-        executor.witnesses.validate_case(row,evidence,binding,'post-upgrade-restore',sources,candidate_version='3.121.0')
++        executor.witnesses.validate_case(row,evidence,binding,lane,sources,candidate_version=self.candidate_version)
++
++    def testEveryRequiredCaseExecutesActualStrictValidatorWithSelectedPhysicalWriter(self):
++        for lane in ('post-upgrade-restore','snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
++            for writer in ((self.candidate_version,) if lane == 'post-upgrade-restore' else (self.candidate_version,'source')):
++                with self.subTest(lane=lane,writer=writer):
++                    fixture = self.fixture(writer_version=writer,lane=lane)
++                    actual_validator = executor.witnesses.validate_qualified_snapshot
++                    with mock.patch.object(executor.witnesses,'validate_qualified_snapshot',wraps=actual_validator) as validator:
++                        self.validate(fixture,lane)
++                    validator.assert_called_once()
++                    self.assertEqual(validator.call_args.args[-1],writer)
++                    changed = copy.deepcopy(fixture)
++                    del changed[1]['observations']['seed_snapshot']
++                    with self.assertRaisesRegex(preparation.InvalidPacket,'genuine seed'):
++                        self.validate(changed,lane)
++
++    def testSourceSeedWitnessSubstitutionsRemainRejectedAfterRehashing(self):
++        for mutation in ('source','envelope','probe','launch','provider'):
++            fixture = self.fixture(writer_version='source',lane='snapshot-tail')
++            with self.subTest(mutation=mutation):
++                if mutation == 'source':
++                    del fixture[1]['snapshot_fixture_source']
++                elif mutation == 'envelope':
++                    seed = fixture[1]['observations']['seed_snapshot']
++                    seed['persisted_snapshot']['snapshotEnvelopeVersion'] = 0
++                    self.change_output(fixture[1]['commands'][11],lambda value:value[0].__setitem__(1,seed['persisted_snapshot']))
++                    for name,index in (('before_tail',12),('after_tail',16)):
++                        next(item for item in seed[name] if item['kind']=='snapshot')['sha256'] = executor.digest(executor.canonical(seed['persisted_snapshot']))
++                        fixture[1]['commands'][index]['output'] = executor.canonical(seed[name]).decode()
++                        fixture[1]['commands'][index]['output_sha256'] = executor.digest(fixture[1]['commands'][index]['output'].encode())
++                elif mutation == 'probe':
++                    fixture[1]['commands'][5]['probe_binary']['configuration'] = 'Release'
++                elif mutation == 'launch':
++                    configuration = fixture[1]['configurations'][0]
++                    configuration['version'] = self.candidate_version
++                    for command in fixture[1]['commands']:
++                        if command.get('runtime_configuration') == configuration['id']:
++                            command['runtime_configuration_sha256'] = executor.digest(executor.canonical(configuration))
++                else:
++                    fixture[1]['commands'][11]['input_sha256'] = executor.digest(b'SELECT substituted')
++                self.rehash_inventory(fixture)
++                with self.assertRaises(preparation.InvalidPacket):
++                    self.validate(fixture,'snapshot-tail')
+ 
+     def testFullSuccessorAdmissionPassesIntactAndRejectsDeletedProof(self):
+         fixture = self.fixture()
+@@ -88,6 +139,15 @@
+ 
+     def testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory(self):
+         fixture = self.fixture()
++        for version in ('source','3.122.2','3.121.0' if self.candidate_version == '3.122.1' else '3.122.1'):
++            changed = copy.deepcopy(fixture)
++            config = changed[1]['configurations'][0]
++            config['version'] = version
++            for command in changed[1]['commands']:
++                if command.get('runtime_configuration') == config['id']:
++                    command['runtime_configuration_sha256'] = executor.digest(executor.canonical(config))
++            with self.subTest(version=version), self.assertRaisesRegex(preparation.InvalidPacket,'launch configuration'):
++                self.validate(changed)
+         for identity,field,value in ((8,'exit_code',1),(11,'process',None),(19,'process',fixture[1]['commands'][10]['process']),
+                                      (3,'exit_code',1),(4,'exit_code',1),(15,'exit_code',1)):
+             changed = copy.deepcopy(fixture)
+@@ -200,6 +260,7 @@
+     def testSnapshotIdentityProtectionAndCreationTimeAreBoundToProviderEnvelope(self):
+         fixture = self.fixture()
+         for name,value in (('tenantId','tenant-b'),('domain','other'),('aggregateId','other'),
++                           ('snapshotEnvelopeVersion',0),('state',{'count':8}),
+                            ('protectionMetadata',{'state':0,'metadataVersion':2}),
+                            ('createdAt','2026-10-14T00:00:01+00:00')):
+             changed = copy.deepcopy(fixture)
+@@ -211,7 +272,7 @@
+             changed[1]['commands'][12]['output'] = executor.canonical(changed[1]['observations']['seed_snapshot']['before_tail']).decode()
+             changed[1]['commands'][16]['output'] = executor.canonical(changed[1]['observations']['seed_snapshot']['after_tail']).decode()
+             self.rehash_inventory(changed)
+-            with self.subTest(name=name), self.assertRaisesRegex(preparation.InvalidPacket,'envelope'):
++            with self.subTest(name=name), self.assertRaises(preparation.InvalidPacket):
+                 self.validate(changed)
+ 
+     @staticmethod
+@@ -227,16 +288,18 @@
+         row['inventory'] = {name+'_sha256':executor.digest(executor.canonical([item for item in evidence['observations'][name]
+                           if item['kind']!='bookkeeping'])) for name in ('before','after')}
+ 
+-    def fixture(self):
++    def fixture(self,writer_version=None,lane='post-upgrade-restore'):
++        writer_version = self.candidate_version if writer_version is None else writer_version
++        role,configuration = ('source','Debug') if writer_version == 'source' else ('candidate','Release')
+         root = Path(self.temporary.name)
+-        consumer = root/'consumers/candidate'
+-        binary = consumer/'probe/bin/Release/net10.0/Probe.dll'
++        consumer = root/'consumers'/role
++        binary = consumer/'probe/bin'/configuration/'net10.0/Probe.dll'
+         binary.parent.mkdir(parents=True,exist_ok=True)
+         binary.write_bytes(b'private synthetic probe binary')
+-        binary_witness = {'role':'candidate','configuration':'Release','path':str(binary),'sha256':executor.digest(binary.read_bytes())}
++        binary_witness = {'role':role,'configuration':configuration,'path':str(binary),'sha256':executor.digest(binary.read_bytes())}
+         executor.write_json(consumer/'probe-binary.json',binary_witness)
+-        executor.write_json(consumer/'evidence.json',{'role':'candidate','configuration':'Release',
+-            'projects':[{'name':'Probe','output':'probe/bin/Release/net10.0'}]})
++        executor.write_json(consumer/'evidence.json',{'role':role,'configuration':configuration,
++            'projects':[{'name':'Probe','output':'probe/bin/'+configuration+'/net10.0'}]})
+         fixture_path = preparation.ROOT/'tools/p1r-published-consumers/FixtureSnapshotQualification.cs'
+         fixture_source = {'path':str(fixture_path),'sha256':executor.digest(fixture_path.read_bytes()),'content':fixture_path.read_text()}
+         test_path = Path(__file__).resolve()
+@@ -252,7 +315,7 @@
+         executor.write_json(root/'commands.json',[{'argv':['docker','inspect',database],'exit_code':0,
+             'output':json.dumps({'Id':database,'Name':'/'+owned['name'],'Config':{'Labels':{'hexalith.p1r.invocation':invocation}}})}])
+         state = {'name':'state.yaml','path':str(root/'resources/state.yaml'),'sha256':'c'*64,'rendered_sha256':'d'*64,'content':'state.postgresql'}
+-        configurations = [{'id':identity,'version':'3.121.0','state_container':database,'snapshot_interval':10,
++        configurations = [{'id':identity,'version':writer_version,'state_container':database,'snapshot_interval':10,
+             'state_component_sha256':'c'*64,'backend_image':executor.POSTGRES,'files':[state,
+             {'path':str(root/'resources/pubsub.yaml')},{'path':str(root/'discovery.yaml')}]} for identity in ('first','restarted')]
+         snapshot = {'tenantId':'tenant-a','domain':'counter','aggregateId':'fixture','sequenceNumber':9,
+@@ -311,7 +374,7 @@
+                 '--dapr-http-port',str(port),'--config',str(root/'discovery.yaml'),'--resources-path',str(root/'resources')],
+                 'sidecar started',start,end,True,config)
+         def host(project,app,start,end):
+-            return record(['dotnet',str(consumer/project.lower()/'bin/Release/net10.0'/(project+'.dll'))],
++            return record(['dotnet',str(consumer/project.lower()/'bin'/configuration/'net10.0'/(project+'.dll'))],
+                 'Now listening on: http://127.0.0.1:'+str(app),start,end,True)
+         record(['HTTP','GET','http://127.0.0.1:10002/ready'],{'snapshot_qualification':registration},2,2.1)
+         record(['HTTP','GET','http://127.0.0.1:10003/v1.0/healthz/outbound'],{},2.6,2.7)
+@@ -349,13 +412,49 @@
+             measurements.check(identity,passed)
+         observation = {'before':after,'after':after,'seed_snapshot':{'registration':registration,'manual':manual,'persisted_snapshot':snapshot,
+             'before_tail':before,'after_tail':after,'tail':tail}}
++        if lane != 'post-upgrade-restore':
++            operational_before,operational_after = copy.deepcopy(after),copy.deepcopy(after)
++            if lane in ('retained-covered','retained-uncovered','metadata-write'):
++                for rows in (operational_before,operational_after):
++                    rows[:] = [item for item in rows if not(item['tenant']=='tenant-a' and item['kind']=='event' and item['sequence']<5)]
++                    next(item for item in rows if item['kind']=='metadata')['floor'] = 5
++                    if lane == 'retained-uncovered':
++                        next(item for item in rows if item['kind']=='snapshot')['sequence'] = 2
++            if lane == 'metadata-write':
++                next(item for item in operational_after if item['kind']=='metadata')['sequence'] = 13
++                operational_after.append({'key':key+'events:13','tenant':'tenant-a','kind':'event','sequence':13,'floor':None,'sha256':'f'*64})
++                operational_after.sort(key=lambda item:item['key'])
++            observation.update(before=operational_before,after=operational_after,
++                primary={'accepted':lane!='retained-uncovered','sequence':12,'event_count':0})
++            record(argv,operational_before,22,22.1)
++            record(argv,operational_after,23,23.1)
++            record(['dotnet',str(binary),'actor'],probe(observation['primary'],()),24,24.1)
++            for identity in ('primary-expected-hydration','hydration-no-events','second-tenant-hydrates','primary-sequence-twelve',
++                             'persisted-current-sequence-exact','persisted-event-sequence-set-exact','persisted-snapshot-coordinate-exact',
++                             'prior-event-and-snapshot-bytes-preserved','second-tenant-state-preserved'):
++                passed = True
++                measurements.check(identity,passed)
++            if lane == 'metadata-write':
++                observation.update(append={'accepted':True,'event_count':1,'sequence':13},
++                    replay={'accepted':True,'event_count':0,'sequence':13})
++                for name in ('append','replay'):
++                    record(['dotnet',str(binary),'actor'],probe(observation[name],()),25,25.1)
++                for identity in ('append-effect-accepted','append-thirteen','retained-floor-five-preserved','supported-append-restart-rehydrates-thirteen'):
++                    passed = True
++                    measurements.check(identity,passed)
+         evidence = {'commands':commands,'configurations':configurations,'observations':observation,
+             'snapshot_fixture_source':fixture_source,'check_witnesses':measurements.witnesses}
+-        row = {'id':'fresh-backup-restore-append-restart','operation':'supported','expected':'effect','outcome':'effect',
++        identifier = 'fresh-backup-restore-append-restart' if lane == 'post-upgrade-restore' else writer_version+'-to-3.110.0'
++        outcome = 'refusal' if lane == 'retained-uncovered' else 'effect'
++        row = {'id':identifier,'operation':'supported','expected':outcome,'outcome':outcome,
+             'disposition':'compatible','checks':measurements.checks,'assertions':measurements.counter}
+         fixture = row,evidence,binding,[test_source]
+         self.rehash_inventory(fixture)
+         return fixture
++
++
++class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
++    candidate_version = '3.122.1'
+ 
+ 
+ class IndependentRecoverySelectionTests(unittest.TestCase):
+@@ -454,21 +553,54 @@
+         worker.postgres_write.assert_not_called()
+ 
+     def testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends(self):
+-        worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}})
+-        worker.seed("3.121.0", 10, checks)
+-        self.assertEqual([call.args[1][0] for call in worker.probe.call_args_list], ["seed", "manual-snapshot", "seed", "seed"])
+-        self.assertEqual([call.args[1][-1] for call in worker.probe.call_args_list if call.args[1][0] == "seed"], ["9", "3", "3"])
+-        worker.mutate.assert_not_called()
+-        self.assertEqual(checks.counter["failed"], 0)
+-        self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
++        for version in ("3.121.0", "3.122.1", "source"):
++            with self.subTest(version=version):
++                worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}},
++                    candidate="3.121.0" if version == "3.121.0" else "3.122.1")
++                worker.seed(version, 10, checks)
++                self.assertEqual([call.args[0] for call in worker.probe.call_args_list], [version] * 4)
++                self.assertEqual([call.args[1][0] for call in worker.probe.call_args_list], ["seed", "manual-snapshot", "seed", "seed"])
++                self.assertEqual([call.args[1][-1] for call in worker.probe.call_args_list if call.args[1][0] == "seed"], ["9", "3", "3"])
++                worker.mutate.assert_not_called()
++                self.assertEqual(checks.counter["failed"], 0)
++                self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
+ 
+     def testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis(self):
+-        for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
+-                         {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
+-            worker, checks = self.snapshotSeedWorker(snapshot)
+-            worker.seed("3.121.0", 10, checks)
+-            self.assertGreater(checks.counter["failed"], 0)
++        for version in ("3.121.0", "3.122.1", "source"):
++            for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
++                             {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
++                with self.subTest(version=version,snapshot=snapshot):
++                    worker, checks = self.snapshotSeedWorker(snapshot,candidate="3.122.1")
++                    worker.seed(version, 10, checks)
++                    self.assertGreater(checks.counter["failed"], 0)
++                    worker.mutate.assert_not_called()
++
++    def testUnenrolledSuccessorSeedRefusesBeforeManualSnapshotOrDiagnosticSynthesis(self):
++        for version in ("3.122.0", "3.122.2"):
++            worker, checks = self.snapshotSeedWorker(None,candidate="3.122.1")
++            with self.subTest(version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
++                worker.seed(version,10,checks)
++            worker.probe.assert_not_called()
+             worker.mutate.assert_not_called()
++            worker.raw_state.assert_not_called()
++
++    def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
++        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.122.1","source"),("3.122.2","3.122.2"),("3.122.1",None)):
++            with self.subTest(candidate=candidate,writer=writer):
++                worker = executor.Executor.__new__(executor.Executor)
++                worker.commands, worker.configurations, worker.errors = [], [], []
++                worker.candidate = candidate
++                worker.last_snapshot_creation = {"writer":writer} if writer is not None else None
++                def action(checks):
++                    worker.commands.append({"id":1})
++                    return {"seed_snapshot":worker.last_snapshot_creation},"effect","compatible"
++                _,evidence = worker.case("snapshot-tail",(writer or candidate)+"-to-3.110.0",action,False)
++                if candidate == "3.122.2" or writer is None:
++                    self.assertNotIn("snapshot_fixture_source",evidence)
++                else:
++                    path = preparation.ROOT/"tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
++                    self.assertEqual(evidence["snapshot_fixture_source"],
++                        {"path":str(path),"sha256":executor.digest(path.read_bytes()),"content":path.read_text()})
+ 
+     def testHistoricalSnapshotSeedPreservesSeparateDiagnosticFixture(self):
+         worker, checks = self.snapshotSeedWorker(None)
+@@ -487,9 +619,9 @@
+                  "sequence": index + 1 if index < head else index - head + 1, "sha256": "a" * 64}
+                 for index in range(count)] + [{"key": "metadata", "kind": "metadata", "tenant": "tenant-a", "sequence": head, "sha256": "b" * 64}]
+ 
+-    def snapshotSeedWorker(self, snapshot):
++    def snapshotSeedWorker(self, snapshot, candidate="3.121.0"):
+         worker = executor.Executor.__new__(executor.Executor)
+-        worker.candidate, worker.redis, worker.sidecar_port, worker.domain_port = "3.121.0", "owned", 10001, 10002
++        worker.candidate, worker.redis, worker.sidecar_port, worker.domain_port = candidate, "owned", 10001, 10002
+         worker.stop_nodes = worker.postgres_query = worker.start_nodes = mock.Mock()
+         worker.mutate = mock.Mock(side_effect=AssertionError("successor snapshot cannot be synthesized"))
+         worker.http = mock.Mock(return_value={"snapshot_qualification": {

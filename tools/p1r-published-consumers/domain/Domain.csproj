@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup></PropertyGroup>
   <ItemGroup><Content Update="fixture-evolution-manifest.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
-  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.119.0' and '$(EventStoreVersion)' != '3.121.0'">
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.119.0' and '$(EventStoreVersion)' != '3.121.0' and '$(EventStoreVersion)' != '3.122.1'">
     <Compile Remove="FixtureEvolutionManifest.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0'">
+  <ItemGroup Condition="'$(UseCurrentSource)' == 'true' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1'">
     <Compile Include="../FixtureSnapshotQualification.cs" Link="FixtureSnapshotQualification.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.121.0'">
+  <ItemGroup Condition="'$(UseCurrentSource)' != 'true' and '$(EventStoreVersion)' != '3.121.0' and '$(EventStoreVersion)' != '3.122.1'">
     <Compile Remove="CounterSnapshotParity.cs" />
   </ItemGroup>
   <ItemGroup><Compile Include="../PublishedIdentity.cs" Link="PublishedIdentity.cs" /></ItemGroup>

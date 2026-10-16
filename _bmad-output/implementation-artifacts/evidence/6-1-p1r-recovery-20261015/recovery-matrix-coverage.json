@@ -1,0 +1,71 @@
+{
+  "scope": "executed recovery safety and current source controls; no package qualification",
+  "rows": [
+    {
+      "scenario": "Reviewed source",
+      "input": "23 manifest paths",
+      "evidence": [
+        "recovery-inventory.json",
+        "recovery-result.json",
+        "source-api-applicability.json"
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "Existing evidence",
+      "input": "2,348 equal destinations plus an isolated conflicting destination",
+      "evidence": [
+        "recovery-inventory.json",
+        "recovery-refusal-controls.json"
+      ],
+      "control": "existing-evidence-conflict",
+      "passed": true
+    },
+    {
+      "scenario": "Missing evidence",
+      "input": "294 absent blobs, 173221071 bytes",
+      "evidence": [
+        "recovery-inventory.json",
+        "recovery-result.json"
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "Concurrent change",
+      "input": "Destination changed after the starting snapshot in a temporary workspace",
+      "evidence": [
+        "recovery-refusal-controls.json"
+      ],
+      "control": "concurrent-destination-change",
+      "passed": true
+    },
+    {
+      "scenario": "Proposed successor/source",
+      "input": "24 compiler profiles and exact-source/strict snapshot proof controls",
+      "evidence": [
+        "compiler-enrollment.json",
+        "python-published_executor.log",
+        "python-isolation.log",
+        "fresh-verification.json"
+      ],
+      "passed": true
+    },
+    {
+      "scenario": "Fresh failure",
+      "input": "Pre-change AppHost startup fails on missing nested Tenants hosts while focused source checks pass",
+      "evidence": [
+        "aspire-baseline.json",
+        "aspire-cli-startup.log",
+        "aspire-apphost-startup.log",
+        "fresh-verification.json"
+      ],
+      "expected_failure_retained": true,
+      "historical_results_reused": false,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "package_qualified": false,
+  "p1r_usable": false,
+  "story_6_1": "blocked"
+}

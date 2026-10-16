@@ -1,0 +1,32 @@
+{
+  "scope": "Recovery helper development and isolated fixture setup; no historical bytes overwritten",
+  "attempts": [
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-recovery-20261015.py"
+      ],
+      "exit_code": 1,
+      "result": "AssertionError: not an ordinary file: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/ARCHITECTURE-SPINE.md",
+      "cause": "Initial protection snapshot rejected a tracked architecture symlink.",
+      "existing_destinations_written": false,
+      "recovery_output_directory_created": false,
+      "resolution": "Record symlink target bytes and lstat mode without following it; subsequent recovery succeeded with exact hashes."
+    },
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-recovery-20261015/verify-recovery-refusals.py"
+      ],
+      "exit_code": 1,
+      "result": "AssertionError: unapproved missing evidence: _bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/independent-audit-next.py",
+      "cause": "First isolated fixture omitted the already-present published-run helper, so the actual recovery safety check refused that invalid fixture before the intended conflict.",
+      "real_repository_bytes_written": false,
+      "resolution": "Supply the inert published-run helper as existing equal fixture evidence, then run both intended refusal controls successfully."
+    }
+  ],
+  "passing_recovery": "recovery-result.json",
+  "passing_refusals": "recovery-refusal-controls.json",
+  "actual_recovery_helper_sha256": "35becfd54ae710550392e9d285b1fa1ba71b551e1cf4b5cc1e3ef1f869d52f01"
+}
