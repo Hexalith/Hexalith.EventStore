@@ -332,7 +332,8 @@
               "permissions": []
             },
             "callers": [
-              "tenants-api"
+              "tenants-api",
+              "timesheets"
             ],
             "operations": [
               {
@@ -374,6 +375,41 @@
                 "path": "/api/v1/queries",
                 "verbs": [
                   "POST"
+                ]
+              },
+              {
+                "caller": "timesheets",
+                "path": "/api/v1/commands",
+                "verbs": [
+                  "POST"
+                ]
+              },
+              {
+                "caller": "timesheets",
+                "path": "/api/v1/commands/workload",
+                "verbs": [
+                  "POST"
+                ]
+              },
+              {
+                "caller": "timesheets",
+                "path": "/api/v1/queries",
+                "verbs": [
+                  "POST"
+                ]
+              },
+              {
+                "caller": "timesheets",
+                "path": "/api/v1/commands/status",
+                "verbs": [
+                  "GET"
+                ]
+              },
+              {
+                "caller": "timesheets",
+                "path": "/api/v1/commands/status/workload",
+                "verbs": [
+                  "GET"
                 ]
               }
             ]
