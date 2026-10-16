@@ -173,3 +173,17 @@ change beyond the approved root pins is authorized by this exception.
   activation/coldWarm/empty/typed and2source cases with actualasset bindings.
   WholeDebugLive1 nowsole lane with owning OQ8 cleanup receipt enabled; then
   allfive Release complete assemblies. Source71 remains stable.
+
+- Resumed on 2026-10-16: all296 source71 hashes, completed ReleaseBuild2
+  test/host hashes and14 package hashes match current files. Previous whole
+  DebugLive1 has no final summary and no surviving runner; it is recorded as
+  interrupted/unproven. Fresh wholeDebugLive2 will run on the same pinned
+  profile with the existing owning cleanup receipt. Historical passes remain
+  bound to their original source/package/runtime identities.
+
+- WholeDebugLive2 exited1 after6.582s:90 fixture-initialization failures,
+  138selected,1declared helper skip. Dapr Redis pubsub failed localhost:6379
+  with EOF; host protocol connections reset while in-container PING passed.
+  Restarted the existing dapr_redis container without data/config changes;
+  host protocol PONG now passes. This environment failure is retained,not
+  qualification. WholeDebugLive3 reruns the unchanged source71/profile.

@@ -13355,8 +13355,37 @@
     "declaredSkips": []
   },
   "activeGate": {
-    "name": "liveFullDebug1",
-    "log": "/tmp/story-6-4-cont11-live-full-debug1.log",
+    "name": "liveFullDebug3",
+    "log": "/tmp/story-6-4-cont11-live-full-debug3.log",
     "sourceSnapshot": "frozenSourceFiles71"
+  },
+  "liveFullDebug1Interrupted": {
+    "sourceSnapshot": "frozenSourceFiles71",
+    "log": "/tmp/story-6-4-cont11-live-full-debug1.log",
+    "logSha256": "df02c486f1a4a95313c5446521ec1ec266177433bb6ce4355fd32c0b0afb8484",
+    "summaryPresent": false,
+    "exitCode": null,
+    "classification": "runner no longer exists; interrupted without final test summary; unproven gate"
+  },
+  "liveFullDebug2EnvironmentFailure": {
+    "command": "dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll -showLiveOutput",
+    "exitCode": 1,
+    "selected": 138,
+    "errors": 0,
+    "failed": 90,
+    "skipped": 1,
+    "notRun": 0,
+    "seconds": 6.582,
+    "sourceSnapshot": "frozenSourceFiles71",
+    "log": "/tmp/story-6-4-cont11-live-full-debug2.log",
+    "logSha256": "df987e11ccaf2ae308b5b067ceff92bb2c2bde2835c367e92490815501bea361",
+    "testExitCode": 1,
+    "infrastructureExitCodes": [
+      0,
+      0
+    ],
+    "classification": "Dapr fixture initialization: Redis pubsub localhost:6379 EOF; in-container PING succeeded while published host port reset connections",
+    "recovery": "docker restart dapr_redis restored host protocol PONG; no data/configuration/source change",
+    "qualification": "unproven affected runtime gate; rerun required"
   }
 }
