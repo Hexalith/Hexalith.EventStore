@@ -71,6 +71,7 @@ public sealed partial class SecretsProtectionTests
     [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/execution-19b767f156174fb2ae1b19d28ae819a6/receipts/00402af679c14171b325272d166f24a0.json", "b6703a7ddd9af170139c8211bdeb7c97d429ed7efec42517b6faa799b2ead211")]
     [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-current-source-2026-10-09/packet/receipts/21aa8408fff249f3920955bbecc804cf.json", "af7b4a380334e7f438928d395232c36a97fc5c526507f9ae4d0208cd88d37a48")]
     [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-source-repair-2026-10-10/predicate-sources.json", "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc")]
+    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/13110834ba9a4e58ad2c5ea34ebc28a4.json", "53d9ab6e4d673e937a01a3c45f14d2da52d019bcf4903f43cbc4e1fc771371b7")]
     public void HistoricalExecutorSource_RequiresExactSealAndScansAdjacentCredentials(string path, string seal)
     {
         ArgumentNullException.ThrowIfNull(path);
@@ -1375,6 +1376,8 @@ public sealed partial class SecretsProtectionTests
         bool knownPath = path.StartsWith(evidenceRoot + "6-1-p1r-31150-published-run/", StringComparison.Ordinal)
             || path.StartsWith(evidenceRoot + "6-1-p1r-31190-published-run/", StringComparison.Ordinal)
             || path.StartsWith(evidenceRoot + "6-1-p1r-current-source-2026-10-09/", StringComparison.Ordinal)
+            || path.StartsWith(evidenceRoot + "6-1-p1r-31210-blocker-repair-20261014/", StringComparison.Ordinal)
+            || path.StartsWith(evidenceRoot + "6-1-p1r-31210-published-run/", StringComparison.Ordinal)
             || string.Equals(path, sourceRepair, StringComparison.Ordinal);
         if (!knownPath || !path.EndsWith(".json", StringComparison.Ordinal)
             || !string.Equals(path, sourceRepair, StringComparison.Ordinal)
@@ -1432,7 +1435,10 @@ public sealed partial class SecretsProtectionTests
                     or "9a0990a82566c2b281305572fd318ba036b9ab68bcaa7813b9d40ea2265ea699"
                     or "45a3b00081690058ce1f644c6152e6f6b7ab4277ff0b3d6368918f72aa986768"
                     or "f47728d611db4fefaf38c68836d1520d1fca5fe9d2f9684fd72bd25709630174"
-                    or "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc")
+                    or "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc"
+                    or "53d9ab6e4d673e937a01a3c45f14d2da52d019bcf4903f43cbc4e1fc771371b7"
+                    or "595d93550dd150bd592f857827ba2bf4fecfb15a0dc40e454fb7192c7afdec51"
+                    or "f70c0a63db50dae1593f6bac1f8f96be56b3acb6874dded5c3df1f2213f6ff25")
                 || sourceContent.GetString() is not { } text
                 || !string.Equals(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))),
                     expected, StringComparison.OrdinalIgnoreCase))
@@ -1637,9 +1643,15 @@ public sealed partial class SecretsProtectionTests
     }
 
     private static IEnumerable<string> ScanTrackedFile(string path, string? repositoryRoot = null)
-        => ReadTrackedText(path, repositoryRoot) is { } content
-            ? FindViolations(path, content)
-            : [];
+    {
+        string? content = ReadTrackedText(path, repositoryRoot);
+        if (content is null)
+        {
+            return [];
+        }
+
+        return SuppressSealedHistoricalSecretLines(path, content, repositoryRoot, FindViolations(path, content));
+    }
 
     private static string? ReadTrackedText(string path, string? repositoryRoot = null)
     {
@@ -1857,6 +1869,20 @@ public sealed partial class SecretsProtectionTests
         }
 
         if (IsInertPlaceholder(candidate))
+        {
+            return false;
+        }
+
+        // A JSON object/array opener is structure. An integer on a namespace-qualified name is a
+        // catalog count, including historical test-name keys. Short names keep numeric tokens.
+        if (candidate is "{" or "[")
+        {
+            return false;
+        }
+
+        if (isBare
+            && IsDecimalInteger(candidate)
+            && name.Count(static character => character == '.') >= 2)
         {
             return false;
         }
@@ -2478,6 +2504,24 @@ public sealed partial class SecretsProtectionTests
             or "REQUIRED" or "OPTIONAL" or "CURRENT" or "NEW" or "OLD"
             or "TEST" or "SAMPLE" or "DEV" or "LOCAL" or "SERVICE" or "DATABASE"
             or "INVALID" or "API" or "AT" or "CACHED" or "SESSION" or "RABBITMQ");
+    }
+
+    private static bool IsDecimalInteger(string value)
+    {
+        if (value.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (char character in value)
+        {
+            if (!char.IsAsciiDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool IsConfigurationKeyReference(string name, string value)

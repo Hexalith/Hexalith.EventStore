@@ -51,8 +51,8 @@ is_semver_without_numeric_padding() {
 
 is_semver_without_numeric_padding "$version" ||
   fail "A semantic release version without build metadata or leading-zero numeric identifiers is required."
-[[ "$phase" =~ ^(candidate|verify|publish)$ ]] ||
-  fail "Publication phase must be candidate, verify or publish."
+[[ "$phase" =~ ^(verify|publish)$ ]] ||
+  fail "Publication phase must be verify or publish."
 [[ "$builds_execution_sha" = "22a578b576a515d2af214fe81859447fffc97981" ]] ||
   fail "HEXALITH_BUILDS_EXECUTION_SHA must be the approved publisher commit."
 [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] ||
@@ -75,22 +75,12 @@ is_semver_without_numeric_padding "$version" ||
   fail "The shared publication preflight is unavailable."
 [[ -f "$package_manifest" ]] ||
   fail "The authoritative release package manifest is unavailable."
-# EventStore always requires a reservation and genuine one-use owner authority.
-[[ "$require_authority" = "true" ]] ||
-  fail "HEXALITH_RELEASE_REQUIRE_AUTHORITY must be exactly true; the authority gate cannot be disabled."
-[[ "$reserved_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] ||
-  fail "HEXALITH_RELEASE_RESERVED_VERSION must be a stable semantic version."
-[[ "$version" == "$reserved_version" ]] ||
-  fail "Semantic Release selected a version different from the authorized reservation."
-[[ "$authority_issue_url" =~ ^https://api\.github\.com/repos/Hexalith/Hexalith\.EventStore/issues/[1-9][0-9]*$ ]] ||
-  fail "HEXALITH_RELEASE_AUTHORITY_ISSUE_URL must identify an EventStore GitHub issue."
-[[ "$authority_owner" =~ ^github:[A-Za-z0-9][A-Za-z0-9-]{0,38}$ ]] ||
-  fail "HEXALITH_RELEASE_AUTHORITY_OWNER must identify the expected GitHub release owner."
-
-preflight_phase="$phase"
-if [[ "$phase" = "candidate" ]]; then
-  preflight_phase=verify
-fi
+# Semantic Release selects the version. The production environment approves publication.
+# A typed reservation or one-use issue authority is rejected so it cannot be ignored.
+[[ "$require_authority" = "false" ]] ||
+  fail "HEXALITH_RELEASE_REQUIRE_AUTHORITY must be exactly false. Semantic Release selects the version."
+[[ -z "$reserved_version" && -z "$authority_issue_url" && -z "$authority_owner" ]] ||
+  fail "Reservation and authority values must be empty. Semantic Release selects the version."
 
 preflight_arguments=(
   --repository "Hexalith/Hexalith.EventStore"
@@ -105,21 +95,6 @@ preflight_arguments=(
   --expected-package-count "$expected_package_count"
   --contract-directory "$contract_directory"
   --evidence-directory "$evidence_directory"
-  --phase "$preflight_phase"
+  --phase "$phase"
 )
-if [[ "$require_authority" = "true" ]]; then
-  preflight_arguments+=(
-    --authority-issue-url "$authority_issue_url"
-    --authority-owner "$authority_owner"
-  )
-fi
-
-identity_mode=check
-if [[ "$phase" = "candidate" ]]; then
-  identity_mode=candidate
-fi
-python3 tools/release-publication-identity.py "$identity_mode" "${preflight_arguments[@]}"
-if [[ "$phase" = "candidate" ]]; then
-  exit 0
-fi
 exec "$publication_preflight" "${preflight_arguments[@]}"

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Expose the approved publisher identity, then bind publication to that candidate.
+"""Corrective-release identity binder retained for the shared publisher contract.
 
-The candidate is a read-only proposal, never an owner grant or consumption receipt.
-Authority validation and one-use consumption remain in the pinned Builds engine.
+The EventStore Release workflow does not call this helper. Semantic Release
+selects the version, and the production environment approves publication.
 """
 
 import importlib.util

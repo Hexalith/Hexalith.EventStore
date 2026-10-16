@@ -1,0 +1,89 @@
+{
+  "runtimeScratchRemoved": true,
+  "processesStopped": true,
+  "daprNamespace": null,
+  "sidecarNamespaceObservations": [
+    {
+      "node": "sample",
+      "appId": "sample",
+      "processId": 31092,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-1",
+      "appId": "eventstore",
+      "processId": 31505,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-2",
+      "appId": "eventstore",
+      "processId": 31774,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-2",
+      "appId": "eventstore",
+      "processId": 34057,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-1",
+      "appId": "eventstore",
+      "processId": 35848,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-2",
+      "appId": "eventstore",
+      "processId": 36323,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-1",
+      "appId": "eventstore",
+      "processId": 37399,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    },
+    {
+      "node": "eventstore-2",
+      "appId": "eventstore",
+      "processId": 37797,
+      "daprNamespace": null,
+      "nameResolver": "mdns",
+      "discoveryRegistryIdentitySha256": null,
+      "discoveryConfigurationSha256": null,
+      "privateDiscoveryRegistryObserved": false
+    }
+  ],
+  "ownedPostgresContainerIdSha256": "ce86ecfa07d1d0536e31fcdede918ec2a6252ec1382036a8c317cdea8b8922e8",
+  "ownedPostgresContainerAbsent": true
+}

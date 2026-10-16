@@ -17,6 +17,14 @@ public sealed partial class ContractsPackageDependencyTests
         "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/";
     private const string P1r119ProbeInventorySha256 =
         "cf95b652ef0cbdc57772773c5b094797d97b777e378fecaf81adbe15a5bd1f43";
+    private const string P1r31210ProbeInventorySha256 =
+        "837a32a758daaa9a56a7f1d66dcd23b45eb5ccace507f0ece7f0a319daa5befb";
+    private static readonly string[] P1r31210ProbeRoots =
+    [
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/",
+    ];
     private static readonly (string FileName, string Sha256)[] _sealedPackageObservations =
     [
         ("Directory.Packages.props", "7d5cfc543cb96a49d4ca995b0a1d59d9f503d00f4d74cc568f703c8c92de0f28"),
@@ -65,6 +73,7 @@ public sealed partial class ContractsPackageDependencyTests
         PublishedPackageObservation + "Directory.Packages.props",
         PublishedPackageObservation + "Identity.csproj",
         .. _p1rStandaloneProbeRoots.SelectMany(root => _p1rStandaloneProbeFiles.Select(file => root + file)),
+        "tools/p1r-published-consumers/registration-probe/RegistrationProbe.csproj",
     ];
 
     [Fact]
@@ -202,7 +211,11 @@ public sealed partial class ContractsPackageDependencyTests
         XDocument wrapper = XDocument.Load(wrapperPath);
         string catalogPath = ResolveSharedPackageVersionsPath(root, wrapper);
         (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(
-            root, root, catalogPath, GetSealedP1r119ProbeExclusions(root), useApprovedException: true).ConfigureAwait(true);
+            root,
+            root,
+            catalogPath,
+            [.. GetSealedP1r119ProbeExclusions(root), .. GetSealedP1r31210ProbeExclusions(root)],
+            useApprovedException: true).ConfigureAwait(true);
         exitCode.ShouldBe(
             0,
             $"Shared consumer package authority validation failed.{Environment.NewLine}{output}{Environment.NewLine}{error}");
@@ -434,6 +447,41 @@ public sealed partial class ContractsPackageDependencyTests
             path + " " + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path)))).ToLowerInvariant())) + "\n";
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(manifest))).ToLowerInvariant()
             .ShouldBe(P1r119ProbeInventorySha256, "The sealed 3.119.0 probe paths or bytes changed.");
+        return paths;
+    }
+
+    private static string[] GetSealedP1r31210ProbeExclusions(string root)
+    {
+        ProcessStartInfo start = new("git") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        PackagingRepositoryPaths.RemoveRepositorySelectors(start);
+        start.ArgumentList.Add("ls-files");
+        start.ArgumentList.Add("-z");
+        start.ArgumentList.Add("--");
+        foreach (string probeRoot in P1r31210ProbeRoots)
+        {
+            start.ArgumentList.Add(probeRoot);
+        }
+
+        using Process process = Process.Start(start).ShouldNotBeNull();
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit(30_000).ShouldBeTrue("Sealed P1R 31210 probe inventory timed out.");
+        process.ExitCode.ShouldBe(0, error);
+
+        string[] paths = output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
+            .Where(path => path.StartsWith(P1r31210ProbeRoots[0], StringComparison.Ordinal)
+                || path.StartsWith(P1r31210ProbeRoots[1], StringComparison.Ordinal)
+                || path.StartsWith(P1r31210ProbeRoots[2], StringComparison.Ordinal))
+            .Where(path => path.EndsWith(".csproj", StringComparison.Ordinal)
+                || path.EndsWith(".props", StringComparison.Ordinal)
+                || path.EndsWith(".targets", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        paths.Length.ShouldBe(169, "The standalone 31210 probe inventory changed.");
+        string manifest = string.Join("\n", paths.Select(path =>
+            path + " " + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path)))).ToLowerInvariant())) + "\n";
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(manifest))).ToLowerInvariant()
+            .ShouldBe(P1r31210ProbeInventorySha256, "The sealed 31210 probe paths or bytes changed.");
         return paths;
     }
 

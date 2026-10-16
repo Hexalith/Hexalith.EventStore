@@ -88,4 +88,4 @@ final clean source, run
 historical v1–v4 evidence before accepting the v5 packet, exact selector, and
 lifecycle. No current-source claim is available while the selector is v4 or
 reviews are missing. NuGet policy activation and protected production approval
-remain separate; any eventual ordinary release uses `bypass-validation=false`.
+remain separate; any eventual ordinary release is a manual Release dispatch, and Semantic Release selects the version.

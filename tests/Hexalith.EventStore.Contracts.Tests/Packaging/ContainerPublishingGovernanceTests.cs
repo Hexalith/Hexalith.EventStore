@@ -154,9 +154,11 @@ public sealed class ContainerPublishingGovernanceTests
         script.ShouldContain("tools/release-packages.json");
         script.ShouldContain("HEXALITH_RELEASE_RESERVED_VERSION");
         script.ShouldContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL");
-        script.ShouldContain("--authority-owner \"$authority_owner\"");
+        script.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY must be exactly false");
+        script.ShouldContain("Reservation and authority values must be empty");
+        script.ShouldNotContain("--authority-owner");
         script.ShouldNotContain("1-20-github-approval-role-allowlist.json");
-        script.ShouldContain("--phase \"$preflight_phase\"");
+        script.ShouldContain("--phase \"$phase\"");
         script.ShouldContain("--source-branch \"$source_branch\"");
         script.ShouldContain("--source-ci-workflow \"$source_ci_workflow\"");
         script.ShouldContain("--package-manifest \"$package_manifest\"");
@@ -183,7 +185,10 @@ public sealed class ContainerPublishingGovernanceTests
                 phase,
                 new Dictionary<string, string?>
                 {
-                    ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true",
+                    ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+                    ["HEXALITH_RELEASE_RESERVED_VERSION"] = "",
+                    ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = "",
+                    ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "",
                 },
                 sourceCiWorkflow);
 
@@ -224,87 +229,69 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies authority cannot be disabled in either publication phase.
+    /// Verifies a one-use authority declaration cannot replace Semantic Release.
     /// </summary>
     [Theory]
     [InlineData("verify")]
     [InlineData("publish")]
-    public void PublicationPreflightWrapperRejectsDisabledAuthority(string phase)
+    public void PublicationPreflightWrapperRejectsEnabledAuthority(string phase)
     {
         (int exitCode, _, string error, bool invoked, _) =
             RunWrapperWithPosture(FindRepositoryRoot(), phase, new Dictionary<string, string?>
             {
-                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true",
+                ["HEXALITH_RELEASE_RESERVED_VERSION"] = "",
+                ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = "",
+                ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "",
             });
         exitCode.ShouldNotBe(0);
-        error.ShouldContain("authority gate cannot be disabled");
+        error.ShouldContain("must be exactly false");
         invoked.ShouldBeFalse();
     }
 
     /// <summary>
-    /// Verifies the enabled posture still reaches the shared preflight with both authority values.
+    /// Verifies the ordinary posture reaches the shared preflight without authority arguments.
     /// </summary>
     [Fact]
-    public void PublicationPreflightWrapperForwardsAuthorityArgumentsWhenTheGateIsEnabled()
+    public void PublicationPreflightWrapperOmitsAuthorityArgumentsWhenSemanticReleaseSelectsTheVersion()
     {
         (int exitCode, _, string error, bool invoked, string[] arguments) =
             RunWrapperWithPosture(FindRepositoryRoot(), "verify", new Dictionary<string, string?>
             {
-                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true",
-                ["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0",
-                ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
-                ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot",
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
+                ["HEXALITH_RELEASE_RESERVED_VERSION"] = "",
+                ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = "",
+                ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "",
             });
 
         exitCode.ShouldBe(0, error);
         invoked.ShouldBeTrue();
-        arguments.ShouldContain("--authority-issue-url");
-        arguments[Array.IndexOf(arguments, "--authority-issue-url") + 1]
-            .ShouldBe("https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123");
-        arguments.ShouldContain("--authority-owner");
-        arguments[Array.IndexOf(arguments, "--authority-owner") + 1].ShouldBe("github:jpiquot");
+        arguments.ShouldNotContain("--authority-issue-url");
+        arguments.ShouldNotContain("--authority-owner");
+        arguments[Array.IndexOf(arguments, "--version") + 1].ShouldBe("99.0.0");
     }
 
     /// <summary>
-    /// Verifies malformed corrective-release inputs fail before the shared preflight runs.
+    /// Verifies a typed reservation fails before the shared preflight runs.
     /// </summary>
     /// <param name="version">The reserved release version.</param>
     /// <param name="issueUrl">The authority issue API URL.</param>
-    /// <param name="expectedError">The expected fail-closed diagnostic.</param>
     [Theory]
-    [InlineData(
-        "01.2.3",
-        "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
-        "must be a stable semantic version")]
-    [InlineData(
-        "1.02.3",
-        "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
-        "must be a stable semantic version")]
-    [InlineData(
-        "1.2.03",
-        "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123",
-        "must be a stable semantic version")]
-    [InlineData(
-        "99.0.0",
-        "https://api.github.com/repos/Hexalith/Another.Repository/issues/123",
-        "must identify an EventStore GitHub issue")]
-    public void PublicationPreflightWrapperRejectsInvalidCorrectiveInputs(
-        string version,
-        string issueUrl,
-        string expectedError)
+    [InlineData("01.2.3", "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123")]
+    [InlineData("99.0.0", "https://api.github.com/repos/Hexalith/Another.Repository/issues/123")]
+    public void PublicationPreflightWrapperRejectsTypedReservationInputs(string version, string issueUrl)
     {
         (int exitCode, _, string error, bool invoked, _) =
             RunWrapperWithPosture(FindRepositoryRoot(), "verify", new Dictionary<string, string?>
             {
-                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true",
+                ["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false",
                 ["HEXALITH_RELEASE_RESERVED_VERSION"] = version,
                 ["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = issueUrl,
                 ["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot",
             });
 
         exitCode.ShouldNotBe(0);
-        error.ShouldContain(expectedError);
+        error.ShouldContain("must be empty");
         invoked.ShouldBeFalse();
     }
 
@@ -325,7 +312,7 @@ public sealed class ContainerPublishingGovernanceTests
             });
 
         exitCode.ShouldNotBe(0);
-        error.ShouldContain("authority gate cannot be disabled");
+        error.ShouldContain("must be empty");
         invoked.ShouldBeFalse();
     }
 
@@ -333,11 +320,12 @@ public sealed class ContainerPublishingGovernanceTests
     /// Verifies an unset posture stays guarded and a malformed one fails closed.
     /// </summary>
     [Theory]
-    [InlineData(null, "HEXALITH_RELEASE_RESERVED_VERSION must be a stable semantic version")]
-    [InlineData("", "must be exactly true")]
-    [InlineData("True", "must be exactly true")]
-    [InlineData("yes", "must be exactly true")]
-    [InlineData("0", "must be exactly true")]
+    [InlineData(null, "must be exactly false")]
+    [InlineData("", "must be exactly false")]
+    [InlineData("True", "must be exactly false")]
+    [InlineData("yes", "must be exactly false")]
+    [InlineData("0", "must be exactly false")]
+    [InlineData("true", "must be exactly false")]
     public void PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(
         string? declared,
         string expectedError)
@@ -371,7 +359,7 @@ public sealed class ContainerPublishingGovernanceTests
         MatchCollection callerPackageCounts = Regex.Matches(
             workflow,
             @"(?m)^\s*HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT:\s*'(?<count>[0-9]+)'\s*$");
-        callerPackageCounts.Count.ShouldBe(2);
+        callerPackageCounts.Count.ShouldBe(1);
         int.Parse(callerPackageCounts[0].Groups["count"].Value, CultureInfo.InvariantCulture)
             .ShouldBe(manifestPackageCount);
         MatchCollection wrapperPackageCounts = Regex.Matches(
@@ -469,10 +457,10 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies a reservation mismatch is rejected before preflight or a later publication marker.
+    /// Verifies a typed reservation is rejected before preflight or a later publication marker.
     /// </summary>
     [Fact]
-    public void ReservedVersionMismatchRejectsBeforePreflightOrPublication()
+    public void TypedReservationRejectsBeforePreflightOrPublication()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -511,11 +499,10 @@ public sealed class ContainerPublishingGovernanceTests
                 start.Environment["HEXALITH_RELEASE_PACKAGE_MANIFEST"] = "tools/release-packages.json";
                 start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
                     ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
-                start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true";
+                start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
                 start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
-                start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
-                start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot";
+                start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = "";
+                start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "";
                 start.Environment["GITHUB_SHA"] = new string('b', 40);
                 start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = preflight;
                 start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
@@ -525,7 +512,7 @@ public sealed class ContainerPublishingGovernanceTests
                 process.WaitForExit();
 
                 process.ExitCode.ShouldNotBe(0);
-                process.StandardError.ReadToEnd().ShouldContain("different from the authorized reservation");
+                process.StandardError.ReadToEnd().ShouldContain("must be empty");
                 File.Exists(preflightMarker).ShouldBeFalse();
                 File.Exists(publishMarker).ShouldBeFalse();
             }
@@ -561,37 +548,29 @@ public sealed class ContainerPublishingGovernanceTests
         releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_BRANCH: main");
         releaseJob.ShouldContain("HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}");
         releaseJob.ShouldContain("HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json");
-        releaseJob.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'true'");
-        // Scope these to the job block for the same reason the reservation inputs are scoped below:
-        // a release.yml comment naming any of them must not redden the suite.
+        releaseJob.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
+        releaseJob.ShouldNotContain("HEXALITH_RELEASE_RESERVED_VERSION:");
+        releaseJob.ShouldNotContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL:");
+        releaseJob.ShouldNotContain("HEXALITH_RELEASE_AUTHORITY_OWNER:");
+        releaseJob.ShouldNotContain("HEXALITH_RELEASE_CANDIDATE_SHA256:");
         string commentFreeWorkflow = string.Join(
             '\n',
             workflow.Replace("\r\n", "\n", StringComparison.Ordinal)
                 .Split('\n')
                 .Where(line => !line.TrimStart().StartsWith('#')));
         commentFreeWorkflow.ShouldNotContain("github.event.inputs.");
+        commentFreeWorkflow.ShouldNotContain("bypass-validation");
+        commentFreeWorkflow.ShouldNotContain("inputs.release-version");
         workflow.ShouldContain("  workflow_dispatch:");
         string dispatchBlock = ExtractYamlBlock(workflow, "  workflow_dispatch:");
-        dispatchBlock.ShouldNotContain("{", Case.Sensitive, "a flow mapping would hide inputs from the block scan");
-        string[] dispatchInputNames = DeserializeWorkflowDispatchInputNames(dispatchBlock);
-        dispatchInputNames.ShouldBe(["bypass-validation", "release-version", "release-authority-issue-url", "release-authority-owner"]);
-        string bypassInputBlock = ExtractYamlBlock(workflow, "      bypass-validation:");
-        Regex.Matches(bypassInputBlock, @"(?m)^\s{8}required:\s*false\s*$").Count.ShouldBe(1);
-        Regex.Matches(bypassInputBlock, @"(?m)^\s{8}default:\s*false\s*$").Count.ShouldBe(1);
-        Regex.Matches(bypassInputBlock, @"(?m)^\s{8}type:\s*boolean\s*$").Count.ShouldBe(1);
-        commentFreeWorkflow
-            .Split('\n')
-            .Count(line => line.Trim().Equals(
-                "BYPASS_VALIDATION: ${{ inputs['bypass-validation'] }}",
-                StringComparison.Ordinal))
-            .ShouldBe(1);
+        dispatchBlock.ShouldNotContain("inputs:");
         string verifySourceBlock = ExtractYamlBlock(workflow, "  verify-source:");
         verifySourceBlock.ShouldContain("name: Verify exact live-main source proof");
         verifySourceBlock.ShouldNotContain("green main", Case.Insensitive);
         workflow.ShouldContain("source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}");
         string producerStepBlock = ExtractNamedWorkflowStepBlock(
             workflow,
-            "Require current main with selected exact-source proof");
+            "Require current main with exact-source push proofs");
         producerStepBlock
             .Split('\n')
             .Count(line => line.Trim().Equals("id: select-source-proof", StringComparison.Ordinal))
@@ -641,10 +620,6 @@ public sealed class ContainerPublishingGovernanceTests
             $"The release pin {ApprovedBuildsReleaseSha} must be an ancestor of, or equal to, the development "
             + $"gitlink {gitlinkSha}; the gitlink must never point at history that excludes the reviewed pin.");
 
-        releaseJob.ShouldContain("HEXALITH_RELEASE_RESERVED_VERSION: ${{ inputs.release-version }}");
-        releaseJob.ShouldContain("HEXALITH_RELEASE_CANDIDATE_SHA256: ${{ needs.verify-source.outputs.candidate-identity-sha256 }}");
-        releaseJob.ShouldContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}");
-        releaseJob.ShouldContain("HEXALITH_RELEASE_AUTHORITY_OWNER: ${{ inputs.release-authority-owner }}");
         MatchCollection timeoutInputs = Regex.Matches(
             releaseJob,
             @"(?m)^\s{4}timeout-minutes:\s*(?<minutes>\d+)\s*$");
@@ -662,35 +637,19 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies the mandatory authority gate binds every actual future dispatch input. The pinned
-    /// publisher validates the matching comment author and repository release-owner role.
+    /// Verifies EventStore leaves the version to Semantic Release and does not collect authority inputs.
     /// </summary>
     [Fact]
-    public void ReleaseAuthorityOwnerIsBoundToTheExplicitDispatchInput()
+    public void ReleaseWorkflowLeavesTheVersionToSemanticRelease()
     {
         string root = FindRepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        AssertAuthorityOwnerPin(workflow);
-    }
-
-    /// <summary>
-    /// Verifies the enabled authority-posture branch requires every reservation input and an exact,
-    /// anchored owner identity.
-    /// </summary>
-    [Fact]
-    public void EnabledReleaseAuthorityFixturePinsAllReservationInputsAndExactOwner()
-    {
-        const string EnabledWorkflow = """
-            jobs:
-              release:
-                env:
-                  HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'true'
-                  HEXALITH_RELEASE_RESERVED_VERSION: ${{ inputs.release-version }}
-                  HEXALITH_RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}
-                  HEXALITH_RELEASE_AUTHORITY_OWNER: ${{ inputs.release-authority-owner }}
-            """;
-
-        AssertAuthorityOwnerPin(EnabledWorkflow);
+        string job = ExtractYamlBlock(workflow, "  release:");
+        job.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
+        job.ShouldNotContain("inputs.release-version");
+        job.ShouldNotContain("inputs.release-authority-issue-url");
+        job.ShouldNotContain("inputs.release-authority-owner");
+        workflow.ShouldNotContain("workflow_dispatch:\n    inputs:");
     }
 
     /// <summary>
@@ -723,15 +682,12 @@ public sealed class ContainerPublishingGovernanceTests
     }
 
     /// <summary>
-    /// Verifies the mandatory source-proof mode rejects wrong refs, stale heads, and failed proof.
+    /// Verifies the source-proof mode rejects wrong refs, stale heads, and failed proof.
     /// </summary>
-    /// <param name="bypassValidation">The typed dispatch input rendered for the shell step.</param>
-    /// <param name="expectedSourceWorkflow">The exact source-proof workflow selected by the input.</param>
+    /// <param name="expectedSourceWorkflow">The CI workflow recorded as the publication source proof.</param>
     [Theory]
-    [InlineData("false", "ci.yml")]
-    public void ReleaseSourcePreflightFailsClosedAndEmitsSelectedSuccessfulPushProof(
-        string bypassValidation,
-        string expectedSourceWorkflow)
+    [InlineData("ci.yml")]
+    public void ReleaseSourcePreflightFailsClosedAndEmitsSuccessfulPushProof(string expectedSourceWorkflow)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -742,13 +698,12 @@ public sealed class ContainerPublishingGovernanceTests
         string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         string script = ExtractNamedWorkflowRunBlock(
             workflow,
-            "Require current main with selected exact-source proof");
+            "Require current main with exact-source push proofs");
         string dispatchSha = new('a', 40);
         string staleMainSha = new('b', 40);
 
         RunReleaseSourcePreflight(
             script,
-            bypassValidation,
             expectedSourceWorkflow,
             "refs/heads/release",
             dispatchSha,
@@ -756,7 +711,6 @@ public sealed class ContainerPublishingGovernanceTests
             []).ExitCode.ShouldNotBe(0);
         RunReleaseSourcePreflight(
             script,
-            bypassValidation,
             expectedSourceWorkflow,
             "refs/heads/main",
             dispatchSha,
@@ -776,7 +730,6 @@ public sealed class ContainerPublishingGovernanceTests
         ];
         RunReleaseSourcePreflight(
             script,
-            bypassValidation,
             expectedSourceWorkflow,
             "refs/heads/main",
             dispatchSha,
@@ -796,7 +749,6 @@ public sealed class ContainerPublishingGovernanceTests
         ];
         (int exitCode, string githubOutput) = RunReleaseSourcePreflight(
             script,
-            bypassValidation,
             expectedSourceWorkflow,
             "refs/heads/main",
             dispatchSha,
@@ -804,41 +756,6 @@ public sealed class ContainerPublishingGovernanceTests
             successfulRun);
         exitCode.ShouldBe(0);
         githubOutput.ShouldBe($"source-ci-workflow={expectedSourceWorkflow}\n");
-    }
-
-    /// <summary>
-    /// Verifies malformed bypass values fail before any successful job output is emitted.
-    /// </summary>
-    /// <param name="bypassValidation">The malformed bypass value.</param>
-    [Theory]
-    [InlineData("")]
-    [InlineData("False")]
-    [InlineData("TRUE")]
-    [InlineData("true")]
-    public void ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput(string bypassValidation)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            Assert.Skip("POSIX shell publication preflight harness requires a Unix host.");
-        }
-
-        string root = FindRepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
-        string script = ExtractNamedWorkflowRunBlock(
-            workflow,
-            "Require current main with selected exact-source proof");
-
-        (int exitCode, string githubOutput) = RunReleaseSourcePreflight(
-            script,
-            bypassValidation,
-            "ci.yml",
-            "refs/heads/main",
-            new string('a', 40),
-            new string('a', 40),
-            []);
-
-        exitCode.ShouldNotBe(0);
-        githubOutput.ShouldBeEmpty();
     }
 
     /// <summary>
@@ -892,11 +809,10 @@ public sealed class ContainerPublishingGovernanceTests
                 start.Environment["HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT"] =
                     ExpectedPackageCount.ToString(CultureInfo.InvariantCulture);
                 ConfigureIdentityGuardStub(start, temporary);
-                start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true";
-                start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
-                start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                    "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
-                start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot";
+                start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
+                start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "";
+                start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = "";
+                start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "";
                 start.Environment["GITHUB_SHA"] = new string('b', 40);
                 start.Environment["HEXALITH_PUBLICATION_PREFLIGHT"] = rejectingValidator;
                 start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
@@ -951,7 +867,7 @@ public sealed class ContainerPublishingGovernanceTests
             index += windowsGuard.Length;
         }
 
-        skipWindowCount.ShouldBe(7);
+        skipWindowCount.ShouldBe(6);
     }
 
     /// <summary>
@@ -972,9 +888,10 @@ public sealed class ContainerPublishingGovernanceTests
         ci.ShouldContain("linux/arm64");
         ci.ShouldContain("environment/emulation-setup-failure");
         ci.ShouldContain("Story 1.20");
-        ci.ShouldContain("`bypass-validation` input");
+        ci.ShouldContain("Semantic Release selects the version");
         ci.ShouldContain("`commitlint.yml`");
-        ci.ShouldContain("gh workflow run release.yml --ref main -f bypass-validation=true");
+        ci.ShouldContain("gh workflow run release.yml --ref main");
+        ci.ShouldNotContain("bypass-validation");
         ci.ShouldContain("protected `production` environment");
         secrets.ShouldContain("HEXALITH_ZOT_USERNAME");
         secrets.ShouldContain("HEXALITH_ZOT_API_KEY");
@@ -1140,15 +1057,6 @@ public sealed class ContainerPublishingGovernanceTests
             .ShouldBe(["bypass-validation", "quoted_key", "plain_input"]);
     }
 
-    private static void AssertAuthorityOwnerPin(string workflow)
-    {
-        string job = ExtractYamlBlock(workflow, "  release:");
-        job.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'true'");
-        job.ShouldContain("HEXALITH_RELEASE_RESERVED_VERSION: ${{ inputs.release-version }}");
-        job.ShouldContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}");
-        job.ShouldContain("HEXALITH_RELEASE_AUTHORITY_OWNER: ${{ inputs.release-authority-owner }}");
-    }
-
     private static string[] DeserializeWorkflowDispatchInputNames(string dispatchBlock)
     {
         var deserializer = new DeserializerBuilder().Build();
@@ -1240,7 +1148,6 @@ public sealed class ContainerPublishingGovernanceTests
 
     private static (int ExitCode, string GitHubOutput) RunReleaseSourcePreflight(
         string script,
-        string bypassValidation,
         string expectedSourceWorkflow,
         string dispatchRef,
         string dispatchSha,
@@ -1283,7 +1190,6 @@ public sealed class ContainerPublishingGovernanceTests
             start.ArgumentList.Add("-c");
             start.ArgumentList.Add(script);
             start.Environment["PATH"] = $"{fakeBin}:{start.Environment["PATH"]}";
-            start.Environment["BYPASS_VALIDATION"] = bypassValidation;
             start.Environment["EXPECTED_SOURCE_WORKFLOW"] = expectedSourceWorkflow;
             start.Environment["GITHUB_OUTPUT"] = githubOutput;
             start.Environment["GH_TOKEN"] = Guid.NewGuid().ToString("N");
@@ -1451,11 +1357,10 @@ public sealed class ContainerPublishingGovernanceTests
             start.Environment["HEXALITH_ZOT_REGISTRY"] = "registry.hexalith.com";
             start.Environment["PREFLIGHT_INVOCATION_MARKER"] = invocationMarker;
             start.Environment["PREFLIGHT_ARGUMENTS"] = argumentsPath;
-            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "true";
-            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "99.0.0";
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] =
-                "https://api.github.com/repos/Hexalith/Hexalith.EventStore/issues/123";
-            start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "github:jpiquot";
+            start.Environment["HEXALITH_RELEASE_REQUIRE_AUTHORITY"] = "false";
+            start.Environment["HEXALITH_RELEASE_RESERVED_VERSION"] = "";
+            start.Environment["HEXALITH_RELEASE_AUTHORITY_ISSUE_URL"] = "";
+            start.Environment["HEXALITH_RELEASE_AUTHORITY_OWNER"] = "";
             start.Environment.Remove("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT");
             if (workflowPackageCount is not null)
             {

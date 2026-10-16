@@ -228,13 +228,8 @@ never accepted as package dependency evidence, anywhere in the nuspec.
 ## Release Flow
 
 Release is an intentional operator action. Ordinary pushes and pull requests
-run CI but never start Release. The dispatch exposes one boolean
-`bypass-validation` input, defaulting to `false`; semantic-release still derives
-the version from commit history. The ordinary path requires the successful `CI`
-push run described below. The explicitly selected bypass path instead requires
-the same source SHA to have a successful push run of `commitlint.yml` and can be
-requested only with
-`gh workflow run release.yml --ref main -f bypass-validation=true`.
+run CI but never start Release. The dispatch has no inputs. Semantic Release selects the version
+from `main` commit history. Run it with `gh workflow run release.yml --ref main`.
 The approved immutable Builds actions execution pin is
 `22a578b576a515d2af214fe81859447fffc97981`, matching `.github/workflows/release.yml`
 and `docs/ci-secrets-checklist.md`. Before requesting environment approval, the
@@ -242,9 +237,8 @@ manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;
-- the exact SHA has a completed, successful push run of the selected source
-  proof workflow: `ci.yml` on the ordinary path or `commitlint.yml` only for an
-  explicit bypass dispatch.
+- the exact SHA has a completed, successful push run of `ci.yml`,
+  `p1r-qualification.yml`, and `commitlint.yml`.
 
 The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
@@ -266,9 +260,8 @@ publishing is enabled only for the approved EventStore host mapping. Before any
 NuGet package is pushed, semantic-release validates the temporary
 `NUGET_TRUSTED_PUBLISHING_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
-missing container secret cannot create a partial NuGet-only release. The
-semantic-release `verifyRelease` phase re-proves that the source is still the
-live `main` tip with the selected exact successful push proof, then freezes exact repository,
+missing container secret cannot create a partial NuGet-only release. Immediately before Semantic Release, the publish job re-proves those three
+push runs. The semantic-release `verifyRelease` phase then freezes exact repository,
 version, source proof, environment, workflow run, approved Builds, helper
 hashes, normalized package IDs, canonical manifest hash, container, and
 platform identity. It also proves the new version is absent for all 14 NuGet
@@ -315,40 +308,16 @@ immutable release-tool pin is
 independent of the development `references/Hexalith.Builds` gitlink, so routine
 submodule updates do not rotate publication authority and publication upgrades
 do not create pointer churn in development dependencies. Environment approval
-authorizes an ordinary publication; `HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'`
-selects that path in the shared helper.
+authorizes publication. EventStore sets `HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'`
+and supplies no reserved version, authority issue, or authority owner. Semantic
+Release selects the version. A typed reservation cannot override that version.
 
-Story 3.14 built a second, stronger gate for a corrective release that has to be
-individually authorized rather than merely approved: a dispatch-reserved stable
-version plus an unexpired, one-use GitHub issue-comment authority. When enabled for
-EventStore, the release owner would be pinned to `github:jpiquot`. The gate remains
-implemented and tested in `Hexalith.Builds`, but the EventStore-owned job does
-not expose its reservation inputs and explicitly selects the ordinary path.
-Enabling the corrective path requires a separately reviewed change to the
-EventStore workflow, governance tests, and shared-helper input mapping. It is
-not a substitute for the nuget.org trusted publishing policy.
-
-When the gate is on, the dispatch names a stable EventStore authority issue, not a
-comment that would have to predict the future run ID. After the run/attempt exists,
-the release owner posts one immutable comment to that issue while the protected
-release job awaits approval. Its canonical identity digest binds the repository,
-reserved version, exact green source, workflow run/attempt, package and container
-destinations, platform set, protected environment, Builds revision, and all
-installed helper hashes. The `publish` preflight consumes that authority once
-through an authenticated GitHub Actions receipt before the first NuGet write;
-pagination, replay, expiry, excessive validity, wrong-role, changed scope, or
-mismatched helper bytes fail closed. The durable consumption evidence retains the
-authenticated comment-list reread rather than GitHub's distinct POST response
-shape, so the container phase rechecks the same record bytes that the publish
-phase froze. A reserved version must equal Semantic Release's
-`nextRelease.version`, must be stable, and must be strictly newer than every stable
-GitHub release/tag, every version observed for all 14 NuGet IDs, and every stable
-registry tag.
-
-Both postures are identical in every other respect. The exact candidate version
-must be absent at all package and container destinations before publication, and
-source proof, frozen identity, and version-floor checks run either way. No
-projected version such as `3.96.0` is ever embedded as release policy.
+The shared Builds publisher still implements a separate corrective gate: a
+dispatch-reserved stable version plus a one-use GitHub issue-comment authority.
+EventStore does not use that gate. The exact Semantic Release version must be
+absent at all package and container destinations before publication, and source
+proof, frozen identity, and version-floor checks still run. No projected version
+such as `3.96.0` is ever embedded as release policy.
 
 The `publishCmd` calls the helper installed by the pinned shared
 `publish-containers` action only after the applicable preflight gates and NuGet

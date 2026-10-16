@@ -1,0 +1,111 @@
+{
+  "nativeGate": "source9-contracts-changed-classes-release",
+  "summary": {
+    "selected": 64,
+    "errors": 0,
+    "failed": 33,
+    "skipped": 0,
+    "notRun": 0,
+    "seconds": 1.57,
+    "passed": 31
+  },
+  "logSha256": "7386aa1b95ba18f3501632676d7765122a4ea526e1fac653b2bc8cf18816a269",
+  "failedCases": [
+    "Hexalith.EventStore.Contracts.Tests.Packaging.TrustedPublishingReleaseTests.PublishJobRetainsExactSourceAndDestinationPreflights",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseCallerPinsSharedExecutionAndSameRunPublicationAuthorityInputs",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReservedVersionMismatchRejectsBeforePreflightOrPublication",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsInvalidCorrectiveInputs(version: \"01.2.3\", issueUrl: \"https://api.github.com/repos/Hexalith/Hexalith.Eve\"\u00b7\u00b7\u00b7, expectedError: \"must be a stable semantic version\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsInvalidCorrectiveInputs(version: \"1.02.3\", issueUrl: \"https://api.github.com/repos/Hexalith/Hexalith.Eve\"\u00b7\u00b7\u00b7, expectedError: \"must be a stable semantic version\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsInvalidCorrectiveInputs(version: \"1.2.03\", issueUrl: \"https://api.github.com/repos/Hexalith/Hexalith.Eve\"\u00b7\u00b7\u00b7, expectedError: \"must be a stable semantic version\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsInvalidCorrectiveInputs(version: \"99.0.0\", issueUrl: \"https://api.github.com/repos/Hexalith/Another.Repo\"\u00b7\u00b7\u00b7, expectedError: \"must identify an EventStore GitHub issue\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAuthorityArgumentsWhenTheGateIsEnabled",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleasePackageCountContractMatchesManifestCallerAndWrapper",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.RejectedPreflightBehaviorallyBlocksNuGetAndContainerMutation",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseAuthorityOwnerIsBoundToTheExplicitDispatchInput",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput(bypassValidation: \"\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput(bypassValidation: \"False\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput(bypassValidation: \"TRUE\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput(bypassValidation: \"true\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsDisabledAuthority(phase: \"verify\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsDisabledAuthority(phase: \"publish\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(declared: null, expectedError: \"HEXALITH_RELEASE_RESERVED_VERSION must be a stable\"\u00b7\u00b7\u00b7)",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(declared: \"\", expectedError: \"must be exactly true\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(declared: \"True\", expectedError: \"must be exactly true\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(declared: \"yes\", expectedError: \"must be exactly true\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture(declared: \"0\", expectedError: \"must be exactly true\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.DocumentationAndContainerDefaultsDescribeTheExactReleaseContract",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsExactReviewedPackageCount(phase: \"verify\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsExactReviewedPackageCount(phase: \"publish\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsIgnoredReservationInputs(name: \"HEXALITH_RELEASE_RESERVED_VERSION\", value: \"99.0.0\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsIgnoredReservationInputs(name: \"HEXALITH_RELEASE_AUTHORITY_ISSUE_URL\", value: \"https://api.github.com/repos/Hexalith/Hexalith.Eve\"\u00b7\u00b7\u00b7)",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsIgnoredReservationInputs(name: \"HEXALITH_RELEASE_AUTHORITY_OWNER\", value: \"github:jpiquot\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightFailsClosedAndEmitsSelectedSuccessfulPushProof(bypassValidation: \"false\", expectedSourceWorkflow: \"ci.yml\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAllowedSourceWorkflowUnchanged(phase: \"verify\", sourceCiWorkflow: \"ci.yml\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAllowedSourceWorkflowUnchanged(phase: \"publish\", sourceCiWorkflow: \"ci.yml\")",
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperBindsReleaseIdentityAndSharedContract"
+  ],
+  "failureMethods": {
+    "Hexalith.EventStore.Contracts.Tests.Packaging.TrustedPublishingReleaseTests.PublishJobRetainsExactSourceAndDestinationPreflights": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseCallerPinsSharedExecutionAndSameRunPublicationAuthorityInputs": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReservedVersionMismatchRejectsBeforePreflightOrPublication": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsInvalidCorrectiveInputs": 4,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAuthorityArgumentsWhenTheGateIsEnabled": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleasePackageCountContractMatchesManifestCallerAndWrapper": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.RejectedPreflightBehaviorallyBlocksNuGetAndContainerMutation": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseAuthorityOwnerIsBoundToTheExplicitDispatchInput": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput": 4,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsDisabledAuthority": 2,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture": 5,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.DocumentationAndContainerDefaultsDescribeTheExactReleaseContract": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsExactReviewedPackageCount": 2,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsIgnoredReservationInputs": 3,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightFailsClosedAndEmitsSelectedSuccessfulPushProof": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAllowedSourceWorkflowUnchanged": 2,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperBindsReleaseIdentityAndSharedContract": 1
+  },
+  "actualReadInputArrivals": [
+    {
+      "path": ".github/workflows/release.yml",
+      "frameSha256": "d4e62c9ce4b4c63dfc39ea20558ddf4d88ade1583150b380363656aaaf26bf14",
+      "actualReadInputSha256": "a05bc9ec813cac7138f9a7ceadbb4445e3473fd9b99fd0940bffd20b407db187"
+    },
+    {
+      "path": "scripts/validate-publication-preflight.sh",
+      "frameSha256": "0139088cc427e56075a7e0941254a7249414eb364b5e53b3bf1547ee763e02c2",
+      "actualReadInputSha256": "8ca9a323a723af3cffe7c8e95cf14f9b43e7e77284f4f0c06bed2b17797dfdef"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+      "frameSha256": "db88f04998973847482432df5650c38638131d44d2c252f3e4a1423d036265c9",
+      "actualReadInputSha256": "a225d666d0090745aaf5bd5d734bab4da36058db46f376aeb1fb3fbfcb7f8286"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
+      "frameSha256": "637edfe42f0064b664b2c554800266754b00ae96c579aeffd241f3a0c0c02d67",
+      "actualReadInputSha256": "43a0f640a5750005bcb85973ec1645ea5a22e4d64e1c1f779464889b4cd5ec53"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.HistoricalLines.cs",
+      "frameSha256": "8649cbc27fb0c9bf7c8b3980725b3a0cac65d0b15cfe0af0b277c7ecab81b9de",
+      "actualReadInputSha256": "19dd774483d18fb05af270c34c42aa756145a39d83b9bf0a32a6e75fbe9c4e6d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "frameSha256": "b6ae0ce6b3096fc408c2314f032559e07b7efccf1b8496c82bf7bfa3d4a5f84d",
+      "actualReadInputSha256": "cb2304579704130d855fb746a2d5928fc8c2a8a535a7db178d9ea1a6ef5ee901"
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "frameSha256": "0850bdade540924442bb31c7763c4db30ba6746f9c869712ca5db444f1100bc5",
+      "actualReadInputSha256": "9a7c0150a79877555507ea832da522a7df403eaae1933f6392419bb384bff38d"
+    }
+  ],
+  "cause": "Old compiled publication/governance assertions versus externally rewritten workflow/wrapper/current test source; external input arrival after original binary build.",
+  "runtimeStableDuringGate": true,
+  "readInputsStableDuringGate": true,
+  "fullCurrentQualification": false,
+  "ownerApprovalInferred": false,
+  "agentPolicyOrTestRepair": false
+}
