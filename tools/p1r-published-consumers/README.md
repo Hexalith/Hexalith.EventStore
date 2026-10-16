@@ -180,3 +180,31 @@ Builds construction/execution identities, successful source CI, publication auth
 signed public archives and full published qualification remain outstanding gates. All
 four role acceptances, same-baseline conformance and Solution Architect
 disposition remain pending; P1R is unusable and Story 6.1 remains blocked.
+
+The source landing closes retained findings B1/E1 (socket exposure), B2 (root and
+unsupported workspace mounts), B4 (early scratch cleanup), B5 (non-UTF-8 failure
+receipts), E2 (inventory executable binding), E3 (shell-mediated provider writes)
+and V1 (real Host/Domain registration coverage). Socket alias enumeration fails
+closed on unreadable subtrees. Genuine seed journals permit only the finite
+direct execution profiles; their exact provider query remains read-only.
+`test_p1r_snapshot_registration.py` builds and executes the real fixture programs,
+checks their actual service providers at HostBuilt, and proves both refuse missing
+enrollment. It stops before external resources start and grants no qualification.
+B3 remains an ordinary follow-up: root-created output ownership needs a separate
+UID/volume-access design and real-container cleanup validation. The existing
+qualification and cleanup requirements still apply before relying on a run.
+
+Historical captures remain at their original locations under the external
+`/home/administrator/projects/hexalith/p1r-evidence-disposition-20261016/_bmad-output/implementation-artifacts/evidence/6-1-p1r-evidence-disposition-20261016/evidence-retention-manifest.json`
+(SHA-256 `52c47102136221f03876ae07e4b18bade4c7d4e21f2c9b4f44360831e1099fa0`).
+This source change adds no captures and changes no scanner, retirement record or seal.
+
+Read-only analysis of canonical main `74b8a6711400fc2853acf6e63b9ea4c751078d58`
+with the pinned commit analyzer proposes 3.123.0 from reachable v3.122.0 plus this
+fix. Published v3.123.0 points to `f78916d9534a72ba1515d97cfd51408e6eb809f1`,
+outside that main ancestry. Publication therefore needs an owner decision about
+release history before finite enrollment can be reconciled to an available
+proposal; the existing finite 3.122.1 tooling declaration remains unchanged.
+No version is reserved or selected. Source CI, genuine same-run one-use authority,
+protected production approval, published qualification and existing acceptance
+gates remain required. The source handoff is the normal PR and its CI results.

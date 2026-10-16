@@ -69,6 +69,20 @@ class ControllerTests(unittest.TestCase):
         return {"Id": identity, "Image": "sha256:image", "Name": "/owned", "Labels": {
             isolation.LABEL: self.worker.invocation if label is None else label}}
 
+    def testNonUtf8DockerOutputRetainsRawBytesAndCannotPass(self):
+        import base64
+        completed = SimpleNamespace(returncode=0, stdout=b'fixture-\xff-output')
+        with mock.patch.object(subprocess, 'run', return_value=completed):
+            self.worker.docker(['info'])
+        row = self.worker.result['commands'][-1]
+        self.assertEqual(base64.b64decode(row['raw_output_base64']), completed.stdout)
+        self.assertEqual(row['raw_output_sha256'], preparation.digest(completed.stdout))
+        self.assertEqual(row['output_sha256'], preparation.digest(row['output'].encode()))
+        self.worker.result['command_exit_code'] = 0
+        self.worker.cleanup()
+        self.assertFalse(self.worker.result['passed'])
+        self.assertIn('outer Docker output is not UTF-8', self.worker.result['errors'])
+
     def testDockerPreservesOriginalSigintAndSigtermExceptionsAndRetainsCommand(self):
         for signum in (signal.SIGINT, signal.SIGTERM):
             original = isolation.IsolationInterrupted(signum)

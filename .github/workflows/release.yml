@@ -7,10 +7,22 @@ on:
   workflow_dispatch:
     inputs:
       bypass-validation:
-        description: 'Use successful exact-source Commitlint proof instead of CI proof.'
+        description: 'Must remain false: CI, P1R and Commitlint push proofs are all required.'
         required: false
         default: false
         type: boolean
+      release-version:
+        description: 'Actual future stable reservation, approved separately for this source.'
+        required: true
+        type: string
+      release-authority-issue-url:
+        description: 'EventStore issue API URL holding the genuine owner authority comment.'
+        required: true
+        type: string
+      release-authority-owner:
+        description: 'Expected repository release owner as github:login.'
+        required: true
+        type: string
 
 concurrency:
   group: release-production
@@ -25,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       source-ci-workflow: ${{ steps.select-source-proof.outputs.source-ci-workflow }}
+      candidate-identity-sha256: ${{ steps.candidate.outputs.candidate-identity-sha256 }}
+      candidate-run-attempt: ${{ steps.candidate.outputs.candidate-run-attempt }}
     permissions:
       actions: read
       contents: read
@@ -40,19 +54,11 @@ jobs:
           DISPATCH_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          case "$BYPASS_VALIDATION" in
-            false)
-              source_ci_workflow="ci.yml"
-              ;;
-            true)
-              source_ci_workflow="commitlint.yml"
-              ;;
-            *)
-              echo "bypass-validation must resolve to exactly true or false." >&2
-              exit 1
-              ;;
-          esac
-          printf 'source-ci-workflow=%s\n' "$source_ci_workflow" >> "$GITHUB_OUTPUT"
+          if [ "$BYPASS_VALIDATION" != "false" ]; then
+            echo "bypass-validation must be exactly false; all three push proofs are required." >&2
+            exit 1
+          fi
+          source_ci_workflow="ci.yml"
 
           if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
             echo "Release must be dispatched from refs/heads/main." >&2
@@ -73,25 +79,73 @@ jobs:
             exit 1
           fi
 
-          source_runs="$(gh api --method GET \
-            "repos/${REPOSITORY}/actions/workflows/${source_ci_workflow}/runs" \
-            -f branch=main \
-            -f event=push \
-            -f head_sha="$DISPATCH_SHA" \
-            -f status=success \
-            -f per_page=100)"
-          if ! printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
-            [.workflow_runs[] | select(
-              .head_sha == $sha and
-              .head_branch == "main" and
-              .event == "push" and
-              .status == "completed" and
-              .conclusion == "success"
-            )] | length > 0
-          ' >/dev/null; then
-            echo "No successful push ${source_ci_workflow} run exists for the exact current main SHA." >&2
-            exit 1
-          fi
+          for required_workflow in ci.yml p1r-qualification.yml commitlint.yml; do
+            source_runs="$(gh api --method GET \
+              "repos/${REPOSITORY}/actions/workflows/${required_workflow}/runs" \
+              -f branch=main \
+              -f event=push \
+              -f head_sha="$DISPATCH_SHA" \
+              -f status=success \
+              -f per_page=100)"
+            if ! printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
+              [.workflow_runs[] | select(
+                .head_sha == $sha and
+                .head_branch == "main" and
+                .event == "push" and
+                .status == "completed" and
+                .conclusion == "success"
+              )] | length > 0
+            ' >/dev/null; then
+              echo "No successful push ${required_workflow} run exists for the exact current main SHA." >&2
+              exit 1
+            fi
+          done
+          printf 'source-ci-workflow=%s\n' "$source_ci_workflow" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: Checkout approved candidate publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: 22a578b576a515d2af214fe81859447fffc97981
+          path: .hexalith/builds-execution
+          persist-credentials: false
+      - name: Prepare candidate identity contract
+        uses: ./.hexalith/builds-execution/Github/publish-containers
+        with:
+          container-projects: |
+            src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore
+          builds-execution-sha: 22a578b576a515d2af214fe81859447fffc97981
+      # This read-only proposal lets the owner bind a genuine comment before production approval.
+      # It neither validates an owner comment nor consumes authority or writes any destination.
+      - name: Expose read-only same-run publication identity
+        id: candidate
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEXALITH_BUILDS_EXECUTION_SHA: 22a578b576a515d2af214fe81859447fffc97981
+          HEXALITH_RELEASE_ENVIRONMENT: production
+          HEXALITH_RELEASE_SOURCE_BRANCH: main
+          HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ci.yml
+          HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json
+          HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'
+          HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'true'
+          HEXALITH_RELEASE_RESERVED_VERSION: ${{ inputs.release-version }}
+          HEXALITH_RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}
+          HEXALITH_RELEASE_AUTHORITY_OWNER: ${{ inputs.release-authority-owner }}
+          RELEASE_VERSION: ${{ inputs.release-version }}
+        run: bash scripts/validate-publication-preflight.sh "$RELEASE_VERSION" candidate
+      - name: Upload read-only candidate identity before production approval
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .hexalith/release-candidate/*
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
 
   release:
     name: Publish EventStore packages and container
@@ -106,6 +160,16 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      - name: Require candidate from current run attempt
+        shell: bash
+        env:
+          CANDIDATE_RUN_ATTEMPT: ${{ needs.verify-source.outputs.candidate-run-attempt }}
+        run: |
+          set -euo pipefail
+          if [ "$CANDIDATE_RUN_ATTEMPT" != "$GITHUB_RUN_ATTEMPT" ]; then
+            echo "Candidate identity is from an earlier or missing run attempt. Rerun all jobs and obtain fresh owner authority for the new candidate before production approval." >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -118,6 +182,11 @@ jobs:
           ref: 22a578b576a515d2af214fe81859447fffc97981
           path: .hexalith/builds-execution
           persist-credentials: false
+      - name: Download same-run candidate identity
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .hexalith/release-candidate
       - name: Validate approved Builds execution identity
         shell: bash
         run: |
@@ -187,17 +256,19 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
           test "$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')" = "$DISPATCH_SHA"
-          source_runs="$(gh api --method GET \
-            "repos/${REPOSITORY}/actions/workflows/${SOURCE_CI_WORKFLOW}/runs" \
-            -f branch=main -f event=push -f head_sha="$DISPATCH_SHA" \
-            -f status=success -f per_page=100)"
-          printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
-            [.workflow_runs[] | select(
-              .head_sha == $sha and .head_branch == "main" and
-              .event == "push" and .status == "completed" and
-              .conclusion == "success"
-            )] | length > 0
-          ' >/dev/null
+          for required_workflow in ci.yml p1r-qualification.yml commitlint.yml; do
+            source_runs="$(gh api --method GET \
+              "repos/${REPOSITORY}/actions/workflows/${required_workflow}/runs" \
+              -f branch=main -f event=push -f head_sha="$DISPATCH_SHA" \
+              -f status=success -f per_page=100)"
+            printf '%s\n' "$source_runs" | jq -e --arg sha "$DISPATCH_SHA" '
+              [.workflow_runs[] | select(
+                .head_sha == $sha and .head_branch == "main" and
+                .event == "push" and .status == "completed" and
+                .conclusion == "success"
+              )] | length > 0
+            ' >/dev/null
+          done
       - name: Validate trusted publishing account
         if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
         shell: bash
@@ -230,7 +301,11 @@ jobs:
           HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ needs.verify-source.outputs.source-ci-workflow }}
           HEXALITH_RELEASE_PACKAGE_MANIFEST: tools/release-packages.json
           HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'
-          HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'
+          HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'true'
+          HEXALITH_RELEASE_RESERVED_VERSION: ${{ inputs.release-version }}
+          HEXALITH_RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}
+          HEXALITH_RELEASE_AUTHORITY_OWNER: ${{ inputs.release-authority-owner }}
+          HEXALITH_RELEASE_CANDIDATE_SHA256: ${{ needs.verify-source.outputs.candidate-identity-sha256 }}
         run: npx semantic-release
       - name: Upload complete release evidence
         if: ${{ always() }}

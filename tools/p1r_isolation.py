@@ -8,6 +8,7 @@ in the repository or published. This wrapper cannot grant package qualification.
 from __future__ import annotations
 
 import argparse
+import base64
 from contextlib import contextmanager
 import json
 import os
@@ -221,6 +222,48 @@ def executor_input(command, repository):
     return {"path":str(path), "sha256":digest(regular(path))}
 
 
+def supported_workspace_path(value):
+    """Accept only unambiguous non-root POSIX directory names in bind arguments."""
+    value = str(value)
+    parts = value.split('/')[1:]
+    return (value.startswith('/') and all(part and part not in ('.', '..') for part in parts)
+            and not any(ord(character) < 32 or ord(character) == 127 or character == ',' for character in value)
+            and not parts[-1].endswith(('.sock', '.socket')))
+
+
+def validate_workspace(workspace, repository, outer_host):
+    """Refuse unsupported mounts and exposure of the controller socket before Docker work."""
+    require(supported_workspace_path(workspace), "unsupported workspace mount")
+    workspace = Path(workspace)
+    require(workspace.is_dir() and workspace == workspace.resolve() and repository.is_relative_to(workspace),
+            "workspace mount substituted")
+    if workspace != repository:
+        parent = preparation.git(repository, "rev-parse", "--show-superproject-working-tree").decode().strip()
+        require(parent and workspace == Path(parent), "unsupported workspace mount; select the repository or its superproject")
+    socket = Path(outer_host.removeprefix('unix://'))
+    require(not socket.is_relative_to(workspace) and not socket.resolve().is_relative_to(workspace),
+            "workspace exposes the outer Docker socket")
+    # Bind mounts include descendant mounts. Keep this profile to a single filesystem
+    # tree rather than exposing an unreviewed nested mount from the controller.
+    for line in Path('/proc/self/mountinfo').read_text().splitlines():
+        mounted = Path(re.sub(r'\\([0-7]{3})', lambda match: chr(int(match[1], 8)), line.split()[4]))
+        require(mounted == workspace or not mounted.is_relative_to(workspace), "unsupported nested workspace mount")
+    if socket.exists():
+        selected = socket.stat()
+        def traversal_error(error):
+            raise InvalidPacket('workspace contents unavailable for outer socket isolation') from error
+        for directory, _, files in os.walk(workspace, onerror=traversal_error):
+            for name in files:
+                candidate = Path(directory) / name
+                # A symlink pointing outside this sole bind is not exposed there.
+                if candidate.is_symlink():
+                    continue
+                observed = candidate.stat()
+                require((observed.st_dev, observed.st_ino) != (selected.st_dev, selected.st_ino),
+                        "workspace exposes an alias of the outer Docker socket")
+    return workspace
+
+
 def sdk_arguments(workspace, repository, invocation, daemon, volume):
     """Construct the single permitted SDK container profile."""
     git_paths = [Path(workspace), *(Path(workspace)/name for name in preparation.declared_dependencies(Path(workspace)))]
@@ -246,19 +289,20 @@ class IsolatedRunner:
     def initialize(self, output, workspace=None, outer_host=None):
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
-        self.output.mkdir(parents=True)
         self.invocation = uuid.uuid4().hex
-        self.scratch = Path(tempfile.mkdtemp(prefix="p1r-isolation-" + self.invocation + "-"))
+        self.scratch = None
         self.environment = {key: value for key, value in os.environ.items()
                             if not key.startswith("DOCKER_") and key not in ("CONTAINER_HOST", "CONTAINER_CONNECTION")}
-        self.config = self.scratch / "docker-config"
-        self.config.mkdir()
         self.containers, self.pending, self.volume, self.volume_created = {}, {}, "p1r-isolation-" + self.invocation, False
         self.result = {"schema": SCHEMA, "invocation": self.invocation, "scope": "isolated-command-verification",
                        "started_utc": stamp(), "images": {"sdk": SDK_IMAGE, "daemon": DAEMON_IMAGE, "python": PYTHON_IMAGE},
                        "outer_host": None, "commands": [], "errors": [], "cleanup": [], "p1r_usable": False}
-        self.save()
         try:
+            self.output.mkdir(parents=True)
+            self.scratch = Path(tempfile.mkdtemp(prefix="p1r-isolation-" + self.invocation + "-"))
+            self.config = self.scratch / "docker-config"
+            self.config.mkdir()
+            self.save()
             # Resolve the outer endpoint exactly once. Its context/config is never copied inside.
             self.outer_host = outer_host or subprocess.check_output(
                 ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"], env=os.environ).decode().strip()
@@ -266,9 +310,8 @@ class IsolatedRunner:
             # credentials from a rejected URI or copy ambient client configuration.
             require(bool(re.fullmatch(r"unix:///[^\s?#]+", self.outer_host)),
                     "only a local Unix Docker endpoint is supported")
-            self.workspace = Path(workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT)
-            require(self.workspace.is_absolute() and self.workspace == self.workspace.resolve()
-                    and ROOT.is_relative_to(self.workspace) and "," not in str(self.workspace), "workspace mount substituted")
+            selected_workspace = workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT
+            self.workspace = validate_workspace(selected_workspace, ROOT, self.outer_host)
             require(self.output.is_relative_to(self.workspace), "isolation output is outside the mounted workspace; private evidence would be lost")
             self.result["outer_host"] = self.outer_host
             self.save()
@@ -282,7 +325,7 @@ class IsolatedRunner:
         self.result["owned_containers"] = self.containers
         self.result["pending_containers"] = self.pending
         self.result["owned_volume"] = self.volume if self.volume_created else None
-        self.result["owned_scratch"] = str(self.scratch)
+        self.result["owned_scratch"] = str(self.scratch) if self.scratch is not None else None
         write_json(self.output / "isolation.json", self.result)
 
     def docker(self, arguments, check=True, timeout=300):
@@ -298,8 +341,15 @@ class IsolatedRunner:
             code, data = 127, str(error).encode()
         except KeyboardInterrupt as error:
             code, data, interrupted = 130, b"outer command interrupted", error
-        self.result["commands"].append({"id": len(self.result["commands"])+1, "argv": argv, "started_utc": started, "finished_utc": stamp(),
-                                        "exit_code": code, "output": data.decode("utf-8", "replace"), "output_sha256": digest(data)})
+        row = {"id": len(self.result["commands"])+1, "argv": argv, "started_utc": started, "finished_utc": stamp(),
+               "exit_code": code, "output": data.decode("utf-8", "replace")}
+        row["output_sha256"] = digest(row["output"].encode())
+        try:
+            data.decode("utf-8")
+        except UnicodeDecodeError:
+            self.result["errors"].append("outer Docker output is not UTF-8")
+            row.update(raw_output_base64=base64.b64encode(data).decode(), raw_output_sha256=digest(data))
+        self.result["commands"].append(row)
         self.save()
         if interrupted is not None:
             raise interrupted
@@ -553,10 +603,11 @@ class IsolatedRunner:
                 attempt["targeted"].append("scratch:" + str(self.scratch))
                 try:
                     require(not self.pending, "scratch retained for unresolved container creation")
-                    if self.scratch.exists():
+                    if self.scratch is not None and self.scratch.exists():
                         shutil.rmtree(self.scratch)
-                    require(not self.scratch.exists(), "scratch removal did not establish absence")
-                    attempt["absent_scratch"].append(str(self.scratch))
+                    require(self.scratch is None or not self.scratch.exists(), "scratch removal did not establish absence")
+                    if self.scratch is not None:
+                        attempt["absent_scratch"].append(str(self.scratch))
                 except (Exception, KeyboardInterrupt) as error:
                     attempt["remaining"].append("scratch:" + str(self.scratch))
                     attempt["errors"].append(type(error).__name__)
@@ -594,7 +645,7 @@ def main(arguments=None):
         arguments = arguments[1:]
     else:
         parser.add_argument("--outer-host")
-        parser.add_argument("--workspace", type=Path)
+        parser.add_argument("--workspace")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(arguments)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command

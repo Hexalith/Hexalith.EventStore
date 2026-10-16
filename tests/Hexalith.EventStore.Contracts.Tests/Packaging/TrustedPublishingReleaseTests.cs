@@ -49,9 +49,15 @@ public sealed class TrustedPublishingReleaseTests
         workflow.ShouldContain("22a578b576a515d2af214fe81859447fffc97981");
         workflow.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
         workflow.ShouldContain("source_ci_workflow=\"ci.yml\"");
-        workflow.ShouldContain("source_ci_workflow=\"commitlint.yml\"");
+        workflow.ShouldContain("for required_workflow in ci.yml p1r-qualification.yml commitlint.yml");
         workflow.ShouldContain("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'");
-        workflow.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
+        workflow.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'true'");
+        workflow.ShouldContain("HEXALITH_RELEASE_RESERVED_VERSION: ${{ inputs.release-version }}");
+        workflow.ShouldContain("HEXALITH_RELEASE_AUTHORITY_ISSUE_URL: ${{ inputs.release-authority-issue-url }}");
+        workflow.ShouldContain("HEXALITH_RELEASE_AUTHORITY_OWNER: ${{ inputs.release-authority-owner }}");
+        workflow.ShouldContain("HEXALITH_RELEASE_CANDIDATE_SHA256: ${{ needs.verify-source.outputs.candidate-identity-sha256 }}");
+        workflow.IndexOf("Upload read-only candidate identity before production approval", StringComparison.Ordinal)
+            .ShouldBeLessThan(workflow.IndexOf("  release:", StringComparison.Ordinal));
         workflow.ShouldContain("src/Hexalith.EventStore/Hexalith.EventStore.csproj|eventstore");
         configuration.ShouldContain("scripts/validate-publication-preflight.sh");
         configuration.ShouldContain("dotnet nuget push");

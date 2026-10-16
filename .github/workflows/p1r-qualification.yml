@@ -34,6 +34,14 @@ jobs:
       - name: Verify P1R published executor regressions
         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_published_executor.py'
 
+      - name: Initialize .NET for actual fixture registration checks
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Verify real Host and Domain snapshot registration
+        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_snapshot_registration.py'
+
       - name: Verify P1R private isolation controls
         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_isolation.py'
 
@@ -42,3 +50,18 @@ jobs:
 
       - name: Verify P1R isolation refusals under optimized Python
         run: python3 -O -m unittest discover -s tools/tests -p 'test_p1r_isolation_hardening.py'
+
+      - name: Checkout exact approved publication engine for regression controls
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: 22a578b576a515d2af214fe81859447fffc97981
+          fetch-depth: 1
+          path: .hexalith/builds-publication-tests
+          submodules: false
+          persist-credentials: false
+
+      - name: Verify one-use publication authority and same-run source controls
+        env:
+          HEXALITH_BUILDS_SOURCE: ${{ github.workspace }}/.hexalith/builds-publication-tests
+        run: python3 -m unittest discover -s tools/tests -p 'test_release_publication_authority.py'
