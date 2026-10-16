@@ -110,9 +110,9 @@ mode without mTLS service-to-service calls may be rejected with 403.
 
 ### Aspire diagnostics
 
-Use Aspire MCP tools: `list resources`, `list structured logs`, `list console logs`, `list traces`,
-`list trace structured logs`, `select apphost`/`list apphosts`. Inspect runtime state **before**
-changing code. Use Playwright MCP for functional investigation (get endpoints from `list resources`).
+Use the Aspire CLI: `aspire describe`, `aspire otel logs`, `aspire logs`, `aspire otel traces`,
+`aspire ps`. Inspect runtime state **before**
+changing code. Use Playwright MCP for functional investigation (get endpoints from `aspire describe`).
 
 ### Generated API smoke preflight
 
