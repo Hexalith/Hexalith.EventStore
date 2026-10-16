@@ -1,5 +1,5 @@
 {
-  "observedAtUtc": "2026-10-16T10:29:27.109487+00:00",
+  "observedAtUtc": "2026-10-16T10:30:15.467106+00:00",
   "baselineCommit": "e17e7294f540ebba42fe25192998689f0ecd89c1",
   "currentHeadCommit": "008b83f0443c151052275fd291b0b88ac3aa996c",
   "sharedCatalogCommitHashCleanRechecked": true,
@@ -150,7 +150,7 @@
   "ad12Nfr8SealedCiTransition": "not performed; local qualification is not authenticated exact-head CI seal or production acceptance",
   "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
   "gitDiffCheckExitCode": 0,
-  "changedNewUtf8FilesChecked": 20,
+  "changedNewUtf8FilesChecked": 0,
   "textHygiene": "LF/no BOM/no trailing whitespace/final newline passed",
   "retainedEvidenceTextFilesScanned": 128,
   "retainedRawRuntimeIdentifierHttpLeakLines": 0,

@@ -2,7 +2,7 @@
 title: 'Story 6.4: Projection Cost And Sequence Guard Implementation'
 type: 'feature'
 created: '2026-10-15'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'e17e7294f540ebba42fe25192998689f0ecd89c1'
