@@ -1,0 +1,129 @@
+....................................................................E....EE..E..........................
+======================================================================
+ERROR: testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof (test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 219, in testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof
+    self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1439, in receipt_outcome
+    bind_lane(receipt, outcome, context)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1338, in bind_lane
+    validate_final_isolation(receipt,context)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1300, in validate_final_isolation
+    p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    reference["wrapper"]["path"], validate_times)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 157, in validate
+    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume),['infinity'])
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 136, in created
+    row = take(['create','--cidfile',scratch/(role+'.cid'),'--name','p1r-isolation-'+invocation+'-'+role,
+                '--label',isolation.LABEL+'='+invocation,*options,image,*entry])
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 93, in take
+    require(row['argv'][5:] == list(map(str,argv)), 'isolation literal lifecycle command substituted')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: isolation literal lifecycle command substituted
+
+======================================================================
+ERROR: testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes (test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 664, in testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes
+    self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1439, in receipt_outcome
+    bind_lane(receipt, outcome, context)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1338, in bind_lane
+    validate_final_isolation(receipt,context)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1300, in validate_final_isolation
+    p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    reference["wrapper"]["path"], validate_times)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 157, in validate
+    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume),['infinity'])
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 136, in created
+    row = take(['create','--cidfile',scratch/(role+'.cid'),'--name','p1r-isolation-'+invocation+'-'+role,
+                '--label',isolation.LABEL+'='+invocation,*options,image,*entry])
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 93, in take
+    require(row['argv'][5:] == list(map(str,argv)), 'isolation literal lifecycle command substituted')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: isolation literal lifecycle command substituted
+
+======================================================================
+ERROR: testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract (test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 733, in testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract
+    self.assertEqual(qualification.receipt_outcome(restore,context)[2]['execution'],'passed')
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1459, in receipt_outcome
+    bind_recovery(receipt, outcome, lane, context)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1421, in bind_recovery
+    validate_final_isolation(receipt,context)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1300, in validate_final_isolation
+    p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    reference["wrapper"]["path"], validate_times)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 157, in validate
+    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume),['infinity'])
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 136, in created
+    row = take(['create','--cidfile',scratch/(role+'.cid'),'--name','p1r-isolation-'+invocation+'-'+role,
+                '--label',isolation.LABEL+'='+invocation,*options,image,*entry])
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 93, in take
+    require(row['argv'][5:] == list(map(str,argv)), 'isolation literal lifecycle command substituted')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: isolation literal lifecycle command substituted
+
+======================================================================
+ERROR: testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands (test_p1r_published_executor.ProposedQualifiedSnapshotWitnessTests.testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 619, in testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands
+    self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1439, in receipt_outcome
+    bind_lane(receipt, outcome, context)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1338, in bind_lane
+    validate_final_isolation(receipt,context)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1300, in validate_final_isolation
+    p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    reference["wrapper"]["path"], validate_times)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 157, in validate
+    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume),['infinity'])
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 136, in created
+    row = take(['create','--cidfile',scratch/(role+'.cid'),'--name','p1r-isolation-'+invocation+'-'+role,
+                '--label',isolation.LABEL+'='+invocation,*options,image,*entry])
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation_evidence.py", line 93, in take
+    require(row['argv'][5:] == list(map(str,argv)), 'isolation literal lifecycle command substituted')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: isolation literal lifecycle command substituted
+
+----------------------------------------------------------------------
+Ran 104 tests in 25.144s
+
+FAILED (errors=4)

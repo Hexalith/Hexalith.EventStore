@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "dotnet",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/evidence-audit/bin/Debug/net10.0/EvidenceAudit.dll",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016",
+    "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "captured_at_utc": "2026-10-16T13:16:58.700886+00:00",
+  "exit_code": 1,
+  "log": "refreshed-evidence-ingestion-audit.log",
+  "log_sha256": "17548682030569b160b10d066886b0355481c9e2348525bc7995097b57d3f7cd",
+  "result": {
+    "scanned_files": 308,
+    "findings": [
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/pre-canonical-refresh-release-analysis/registry-observations.json:572",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/pre-canonical-refresh-reviewed-reconciliation.diff:211",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/pre-canonical-refresh-reviewed-reconciliation.diff:6310",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/release-analysis/registry-observations.json:572",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/review-v1.diff:193",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/review-v1.diff:6287",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/review-v1.diff:6288",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/reviewed-reconciliation.diff:211",
+      "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/reviewed-reconciliation.diff:6310"
+    ],
+    "passed": false
+  },
+  "scope": "actual canonical reader over retained new bundle, including preserved pre-refresh captures; no exemptions or retirement"
+}

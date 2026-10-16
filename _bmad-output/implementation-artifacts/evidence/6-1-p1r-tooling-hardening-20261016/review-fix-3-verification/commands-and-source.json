@@ -1,0 +1,56 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "test_p1r_isolation_hardening.LifecycleTests.testNewSessionProtectedPidAliasesAndResurrectedProcessAreRefused",
+        "test_p1r_isolation_hardening.LifecycleTests.testCoherentIdentityControlsDetectSessionOmissionAndDictionaryPidRegression"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "env": {
+        "PYTHONPATH": "tools:tools/tests"
+      },
+      "exit_code": 0,
+      "output": "p1r-review3-identity.log",
+      "sha256": "8037712d1ec77f48c7898f9c773e292c3c10c4e6fccd53c1ff5cf38ffccca918"
+    },
+    {
+      "argv": [
+        "python3",
+        "-O",
+        "-m",
+        "unittest",
+        "test_p1r_isolation_hardening.LifecycleTests.testNewSessionProtectedPidAliasesAndResurrectedProcessAreRefused",
+        "test_p1r_isolation_hardening.LifecycleTests.testCoherentIdentityControlsDetectSessionOmissionAndDictionaryPidRegression"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "env": {
+        "PYTHONPATH": "tools:tools/tests"
+      },
+      "exit_code": 0,
+      "output": "p1r-review3-identity-optimized.log",
+      "sha256": "92c00481eb29fd41aee3180c8b12beb047ca1d2da350accadb9d47c221fdaca9"
+    }
+  ],
+  "git_diff_check": {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  "scope": "test-only coherent identity controls and focused validator mutation sensitivity",
+  "source_files": {
+    "tools/tests/test_p1r_isolation_hardening.py": "c4021b0bc32b199c8745591cf7b36689337a1893757471f5a1f08a38ae6934db"
+  },
+  "unchanged_production_and_fixture": {
+    "tools/p1r_isolation.py": "d42cfbf97ca3cf50e9334bba6843fc6b912ebc6577fcc80f0a9cf84c78b260b6",
+    "tools/p1r_isolation_evidence.py": "4640dfce0d27e86fc578befa7b35d1458e45e3931fb7bd52de90d5fa381188cd",
+    "tools/p1r_published_qualification.py": "814ba52e8fa2b54f38d043ca2263f1d784b56ae46f948891a10189e8b840d680",
+    "tools/tests/p1r_isolation_fixture.py": "2d0089b9798eccf9ff03b8b489047a34c092ad6f7ce45763c9fa75502eefef4e",
+    "tools/tests/test_p1r_isolation.py": "d36b6d805df5b02d55cee11d1aa7547e2f08153572675369fdfe16ac3f3983e1"
+  }
+}

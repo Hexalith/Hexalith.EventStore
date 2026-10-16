@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_executor.py",
+    "-v"
+  ],
+  "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_published_executor.py -v",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 29.641477372000736,
+  "exit_code": 0,
+  "log": "python-published_executor.log",
+  "log_sha256": "9e7dd06abc762fd6642777eca4a4e0bce49d28d2ed73fb9dabee5ff8cab0f2fb",
+  "passed": true,
+  "started_utc": "2026-10-16T11:25:50.126302+00:00",
+  "timed_out": false
+}

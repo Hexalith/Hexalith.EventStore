@@ -1,0 +1,29 @@
+{
+  "changes": [
+    "Only GitHub Actions-authored cross-comment consumption records can trigger replay refusal.",
+    "Candidate exposes its run attempt; protected release diagnoses prior/missing attempts before downloading artifacts.",
+    "Remote endpoint negative-fixture credentials generated with uuid at runtime."
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/release.yml",
+      "sha256": "d4e62c9ce4b4c63dfc39ea20558ddf4d88ade1583150b380363656aaaf26bf14",
+      "bytes": 14521
+    },
+    {
+      "path": "tools/release-publication-identity.py",
+      "sha256": "33107a8ff65cc171ca17f335fad43fcb3dc1764dff474e99d61c38a6cce2fcf5",
+      "bytes": 5119
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "sha256": "0850bdade540924442bb31c7763c4db30ba6746f9c869712ca5db444f1100bc5",
+      "bytes": 19255
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "sha256": "536ec24ee6aa77e1ec5960f5983a8b5f08cf982340d81909f07ef51294dd9341",
+      "bytes": 32364
+    }
+  ]
+}

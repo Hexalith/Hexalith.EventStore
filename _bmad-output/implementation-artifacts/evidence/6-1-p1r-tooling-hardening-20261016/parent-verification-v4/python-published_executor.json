@@ -1,0 +1,27 @@
+{
+  "acceptable_exit_codes": [
+    0
+  ],
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_executor.py",
+    "-v"
+  ],
+  "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_published_executor.py -v",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 33.283698708000884,
+  "exit_code": 0,
+  "log": "python-published_executor.log",
+  "log_sha256": "b83afb2b37c110e1cd1cb75f32d6e1197368bbdf8895393af2b8103cf652fc6f",
+  "passed": true,
+  "require_empty_output": false,
+  "started_utc": "2026-10-16T11:51:17.885772+00:00",
+  "timed_out": false
+}

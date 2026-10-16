@@ -1,0 +1,41 @@
+{
+  "captured_at_utc": "2026-10-16T11:16:38.204261+00:00",
+  "commands": [
+    {
+      "argv": [
+        "aspire",
+        "ps",
+        "--format",
+        "Json"
+      ],
+      "exit_code": 0,
+      "output": "[]"
+    },
+    {
+      "argv": [
+        "aspire",
+        "start",
+        "--non-interactive",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+      ],
+      "exit_code": 2,
+      "apphost_build": "succeeded, zero warnings/errors",
+      "apphost_exit_code": 134
+    }
+  ],
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "logs": [
+    {
+      "path": "aspire-cli-startup.log",
+      "sha256": "03edb7d3b5569685eed0a7737f6f0df809cd93759c389a85c0f4cdd74cb21ece",
+      "bytes": 24695
+    },
+    {
+      "path": "aspire-apphost-startup.log",
+      "sha256": "040aaed576ab3e58dce2599d785911de6e05a4cafddaf57abe54750a9b0641d9",
+      "bytes": 31789
+    }
+  ],
+  "blocker": "Missing nested Tenants and Tenants.Api host projects; no resources started. Nested submodules were not initialized."
+}

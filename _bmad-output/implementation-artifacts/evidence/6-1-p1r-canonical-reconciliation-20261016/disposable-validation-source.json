@@ -1,0 +1,180 @@
+{
+  "scope": "disposable validation umbrella, independent .git directories; only root-declared EventStore and Builds cloned/absorbed; no nested submodules initialized, no original checkout/index/gitlink moved",
+  "primary_checkout": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+  "validation_checkout": "/home/administrator/projects/hexalith/p1r-canonical-validation-20261016/references/Hexalith.EventStore",
+  "canonical_source": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+  "enclosing_superproject": "/home/administrator/projects/hexalith/p1r-canonical-validation-20261016",
+  "source_paths": [
+    {
+      "path": ".github/workflows/p1r-qualification.yml",
+      "sha256": "b86865a57a74a1f3fff7e0e8558166ab065bff32fa91c628b0138615fe8d534a",
+      "validation_sha256": "b86865a57a74a1f3fff7e0e8558166ab065bff32fa91c628b0138615fe8d534a"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "sha256": "4c9a4f52bb346492167be7c971ea8772e09e19f220810720c07be242a4d468a3",
+      "validation_sha256": "4c9a4f52bb346492167be7c971ea8772e09e19f220810720c07be242a4d468a3"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/independent-repair-audit.py",
+      "sha256": "5ad23a8f26e51f78f870e6382b9920188b908c72278c7db76fcf7877ec68a676",
+      "validation_sha256": "5ad23a8f26e51f78f870e6382b9920188b908c72278c7db76fcf7877ec68a676"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-and-audit.py",
+      "sha256": "8616171ca7a54c7fe9b1ff2a449320fd9443aee66077909a6fc4bdd788250f06",
+      "validation_sha256": "8616171ca7a54c7fe9b1ff2a449320fd9443aee66077909a6fc4bdd788250f06"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-repair.py",
+      "sha256": "963c7e2be3500fa199be9f738f65638ad891a5237352a761ba3ac824303b3dfd",
+      "validation_sha256": "963c7e2be3500fa199be9f738f65638ad891a5237352a761ba3ac824303b3dfd"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/independent-audit-next.py",
+      "sha256": "e549c589c51722ff2c55514fa22a33605f747027aeb4605dd14e4311d703923a",
+      "validation_sha256": "e549c589c51722ff2c55514fa22a33605f747027aeb4605dd14e4311d703923a"
+    },
+    {
+      "path": "scripts/validate-publication-preflight.sh",
+      "sha256": "0139088cc427e56075a7e0941254a7249414eb364b5e53b3bf1547ee763e02c2",
+      "validation_sha256": "0139088cc427e56075a7e0941254a7249414eb364b5e53b3bf1547ee763e02c2"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+      "sha256": "db88f04998973847482432df5650c38638131d44d2c252f3e4a1423d036265c9",
+      "validation_sha256": "db88f04998973847482432df5650c38638131d44d2c252f3e4a1423d036265c9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
+      "sha256": "637edfe42f0064b664b2c554800266754b00ae96c579aeffd241f3a0c0c02d67",
+      "validation_sha256": "637edfe42f0064b664b2c554800266754b00ae96c579aeffd241f3a0c0c02d67"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs",
+      "sha256": "788407891ca53793e881e9249359358891b209fbf081247fae9238837f1420da",
+      "validation_sha256": "788407891ca53793e881e9249359358891b209fbf081247fae9238837f1420da"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs",
+      "sha256": "850ca89cf2804e1b4aa74097155ca330ea628961c314d869c03ee63471b65791",
+      "validation_sha256": "850ca89cf2804e1b4aa74097155ca330ea628961c314d869c03ee63471b65791"
+    },
+    {
+      "path": "tools/p1r-isolated-runner.py",
+      "sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a",
+      "validation_sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a"
+    },
+    {
+      "path": "tools/p1r-published-consumers/Directory.Build.props",
+      "sha256": "4389d0fabcddbef9431e8fbc0db5e12adaeb1e911f2f440c67c1708a52abe1f8",
+      "validation_sha256": "4389d0fabcddbef9431e8fbc0db5e12adaeb1e911f2f440c67c1708a52abe1f8"
+    },
+    {
+      "path": "tools/p1r-published-consumers/FixtureSnapshotQualification.cs",
+      "sha256": "b8e1e4e85a22688cb04ed321244d15c9a359689786c522844a7999b4fc588fd2",
+      "validation_sha256": "b8e1e4e85a22688cb04ed321244d15c9a359689786c522844a7999b4fc588fd2"
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "sha256": "b10cab528d02ee61be0b19d01ef404c0e77d377d52e2c8bdf24826b58d4d653b",
+      "validation_sha256": "b10cab528d02ee61be0b19d01ef404c0e77d377d52e2c8bdf24826b58d4d653b"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterSnapshotParity.cs",
+      "sha256": "9a561db3d5a08e7a8af7885d36127f2dfebe118ac6b2953c78d1467fe5e10f45",
+      "validation_sha256": "9a561db3d5a08e7a8af7885d36127f2dfebe118ac6b2953c78d1467fe5e10f45"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Domain.csproj",
+      "sha256": "78895e295715a17eba8fcbf5fe0923b6035a1cd96944a5a3e87c72168d563c11",
+      "validation_sha256": "78895e295715a17eba8fcbf5fe0923b6035a1cd96944a5a3e87c72168d563c11"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Program.cs",
+      "sha256": "92877d1b1d06431ec4695d071e42e2e52983883e0cd5456fa0873b7bf28d5728",
+      "validation_sha256": "92877d1b1d06431ec4695d071e42e2e52983883e0cd5456fa0873b7bf28d5728"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Host.csproj",
+      "sha256": "22bb755614fcfa929b8e9b62b1ca1418c8f22043e2bde18e584e6266b13ad09b",
+      "validation_sha256": "22bb755614fcfa929b8e9b62b1ca1418c8f22043e2bde18e584e6266b13ad09b"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Program.cs",
+      "sha256": "844ff841be18df53814e210f0cf6809b55cb2b35759878e049fde6dc339d0ee0",
+      "validation_sha256": "844ff841be18df53814e210f0cf6809b55cb2b35759878e049fde6dc339d0ee0"
+    },
+    {
+      "path": "tools/p1r-published-consumers/probe/Program.cs",
+      "sha256": "7c778a5d66518a38ef57b344d478b3449e61d2c19e558515012f25abb65a55eb",
+      "validation_sha256": "7c778a5d66518a38ef57b344d478b3449e61d2c19e558515012f25abb65a55eb"
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "sha256": "1519b83c80697a45e5cbe9a2aa01b4646bd45c7c0c0dfe68f7e554ce6b0211d2",
+      "validation_sha256": "1519b83c80697a45e5cbe9a2aa01b4646bd45c7c0c0dfe68f7e554ce6b0211d2"
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "sha256": "415eaddd1140d7cc03584fb2f1ccecb0520a1fe09b3876533ffea07b8b77a47c",
+      "validation_sha256": "415eaddd1140d7cc03584fb2f1ccecb0520a1fe09b3876533ffea07b8b77a47c"
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "sha256": "d42cfbf97ca3cf50e9334bba6843fc6b912ebc6577fcc80f0a9cf84c78b260b6",
+      "validation_sha256": "d42cfbf97ca3cf50e9334bba6843fc6b912ebc6577fcc80f0a9cf84c78b260b6"
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "sha256": "4640dfce0d27e86fc578befa7b35d1458e45e3931fb7bd52de90d5fa381188cd",
+      "validation_sha256": "4640dfce0d27e86fc578befa7b35d1458e45e3931fb7bd52de90d5fa381188cd"
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "sha256": "bf74d692bfb07f9a840cfdfefa927eed0c8bed472534311eb09a79df8a21d8ba",
+      "validation_sha256": "bf74d692bfb07f9a840cfdfefa927eed0c8bed472534311eb09a79df8a21d8ba"
+    },
+    {
+      "path": "tools/p1r_published_qualification.py",
+      "sha256": "814ba52e8fa2b54f38d043ca2263f1d784b56ae46f948891a10189e8b840d680",
+      "validation_sha256": "814ba52e8fa2b54f38d043ca2263f1d784b56ae46f948891a10189e8b840d680"
+    },
+    {
+      "path": "tools/release-publication-identity.py",
+      "sha256": "4072ab642634edfa2b5f6da3f2c59dc057e3e049a1b507e543541e3832db5501",
+      "validation_sha256": "4072ab642634edfa2b5f6da3f2c59dc057e3e049a1b507e543541e3832db5501"
+    },
+    {
+      "path": "tools/tests/p1r_isolation_fixture.py",
+      "sha256": "2d0089b9798eccf9ff03b8b489047a34c092ad6f7ce45763c9fa75502eefef4e",
+      "validation_sha256": "2d0089b9798eccf9ff03b8b489047a34c092ad6f7ce45763c9fa75502eefef4e"
+    },
+    {
+      "path": "tools/tests/release_publication_fixture.py",
+      "sha256": "a558fd274b4f3228d9c0d28276bf0043d420105dc11d845486f6372b1b8f8a1a",
+      "validation_sha256": "a558fd274b4f3228d9c0d28276bf0043d420105dc11d845486f6372b1b8f8a1a"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "sha256": "d36b6d805df5b02d55cee11d1aa7547e2f08153572675369fdfe16ac3f3983e1",
+      "validation_sha256": "d36b6d805df5b02d55cee11d1aa7547e2f08153572675369fdfe16ac3f3983e1"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "sha256": "c4021b0bc32b199c8745591cf7b36689337a1893757471f5a1f08a38ae6934db",
+      "validation_sha256": "c4021b0bc32b199c8745591cf7b36689337a1893757471f5a1f08a38ae6934db"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "sha256": "de941529a908e236c86903f8b065322ddce1987385f9ba473bc77137414f079e",
+      "validation_sha256": "de941529a908e236c86903f8b065322ddce1987385f9ba473bc77137414f079e"
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "sha256": "8ff3f03458c6fc61fb370163ab154e29b531adface322572e565846e2f212503",
+      "validation_sha256": "8ff3f03458c6fc61fb370163ab154e29b531adface322572e565846e2f212503"
+    }
+  ],
+  "all_copied_bytes_equal": true
+}

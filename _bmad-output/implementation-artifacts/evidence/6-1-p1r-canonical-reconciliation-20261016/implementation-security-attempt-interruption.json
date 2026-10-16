@@ -1,0 +1,10 @@
+{
+  "recorded_at_utc": "2026-10-16T12:45:14.607915+00:00",
+  "implementation_report": "Scanner/snapshot command was reported running under session18196, process52908; completion was not reported.",
+  "parent_poll": {
+    "session_id": 18196,
+    "result": "write_stdin failed: Unknown process id18196"
+  },
+  "parent_process_observation": "ps -p52908 found no process; no implementation server-security-snapshot-tests receipt/log exists",
+  "result": "completion unobserved; no passing claim; independent parent execution follows"
+}

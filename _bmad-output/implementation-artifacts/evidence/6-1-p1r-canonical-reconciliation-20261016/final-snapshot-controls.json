@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "*EventStreamReaderTests",
+    "-class",
+    "*SnapshotManagerTests",
+    "-class",
+    "*AggregateActorManualSnapshotTests",
+    "-class",
+    "*AggregateActorFoldedSnapshotMigrationTests"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+  "started_at_utc": "2026-10-16T12:54:55.647258+00:00",
+  "duration_seconds": 31.27995539800031,
+  "exit_code": 0,
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HEXALITH_BUILDS_SOURCE": "/home/administrator/projects/hexalith/projects/references/Hexalith.Builds"
+  },
+  "log": "final-snapshot-controls.log",
+  "log_bytes": 477,
+  "log_sha256": "1a0a0ca456a992eb5ac8440ebf38e05f04e4151dd4c8b2f5a64cce5643032ef1"
+}

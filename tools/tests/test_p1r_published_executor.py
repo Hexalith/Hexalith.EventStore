@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 import subprocess
 import sys
+import shutil
 import tempfile
 import unittest
 from unittest import mock
@@ -24,7 +25,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
     candidate_version = '3.121.0'
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory()
+        self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
         self.addCleanup(self.temporary.cleanup)
 
     def testRequirementUsesSelectedCaseAndWriterRatherThanOptionalProof(self):
@@ -204,56 +205,14 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
         return receipt,context
 
     def attach_isolation(self,receipt,context):
-        import p1r_isolation as isolation
-        root = Path(self.temporary.name)
-        wrapper_root = root/'wrapper'
-        path = root/'receipts'/(receipt['id']+'.json')
-        executor.write_json(path,receipt)
-        execution = json.loads((root/'execution.json').read_bytes())
-        execution.update(schema='hexalith.p1r.executor.v1',started_utc='2026-10-14T00:00:00+00:00',
-            finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=receipt['inputs_sha256'],receipts=[str(path)])
-        executor.write_json(root/'execution.json',execution)
-        command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(root/'inputs.json')]
-        invocation,sdk,daemon = 'f'*32,'c'*64,'d'*64
-        scratch,volume = str(root/'removed-scratch'),'owned-volume'
-        private = {'schema':isolation.SCHEMA,'invocation':invocation,'started_utc':'2026-10-14T00:00:00+00:00',
-            'finished_utc':'2026-10-14T00:00:32+00:00','passed':True,'exit_code':0,'errors':[],'command':command,
-            'source_binding':context['source_binding'],'source_checked_after_cleanup':True,
-            'cleanup':[{'remaining':[],'errors':[]} for _ in range(2)],
-            'proof':{'outer_daemon_id':'outer','daemon':{'ID':'private','DockerRootDir':'/var/lib/docker/data'},
-                'socket':isolation.SOCKET,'namespaces':{'net':'net:[1]','pid':'pid:[2]'},
-                'daemon_namespaces':{'net':'net:[1]','pid':'pid:[2]'}}}
-        python = context['source_binding']['python']
-        private['proof'].update(executables={'python':{'path':python['path'],'sha256':python['sha256']}},python_version=python['version'])
-        private_path = wrapper_root/'private-execution.json'
-        executor.write_json(private_path,private)
-        wrapper = {'schema':isolation.SCHEMA,'invocation':invocation,'started_utc':'2026-10-14T00:00:00+00:00',
-            'finished_utc':'2026-10-14T00:00:40+00:00','passed':True,'command_exit_code':0,'errors':[],'inner_command':command,
-            'images':{'sdk':isolation.SDK_IMAGE,'daemon':isolation.DAEMON_IMAGE,'python':isolation.PYTHON_IMAGE},
-            'outer_daemon_id':'outer','pending_containers':{},'sdk':sdk,'daemon':daemon,
-            'owned_containers':{sdk:{'role':'sdk','image':isolation.SDK_IMAGE},daemon:{'role':'daemon','image':isolation.DAEMON_IMAGE}},
-            'owned_volume':volume,'owned_scratch':scratch,
-            'private_execution':{'path':str(private_path),'sha256':executor.digest(private_path.read_bytes())},
-            'runner_proof':{'Id':sdk,'Labels':{isolation.LABEL:invocation},'NetworkMode':'container:'+daemon,'PidMode':'container:'+daemon,
-                'Ports':{},'Privileged':False,'Mounts':[{'Destination':'/var/lib/docker','Type':'volume','Name':volume},
-                    {'Destination':str(preparation.ROOT),'Source':str(preparation.ROOT),'Type':'bind'}]},
-            'cleanup':[{'remaining':[],'errors':[],'absent_containers':[sdk,daemon],'absent_volumes':[volume],
-                'absent_scratch':[scratch],'nested_inventory':{'complete':True,'containers':[]}} for _ in range(2)]}
-        wrapper.update(outer_host='unix:///outer',commands=[])
-        prefix = ['docker','--host',wrapper['outer_host'],'--config',str(Path(scratch)/'docker-config')]
-        for index,attempt in enumerate(wrapper['cleanup']):
-            second = 34+2*index
-            attempt.update(started_utc=f'2026-10-14T00:00:{second}+00:00',finished_utc=f'2026-10-14T00:00:{second+1}+00:00')
-            arguments = [(['exec',daemon,'docker','--host',isolation.SOCKET,'ps','-aq','--no-trunc'],0,'')]
-            arguments += [(['inspect','--format',isolation.INSPECT,identity],1,'No such container') for identity in (sdk,sdk,daemon,daemon)]
-            arguments += [(['volume','inspect','--format','{{json .}}',volume],1,'no such volume') for _ in range(2)]
-            for sequence,(argv,code,output) in enumerate(arguments):
-                wrapper['commands'].append({'argv':prefix+argv,'exit_code':code,'output':output,'output_sha256':executor.digest(output.encode()),
-                    'started_utc':f'2026-10-14T00:00:{second}.{sequence+1:06d}+00:00',
-                    'finished_utc':f'2026-10-14T00:00:{second}.{sequence+2:06d}+00:00'})
-        executor.write_json(wrapper_root/'isolation.json',wrapper)
-        qualification.finalize_isolation_receipts(root,wrapper_root,context['inputs']['value'])
-        return json.loads(path.read_bytes())
+        from p1r_isolation_fixture import run_controller
+        # Each inherited fixture call gets a fresh real controller lifecycle.
+        wrapper = Path(self.temporary.name)/'wrapper'
+        if wrapper.exists():
+            shutil.rmtree(wrapper)
+        code,worker,retained = run_controller(Path(self.temporary.name),receipt,context)
+        self.assertEqual(code,0,worker.result['errors'])
+        return retained
 
     def testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof(self):
         receipt,context = self.import_fixture()
@@ -709,7 +668,7 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
                 for field in ('started_utc','finished_utc'):
                     item[field] = (datetime.fromisoformat(item[field])-timedelta(seconds=24)).isoformat()
         for mutate in (backwards,lambda value:value['cleanup'].reverse(),
-                       lambda value:value['cleanup'][1].update(started_utc='2026-10-14T00:00:34.500000+00:00')):
+                       lambda value:value['cleanup'][1].update(started_utc=value['cleanup'][0]['started_utc'])):
             receipt,context = self.import_fixture(scope='operational')
             self.change_isolation(receipt,'wrapper',mutate)
             with self.assertRaisesRegex(preparation.InvalidPacket,'outer cleanup'):

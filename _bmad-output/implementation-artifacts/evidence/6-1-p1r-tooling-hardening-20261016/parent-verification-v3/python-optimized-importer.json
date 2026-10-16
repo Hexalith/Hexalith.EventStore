@@ -1,0 +1,28 @@
+{
+  "acceptable_exit_codes": [
+    0
+  ],
+  "argv": [
+    "python3",
+    "-O",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation_hardening.py",
+    "-v"
+  ],
+  "command": "python3 -O -B -m unittest discover -s tools/tests -p test_p1r_isolation_hardening.py -v",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 24.611455067999486,
+  "exit_code": 0,
+  "log": "python-optimized-importer.log",
+  "log_sha256": "f4d007b9b6c3ad85a4346611cc9d9f5cf7f084b6eec24f90c17f3e84e4ad583b",
+  "passed": true,
+  "require_empty_output": false,
+  "started_utc": "2026-10-16T11:47:07.912517+00:00",
+  "timed_out": false
+}

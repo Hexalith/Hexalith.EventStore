@@ -35,6 +35,9 @@ LABEL = "hexalith.p1r.isolation"
 MARKER = "HEXALITH_P1R_ISOLATION"
 OUTER_MARKER = "HEXALITH_P1R_OUTER_DAEMON_ID"
 SCHEMA = "hexalith.p1r.isolation.v1"
+STARTUP_SECONDS = 30
+PROBE_SECONDS = 2
+IMAGE_INSPECT = '{"Id":{{json .Id}},"RepoDigests":{{json .RepoDigests}},"Os":{{json .Os}},"Architecture":{{json .Architecture}}}'
 IMAGE_PATTERN = r"[^\s]+@sha256:[0-9a-f]{64}"
 INSPECT = ('{"Id":{{json .Id}},"Image":{{json .Image}},"Name":{{json .Name}},'
            '"Labels":{{json .Config.Labels}},"State":{{json .State}},'
@@ -103,7 +106,8 @@ def private_proof(outer_id):
     for name, path in (("python", Path(sys.executable).resolve()), ("docker", Path(shutil.which("docker"))),
                        ("dotnet", Path(shutil.which("dotnet")).resolve())):
         executables[name] = {"path": str(path), "sha256": digest(regular(path))}
-    return {"daemon": {key: daemon.get(key) for key in ("ID", "ServerVersion", "DockerRootDir", "Driver", "Name")},
+    docker_version = json.loads(subprocess.check_output(["docker", "version", "--format", "{{json .}}"], env=environment))
+    return {"docker_version": docker_version, "daemon": {key: daemon.get(key) for key in ("ID", "ServerVersion", "DockerRootDir", "Driver", "Name")},
             "outer_daemon_id": outer_id, "socket": SOCKET, "process": process,
             "namespaces": own, "daemon_namespaces": daemon_namespaces, "executables": executables,
             "python_version": list(sys.version_info[:3]),
@@ -147,9 +151,12 @@ def _inner(output, outer_id, command):
                            **{OUTER_MARKER: outer_id})
         process = subprocess.Popen(command, env=environment, start_new_session=True)
         owner.attach(process)
+        result["root"] = owner.root
+        write_json(output / "private-execution.json", result)
         while process.poll() is None:
             owner.discover()
             time.sleep(.1)
+        result["root"] = owner.root
         result["exit_code"] = process.returncode
         preparation.check_current_source(result["source_binding"])
     except (Exception, KeyboardInterrupt) as error:
@@ -168,7 +175,12 @@ def _inner(output, outer_id, command):
                     owner.discover()
                     time.sleep(.1)
                 result["orderly_command_exit"] = process.poll()
-            result["cleanup"] = [owner.cleanup(), owner.cleanup()]
+            result["cleanup"] = []
+            for index in range(2):
+                started = stamp()
+                attempt = owner.cleanup()
+                result["cleanup"].append(dict(attempt, id=index+1, started_utc=started, finished_utc=stamp(),
+                                              owned_processes=[dict(item) for item in owner.owned.values()]))
             result["owned_processes"] = list(owner.owned.values())
             if "source_binding" in result:
                 try:
@@ -199,6 +211,31 @@ def interrupt_supervisor(output, invocation):
     return 0
 
 
+def executor_input(command, repository):
+    """Bind the complete published executor grammar and exact physical input bytes."""
+    command = list(map(str, command))
+    require(len(command) == 7 and command[:3] == ["python3", str(Path(repository)/"tools/p1r-published-executor.py"), "run"]
+            and command[3] == "--out" and command[5] == "--inputs", "published executor arguments substituted")
+    output, path = Path(command[4]), Path(command[6])
+    require(output.is_absolute() and output == output.resolve() and path.is_absolute(), "published executor paths substituted")
+    return {"path":str(path), "sha256":digest(regular(path))}
+
+
+def sdk_arguments(workspace, repository, invocation, daemon, volume):
+    """Construct the single permitted SDK container profile."""
+    git_paths = [Path(workspace), *(Path(workspace)/name for name in preparation.declared_dependencies(Path(workspace)))]
+    git_options = ["--env", "GIT_CONFIG_COUNT=" + str(len(git_paths))]
+    for index, path in enumerate(git_paths):
+        git_options += ["--env", f"GIT_CONFIG_KEY_{index}=safe.directory", "--env", f"GIT_CONFIG_VALUE_{index}={path}"]
+    return ["--network", "container:"+daemon, "--pid", "container:"+daemon, "--cap-add", "SYS_PTRACE",
+            "--mount", "type=volume,src="+volume+",dst=/var/lib/docker",
+            "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace),
+            "--workdir", str(repository), "--env", MARKER+"="+invocation,
+            "--env", "DOCKER_HOST="+SOCKET, "--env", "DOCKER_CONFIG="+CLIENT_CONFIG, *git_options,
+            "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "--env", "LD_LIBRARY_PATH=/opt/python/lib", "--env", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "--entrypoint", "sleep"]
+
+
 class IsolatedRunner:
     """Own only exact outer container/volume identities carrying this invocation label."""
 
@@ -219,13 +256,16 @@ class IsolatedRunner:
         self.containers, self.pending, self.volume, self.volume_created = {}, {}, "p1r-isolation-" + self.invocation, False
         self.result = {"schema": SCHEMA, "invocation": self.invocation, "scope": "isolated-command-verification",
                        "started_utc": stamp(), "images": {"sdk": SDK_IMAGE, "daemon": DAEMON_IMAGE, "python": PYTHON_IMAGE},
-                       "outer_host": outer_host, "commands": [], "errors": [], "cleanup": [], "p1r_usable": False}
+                       "outer_host": None, "commands": [], "errors": [], "cleanup": [], "p1r_usable": False}
         self.save()
         try:
             # Resolve the outer endpoint exactly once. Its context/config is never copied inside.
             self.outer_host = outer_host or subprocess.check_output(
                 ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"], env=os.environ).decode().strip()
-            require(self.outer_host.startswith(("unix://", "tcp://", "ssh://")), "outer Docker endpoint unavailable")
+            # Refuse remote/TLS/SSH contexts before provisioning. Never retain endpoint
+            # credentials from a rejected URI or copy ambient client configuration.
+            require(bool(re.fullmatch(r"unix:///[^\s?#]+", self.outer_host)),
+                    "only a local Unix Docker endpoint is supported")
             self.workspace = Path(workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT)
             require(self.workspace.is_absolute() and self.workspace == self.workspace.resolve()
                     and ROOT.is_relative_to(self.workspace) and "," not in str(self.workspace), "workspace mount substituted")
@@ -258,7 +298,7 @@ class IsolatedRunner:
             code, data = 127, str(error).encode()
         except KeyboardInterrupt as error:
             code, data, interrupted = 130, b"outer command interrupted", error
-        self.result["commands"].append({"argv": argv, "started_utc": started, "finished_utc": stamp(),
+        self.result["commands"].append({"id": len(self.result["commands"])+1, "argv": argv, "started_utc": started, "finished_utc": stamp(),
                                         "exit_code": code, "output": data.decode("utf-8", "replace"), "output_sha256": digest(data)})
         self.save()
         if interrupted is not None:
@@ -287,6 +327,8 @@ class IsolatedRunner:
             if row is not None:
                 require(row["Name"] == "/" + name and row["Labels"].get(LABEL) == self.invocation,
                         "created outer container ownership substituted")
+                measured = self.result.get("image_measurements", {}).get("python" if role == "python-tools" else role)
+                require(measured is None or row.get("Image") == measured["Id"], "created container image ID substituted")
                 self.containers[row["Id"]] = self.pending.pop(name)
                 self.save()
         require(row is not None, "created outer container identity unavailable")
@@ -304,43 +346,46 @@ class IsolatedRunner:
             outer_id = data.decode().strip()
             require(outer_id, "outer daemon identity missing")
             self.result["outer_daemon_id"] = outer_id
-            for image in (SDK_IMAGE, DAEMON_IMAGE, PYTHON_IMAGE):
+            executable = Path(shutil.which("docker")).resolve()
+            _, version = self.docker(["version", "--format", "{{json .}}"])
+            self.result["outer_toolchain"] = {"docker": {"path":str(executable), "sha256":digest(regular(executable))},
+                                               "version":json.loads(version)}
+            self.result["image_measurements"] = {}
+            for role, image in (("sdk", SDK_IMAGE), ("daemon", DAEMON_IMAGE), ("python", PYTHON_IMAGE)):
                 self.docker(["pull", "--platform", "linux/amd64", image], timeout=600)
+                _, data = self.docker(["image", "inspect", "--format", IMAGE_INSPECT, image])
+                measured = json.loads(data)
+                require(measured.get("Os") == "linux" and measured.get("Architecture") == "amd64"
+                        and image in measured.get("RepoDigests", []) and re.fullmatch(r"sha256:[0-9a-f]{64}", measured.get("Id", "")),
+                        "pinned image platform, digest or image ID differs")
+                self.result["image_measurements"][role] = measured
+                self.save()
             # Register the pending volume before creation, including interrupted creation.
             self.volume_created = True
             self.save()
             self.docker(["volume", "create", "--label", LABEL + "=" + self.invocation, self.volume])
             daemon = self.create("daemon", DAEMON_IMAGE,
-                ["--privileged", "--mount", "type=volume,src=" + self.volume + ",dst=/var/lib/docker", "--entrypoint", "dockerd"],
+                ["--privileged", "--network", "bridge", "--mount", "type=volume,src=" + self.volume + ",dst=/var/lib/docker", "--entrypoint", "dockerd"],
                 ["--host=" + SOCKET, "--data-root=/var/lib/docker/data", "--exec-root=/var/lib/docker/p1r-exec",
                  "--pidfile=/var/lib/docker/p1r-run/dockerd.pid", "--storage-driver=vfs", "--tls=false"])
-            self.docker(["start", daemon])
-            for _ in range(120):
-                status, _ = self.docker(["exec", daemon, "docker", "--host", SOCKET, "info", "--format", "{{.ID}}"], check=False)
+            deadline = time.monotonic() + STARTUP_SECONDS
+            self.docker(["start", daemon], timeout=STARTUP_SECONDS)
+            while True:
+                remaining = deadline - time.monotonic()
+                require(remaining > 0, "private daemon startup timeout")
+                status, _ = self.docker(["exec", daemon, "docker", "--host", SOCKET, "info", "--format", "{{.ID}}"],
+                                        check=False, timeout=min(PROBE_SECONDS, remaining))
+                require(time.monotonic() <= deadline, "private daemon startup timeout")
                 if status == 0:
                     break
-                time.sleep(.25)
-            else:
-                raise InvalidPacket("private daemon startup timeout")
+                remaining = deadline - time.monotonic()
+                require(remaining > 0, "private daemon startup timeout")
+                time.sleep(min(.25, remaining))
             python = self.create("python-tools", PYTHON_IMAGE, ["--network", "none", "--entrypoint", "/bin/true"])
             self.docker(["cp", python + ":/usr/local", self.scratch / "python"])
             self.docker(["cp", daemon + ":/usr/local/bin/docker", self.scratch / "docker"])
-            # The pinned SDK's Git needs exact trusted worktrees; older Git does
-            # not support safe.directory=<workspace>/*. Only root declarations
-            # are used, and this ephemeral environment never writes Git config.
-            git_paths = [self.workspace, *(self.workspace / name for name in preparation.declared_dependencies(self.workspace))]
-            git_options = ["--env", "GIT_CONFIG_COUNT=" + str(len(git_paths))]
-            for index, path in enumerate(git_paths):
-                git_options += ["--env", f"GIT_CONFIG_KEY_{index}=safe.directory", "--env", f"GIT_CONFIG_VALUE_{index}={path}"]
             runner = self.create("sdk", SDK_IMAGE,
-                ["--network", "container:" + daemon, "--pid", "container:" + daemon, "--cap-add", "SYS_PTRACE",
-                 "--mount", "type=volume,src=" + self.volume + ",dst=/var/lib/docker",
-                 "--mount", "type=bind,src=" + str(self.workspace) + ",dst=" + str(self.workspace),
-                 "--workdir", str(ROOT), "--env", MARKER + "=" + self.invocation,
-                 "--env", "DOCKER_HOST=" + SOCKET, "--env", "DOCKER_CONFIG=" + CLIENT_CONFIG,
-                 *git_options,
-                 "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                 "--env", "LD_LIBRARY_PATH=/opt/python/lib", "--env", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "--entrypoint", "sleep"], ["infinity"])
+                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume), ["infinity"])
             self.docker(["cp", self.scratch / "python", runner + ":/opt/python"])
             self.docker(["cp", self.scratch / "docker", runner + ":/usr/local/bin/docker"])
             self.docker(["start", runner])
@@ -350,6 +395,10 @@ class IsolatedRunner:
                     and {row["Destination"] for row in observed["Mounts"]} == {"/var/lib/docker", str(self.workspace)},
                     "runner namespace or mounts substituted")
             self.result["runner_proof"] = observed
+            _, measured = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_proof", "--outer-id", outer_id])
+            self.result["toolchain_proof"] = json.loads(measured)
+            if len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
+                self.result["selected_input"] = executor_input(command, ROOT)
             self.save()
             self.result.update(command_started=True, inner_command=list(map(str, command)), sdk=runner, daemon=daemon)
             self.save()
@@ -372,7 +421,9 @@ class IsolatedRunner:
         if self.result["passed"] and len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
             try:
                 import p1r_published_qualification as qualification
-                selection, _, scope = qualification.load_document(Path(command[command.index("--inputs")+1]), qualification.validate_inputs)
+                selected = executor_input(command, ROOT)
+                require(selected == self.result["selected_input"], "selected input changed during execution")
+                selection, _, scope = qualification.load_document(Path(selected["path"]), qualification.validate_inputs)
                 qualification.finalize_isolation_receipts(Path(command[command.index("--out")+1]),self.output,selection)
             except (Exception, KeyboardInterrupt) as error:
                 self.result["errors"].append(str(error))
@@ -432,7 +483,7 @@ class IsolatedRunner:
         """Retry every exact owned identity, and never select targets by a broad filter."""
         with signal_handling(ignore=True):
             for _ in range(2):
-                attempt = {"started_utc": stamp(), "targeted": [], "remaining": [], "errors": [],
+                attempt = {"id": len(self.result["cleanup"])+1, "started_utc": stamp(), "targeted": [], "remaining": [], "errors": [],
                            "absent_containers": [], "absent_volumes": [], "absent_scratch": []}
                 for name in list(self.pending):
                     try:
@@ -523,6 +574,12 @@ class IsolatedRunner:
 
 def main(arguments=None):
     arguments = list(sys.argv[1:] if arguments is None else arguments)
+    if arguments[:1] == ["_proof"]:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--outer-id", required=True)
+        args = parser.parse_args(arguments[1:])
+        print(json.dumps(private_proof(args.outer_id), sort_keys=True), flush=True)
+        return 0
     if arguments[:1] == ["_interrupt"]:
         parser = argparse.ArgumentParser()
         parser.add_argument("--out", type=Path, required=True)

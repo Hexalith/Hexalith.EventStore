@@ -1,0 +1,136 @@
+[
+  {
+    "label": "test_p1r_qualification",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_qualification.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 1,
+    "elapsed_seconds": 3.982884168624878,
+    "log": "implementation-verification/test_p1r_qualification.log",
+    "sha256": "55e1b51ec28f68308528d008645f613ca4d33a9175991df0b18a5a60c823f3c8"
+  },
+  {
+    "label": "test_p1r_published_qualification",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_qualification.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 0,
+    "elapsed_seconds": 9.29521918296814,
+    "log": "implementation-verification/test_p1r_published_qualification.log",
+    "sha256": "a8b681052c81c798fc15245ccf5d81696a1d80cd2776711569e37037d00125cb"
+  },
+  {
+    "label": "test_p1r_published_executor",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_executor.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 0,
+    "elapsed_seconds": 29.553733587265015,
+    "log": "implementation-verification/test_p1r_published_executor.log",
+    "sha256": "790c75de709dc32d5fedaefb44af235890ccd9fc47a2a34714421093b829c47e"
+  },
+  {
+    "label": "test_p1r_isolation",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 0,
+    "elapsed_seconds": 1.3085925579071045,
+    "log": "implementation-verification/test_p1r_isolation.log",
+    "sha256": "78039d7c53b5417b397ab7c76cea12944a1547bb17895780b9deff3a4453f4d9"
+  },
+  {
+    "label": "test_p1r_isolation_hardening",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation_hardening.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 0,
+    "elapsed_seconds": 26.201805353164673,
+    "log": "implementation-verification/test_p1r_isolation_hardening.log",
+    "sha256": "2d72744e577a8ae4e9d349e4d7957901bd5023ba85942633bd6c371fab0ff807"
+  },
+  {
+    "label": "test_release_publication_authority",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_release_publication_authority.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 0,
+    "elapsed_seconds": 3.6427032947540283,
+    "log": "implementation-verification/test_release_publication_authority.log",
+    "sha256": "717235e30f1808628910891eea0806e69dd344c1e15af6eb36768fcf5d77b9f1"
+  },
+  {
+    "label": "optimized-hardening",
+    "argv": [
+      "python3",
+      "-O",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation_hardening.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+    "exit_code": 0,
+    "elapsed_seconds": 25.649928331375122,
+    "log": "implementation-verification/optimized-hardening.log",
+    "sha256": "ccfabb43ddd761d9a2afb8f117ad5f51028aa8cfebf6426772207cc903129d97"
+  }
+]

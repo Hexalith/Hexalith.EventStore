@@ -1,0 +1,30 @@
+[
+  {
+    "path": "_bmad-output/implementation-artifacts/spec-6-1-p1r-tooling-hardening.md",
+    "sha256": "523b6de9df341e6368a7ac13135cc359e1f4a4c25baf8ec786574d2222915aa8"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/README.md",
+    "sha256": "085062051ebca5e4c5e03af2cf853674412e231480d36824a5b4ddf1c3b07d73"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/publication-readiness-handoff.md",
+    "sha256": "272fb00fb841dc6c21fbfbac6454d81b872ae67430714d1fd41431a8fe3228f9"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/reviewed-source-hardening.json",
+    "sha256": "e5cafbf5ed1fd3f5cb7b7cbe844520c4679c3f3f56eea921b239e96eb01ffd3c"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/delivery-manifest.json",
+    "sha256": "77bb0a8229dcecbee0be201daa944519e7da6331a3510bfa5f999e3621fafa9a"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-recovery-20261015/README.md",
+    "sha256": "886fe217e3d89f69f94775da0935f13cb1e5b84607e8c3a04e0a05a8b3bf874a"
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/publication-readiness-handoff.md",
+    "sha256": "be7f5f9cee215d9f80eca55da93fe5c39f068601305531acd2d1b4ec353ccfee"
+  }
+]

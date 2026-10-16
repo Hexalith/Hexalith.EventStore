@@ -1,0 +1,1457 @@
+diff --git a/.github/workflows/p1r-qualification.yml b/.github/workflows/p1r-qualification.yml
+index b95ba255..ffac16f7 100644
+--- a/.github/workflows/p1r-qualification.yml
++++ b/.github/workflows/p1r-qualification.yml
+@@ -36,3 +36,9 @@ jobs:
+ 
+       - name: Verify P1R private isolation controls
+         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_isolation.py'
++
++      - name: Verify P1R complete isolation lifecycle controls
++        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_isolation_hardening.py'
++
++      - name: Verify P1R isolation refusals under optimized Python
++        run: python3 -O -m unittest discover -s tools/tests -p 'test_p1r_isolation_hardening.py'
+diff --git a/tools/p1r-published-consumers/README.md b/tools/p1r-published-consumers/README.md
+index 921cb525..b5a8e92e 100644
+--- a/tools/p1r-published-consumers/README.md
++++ b/tools/p1r-published-consumers/README.md
+@@ -146,6 +146,28 @@ or unavailable private inventories retain the daemon and volume without removing
+ those containers. An unavailable final supervisor cleanup receipt also preserves
+ the SDK runner. These refusals retain nonpassing evidence for later inspection.
+ 
++
++The supported controller profile requires a local Unix Docker endpoint
++(`unix:///absolute/socket/path`). TCP, TLS and SSH contexts are refused before
++provisioning, with a retained refusal that omits endpoint credentials. Ambient
++Docker TLS settings and client configuration never enter retained proof. Private
++daemon start and readiness probes share one 30-second monotonic deadline; each
++readiness probe has at most two seconds, and late successful probes still fail.
++
++Proposed 3.122.1 receipt import requires the complete controller journal. It binds
++all three pinned image OS/architecture/digest/image-ID measurements to literal
++role creation and inspection, the Python/Docker copy chain, the prelaunch SDK
++toolchain measurement and actual `_inner` launch. Every command has a distinct
++ordered ID and contained timestamps; unrelated Docker mutations are refused.
++The exact executor arguments select a physical input path and raw file hash.
++Private supervisor, root and owned process identities include PID, start ticks,
++PGID and session, with two distinct timed cleanup observations. Docker client
++and server versions and Docker/dotnet executable hashes must agree with the
++prelaunch measurements. Successful private execution and both outer cleanup
++attempts precede final receipt attachment through the real controller caller.
++Private, outer or finalizer failure remains nonpassing. Historical imports retain
++their original contracts, and these tooling controls confer no package qualification.
++
+ Source repair verification and immutable package qualification remain distinct.
+ After independent repair review/verification, propose an immutable successor
+ publication with exact approved version, source/tag, Builds identity and archive
+diff --git a/tools/p1r_isolation.py b/tools/p1r_isolation.py
+index f06febf3..d94061b5 100644
+--- a/tools/p1r_isolation.py
++++ b/tools/p1r_isolation.py
+@@ -35,6 +35,9 @@ LABEL = "hexalith.p1r.isolation"
+ MARKER = "HEXALITH_P1R_ISOLATION"
+ OUTER_MARKER = "HEXALITH_P1R_OUTER_DAEMON_ID"
+ SCHEMA = "hexalith.p1r.isolation.v1"
++STARTUP_SECONDS = 30
++PROBE_SECONDS = 2
++IMAGE_INSPECT = '{"Id":{{json .Id}},"RepoDigests":{{json .RepoDigests}},"Os":{{json .Os}},"Architecture":{{json .Architecture}}}'
+ IMAGE_PATTERN = r"[^\s]+@sha256:[0-9a-f]{64}"
+ INSPECT = ('{"Id":{{json .Id}},"Image":{{json .Image}},"Name":{{json .Name}},'
+            '"Labels":{{json .Config.Labels}},"State":{{json .State}},'
+@@ -103,7 +106,8 @@ def private_proof(outer_id):
+     for name, path in (("python", Path(sys.executable).resolve()), ("docker", Path(shutil.which("docker"))),
+                        ("dotnet", Path(shutil.which("dotnet")).resolve())):
+         executables[name] = {"path": str(path), "sha256": digest(regular(path))}
+-    return {"daemon": {key: daemon.get(key) for key in ("ID", "ServerVersion", "DockerRootDir", "Driver", "Name")},
++    docker_version = json.loads(subprocess.check_output(["docker", "version", "--format", "{{json .}}"], env=environment))
++    return {"docker_version": docker_version, "daemon": {key: daemon.get(key) for key in ("ID", "ServerVersion", "DockerRootDir", "Driver", "Name")},
+             "outer_daemon_id": outer_id, "socket": SOCKET, "process": process,
+             "namespaces": own, "daemon_namespaces": daemon_namespaces, "executables": executables,
+             "python_version": list(sys.version_info[:3]),
+@@ -147,9 +151,12 @@ def _inner(output, outer_id, command):
+                            **{OUTER_MARKER: outer_id})
+         process = subprocess.Popen(command, env=environment, start_new_session=True)
+         owner.attach(process)
++        result["root"] = owner.root
++        write_json(output / "private-execution.json", result)
+         while process.poll() is None:
+             owner.discover()
+             time.sleep(.1)
++        result["root"] = owner.root
+         result["exit_code"] = process.returncode
+         preparation.check_current_source(result["source_binding"])
+     except (Exception, KeyboardInterrupt) as error:
+@@ -168,7 +175,12 @@ def _inner(output, outer_id, command):
+                     owner.discover()
+                     time.sleep(.1)
+                 result["orderly_command_exit"] = process.poll()
+-            result["cleanup"] = [owner.cleanup(), owner.cleanup()]
++            result["cleanup"] = []
++            for index in range(2):
++                started = stamp()
++                attempt = owner.cleanup()
++                result["cleanup"].append(dict(attempt, id=index+1, started_utc=started, finished_utc=stamp(),
++                                              owned_processes=[dict(item) for item in owner.owned.values()]))
+             result["owned_processes"] = list(owner.owned.values())
+             if "source_binding" in result:
+                 try:
+@@ -199,6 +211,31 @@ def interrupt_supervisor(output, invocation):
+     return 0
+ 
+ 
++def executor_input(command, repository):
++    """Bind the complete published executor grammar and exact physical input bytes."""
++    command = list(map(str, command))
++    require(len(command) == 7 and command[:3] == ["python3", str(Path(repository)/"tools/p1r-published-executor.py"), "run"]
++            and command[3] == "--out" and command[5] == "--inputs", "published executor arguments substituted")
++    output, path = Path(command[4]), Path(command[6])
++    require(output.is_absolute() and output == output.resolve() and path.is_absolute(), "published executor paths substituted")
++    return {"path":str(path), "sha256":digest(regular(path))}
++
++
++def sdk_arguments(workspace, repository, invocation, daemon, volume):
++    """Construct the single permitted SDK container profile."""
++    git_paths = [Path(workspace), *(Path(workspace)/name for name in preparation.declared_dependencies(Path(workspace)))]
++    git_options = ["--env", "GIT_CONFIG_COUNT=" + str(len(git_paths))]
++    for index, path in enumerate(git_paths):
++        git_options += ["--env", f"GIT_CONFIG_KEY_{index}=safe.directory", "--env", f"GIT_CONFIG_VALUE_{index}={path}"]
++    return ["--network", "container:"+daemon, "--pid", "container:"+daemon, "--cap-add", "SYS_PTRACE",
++            "--mount", "type=volume,src="+volume+",dst=/var/lib/docker",
++            "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace),
++            "--workdir", str(repository), "--env", MARKER+"="+invocation,
++            "--env", "DOCKER_HOST="+SOCKET, "--env", "DOCKER_CONFIG="+CLIENT_CONFIG, *git_options,
++            "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
++            "--env", "LD_LIBRARY_PATH=/opt/python/lib", "--env", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "--entrypoint", "sleep"]
++
++
+ class IsolatedRunner:
+     """Own only exact outer container/volume identities carrying this invocation label."""
+ 
+@@ -219,13 +256,16 @@ class IsolatedRunner:
+         self.containers, self.pending, self.volume, self.volume_created = {}, {}, "p1r-isolation-" + self.invocation, False
+         self.result = {"schema": SCHEMA, "invocation": self.invocation, "scope": "isolated-command-verification",
+                        "started_utc": stamp(), "images": {"sdk": SDK_IMAGE, "daemon": DAEMON_IMAGE, "python": PYTHON_IMAGE},
+-                       "outer_host": outer_host, "commands": [], "errors": [], "cleanup": [], "p1r_usable": False}
++                       "outer_host": None, "commands": [], "errors": [], "cleanup": [], "p1r_usable": False}
+         self.save()
+         try:
+             # Resolve the outer endpoint exactly once. Its context/config is never copied inside.
+             self.outer_host = outer_host or subprocess.check_output(
+                 ["docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}"], env=os.environ).decode().strip()
+-            require(self.outer_host.startswith(("unix://", "tcp://", "ssh://")), "outer Docker endpoint unavailable")
++            # Refuse remote/TLS/SSH contexts before provisioning. Never retain endpoint
++            # credentials from a rejected URI or copy ambient client configuration.
++            require(bool(re.fullmatch(r"unix:///[^\s?#]+", self.outer_host)),
++                    "only a local Unix Docker endpoint is supported")
+             self.workspace = Path(workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT)
+             require(self.workspace.is_absolute() and self.workspace == self.workspace.resolve()
+                     and ROOT.is_relative_to(self.workspace) and "," not in str(self.workspace), "workspace mount substituted")
+@@ -258,7 +298,7 @@ class IsolatedRunner:
+             code, data = 127, str(error).encode()
+         except KeyboardInterrupt as error:
+             code, data, interrupted = 130, b"outer command interrupted", error
+-        self.result["commands"].append({"argv": argv, "started_utc": started, "finished_utc": stamp(),
++        self.result["commands"].append({"id": len(self.result["commands"])+1, "argv": argv, "started_utc": started, "finished_utc": stamp(),
+                                         "exit_code": code, "output": data.decode("utf-8", "replace"), "output_sha256": digest(data)})
+         self.save()
+         if interrupted is not None:
+@@ -287,6 +327,8 @@ class IsolatedRunner:
+             if row is not None:
+                 require(row["Name"] == "/" + name and row["Labels"].get(LABEL) == self.invocation,
+                         "created outer container ownership substituted")
++                measured = self.result.get("image_measurements", {}).get("python" if role == "python-tools" else role)
++                require(measured is None or row.get("Image") == measured["Id"], "created container image ID substituted")
+                 self.containers[row["Id"]] = self.pending.pop(name)
+                 self.save()
+         require(row is not None, "created outer container identity unavailable")
+@@ -304,43 +346,46 @@ class IsolatedRunner:
+             outer_id = data.decode().strip()
+             require(outer_id, "outer daemon identity missing")
+             self.result["outer_daemon_id"] = outer_id
+-            for image in (SDK_IMAGE, DAEMON_IMAGE, PYTHON_IMAGE):
++            executable = Path(shutil.which("docker")).resolve()
++            _, version = self.docker(["version", "--format", "{{json .}}"])
++            self.result["outer_toolchain"] = {"docker": {"path":str(executable), "sha256":digest(regular(executable))},
++                                               "version":json.loads(version)}
++            self.result["image_measurements"] = {}
++            for role, image in (("sdk", SDK_IMAGE), ("daemon", DAEMON_IMAGE), ("python", PYTHON_IMAGE)):
+                 self.docker(["pull", "--platform", "linux/amd64", image], timeout=600)
++                _, data = self.docker(["image", "inspect", "--format", IMAGE_INSPECT, image])
++                measured = json.loads(data)
++                require(measured.get("Os") == "linux" and measured.get("Architecture") == "amd64"
++                        and image in measured.get("RepoDigests", []) and re.fullmatch(r"sha256:[0-9a-f]{64}", measured.get("Id", "")),
++                        "pinned image platform, digest or image ID differs")
++                self.result["image_measurements"][role] = measured
++                self.save()
+             # Register the pending volume before creation, including interrupted creation.
+             self.volume_created = True
+             self.save()
+             self.docker(["volume", "create", "--label", LABEL + "=" + self.invocation, self.volume])
+             daemon = self.create("daemon", DAEMON_IMAGE,
+-                ["--privileged", "--mount", "type=volume,src=" + self.volume + ",dst=/var/lib/docker", "--entrypoint", "dockerd"],
++                ["--privileged", "--network", "bridge", "--mount", "type=volume,src=" + self.volume + ",dst=/var/lib/docker", "--entrypoint", "dockerd"],
+                 ["--host=" + SOCKET, "--data-root=/var/lib/docker/data", "--exec-root=/var/lib/docker/p1r-exec",
+                  "--pidfile=/var/lib/docker/p1r-run/dockerd.pid", "--storage-driver=vfs", "--tls=false"])
+-            self.docker(["start", daemon])
+-            for _ in range(120):
+-                status, _ = self.docker(["exec", daemon, "docker", "--host", SOCKET, "info", "--format", "{{.ID}}"], check=False)
++            deadline = time.monotonic() + STARTUP_SECONDS
++            self.docker(["start", daemon], timeout=STARTUP_SECONDS)
++            while True:
++                remaining = deadline - time.monotonic()
++                require(remaining > 0, "private daemon startup timeout")
++                status, _ = self.docker(["exec", daemon, "docker", "--host", SOCKET, "info", "--format", "{{.ID}}"],
++                                        check=False, timeout=min(PROBE_SECONDS, remaining))
++                require(time.monotonic() <= deadline, "private daemon startup timeout")
+                 if status == 0:
+                     break
+-                time.sleep(.25)
+-            else:
+-                raise InvalidPacket("private daemon startup timeout")
++                remaining = deadline - time.monotonic()
++                require(remaining > 0, "private daemon startup timeout")
++                time.sleep(min(.25, remaining))
+             python = self.create("python-tools", PYTHON_IMAGE, ["--network", "none", "--entrypoint", "/bin/true"])
+             self.docker(["cp", python + ":/usr/local", self.scratch / "python"])
+             self.docker(["cp", daemon + ":/usr/local/bin/docker", self.scratch / "docker"])
+-            # The pinned SDK's Git needs exact trusted worktrees; older Git does
+-            # not support safe.directory=<workspace>/*. Only root declarations
+-            # are used, and this ephemeral environment never writes Git config.
+-            git_paths = [self.workspace, *(self.workspace / name for name in preparation.declared_dependencies(self.workspace))]
+-            git_options = ["--env", "GIT_CONFIG_COUNT=" + str(len(git_paths))]
+-            for index, path in enumerate(git_paths):
+-                git_options += ["--env", f"GIT_CONFIG_KEY_{index}=safe.directory", "--env", f"GIT_CONFIG_VALUE_{index}={path}"]
+             runner = self.create("sdk", SDK_IMAGE,
+-                ["--network", "container:" + daemon, "--pid", "container:" + daemon, "--cap-add", "SYS_PTRACE",
+-                 "--mount", "type=volume,src=" + self.volume + ",dst=/var/lib/docker",
+-                 "--mount", "type=bind,src=" + str(self.workspace) + ",dst=" + str(self.workspace),
+-                 "--workdir", str(ROOT), "--env", MARKER + "=" + self.invocation,
+-                 "--env", "DOCKER_HOST=" + SOCKET, "--env", "DOCKER_CONFIG=" + CLIENT_CONFIG,
+-                 *git_options,
+-                 "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+-                 "--env", "LD_LIBRARY_PATH=/opt/python/lib", "--env", "DOTNET_CLI_TELEMETRY_OPTOUT=1", "--entrypoint", "sleep"], ["infinity"])
++                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume), ["infinity"])
+             self.docker(["cp", self.scratch / "python", runner + ":/opt/python"])
+             self.docker(["cp", self.scratch / "docker", runner + ":/usr/local/bin/docker"])
+             self.docker(["start", runner])
+@@ -350,6 +395,10 @@ class IsolatedRunner:
+                     and {row["Destination"] for row in observed["Mounts"]} == {"/var/lib/docker", str(self.workspace)},
+                     "runner namespace or mounts substituted")
+             self.result["runner_proof"] = observed
++            _, measured = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_proof", "--outer-id", outer_id])
++            self.result["toolchain_proof"] = json.loads(measured)
++            if len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
++                self.result["selected_input"] = executor_input(command, ROOT)
+             self.save()
+             self.result.update(command_started=True, inner_command=list(map(str, command)), sdk=runner, daemon=daemon)
+             self.save()
+@@ -372,7 +421,9 @@ class IsolatedRunner:
+         if self.result["passed"] and len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
+             try:
+                 import p1r_published_qualification as qualification
+-                selection, _, scope = qualification.load_document(Path(command[command.index("--inputs")+1]), qualification.validate_inputs)
++                selected = executor_input(command, ROOT)
++                require(selected == self.result["selected_input"], "selected input changed during execution")
++                selection, _, scope = qualification.load_document(Path(selected["path"]), qualification.validate_inputs)
+                 qualification.finalize_isolation_receipts(Path(command[command.index("--out")+1]),self.output,selection)
+             except (Exception, KeyboardInterrupt) as error:
+                 self.result["errors"].append(str(error))
+@@ -432,7 +483,7 @@ class IsolatedRunner:
+         """Retry every exact owned identity, and never select targets by a broad filter."""
+         with signal_handling(ignore=True):
+             for _ in range(2):
+-                attempt = {"started_utc": stamp(), "targeted": [], "remaining": [], "errors": [],
++                attempt = {"id": len(self.result["cleanup"])+1, "started_utc": stamp(), "targeted": [], "remaining": [], "errors": [],
+                            "absent_containers": [], "absent_volumes": [], "absent_scratch": []}
+                 for name in list(self.pending):
+                     try:
+@@ -523,6 +574,12 @@ class IsolatedRunner:
+ 
+ def main(arguments=None):
+     arguments = list(sys.argv[1:] if arguments is None else arguments)
++    if arguments[:1] == ["_proof"]:
++        parser = argparse.ArgumentParser()
++        parser.add_argument("--outer-id", required=True)
++        args = parser.parse_args(arguments[1:])
++        print(json.dumps(private_proof(args.outer_id), sort_keys=True), flush=True)
++        return 0
+     if arguments[:1] == ["_interrupt"]:
+         parser = argparse.ArgumentParser()
+         parser.add_argument("--out", type=Path, required=True)
+diff --git a/tools/p1r_published_qualification.py b/tools/p1r_published_qualification.py
+index 6a05c3a9..1b2ff31c 100644
+--- a/tools/p1r_published_qualification.py
++++ b/tools/p1r_published_qualification.py
+@@ -1247,12 +1247,13 @@ def validate_final_isolation(receipt, context):
+             and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
+                     for destination in destinations if destination != "/var/lib/docker"),
+             "final isolation runner ownership, mounts or namespace binding differs")
++    from p1r_isolation_evidence import canonical_engine_directory
+     for mount in runner["Mounts"]:
+         require(mount.get("Destination") != "/" and not str(mount.get("Source", "")).endswith("docker.sock")
+                 and (mount.get("Destination") == "/var/lib/docker" and mount.get("Type") == "volume"
+                      and mount.get("Name") == wrapper.get("owned_volume")
+                      or mount.get("Destination") != "/var/lib/docker" and mount.get("Type") == "bind"
+-                     and mount.get("Source") == mount.get("Destination")),
++                     and canonical_engine_directory(mount.get("Source"))),
+                 "final isolation mounts expose an ambient socket or substituted source")
+     for value in (wrapper, private):
+         attempts = value.get("cleanup", [])
+@@ -1296,6 +1297,14 @@ def validate_final_isolation(receipt, context):
+                 and empty,
+                 "final isolation cleanup lacks exact repeated absence or complete private inventory")
+     require(not Path(wrapper["owned_scratch"]).exists(), "final isolation scratch remains")
++    import p1r_isolation_evidence
++    try:
++        p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
++                                        reference["wrapper"]["path"], validate_times)
++    except (KeyError, TypeError, StopIteration, ValueError) as error:
++        if isinstance(error, InvalidPacket):
++            raise
++        raise InvalidPacket("incomplete or malformed isolation lifecycle evidence") from error
+ 
+ 
+ def finalize_isolation_receipts(output, isolation_output, selection):
+@@ -1309,6 +1318,10 @@ def finalize_isolation_receipts(output, isolation_output, selection):
+         data = regular(path)
+         reference[name] = {"path":str(path),"sha256":digest(data),"content":data.decode()}
+     execution = parse_json(regular(output/"execution.json"))
++    private = parse_json(reference["private"]["content"].encode())
++    context = {"source_binding":private.get("source_binding"),
++               "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
++    pending = []
+     for name in execution["receipts"]:
+         path = Path(name)
+         require(path.parent == output/"receipts", "isolation receipt escaped executor output")
+@@ -1320,6 +1333,11 @@ def finalize_isolation_receipts(output, isolation_output, selection):
+             receipt["cleanup"].setdefault("execution_evidence", {})["isolation"] = reference
+         if receipt["schema"] == LANE_RECEIPT_SCHEMA:
+             receipt["output_sha256"] = digest(preparation.canonical(receipt["execution_evidence"]))
++        validate_final_isolation(receipt,context)
++        pending.append((path,receipt))
++    require(pending, "successful isolation has no finalizable receipts")
++    # Validate the whole inventory before attaching any successful evidence.
++    for path,receipt in pending:
+         write_json(path,receipt)
+ 
+ 
+diff --git a/tools/tests/test_p1r_isolation.py b/tools/tests/test_p1r_isolation.py
+index 9d38d351..91cccffd 100644
+--- a/tools/tests/test_p1r_isolation.py
++++ b/tools/tests/test_p1r_isolation.py
+@@ -1,5 +1,7 @@
+ """Positive and negative isolation controls; synthetic controls grant no qualification."""
+ import copy
++import ast
++import inspect
+ import contextlib
+ import io
+ import json
+@@ -152,6 +154,10 @@ class ControllerTests(unittest.TestCase):
+             nonlocal volume_present
+             if argv[:2] == ["info", "--format"]:
+                 return 0, b"outer-id\n"
++            if argv[:2] == ["image", "inspect"]:
++                return 0,json.dumps({"Id":"sha256:"+"a"*64,"RepoDigests":[argv[-1]],"Os":"linux","Architecture":"amd64"}).encode()
++            if argv[:1] == ["version"] or "_proof" in argv:
++                return 0,b"{}"
+             if argv[:2] == ["exec", "sdk"]:
+                 isolation.write_json(worker.output / "private-execution.json", {"passed": True,
+                     "invocation": worker.invocation, "finished_utc": preparation.stamp(),
+@@ -340,6 +346,59 @@ class AutomaticRoutingTests(unittest.TestCase):
+ 
+ 
+ class RealPrivateProofTests(unittest.TestCase):
++    def assertDockerVersionProduction(self, producer):
++        versions = {'Client':{'Version':'29.8.2'},'Server':{'Version':'29.8.2'}}
++        daemon = {'ID':'private','ServerVersion':'29.8.2','DockerRootDir':'/var/lib/docker/data'}
++        environment = {isolation.MARKER:'a'*32,'DOCKER_HOST':isolation.SOCKET,'DOCKER_CONFIG':isolation.CLIENT_CONFIG}
++        own = {'net':'net:[1]','pid':'pid:[2]','mnt':'mnt:[3]'}
++        with tempfile.TemporaryDirectory() as directory:
++            executables = {name:Path(directory)/name for name in ('docker','dotnet')}
++            for name,path in executables.items():
++                path.write_bytes(('synthetic '+name+' executable').encode())
++            def output(argv,**kwargs):
++                self.assertEqual(kwargs['env']['DOCKER_HOST'],isolation.SOCKET)
++                if argv == ['docker','info','--format','{{json .}}']:
++                    return json.dumps(daemon).encode()
++                if argv == ['docker','version','--format','{{json .}}']:
++                    return json.dumps(versions).encode()
++                self.assertEqual(argv,['dotnet','--version'])
++                return b'10.0.401'
++            original_exists,original_read = Path.exists,Path.read_text
++            def read(path,*args,**kwargs):
++                if str(path)=='/var/lib/docker/p1r-run/dockerd.pid':return '7'
++                if str(path)=='/proc/7/comm':return 'dockerd'
++                return original_read(path,*args,**kwargs)
++            with mock.patch.dict(os.environ,environment,clear=True), \
++                    mock.patch.object(Path,'is_socket',return_value=True), \
++                    mock.patch.object(Path,'exists',lambda path:False if str(path)=='/var/run/docker.sock' else original_exists(path)), \
++                    mock.patch.object(Path,'read_text',read), \
++                    mock.patch.object(subprocess,'check_output',side_effect=output) as commands, \
++                    mock.patch.object(shutil,'which',side_effect=lambda name:str(executables[name])), \
++                    mock.patch.object(preparation,'process_state',return_value={'pid':7,'start_ticks':1,'pgid':1,'session':1}), \
++                    mock.patch.object(isolation,'namespaces',return_value=own):
++                proof = producer('outer')
++            self.assertEqual(proof.get('docker_version'),versions,'private_proof omitted client/server version evidence')
++            self.assertEqual(proof['daemon']['ServerVersion'],versions['Server']['Version'])
++            self.assertEqual([call.args[0] for call in commands.call_args_list].count(
++                ['docker','version','--format','{{json .}}']),1)
++
++    def testActualPrivateProofRetainsMeasuredDockerClientAndServerVersions(self):
++        self.assertDockerVersionProduction(isolation.private_proof)
++
++    def testDockerVersionOmissionBreaksTheActualPrivateProofPositiveControl(self):
++        original = isolation.private_proof
++        class OmitVersion(ast.NodeTransformer):
++            def visit_Dict(self,node):
++                kept = [(key,value) for key,value in zip(node.keys,node.values)
++                        if not isinstance(key,ast.Constant) or key.value!='docker_version']
++                node.keys,node.values = [key for key,_ in kept],[value for _,value in kept]
++                return self.generic_visit(node)
++        tree = ast.fix_missing_locations(OmitVersion().visit(ast.parse(inspect.getsource(original))))
++        namespace = {}
++        exec(compile(tree,original.__code__.co_filename,'exec'),original.__globals__,namespace)
++        with self.assertRaisesRegex(AssertionError,'private_proof omitted'):
++            self.assertDockerVersionProduction(namespace['private_proof'])
++
+     def testMarkedExecutorAdmissionMeasuresActualPrivateProofBeforeLaunching(self):
+         entry = runpy.run_path(str(preparation.ROOT/'tools/p1r-published-executor.py'))
+         for mismatch in (False,True):
+@@ -479,6 +538,12 @@ class PrivateCommandTests(unittest.TestCase):
+             self.assertEqual(result["passed"], exit_code == 0)
+             self.assertEqual(code, 0 if exit_code == 0 else 2)
+             self.assertEqual(len(result["cleanup"]), 2)
++            self.assertEqual(result['root']['pid'],result['root']['pgid'])
++            self.assertEqual(result['root']['pid'],result['root']['session'])
++            self.assertIn(result['root'],result['owned_processes'])
++            self.assertEqual([row['id'] for row in result['cleanup']],[1,2])
++            self.assertTrue(all(result['root'] in row['owned_processes'] for row in result['cleanup']))
++            self.assertTrue(all(preparation.validate_times(row) for row in result['cleanup']))
+             self.assertTrue(all(not row["remaining"] and not row["errors"] for row in result["cleanup"]))
+ 
+     def testStartupErrorAndInterruptionAreNonpassingAndRetained(self):
+diff --git a/tools/tests/test_p1r_published_executor.py b/tools/tests/test_p1r_published_executor.py
+index 44428021..ed7adc3c 100644
+--- a/tools/tests/test_p1r_published_executor.py
++++ b/tools/tests/test_p1r_published_executor.py
+@@ -9,6 +9,7 @@ import time
+ from pathlib import Path
+ import subprocess
+ import sys
++import shutil
+ import tempfile
+ import unittest
+ from unittest import mock
+@@ -24,7 +25,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
+     candidate_version = '3.121.0'
+ 
+     def setUp(self):
+-        self.temporary = tempfile.TemporaryDirectory()
++        self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+         self.addCleanup(self.temporary.cleanup)
+ 
+     def testRequirementUsesSelectedCaseAndWriterRatherThanOptionalProof(self):
+@@ -204,56 +205,14 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
+         return receipt,context
+ 
+     def attach_isolation(self,receipt,context):
+-        import p1r_isolation as isolation
+-        root = Path(self.temporary.name)
+-        wrapper_root = root/'wrapper'
+-        path = root/'receipts'/(receipt['id']+'.json')
+-        executor.write_json(path,receipt)
+-        execution = json.loads((root/'execution.json').read_bytes())
+-        execution.update(schema='hexalith.p1r.executor.v1',started_utc='2026-10-14T00:00:00+00:00',
+-            finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=receipt['inputs_sha256'],receipts=[str(path)])
+-        executor.write_json(root/'execution.json',execution)
+-        command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(root/'inputs.json')]
+-        invocation,sdk,daemon = 'f'*32,'c'*64,'d'*64
+-        scratch,volume = str(root/'removed-scratch'),'owned-volume'
+-        private = {'schema':isolation.SCHEMA,'invocation':invocation,'started_utc':'2026-10-14T00:00:00+00:00',
+-            'finished_utc':'2026-10-14T00:00:32+00:00','passed':True,'exit_code':0,'errors':[],'command':command,
+-            'source_binding':context['source_binding'],'source_checked_after_cleanup':True,
+-            'cleanup':[{'remaining':[],'errors':[]} for _ in range(2)],
+-            'proof':{'outer_daemon_id':'outer','daemon':{'ID':'private','DockerRootDir':'/var/lib/docker/data'},
+-                'socket':isolation.SOCKET,'namespaces':{'net':'net:[1]','pid':'pid:[2]'},
+-                'daemon_namespaces':{'net':'net:[1]','pid':'pid:[2]'}}}
+-        python = context['source_binding']['python']
+-        private['proof'].update(executables={'python':{'path':python['path'],'sha256':python['sha256']}},python_version=python['version'])
+-        private_path = wrapper_root/'private-execution.json'
+-        executor.write_json(private_path,private)
+-        wrapper = {'schema':isolation.SCHEMA,'invocation':invocation,'started_utc':'2026-10-14T00:00:00+00:00',
+-            'finished_utc':'2026-10-14T00:00:40+00:00','passed':True,'command_exit_code':0,'errors':[],'inner_command':command,
+-            'images':{'sdk':isolation.SDK_IMAGE,'daemon':isolation.DAEMON_IMAGE,'python':isolation.PYTHON_IMAGE},
+-            'outer_daemon_id':'outer','pending_containers':{},'sdk':sdk,'daemon':daemon,
+-            'owned_containers':{sdk:{'role':'sdk','image':isolation.SDK_IMAGE},daemon:{'role':'daemon','image':isolation.DAEMON_IMAGE}},
+-            'owned_volume':volume,'owned_scratch':scratch,
+-            'private_execution':{'path':str(private_path),'sha256':executor.digest(private_path.read_bytes())},
+-            'runner_proof':{'Id':sdk,'Labels':{isolation.LABEL:invocation},'NetworkMode':'container:'+daemon,'PidMode':'container:'+daemon,
+-                'Ports':{},'Privileged':False,'Mounts':[{'Destination':'/var/lib/docker','Type':'volume','Name':volume},
+-                    {'Destination':str(preparation.ROOT),'Source':str(preparation.ROOT),'Type':'bind'}]},
+-            'cleanup':[{'remaining':[],'errors':[],'absent_containers':[sdk,daemon],'absent_volumes':[volume],
+-                'absent_scratch':[scratch],'nested_inventory':{'complete':True,'containers':[]}} for _ in range(2)]}
+-        wrapper.update(outer_host='unix:///outer',commands=[])
+-        prefix = ['docker','--host',wrapper['outer_host'],'--config',str(Path(scratch)/'docker-config')]
+-        for index,attempt in enumerate(wrapper['cleanup']):
+-            second = 34+2*index
+-            attempt.update(started_utc=f'2026-10-14T00:00:{second}+00:00',finished_utc=f'2026-10-14T00:00:{second+1}+00:00')
+-            arguments = [(['exec',daemon,'docker','--host',isolation.SOCKET,'ps','-aq','--no-trunc'],0,'')]
+-            arguments += [(['inspect','--format',isolation.INSPECT,identity],1,'No such container') for identity in (sdk,sdk,daemon,daemon)]
+-            arguments += [(['volume','inspect','--format','{{json .}}',volume],1,'no such volume') for _ in range(2)]
+-            for sequence,(argv,code,output) in enumerate(arguments):
+-                wrapper['commands'].append({'argv':prefix+argv,'exit_code':code,'output':output,'output_sha256':executor.digest(output.encode()),
+-                    'started_utc':f'2026-10-14T00:00:{second}.{sequence+1:06d}+00:00',
+-                    'finished_utc':f'2026-10-14T00:00:{second}.{sequence+2:06d}+00:00'})
+-        executor.write_json(wrapper_root/'isolation.json',wrapper)
+-        qualification.finalize_isolation_receipts(root,wrapper_root,context['inputs']['value'])
+-        return json.loads(path.read_bytes())
++        from p1r_isolation_fixture import run_controller
++        # Each inherited fixture call gets a fresh real controller lifecycle.
++        wrapper = Path(self.temporary.name)/'wrapper'
++        if wrapper.exists():
++            shutil.rmtree(wrapper)
++        code,worker,retained = run_controller(Path(self.temporary.name),receipt,context)
++        self.assertEqual(code,0,worker.result['errors'])
++        return retained
+ 
+     def testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof(self):
+         receipt,context = self.import_fixture()
+@@ -709,7 +668,7 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
+                 for field in ('started_utc','finished_utc'):
+                     item[field] = (datetime.fromisoformat(item[field])-timedelta(seconds=24)).isoformat()
+         for mutate in (backwards,lambda value:value['cleanup'].reverse(),
+-                       lambda value:value['cleanup'][1].update(started_utc='2026-10-14T00:00:34.500000+00:00')):
++                       lambda value:value['cleanup'][1].update(started_utc=value['cleanup'][0]['started_utc'])):
+             receipt,context = self.import_fixture(scope='operational')
+             self.change_isolation(receipt,'wrapper',mutate)
+             with self.assertRaisesRegex(preparation.InvalidPacket,'outer cleanup'):
+diff --git a/tools/p1r_isolation_evidence.py b/tools/p1r_isolation_evidence.py
+new file mode 100644
+index 00000000..1e091407
+--- /dev/null
++++ b/tools/p1r_isolation_evidence.py
+@@ -0,0 +1,286 @@
++"""Strict successful local-controller journal validation for the proposed successor.
++
++Historical receipts keep their original contract. This validator accepts the
++producer's complete ordered lifecycle and never grants publication authority.
++"""
++from pathlib import Path
++import json
++import re
++
++import p1r_isolation as isolation
++import p1r_qualification as preparation
++from p1r_qualification import require, digest, regular, validate_identity, validate_identity_list
++
++
++# Measured from the unchanged Linux/amd64 manifest-pinned Docker and SDK images.
++# These hashes bind copied tools even when both retained proofs are substituted.
++PINNED_EXECUTABLES = {
++    'docker': {'path':'/usr/local/bin/docker',
++               'sha256':'6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6'},
++    'dotnet': {'path':'/usr/share/dotnet/dotnet',
++               'sha256':'01d89e0a0191052bfea616cd4ce624c8faf13b05bbddf7f64499c23e2a9d9269'},
++}
++
++
++def canonical_engine_directory(value):
++    """Validate an engine's absolute POSIX directory lexically, without local lookup."""
++    if not isinstance(value,str) or not value.startswith('/'):
++        return False
++    parts = value.split('/')[1:]
++    return (all(part and part not in ('.','..') for part in parts)
++            and not any(ord(character) < 32 or ord(character) == 127 for character in value)
++            and not parts[-1].endswith(('.sock','.socket')))
++
++
++def validate(wrapper, private, context, run_root, wrapper_path, times):
++    """Check every literal command, measured identity and timed cleanup observation."""
++    repository = Path(context['source_binding']['repository'])
++    scratch = Path(wrapper['owned_scratch'])
++    require(scratch.is_absolute() and scratch == scratch.resolve(), 'isolation scratch path substituted')
++    require(bool(re.fullmatch(r'unix:///[^\s?#]+', wrapper.get('outer_host', ''))),
++            'only a local Unix Docker endpoint is supported')
++    owned = wrapper['owned_containers']
++    require(len(owned) == 3 and sorted(row.get('role', '') for row in owned.values()) == ['daemon','python-tools','sdk'],
++            'isolation lacks exact daemon, Python-tools and SDK roles')
++    roles = {row['role']:identity for identity,row in owned.items()}
++    require(all(re.fullmatch(r'[0-9a-f]{64}', identity) for identity in owned), 'invalid outer container identity')
++    sdk, daemon, python = (roles[name] for name in ('sdk','daemon','python-tools'))
++    require(wrapper.get('sdk') == sdk and wrapper.get('daemon') == daemon, 'outer role identity substituted')
++    invocation, volume = wrapper['invocation'], wrapper['owned_volume']
++    require(volume == 'p1r-isolation-'+invocation, 'outer volume identity substituted')
++    mounts = wrapper['runner_proof']['Mounts']
++    workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind'))
++    require(workspace.is_absolute() and workspace == workspace.resolve() and repository.is_relative_to(workspace)
++            and Path(wrapper_path).is_relative_to(workspace) and run_root.is_relative_to(workspace),
++            'isolation workspace containment differs')
++    command = wrapper['inner_command']
++    selected = isolation.executor_input(command, repository)
++    require(command[4] == str(run_root) and selected == wrapper.get('selected_input')
++            and selected['sha256'] == context['inputs']['sha256']
++            and json.loads(regular(Path(selected['path']))) == context['inputs']['value'],
++            'isolation selected physical input or hash substituted')
++    proof, measured = private.get('proof', {}), wrapper.get('toolchain_proof', {})
++    require(isinstance(measured,dict) and measured, 'isolation toolchain measurement missing')
++    for name in ('executables','python_version','dotnet_version','docker_version','glibc','daemon','outer_daemon_id','socket','namespaces','daemon_namespaces'):
++        require(proof.get(name) == measured.get(name) and name in proof, 'isolation measured toolchain differs: '+name)
++    for name in ('python','docker','dotnet'):
++        item = proof['executables'].get(name,{})
++        require(set(item) == {'path','sha256'} and Path(item['path']).is_absolute()
++                and bool(re.fullmatch(r'[0-9a-f]{64}', item['sha256'])), 'invalid private executable identity')
++    require(all(proof['executables'][name] == expected for name,expected in PINNED_EXECUTABLES.items()),
++            'pinned Docker or dotnet executable bytes or location differ')
++    for name in ('namespaces','daemon_namespaces'):
++        links = proof[name]
++        require(isinstance(links,dict) and set(links) == {'net','pid','mnt'}
++                and all(isinstance(value,str) and re.fullmatch(kind+r':\[[1-9][0-9]*\]',value)
++                        for kind,value in links.items()), 'complete private namespace links missing or invalid')
++    require(isinstance(proof['glibc'],str) and bool(re.fullmatch(r'glibc [0-9]+\.[0-9]+',proof['glibc'])),
++            'private glibc measurement missing or invalid')
++    require(proof['dotnet_version'] == '10.0.401'
++            and proof['docker_version'].get('Client',{}).get('Version') == '29.8.2'
++            and proof['docker_version'].get('Server',{}).get('Version') == proof['daemon'].get('ServerVersion') == '29.8.2',
++            'pinned private Docker or dotnet version differs')
++    for name in ('supervisor','root'):
++        validate_identity(private.get(name))
++    daemon_process = preparation.identity(proof.get('process',{}))
++    validate_identity(daemon_process)
++    require(daemon_process == preparation.identity(measured.get('process',{})), 'dockerd process identity substituted')
++    require(len({row['pid'] for row in (private['supervisor'],private['root'],daemon_process)}) == 3,
++            'private supervisor, root and dockerd identities overlap')
++    processes = private.get('owned_processes')
++    validate_identity_list(processes)
++    protected = {private['supervisor']['pid'],daemon_process['pid']}
++    require(private['root']['pid'] == private['root']['pgid'] == private['root']['session'],
++            'private root does not own its new session')
++    require(private['root'] in processes and all(row['pid'] not in protected for row in processes),
++            'private owned process inventory or root missing')
++    attempts = private.get('cleanup',[])
++    require(len(attempts) == 2, 'private cleanup must contain two distinct observations')
++    previous = times(private)[0]
++    previous_owned, absent = {}, set()
++    identity_key = lambda row:(row['pid'],row['start_ticks'])
++    final_owned = {identity_key(row):row for row in processes}
++    for index,attempt in enumerate(attempts,1):
++        start,end = times(attempt)
++        require(type(attempt.get('id')) is int and attempt['id'] == index and previous <= start <= end <= times(private)[1],
++                'private cleanup observations duplicate or reorder')
++        for name in ('owned_processes','before','remaining'):
++            validate_identity_list(attempt.get(name))
++        snapshot = {identity_key(row):row for row in attempt['owned_processes']}
++        require(private['root'] in attempt['owned_processes']
++                and all(snapshot.get(key) == row for key,row in previous_owned.items())
++                and all(final_owned.get(key) == row for key,row in snapshot.items()),
++                'private cleanup ownership inventory is incomplete or not monotonic')
++        observations = [*attempt['before'],*attempt['remaining']]
++        require(all(row['pid'] not in protected for row in [*attempt['owned_processes'],*observations])
++                and all(identity_key(row) not in absent for row in observations),
++                'protected process alias or resurrected cleanup process')
++        require(all(snapshot.get(identity_key(row)) == row for row in observations)
++                and attempt['remaining'] == [] and attempt.get('errors') == [],
++                'private cleanup ownership or absence differs')
++        absent.update(snapshot.keys()-{identity_key(row) for row in attempt['remaining']})
++        previous_owned, previous = snapshot, end
++    require(previous_owned == final_owned, 'final private ownership differs from complete cleanup inventory')
++    commands = wrapper.get('commands',[])
++    prefix = ['docker','--host',wrapper['outer_host'],'--config',str(scratch/'docker-config')]
++    require(isinstance(commands,list) and commands, 'isolation command journal missing')
++    previous = times(wrapper)[0]
++    for index,row in enumerate(commands,1):
++        start,end = times(row)
++        require(type(row.get('id')) is int and row['id'] == index and previous <= start <= end <= times(wrapper)[1]
++                and row.get('argv',[])[:5] == prefix and type(row.get('exit_code')) is int
++                and isinstance(row.get('output'),str) and digest(row['output'].encode()) == row.get('output_sha256'),
++                'isolation command IDs, timestamps, endpoint or output differ')
++        previous = end
++    cursor = 0
++    def take(argv, success=True):
++        nonlocal cursor
++        require(cursor < len(commands), 'isolation literal lifecycle command missing')
++        row = commands[cursor]
++        cursor += 1
++        require(row['argv'][5:] == list(map(str,argv)), 'isolation literal lifecycle command substituted')
++        require(success is None or (row['exit_code'] == 0) == success, 'isolation command exit differs')
++        return row
++    def parsed(row):
++        try:
++            return json.loads(row['output'])
++        except (ValueError,TypeError) as error:
++            raise preparation.InvalidPacket('isolation measured command output is invalid') from error
++    static_inspections = {}
++    def inspected(identity, absent=False):
++        row = take(['inspect','--format',isolation.INSPECT,identity], not absent)
++        if absent:
++            require('no such' in row['output'].lower(), 'container absence command differs')
++            return None
++        value = parsed(row)
++        role = owned[identity]['role']
++        image_role = 'python' if role == 'python-tools' else role
++        require(value.get('Id') == identity and value.get('Name') == '/p1r-isolation-'+invocation+'-'+role
++                and value.get('Labels',{}).get(isolation.LABEL) == invocation
++                and value.get('Image') == wrapper['image_measurements'][image_role]['Id'],
++                'literal container inspection or measured image substituted')
++        settings = {name:value.get(name) for name in ('NetworkMode','PidMode','Privileged','Ports','Mounts')}
++        expected_modes = {'daemon':('bridge','',True), 'python-tools':('none','',False),
++                          'sdk':('container:'+daemon,'container:'+daemon,False)}
++        network,pid,privileged = expected_modes[role]
++        require(settings['NetworkMode'] == network and settings['PidMode'] == pid
++                and settings['Privileged'] is privileged and settings['Ports'] == {},
++                'observed role namespace, privilege or ports contradict creation')
++        observed_mounts = settings['Mounts']
++        require(isinstance(observed_mounts,list), 'observed role mounts missing')
++        expected_destinations = {'daemon':{'/var/lib/docker'},'python-tools':set(),
++                                 'sdk':{'/var/lib/docker',str(workspace)}}[role]
++        require(len(observed_mounts) == len(expected_destinations)
++                and {mount.get('Destination') for mount in observed_mounts} == expected_destinations,
++                'observed role mounts contradict creation')
++        for mount in observed_mounts:
++            require(mount.get('RW') is True
++                    and (mount['Destination'] == '/var/lib/docker' and mount.get('Type') == 'volume'
++                         and mount.get('Name') == volume
++                         or mount['Destination'] == str(workspace) and mount.get('Type') == 'bind'
++                         and canonical_engine_directory(mount.get('Source'))), 'observed role mount identity or access differs')
++        require(identity not in static_inspections or static_inspections[identity] == settings,
++                'observed static role configuration changed between inspections')
++        static_inspections[identity] = settings
++        return value
++    require(take(['info','--format','{{.ID}}'])['output'].strip() == wrapper['outer_daemon_id'],
++            'outer daemon literal identity differs')
++    outer = wrapper.get('outer_toolchain',{})
++    executable = outer.get('docker',{})
++    require(Path(executable.get('path','')).is_absolute() and bool(re.fullmatch(r'[0-9a-f]{64}',executable.get('sha256','')))
++            and parsed(take(['version','--format','{{json .}}'])) == outer.get('version')
++            and outer.get('version',{}).get('Client',{}).get('Version')
++            and outer.get('version',{}).get('Server',{}).get('Version'), 'outer Docker toolchain identity missing')
++    for role in ('sdk','daemon','python'):
++        image = wrapper['images'][role]
++        take(['pull','--platform','linux/amd64',image])
++        image_value = parsed(take(['image','inspect','--format',isolation.IMAGE_INSPECT,image]))
++        require(image_value == wrapper.get('image_measurements',{}).get(role)
++                and image_value.get('Os') == 'linux' and image_value.get('Architecture') == 'amd64'
++                and image in image_value.get('RepoDigests',[])
++                and bool(re.fullmatch(r'sha256:[0-9a-f]{64}',image_value.get('Id',''))),
++                'literal image OS, architecture, digest or image ID differs')
++    require(take(['volume','create','--label',isolation.LABEL+'='+invocation,volume])['output'].strip() == volume,
++            'literal owned volume creation differs')
++    def created(role,image,options,entry):
++        identity = roles[role]
++        require(owned[identity] == {'role':role,'image':image}, 'owned image role differs')
++        row = take(['create','--cidfile',scratch/(role+'.cid'),'--name','p1r-isolation-'+invocation+'-'+role,
++                    '--label',isolation.LABEL+'='+invocation,*options,image,*entry])
++        require(row['output'].strip() == identity, 'literal created container ID differs')
++        inspected(identity)
++    created('daemon',isolation.DAEMON_IMAGE,
++            ['--privileged','--network','bridge','--mount','type=volume,src='+volume+',dst=/var/lib/docker','--entrypoint','dockerd'],
++            ['--host='+isolation.SOCKET,'--data-root=/var/lib/docker/data','--exec-root=/var/lib/docker/p1r-exec',
++             '--pidfile=/var/lib/docker/p1r-run/dockerd.pid','--storage-driver=vfs','--tls=false'])
++    start_command = take(['start',daemon])
++    startup_start = times(start_command)[0]
++    require((times(start_command)[1]-startup_start).total_seconds() <= isolation.STARTUP_SECONDS,
++            'private daemon start exceeds startup deadline')
++    while True:
++        row = take(['exec',daemon,'docker','--host',isolation.SOCKET,'info','--format','{{.ID}}'],None)
++        start,end = times(row)
++        require((end-startup_start).total_seconds() <= isolation.STARTUP_SECONDS
++                and (end-start).total_seconds() <= isolation.PROBE_SECONDS, 'private startup probes exceed deadline')
++        if row['exit_code'] == 0:
++            require(row['output'].strip() == proof['daemon']['ID'], 'private startup daemon ID differs')
++            break
++    created('python-tools',isolation.PYTHON_IMAGE,['--network','none','--entrypoint','/bin/true'],[])
++    take(['cp',python+':/usr/local',scratch/'python'])
++    take(['cp',daemon+':/usr/local/bin/docker',scratch/'docker'])
++    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume),['infinity'])
++    take(['cp',scratch/'python',sdk+':/opt/python'])
++    take(['cp',scratch/'docker',sdk+':/usr/local/bin/docker'])
++    take(['start',sdk])
++    require(inspected(sdk) == wrapper['runner_proof'], 'runner inspection differs from literal output')
++    require(parsed(take(['exec',sdk,'python3',repository/'tools/p1r-isolated-runner.py','_proof','--outer-id',wrapper['outer_daemon_id']])) == measured,
++            'literal SDK toolchain proof substituted')
++    launched = take(['exec',sdk,'python3',repository/'tools/p1r-isolated-runner.py','_inner','--out',Path(wrapper_path).parent,
++                     '--outer-id',wrapper['outer_daemon_id'],'--',*command])
++    require(times(launched)[0] <= times(private)[0] <= times(private)[1] <= times(launched)[1]
++            and launched['output'] == wrapper.get('command_stdout'), 'actual SDK launch or private interval substituted')
++    require(times(private)[0] <= times(private['cleanup'][0])[0]
++            and times(private['cleanup'][0])[0] >= times(context['execution'])[1],
++            'process cleanup precedes executor completion')
++    outer_attempts = wrapper['cleanup']
++    require(len(outer_attempts) == 2, 'outer cleanup requires two distinct observations')
++    previous = times(launched)[1]
++    for index,attempt in enumerate(outer_attempts,1):
++        start,end = times(attempt)
++        require(type(attempt.get('id')) is int and attempt['id'] == index and previous <= start <= end <= times(wrapper)[1],
++                'outer cleanup observations duplicate or reorder')
++        first_cursor = cursor
++        if index == 1:
++            inspected(daemon)
++            inventory = take(['exec',daemon,'docker','--host',isolation.SOCKET,'ps','-aq','--no-trunc'])
++            require(not inventory['output'].strip() and attempt.get('nested_inventory') == {'daemon':daemon,'complete':True,'containers':[]},
++                    'private complete empty inventory differs')
++        else:
++            inspected(daemon,True)
++            require(attempt.get('nested_inventory') == {'daemon_absent':True,'prior_empty_inventory':True},
++                    'private daemon absence lacks earlier complete inventory')
++        for identity in (sdk,python,daemon):
++            inspected(identity, index == 2)
++            if index == 1:
++                if identity == daemon:
++                    take(['logs','--tail','200',identity],None)
++                take(['rm','-f',identity])
++            inspected(identity,True)
++            inspected(identity,True)
++        row = take(['volume','inspect','--format','{{json .}}',volume],index == 1)
++        if index == 1:
++            value = parsed(row)
++            require(value.get('Name') == volume and value.get('Labels',{}).get(isolation.LABEL) == invocation,
++                    'volume cleanup ownership differs')
++            take(['volume','rm',volume])
++        else:
++            require('no such volume' in row['output'].lower(), 'literal volume absence differs')
++        for _ in range(2):
++            row = take(['volume','inspect','--format','{{json .}}',volume],False)
++            require('no such volume' in row['output'].lower(), 'literal repeated volume absence differs')
++        require(start <= times(commands[first_cursor])[0] and times(commands[cursor-1])[1] <= end,
++                'cleanup commands escape timed observation')
++        require(attempt.get('targeted') == [sdk,python,daemon,'volume:'+volume,'scratch:'+str(scratch)],
++                'cleanup targeted identities differ')
++        previous = end
++    require(cursor == len(commands), 'unexpected Docker command in isolation journal')
+diff --git a/tools/tests/p1r_isolation_fixture.py b/tools/tests/p1r_isolation_fixture.py
+new file mode 100644
+index 00000000..6f35df68
+--- /dev/null
++++ b/tools/tests/p1r_isolation_fixture.py
+@@ -0,0 +1,180 @@
++"""A Docker boundary fixture driving the real controller, finalizer and importer."""
++import copy
++from datetime import datetime, timedelta, timezone
++import json
++import os
++import sys
++import subprocess
++from pathlib import Path
++from types import SimpleNamespace
++from unittest import mock
++
++import p1r_isolation as isolation
++import p1r_published_qualification as qualification
++import p1r_qualification as preparation
++
++
++class DockerBoundary:
++    """Only Docker's OS boundary is simulated; lifecycle receipts use the producer."""
++    def __init__(self, root, receipt, context, private_failure=False, outer_failure=False, real_inner=False, mapped_bind=False, late_process=False):
++        self.real_run = subprocess.run
++        self.real_popen = subprocess.Popen
++        self.use_real_inner = real_inner
++        self.mapped_bind = mapped_bind
++        self.late_process = late_process
++        self.root, self.receipt, self.context = Path(root), receipt, context
++        self.private_failure, self.outer_failure = private_failure, outer_failure
++        self.current = datetime(2026,10,13,23,59,50,tzinfo=timezone.utc)
++        self.containers, self.volume = {}, None
++        self.images = {image:{'Id':'sha256:'+str(index)*64,'RepoDigests':[image],'Os':'linux','Architecture':'amd64'}
++                       for index,image in enumerate((isolation.SDK_IMAGE,isolation.DAEMON_IMAGE,isolation.PYTHON_IMAGE),1)}
++        python = context['source_binding']['python']
++        self.proof = {'outer_daemon_id':'outer','daemon':{'ID':'private','DockerRootDir':'/var/lib/docker/data','ServerVersion':'29.8.2'},
++            'socket':isolation.SOCKET,'namespaces':{'net':'net:[1]','pid':'pid:[2]','mnt':'mnt:[3]'},
++            'daemon_namespaces':{'net':'net:[1]','pid':'pid:[2]','mnt':'mnt:[4]'},
++            'process':{'pid':7,'start_ticks':7,'pgid':7,'session':7},'glibc':'glibc 2.36',
++            'executables':{'python':{'path':python['path'],'sha256':python['sha256']},
++                           'docker':{'path':'/usr/local/bin/docker','sha256':'6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6'},
++                           'dotnet':{'path':'/usr/share/dotnet/dotnet','sha256':'01d89e0a0191052bfea616cd4ce624c8faf13b05bbddf7f64499c23e2a9d9269'}},
++            'python_version':python['version'],'dotnet_version':'10.0.401',
++            'docker_version':{'Client':{'Version':'29.8.2'},'Server':{'Version':'29.8.2'}}}
++
++    def stamp(self):
++        self.current += timedelta(milliseconds=10)
++        return self.current.isoformat()
++
++    def run(self, argv, **kwargs):
++        if argv[0] != "docker":
++            return self.real_run(argv, **kwargs)
++        args = argv[5:]
++        code, output = 0, ''
++        if args[0] == 'info':
++            output = 'outer\n'
++        elif args[0] == 'version':
++            output = json.dumps(self.proof['docker_version'])
++        elif args[:2] == ['image','inspect']:
++            output = json.dumps(self.images[args[-1]])
++        elif args[:2] == ['volume','create']:
++            self.volume = {'Name':args[-1],'Labels':{isolation.LABEL:self.worker.invocation}}
++            output = args[-1]+'\n'
++        elif args[0] == 'create':
++            name = args[args.index('--name')+1]
++            role = name.split(self.worker.invocation+'-',1)[1]
++            identity = {'daemon':'d','python-tools':'e','sdk':'c'}[role]*64
++            image = {'daemon':isolation.DAEMON_IMAGE,'python-tools':isolation.PYTHON_IMAGE,'sdk':isolation.SDK_IMAGE}[role]
++            value = {'Id':identity,'Image':self.images[image]['Id'],'Name':'/'+name,
++                     'Labels':{isolation.LABEL:self.worker.invocation},
++                     'NetworkMode':'bridge' if role=='daemon' else 'none', 'PidMode':'',
++                     'Ports':{}, 'Privileged':role=='daemon',
++                     'Mounts':[{'Destination':'/var/lib/docker','Type':'volume','Name':self.worker.volume,'RW':True}] if role=='daemon' else []}
++            if role == 'sdk':
++                value.update(NetworkMode='container:'+'d'*64,PidMode='container:'+'d'*64,Ports={},Privileged=False,
++                    Mounts=[{'Destination':'/var/lib/docker','Type':'volume','Name':self.worker.volume,'RW':True},
++                            {'Destination':str(self.worker.workspace),'Source':('/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/fixture/'+('a'*64)
++                                      if self.mapped_bind else str(self.worker.workspace)),'Type':'bind','RW':True}])
++            self.containers[identity] = value
++            Path(args[args.index('--cidfile')+1]).write_text(identity)
++            output = identity+'\n'
++        elif args[0] == 'inspect':
++            value = self.containers.get(args[-1])
++            code,output = (0,json.dumps(value)) if value else (1,'No such container')
++        elif args[:2] == ['volume','inspect']:
++            code,output = (0,json.dumps(self.volume)) if self.volume else (1,'no such volume')
++        elif args[:2] == ['volume','rm']:
++            self.volume = None
++        elif args[:2] == ['rm','-f']:
++            if self.outer_failure and args[2] == 'c'*64:
++                return SimpleNamespace(returncode=1,stdout=b'injected removal failure')
++            self.containers.pop(args[2],None)
++        elif args[0] == 'exec':
++            if args[2:4] == ['docker','--host']:
++                output = 'private\n' if 'info' in args else ''
++            elif '_proof' in args:
++                output = json.dumps(self.proof)
++            elif '_inner' in args:
++                self.persist_private()
++                code = 2 if self.private_failure else 0
++                self.current = datetime(2026,10,14,0,0,32,tzinfo=timezone.utc)
++        return SimpleNamespace(returncode=code,stdout=output.encode())
++
++    def persist_private(self):
++        if self.use_real_inner:
++            command = self.worker.result['inner_command']
++            # Exercise the real supervisor, procfs discovery and teardown. Only
++            # the published executor OS launch is replaced by harmless Python.
++            child = "import time; time.sleep(30)"
++            script = ("import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',"+repr(child)+"],"
++                      "start_new_session=True); time.sleep(.2)")
++            def launch(argv, **kwargs):
++                if argv == command:
++                    self.current = datetime(2026,10,14,0,0,31,tzinfo=timezone.utc)
++                    return self.real_popen([sys.executable,'-c',script],**kwargs)
++                return self.real_popen(argv,**kwargs)
++            original_cleanup = preparation.OwnedProcesses.cleanup
++            cleanup_calls, late_children = 0, []
++            def cleanup(owner):
++                nonlocal cleanup_calls
++                cleanup_calls += 1
++                if self.late_process and cleanup_calls == 2:
++                    late_children.append(self.real_popen([sys.executable,'-c',child],start_new_session=True,
++                        env=dict(os.environ,HEXALITH_P1R_CONTROL_NONCE=owner.nonce)))
++                return original_cleanup(owner)
++            self.current = datetime(2026,10,13,23,59,59,tzinfo=timezone.utc)
++            with mock.patch.dict(os.environ,{isolation.MARKER:self.worker.invocation}), \
++                    mock.patch.object(isolation,'private_proof',return_value=copy.deepcopy(self.proof)), \
++                    mock.patch.object(isolation,'private_environment',return_value=dict(os.environ)), \
++                    mock.patch.object(preparation,'source_binding',return_value=self.context['source_binding']), \
++                    mock.patch.object(preparation,'check_current_source'), \
++                    mock.patch.object(subprocess,'Popen',side_effect=launch), \
++                    mock.patch.object(preparation.OwnedProcesses,'cleanup',cleanup):
++                preparation.require(isolation.inner(self.worker.output,'outer',command) == 0,
++                                    'real local supervisor control failed')
++            for process in late_children:
++                process.wait(timeout=2)
++            return
++        identity = lambda pid:{'pid':pid,'start_ticks':pid,'pgid':pid,'session':pid}
++        private = {'schema':isolation.SCHEMA,'scope':'isolated-command-verification','invocation':self.worker.invocation,
++            'started_utc':'2026-10-13T23:59:59+00:00','finished_utc':'2026-10-14T00:00:32+00:00',
++            'passed':not self.private_failure,'exit_code':2 if self.private_failure else 0,
++            'errors':['injected private failure'] if self.private_failure else [],'command':self.worker.result['inner_command'],
++            'source_binding':self.context['source_binding'],'source_checked_after_cleanup':True,
++            'supervisor':identity(100),'root':identity(101),'owned_processes':[identity(101)],'proof':copy.deepcopy(self.proof),
++            'cleanup':[{'id':index+1,'owned_processes':[identity(101)],'before':[identity(101)] if index==0 else [],'remaining':[],'errors':[],
++                        'started_utc':f'2026-10-14T00:00:31.{index*3+1}00000+00:00',
++                        'finished_utc':f'2026-10-14T00:00:31.{index*3+2}00000+00:00'} for index in range(2)]}
++        isolation.write_json(self.worker.output/'private-execution.json',private)
++
++
++def run_controller(root, receipt, context, private_failure=False, outer_failure=False, finalize=None, real_inner=False, mapped_bind=False, late_process=False):
++    """Persist producer output through real _run; no finalizer or importer replacement."""
++    root = Path(root)
++    selected = root/'inputs.json'
++    isolation.write_json(selected,context['inputs']['value'])
++    selected_hash = preparation.digest(selected.read_bytes())
++    context['inputs']['sha256'] = receipt['inputs_sha256'] = selected_hash
++    path = root/'receipts'/(receipt['id']+'.json')
++    isolation.write_json(path,receipt)
++    execution = json.loads((root/'execution.json').read_bytes())
++    execution.update(schema='hexalith.p1r.executor.v1',started_utc='2026-10-14T00:00:00+00:00',
++        finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=selected_hash,receipts=[str(path)])
++    isolation.write_json(root/'execution.json',execution)
++    boundary = DockerBoundary(root,receipt,context,private_failure,outer_failure,real_inner,mapped_bind,late_process)
++    command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(selected)]
++    with mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
++            mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
++            mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):
++        worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer')
++        boundary.worker = worker
++        # Fixture executor timestamps are historical, so launch starts before them.
++        original_run = boundary.run
++        def run(argv,**kwargs):
++            if '_inner' in argv:
++                boundary.current = datetime(2026,10,13,23,59,58,tzinfo=timezone.utc)
++            return original_run(argv,**kwargs)
++        with mock.patch.object(isolation.subprocess,'run',side_effect=run):
++            if finalize is None:
++                code = worker._run(command)
++            else:
++                with mock.patch.object(qualification,'finalize_isolation_receipts',side_effect=finalize):
++                    code = worker._run(command)
++    return code,worker,json.loads(path.read_bytes())
+diff --git a/tools/tests/test_p1r_isolation_hardening.py b/tools/tests/test_p1r_isolation_hardening.py
+new file mode 100644
+index 00000000..313780bc
+--- /dev/null
++++ b/tools/tests/test_p1r_isolation_hardening.py
+@@ -0,0 +1,444 @@
++"""Producer-shaped success and rehashed semantic refusals through real receipt import."""
++import copy
++import ast
++import inspect
++import json
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import sys
++import tempfile
++import unittest
++from unittest import mock
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++import p1r_isolation as isolation
++import p1r_published_qualification as qualification
++import p1r_qualification as preparation
++from p1r_isolation_fixture import run_controller
++import test_p1r_published_executor as published_tests
++
++
++class LifecycleTests(unittest.TestCase):
++    def fixture(self, **options):
++        witness = published_tests.ProposedQualifiedSnapshotWitnessTests()
++        witness.setUp()
++        self.addCleanup(witness.doCleanups)
++        # Supply the real caller with a receipt before finalization.
++        with mock.patch.object(witness,'attach_isolation',side_effect=lambda receipt,context:receipt):
++            receipt,context = witness.import_fixture(scope='operational')
++        root = Path(witness.temporary.name)
++        code,worker,retained = run_controller(root,receipt,context,**options)
++        return witness,code,worker,retained,context
++
++    def assert_imports(self, receipt, context):
++        self.assertIn('isolation',receipt['execution_evidence'], 'caller finalization was not executed')
++        self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
++
++    def testRealCallerFinalizesPersistedReceiptOnlyAfterPrivateAndOuterTeardown(self):
++        _,code,worker,receipt,context = self.fixture()
++        self.assertEqual(code,0,worker.result['errors'])
++        self.assertFalse(worker.scratch.exists())
++        self.assertEqual(worker.result['pending_containers'],{})
++        self.assert_imports(receipt,context)
++
++    def testPositiveControlFailsWhenCallerFinalizationIsRemoved(self):
++        _,code,worker,receipt,context = self.fixture(finalize=lambda *args:None)
++        self.assertEqual(code,0,worker.result['errors'])
++        with self.assertRaisesRegex(AssertionError,'caller finalization'):
++            self.assert_imports(receipt,context)
++        with self.assertRaisesRegex(preparation.InvalidPacket,'final isolation evidence'):
++            qualification.receipt_outcome(receipt,context)
++
++    def testPrivateOuterAndFinalizerFailuresNeverAttachPassingEvidence(self):
++        for options in ({'private_failure':True},{'outer_failure':True},
++                        {'finalize':preparation.InvalidPacket('injected finalizer failure')}):
++            with self.subTest(options=options):
++                _,code,worker,receipt,context = self.fixture(**options)
++                self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
++                self.assertEqual(code,2)
++                self.assertFalse(worker.result['passed'])
++                self.assertNotIn('isolation',receipt['execution_evidence'])
++                with self.assertRaises(preparation.InvalidPacket):
++                    qualification.receipt_outcome(receipt,context)
++
++    def testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller(self):
++        def command(value, kind):
++            return next(row for row in value['commands'] if row['argv'][5] == kind)
++        def modify_output(row,change):
++            value = json.loads(row['output'])
++            change(value)
++            row['output'] = json.dumps(value)
++            row['output_sha256'] = preparation.digest(row['output'].encode())
++        def append_mutation(value):
++            from datetime import datetime,timedelta
++            row = copy.deepcopy(value['commands'][-1])
++            last_end = datetime.fromisoformat(row['finished_utc'])
++            row.update(id=len(value['commands'])+1,argv=row['argv'][:5]+['rm','-f','unrelated-container'],
++                       output='removed unrelated container',output_sha256=preparation.digest(b'removed unrelated container'),
++                       exit_code=0,started_utc=(last_end+timedelta(microseconds=1)).isoformat(),
++                       finished_utc=(last_end+timedelta(microseconds=2)).isoformat())
++            value['commands'].append(row)
++        def duplicate_absence(value):
++            matches = [index for index,row in enumerate(value['commands']) if row['argv'][5:] ==
++                       ['inspect','--format',isolation.INSPECT,value['sdk']] and row['exit_code'] != 0]
++            value['commands'][matches[1]] = copy.deepcopy(value['commands'][matches[0]])
++        mutations = (
++            ('missing-image','wrapper',lambda v:v.pop('image_measurements')),
++            ('image-os','wrapper',lambda v:modify_output(command(v,'image'),lambda x:x.update(Os='windows'))),
++            ('image-architecture','wrapper',lambda v:modify_output(command(v,'image'),lambda x:x.update(Architecture='arm64'))),
++            ('image-digest','wrapper',lambda v:modify_output(command(v,'image'),lambda x:x.update(RepoDigests=['wrong@sha256:'+'a'*64]))),
++            ('image-id','wrapper',lambda v:modify_output(command(v,'inspect'),lambda x:x.update(Image='sha256:'+'f'*64))),
++            ('missing-python-tools','wrapper',lambda v:v['owned_containers'].pop('e'*64)),
++            ('create-options','wrapper',lambda v:command(v,'create')['argv'].insert(6,'--network=host')),
++            ('copy-chain','wrapper',lambda v:command(v,'cp')['argv'].__setitem__(-1,'/substituted/tool')),
++            ('missing-launch','wrapper',lambda v:v['commands'].__setitem__(slice(None),[x for x in v['commands'] if '_inner' not in x['argv']])),
++            ('launch-options','wrapper',lambda v:next(x for x in v['commands'] if '_inner' in x['argv'])['argv'].append('--substituted')),
++            ('altered-arguments','wrapper',lambda v:v['inner_command'].append('--substituted')),
++            ('selected-hash','wrapper',lambda v:v['selected_input'].update(sha256='f'*64)),
++            ('selected-path','wrapper',lambda v:v['selected_input'].update(path='/missing/inputs.json')),
++            ('unrelated-mutation','wrapper',append_mutation),
++            ('duplicate-command-id','wrapper',lambda v:v['commands'][1].update(id=v['commands'][0]['id'])),
++            ('boolean-command-id','wrapper',lambda v:v['commands'][0].update(id=True)),
++            ('boolean-cleanup-id','private',lambda v:v['cleanup'][0].update(id=True)),
++            ('duplicate-command','wrapper',lambda v:v['commands'].__setitem__(1,copy.deepcopy(v['commands'][0]))),
++            ('duplicate-cleanup-absence','wrapper',duplicate_absence),
++            ('reordered-command','wrapper',lambda v:v['commands'].__setitem__(slice(0,2),list(reversed(v['commands'][:2])))),
++            ('command-time-overlap','wrapper',lambda v:v['commands'][1].update(started_utc=v['commands'][0]['started_utc'])),
++            ('missing-supervisor','private',lambda v:v.pop('supervisor')),
++            ('missing-root','private',lambda v:v.pop('root')),
++            ('missing-owned','private',lambda v:v.pop('owned_processes')),
++            ('incomplete-root','private',lambda v:v['root'].pop('session')),
++            ('missing-process-cleanup','private',lambda v:v['cleanup'].clear()),
++            ('reordered-process-cleanup','private',lambda v:v['cleanup'].reverse()),
++            ('duplicate-process-cleanup','private',lambda v:v['cleanup'].__setitem__(1,copy.deepcopy(v['cleanup'][0]))),
++            ('unowned-process','private',lambda v:v['cleanup'][0]['before'].append({'pid':999,'pgid':999,'session':999,'start_ticks':1})),
++            ('docker-hash','private',lambda v:v['proof']['executables']['docker'].update(sha256='f'*64)),
++            ('docker-path','private',lambda v:v['proof']['executables']['docker'].update(path='/substituted/docker')),
++            ('docker-client-version','private',lambda v:v['proof']['docker_version']['Client'].update(Version='0.0')),
++            ('docker-server-version','private',lambda v:v['proof']['docker_version']['Server'].update(Version='0.0')),
++            ('dotnet-hash','private',lambda v:v['proof']['executables']['dotnet'].update(sha256='f'*64)),
++            ('dotnet-path','private',lambda v:v['proof']['executables']['dotnet'].update(path='/substituted/dotnet')),
++            ('dotnet-version','private',lambda v:v['proof'].update(dotnet_version='0.0')),
++            ('duplicate-outer-cleanup','wrapper',lambda v:v['cleanup'].__setitem__(1,copy.deepcopy(v['cleanup'][0]))),
++            ('remote-controller','wrapper',lambda v:v.update(outer_host='tcp://remote:2376')),
++        )
++        # Rehash the physical reference and enclosing receipt: failures must be
++        # semantic, not stale-hash detection. A fresh positive precedes each mutation.
++        for name,record,mutate in mutations:
++            with self.subTest(name=name):
++                witness,code,worker,receipt,context = self.fixture()
++                self.assertEqual(code,0,worker.result['errors'])
++                self.assert_imports(receipt,context)
++                witness.change_isolation(receipt,record,mutate)
++                with self.assertRaises(preparation.InvalidPacket):
++                    qualification.receipt_outcome(receipt,context)
++
++    def testTiedTimestampsPreserveOrderedIdsAndDistinctAbsenceObservations(self):
++        witness,code,_,receipt,context = self.fixture()
++        self.assertEqual(code,0)
++        def private_ties(value):
++            for attempt in value['cleanup']:
++                attempt['started_utc'] = attempt['finished_utc'] = '2026-10-14T00:00:31+00:00'
++        witness.change_isolation(receipt,'private',private_ties)
++        def wrapper_ties(value):
++            launch = next(index for index,row in enumerate(value['commands']) if '_inner' in row['argv'])
++            for row in value['commands'][:launch]:
++                row['started_utc'] = row['finished_utc'] = value['started_utc']
++            boundary = value['commands'][launch]['finished_utc']
++            for row in [*value['commands'][launch+1:],*value['cleanup']]:
++                row['started_utc'] = row['finished_utc'] = boundary
++        witness.change_isolation(receipt,'wrapper',wrapper_ties)
++        self.assert_imports(receipt,context)
++        # Ties do not permit reuse of one literal absence observation.
++        def duplicate(value):
++            rows = [index for index,row in enumerate(value['commands']) if row['argv'][5:] ==
++                    ['inspect','--format',isolation.INSPECT,value['sdk']] and row['exit_code'] != 0]
++            value['commands'][rows[1]] = copy.deepcopy(value['commands'][rows[0]])
++        witness.change_isolation(receipt,'wrapper',duplicate)
++        with self.assertRaises(preparation.InvalidPacket):
++            qualification.receipt_outcome(receipt,context)
++
++    def testLiteralStartupBudgetIncludesStartAndUsesExactBounds(self):
++        from datetime import datetime,timedelta
++        for label,start_seconds,probe_seconds,passes in (
++                ('exact-bounds',28,2,True),('overlong-start',31,1,False),
++                ('overlong-total',29,1.1,False),('overlong-probe',0,2.1,False)):
++            with self.subTest(label=label):
++                witness,code,_,receipt,context = self.fixture()
++                self.assertEqual(code,0)
++                def retime(value):
++                    commands = value['commands']
++                    start_index = next(index for index,row in enumerate(commands) if row['argv'][5:] == ['start',value['daemon']])
++                    launch_index = next(index for index,row in enumerate(commands) if '_inner' in row['argv'])
++                    base = datetime.fromisoformat(value['started_utc'])-timedelta(minutes=2)
++                    value['started_utc'] = (base-timedelta(seconds=1)).isoformat()
++                    for row in commands[:start_index]:
++                        row['started_utc'] = row['finished_utc'] = value['started_utc']
++                    commands[start_index]['started_utc'] = base.isoformat()
++                    probe_start = base+timedelta(seconds=start_seconds)
++                    commands[start_index]['finished_utc'] = probe_start.isoformat()
++                    commands[start_index+1]['started_utc'] = probe_start.isoformat()
++                    end = (probe_start+timedelta(seconds=probe_seconds)).isoformat()
++                    commands[start_index+1]['finished_utc'] = end
++                    for row in commands[start_index+2:launch_index]:
++                        row['started_utc'] = row['finished_utc'] = end
++                witness.change_isolation(receipt,'wrapper',retime)
++                if passes:
++                    self.assert_imports(receipt,context)
++                else:
++                    with self.assertRaisesRegex(preparation.InvalidPacket,'startup|probes'):
++                        qualification.receipt_outcome(receipt,context)
++
++    def testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings(self):
++        mutations = (
++            ('daemon','NetworkMode','host'),('daemon','PidMode','host'),('daemon','Privileged',False),
++            ('daemon','Ports',{'2375/tcp':[]}),('daemon','Mounts',[]),
++            ('python-tools','NetworkMode','bridge'),('python-tools','PidMode','host'),
++            ('python-tools','Privileged',True),('python-tools','Ports',{'80/tcp':[]}),
++            ('python-tools','Mounts',[{'Destination':'/var/run/docker.sock','Type':'bind','Source':'/var/run/docker.sock','RW':True}]),
++            ('sdk','NetworkMode','host'),('sdk','PidMode','host'),('sdk','Privileged',True),
++            ('sdk','Ports',{'80/tcp':[]}),('sdk','Mounts',[]),
++        )
++        for role,key,replacement in mutations:
++            with self.subTest(role=role,key=key):
++                witness,_,_,receipt,context = self.fixture()
++                def alter(value):
++                    identity = next(identity for identity,row in value['owned_containers'].items() if row['role']==role)
++                    row = next(row for row in value['commands'] if row['argv'][5:] ==
++                               ['inspect','--format',isolation.INSPECT,identity] and row['exit_code']==0)
++                    observed = json.loads(row['output'])
++                    observed[key] = replacement
++                    row['output'] = json.dumps(observed)
++                    row['output_sha256'] = preparation.digest(row['output'].encode())
++                witness.change_isolation(receipt,'wrapper',alter)
++                with self.assertRaises(preparation.InvalidPacket):
++                    qualification.receipt_outcome(receipt,context)
++        witness,_,_,receipt,context = self.fixture()
++        def altered_static_mount(value):
++            row = next(row for row in value['commands'] if row['argv'][5:] ==
++                       ['inspect','--format',isolation.INSPECT,value['sdk']] and row['exit_code']==0)
++            observed = json.loads(row['output'])
++            observed['Mounts'][0]['Source'] = '/contradictory/volume/source'
++            row['output'] = json.dumps(observed)
++            row['output_sha256'] = preparation.digest(row['output'].encode())
++        witness.change_isolation(receipt,'wrapper',altered_static_mount)
++        with self.assertRaisesRegex(preparation.InvalidPacket,'static role'):
++            qualification.receipt_outcome(receipt,context)
++
++    def testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected(self):
++        mutations = (
++            ('docker-path',lambda p:p['executables']['docker'].update(path='/substituted/docker')),
++            ('docker-hash',lambda p:p['executables']['docker'].update(sha256='f'*64)),
++            ('dotnet-path',lambda p:p['executables']['dotnet'].update(path='/substituted/dotnet')),
++            ('dotnet-hash',lambda p:p['executables']['dotnet'].update(sha256='f'*64)),
++            ('missing-mount-namespace',lambda p:p['namespaces'].pop('mnt')),
++            ('missing-daemon-mount-namespace',lambda p:p['daemon_namespaces'].pop('mnt')),
++            ('invalid-namespace',lambda p:p['namespaces'].update(mnt='mnt:unmeasured')),
++            ('invalid-daemon-namespace',lambda p:p['daemon_namespaces'].update(mnt=None)),
++            ('missing-glibc',lambda p:p.update(glibc=None)),
++        )
++        for label,mutate in mutations:
++            with self.subTest(label=label):
++                witness,_,_,receipt,context = self.fixture()
++                witness.change_isolation(receipt,'private',lambda value:mutate(value['proof']))
++                def coordinated(value):
++                    mutate(value['toolchain_proof'])
++                    row = next(row for row in value['commands'] if '_proof' in row['argv'])
++                    row['output'] = json.dumps(value['toolchain_proof'])
++                    row['output_sha256'] = preparation.digest(row['output'].encode())
++                witness.change_isolation(receipt,'wrapper',coordinated)
++                with self.assertRaises(preparation.InvalidPacket):
++                    qualification.receipt_outcome(receipt,context)
++
++    def testNewSessionProtectedPidAliasesAndResurrectedProcessAreRefused(self):
++        def root_session(value):
++            root = value['root']
++            root.update(pgid=root['pid']+1,session=root['pid']+1)
++            value['owned_processes'][0] = copy.deepcopy(root)
++            value['cleanup'][0]['before'][0] = copy.deepcopy(root)
++        def alias(value,protected,location):
++            original = value['supervisor'] if protected=='supervisor' else value['proof']['process']
++            row = {key:original[key] for key in ('pid','start_ticks','pgid','session')}
++            row['start_ticks'] += 1
++            if location=='owned':
++                value['owned_processes'].append(row)
++            else:
++                value['owned_processes'].append(copy.deepcopy(row))
++                value['cleanup'][0][location].append(row)
++        mutations = [('root-session',root_session),('resurrection',lambda value:value['cleanup'][1]['before'].append(copy.deepcopy(value['root'])))]
++        mutations += [(protected+'-'+location,lambda value,p=protected,l=location:alias(value,p,l))
++                      for protected in ('supervisor','dockerd') for location in ('owned','before','remaining')]
++        for label,mutate in mutations:
++            with self.subTest(label=label):
++                witness,_,_,receipt,context = self.fixture()
++                witness.change_isolation(receipt,'private',mutate)
++                with self.assertRaises(preparation.InvalidPacket):
++                    qualification.receipt_outcome(receipt,context)
++
++    def testCanonicalEngineBindSourcePassesButRequestedSourceSubstitutionRefuses(self):
++        witness,code,worker,receipt,context = self.fixture(mapped_bind=True)
++        self.assertEqual(code,0,worker.result['errors'])
++        self.assert_imports(receipt,context)
++        def substitute(value):
++            row = next(row for row in value['commands'] if row['argv'][5]=='create' and isolation.SDK_IMAGE in row['argv'])
++            index = next(index for index,arg in enumerate(row['argv']) if arg.startswith('type=bind,src='))
++            workspace = next(mount['Destination'] for mount in value['runner_proof']['Mounts'] if mount['Type']=='bind')
++            row['argv'][index] = 'type=bind,src=/substituted/workspace,dst='+workspace
++        witness.change_isolation(receipt,'wrapper',substitute)
++        with self.assertRaises(preparation.InvalidPacket):
++            qualification.receipt_outcome(receipt,context)
++
++    def testCoordinatedMalformedCanonicalEngineSourcesAreRefused(self):
++        for source in ('/engine/source/../workspace','//engine/workspace','/engine/workspace/.',
++                       '/engine//workspace','/engine/workspace/','/','/engine/workspace.sock',
++                       '/engine/workspace.socket','relative/workspace'):
++            with self.subTest(source=source):
++                witness,code,_,receipt,context = self.fixture(mapped_bind=True)
++                self.assertEqual(code,0)
++                def substitute(value):
++                    for mount in value['runner_proof']['Mounts']:
++                        if mount['Type']=='bind':mount['Source'] = source
++                    for row in value['commands']:
++                        if row['argv'][5:] == ['inspect','--format',isolation.INSPECT,value['sdk']] and row['exit_code']==0:
++                            observed = json.loads(row['output'])
++                            for mount in observed['Mounts']:
++                                if mount['Type']=='bind':mount['Source'] = source
++                            row['output'] = json.dumps(observed)
++                            row['output_sha256'] = preparation.digest(row['output'].encode())
++                witness.change_isolation(receipt,'wrapper',substitute)
++                with self.assertRaises(preparation.InvalidPacket):
++                    qualification.receipt_outcome(receipt,context)
++
++    def testRealLateDiscoveryExtendsOwnershipAndCleansFreshRegisteredProcess(self):
++        witness,code,worker,receipt,context = self.fixture(real_inner=True,late_process=True)
++        self.assertEqual(code,0,worker.result['errors'])
++        private = json.loads(receipt['execution_evidence']['isolation']['private']['content'])
++        first,second = private['cleanup']
++        self.assertEqual(first['remaining'],[])
++        self.assertTrue(second['before'])
++        key = lambda row:(row['pid'],row['start_ticks'])
++        first_owned = {key(row) for row in first['owned_processes']}
++        second_owned = {key(row) for row in second['owned_processes']}
++        self.assertLess(first_owned,second_owned)
++        self.assertTrue(all(key(row) not in first_owned for row in second['before']))
++        self.assertEqual(second['remaining'],[])
++        self.assertTrue(all(preparation.process_state(row['pid']) is None for row in second['before']))
++        self.assert_imports(receipt,context)
++        def resurrect(value):
++            value['cleanup'][1]['before'].append(copy.deepcopy(value['root']))
++        witness.change_isolation(receipt,'private',resurrect)
++        with self.assertRaisesRegex(preparation.InvalidPacket,'resurrected'):
++            qualification.receipt_outcome(receipt,context)
++
++    def testCleanupOwnershipSnapshotsMustBeCompleteAndMonotonic(self):
++        mutations = (
++            lambda value:value['cleanup'][0].pop('owned_processes'),
++            lambda value:value['cleanup'][0]['owned_processes'].clear(),
++            lambda value:value['cleanup'][1]['owned_processes'].clear(),
++            lambda value:value['cleanup'][1]['before'].append({'pid':999,'start_ticks':1,'pgid':999,'session':999}),
++        )
++        for mutate in mutations:
++            witness,_,_,receipt,context = self.fixture()
++            witness.change_isolation(receipt,'private',mutate)
++            with self.assertRaises(preparation.InvalidPacket):
++                qualification.receipt_outcome(receipt,context)
++
++    def testActualInnerSupervisorProcessesSupplyFinalizedImportEvidence(self):
++        _,code,worker,receipt,context = self.fixture(real_inner=True)
++        self.assertEqual(code,0,worker.result['errors'])
++        private = json.loads(receipt['execution_evidence']['isolation']['private']['content'])
++        self.assertEqual(private['supervisor']['pid'],os.getpid())
++        self.assertGreaterEqual(len(private['owned_processes']),2)
++        self.assertTrue(private['cleanup'][0]['before'])
++        self.assertEqual(private['cleanup'][1]['before'],[])
++        self.assert_imports(receipt,context)
++
++    def testActualProducerRootAndTimedCleanupOmissionsBreakThePositiveControl(self):
++        original = isolation._inner
++        class OmitEvidence(ast.NodeTransformer):
++            def __init__(self,kind):
++                self.kind = kind
++            def visit_Assign(self,node):
++                if self.kind=='root' and any(isinstance(target,ast.Subscript) and isinstance(target.slice,ast.Constant)
++                                           and target.slice.value=='root' for target in node.targets):
++                    return None
++                return self.generic_visit(node)
++            def visit_Call(self,node):
++                if self.kind=='timed-cleanup' and isinstance(node.func,ast.Name) and node.func.id=='dict':
++                    node.keywords = [item for item in node.keywords if item.arg not in ('id','started_utc','finished_utc')]
++                return self.generic_visit(node)
++        for kind in ('root','timed-cleanup'):
++            with self.subTest(kind=kind):
++                tree = ast.fix_missing_locations(OmitEvidence(kind).visit(ast.parse(inspect.getsource(original))))
++                namespace = {}
++                exec(compile(tree,original.__code__.co_filename,'exec'),original.__globals__,namespace)
++                with mock.patch.object(isolation,'_inner',namespace['_inner']):
++                    _,code,worker,receipt,context = self.fixture(real_inner=True)
++                self.assertEqual(code,2)
++                self.assertFalse(worker.result['passed'])
++                with self.assertRaisesRegex(AssertionError,'caller finalization'):
++                    self.assert_imports(receipt,context)
++
++    def testPhysicalSelectedInputMutationIsRefusedEvenWhenSelectionValueIsUnchanged(self):
++        _,_,_,receipt,context = self.fixture()
++        wrapper = json.loads(receipt['execution_evidence']['isolation']['wrapper']['content'])
++        selected = Path(wrapper['selected_input']['path'])
++        selected.write_bytes(selected.read_bytes()+b'\n')
++        with self.assertRaisesRegex(preparation.InvalidPacket,'physical input'):
++            qualification.receipt_outcome(receipt,context)
++
++
++class LocalStartupTests(unittest.TestCase):
++    def testRemoteEndpointsRefuseBeforeProvisioningAndDoNotRetainCredentials(self):
++        for host in ('tcp://user:secret@remote:2376','ssh://user:secret@remote','unix://remote/socket','https://user:secret@remote',
++                     'unix:///socket?token=secret','unix:///socket#secret'):
++            with self.subTest(host=host), tempfile.TemporaryDirectory() as directory:
++                output = Path(directory)/'evidence'
++                with mock.patch.object(isolation.IsolatedRunner,'docker') as docker:
++                    with self.assertRaisesRegex(preparation.InvalidPacket,'local Unix'):
++                        isolation.IsolatedRunner(output,workspace=Path(directory),outer_host=host)
++                docker.assert_not_called()
++                raw = (output/'isolation.json').read_text()
++                self.assertNotIn('secret',raw)
++                retained = json.loads(raw)
++                self.assertFalse(retained['passed'])
++                self.assertEqual(len(retained['cleanup']),2)
++
++    def testHungFailedAndLateSuccessfulProbesShareOneBoundedMonotonicDeadline(self):
++        for mode in ('hung','failed','late-success'):
++            with self.subTest(mode=mode),tempfile.TemporaryDirectory() as directory:
++                root = Path(directory)
++                with mock.patch.object(isolation,'ROOT',root):
++                    worker = isolation.IsolatedRunner(root/'evidence',workspace=root,outer_host='unix:///outer')
++                self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
++                clock = [0.0]
++                calls = []
++                def docker(args,**kwargs):
++                    calls.append((args,kwargs))
++                    if args[0] == 'info':return 0,b'outer'
++                    if args[0] == 'version':return 0,b'{}'
++                    if args[:2] == ['image','inspect']:
++                        return 0,json.dumps({'Id':'sha256:'+'a'*64,'RepoDigests':[args[-1]],'Os':'linux','Architecture':'amd64'}).encode()
++                    if args[0] == 'exec':
++                        self.assertLessEqual(kwargs['timeout'],isolation.PROBE_SECONDS)
++                        clock[0] += isolation.STARTUP_SECONDS+1 if mode=='late-success' else kwargs['timeout']
++                        return (0,b'private') if mode=='late-success' else (124 if mode=='hung' else 1,b'failure')
++                    return 0,b''
++                with mock.patch.object(worker,'docker',side_effect=docker), \
++                        mock.patch.object(worker,'create',return_value='owned-daemon'), \
++                        mock.patch.object(isolation.time,'monotonic',side_effect=lambda:clock[0]), \
++                        mock.patch.object(isolation.time,'sleep',side_effect=lambda value:clock.__setitem__(0,clock[0]+value)):
++                    self.assertEqual(worker._run(['python3','verification.py']),2)
++                self.assertIn('private daemon startup timeout',worker.result['errors'])
++                self.assertEqual(len(worker.result['cleanup']),2)
++                self.assertFalse(worker.result['passed'])
++                probes = [row for row in calls if row[0][0]=='exec']
++                self.assertTrue(probes)
++                if mode != 'late-success':self.assertLessEqual(clock[0],isolation.STARTUP_SECONDS)
++
++
++if __name__ == '__main__':
++    unittest.main()

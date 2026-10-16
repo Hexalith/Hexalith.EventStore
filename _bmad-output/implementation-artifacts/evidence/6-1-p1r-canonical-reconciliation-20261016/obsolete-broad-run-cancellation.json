@@ -1,0 +1,6 @@
+{
+  "captured_at_utc": "2026-10-16T12:56:15.427719+00:00",
+  "reason": "Parent broad run already retained an actionable delivery-fixture failure; source was corrected and focused replacement passed. Cancel this obsolete failing run, then execute all canonical secret/evidence controls except the unrelated full tracked-file enumeration. No passing broad verdict is claimed.",
+  "pid": 69167,
+  "already_absent": true
+}

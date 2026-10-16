@@ -1,0 +1,308 @@
+{
+  "commands": [
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_qualification.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_qualification.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 17.4601070789995,
+      "exit_code": 0,
+      "log": "python-qualification.log",
+      "log_sha256": "78f74eb2b6f558a4710fc9189760c4c8285f5b7cbebf8427693c7bcc952c16d8",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:50:50.836775+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_qualification.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_published_qualification.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 9.5881025639992,
+      "exit_code": 0,
+      "log": "python-published_qualification.log",
+      "log_sha256": "8ed942e8ba8980ce952113785a5eb9487ff51451471131e3e15be43ed38a30d0",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:51:08.297243+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_published_executor.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 33.283698708000884,
+      "exit_code": 0,
+      "log": "python-published_executor.log",
+      "log_sha256": "b83afb2b37c110e1cd1cb75f32d6e1197368bbdf8895393af2b8103cf652fc6f",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:51:17.885772+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_isolation.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 1.317285130999153,
+      "exit_code": 0,
+      "log": "python-isolation.log",
+      "log_sha256": "03b079bd45942255d88b008a9312a4cded0cd08c6b2756c0ce7cff0f704c87df",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:51:51.167720+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py",
+        "-v"
+      ],
+      "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_isolation_hardening.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 28.434119874000316,
+      "exit_code": 0,
+      "log": "python-isolation_hardening.log",
+      "log_sha256": "6b34aea0d0206969e716c39210f41bd1b49e34b0200cc63d069bfe043acfc93c",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:51:52.485423+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "-O",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py",
+        "-v"
+      ],
+      "command": "python3 -O -B -m unittest discover -s tools/tests -p test_p1r_isolation_hardening.py -v",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 28.802507804000925,
+      "exit_code": 0,
+      "log": "python-optimized-importer.log",
+      "log_sha256": "41634fdca49f471be86353b1874f8c4cc8d37a4c239e269c55a46993d27577fc",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:52:20.918596+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "command": "git diff --check",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 0.017007812999509042,
+      "exit_code": 0,
+      "log": "eventstore-whitespace.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:52:49.721402+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0,
+        1
+      ],
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "tools/p1r_isolation_evidence.py"
+      ],
+      "command": "git diff --no-index --check /dev/null tools/p1r_isolation_evidence.py",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 0.0021907989994360832,
+      "exit_code": 1,
+      "log": "new-source-whitespace-1.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true,
+      "require_empty_output": true,
+      "started_utc": "2026-10-16T11:52:49.739300+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0,
+        1
+      ],
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "tools/tests/p1r_isolation_fixture.py"
+      ],
+      "command": "git diff --no-index --check /dev/null tools/tests/p1r_isolation_fixture.py",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 0.002445934000206762,
+      "exit_code": 1,
+      "log": "new-source-whitespace-2.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true,
+      "require_empty_output": true,
+      "started_utc": "2026-10-16T11:52:49.741726+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0,
+        1
+      ],
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "tools/tests/test_p1r_isolation_hardening.py"
+      ],
+      "command": "git diff --no-index --check /dev/null tools/tests/test_p1r_isolation_hardening.py",
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "duration_seconds": 0.0016633230006846134,
+      "exit_code": 1,
+      "log": "new-source-whitespace-3.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true,
+      "require_empty_output": true,
+      "started_utc": "2026-10-16T11:52:49.744353+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "command": "git diff --check",
+      "cwd": "/home/administrator/projects/hexalith/projects",
+      "duration_seconds": 0.12318223300098907,
+      "exit_code": 0,
+      "log": "projects-whitespace.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:52:49.747219+00:00",
+      "timed_out": false
+    },
+    {
+      "acceptable_exit_codes": [
+        0
+      ],
+      "argv": [
+        "python3",
+        "tools/planning/validate_production_authority.py",
+        "--story-id",
+        "6.1"
+      ],
+      "command": "python3 tools/planning/validate_production_authority.py --story-id 6.1",
+      "cwd": "/home/administrator/projects/hexalith/projects",
+      "duration_seconds": 0.11644835200058878,
+      "exit_code": 0,
+      "log": "production-authority.log",
+      "log_sha256": "a6d59856b5dd93ab50edf3f46441c8d9da422221d08360657e12926f5bd10661",
+      "passed": true,
+      "require_empty_output": false,
+      "started_utc": "2026-10-16T11:52:49.871520+00:00",
+      "timed_out": false
+    }
+  ],
+  "driver_sha256": "72908267869f24ffe6142ef04a6600f8726f783ec5bcc713ac5e57feddc5d059",
+  "p1r_usable": false,
+  "package_qualified": false,
+  "passed": true,
+  "source_after_sha256": "96fa5ecd773dcbd4cb8bd11060f2f629518b468ab6e617a7be7fc1684c0d179d",
+  "source_before_sha256": "96fa5ecd773dcbd4cb8bd11060f2f629518b468ab6e617a7be7fc1684c0d179d",
+  "source_unchanged": true,
+  "story_6_1": "blocked"
+}

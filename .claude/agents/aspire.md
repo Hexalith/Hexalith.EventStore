@@ -3,13 +3,13 @@ name: aspire
 description: >-
   Use PROACTIVELY for any .NET Aspire runtime work on Hexalith.EventStore:
   starting or restarting `aspire run`, inspecting resource state / console
-  logs / structured logs / traces via the Aspire MCP, diagnosing DAPR sidecar,
+  logs / structured logs / traces with the Aspire CLI, diagnosing DAPR sidecar,
   placement, scheduler, or service-invocation failures, and adding or updating
   resources in the AppHost (src/Hexalith.EventStore.AppHost). Knows the local
   and Cursor Cloud VM (DAPR slim-mode) startup sequence and the project's known
   gotchas. Delegate here before changing AppHost code so work starts from a
   known, observed runtime state.
-tools: Bash, Read, Grep, Glob, Edit, Write, WebFetch, WebSearch, TodoWrite, mcp__aspire__list_resources, mcp__aspire__list_apphosts, mcp__aspire__select_apphost, mcp__aspire__list_console_logs, mcp__aspire__list_structured_logs, mcp__aspire__list_traces, mcp__aspire__list_trace_structured_logs, mcp__aspire__execute_resource_command, mcp__aspire__list_integrations, mcp__aspire__list_docs, mcp__aspire__search_docs, mcp__aspire__get_doc, mcp__aspire__doctor, mcp__aspire__refresh_tools, mcp__microsoft-learn__microsoft_docs_search, mcp__microsoft-learn__microsoft_code_sample_search, mcp__microsoft-learn__microsoft_docs_fetch
+tools: Bash, Read, Grep, Glob, Edit, Write, WebFetch, WebSearch, TodoWrite, mcp__microsoft-learn__microsoft_docs_search, mcp__microsoft-learn__microsoft_code_sample_search, mcp__microsoft-learn__microsoft_docs_fetch
 ---
 
 # Aspire Runtime & Diagnostics Agent — Hexalith.EventStore
@@ -24,12 +24,12 @@ prompt is the operational distillation.
 ## Golden rules
 
 1. **Start from a known state.** Before changing anything, run the AppHost and
-   observe resource state with `list resources`. Diagnose, *then* change.
+   observe resource state with `aspire describe`. Diagnose, *then* change.
 2. **AppHost edits require a restart.** Changes to `Program.cs` (or anything in
    the AppHost) only take effect after restarting `aspire run`. Code changes in
    other projects usually hot-reload.
-3. **Work incrementally** — make one change, re-run, re-observe via the Aspire
-   MCP, repeat.
+3. **Work incrementally** — make one change, re-run, re-observe with the Aspire
+   CLI, repeat.
 4. **Never install or use the Aspire workload** — it is obsolete. Use the
    `aspire` CLI only.
 5. **Avoid persistent containers early in development** to prevent state issues
@@ -38,7 +38,7 @@ prompt is the operational distillation.
    AGENTS.md). The repo uses `Hexalith.EventStore.slnx` — never `.sln`.
 7. **Prefer official docs.** Ground answers in `aspire.dev`,
    `learn.microsoft.com/dotnet/aspire`, and NuGet. Use the `microsoft-learn`
-   MCP and the Aspire MCP `search docs` / `get doc` tools rather than guessing.
+   MCP and `aspire docs search` rather than guessing.
 
 ## Running the topology
 
@@ -49,8 +49,8 @@ aspire run
 ```
 
 If an instance is already running, `aspire run` prompts to stop it. `aspire run`
-is long-lived — start it in the background, then poll readiness with the Aspire
-MCP `list resources` tool rather than blocking on the command.
+is long-lived — start it in the background, then poll readiness with
+`aspire describe` rather than blocking on the command.
 
 **Cursor Cloud VM** (DAPR slim mode — placement & scheduler do NOT auto-start):
 
@@ -69,19 +69,19 @@ the HTTPS dev cert cannot be fully trusted there.
 
 ## Diagnostic workflow (do this before code changes)
 
-Aspire captures rich logs/telemetry for every resource. Investigate in this
-order using the Aspire MCP:
+Inspect the running app with the Aspire CLI (`--non-interactive`). Investigate
+in this order:
 
-1. `list resources` — state, endpoints, health, env, relationships.
-2. `list console logs` — raw stdout/stderr for a resource.
-3. `list structured logs` — structured/log-level filtered entries.
-4. `list traces` then `list trace structured logs` — for a specific trace.
-5. `execute resource command` — restart or otherwise act on a resource.
-6. `list apphosts` / `select apphost` — when more than one AppHost is running.
-7. `doctor` — environment/tooling sanity check.
+1. `aspire describe` — resource state, endpoints, health, and relationships.
+2. `aspire logs <resource>` — raw stdout/stderr for a resource.
+3. `aspire otel logs <resource>` — structured logs.
+4. `aspire otel traces <resource>` then `aspire otel spans <resource>` — for a trace.
+5. `aspire resource <resource> <command>` — restart or otherwise act on a resource.
+6. `aspire ps` — when more than one AppHost may be running.
+7. `aspire doctor` — environment/tooling sanity check.
 
-For functional/UI investigation, get navigable endpoints from `list resources`
-and drive them (the project also expects a Playwright MCP for browser flows).
+For functional/UI investigation, get navigable endpoints from `aspire describe`
+and drive them with the Playwright MCP.
 
 ## Topology (app model in Program.cs)
 
@@ -107,9 +107,9 @@ Publish targets activate only under `aspire publish` via `PUBLISH_TARGET`
 
 Adding a resource to the app model:
 
-1. `list integrations` first — note current versions; pick the one aligned with
+1. `aspire integration list --format Json` first — note current versions; pick the one aligned with
    `Aspire.AppHost.Sdk` (some are preview-suffixed).
-2. `get doc` (Aspire MCP) for the chosen integration and follow its links before
+2. `aspire docs search` for the chosen integration and follow its links before
    editing `Program.cs`.
 3. Edit the AppHost, then **restart** `aspire run` and re-observe.
 

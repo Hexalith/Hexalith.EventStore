@@ -1,0 +1,113 @@
+{
+  "scope": "fresh harmless Python smoke only; no package qualification",
+  "source_directory": "/home/administrator/projects/hexalith/p1r-canonical-validation-20261016/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-live-20261016",
+  "retained_copy": "live-isolation",
+  "files": [
+    {
+      "path": "isolation.json",
+      "sha256": "cf689866045a0108bcf7f3e91a3270f6fcc15bc17bb3ba7672a12b274872f6cc"
+    },
+    {
+      "path": "private-execution.json",
+      "sha256": "b6fdd6f05401b98e3b1937f8e2fc2ecbaa35d6f3564e7e59966e56e716376fb6"
+    }
+  ],
+  "wrapper_passed": true,
+  "private_passed": true,
+  "cleanup": [
+    {
+      "absent_containers": [
+        "c6ce99a01a3f5170ac92556fd58a51b597e94d14d2b5adbed4db6e416a51e2d6",
+        "a82f00801be69ac4776a393dce397cca654ac528f44a7b99f23dfe325152e8dc",
+        "769e3d4a987a8b5c844dfebb29ac0e244b551665d6a7f70d958324d54d74ccaa"
+      ],
+      "absent_scratch": [
+        "/tmp/p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c-h4_gin5n"
+      ],
+      "absent_volumes": [
+        "p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c"
+      ],
+      "errors": [],
+      "finished_utc": "2026-10-16T12:53:04.955826+00:00",
+      "id": 1,
+      "nested_inventory": {
+        "complete": true,
+        "containers": [],
+        "daemon": "769e3d4a987a8b5c844dfebb29ac0e244b551665d6a7f70d958324d54d74ccaa"
+      },
+      "remaining": [],
+      "started_utc": "2026-10-16T12:52:59.575417+00:00",
+      "targeted": [
+        "c6ce99a01a3f5170ac92556fd58a51b597e94d14d2b5adbed4db6e416a51e2d6",
+        "a82f00801be69ac4776a393dce397cca654ac528f44a7b99f23dfe325152e8dc",
+        "769e3d4a987a8b5c844dfebb29ac0e244b551665d6a7f70d958324d54d74ccaa",
+        "volume:p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c",
+        "scratch:/tmp/p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c-h4_gin5n"
+      ]
+    },
+    {
+      "absent_containers": [
+        "c6ce99a01a3f5170ac92556fd58a51b597e94d14d2b5adbed4db6e416a51e2d6",
+        "a82f00801be69ac4776a393dce397cca654ac528f44a7b99f23dfe325152e8dc",
+        "769e3d4a987a8b5c844dfebb29ac0e244b551665d6a7f70d958324d54d74ccaa"
+      ],
+      "absent_scratch": [
+        "/tmp/p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c-h4_gin5n"
+      ],
+      "absent_volumes": [
+        "p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c"
+      ],
+      "errors": [],
+      "finished_utc": "2026-10-16T12:53:08.570904+00:00",
+      "id": 2,
+      "nested_inventory": {
+        "daemon_absent": true,
+        "prior_empty_inventory": true
+      },
+      "remaining": [],
+      "started_utc": "2026-10-16T12:53:04.956596+00:00",
+      "targeted": [
+        "c6ce99a01a3f5170ac92556fd58a51b597e94d14d2b5adbed4db6e416a51e2d6",
+        "a82f00801be69ac4776a393dce397cca654ac528f44a7b99f23dfe325152e8dc",
+        "769e3d4a987a8b5c844dfebb29ac0e244b551665d6a7f70d958324d54d74ccaa",
+        "volume:p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c",
+        "scratch:/tmp/p1r-isolation-26746bd7f9124cf6bf07600d6bdefb4c-h4_gin5n"
+      ]
+    }
+  ],
+  "private_cleanup": [
+    {
+      "before": [],
+      "errors": [],
+      "finished_utc": "2026-10-16T12:52:58.613648+00:00",
+      "id": 1,
+      "owned_processes": [
+        {
+          "pgid": 418,
+          "pid": 418,
+          "session": 418,
+          "start_ticks": 1879467
+        }
+      ],
+      "remaining": [],
+      "started_utc": "2026-10-16T12:52:58.613194+00:00"
+    },
+    {
+      "before": [],
+      "errors": [],
+      "finished_utc": "2026-10-16T12:52:58.613905+00:00",
+      "id": 2,
+      "owned_processes": [
+        {
+          "pgid": 418,
+          "pid": 418,
+          "session": 418,
+          "start_ticks": 1879467
+        }
+      ],
+      "remaining": [],
+      "started_utc": "2026-10-16T12:52:58.613658+00:00"
+    }
+  ],
+  "p1r_usable": false
+}

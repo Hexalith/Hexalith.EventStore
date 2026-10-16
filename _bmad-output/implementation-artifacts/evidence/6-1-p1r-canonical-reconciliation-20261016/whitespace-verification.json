@@ -1,0 +1,246 @@
+{
+  "captured_at_utc": "2026-10-16T13:03:07.986889+00:00",
+  "checks": [
+    {
+      "path": ".github/workflows/p1r-qualification.yml",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/independent-repair-audit.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-and-audit.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-repair.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/independent-audit-next.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "scripts/validate-publication-preflight.sh",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-isolated-runner.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/Directory.Build.props",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/FixtureSnapshotQualification.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterSnapshotParity.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Domain.csproj",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Program.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Host.csproj",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Program.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/probe/Program.cs",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/p1r_published_qualification.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/release-publication-identity.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/tests/p1r_isolation_fixture.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/tests/release_publication_fixture.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "exit_code": 1,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "repository": "isolated",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+      "exit_code": 0,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "repository": "EventStore",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "diagnostics": "",
+      "passed": true
+    },
+    {
+      "repository": "Projects",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects",
+      "exit_code": 0,
+      "diagnostics": "",
+      "passed": true
+    }
+  ],
+  "passed": true
+}

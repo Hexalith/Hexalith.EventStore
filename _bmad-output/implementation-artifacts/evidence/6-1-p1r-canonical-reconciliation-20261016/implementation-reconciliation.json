@@ -1,0 +1,243 @@
+{
+  "baseline": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+  "enrollment_base": "210b90da172cc7ca946fbb06cfd44390bffa707b",
+  "files": [
+    {
+      "path": ".github/workflows/p1r-qualification.yml",
+      "reviewed_sha256": "c2d6b5fb7aca1c6faba405885c449812b23a76a5798d92fdffb44c14fca3885c",
+      "canonical_sha256": "d88063ae47f84b68d362ac8c985d0ed00809a48c387de28c5801418875a59885",
+      "base_sha256": "d88063ae47f84b68d362ac8c985d0ed00809a48c387de28c5801418875a59885",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "c2d6b5fb7aca1c6faba405885c449812b23a76a5798d92fdffb44c14fca3885c",
+      "reviewed_exact": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/independent-repair-audit.py",
+      "reviewed_sha256": "5ad23a8f26e51f78f870e6382b9920188b908c72278c7db76fcf7877ec68a676",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "5ad23a8f26e51f78f870e6382b9920188b908c72278c7db76fcf7877ec68a676",
+      "reviewed_exact": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-and-audit.py",
+      "reviewed_sha256": "8616171ca7a54c7fe9b1ff2a449320fd9443aee66077909a6fc4bdd788250f06",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "8616171ca7a54c7fe9b1ff2a449320fd9443aee66077909a6fc4bdd788250f06",
+      "reviewed_exact": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-repair.py",
+      "reviewed_sha256": "963c7e2be3500fa199be9f738f65638ad891a5237352a761ba3ac824303b3dfd",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "963c7e2be3500fa199be9f738f65638ad891a5237352a761ba3ac824303b3dfd",
+      "reviewed_exact": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/independent-audit-next.py",
+      "reviewed_sha256": "e549c589c51722ff2c55514fa22a33605f747027aeb4605dd14e4311d703923a",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "e549c589c51722ff2c55514fa22a33605f747027aeb4605dd14e4311d703923a",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Events/SnapshotManagerTests.cs",
+      "reviewed_sha256": "788407891ca53793e881e9249359358891b209fbf081247fae9238837f1420da",
+      "canonical_sha256": "993e09f05e799261cbcc43811c0652ecffb01fdadff2f5a94106b27669a4dbd1",
+      "base_sha256": "993e09f05e799261cbcc43811c0652ecffb01fdadff2f5a94106b27669a4dbd1",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "788407891ca53793e881e9249359358891b209fbf081247fae9238837f1420da",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-isolated-runner.py",
+      "reviewed_sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/Directory.Build.props",
+      "reviewed_sha256": "4389d0fabcddbef9431e8fbc0db5e12adaeb1e911f2f440c67c1708a52abe1f8",
+      "canonical_sha256": "ae5cb506483d1e82f286569ad6b7f9c080fc9bc89c7521607edfcfeaa6afc1ee",
+      "base_sha256": "ae5cb506483d1e82f286569ad6b7f9c080fc9bc89c7521607edfcfeaa6afc1ee",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "4389d0fabcddbef9431e8fbc0db5e12adaeb1e911f2f440c67c1708a52abe1f8",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/FixtureSnapshotQualification.cs",
+      "reviewed_sha256": "b8e1e4e85a22688cb04ed321244d15c9a359689786c522844a7999b4fc588fd2",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "b8e1e4e85a22688cb04ed321244d15c9a359689786c522844a7999b4fc588fd2",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "reviewed_sha256": "b10cab528d02ee61be0b19d01ef404c0e77d377d52e2c8bdf24826b58d4d653b",
+      "canonical_sha256": "bd5e079a9c97b9aee859a20b97d52ecee6d257eed958ce96b3b8a58ba8a4ae4a",
+      "base_sha256": "bd5e079a9c97b9aee859a20b97d52ecee6d257eed958ce96b3b8a58ba8a4ae4a",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "b10cab528d02ee61be0b19d01ef404c0e77d377d52e2c8bdf24826b58d4d653b",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterSnapshotParity.cs",
+      "reviewed_sha256": "9a561db3d5a08e7a8af7885d36127f2dfebe118ac6b2953c78d1467fe5e10f45",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "9a561db3d5a08e7a8af7885d36127f2dfebe118ac6b2953c78d1467fe5e10f45",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Domain.csproj",
+      "reviewed_sha256": "78895e295715a17eba8fcbf5fe0923b6035a1cd96944a5a3e87c72168d563c11",
+      "canonical_sha256": "092b7978544a9a2b8feb9efd563ad3a377c140d3d51beba1eadba14f366d45cf",
+      "base_sha256": "092b7978544a9a2b8feb9efd563ad3a377c140d3d51beba1eadba14f366d45cf",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "78895e295715a17eba8fcbf5fe0923b6035a1cd96944a5a3e87c72168d563c11",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Program.cs",
+      "reviewed_sha256": "92877d1b1d06431ec4695d071e42e2e52983883e0cd5456fa0873b7bf28d5728",
+      "canonical_sha256": "bec3dcaefa666c9d9a68894c17555598198bc39b0116aae1ddba6ab788e9ee3d",
+      "base_sha256": "bec3dcaefa666c9d9a68894c17555598198bc39b0116aae1ddba6ab788e9ee3d",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "92877d1b1d06431ec4695d071e42e2e52983883e0cd5456fa0873b7bf28d5728",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Host.csproj",
+      "reviewed_sha256": "22bb755614fcfa929b8e9b62b1ca1418c8f22043e2bde18e584e6266b13ad09b",
+      "canonical_sha256": "85494b69435f1a4430f5b3f02bbfc7ca8ba926851e733bce6bd968d05020213d",
+      "base_sha256": "85494b69435f1a4430f5b3f02bbfc7ca8ba926851e733bce6bd968d05020213d",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "22bb755614fcfa929b8e9b62b1ca1418c8f22043e2bde18e584e6266b13ad09b",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Program.cs",
+      "reviewed_sha256": "844ff841be18df53814e210f0cf6809b55cb2b35759878e049fde6dc339d0ee0",
+      "canonical_sha256": "48bd11b1ad23f905ba3e15660089d54be661f6a1ecd360535183ab3d440987b0",
+      "base_sha256": "48bd11b1ad23f905ba3e15660089d54be661f6a1ecd360535183ab3d440987b0",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "844ff841be18df53814e210f0cf6809b55cb2b35759878e049fde6dc339d0ee0",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/probe/Program.cs",
+      "reviewed_sha256": "7c778a5d66518a38ef57b344d478b3449e61d2c19e558515012f25abb65a55eb",
+      "canonical_sha256": "31bc0ff892215ade3a8e78fcbc50c47db07a4dc433471cd3ef7e02d9e1e1289b",
+      "base_sha256": "31bc0ff892215ade3a8e78fcbc50c47db07a4dc433471cd3ef7e02d9e1e1289b",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "7c778a5d66518a38ef57b344d478b3449e61d2c19e558515012f25abb65a55eb",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "reviewed_sha256": "1519b83c80697a45e5cbe9a2aa01b4646bd45c7c0c0dfe68f7e554ce6b0211d2",
+      "canonical_sha256": "009cbabcb17e9ee8d11044c8c948785f35eb126ca2b38d1a6b387a13449e6b23",
+      "base_sha256": "009cbabcb17e9ee8d11044c8c948785f35eb126ca2b38d1a6b387a13449e6b23",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "1519b83c80697a45e5cbe9a2aa01b4646bd45c7c0c0dfe68f7e554ce6b0211d2",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "reviewed_sha256": "415eaddd1140d7cc03584fb2f1ccecb0520a1fe09b3876533ffea07b8b77a47c",
+      "canonical_sha256": "a4fc5da39dc0f7e27fefbe327f8044e01e03d968ee8857d8365333d85349b13a",
+      "base_sha256": "a4fc5da39dc0f7e27fefbe327f8044e01e03d968ee8857d8365333d85349b13a",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "415eaddd1140d7cc03584fb2f1ccecb0520a1fe09b3876533ffea07b8b77a47c",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "reviewed_sha256": "d42cfbf97ca3cf50e9334bba6843fc6b912ebc6577fcc80f0a9cf84c78b260b6",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "d42cfbf97ca3cf50e9334bba6843fc6b912ebc6577fcc80f0a9cf84c78b260b6",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "reviewed_sha256": "4640dfce0d27e86fc578befa7b35d1458e45e3931fb7bd52de90d5fa381188cd",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "4640dfce0d27e86fc578befa7b35d1458e45e3931fb7bd52de90d5fa381188cd",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "reviewed_sha256": "bf74d692bfb07f9a840cfdfefa927eed0c8bed472534311eb09a79df8a21d8ba",
+      "canonical_sha256": "ba2a102aaa7eff7920f7f106c046e32d59165fa593aae110d75b27857334737f",
+      "base_sha256": "ba2a102aaa7eff7920f7f106c046e32d59165fa593aae110d75b27857334737f",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "bf74d692bfb07f9a840cfdfefa927eed0c8bed472534311eb09a79df8a21d8ba",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/p1r_published_qualification.py",
+      "reviewed_sha256": "814ba52e8fa2b54f38d043ca2263f1d784b56ae46f948891a10189e8b840d680",
+      "canonical_sha256": "720f47ec23c31afb27075eef8b53bb35640d5382c62ff1a42d1c91a73dd77a4c",
+      "base_sha256": "720f47ec23c31afb27075eef8b53bb35640d5382c62ff1a42d1c91a73dd77a4c",
+      "action": "apply reviewed delta; canonical unchanged since enrollment base",
+      "reconciled_sha256": "814ba52e8fa2b54f38d043ca2263f1d784b56ae46f948891a10189e8b840d680",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/tests/p1r_isolation_fixture.py",
+      "reviewed_sha256": "2d0089b9798eccf9ff03b8b489047a34c092ad6f7ce45763c9fa75502eefef4e",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "2d0089b9798eccf9ff03b8b489047a34c092ad6f7ce45763c9fa75502eefef4e",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "reviewed_sha256": "d36b6d805df5b02d55cee11d1aa7547e2f08153572675369fdfe16ac3f3983e1",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "d36b6d805df5b02d55cee11d1aa7547e2f08153572675369fdfe16ac3f3983e1",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "reviewed_sha256": "c4021b0bc32b199c8745591cf7b36689337a1893757471f5a1f08a38ae6934db",
+      "canonical_sha256": null,
+      "base_sha256": null,
+      "action": "add exact reviewed source",
+      "reconciled_sha256": "c4021b0bc32b199c8745591cf7b36689337a1893757471f5a1f08a38ae6934db",
+      "reviewed_exact": true
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "reviewed_sha256": "e9099efc807b6b686501d2f1c6c0e83db2d6efa7c6b66f2aca8296d03485fa2f",
+      "canonical_sha256": "79cea6d15638ec01a76e1cedcf17d0e333fcfd4ec0cdf776ee304ffd8f87d446",
+      "base_sha256": "40121111e022b2591e89df7fa1f01c105f6cd3bb26a480417def3a9d6be26fe6",
+      "action": "three-way reconcile overlapping deltas",
+      "reconciled_sha256": "de941529a908e236c86903f8b065322ddce1987385f9ba473bc77137414f079e",
+      "reviewed_exact": false
+    }
+  ],
+  "src_changed": false,
+  "p1r_usable": false,
+  "story_6_1": "blocked"
+}

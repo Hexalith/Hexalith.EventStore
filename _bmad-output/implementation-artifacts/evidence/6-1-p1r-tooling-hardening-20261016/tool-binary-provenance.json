@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "scope": "binary guards from unchanged pinned tool images; no package/runtime/backend version selection",
+  "source": "parent-verification-v3/live-isolation/private-execution.json",
+  "source_sha256": "b27562b3e89feddc42684ea10ff1dcc1af3ad0d3302520e7991b40311e93f30a",
+  "tools": [
+    {
+      "tool": "docker",
+      "image_manifest": "docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314",
+      "image_measurement": {
+        "Architecture": "amd64",
+        "Id": "sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314",
+        "Os": "linux",
+        "RepoDigests": [
+          "docker@sha256:6316d612722fd7fb2bd7edf9fcbb4439d08915cfb2e0e0b28bf16675fc9f3314"
+        ]
+      },
+      "measured_executable": {
+        "path": "/usr/local/bin/docker",
+        "sha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6"
+      },
+      "guard": {
+        "path": "/usr/local/bin/docker",
+        "sha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6"
+      },
+      "passed": true
+    },
+    {
+      "tool": "dotnet",
+      "image_manifest": "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523",
+      "image_measurement": {
+        "Architecture": "amd64",
+        "Id": "sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523",
+        "Os": "linux",
+        "RepoDigests": [
+          "mcr.microsoft.com/dotnet/sdk@sha256:0eeb52c76e35a5431ca707ad2bc75e38006a05393045d8532ae44c15d9474523"
+        ]
+      },
+      "measured_executable": {
+        "path": "/usr/share/dotnet/dotnet",
+        "sha256": "01d89e0a0191052bfea616cd4ce624c8faf13b05bbddf7f64499c23e2a9d9269"
+      },
+      "guard": {
+        "path": "/usr/share/dotnet/dotnet",
+        "sha256": "01d89e0a0191052bfea616cd4ce624c8faf13b05bbddf7f64499c23e2a9d9269"
+      },
+      "passed": true
+    }
+  ]
+}

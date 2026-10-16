@@ -1,0 +1,30 @@
+[
+  {
+    "label": "refresh-test_p1r_published_qualification",
+    "exit_code": 0
+  },
+  {
+    "label": "refresh-test_p1r_published_executor",
+    "exit_code": 0
+  },
+  {
+    "label": "refresh-test_p1r_isolation",
+    "exit_code": 0
+  },
+  {
+    "label": "refresh-test_p1r_isolation_hardening",
+    "exit_code": 0
+  },
+  {
+    "label": "refresh-test_p1r_isolation_hardening-optimized",
+    "exit_code": 0
+  },
+  {
+    "label": "refresh-test_release_publication_authority",
+    "exit_code": 0
+  },
+  {
+    "label": "refresh-test_release_publication_authority-optimized",
+    "exit_code": 0
+  }
+]

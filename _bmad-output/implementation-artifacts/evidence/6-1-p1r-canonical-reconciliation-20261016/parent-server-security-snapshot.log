@@ -1,0 +1,20 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.CanonicalReconciliationDelivery_DoesNotContainUsableSecrets [FAIL]
+      Shouldly.ShouldAssertException : ScanTrackedFile(path)
+          should be empty but had
+      2
+          items and was
+      ["tools/tests/test_p1r_isolation_hardening.py:448", "tools/tests/test_p1r_isolation_hardening.py:449"]
+      
+      Additional Info:
+          Delivered source contains secret material: tools/tests/test_p1r_isolation_hardening.py
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs(54,0): at Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.CanonicalReconciliationDelivery_DoesNotContainUsableSecrets()
+           at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+           at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'e8927b55015e1ceacc74f035a7401c5a59958eb62220d4aec014073a2ce76373')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 862, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 527.792s

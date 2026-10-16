@@ -1,0 +1,90 @@
+setUpClass (test_p1r_qualification.PacketTests) ... ERROR
+testCleanupAttemptsEveryIdentityAfterOneFailure (test_p1r_qualification.SourceAndProcessTests.testCleanupAttemptsEveryIdentityAfterOneFailure) ... ok
+testDirtyUntrackedAndStagedNewSourcesHaveIndependentBindings (test_p1r_qualification.SourceAndProcessTests.testDirtyUntrackedAndStagedNewSourcesHaveIndependentBindings) ... ok
+testDisappearingProcStatIsAbsentButOtherReadErrorsRemainFailures (test_p1r_qualification.SourceAndProcessTests.testDisappearingProcStatIsAbsentButOtherReadErrorsRemainFailures) ... ok
+testExternalSigintPreservesReceiptAndCleansActualDescendants (test_p1r_qualification.SourceAndProcessTests.testExternalSigintPreservesReceiptAndCleansActualDescendants) ... FAIL
+testNestedBuildsObservationKeepsOwningRepositoryRoute (test_p1r_qualification.SourceAndProcessTests.testNestedBuildsObservationKeepsOwningRepositoryRoute) ... fatal: repository '/home/administrator/projects/hexalith/Hexalith.Builds' does not exist
+ERROR
+testPidfdErrorsAreSkippedOnlyForDisappearedOrReusedOwnedIdentity (test_p1r_qualification.SourceAndProcessTests.testPidfdErrorsAreSkippedOnlyForDisappearedOrReusedOwnedIdentity) ... ok
+testPrivateRegistrationFindsDetachedChildAfterEarlyParentExit (test_p1r_qualification.SourceAndProcessTests.testPrivateRegistrationFindsDetachedChildAfterEarlyParentExit) ... ok
+testRealSuspendedSentinelIsNotRunning (test_p1r_qualification.SourceAndProcessTests.testRealSuspendedSentinelIsNotRunning) ... ok
+testSecondSigintDuringTimerJoinCannotBypassCleanup (test_p1r_qualification.SourceAndProcessTests.testSecondSigintDuringTimerJoinCannotBypassCleanup) ... ok
+testStaleParentAndSessionIdsNeverAdoptUnrelatedProcess (test_p1r_qualification.SourceAndProcessTests.testStaleParentAndSessionIdsNeverAdoptUnrelatedProcess) ... ok
+testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused (test_p1r_qualification.SourceAndProcessTests.testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused) ... fatal: repository '/home/administrator/projects/hexalith/Hexalith.Builds' does not exist
+ERROR
+testWorkspaceRootBuildsIsObservedWithoutNestedInitialization (test_p1r_qualification.SourceAndProcessTests.testWorkspaceRootBuildsIsObservedWithoutNestedInitialization) ... fatal: repository '/home/administrator/projects/hexalith/Hexalith.Builds' does not exist
+ERROR
+testUtcStampKeepsAllEvidencePairsOrderedAcrossClockReversals (test_p1r_qualification.TimestampTests.testUtcStampKeepsAllEvidencePairsOrderedAcrossClockReversals) ... ok
+
+======================================================================
+ERROR: setUpClass (test_p1r_qualification.PacketTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 47, in setUpClass
+    cls.baseline_binding = p.source_binding()
+                           ~~~~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/p1r_qualification.py", line 231, in source_binding
+    require(workspace_name, "required Builds input unavailable")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: required Builds input unavailable
+
+======================================================================
+ERROR: testNestedBuildsObservationKeepsOwningRepositoryRoute (test_p1r_qualification.SourceAndProcessTests.testNestedBuildsObservationKeepsOwningRepositoryRoute)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 438, in testNestedBuildsObservationKeepsOwningRepositoryRoute
+    _, owner, builds = self.disposable_workspace(scratch, nested=True)
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 418, in disposable_workspace
+    subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(builds_source), str(builds)], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--shared', '--no-checkout', '-q', '/home/administrator/projects/hexalith/Hexalith.Builds', '/tmp/tmpyzowbkip/workspace/references/Hexalith.Tenants/references/Hexalith.Builds']' returned non-zero exit status 128.
+
+======================================================================
+ERROR: testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused (test_p1r_qualification.SourceAndProcessTests.testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 448, in testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused
+    workspace, owner, builds = self.disposable_workspace(scratch)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 418, in disposable_workspace
+    subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(builds_source), str(builds)], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--shared', '--no-checkout', '-q', '/home/administrator/projects/hexalith/Hexalith.Builds', '/tmp/tmpvjf8oq5d/workspace/references/Hexalith.Builds']' returned non-zero exit status 128.
+
+======================================================================
+ERROR: testWorkspaceRootBuildsIsObservedWithoutNestedInitialization (test_p1r_qualification.SourceAndProcessTests.testWorkspaceRootBuildsIsObservedWithoutNestedInitialization)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 427, in testWorkspaceRootBuildsIsObservedWithoutNestedInitialization
+    workspace, owner, builds = self.disposable_workspace(scratch)
+                               ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 418, in disposable_workspace
+    subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(builds_source), str(builds)], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['git', 'clone', '--shared', '--no-checkout', '-q', '/home/administrator/projects/hexalith/Hexalith.Builds', '/tmp/tmp_ewlabno/workspace/references/Hexalith.Builds']' returned non-zero exit status 128.
+
+======================================================================
+FAIL: testExternalSigintPreservesReceiptAndCleansActualDescendants (test_p1r_qualification.SourceAndProcessTests.testExternalSigintPreservesReceiptAndCleansActualDescendants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016/tools/tests/test_p1r_qualification.py", line 521, in testExternalSigintPreservesReceiptAndCleansActualDescendants
+    self.assertTrue(interrupted, (process.returncode, stdout, stderr))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : (2, b'', b'{"valid": false, "qualified": false, "p1r_usable": false, "reason": "preparation observation incomplete"}\n')
+
+----------------------------------------------------------------------
+Ran 13 tests in 3.432s
+
+FAILED (failures=1, errors=4)

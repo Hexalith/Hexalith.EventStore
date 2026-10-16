@@ -1,0 +1,136 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-review-hardening-1.log",
+      "sha256": "420d200480599e5b7507e22ef3c3b85225a6debaaabeb667291169f2663a080d"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 1,
+      "output": "p1r-review-hardening-2.log",
+      "sha256": "842b7c73a5ff35d840fa57a03c8e66959d4b1609efaeb518c6027082ba5544f7"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-review-hardening-3.log",
+      "sha256": "3474135a9f884a489bc25ae8e44f91a7885e49515251ad41b377932da8831216"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-review-isolation.log",
+      "sha256": "302fb821825eae0fed2a51051603f743b3cd1eabd5b7260d200171a5b8e7265a"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-review-hardening-final.log",
+      "sha256": "f5947c054a2f46d7338f4e0ee3f92563bf965acb7382f919597fc583d661edc7"
+    },
+    {
+      "argv": [
+        "python3",
+        "-O",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-review-hardening-optimized.log",
+      "sha256": "8494f5253b2213f462d84038c9be767d3c8e66184ce852f0ac7b28df9b1a338d"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-review-isolation-final.log",
+      "sha256": "4b70654fe47eec856354c697bba265f7d6a8c524e9f0244b539dfac69c818a52"
+    }
+  ],
+  "failed_attempt": "hardening-2 retained the unmatched-parenthesis import failure while updating canonical bind-source handling; fixed before final runs",
+  "git_diff_check": {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit_code": 0
+  },
+  "pinned_binary_measurement_source": "../parent-verification/live-isolation/private-execution.json",
+  "scope": "source-only review fixes; synthetic Docker boundary and actual local supervisor/process controls",
+  "source_files": {
+    "tools/p1r_isolation.py": "acbd32eeab36d493db3e1e93cd78e1502adc08f7221c7e07e835bb72f39b1084",
+    "tools/p1r_isolation_evidence.py": "7700a5cb62c9e87221b822d333b33b54b30463a382e85699e4f72f8383f077f4",
+    "tools/p1r_published_qualification.py": "e54dac3df008e13488dc776d71532e21a85d4907066ac2182c17ac184cbafaed",
+    "tools/tests/p1r_isolation_fixture.py": "bffed4601d3302eaf178e88baa410c7bd1763a20d7f0d6e748155dc5671e9b3f",
+    "tools/tests/test_p1r_isolation.py": "5418e9e2f9c3c1d387ee1b9f62ce517f629874e9acb7413437299dc1236c41aa",
+    "tools/tests/test_p1r_isolation_hardening.py": "7d3fcb3753c6513b90b094e8bff63c3dfc9525c2a15ecf5460bf1a7f6dd3120b"
+  }
+}

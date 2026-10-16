@@ -146,6 +146,28 @@ or unavailable private inventories retain the daemon and volume without removing
 those containers. An unavailable final supervisor cleanup receipt also preserves
 the SDK runner. These refusals retain nonpassing evidence for later inspection.
 
+
+The supported controller profile requires a local Unix Docker endpoint
+(`unix:///absolute/socket/path`). TCP, TLS and SSH contexts are refused before
+provisioning, with a retained refusal that omits endpoint credentials. Ambient
+Docker TLS settings and client configuration never enter retained proof. Private
+daemon start and readiness probes share one 30-second monotonic deadline; each
+readiness probe has at most two seconds, and late successful probes still fail.
+
+Proposed 3.122.1 receipt import requires the complete controller journal. It binds
+all three pinned image OS/architecture/digest/image-ID measurements to literal
+role creation and inspection, the Python/Docker copy chain, the prelaunch SDK
+toolchain measurement and actual `_inner` launch. Every command has a distinct
+ordered ID and contained timestamps; unrelated Docker mutations are refused.
+The exact executor arguments select a physical input path and raw file hash.
+Private supervisor, root and owned process identities include PID, start ticks,
+PGID and session, with two distinct timed cleanup observations. Docker client
+and server versions and Docker/dotnet executable hashes must agree with the
+prelaunch measurements. Successful private execution and both outer cleanup
+attempts precede final receipt attachment through the real controller caller.
+Private, outer or finalizer failure remains nonpassing. Historical imports retain
+their original contracts, and these tooling controls confer no package qualification.
+
 Source repair verification and immutable package qualification remain distinct.
 After independent repair review/verification, propose an immutable successor
 publication with exact approved version, source/tag, Builds identity and archive

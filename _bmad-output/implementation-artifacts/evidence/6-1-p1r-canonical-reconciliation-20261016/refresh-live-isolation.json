@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "tools/p1r-isolated-runner.py",
+    "--out",
+    "/home/administrator/projects/hexalith/p1r-canonical-validation-20261016/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-live-refresh-20261016",
+    "--",
+    "python3",
+    "-c",
+    "print('p1r-canonical-refreshed-source-only-smoke', flush=True)"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/p1r-canonical-validation-20261016/references/Hexalith.EventStore",
+  "started_at_utc": "2026-10-16T13:13:26.494493+00:00",
+  "duration_seconds": 31.845230515998992,
+  "exit_code": 0,
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HEXALITH_BUILDS_SOURCE": "/home/administrator/projects/hexalith/projects/references/Hexalith.Builds"
+  },
+  "log": "refresh-live-isolation.log",
+  "log_bytes": 238,
+  "log_sha256": "a9293bac1ec497093c2aaa96b4ae11201cd18a556262071a916c3e65d5075485"
+}

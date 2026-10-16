@@ -1247,12 +1247,13 @@ def validate_final_isolation(receipt, context):
             and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
                     for destination in destinations if destination != "/var/lib/docker"),
             "final isolation runner ownership, mounts or namespace binding differs")
+    from p1r_isolation_evidence import canonical_engine_directory
     for mount in runner["Mounts"]:
         require(mount.get("Destination") != "/" and not str(mount.get("Source", "")).endswith("docker.sock")
                 and (mount.get("Destination") == "/var/lib/docker" and mount.get("Type") == "volume"
                      and mount.get("Name") == wrapper.get("owned_volume")
                      or mount.get("Destination") != "/var/lib/docker" and mount.get("Type") == "bind"
-                     and mount.get("Source") == mount.get("Destination")),
+                     and canonical_engine_directory(mount.get("Source"))),
                 "final isolation mounts expose an ambient socket or substituted source")
     for value in (wrapper, private):
         attempts = value.get("cleanup", [])
@@ -1296,6 +1297,14 @@ def validate_final_isolation(receipt, context):
                 and empty,
                 "final isolation cleanup lacks exact repeated absence or complete private inventory")
     require(not Path(wrapper["owned_scratch"]).exists(), "final isolation scratch remains")
+    import p1r_isolation_evidence
+    try:
+        p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
+                                        reference["wrapper"]["path"], validate_times)
+    except (KeyError, TypeError, StopIteration, ValueError) as error:
+        if isinstance(error, InvalidPacket):
+            raise
+        raise InvalidPacket("incomplete or malformed isolation lifecycle evidence") from error
 
 
 def finalize_isolation_receipts(output, isolation_output, selection):
@@ -1309,6 +1318,10 @@ def finalize_isolation_receipts(output, isolation_output, selection):
         data = regular(path)
         reference[name] = {"path":str(path),"sha256":digest(data),"content":data.decode()}
     execution = parse_json(regular(output/"execution.json"))
+    private = parse_json(reference["private"]["content"].encode())
+    context = {"source_binding":private.get("source_binding"),
+               "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
+    pending = []
     for name in execution["receipts"]:
         path = Path(name)
         require(path.parent == output/"receipts", "isolation receipt escaped executor output")
@@ -1320,6 +1333,11 @@ def finalize_isolation_receipts(output, isolation_output, selection):
             receipt["cleanup"].setdefault("execution_evidence", {})["isolation"] = reference
         if receipt["schema"] == LANE_RECEIPT_SCHEMA:
             receipt["output_sha256"] = digest(preparation.canonical(receipt["execution_evidence"]))
+        validate_final_isolation(receipt,context)
+        pending.append((path,receipt))
+    require(pending, "successful isolation has no finalizable receipts")
+    # Validate the whole inventory before attaching any successful evidence.
+    for path,receipt in pending:
         write_json(path,receipt)
 
 

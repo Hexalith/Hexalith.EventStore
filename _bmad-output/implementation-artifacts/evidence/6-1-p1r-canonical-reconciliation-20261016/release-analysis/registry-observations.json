@@ -1,0 +1,578 @@
+{
+  "scope": "read-only destination observations; versions are historical proposal and current analysis only; no reservation or selection",
+  "versions_examined": [
+    "3.122.1",
+    "3.123.0"
+  ],
+  "reserved_version": null,
+  "selected_successor": null,
+  "observations": [
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.274233+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.contracts",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/3.122.1/hexalith.eventstore.contracts.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.275119+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.contracts-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/3.123.0/hexalith.eventstore.contracts.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.275443+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.contracts-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.278095+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.client",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/3.122.1/hexalith.eventstore.client.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.280672+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.client-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/3.123.0/hexalith.eventstore.client.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.282190+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.client-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.415797+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.server",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/3.122.1/hexalith.eventstore.server.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.424747+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.server-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/3.123.0/hexalith.eventstore.server.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.426984+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.server-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.signalr/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.432186+00:00",
+      "status": 200,
+      "response_sha256": "f7da78d085cd298ada906e18db0fe79aaf09a30add960d94f246be35f428ac15",
+      "response_bytes": 2844,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.signalr",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.signalr/3.122.1/hexalith.eventstore.signalr.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.435270+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.signalr-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.signalr/3.123.0/hexalith.eventstore.signalr.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.436023+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.signalr-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.557271+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.testing",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing/3.122.1/hexalith.eventstore.testing.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.561399+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.testing-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing/3.123.0/hexalith.eventstore.testing.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.566391+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.testing-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing.integration/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.574234+00:00",
+      "status": 200,
+      "response_sha256": "699145c21d1a379bcf075b41cd1c6e71be1f4fb8baf1ed725a0b09b63c9ce808",
+      "response_bytes": 2253,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.testing.integration",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing.integration/3.122.1/hexalith.eventstore.testing.integration.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.577667+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.testing.integration-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.testing.integration/3.123.0/hexalith.eventstore.testing.integration.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.580323+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.testing.integration-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.aspire/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.701846+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.aspire",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.aspire/3.122.1/hexalith.eventstore.aspire.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.705891+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.aspire-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.aspire/3.123.0/hexalith.eventstore.aspire.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.717354+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.aspire-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.718890+00:00",
+      "status": 200,
+      "response_sha256": "699145c21d1a379bcf075b41cd1c6e71be1f4fb8baf1ed725a0b09b63c9ce808",
+      "response_bytes": 2253,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.servicedefaults",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/3.122.1/hexalith.eventstore.servicedefaults.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.722864+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.servicedefaults-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/3.123.0/hexalith.eventstore.servicedefaults.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.743085+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.servicedefaults-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.854441+00:00",
+      "status": 200,
+      "response_sha256": "699145c21d1a379bcf075b41cd1c6e71be1f4fb8baf1ed725a0b09b63c9ce808",
+      "response_bytes": 2253,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.domainservice",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/3.122.1/hexalith.eventstore.domainservice.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.855012+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.domainservice-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/3.123.0/hexalith.eventstore.domainservice.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.858256+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.domainservice-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.restapi.generators/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:04.867177+00:00",
+      "status": 200,
+      "response_sha256": "31b531164fb433a18359bcca3a2a5025ba3813a6039d197b062be989364d9cc6",
+      "response_bytes": 2059,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.restapi.generators",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.restapi.generators/3.122.1/hexalith.eventstore.restapi.generators.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:04.869619+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.restapi.generators-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.restapi.generators/3.123.0/hexalith.eventstore.restapi.generators.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.011433+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.restapi.generators-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.gateway/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.016754+00:00",
+      "status": 200,
+      "response_sha256": "179cf434a83fe538c58ff0fc625ed13fb2a04411a04a79a616b1c6fc87ba782c",
+      "response_bytes": 1998,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.gateway",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.gateway/3.122.1/hexalith.eventstore.gateway.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.017247+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.gateway-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.gateway/3.123.0/hexalith.eventstore.gateway.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.019411+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.gateway-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.abstractions/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.061222+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.admin.abstractions",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.abstractions/3.122.1/hexalith.eventstore.admin.abstractions.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.153147+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.admin.abstractions-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.abstractions/3.123.0/hexalith.eventstore.admin.abstractions.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.160917+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.admin.abstractions-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.cli/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.161621+00:00",
+      "status": 200,
+      "response_sha256": "ee51c75fd95329792383d13245347073fd5032bf4d4ec0f0c774a85f43b5d745",
+      "response_bytes": 2828,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.admin.cli",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.cli/3.122.1/hexalith.eventstore.admin.cli.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.164918+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.admin.cli-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.cli/3.123.0/hexalith.eventstore.admin.cli.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.202915+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.admin.cli-3.123.0"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.server/index.json",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.298257+00:00",
+      "status": 200,
+      "response_sha256": "f7da78d085cd298ada906e18db0fe79aaf09a30add960d94f246be35f428ac15",
+      "response_bytes": 2844,
+      "authenticated": false,
+      "name": "index-hexalith.eventstore.admin.server",
+      "highest_stable": "3.122.0",
+      "examined_versions": {
+        "3.122.1": false,
+        "3.123.0": false
+      }
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.server/3.122.1/hexalith.eventstore.admin.server.3.122.1.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.299875+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.admin.server-3.122.1"
+    },
+    {
+      "url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.admin.server/3.123.0/hexalith.eventstore.admin.server.3.123.0.nupkg",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.301718+00:00",
+      "status": 404,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "archive-hexalith.eventstore.admin.server-3.123.0"
+    },
+    {
+      "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/git/ref/tags/v3.122.1",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.303960+00:00",
+      "status": 404,
+      "response_sha256": "e2e3c64edab172132f77ce89a0e8c190db1cd30936a096344f45893bd5b75f8a",
+      "response_bytes": 114,
+      "authenticated": false,
+      "name": "github-tag-3.122.1"
+    },
+    {
+      "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/releases/tags/v3.122.1",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.343568+00:00",
+      "status": 404,
+      "response_sha256": "010563d2cfb8f1e87f700936ce59ee3a33364da46e3db41b0049227918ece74d",
+      "response_bytes": 133,
+      "authenticated": false,
+      "name": "github-release-3.122.1"
+    },
+    {
+      "url": "https://registry.hexalith.com/v2/eventstore/manifests/3.122.1",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.438455+00:00",
+      "status": 401,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "oci-manifest-3.122.1"
+    },
+    {
+      "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/git/ref/tags/v3.123.0",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.444273+00:00",
+      "status": 404,
+      "response_sha256": "e2e3c64edab172132f77ce89a0e8c190db1cd30936a096344f45893bd5b75f8a",
+      "response_bytes": 114,
+      "authenticated": false,
+      "name": "github-tag-3.123.0"
+    },
+    {
+      "url": "https://api.github.com/repos/Hexalith/Hexalith.EventStore/releases/tags/v3.123.0",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.449892+00:00",
+      "status": 404,
+      "response_sha256": "010563d2cfb8f1e87f700936ce59ee3a33364da46e3db41b0049227918ece74d",
+      "response_bytes": 133,
+      "authenticated": false,
+      "name": "github-release-3.123.0"
+    },
+    {
+      "url": "https://registry.hexalith.com/v2/eventstore/manifests/3.123.0",
+      "method": "HEAD",
+      "started_at_utc": "2026-10-16T13:14:05.455257+00:00",
+      "status": 401,
+      "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "response_bytes": 0,
+      "authenticated": false,
+      "name": "oci-manifest-3.123.0"
+    },
+    {
+      "url": "https://registry.hexalith.com/v2/eventstore/tags/list",
+      "method": "GET",
+      "started_at_utc": "2026-10-16T13:14:05.476309+00:00",
+      "status": 401,
+      "response_sha256": "0e481f7e6815732df3a6ad1fde3a5927b020c2dc7325b9dd0cc18c7f18b76b54",
+      "response_bytes": 253,
+      "authenticated": false,
+      "name": "oci-tags"
+    }
+  ],
+  "authenticated_oci_observations": [],
+  "oci_credentials": {
+    "environment_pair_available": false,
+    "registry_entry_in_docker_config": true,
+    "global_credential_store_configured": true
+  },
+  "authenticated_registry_blocker": "No publisher credential pair available to this process; unauthenticated 401 cannot establish tag absence or version floor. Authenticated publisher preflight remains required."
+}

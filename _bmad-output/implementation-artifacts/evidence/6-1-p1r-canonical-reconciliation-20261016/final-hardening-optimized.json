@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "python3",
+    "-O",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation_hardening.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+  "started_at_utc": "2026-10-16T12:54:29.869085+00:00",
+  "duration_seconds": 23.876771156999894,
+  "exit_code": 0,
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HEXALITH_BUILDS_SOURCE": "/home/administrator/projects/hexalith/projects/references/Hexalith.Builds"
+  },
+  "log": "final-hardening-optimized.log",
+  "log_bytes": 119,
+  "log_sha256": "79b7197daa38a2e69f4248145f2509d2292f4da1bf1933f0f58b53e066bf744d"
+}

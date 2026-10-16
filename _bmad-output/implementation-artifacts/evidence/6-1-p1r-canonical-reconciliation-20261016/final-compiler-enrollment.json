@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/verify-compiler-enrollment-disposable.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/p1r-canonical-validation-20261016/references/Hexalith.EventStore",
+  "started_at_utc": "2026-10-16T12:54:46.505051+00:00",
+  "duration_seconds": 9.053233049999108,
+  "exit_code": 0,
+  "environment_overrides": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HEXALITH_BUILDS_SOURCE": "/home/administrator/projects/hexalith/projects/references/Hexalith.Builds"
+  },
+  "log": "final-compiler-enrollment.log",
+  "log_bytes": 247,
+  "log_sha256": "040c3b47b3bcbac783f3bc464fb05f0f7d28e5129b00548b16ef9696dd040bf1"
+}

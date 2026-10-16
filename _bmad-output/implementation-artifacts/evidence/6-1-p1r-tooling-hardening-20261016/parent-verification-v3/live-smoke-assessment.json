@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "scope": "source-only Python smoke; no package qualification",
+  "wrapper_sha256": "818eb14ed2e420d1a191f3bcd81616ce8094d7818f8eddb633ffead2b79a1273"
+}

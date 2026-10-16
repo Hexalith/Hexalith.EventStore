@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "command": "git diff --check",
+  "cwd": "/home/administrator/projects/hexalith/projects",
+  "duration_seconds": 0.0642374529998051,
+  "exit_code": 0,
+  "log": "projects-whitespace.log",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "passed": true,
+  "started_utc": "2026-10-16T11:40:11.160499+00:00",
+  "timed_out": false
+}

@@ -1,0 +1,9 @@
+{
+  "canonical_source": "a2016e88f4d0da9b953fe6f4394f8b8fd4e27f72",
+  "source_files": 6518,
+  "all_final_run_inputs_unchanged": true,
+  "before": "refresh-source-before.json",
+  "after": "refresh-source-after.json",
+  "all_34_delivered_source_bytes_unchanged_from_review": true,
+  "review_applicability": "refreshed-review-applicability.json"
+}

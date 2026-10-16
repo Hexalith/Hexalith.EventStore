@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--no-index",
+    "--check",
+    "/dev/null",
+    "tools/tests/test_p1r_isolation_hardening.py"
+  ],
+  "command": "git diff --no-index --check /dev/null tools/tests/test_p1r_isolation_hardening.py",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 0.0016691390010237228,
+  "exit_code": 1,
+  "log": "new-source-whitespace-3.log",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "passed": false,
+  "started_utc": "2026-10-16T11:40:11.158631+00:00",
+  "timed_out": false
+}

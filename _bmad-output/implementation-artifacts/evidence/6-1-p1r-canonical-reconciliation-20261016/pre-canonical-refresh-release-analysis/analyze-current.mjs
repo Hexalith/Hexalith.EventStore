@@ -1,0 +1,21 @@
+import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {analyzeCommits} from '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/node_modules/@semantic-release/commit-analyzer/index.js';
+import semver from '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/node_modules/semver/index.js';
+const root='/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016';
+const out=new URL('.',import.meta.url);
+const run=(...args)=>execFileSync('git',['-C',root,...args],{encoding:'utf8'}).trim();
+const source=run('rev-parse','HEAD');
+const tag='v3.122.0';
+const raw=run('log',`${tag}..${source}`,'--format=%H%x00%B%x00');
+const parts=raw.split('\0');const commits=[];
+for(let i=0;i<parts.length-1;i+=2){if(parts[i].trim())commits.push({hash:parts[i].trim(),message:parts[i+1].trim()});}
+const config=JSON.parse(fs.readFileSync(`${root}/.releaserc.json`));
+const analyzer=config.plugins.find(p=>Array.isArray(p)&&p[0]==='@semantic-release/commit-analyzer');
+const options=analyzer?analyzer[1]:{};const logs=[];
+const releaseType=await analyzeCommits(options,{cwd:root,commits,logger:{log:(...a)=>logs.push(a)}});
+const analyzerPackage=fs.readFileSync('/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/node_modules/@semantic-release/commit-analyzer/package.json');
+const result={captured_at_utc:new Date().toISOString(),canonical_source:source,latest_published_tag:tag,latest_tag_commit:run('rev-parse',`${tag}^{commit}`),canonical_config_sha256:createHash('sha256').update(fs.readFileSync(`${root}/.releaserc.json`)).digest('hex'),analyzer_version:JSON.parse(analyzerPackage).version,analyzer_options:options,observed_commits:commits,release_type:releaseType,analysis_only_version:releaseType?semver.inc(tag.slice(1),releaseType):null,reserved_version:null,selected_successor:null,frozen_publication_source:null,historical_proposal:'3.122.1',analysis_excludes_uncommitted_landing:true,requires_reanalysis_of_actual_authorized_landing:true,logs};
+fs.writeFileSync(new URL('commit-analysis.json',out),JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify({source,releaseType,analysis_only_version:result.analysis_only_version,commits:commits.length}));

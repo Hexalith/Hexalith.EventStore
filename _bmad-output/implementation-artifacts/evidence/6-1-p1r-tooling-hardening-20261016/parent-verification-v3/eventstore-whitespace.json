@@ -1,0 +1,20 @@
+{
+  "acceptable_exit_codes": [
+    0
+  ],
+  "argv": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "command": "git diff --check",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 0.016137091000928194,
+  "exit_code": 0,
+  "log": "eventstore-whitespace.log",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "passed": true,
+  "require_empty_output": false,
+  "started_utc": "2026-10-16T11:47:32.523447+00:00",
+  "timed_out": false
+}

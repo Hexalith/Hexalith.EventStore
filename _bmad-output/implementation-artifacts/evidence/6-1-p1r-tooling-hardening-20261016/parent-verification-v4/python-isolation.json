@@ -1,0 +1,27 @@
+{
+  "acceptable_exit_codes": [
+    0
+  ],
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation.py",
+    "-v"
+  ],
+  "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_isolation.py -v",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 1.317285130999153,
+  "exit_code": 0,
+  "log": "python-isolation.log",
+  "log_sha256": "03b079bd45942255d88b008a9312a4cded0cd08c6b2756c0ce7cff0f704c87df",
+  "passed": true,
+  "require_empty_output": false,
+  "started_utc": "2026-10-16T11:51:51.167720+00:00",
+  "timed_out": false
+}

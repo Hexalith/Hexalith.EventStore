@@ -1,0 +1,22 @@
+E
+======================================================================
+ERROR: test_p1r_isolation_hardening (unittest.loader._FailedTest.test_p1r_isolation_hardening)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_p1r_isolation_hardening
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/unittest/loader.py", line 426, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.14/unittest/loader.py", line 367, in _get_module_from_name
+    __import__(name)
+    ~~~~~~~~~~^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 18, in <module>
+    import p1r_published_qualification as qualification
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1258
+    "final isolation mounts expose an ambient socket or substituted source")
+IndentationError: unexpected indent
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

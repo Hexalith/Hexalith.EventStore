@@ -1,0 +1,17 @@
+{
+  "captured_at_utc": "2026-10-16T13:12:31.758845+00:00",
+  "old_canonical": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+  "new_canonical": "a2016e88f4d0da9b953fe6f4394f8b8fd4e27f72",
+  "delta": [
+    "tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorTestHelper.cs"
+  ],
+  "canonical_patch_sha256": "5e0a64adc515e36e9df1dc313c8654f21707a5d9b47b87611766e4964013e325",
+  "all_34_delivered_source_hashes_unchanged": true,
+  "production_security_pins_and_release_inputs_unchanged": true,
+  "affected_checks": [
+    "Server.Tests rebuild and actor snapshot controls",
+    "whole-source bindings and exact-main/CI observations"
+  ],
+  "original_checkouts_moved": false,
+  "secondary_refresh_attempt": "Fetching origin main from the local primary clone fetched its retained main branch, not detached new source. Explicit full-SHA local fetch corrected this; no source was lost."
+}

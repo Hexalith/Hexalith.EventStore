@@ -1,0 +1,203 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 1,
+      "output": "p1r-executor-first.log",
+      "sha256": "537ef5759529a20da210ae5ee61cae00ff30b334a8d0d4e75bab29f7f1fd5041"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 1,
+      "output": "p1r-isolation-first.log",
+      "sha256": "448822bf9243e327921462db7dd1cf99478207ea1f72be1bb9ddd8d789439f2a"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 1,
+      "output": "p1r-executor-second.log",
+      "sha256": "621f9906a619b8aa88de68f911ea441c7b44a1c941a892c71796fca377bc6128"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-isolation-second.log",
+      "sha256": "b8fbab94ad8297736607865cd6b87a64e53354e53cad2fa04df99eac2e8f956f"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-hardening-first.log",
+      "sha256": "04ab790596ad559f52b2328d93aa8f0551cf878b5e8c9270a72069579e38a671"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_qualification.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-preparation-final.log",
+      "sha256": "f900d06059ecc20a0c4213f6016b6c6c1b5951ee90bbdb539f64116cb0ab3313"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_qualification.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-published-final.log",
+      "sha256": "5f00a504385bf53f33937da9ad005d4ffae752febe5d2fd3289ba8ed3ba81bd9"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-executor-final.log",
+      "sha256": "877b41ce5b97b88fab856439ba007fbf09b6405229afaa536ff95fd42b2e6914"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-isolation-final.log",
+      "sha256": "1809f716f239415d768872ebd101e153908aa5e4a55895a4352a411e9551cdcd"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-hardening-final.log",
+      "sha256": "4889007a776ce0641cb8063448f355be51deaecd80c5e6e38f6b735f5e5c6d38"
+    },
+    {
+      "argv": [
+        "python3",
+        "-O",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "exit_code": 0,
+      "output": "p1r-hardening-optimized.log",
+      "sha256": "aed06738a5170f057c534433720117ab452906a65a8a0a5702743cab5d86c993"
+    }
+  ],
+  "early_setup_failures": [
+    {
+      "command": "python3 -m unittest discover -s tools/tests -p 'test_p1r_isolation_hardening.py'",
+      "result": "1 test import error: ModuleNotFoundError: No module named p1r_isolation; fixed tools sys.path before final runs"
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tools/tests -p 'test_p1r_isolation_hardening.py'",
+      "result": "1 test import error: SyntaxError expected except or finally block in p1r_isolation.py line 493; corrected overly broad edit before final runs"
+    }
+  ],
+  "scope": "source-only tooling controls; no published qualification",
+  "source_files": {
+    ".github/workflows/p1r-qualification.yml": "c2d6b5fb7aca1c6faba405885c449812b23a76a5798d92fdffb44c14fca3885c",
+    "tools/p1r-published-consumers/README.md": "b10cab528d02ee61be0b19d01ef404c0e77d377d52e2c8bdf24826b58d4d653b",
+    "tools/p1r_isolation.py": "d363714a07fbcf29fe4e1a7c40645599011bd61cadac4f7d47e8d6407aaa7576",
+    "tools/p1r_isolation_evidence.py": "d57afb514a747881cedfd69e0ae7be2ca076dd49bf66cb4466cb57cf8681a62a",
+    "tools/p1r_published_qualification.py": "09d7585de119ce500f0d805497a5a7807b72ecdffa7ccb88e4b99fec9c8329b7",
+    "tools/tests/p1r_isolation_fixture.py": "7996f1ca5f45fd1b3f9bfa0cc20d364ca7001edb4e63993c4268f86649e90b2c",
+    "tools/tests/test_p1r_isolation.py": "7715139f06ba95f6b849ab8d6a0dacb5ee8e8c4ecd9d461755e825347eca3574",
+    "tools/tests/test_p1r_isolation_hardening.py": "308c2ee24cbdbd9c4a0402ee5c9ab322c23dac99e1b51454bf1017bd96d5d1b3",
+    "tools/tests/test_p1r_published_executor.py": "e9099efc807b6b686501d2f1c6c0e83db2d6efa7c6b66f2aca8296d03485fa2f"
+  }
+}

@@ -1,5 +1,7 @@
 """Positive and negative isolation controls; synthetic controls grant no qualification."""
 import copy
+import ast
+import inspect
 import contextlib
 import io
 import json
@@ -152,6 +154,10 @@ class ControllerTests(unittest.TestCase):
             nonlocal volume_present
             if argv[:2] == ["info", "--format"]:
                 return 0, b"outer-id\n"
+            if argv[:2] == ["image", "inspect"]:
+                return 0,json.dumps({"Id":"sha256:"+"a"*64,"RepoDigests":[argv[-1]],"Os":"linux","Architecture":"amd64"}).encode()
+            if argv[:1] == ["version"] or "_proof" in argv:
+                return 0,b"{}"
             if argv[:2] == ["exec", "sdk"]:
                 isolation.write_json(worker.output / "private-execution.json", {"passed": True,
                     "invocation": worker.invocation, "finished_utc": preparation.stamp(),
@@ -340,6 +346,59 @@ class AutomaticRoutingTests(unittest.TestCase):
 
 
 class RealPrivateProofTests(unittest.TestCase):
+    def assertDockerVersionProduction(self, producer):
+        versions = {'Client':{'Version':'29.8.2'},'Server':{'Version':'29.8.2'}}
+        daemon = {'ID':'private','ServerVersion':'29.8.2','DockerRootDir':'/var/lib/docker/data'}
+        environment = {isolation.MARKER:'a'*32,'DOCKER_HOST':isolation.SOCKET,'DOCKER_CONFIG':isolation.CLIENT_CONFIG}
+        own = {'net':'net:[1]','pid':'pid:[2]','mnt':'mnt:[3]'}
+        with tempfile.TemporaryDirectory() as directory:
+            executables = {name:Path(directory)/name for name in ('docker','dotnet')}
+            for name,path in executables.items():
+                path.write_bytes(('synthetic '+name+' executable').encode())
+            def output(argv,**kwargs):
+                self.assertEqual(kwargs['env']['DOCKER_HOST'],isolation.SOCKET)
+                if argv == ['docker','info','--format','{{json .}}']:
+                    return json.dumps(daemon).encode()
+                if argv == ['docker','version','--format','{{json .}}']:
+                    return json.dumps(versions).encode()
+                self.assertEqual(argv,['dotnet','--version'])
+                return b'10.0.401'
+            original_exists,original_read = Path.exists,Path.read_text
+            def read(path,*args,**kwargs):
+                if str(path)=='/var/lib/docker/p1r-run/dockerd.pid':return '7'
+                if str(path)=='/proc/7/comm':return 'dockerd'
+                return original_read(path,*args,**kwargs)
+            with mock.patch.dict(os.environ,environment,clear=True), \
+                    mock.patch.object(Path,'is_socket',return_value=True), \
+                    mock.patch.object(Path,'exists',lambda path:False if str(path)=='/var/run/docker.sock' else original_exists(path)), \
+                    mock.patch.object(Path,'read_text',read), \
+                    mock.patch.object(subprocess,'check_output',side_effect=output) as commands, \
+                    mock.patch.object(shutil,'which',side_effect=lambda name:str(executables[name])), \
+                    mock.patch.object(preparation,'process_state',return_value={'pid':7,'start_ticks':1,'pgid':1,'session':1}), \
+                    mock.patch.object(isolation,'namespaces',return_value=own):
+                proof = producer('outer')
+            self.assertEqual(proof.get('docker_version'),versions,'private_proof omitted client/server version evidence')
+            self.assertEqual(proof['daemon']['ServerVersion'],versions['Server']['Version'])
+            self.assertEqual([call.args[0] for call in commands.call_args_list].count(
+                ['docker','version','--format','{{json .}}']),1)
+
+    def testActualPrivateProofRetainsMeasuredDockerClientAndServerVersions(self):
+        self.assertDockerVersionProduction(isolation.private_proof)
+
+    def testDockerVersionOmissionBreaksTheActualPrivateProofPositiveControl(self):
+        original = isolation.private_proof
+        class OmitVersion(ast.NodeTransformer):
+            def visit_Dict(self,node):
+                kept = [(key,value) for key,value in zip(node.keys,node.values)
+                        if not isinstance(key,ast.Constant) or key.value!='docker_version']
+                node.keys,node.values = [key for key,_ in kept],[value for _,value in kept]
+                return self.generic_visit(node)
+        tree = ast.fix_missing_locations(OmitVersion().visit(ast.parse(inspect.getsource(original))))
+        namespace = {}
+        exec(compile(tree,original.__code__.co_filename,'exec'),original.__globals__,namespace)
+        with self.assertRaisesRegex(AssertionError,'private_proof omitted'):
+            self.assertDockerVersionProduction(namespace['private_proof'])
+
     def testMarkedExecutorAdmissionMeasuresActualPrivateProofBeforeLaunching(self):
         entry = runpy.run_path(str(preparation.ROOT/'tools/p1r-published-executor.py'))
         for mismatch in (False,True):
@@ -479,6 +538,12 @@ class PrivateCommandTests(unittest.TestCase):
             self.assertEqual(result["passed"], exit_code == 0)
             self.assertEqual(code, 0 if exit_code == 0 else 2)
             self.assertEqual(len(result["cleanup"]), 2)
+            self.assertEqual(result['root']['pid'],result['root']['pgid'])
+            self.assertEqual(result['root']['pid'],result['root']['session'])
+            self.assertIn(result['root'],result['owned_processes'])
+            self.assertEqual([row['id'] for row in result['cleanup']],[1,2])
+            self.assertTrue(all(result['root'] in row['owned_processes'] for row in result['cleanup']))
+            self.assertTrue(all(preparation.validate_times(row) for row in result['cleanup']))
             self.assertTrue(all(not row["remaining"] and not row["errors"] for row in result["cleanup"]))
 
     def testStartupErrorAndInterruptionAreNonpassingAndRetained(self):

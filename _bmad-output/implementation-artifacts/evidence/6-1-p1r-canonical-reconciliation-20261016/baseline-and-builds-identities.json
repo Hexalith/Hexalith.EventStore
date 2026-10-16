@@ -1,0 +1,26 @@
+{
+  "observed_at_utc": "2026-10-16T12:32:30.417567+00:00",
+  "isolated_checkout": "/home/administrator/projects/hexalith/p1r-canonical-reconciliation-20261016",
+  "canonical_source": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+  "canonical_tree": "2ee4959b6c13c4ca10f699c42bf5fb273c3c1766",
+  "canonical_remote": "https://github.com/Hexalith/Hexalith.EventStore.git",
+  "isolated_index_sha256": "f24b5535f1d20cb01c34e737872a09a4a663409fcb519fb3837e1784eeb49656",
+  "btag": "728174f506d56204657e0c52e98a4453aef79f6a",
+  "existing_root_declared_builds_head": "728174f506d56204657e0c52e98a4453aef79f6a",
+  "bexec": "22a578b576a515d2af214fe81859447fffc97981",
+  "bexec_describe": "v4.24.0-37-g22a578b",
+  "btag_describe": "v4.31.2-30-g728174f",
+  "construction_props": [
+    {
+      "path": "/home/administrator/projects/hexalith/projects/references/Hexalith.Builds/Props/Directory.Packages.props",
+      "git_blob": "be991bc130c9d449a7dbe0558c175a3272754995",
+      "git_blob_sha256": "91e472254bd2a6800a4333c7db6c5ef4d29f1eb40f78692f6e5520c7999ce1f9",
+      "working_bytes_sha256": "c0d2e3a0433543483f844e9feccf08e40e2c431a422fb4d7cf52656cd0728a48",
+      "working_bytes_equal_git_object": false
+    }
+  ],
+  "sdk_global_json_sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+  "no_dependency_pins_changed": true,
+  "clone_origin": "shared object clone of original EventStore; canonical fetch and detached checkout occur solely in its own .git; original checkout git state is protected separately",
+  "future_frozen_source": null
+}

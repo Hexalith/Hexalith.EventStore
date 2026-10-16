@@ -1,0 +1,174 @@
+{
+  "scope": "read-only current canonical source observations; not usable for uncommitted reconciliation or future frozen source",
+  "source": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+  "observations": [
+    {
+      "argv": [
+        "gh",
+        "api",
+        "--method",
+        "GET",
+        "repos/Hexalith/Hexalith.EventStore/actions/workflows/ci.yml/runs",
+        "-f",
+        "branch=main",
+        "-f",
+        "event=push",
+        "-f",
+        "head_sha=0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+        "-f",
+        "per_page=100"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T12:32:50.833900+00:00",
+      "exit_code": 0,
+      "response": "ci-environment-1.json",
+      "response_sha256": "85de80fc612ef49384778d4f857965b6185599311bf7e659f44010a85210ef8d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exact_runs": [
+        {
+          "id": 38888657631,
+          "run_attempt": 1,
+          "head_sha": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+          "head_branch": "main",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "failure",
+          "html_url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/38888657631"
+        }
+      ],
+      "successful_exact_push": false
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "--method",
+        "GET",
+        "repos/Hexalith/Hexalith.EventStore/actions/workflows/p1r-qualification.yml/runs",
+        "-f",
+        "branch=main",
+        "-f",
+        "event=push",
+        "-f",
+        "head_sha=0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+        "-f",
+        "per_page=100"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T12:32:51.278149+00:00",
+      "exit_code": 0,
+      "response": "ci-environment-2.json",
+      "response_sha256": "627bbbac09a4c7c1582a6c70efb0cfade411489427ca4a4efec0d604fe9b38b5",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exact_runs": [
+        {
+          "id": 38888657303,
+          "run_attempt": 1,
+          "head_sha": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+          "head_branch": "main",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/38888657303"
+        }
+      ],
+      "successful_exact_push": true
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "--method",
+        "GET",
+        "repos/Hexalith/Hexalith.EventStore/actions/workflows/commitlint.yml/runs",
+        "-f",
+        "branch=main",
+        "-f",
+        "event=push",
+        "-f",
+        "head_sha=0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+        "-f",
+        "per_page=100"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T12:32:51.732043+00:00",
+      "exit_code": 0,
+      "response": "ci-environment-3.json",
+      "response_sha256": "691d6779fdcbcfbb834744860cd5e43c63556a0f24aa6a4fd9a0a98f1c582d6a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exact_runs": [
+        {
+          "id": 38888657674,
+          "run_attempt": 1,
+          "head_sha": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+          "head_branch": "main",
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Hexalith/Hexalith.EventStore/actions/runs/38888657674"
+        }
+      ],
+      "successful_exact_push": true
+    },
+    {
+      "argv": [
+        "gh",
+        "api",
+        "repos/Hexalith/Hexalith.EventStore/environments/production"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "started_at_utc": "2026-10-16T12:32:52.216544+00:00",
+      "exit_code": 0,
+      "response": "ci-environment-4.json",
+      "response_sha256": "6f50319edd50868289731332134032dcec193c7275f2ee01c89ffc66354b797d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "environment": {
+        "name": "production",
+        "protection_rules": [
+          {
+            "id": 60395583,
+            "node_id": "GA_kwDORNpC784DmZA_",
+            "type": "required_reviewers",
+            "prevent_self_review": false,
+            "reviewers": [
+              {
+                "type": "User",
+                "reviewer": {
+                  "login": "jpiquot",
+                  "id": 6775094,
+                  "node_id": "MDQ6VXNlcjY3NzUwOTQ=",
+                  "avatar_url": "https://avatars.githubusercontent.com/u/6775094?v=4",
+                  "gravatar_id": "",
+                  "url": "https://api.github.com/users/jpiquot",
+                  "html_url": "https://github.com/jpiquot",
+                  "followers_url": "https://api.github.com/users/jpiquot/followers",
+                  "following_url": "https://api.github.com/users/jpiquot/following{/other_user}",
+                  "gists_url": "https://api.github.com/users/jpiquot/gists{/gist_id}",
+                  "starred_url": "https://api.github.com/users/jpiquot/starred{/owner}{/repo}",
+                  "subscriptions_url": "https://api.github.com/users/jpiquot/subscriptions",
+                  "organizations_url": "https://api.github.com/users/jpiquot/orgs",
+                  "repos_url": "https://api.github.com/users/jpiquot/repos",
+                  "events_url": "https://api.github.com/users/jpiquot/events{/privacy}",
+                  "received_events_url": "https://api.github.com/users/jpiquot/received_events",
+                  "type": "User",
+                  "user_view_type": "public",
+                  "site_admin": false
+                }
+              }
+            ]
+          },
+          {
+            "id": 60395585,
+            "node_id": "GA_kwDORNpC784DmZBB",
+            "type": "branch_policy"
+          }
+        ],
+        "can_admins_bypass": false,
+        "deployment_branch_policy": {
+          "protected_branches": false,
+          "custom_branch_policies": true
+        }
+      }
+    }
+  ]
+}

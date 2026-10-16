@@ -1,0 +1,223 @@
+{
+  "passed": true,
+  "source_spec": "Projects/_bmad-output/implementation-artifacts/spec-6-1-p1r-5.md",
+  "ledger": "Projects/_bmad-output/implementation-artifacts/deferred-work.md final nine entries",
+  "scope": "source/tooling regression controls; no operational qualification",
+  "gaps": [
+    {
+      "recorded_gap": 1,
+      "summary": "Container creation and image provenance",
+      "controls": [
+        {
+          "method": "testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 2,
+      "summary": "Actual SDK launch, arguments and input hash",
+      "controls": [
+        {
+          "method": "testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testPhysicalSelectedInputMutationIsRefusedEvenWhenSelectionValueIsUnchanged",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 3,
+      "summary": "Reject unrelated Docker mutations",
+      "controls": [
+        {
+          "method": "testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 4,
+      "summary": "Private supervisor, process identities and cleanup",
+      "controls": [
+        {
+          "method": "testActualInnerSupervisorProcessesSupplyFinalizedImportEvidence",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testActualProducerRootAndTimedCleanupOmissionsBreakThePositiveControl",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testRealLateDiscoveryExtendsOwnershipAndCleansFreshRegisteredProcess",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testCleanupOwnershipSnapshotsMustBeCompleteAndMonotonic",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testCoherentIdentityControlsDetectSessionOmissionAndDictionaryPidRegression",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 5,
+      "summary": "Docker and dotnet identity/version binding",
+      "controls": [
+        {
+          "method": "testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testActualPrivateProofRetainsMeasuredDockerClientAndServerVersions",
+          "logs": [
+            "python-isolation.log"
+          ]
+        },
+        {
+          "method": "testDockerVersionOmissionBreaksTheActualPrivateProofPositiveControl",
+          "logs": [
+            "python-isolation.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 6,
+      "summary": "Distinct ordered cleanup observations",
+      "controls": [
+        {
+          "method": "testTiedTimestampsPreserveOrderedIdsAndDistinctAbsenceObservations",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 7,
+      "summary": "Explicit remote Docker TLS refusal",
+      "controls": [
+        {
+          "method": "testRemoteEndpointsRefuseBeforeProvisioningAndDoNotRetainCredentials",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 8,
+      "summary": "Bounded Docker startup deadlines",
+      "controls": [
+        {
+          "method": "testHungFailedAndLateSuccessfulProbesShareOneBoundedMonotonicDeadline",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testLiteralStartupBudgetIncludesStartAndUsesExactBounds",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "recorded_gap": 9,
+      "summary": "Finalization through real controller caller",
+      "controls": [
+        {
+          "method": "testRealCallerFinalizesPersistedReceiptOnlyAfterPrivateAndOuterTeardown",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testPositiveControlFailsWhenCallerFinalizationIsRemoved",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testPrivateOuterAndFinalizerFailuresNeverAttachPassingEvidence",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        },
+        {
+          "method": "testActualInnerSupervisorProcessesSupplyFinalizedImportEvidence",
+          "logs": [
+            "python-isolation_hardening.log",
+            "python-optimized-importer.log"
+          ]
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

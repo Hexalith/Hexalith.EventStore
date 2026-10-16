@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_qualification.py",
+    "-v"
+  ],
+  "command": "python3 -B -m unittest discover -s tools/tests -p test_p1r_qualification.py -v",
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "duration_seconds": 17.810433706999902,
+  "exit_code": 0,
+  "log": "python-qualification.log",
+  "log_sha256": "989dcbef4d2664b7a7f7a245b6b502ab0195ff34f91128c2b9ace67f7e81c0e0",
+  "passed": true,
+  "started_utc": "2026-10-16T11:25:23.079057+00:00",
+  "timed_out": false
+}
