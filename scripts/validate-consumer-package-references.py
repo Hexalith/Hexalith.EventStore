@@ -223,8 +223,16 @@ def write_consumer_project(
             var processSource = new ProcessSource("tenant-a", "widget", "item-1");
             processSource.Validate();
             if (processSource.CatalogKey != "tenant-a\\0widget\\0item-1"
+                || typeof(IReminderTargetCatalog).GetMethod("ListAsync") is null
+                || (reminderIntents[0] with { Ordinal = 1, SourceMessageId = "committed-source" }).Ordinal != 1
+                || TrustedEffectOriginScope.Current is not null
+                || typeof(TrustedEffectOrigin).GetProperty("CommandDigest") is null
+                || typeof(Hexalith.EventStore.Client.Streams.AuthoritativeStreamReadDeadline).GetMethod("ReadWithAdmissionAsync") is null
+                || !(new ProcessSourcePage([], null) { IsIncomplete = true }).IsIncomplete
                 || typeof(IProcessSourceCatalog).GetMethod("ListAsync") is null
                 || typeof(IProcessTranslator).GetMethod("TranslateAsync") is null
+                || new ProcessEvidenceUnavailableException().InnerException is not null
+                || new ProcessEvidenceUnavailableException(new HttpRequestException()).InnerException is not HttpRequestException
                 || typeof(IProcessDelegationProvider).GetMethod("CreateAsync") is null)
                 throw new InvalidOperationException("Checkpointed process client API changed.");
 

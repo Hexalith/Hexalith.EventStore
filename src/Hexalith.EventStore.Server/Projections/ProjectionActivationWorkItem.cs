@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Contracts.Identity;
 
@@ -21,6 +22,10 @@ public sealed record ProjectionActivationWorkItem(
     long Revision,
     int Attempt,
     DateTimeOffset NextDueUtc) {
+    /// <summary>Gets the original frozen replay intent retained until its publication and cleanup are proven.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ProjectionLegacyDeliveryIntent? LegacyDelivery { get; init; }
+
     /// <summary>Creates a payload-free deterministic activation.</summary>
     /// <param name="identity">The aggregate identity.</param>
     /// <param name="dueUtc">The initial due time.</param>

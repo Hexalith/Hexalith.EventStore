@@ -25,8 +25,31 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public sealed class NamedProjectionDispatchCoordinatorTests {
+public sealed partial class NamedProjectionDispatchCoordinatorTests {
     private static readonly AggregateIdentity Identity = new("tenant-a", "widget", "widget-1");
+
+    [Fact]
+    public async Task RebuildOnlyCatalogFallsBackToLegacyDeliveryWithoutLosingRebuildOwnership() {
+        var snapshot = new NamedProjectionRouteCatalogSnapshot([
+            new NamedProjectionRouteCatalogEntry("widget-service", "v1", "widget",
+                ProjectionDispatchProtocol.Version, ProjectionDispatchProtocol.Capability, "rebuild-only",
+                ["widget-shared"], null, null, null, null, null, ordinaryProjectionTypes: []),
+        ]);
+        var handler = new ProjectionDispatchHttpMessageHandler("{}");
+        NamedProjectionDispatchCoordinator coordinator = CreateCoordinator(snapshot, handler,
+            out IProjectionDeliveryCheckpointStore checkpoints, out IProjectionLifecycleGateway lifecycle);
+
+        (await coordinator.TryDispatchAsync(Identity, Registration(), [Envelope(1)], [ProjectionEvent(1)],
+            TestContext.Current.CancellationToken)).ShouldBeFalse();
+        handler.Requests.ShouldBeEmpty();
+        _ = await checkpoints.DidNotReceiveWithAnyArgs().ReadDeliveredSequenceAsync(default!, default!, default);
+        _ = await lifecycle.DidNotReceiveWithAnyArgs().BeginDeliveryWriteAsync(default!, default!, default!, default);
+        NamedProjectionRebuildResult rebuild = await coordinator.AcquireRebuildLifecyclesAsync(Identity,
+            Registration(), "explicit-rebuild", TestContext.Current.CancellationToken);
+        rebuild.Owned.ShouldBeTrue();
+        rebuild.Succeeded.ShouldBeTrue();
+        rebuild.LifecycleProjectionTypes.ShouldBe(["widget-shared"]);
+    }
 
     [Fact]
     public async Task MappedPartStreamsCrossFormerOneGibibyteCeilingWithBoundedBuffers() {

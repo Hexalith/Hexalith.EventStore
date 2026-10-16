@@ -1,5 +1,6 @@
 
 using Dapr.Client;
+using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Registration;
@@ -52,6 +53,7 @@ public static class EventStoreServerServiceCollectionExtensions {
         });
         services.TryAddSingleton<IdempotencyKeyProtector>();
         services.TryAddSingleton<IdempotencyExecutionContextProtector>();
+        services.TryAddSingleton<SourceProofBootstrapAuthority>();
         services.TryAddSingleton<CanonicalIdempotencyIntentEncoder>();
         services.TryAddSingleton<IIdempotencyIntentAdapterRegistry, IdempotencyIntentAdapterRegistry>();
         services.TryAddSingleton<ITrustedEffectAdmissionPolicy, TrustedEffectAdmissionPolicy>();
@@ -67,7 +69,10 @@ public static class EventStoreServerServiceCollectionExtensions {
         });
         services.TryAddSingleton<IIdempotencyAdmissionCoordinator, IdempotencyAdmissionCoordinator>();
         services.TryAddSingleton<IdempotencyTenantLifecyclePurger>();
-        services.TryAddScoped<IQueryRouter, QueryRouter>();
+        services.TryAddScoped<IQueryRouter>(provider => new QueryRouter(
+            new DefaultProjectionActorInvoker(provider.GetRequiredService<IActorProxyFactory>()),
+            provider.GetRequiredService<ILogger<QueryRouter>>(), provider.GetRequiredService<IProjectionLifecycleGateway>(),
+            provider.GetRequiredService<IProjectionSourceGuardDelivery>()));
         services.TryAddScoped<IETagService, DaprETagService>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
@@ -119,6 +124,13 @@ public static class EventStoreServerServiceCollectionExtensions {
         services.TryAddSingleton<IProjectionDeliveryStateStore, DaprProjectionDeliveryStateStore>();
         services.TryAddSingleton<IProjectionDeliveryIdempotencyCoordinator, ProjectionDeliveryIdempotencyCoordinator>();
         services.TryAddSingleton<IProjectionDeliveryHistoryReader, EventStoreProjectionDeliveryHistoryReader>();
+        services.TryAddSingleton<IProjectionSelectedOwnerProofGateway, DaprProjectionSelectedOwnerProofGateway>();
+        services.TryAddSingleton<IProjectionSourceGuardDelivery, ProjectionSourceGuardDelivery>();
+        services.TryAddSingleton<ProjectionSourceGuardHistoryReader>();
+        services.TryAddSingleton<ProjectionSourceGuardFinalizer>();
+        services.TryAddSingleton<ProjectionSourceGuardTailDelivery>();
+        services.TryAddSingleton<ProjectionSourceGuardQualification>();
+        services.TryAddSingleton<IProjectionSourceGuardTransport, DaprProjectionSourceGuardTransport>();
         services.TryAddSingleton<IProjectionDeliveryReconciler, ProjectionDeliveryReconciler>();
         services.TryAddSingleton<IProjectionDeliveryCutover, ProjectionDeliveryCutover>();
         services.TryAddSingleton<IProjectionLifecycleGateway, DaprProjectionLifecycleGateway>();

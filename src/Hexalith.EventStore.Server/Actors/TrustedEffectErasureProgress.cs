@@ -10,6 +10,10 @@ internal sealed record TrustedEffectErasureProgress(
     long LastSequence, long NextSequence, bool Completed, string CapabilityNonce,
     long LastGlobalPosition = 0)
 {
+    /// <summary>Gets the exact lifecycle route inventory retained before acquiring the first source-erasure fence.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? SourceProjectionRoutes { get; init; }
+
     /// <summary>Fixed actor-state name.</summary>
     public const string StateName = "effect_erasure_progress";
 }

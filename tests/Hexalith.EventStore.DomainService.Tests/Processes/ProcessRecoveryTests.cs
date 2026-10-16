@@ -23,6 +23,40 @@ namespace Hexalith.EventStore.DomainService.Tests.Processes;
 /// <summary>Persisted candidate, sweep, readiness, and disposition recovery cases.</summary>
 public sealed class ProcessRecoveryTests
 {
+    /// <summary>Partial catalogs retain degradation and discover healthy additions before an old cursor after restart.</summary>
+    [Fact]
+    public async Task PartialCatalogContinuesHealthyDiscoveryAndRestartsAtHead()
+    {
+        var late = new ProcessSource("tenant-z", "sample", "late");
+        var early = new ProcessSource("tenant-b", "sample", "early");
+        ProcessSource[] members = [late];
+        var catalog = Substitute.For<IProcessSourceCatalog>();
+        catalog.ListAsync(Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            string? after = call.ArgAt<string?>(0);
+            int limit = call.ArgAt<int>(1);
+            var remaining = members.Where(source => after is null || string.CompareOrdinal(source.CatalogKey, after) > 0).Take(limit + 1).ToArray();
+            var page = remaining.Take(limit).ToArray();
+            return Task.FromResult(new ProcessSourcePage(page, remaining.Length > limit ? page[^1].CatalogKey : null) { IsIncomplete = true });
+        });
+        var store = new InMemoryReadModelStore();
+        var options = new EventStoreProcessOptions { SourcesPerPass = 1 };
+        var first = Runtime(store, options, catalog);
+        using (first.Reconciler)
+            for (int pass = 0; pass < 20 && !(await first.Sweeps.GetAsync()).Complete; pass++)
+                await first.Reconciler.RunPassAsync();
+        (await first.Checkpoints.GetAsync(late)).Checkpoint.ShouldBe(1);
+        (await first.Sweeps.GetAsync()).Unresolved.ShouldBeGreaterThan(0);
+        members = [early, late];
+        var restarted = Runtime(store, options, catalog);
+        using (restarted.Reconciler)
+            for (int pass = 0; pass < 30 && (await restarted.Checkpoints.GetAsync(early)).Checkpoint == 0; pass++)
+                await restarted.Reconciler.RunPassAsync();
+        (await restarted.Checkpoints.GetAsync(early)).Checkpoint.ShouldBe(1);
+        (await new ProcessReadinessHealthCheck(restarted.Sweeps, Options.Create(options), TimeProvider.System)
+            .CheckHealthAsync(new HealthCheckContext())).Status.ShouldBe(HealthStatus.Degraded);
+    }
+
     /// <summary>A later transition cannot be covered by an observation of an earlier handoff.</summary>
     [Fact]
     public async Task LaterTransitionKeepsReadinessHandoffAfterEarlierObservation()

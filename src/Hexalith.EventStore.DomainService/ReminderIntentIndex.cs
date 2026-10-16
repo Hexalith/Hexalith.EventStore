@@ -16,6 +16,84 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
     private readonly IReadModelStore _store = store ?? throw new ArgumentNullException(nameof(store));
     private readonly EventStoreReminderOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
 
+    /// <summary>Isolates bounded convergence admission by the owning SDK store instance.</summary>
+    internal object AdmissionScope => _store;
+
+    private string DiscoveryKey(bool indexed)
+        => ReminderStateKeys.TenantRegistry(_options.ActorTypeName) + (indexed ? ":indexed" : ":catalog");
+
+    /// <summary>Reads retained authoritative catalog discovery evidence.</summary>
+    internal async Task<ReminderCatalogDiscoveryState?> ReadCatalogAsync(CancellationToken cancellationToken)
+        => (await _store.GetAsync<ReminderCatalogDiscoveryState>(_options.StateStoreName,
+            DiscoveryKey(false), cancellationToken).ConfigureAwait(false)).Value;
+
+    /// <summary>Claims a persisted pending sweep before performing any provider work.</summary>
+    internal async Task<ReminderCatalogDiscoveryState> ClaimDiscoveryAsync(bool indexed, CancellationToken cancellationToken)
+    {
+        for (int attempt = 0; attempt < _options.IndexWriteAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ReadModelEntry<ReminderCatalogDiscoveryState> current = await _store.GetAsync<ReminderCatalogDiscoveryState>(
+                _options.StateStoreName, DiscoveryKey(indexed), cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            string? after = current.Value?.Complete == false ? current.Value.AfterKey : null;
+            bool incomplete = after is not null && current.Value?.IsIncomplete == true;
+            var next = new ReminderCatalogDiscoveryState(false, after, incomplete ? "catalog-unavailable" : "catalog-incomplete")
+            {
+                IsIncomplete = incomplete,
+                Generation = checked((current.Value?.Generation ?? 0) + 1),
+                Owner = Guid.NewGuid().ToString("N"),
+            };
+            if (await _store.TrySaveAsync(_options.StateStoreName, DiscoveryKey(indexed), next,
+                current.ETag ?? string.Empty, cancellationToken).ConfigureAwait(false)) return next;
+        }
+        throw new ReminderFailClosedException("index-conflict");
+    }
+
+    /// <summary>Commits only the exact current owned step. A failed proof CAS is never re-merged.</summary>
+    internal async Task<ReminderCatalogDiscoveryState> UpdateDiscoveryAsync(bool indexed, ReminderCatalogDiscoveryState owned,
+        bool complete, string? after, bool incomplete, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        string key = DiscoveryKey(indexed);
+        ReadModelEntry<ReminderCatalogDiscoveryState> current = await _store.GetAsync<ReminderCatalogDiscoveryState>(
+            _options.StateStoreName, key, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (current.Value?.Owner != owned.Owner || current.Value?.Generation != owned.Generation
+            || current.Value?.Revision != owned.Revision)
+            throw new ReminderFailClosedException("index-conflict");
+        var next = owned with
+        {
+            Complete = complete,
+            AfterKey = after,
+            IsIncomplete = incomplete,
+            ReasonCode = complete ? null : incomplete ? "catalog-unavailable" : "catalog-incomplete",
+            Revision = checked(owned.Revision + 1),
+        };
+        if (!await _store.TrySaveAsync(_options.StateStoreName, key, next, current.ETag ?? string.Empty,
+            cancellationToken).ConfigureAwait(false)) throw new ReminderFailClosedException("index-conflict");
+        cancellationToken.ThrowIfCancellationRequested();
+        return next;
+    }
+
+    /// <summary>Records external failure evidence with one conditional transition, never retrying a stale proof.</summary>
+    internal async Task RecordCatalogAsync(bool complete, string? afterKey, string? reason, CancellationToken cancellationToken, bool isIncomplete = false)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        string key = DiscoveryKey(false);
+        ReadModelEntry<ReminderCatalogDiscoveryState> current = await _store.GetAsync<ReminderCatalogDiscoveryState>(
+            _options.StateStoreName, key, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var next = new ReminderCatalogDiscoveryState(complete, afterKey, reason)
+        {
+            IsIncomplete = isIncomplete || !complete && afterKey is not null && current.Value?.IsIncomplete == true,
+            Generation = checked((current.Value?.Generation ?? 0) + 1),
+            Owner = Guid.NewGuid().ToString("N"),
+        };
+        if (!await _store.TrySaveAsync(_options.StateStoreName, key, next, current.ETag ?? string.Empty,
+            cancellationToken).ConfigureAwait(false)) throw new ReminderFailClosedException("index-conflict");
+    }
+
     /// <summary>Adds the tenant and the candidate when absent.</summary>
     /// <param name="target">The target stream.</param>
     /// <param name="actorId">The target's <c>wra-</c> actor identifier.</param>
@@ -153,15 +231,18 @@ internal sealed class ReminderIntentIndex(IReadModelStore store, IOptions<EventS
     {
         for (int attempt = 0; attempt < _options.IndexWriteAttempts; attempt++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ReadModelEntry<TDocument> current = await _store
                 .GetAsync<TDocument>(_options.StateStoreName, key, cancellationToken)
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             TDocument? next = mutate(current.Value);
             if (next is null)
             {
                 return;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             if (await _store
                 .TrySaveAsync(_options.StateStoreName, key, next, current.ETag ?? string.Empty, cancellationToken)
                 .ConfigureAwait(false))

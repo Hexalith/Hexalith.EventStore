@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
@@ -235,6 +236,55 @@ public sealed class AggregateActorFoldedSnapshotMigrationTests
         stateManager.CommittedSnapshots.TakeWhile(view => !view.ContainsKey($"{identity.EventStreamKeyPrefix}11"))
             .All(view => JsonElement.DeepEquals(view[identity.SnapshotKey].ShouldBeOfType<JsonElement>(), legacy))
             .ShouldBeTrue();
+    }
+
+    /// <summary>An admitted trusted effect captures the due qualified fold in the same batch as its accepted event and receipt.</summary>
+    [Fact]
+    public async Task TrustedEffectCommitsQualifiedSnapshotWithAcceptedEventAndReceipt()
+    {
+        AggregateIdentity target = CreateTestEnvelope().AggregateIdentity;
+        JsonElement legacy = JsonSerializer.Deserialize<JsonElement>(
+            """{"sequenceNumber":10,"state":{"currentSequence":10,"events":[],"snapshotState":{"count":10}},"createdAt":"2026-01-01T00:00:00Z","domain":"test-domain","aggregateId":"agg-001","tenantId":"test-tenant"}""");
+        var state = await SeedStreamAsync(target, legacy);
+        var protection = new NoOpEventPayloadProtectionService();
+        var snapshots = new SnapshotManager(Options.Create(new SnapshotOptions { DefaultInterval = 10 }),
+            Substitute.For<ILogger<SnapshotManager>>(), protection);
+        using ServiceProvider services = QualificationProvider(target);
+        var identity = new EffectIdentity(target.TenantId, target.Domain, "source-001", 1,
+            EffectKindCatalog.DateResume, target.Domain, target.AggregateId, 0);
+        string messageId = EffectIdentityCodec.ComputeMessageId(identity);
+        var submission = new TrustedEffectSubmission(identity, "CreateOrder", [1, 2, 3], messageId, messageId);
+        var context = new TrustedEffectContext("reactor", "date-resume", "source-cause", "signed-token");
+        var admission = new TrustedEffectAdmission(submission, context, "DIGEST");
+        var policy = Substitute.For<ITrustedEffectAdmissionPolicy>();
+        policy.PrepareAsync(submission, context, Arg.Any<CancellationToken>()).Returns(admission);
+        ActorTestContext actor = CreateActor(stateManager: state, serviceProvider: services,
+            payloadProtectionService: protection, snapshotManager: snapshots, trustedEffectAdmissionPolicy: policy);
+        actor.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true, "test-profile", Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success([new TestEvent()]) with { PostCommandStateJson = """{"count":11}""" });
+
+        TrustedEffectResult result = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
+
+        result.Disposition.ShouldBe(TrustedEffectDisposition.Success);
+        result.Replayed.ShouldBeFalse();
+        await actor.Invoker.Received(1).InvokeTrustedEffectAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), true,
+            "test-profile", Arg.Is<TrustedEffectOrigin>(origin => origin.Identity == identity && origin.Workload == context.Workload
+                && origin.Purpose == context.Purpose && origin.CausationId == context.CausationId), Arg.Any<CancellationToken>());
+        var batch = state.CommittedSnapshots.First(view => view.ContainsKey(target.EventStreamKeyPrefix + "11"));
+        var folded = batch[target.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        folded.SequenceNumber.ShouldBe(11);
+        folded.SnapshotEnvelopeVersion.ShouldBe(1);
+        folded.State.ShouldBeOfType<JsonElement>().GetProperty("count").GetInt32().ShouldBe(11);
+        batch[target.MetadataKey].ShouldBeOfType<AggregateMetadata>().CurrentSequence.ShouldBe(11);
+        batch[target.EventStreamKeyPrefix + "11"].ShouldBeOfType<EventEnvelope>().SequenceNumber.ShouldBe(11);
+        var receipt = batch["effect_receipt_" + result.EffectId].ShouldBeOfType<EffectReceipt>();
+        receipt.Disposition.ShouldBe(TrustedEffectDisposition.Success);
+        receipt.Identity.ShouldBe(identity);
+        receipt.Purpose.ShouldBe(context.Purpose);
+        receipt.SemanticDigest.ShouldBe(admission.SemanticDigest);
+        state.CommittedState[target.SnapshotKey].ShouldBe(folded);
+        (await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof")).Replayed.ShouldBeTrue();
+        state.CommittedState.Keys.ShouldNotContain(target.EventStreamKeyPrefix + "12");
     }
 
     private static ServiceProvider QualificationProvider(AggregateIdentity identity)

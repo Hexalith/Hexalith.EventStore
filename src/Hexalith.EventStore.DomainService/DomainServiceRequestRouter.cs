@@ -31,13 +31,27 @@ public static class DomainServiceRequestRouter {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
+        using Hexalith.EventStore.Client.Effects.TrustedEffectOriginScope originScope =
+            Hexalith.EventStore.Client.Effects.TrustedEffectOriginScope.Enter(
+                await DomainServiceTrustedEffectOrigin.ValidateAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false));
         if (request.WriterMode is not null || request.RegistryFingerprint is not null
             || request.CommandStateProof is not null || request.VerifiedEffectiveEvents is not null) {
             throw new InvalidOperationException(
                 "CapabilityMismatch: this domain route has no authenticated versioned command-state intake.");
         }
 
-        return await ProcessCoreAsync(serviceProvider, request, null, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await ProcessCoreAsync(serviceProvider, request, null, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException
+            or System.Reflection.TargetInvocationException { InnerException: UnauthorizedAccessException })
+        {
+            // Binding denials were already audited above, before entering domain routing.
+            // Adapter authorization failures use this one common boundary, including absent origin.
+            await DomainServiceTrustedEffectOrigin.RecordAdapterDenialAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false);
+            throw;
+        }
     }
 
     private static async Task<DomainServiceWireResult> ProcessCoreAsync(IServiceProvider serviceProvider,

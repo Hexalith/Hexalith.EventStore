@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace Hexalith.EventStore.Client.Projections;
 
@@ -9,6 +10,44 @@ namespace Hexalith.EventStore.Client.Projections;
 /// the scope hash, batch identity, fingerprint, terminal time, and protocol version.
 /// </summary>
 internal sealed class ReadModelBatchMarker {
+    /// <summary>Reads bounded receipt evidence while rejecting duplicate fields throughout its owner metadata.</summary>
+    internal static ReadModelBatchMarker? ReadProof(ReadOnlyMemory<byte> bytes)
+    {
+        using JsonDocument document = JsonDocument.Parse(bytes);
+        return document.RootElement.ValueKind == JsonValueKind.Object && !HasDuplicateProperties(document.RootElement)
+            ? document.RootElement.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web) : null;
+    }
+
+    private static bool HasDuplicateProperties(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (JsonProperty property in value.EnumerateObject())
+                if (!names.Add(property.Name) || HasDuplicateProperties(property.Value)) return true;
+        }
+        else if (value.ValueKind == JsonValueKind.Array)
+            foreach (JsonElement item in value.EnumerateArray())
+                if (HasDuplicateProperties(item)) return true;
+        return false;
+    }
+
+    /// <summary>The original fingerprint-bound manifest for explicitly opted-in owner recovery, absent on terminal receipts.</summary>
+    [JsonPropertyName("manifest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public byte[]? OriginalManifest { get; set; }
+    /// <summary>The existing batch's immutable manifest key when its body requires the separate manifest byte budget.</summary>
+    [JsonPropertyName("manifestKey")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OriginalManifestKey { get; set; }
+    /// <summary>Gets or sets optional owner evidence derived from the fingerprint-bound model value.</summary>
+    [JsonPropertyName("owner")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection? OwnerSelection { get; set; }
+    /// <summary>Gets or sets optional selections from the same coordinated rebuild manifest.</summary>
+    [JsonPropertyName("owners")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection>? OwnerSelections { get; set; }
     /// <summary>Gets or sets the marker record version.</summary>
     [JsonPropertyName("v")]
     public int Version { get; set; } = 1;

@@ -69,6 +69,26 @@ public interface IAggregateActor : IActor {
     /// <returns>Stream existence and current sequence metadata.</returns>
     Task<AggregateStreamMetadata> GetStreamMetadataAsync();
 
+    /// <summary>Inspects persisted source evidence using metadata only, preserving the actor cache barrier.</summary>
+    Task<SourceProofInspection> InspectSourceProofAsync();
+
+    /// <summary>Bootstraps an eligible legacy stream under a signed quiescent-maintenance authorization.</summary>
+    Task<SourceProofInspection> BootstrapSourceProofAsync(SourceProofBootstrapRequest request);
+
+    /// <summary>Reads an ordered range bounded by both event count and serialized UTF-8 array bytes.</summary>
+    /// <param name="fromSequence">The exclusive lower sequence bound.</param>
+    /// <param name="toSequence">The admitted inclusive head.</param>
+    /// <param name="maxCount">The positive requested count, at most 256.</param>
+    /// <param name="maxBytes">The compact array byte ceiling, at most 2,097,152.</param>
+    Task<EventEnvelope[]> ReadEventsBoundedRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes);
+
+    /// <summary>Reads a bounded range with its exact actor-owned compact event-array byte length.</summary>
+    /// <param name="fromSequence">The exclusive lower sequence bound.</param>
+    /// <param name="toSequence">The admitted inclusive head.</param>
+    /// <param name="maxCount">The positive requested count, at most 256.</param>
+    /// <param name="maxBytes">The compact array byte ceiling, at most 2,097,152.</param>
+    Task<SourceEventRange> ReadMeasuredEventsBoundedRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes);
+
     /// <summary>Returns the source stream's authoritative inclusive retained floor, or null if absent.</summary>
     Task<long?> GetRetainedFloorAsync();
 

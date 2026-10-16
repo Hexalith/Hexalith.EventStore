@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Client;
 
@@ -36,7 +37,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ValidateWorkItem(workItem);
         await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
         ProjectionDeliveryRetryWorkItem? persisted = null;
-        await MutateAsync(
+        _ = await MutateAsync(
             workItem.WorkId,
             items => {
                 ProjectionDeliveryRetryWorkItem? existing = items.FirstOrDefault(
@@ -76,7 +77,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         }
 
         ProjectionDeliveryRetryWorkItem? claimed = null;
-        await MutateAsync(
+        bool saved = await MutateAsync(
             workItem.WorkId,
             items => {
                 int index = items.FindIndex(item => string.Equals(item.WorkId, workItem.WorkId, StringComparison.Ordinal));
@@ -101,6 +102,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                 return true;
             },
             cancellationToken).ConfigureAwait(false);
+        if (!saved) claimed = null;
         if (claimed is null) {
             await ReleaseAggregateLeaseAsync(workItem, leaseOwner, cancellationToken).ConfigureAwait(false);
         }
@@ -115,8 +117,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ArgumentNullException.ThrowIfNull(workItem);
         ValidateClaimedWorkItem(workItem);
         await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
-        bool updated = false;
-        await MutateAsync(
+        bool updated = await MutateAsync(
             workItem.WorkId,
             items => {
                 int index = items.FindIndex(item => string.Equals(item.WorkId, workItem.WorkId, StringComparison.Ordinal));
@@ -135,7 +136,6 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                     LeaseOwner = null,
                     LeaseExpiresUtc = null,
                 };
-                updated = true;
                 return true;
             },
             cancellationToken).ConfigureAwait(false);
@@ -150,8 +150,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ArgumentNullException.ThrowIfNull(workItem);
         ValidateClaimedWorkItem(workItem);
         await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
-        bool deleted = false;
-        await MutateAsync(
+        bool deleted = await MutateAsync(
             workItem.WorkId,
             items => {
                 int index = items.FindIndex(item => string.Equals(item.WorkId, workItem.WorkId, StringComparison.Ordinal));
@@ -162,7 +161,6 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                 }
 
                 items.RemoveAt(index);
-                deleted = true;
                 return true;
             },
             cancellationToken).ConfigureAwait(false);
@@ -201,6 +199,9 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         CancellationToken cancellationToken = default) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCount);
         await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerScans);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerShardReads, LedgerShardCount);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         IReadOnlyList<BulkStateItem<ProjectionDeliveryRetryLedger>> shards = await daprClient
             .GetBulkStateAsync<ProjectionDeliveryRetryLedger>(
                 projectionOptions.Value.CheckpointStateStoreName,
@@ -208,6 +209,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                 BulkReadParallelism,
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        foreach (BulkStateItem<ProjectionDeliveryRetryLedger> shard in shards) RecordLedgerRead(shard.Value);
         return [.. shards
             .SelectMany(static shard => shard.Value?.Items ?? [])
             .Where(item => IsValidPersistedWorkItem(item)
@@ -222,6 +224,9 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
     /// <summary>Finds terminal or malformed durable retry evidence across every ledger shard.</summary>
     internal async Task<bool> HasUnresolvedConflictAsync(CancellationToken cancellationToken = default) {
         await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerScans);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerShardReads, LedgerShardCount);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         IReadOnlyList<BulkStateItem<ProjectionDeliveryRetryLedger>> shards = await daprClient
             .GetBulkStateAsync<ProjectionDeliveryRetryLedger>(
                 projectionOptions.Value.CheckpointStateStoreName,
@@ -229,13 +234,14 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                 BulkReadParallelism,
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        foreach (BulkStateItem<ProjectionDeliveryRetryLedger> shard in shards) RecordLedgerRead(shard.Value);
         return shards.Any(static shard => shard.Value is not null
             && (shard.Value.Items is null
                 || shard.Value.Items.Any(static item => !IsValidPersistedWorkItem(item)
                     || item.TerminalRoutes.Count > 0)));
     }
 
-    private async Task MutateAsync(
+    private async Task<bool> MutateAsync(
         string workId,
         Func<List<ProjectionDeliveryRetryWorkItem>, bool> mutation,
         CancellationToken cancellationToken) {
@@ -243,31 +249,55 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         string ledgerKey = GetLedgerKey(workId);
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
             cancellationToken.ThrowIfCancellationRequested();
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerShardReads);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
             (ProjectionDeliveryRetryLedger? ledger, string etag) = await daprClient
                 .GetStateAndETagAsync<ProjectionDeliveryRetryLedger>(
                     stateStoreName,
                     ledgerKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            RecordLedgerRead(ledger);
             List<ProjectionDeliveryRetryWorkItem> items = [.. ledger?.Items ?? []];
             if (!mutation(items)) {
-                return;
+                return false;
             }
 
+            var replacement = new ProjectionDeliveryRetryLedger(items);
+            long writeBytes = MeasureBody(replacement);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerCasAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerWriteAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerWriteBytes, writeBytes);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
             bool saved = await daprClient
                 .TrySaveStateAsync(
                     stateStoreName,
                     ledgerKey,
-                    new ProjectionDeliveryRetryLedger(items),
+                    replacement,
                     etag,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             if (saved) {
-                return;
+                return true;
             }
         }
 
         throw new InvalidOperationException("Projection delivery retry ledger update exhausted optimistic-concurrency attempts.");
+    }
+
+    private void RecordLedgerRead(ProjectionDeliveryRetryLedger? ledger)
+    {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerEntries, ledger?.Items.Count ?? 0);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerReadBytes,
+            ledger is null ? 0 : MeasureBody(ledger));
+    }
+
+    private long MeasureBody<T>(T value)
+    {
+        using var count = new SizeLimitedWriteStream(long.MaxValue);
+        JsonSerializer.Serialize(count, value, daprClient.JsonSerializerOptions);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, count.Length);
+        return count.Length;
     }
 
     private static string GetLedgerKey(string workId) {
@@ -291,22 +321,27 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         string storeName = projectionOptions.Value.CheckpointStateStoreName;
         string leaseKey = GetLeaseKey(workItem);
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
             (ProjectionDeliveryRetryLease? lease, string etag) = await daprClient
                 .GetStateAndETagAsync<ProjectionDeliveryRetryLease>(
                     storeName,
                     leaseKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            RecordLeaseBytes(lease, false);
             if (lease is not null
                 && lease.ExpiresUtc > nowUtc
                 && !string.Equals(lease.Owner, leaseOwner, StringComparison.Ordinal)) {
                 return false;
             }
 
+            var proposedLease = new ProjectionDeliveryRetryLease(leaseOwner, nowUtc + leaseDuration);
+            RecordLeaseBytes(proposedLease, true);
             if (await daprClient.TrySaveStateAsync(
                     storeName,
                     leaseKey,
-                    new ProjectionDeliveryRetryLease(leaseOwner, nowUtc + leaseDuration),
+                    proposedLease,
                     etag,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false)) {
@@ -324,25 +359,43 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         string storeName = projectionOptions.Value.CheckpointStateStoreName;
         string leaseKey = GetLeaseKey(workItem);
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
             (ProjectionDeliveryRetryLease? lease, string etag) = await daprClient
                 .GetStateAndETagAsync<ProjectionDeliveryRetryLease>(
                     storeName,
                     leaseKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            RecordLeaseBytes(lease, false);
             if (lease is null || !string.Equals(lease.Owner, leaseOwner, StringComparison.Ordinal)) {
                 return;
             }
 
+            ProjectionDeliveryRetryLease released = lease with { ExpiresUtc = DateTimeOffset.MinValue };
+            RecordLeaseBytes(released, true);
             if (await daprClient.TrySaveStateAsync(
                     storeName,
                     leaseKey,
-                    lease with { ExpiresUtc = DateTimeOffset.MinValue },
+                    released,
                     etag,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false)) {
                 return;
             }
+        }
+    }
+
+    private void RecordLeaseBytes(ProjectionDeliveryRetryLease? lease, bool write)
+    {
+        long bytes = lease is null ? 0 : JsonSerializer.SerializeToUtf8Bytes(lease, daprClient.JsonSerializerOptions).Length;
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(write ? ProjectionDeliveryCost.MutationBytes : ProjectionDeliveryCost.MetadataReadBytes, bytes);
+        if (write)
+        {
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerCasAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         }
     }
 
@@ -365,12 +418,14 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
             }
 
             string stateStoreName = projectionOptions.Value.CheckpointStateStoreName;
+            RecordMigrationReadAttempt();
             string? persistedMarker = await daprClient
                 .GetStateAsync<string>(
                     stateStoreName,
                     ProtocolMarkerKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            RecordMigrationReadBody(persistedMarker);
             if (string.Equals(persistedMarker, ProtocolMarkerValue, StringComparison.Ordinal)) {
                 Volatile.Write(ref _legacyMigrationCompleted, 1);
                 return;
@@ -380,12 +435,15 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                 throw new InvalidOperationException("The projection delivery retry protocol marker is not recognized.");
             }
 
+            RecordMigrationReadAttempt();
             (ProjectionDeliveryRetryLedger? legacy, string legacyEtag) = await daprClient
                 .GetStateAndETagAsync<ProjectionDeliveryRetryLedger>(
                     stateStoreName,
                     LegacyLedgerKey,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+            RecordMigrationReadBody(legacy);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationEntries, legacy?.Items.Count ?? 0);
             foreach (ProjectionDeliveryRetryWorkItem workItem in (legacy?.Items ?? [])
                 .Where(IsValidPersistedWorkItem)
                 .OrderBy(static item => item.WorkId, StringComparer.Ordinal)) {
@@ -403,12 +461,15 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
             }
 
             if (legacy is not null) {
+                RecordMigrationWrite(0);
+                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.TransactionAttempts);
                 await daprClient.ExecuteStateTransactionAsync(
                     stateStoreName,
                     [new StateTransactionRequest(LegacyLedgerKey, null, StateOperationType.Delete, legacyEtag)],
                     cancellationToken: cancellationToken).ConfigureAwait(false);
             }
 
+            RecordMigrationWrite(MeasureBody(ProtocolMarkerValue));
             await daprClient.SaveStateAsync(
                 stateStoreName,
                 ProtocolMarkerKey,
@@ -419,6 +480,29 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         finally {
             _ = _legacyMigrationLock.Release();
         }
+    }
+
+    private static void RecordMigrationReadAttempt()
+    {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationReads);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+    }
+
+    private void RecordMigrationReadBody<T>(T value)
+    {
+        long bytes = value is null ? 0 : MeasureBody(value);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationReadBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, bytes);
+    }
+
+    private static void RecordMigrationWrite(long bytes)
+    {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationWrites);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationWriteBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
     }
 
     private static void ValidateWorkItem(ProjectionDeliveryRetryWorkItem workItem) {
@@ -437,6 +521,9 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ArgumentNullException.ThrowIfNull(workItem.PendingRoutes);
         ArgumentNullException.ThrowIfNull(workItem.TerminalRoutes);
         ArgumentNullException.ThrowIfNull(workItem.ReservationFencingTokens);
+        if (workItem.ReplayRecoveryBindings is { } bindings && bindings.Any(pair => string.IsNullOrWhiteSpace(pair.Key)
+            || pair.Value is not { Length: 64 } || !pair.Value.All(static item => item is >= '0' and <= '9' or >= 'a' and <= 'f')))
+            throw new ArgumentException("Invalid frozen replay recovery binding.", nameof(workItem));
         if (workItem.PendingRoutes.Count == 0 && workItem.TerminalRoutes.Count == 0) {
             throw new ArgumentException("Retry work must retain at least one pending or terminal route.", nameof(workItem));
         }

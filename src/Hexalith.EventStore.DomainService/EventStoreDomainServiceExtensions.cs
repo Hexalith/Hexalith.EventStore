@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -238,7 +239,7 @@ public static class EventStoreDomainServiceExtensions {
                 _ = app.MapEventStoreDomainEvents();
             }
 
-            if (!IsDaprSubscribeMapped(app)) {
+            if (!app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions") && !IsDaprSubscribeMapped(app)) {
                 // Subscription discovery is a sidecar-originated call: it carries the app-channel token only.
                 _ = app.MapSubscribeHandler().RequireEventStoreSidecarChannel();
             }
@@ -303,7 +304,23 @@ public static class EventStoreDomainServiceExtensions {
                     return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
                 }
 
-                DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false);
+                DomainServiceWireResult result;
+                try
+                {
+                    result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false);
+                }
+                catch (DomainServiceTrustedEffectAuditUnavailableException)
+                {
+                    httpContext.Response.Headers.RetryAfter = "1";
+                    httpContext.Response.ContentLength = 0;
+                    return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+                }
+                catch (Exception exception) when (exception is UnauthorizedAccessException
+                    or System.Reflection.TargetInvocationException { InnerException: UnauthorizedAccessException })
+                {
+                    httpContext.Response.ContentLength = 0;
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
                 return DomainServiceRequestRouter.HasBoundedV1Producer(serviceProvider, verified.Command.Domain)
                     ? (IResult)new BoundedV1WireResultResponse(result)
                     : Results.Ok(result);
@@ -405,6 +422,7 @@ public static class EventStoreDomainServiceExtensions {
             _ = app.MapPost(
                 "/project/rebuild/part/v1",
                 async (ProjectionRebuildTransportPartRequest part,
+                       HttpContext context,
                        IServiceProvider serviceProvider,
                        IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
                        IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
@@ -412,6 +430,7 @@ public static class EventStoreDomainServiceExtensions {
                 {
                     try
                     {
+                        part = part with { Header = DomainProjectionReplayContext.Bind(part.Header, context.Request.Headers) };
                         await DomainProjectionRebuildTransport.StoreAsync(serviceProvider, part,
                             projectionDispatchOptions.Value, projectionIdentityOptions.Value,
                             cancellationToken).ConfigureAwait(false);
@@ -428,6 +447,23 @@ public static class EventStoreDomainServiceExtensions {
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/commit/v1", DomainProjectionRebuildBatchAction.Commit);
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/abort/v1", DomainProjectionRebuildBatchAction.Abort);
         MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/verify/v1", DomainProjectionRebuildBatchAction.Verify);
+        MapNamedProjectionRebuildEndpoint(app, "/project/rebuild/reclaim-recovery/v1", DomainProjectionRebuildBatchAction.Reclaim);
+        if (!IsRouteMapped(app, "/project/rebuild/reclaim-guarded/v1", HttpMethods.Post))
+        {
+            _ = app.MapPost("/project/rebuild/reclaim-guarded/v1", async (ProjectionDispatchRequest request,
+                HttpContext context,
+                IServiceProvider services, IOptions<ProjectionDispatchOptions> options,
+                IOptions<DomainProjectionIdentityOptions> identity, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    request = DomainProjectionReplayContext.Bind(request, context.Request.Headers);
+                    return (IResult)Results.Ok(await DomainProjectionGuardedReplay.ReclaimAsync(services, request,
+                        options.Value, identity.Value, cancellationToken).ConfigureAwait(false));
+                }
+                catch (ProjectionDispatchValidationException exception) { return Results.BadRequest(exception.ReasonCode); }
+            }).RequireEventStoreDomainServicePolicy("/project/rebuild/reclaim-guarded/v1");
+        }
         MapSharedProjectionRebuildEndpoint(app);
 
         _ = app.MapPost(
@@ -440,7 +476,8 @@ public static class EventStoreDomainServiceExtensions {
              IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
              IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
              IServiceProviderIsKeyedService keyedServices,
-             [FromServices] DomainProjectionCatalogRegistry catalogRegistry) => {
+             [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
+             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations) => {
                 DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
                 AdminOperationalIndexMetadata.Response response;
                 if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
@@ -468,10 +505,30 @@ public static class EventStoreDomainServiceExtensions {
                         legacyProjectionHandlers);
                 }
 
+                if (request.ProjectionSourceGuardVersion is not null and not 1)
+                    return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                if (request.ProjectionSourceGuardVersion == 1)
+                {
+                    response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers);
+                    response = DomainProjectionReplayRecovery.BindMetadata(app.Services, response, namedProjectionHandlers);
+                }
                 RegisterNamedProjectionCatalog(response, catalogRegistry);
                 return Results.Ok(response);
             })
             .RequireEventStoreDomainServicePolicy("/admin/operational-index-metadata");
+
+        _ = app.MapPost("/project/source-guard/reconcile-applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
+            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
+                Results.Ok(await DomainProjectionOwnerProof.ReconcileAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/project/source-guard/reconcile-applied-receipt/v1");
+        _ = app.MapPost("/project/source-guard/applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
+            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
+                Results.Ok(await DomainProjectionOwnerProof.ReadAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/project/source-guard/applied-receipt/v1");
+        _ = app.MapPost("/project/source-guard/owner-proof/v1", async (ProjectionOwnerProofRequest request,
+            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken cancellationToken) =>
+            Results.Ok(await DomainProjectionOwnerProof.ReadAsync(services, request, catalog, cancellationToken).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/project/source-guard/owner-proof/v1");
 
         return app;
     }
@@ -487,11 +544,22 @@ public static class EventStoreDomainServiceExtensions {
         _ = app.MapPost(
             route,
             async (ProjectionDispatchRequest request,
+                   HttpContext context,
                    IServiceProvider serviceProvider,
                    IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
                    IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
                    CancellationToken cancellationToken) => {
                 try {
+                    request = DomainProjectionReplayContext.Bind(request, context.Request.Headers);
+                    if (context.Request.Headers.TryGetValue(ProjectionReplayRecoveryBinding.HeaderName, out var bindings))
+                    {
+                        if (bindings.Count != 1 || string.IsNullOrEmpty(bindings[0]))
+                            return (IResult)Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                        return (IResult)Results.Ok(await DomainProjectionReplayRecovery.ExecuteAsync(serviceProvider, request,
+                            projectionDispatchOptions.Value, projectionIdentityOptions.Value, action, bindings[0]!, cancellationToken).ConfigureAwait(false));
+                    }
+                    if (action == DomainProjectionRebuildBatchAction.Reclaim)
+                        return (IResult)Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
                     ProjectionDispatchResponse response = action switch {
                         DomainProjectionRebuildBatchAction.Stage => await DomainProjectionDispatcher
                             .StageRebuildAsync(serviceProvider, request, projectionDispatchOptions.Value, projectionIdentityOptions.Value, cancellationToken)
@@ -565,6 +633,7 @@ public static class EventStoreDomainServiceExtensions {
         // Internal trust boundary (FR28): app-channel token + trusted-issuer workload assertion on every
         // operational route, sidecar-channel token on sidecar-originated deliveries, and an authenticated
         // fallback for every other endpoint. Only /health, /alive, and /ready stay anonymous.
+        _ = builder.Services.AddHttpContextAccessor();
         _ = builder.Services.AddEventStoreDomainServiceSecurity();
 
         // Domain services use DAPR-backed SDK facilities such as persisted read models. Keep this canonical
@@ -799,6 +868,9 @@ public static class EventStoreDomainServiceExtensions {
             response.Domains
                 .Where(static domain => domain.NamedProjectionTypes is { Count: > 0 })
                 .SelectMany(domain => domain.NamedProjectionTypes!
-                    .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType))));
+                    .Select(projectionType => new ProjectionDispatchRoute(domain.Domain, projectionType)
+                    {
+                        SourceGuard = domain.SourceGuardCapabilities?.GetValueOrDefault(projectionType),
+                    })));
     }
 }

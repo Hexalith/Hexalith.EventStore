@@ -11,6 +11,14 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="RetainedFloor">Inclusive first retained envelope sequence. Legacy untrimmed streams start at one.</param>
 public record AggregateMetadata(long CurrentSequence, DateTimeOffset LastModified, string? ETag, long RetainedFloor = 1)
 {
+    /// <summary>Gets optional actor-owned evidence over the complete stored stream prefix.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SourceProof? SourceProof { get; init; }
+
+    /// <summary>Gets durable actor-owned erasure intent, saved before any event-key deletion.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool SourceErasurePending { get; init; }
+
     /// <summary>
     /// Initializes metadata for a legacy untrimmed stream whose retained floor is sequence one.
     /// This preserves the published three-parameter constructor. JSON binds through it; a

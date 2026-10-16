@@ -1,4 +1,5 @@
 using Dapr.Client;
+using System.Text.Json;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Configuration;
@@ -32,20 +33,17 @@ public sealed class ProjectionCheckpointRefusalDiagnosticsTests {
 
         // No scoped delivery row exists, and the writer-protocol marker is current. This refusal applies even
         // though the aggregate has nothing to protect, so it silently blocks every legacy advance.
-        _ = daprClient.GetStateAsync<ProjectionDeliveryState?>(
-                StateStoreName,
-                Arg.Any<string>(),
-                cancellationToken: Arg.Any<CancellationToken>())
-            .Returns((ProjectionDeliveryState?)null);
-        _ = daprClient.GetStateAsync<ProjectionDeliveryWriterProtocol>(
-                StateStoreName,
-                ProjectionDeliveryStateKeys.WriterProtocol,
-                cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(new ProjectionDeliveryWriterProtocol(
+        daprClient.JsonSerializerOptions.Returns(JsonSerializerOptions.Web);
+        byte[] marker = JsonSerializer.SerializeToUtf8Bytes(new ProjectionDeliveryWriterProtocol(
                 ProjectionDeliveryWriterProtocol.CurrentSchemaVersion,
                 ProjectionDeliveryWriterProtocol.CurrentWriterProtocolVersion,
                 "cutover-commit",
-                DateTimeOffset.UtcNow));
+                DateTimeOffset.UtcNow), JsonSerializerOptions.Web);
+        _ = daprClient.GetByteStateAndETagAsync(StateStoreName, Arg.Any<string>(),
+            consistencyMode: Arg.Any<ConsistencyMode?>(), metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
+            cancellationToken: Arg.Any<CancellationToken>()).Returns(call =>
+                call.ArgAt<string>(1) == ProjectionDeliveryStateKeys.WriterProtocol
+                    ? ((ReadOnlyMemory<byte>)marker, "writer-etag") : (ReadOnlyMemory<byte>.Empty, string.Empty));
 
         ProjectionCheckpointTracker tracker = new(
             daprClient,

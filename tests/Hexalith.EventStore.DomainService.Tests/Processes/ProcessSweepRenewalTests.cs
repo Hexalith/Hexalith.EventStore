@@ -27,7 +27,7 @@ public sealed class ProcessSweepRenewalTests
         {
             SourcesPerPass = 4, SupportedCandidateCount = 1, MaxEffectsPerEnvelope = 1,
             OperationTimeout = TimeSpan.FromSeconds(10), LeaseDuration = TimeSpan.FromSeconds(30),
-            SourceServiceQuantum = TimeSpan.FromSeconds(80), ReadinessMaxAge = TimeSpan.FromMinutes(10),
+            SourceServiceQuantum = TimeSpan.FromSeconds(90), ReadinessMaxAge = TimeSpan.FromMinutes(10),
         };
         options.Validate().ShouldBeEmpty();
         ProcessSource source = new("tenant-a", "sample", "renewal");

@@ -796,7 +796,7 @@ public sealed class ProcessRunnerEdgeTests
         EventStoreProcessOptions options = new()
         {
             OperationTimeout = TimeSpan.FromMilliseconds(500),
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(4200),
+            SourceServiceQuantum = TimeSpan.FromMilliseconds(4500),
             MaxEffectsPerEnvelope = 1,
             MaxEnvelopesPerRun = 20,
             PageSize = 20,
@@ -835,6 +835,38 @@ public sealed class ProcessRunnerEdgeTests
         cursors[0].ShouldBe(0);
         cursors[1].ShouldBe(first.Checkpoint);
         (await new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System).GetAsync(Source)).Checkpoint.ShouldBe(20);
+    }
+
+    /// <summary>A real plan-persist/cancel crash cannot become healthy when the authoritative source disappears.</summary>
+    [Fact]
+    public async Task EmptyHeadQuarantinesAuthenticPendingPlanAfterCancellation()
+    {
+        var store = new InMemoryReadModelStore();
+        var options = new EventStoreProcessOptions();
+        using var cancellation = new CancellationTokenSource();
+        var delegation = Delegation();
+        delegation.CreateAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            cancellation.Cancel();
+            return Task.FromCanceled<TrustedEffectContext>(cancellation.Token);
+        });
+        var submitter = Submitter();
+        await Should.ThrowAsync<OperationCanceledException>(() => Runner(store, options, Gateway(OneEventPage()),
+            Translator([Effect([1])]), delegation, submitter).RunAsync(Source, cancellation.Token));
+        var checkpoints = new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System);
+        ProcessSourceState before = await checkpoints.GetAsync(Source);
+        before.PendingPlan.ShouldNotBeNull().Sequence.ShouldBe(1);
+        before.FailureSequence.ShouldBeNull();
+        var empty = new StreamReadPage(Source.Tenant, Source.Domain, Source.Aggregate, [],
+            new StreamReadMetadata(0, null, null, 0, 0, false, null));
+        ProcessRunResult result = await Runner(store, options, Gateway(empty), Translator([]), Delegation(), submitter).RunAsync(Source);
+        result.Status.ShouldBe(ProcessSourceStatus.Quarantined);
+        ProcessSourceState after = await checkpoints.GetAsync(Source);
+        after.Checkpoint.ShouldBe(0);
+        JsonSerializer.Serialize(after.PendingPlan).ShouldBe(JsonSerializer.Serialize(before.PendingPlan));
+        after.ReasonCode.ShouldBe("invalid-evidence");
+        after.FailureSequence.ShouldBe(1);
+        submitter.ReceivedCalls().ShouldBeEmpty();
     }
 
     private static CheckpointedProcessRunner Runner(InMemoryReadModelStore store, EventStoreProcessOptions options,

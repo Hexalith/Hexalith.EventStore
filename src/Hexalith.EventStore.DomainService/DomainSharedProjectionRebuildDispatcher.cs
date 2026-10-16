@@ -1998,10 +1998,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
             .Where(handler => string.Equals(handler.Domain, identity.Domain, StringComparison.Ordinal))
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
         if (routes.Length == 0
-            || !string.Equals(
-                ProjectionRouteCatalogFingerprint.Compute(identityOptions.AppId, identityOptions.ServiceVersion, routes),
-                identity.CatalogFingerprint,
-                StringComparison.Ordinal)) {
+            || !DomainProjectionOwnerProof.MatchesCatalog(serviceProvider, identityOptions.AppId, identityOptions.ServiceVersion, routes,
+                    [.. handlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                        && string.Equals(handler.Domain, identity.Domain, StringComparison.Ordinal))
+                        .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))],
+                identity.CatalogFingerprint)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
         }
 

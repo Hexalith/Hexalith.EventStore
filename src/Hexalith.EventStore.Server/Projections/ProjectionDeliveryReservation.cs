@@ -19,4 +19,8 @@ internal sealed record ProjectionDeliveryReservation(
     long FencingToken,
     DateTimeOffset AdmittedAt,
     DateTimeOffset ExpiresAt,
-    int Attempt);
+    int Attempt)
+{
+    /// <summary>Gets the optional immutable source-guard admission; historical v2 reservations retain their shape.</summary>
+    public ProjectionDeliveryGuardReservation? GuardBinding { get; init; }
+}

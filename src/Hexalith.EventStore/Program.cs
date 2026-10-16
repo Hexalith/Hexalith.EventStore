@@ -1,5 +1,6 @@
 using Hexalith.EventStore;
 using Hexalith.EventStore.Extensions;
+using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.HealthChecks;
 using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
@@ -41,10 +42,14 @@ if (app.Configuration.GetValue("EventStore:OpenApi:Enabled", true)) {
     });
 }
 
-app.MapControllers();
+bool declarativeSubscriptions = app.Configuration.GetValue<bool>("Dapr:DeclarativeSubscriptions");
+app.MapControllers().Add(endpoint => ProjectionNotificationTopicAttribute.Bind(endpoint, app.Services, declarativeSubscriptions));
 app.MapErrorReferences();
 app.MapApiVersionFallback();
-app.MapSubscribeHandler();
+if (!declarativeSubscriptions)
+{
+    app.MapSubscribeHandler();
+}
 app.MapActorsHandlers();
 app.MapApplicationRuntimeProofEndpoints();
 

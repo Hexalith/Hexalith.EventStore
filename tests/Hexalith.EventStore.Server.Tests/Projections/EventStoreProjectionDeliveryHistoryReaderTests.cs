@@ -17,6 +17,75 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed class EventStoreProjectionDeliveryHistoryReaderTests {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompactGuardAdmission_PreservesExactSourceRoutePrefixAndLegacyIdentityBytes(bool positionSensitive)
+    {
+        const string route = "order-detail";
+        const int count = 257;
+        string initial = ProjectionDeliveryFingerprint.ComputeInitial(Identity, route, positionSensitive);
+        string prefix = initial;
+        var compact = new ProjectionSourceAdmittedDigests(9000, 9000 + count, positionSensitive, initial);
+        var expected = new List<ProjectionDeliveryEventDigest>();
+        var admitted = new List<ProjectionSourceAdmittedEvent>();
+        for (int offset = 0; offset < count; offset++)
+        {
+            long sequence = 9001 + offset;
+            EventEnvelope stored = Envelope(offset + 1, null) with { SequenceNumber = sequence,
+                MessageId = $"00000000-0000-0000-0000-{offset:000000000000}" };
+            var item = new Hexalith.EventStore.Contracts.Projections.ProjectionEventDto(stored.EventTypeName, stored.Payload,
+                stored.SerializationFormat, sequence, stored.Timestamp, stored.CorrelationId, stored.MessageId, stored.UserId, stored.GlobalPosition);
+            string source = SourceProofCodec.ComputeEventHash(stored);
+            string fingerprint = ProjectionDeliveryFingerprint.ComputeEvent(item, positionSensitive);
+            prefix = ProjectionDeliveryFingerprint.Extend(prefix, fingerprint);
+            compact.Add(sequence, stored.MessageId, source, fingerprint, prefix);
+            expected.Add(new(sequence, stored.MessageId, fingerprint, prefix));
+            admitted.Add(new(sequence, stored.MessageId, source, fingerprint));
+        }
+        compact.Seal();
+        compact.RouteEvents.ShouldBe(expected);
+        compact.SourceEvents.ShouldBe(admitted);
+        ((ProjectionSourceAdmittedDigestList<ProjectionDeliveryEventDigest>)compact.RouteEvents).Table.ShouldBeSameAs(
+            ((ProjectionSourceAdmittedDigestList<ProjectionSourceAdmittedEvent>)compact.SourceEvents).Table);
+        for (int index = 0; index < count; index++)
+        {
+            ProjectionSourceAdmittedEvent item = admitted[index];
+            compact.Matches(item.Sequence, item.MessageId, item.SourceEventDigest, item.RouteEventFingerprint,
+                expected[index].PrefixFingerprint).ShouldBeTrue();
+            compact.Matches(item.Sequence, item.MessageId + "changed", item.SourceEventDigest, item.RouteEventFingerprint,
+                expected[index].PrefixFingerprint).ShouldBeFalse();
+            compact.Matches(item.Sequence, item.MessageId, new string('0', 64), item.RouteEventFingerprint,
+                expected[index].PrefixFingerprint).ShouldBeFalse();
+        }
+        Should.Throw<InvalidOperationException>(() => compact.Add(9258, "late", new string('0', 64), prefix, prefix));
+        compact.RouteEvents[^1].PrefixFingerprint.ShouldBe(prefix);
+    }
+
+    [Fact]
+    public async Task Readability_LateProviderFailureChargesEarlierDecodedWorkAndTheFailedAttemptWithoutVisitingLaterEvents()
+    {
+        var metadata = new EventStorePayloadProtectionMetadata(PayloadProtectionState.Protected, 1, "test", null, null, null);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        protection.TryUnprotectEventPayloadAsync(Identity, "OrderChanged", Arg.Any<byte[]>(), "protected+json",
+            Arg.Any<EventStorePayloadProtectionMetadata?>(), Arg.Any<CancellationToken>()).Returns(call =>
+                call.ArgAt<byte[]>(2)[1] == 1 ? PayloadUnprotectionOutcome.Readable([1, 2, 3], "json", metadata)
+                    : PayloadUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata));
+        using Hexalith.EventStore.Client.Projections.ProjectionDeliveryCostScope cost = Hexalith.EventStore.Client.Projections.ProjectionDeliveryCostDiagnostics.BeginScope();
+        ProjectionEventReadabilityResult result = await ProjectionEventWireBuilder.BuildAsync(protection, Identity,
+            [Envelope(1, metadata), Envelope(2, metadata), Envelope(3, metadata)], CancellationToken.None);
+        result.Events.ShouldBeNull();
+        result.SequenceNumber.ShouldBe(2);
+        result.UnreadableReason.ShouldBe(UnreadableProtectedDataReason.ProviderUnavailable);
+        cost[Hexalith.EventStore.Client.Projections.ProjectionDeliveryCost.WireReadabilityAttempts].ShouldBe(2);
+        cost[Hexalith.EventStore.Client.Projections.ProjectionDeliveryCost.WireReadabilityInputBytes].ShouldBe(4);
+        cost[Hexalith.EventStore.Client.Projections.ProjectionDeliveryCost.WireUnprotectionAttempts].ShouldBe(2);
+        cost[Hexalith.EventStore.Client.Projections.ProjectionDeliveryCost.WireDecodedEvents].ShouldBe(1);
+        cost[Hexalith.EventStore.Client.Projections.ProjectionDeliveryCost.WireDecodedPayloadBytes].ShouldBe(3);
+        cost[Hexalith.EventStore.Client.Projections.ProjectionDeliveryCost.HandlerAttempts].ShouldBe(0);
+        _ = await protection.ReceivedWithAnyArgs(2).TryUnprotectEventPayloadAsync(default!, default!, default!, default!, default, default);
+    }
+
     private static readonly AggregateIdentity Identity = new("tenant-a", "sales", "order-42");
 
     [Fact]

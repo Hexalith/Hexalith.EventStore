@@ -94,3 +94,36 @@ context:
 **Results (2026-10-12):** The normative digest matched `a4ca9686628b284fb74da931e8cfb1466e80de45fd3d4e89a3c62358a4498ca5` and the approved overhead is 4096 bytes. The Release Server test project build passed with zero warnings and errors. All five affected Server test classes passed on the reviewed binaries: 207 tests, zero failures or skips. The workload controller class passed 7/7, and the isolated tracked-content scan passed after the fixture rename. `git diff --check` passed.
 
 The final full Server project command `dotnet test tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Release --no-build` passed: 4,437 succeeded, 0 failed, and 25 pre-existing DW1 ATDD skips. The earlier full-run secret-scan failure was resolved without changing the scan rules. The review deferred no findings; two low-impact findings were rejected and one was refuted after tracing the cache-discard path.
+
+### Review Findings
+
+Code review 2026-10-14, diff `1b7b8ce2..HEAD` on the 7 Code Map files. Scope caveat: only `883db9fe` and `17e7b53e` are this spec's own work. The range also carries later commits (`8eec9712` receipts, `cf43d21a` source fence, `e55f5ac9`/`1738fff4`/`e88553d3` capture limits and compat, `34c97acf` terminal advisory).
+
+- [x] [Review][Decision] Review range included work outside this spec — resolved 2026-10-14: owner chose a narrowed re-review of `883db9fe`+`17e7b53e` (results below).
+- [x] [Review][Defer] Source write fence in `ProcessCommandCoreAsync` has no actor-level test (Begin before persist, Complete after, Complete on execution-fence throw, unregistered domain untouched) [AggregateActor.cs:1540-1565] — deferred: from `cf43d21a`, not this spec; verification-gap evidence filed
+- [x] [Review][Defer] `DomainServiceSafeDenialException` catch has no test; deleting it still passes [AggregateActor.cs:1479-1486] — deferred: not this spec's change; verification-gap evidence filed
+- [x] [Review][Defer] Fence intent left open if persist/save throws after `BeginWriteAsync` (command and erasure paths) [AggregateActor.cs:1537-1572, 2308-2443] — deferred: from `cf43d21a`; unverified (medium if true), settle by tracing whether `CompleteWriteAsync`/roster reconciliation is invoked on a throw
+- [x] [Review][Defer] `RearmOutstandingPublicationsAsync` no longer prunes unverifiable entries; probe budget is spent on them every activation and `CommitRecoverableCompletionAsync` is gone [AggregateActor.cs:4135-4220] — deferred: not from this spec; unverified (medium if true), settle by checking the activation budget and the Story 4.4 expiry test
+- [x] [Review][Defer] Receipt-bearing invoker overload only tested with `snapshotRequestDue == true`; receipt not bound into idempotency identity [AggregateActor.cs:1459-1497] — deferred: from `8eec9712`
+- [x] [Review][Defer] `MaximumProtectedEnvelopeBytes` default cut from 4 MiB to 1 MiB + 4096, so a near-limit protected state silently skips its automatic snapshot [SnapshotManager.cs:27] — deferred: from `1738fff4` (capture-limit work this spec defers); advisory skip, not data loss
+- [x] [Review][Defer] Manual retained-floor guard admits `RetainedFloor == currentSequence + 1` [AggregateActor.cs:2523] — deferred: unverified (low-medium); settle by checking whether an empty retained range is a legitimate post-purge state
+
+#### Rejected
+
+- `checked((int)maximumStateInputBytes)` can overflow — false: `MaximumActorParsedStateBytes` is an `int` property, so the cast cannot overflow.
+- `SnapshotStatesMatch` overflow reported as `InfrastructureFailure` rather than a mismatch — low, reason-class cosmetics only.
+- `OnlyEqualFoldedSnapshotIsAlreadyCurrent` lacks a stored-above-head case — false: `CachedCurrentSnapshotDoesNotOverrideDurableFutureSnapshot` (line 293) and `FutureDscsSequenceRetainsKeyAndRefusesReconstruction` (line 480) cover it.
+- Log EventId ordering, `Reason`→`FailureClass` placeholder rename, leftover story-number banners, `CancellationToken.None` on cache clear, undocumented new reason codes — low, no named harm.
+- Negative `EventCount` skipping cleanup, activation-repair cancellation swallow, causation-id change, `ErasedPosition` of 0, "stream-read integrity" commit claim — not reachable from this spec's change and not demonstrated; low.
+
+#### Narrowed re-review (`883db9fe`+`17e7b53e`, 944 lines, 4 layers)
+
+- [x] [Review][Patch] The `managerLogger` "no exception object / no provider detail" check passes vacuously when no manager-logger call has more than 3 arguments; assert the filtered set is non-empty first (spec: every new assertion must be able to fail) [AggregateActorDomainResultTests.cs:911-916]
+
+Rejected (narrowed pass):
+- Shape-colliding `Corrupt` migrates in `ShapeCollisionCanMigrateOnlyAfterValidFold`, against the matrix row "key retained" — false: that case seeds a legacy snapshot below the head; the retain case (sequence above head) is the one at line 445, and the parent spec lets future writes overwrite legacy snapshots. Matrix wording is loose; fix would edit the spec.
+- Due-check test stubs `LoadSnapshotAsync` rather than `LoadSnapshotForCommandAsync` — false: the substitute is not a `SnapshotManager`, so the actor takes the `LoadSnapshotAsync` branch (AggregateActor.cs:1336).
+- Staged events/snapshot leak after pre-save cancellation — low: the exception propagates out of the actor turn and nothing saves; same behaviour as every other throw in the method.
+- `ClearCacheAsync` could drop pending staged writes or has no failure mapping — maybe-false, low: manual snapshot runs in its own actor turn and covered by the existing infrastructure-failure mapping.
+- Concurrent-winner/commit-uncertain test "deleted" — false: only a setup was rewritten; the scenario is still tested (ManualSnapshotTests lines 642, 692, 715).
+- Reason-code literal duplication and `SnapshotProviderOpaque`/`SnapshotProtectionOpaque` naming split, `FailureClass` rename, dropped exception type in log, `ShouldSnapshotFalse` checking one due check, extra version-format cases, test-name/comment drift, "staged" log wording — low, no demonstrated harm.

@@ -33,7 +33,20 @@ internal sealed record ProjectionDeliveryState(
     ProjectionDeliveryMigrationProvenance MigrationProvenance,
     DateTimeOffset UpdatedAt) {
     /// <summary>Complete ordered message-identity digests retained beyond the exact receipt window.</summary>
+    [System.Text.Json.Serialization.JsonConverter(typeof(ProjectionMessageIdDigestsJsonConverter))]
     public IReadOnlyList<string>? CompletedMessageIdDigests { get; init; }
+
+    /// <summary>The explicit internal format for source-guard completion evidence.</summary>
+    public const int GuardSchemaVersion = 2;
+
+    /// <summary>Gets the negotiated evidence version; absence is never proof.</summary>
+    public int? GuardEvidenceVersion { get; init; }
+
+    /// <summary>Gets the source/owner/freshness/Idle binding at the existing completed checkpoint.</summary>
+    public ProjectionDeliveryGuardEvidence? GuardEvidence { get; init; }
+
+    /// <summary>Gets a pending finalization fence that cannot authorize current or redispatch.</summary>
+    public ProjectionDeliveryIdleBindingPending? IdleBindingPending { get; init; }
 
     /// <summary>The current persisted row schema.</summary>
     public const int CurrentSchemaVersion = 1;

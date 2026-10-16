@@ -99,7 +99,7 @@ Inside this repository, cross-repo Hexalith library dependencies use package mod
 
 - Set `-p:UseHexalithProjectReferences=true` for an intentional source session. A `ProjectReference` is selected only when the root-declared submodule project exists; otherwise evaluation falls back to `PackageReference`.
 - Package publication must use `-p:UseHexalithProjectReferences=false`.
-- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` is an import-only wrapper.
+- Source-owned package versions are pinned in `references/Hexalith.Builds/Props/Directory.Packages.props`; the root `Directory.Packages.props` imports that catalog and carries the owner-approved `10.0.13` servicing exception for `Microsoft.AspNetCore.SignalR.Common`, `System.Security.Cryptography.Pkcs`, `System.Security.Cryptography.Xml`, `Microsoft.Extensions.DependencyInjection.Abstractions`, and `Microsoft.Extensions.Options`. The [EventStore authority validator](../../scripts/validate-eventstore-package-authority.ps1) permits exactly those five pins and preserves the shared checks for all other declarations.
 
 `Hexalith.EventStore.*` packages must describe external Hexalith libraries as NuGet package dependencies, not
 as source project edges.
@@ -586,7 +586,7 @@ $ dotnet add package Hexalith.EventStore.Admin.Server
 
 The release package inventory is manifest-driven by `tools/release-packages.json`. Every package in that manifest uses automated semantic versioning via semantic-release. Release versions are derived from Conventional Commit history on `main`, then published under `v`-prefixed Git tags (for example, release `1.2.0` is tagged as `v1.2.0`).
 
-Source-owned package versions are centralized in `references/Hexalith.Builds/Props/Directory.Packages.props`; the repository-root `Directory.Packages.props` is an import-only wrapper. Every EventStore package in a release always ships at the same semantic version — there is no mix-and-match between release-package versions.
+Source-owned package versions are centralized in `references/Hexalith.Builds/Props/Directory.Packages.props`; the repository-root `Directory.Packages.props` imports it with only the [approved five-package servicing exception](#source-vs-package-dependencies). Every EventStore package in a release always ships at the same semantic version — there is no mix-and-match between release-package versions.
 
 Versions outside Central Package Management are intentionally separate: `dotnet-tools.json` pins local .NET tools, `global.json` pins the SDK, the ephemeral package-consumer fixture generates an isolated project for package validation, and `.csproj.lscache` files are generated IDE caches rather than dependency declarations.
 

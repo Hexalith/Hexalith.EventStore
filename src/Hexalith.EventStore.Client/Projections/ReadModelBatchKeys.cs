@@ -12,4 +12,7 @@ internal static class ReadModelBatchKeys {
     /// <param name="scopeHash">The opaque scope hash.</param>
     /// <returns>The marker key.</returns>
     public static string MarkerKey(string scopeHash) => MarkerPrefix + scopeHash;
+
+    /// <summary>Builds the private immutable manifest key within this same coordinated batch namespace.</summary>
+    internal static string ManifestKey(string scopeHash) => MarkerKey(scopeHash) + ":manifest";
 }

@@ -662,6 +662,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             [new DiscoveredDomain(typeof(WidgetAggregate), "widget", typeof(WidgetState), DomainKind.Aggregate)],
             []);
         IAsyncDomainProjectionRebuildHandler detail = Substitute.For<IAsyncDomainProjectionRebuildHandler>();
+        detail.OrdinaryDeliveryEnabled.Returns(true);
         detail.Domain.Returns("widget");
         detail.ProjectionType.Returns("widget-detail");
         detail.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
@@ -1052,7 +1053,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     /// <summary>
-    /// Proves the canonical domain-service endpoint set stays unchanged when the admission hook is added.
+    /// Proves the existing canonical endpoints are retained alongside additive source-guard proof and recovery routes.
     /// </summary>
     [Fact]
     public void MapEventStoreDomainService_MapsCanonicalEndpointsUnchanged() {
@@ -1072,10 +1073,15 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             "/project/rebuild/abort/v1",
             "/project/rebuild/commit/v1",
             "/project/rebuild/part/v1",
+            "/project/rebuild/reclaim-guarded/v1",
+            "/project/rebuild/reclaim-recovery/v1",
             "/project/rebuild/shared/v1",
             "/project/rebuild/stage/v1",
             "/project/rebuild/v1",
             "/project/rebuild/verify/v1",
+            "/project/source-guard/applied-receipt/v1",
+            "/project/source-guard/owner-proof/v1",
+            "/project/source-guard/reconcile-applied-receipt/v1",
             "/project/v2",
             "/project/v2/reconcile",
             "/query",
@@ -1233,7 +1239,6 @@ public sealed class EventStoreDomainServiceExtensionsTests {
             violations.ShouldHaveSingleItem().ShouldContain($"/project: the effective endpoint must require policy '{EventStoreDomainServicePolicies.Project}'.");
         }
     }
-
     /// <summary>Only the specifically marked public metadata and capability routes pass the inventory.</summary>
     /// <param name="route">The literal public route.</param>
     /// <param name="method">Its single HTTP method.</param>
@@ -1414,6 +1419,68 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         violations.ShouldAllBe(static violation => violation.Contains(EventStoreDomainServicePolicies.SidecarChannel, StringComparison.Ordinal)
             || violation.Contains("anonymous", StringComparison.Ordinal));
         violations.ShouldContain(violation => violation.Contains(expectedRoute, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task MetadataNegotiation_OldRequestRetainsOldFingerprintAndCompatibleDispatchWithNewHandler()
+    {
+        const string domain = "guard-probe";
+        const string route = "guard-summary";
+        IAsyncDomainProjectionSingleEventHandler handler = Substitute.For<IAsyncDomainProjectionSingleEventHandler,
+            IAsyncDomainProjectionRebuildHandler>();
+        ((IAsyncDomainProjectionRebuildHandler)handler).RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
+        handler.Domain.Returns(domain);
+        handler.ProjectionType.Returns(route);
+        handler.OrdinaryDeliveryEnabled.Returns(true);
+        handler.ProjectAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DomainProjectionHandlerResult.Completed());
+        var capability = new ProjectionSourceGuardCapability(1, 1, 1, "single-event-v1", "projection-owner-proof/v1",
+            "event-message-id/v1", "read-model-batch/v1") { CanonicalReplayProtocol = "staged-full-replay/v1" };
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "sample";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService();
+        _ = builder.Services.AddSingleton<IAsyncDomainProjectionHandler>(handler);
+        _ = builder.Services.AddKeyedSingleton<IDomainProcessor>(domain, Substitute.For<IDomainProcessor>());
+        _ = builder.Services.AddSingleton(new DomainProjectionOwnerProofRegistration(domain, route, capability, new("models", route)));
+        await using WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        // This body has exactly the old server's fields, with no capability negotiation.
+        var oldRequest = new AdminOperationalIndexMetadata.Request([domain]) { AppId = "sample", ServiceVersion = "v1" };
+        (int oldStatus, string oldBody) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata", oldRequest);
+        oldStatus.ShouldBe(StatusCodes.Status200OK, oldBody);
+        AdminOperationalIndexMetadata.Response oldResponse = JsonSerializer.Deserialize<AdminOperationalIndexMetadata.Response>(oldBody,
+            JsonSerializerOptions.Web).ShouldNotBeNull();
+        AdminOperationalIndexMetadata.DomainMetadata oldDomain = oldResponse.Domains.Single();
+        oldDomain.SourceGuardCapabilities.ShouldBeNull();
+        oldDomain.SingleEventProjectionTypes.ShouldNotBeNull().ShouldContain(route);
+        oldDomain.FullReplayProjectionTypes.ShouldNotBeNull().ShouldNotContain(route);
+        // The pre-feature algorithm knows only the original route fields. Its exact
+        // recomputation must still accept the issued response from this new handler.
+        string oldFingerprint = ProjectionRouteCatalogFingerprint.Compute("sample", "v1",
+            oldDomain.NamedProjectionTypes!.Select(type => new ProjectionDispatchRoute(domain, type)),
+            oldDomain.OrdinaryProjectionTypes!.Select(type => new ProjectionDispatchRoute(domain, type)));
+        oldResponse.CatalogFingerprint.ShouldBe(oldFingerprint);
+        var dispatch = new ProjectionDispatchRequest(new("tenant-a", domain, "owner", []), [route], "old-dispatch", oldFingerprint);
+        (int dispatchStatus, _) = await InvokeEndpointAsync(app, "/project/v2", dispatch);
+        dispatchStatus.ShouldBe(StatusCodes.Status200OK);
+        (await DomainProjectionDispatcher.DispatchAsync(app.Services, dispatch, new ProjectionDispatchOptions(),
+            new DomainProjectionIdentityOptions { AppId = "sample", ServiceVersion = "v1" }, CancellationToken.None))
+            .Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
+
+        (int guardStatus, string guardBody) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata",
+            oldRequest with { ProjectionSourceGuardVersion = 1 });
+        guardStatus.ShouldBe(StatusCodes.Status200OK, guardBody);
+        AdminOperationalIndexMetadata.Response guarded = JsonSerializer.Deserialize<AdminOperationalIndexMetadata.Response>(guardBody,
+            JsonSerializerOptions.Web).ShouldNotBeNull();
+        guarded.CatalogFingerprint.ShouldNotBe(oldFingerprint);
+        guarded.Domains.Single().SourceGuardCapabilities.ShouldNotBeNull()[route].ShouldBe(capability);
+        DomainProjectionCatalogRegistry registry = app.Services.GetRequiredService<DomainProjectionCatalogRegistry>();
+        registry.AuthorizesSourceGuard(oldFingerprint, domain, route, capability).ShouldBeFalse();
+        registry.AuthorizesSourceGuard(guarded.CatalogFingerprint!, domain, route, capability).ShouldBeTrue();
+        (int invalidStatus, _) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata",
+            oldRequest with { ProjectionSourceGuardVersion = 2 });
+        invalidStatus.ShouldBe(StatusCodes.Status400BadRequest);
     }
 
     [Fact]
@@ -1671,6 +1738,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
 
     private static IAsyncDomainProjectionHandler CreateNamedProjectionHandler(string domain, string projectionType) {
         IAsyncDomainProjectionHandler handler = Substitute.For<IAsyncDomainProjectionHandler>();
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         handler.Domain.Returns(domain);
         handler.ProjectionType.Returns(projectionType);
         return handler;

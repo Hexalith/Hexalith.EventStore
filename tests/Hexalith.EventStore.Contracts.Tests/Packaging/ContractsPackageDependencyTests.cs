@@ -5,7 +5,7 @@ using System.Xml.Linq;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
-public sealed class ContractsPackageDependencyTests
+public sealed partial class ContractsPackageDependencyTests
 {
     private const string MsBuildThisFileDirectory = "$(MSBuildThisFileDirectory)";
     private static readonly TimeSpan _consumerAuthorityValidationTimeout = TimeSpan.FromMinutes(8);
@@ -101,19 +101,19 @@ public sealed class ContractsPackageDependencyTests
     }
 
     [Fact]
-    public void RootPackagePropsIsAnImportOnlyWrapper()
+    public async Task RootPackagePropsContainsOnlyAuthorizedFivePinExceptionAsync()
     {
         string root = FindRepositoryRoot();
         XDocument packageVersions = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
 
-        packageVersions
-            .Descendants()
-            .Where(element => element.Name.LocalName == "PackageVersion")
-            .ShouldBeEmpty(
-            "The root Directory.Packages.props must remain an import-only wrapper around the Hexalith.Builds catalog.");
+        string catalogPath = ResolveSharedPackageVersionsPath(root, packageVersions);
+        (int exitCode, string output, string error) = await RunEventStorePackageAuthorityAsync(
+            root, catalogPath, validateWrapperOnly: true).ConfigureAwait(true);
+        exitCode.ShouldBe(0, $"{output}{Environment.NewLine}{error}");
 
         string[] fallbackVersionProperties = packageVersions
-            .Descendants()
+            .Descendants("PropertyGroup")
+            .Elements()
             .Where(element => element.Name.LocalName.EndsWith("Version", StringComparison.OrdinalIgnoreCase))
             .Select(element => element.Name.LocalName)
             .ToArray();
@@ -202,7 +202,7 @@ public sealed class ContractsPackageDependencyTests
         XDocument wrapper = XDocument.Load(wrapperPath);
         string catalogPath = ResolveSharedPackageVersionsPath(root, wrapper);
         (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(
-            root, root, catalogPath, GetSealedP1r119ProbeExclusions(root)).ConfigureAwait(true);
+            root, root, catalogPath, GetSealedP1r119ProbeExclusions(root), useApprovedException: true).ConfigureAwait(true);
         exitCode.ShouldBe(
             0,
             $"Shared consumer package authority validation failed.{Environment.NewLine}{output}{Environment.NewLine}{error}");
@@ -438,7 +438,8 @@ public sealed class ContractsPackageDependencyTests
     }
 
     private static async Task<(int ExitCode, string Output, string Error)> RunConsumerAuthorityValidatorAsync(
-        string repositoryRoot, string root, string catalogPath, string[]? additionalExcludedPaths = null)
+        string repositoryRoot, string root, string catalogPath, string[]? additionalExcludedPaths = null,
+        bool useApprovedException = false)
     {
         string buildsRoot = VerifyCatalogRepository(repositoryRoot, catalogPath);
         foreach ((string fileName, string sha256) in _sealedPackageObservations)
@@ -447,10 +448,9 @@ public sealed class ContractsPackageDependencyTests
                 File.ReadAllBytes(Path.Combine(root, PublishedPackageObservation, fileName)), sha256);
         }
 
-        string validatorPath = Path.Combine(
-            buildsRoot,
-            "Tools",
-            "validate-consumer-package-authority.ps1");
+        string validatorPath = useApprovedException
+            ? Path.Combine(repositoryRoot, "scripts", "validate-eventstore-package-authority.ps1")
+            : Path.Combine(buildsRoot, "Tools", "validate-consumer-package-authority.ps1");
 
         using Process process = new()
         {

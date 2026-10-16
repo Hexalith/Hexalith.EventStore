@@ -29,4 +29,13 @@ public sealed record ReminderIntent(
     [property: DataMember] string SourceDomain,
     [property: DataMember] string SourceAggregate,
     [property: DataMember] long SourceSequence,
-    [property: DataMember] long ScheduleRevision);
+    [property: DataMember] long ScheduleRevision)
+{
+    /// <summary>Immutable effect role within the committed source envelope; zero preserves historical identities.</summary>
+    [DataMember, System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public long Ordinal { get; init; }
+
+    /// <summary>Committed source envelope message identifier; null preserves historical logical-effect causation.</summary>
+    [DataMember, System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceMessageId { get; init; }
+}

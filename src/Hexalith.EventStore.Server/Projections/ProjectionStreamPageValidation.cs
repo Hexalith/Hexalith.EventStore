@@ -7,6 +7,29 @@ namespace Hexalith.EventStore.Server.Projections;
 /// <summary>Validates an actor stream page before a projection reader advances its exclusive cursor.</summary>
 internal static class ProjectionStreamPageValidation
 {
+    /// <summary>Classifies the new bounded guard/replay protocol without changing released reader diagnostics.</summary>
+    internal static long ValidateGuarded(AggregateIdentity identity, long fromSequence, long throughSequence,
+        int pageSize, EventEnvelope[]? envelopes)
+    {
+        if (envelopes is null || envelopes.Length == 0)
+            throw new ProjectionDeliveryHistoryValidationException("delivery_gap");
+        if (envelopes.Length > pageSize)
+            throw new ProjectionDeliveryHistoryValidationException("delivery_identity_conflict");
+        long expected = fromSequence;
+        foreach (EventEnvelope? envelope in envelopes)
+        {
+            if (envelope is null || envelope.TenantId != identity.TenantId || envelope.Domain != identity.Domain
+                || envelope.AggregateId != identity.AggregateId || envelope.Payload is null
+                || string.IsNullOrWhiteSpace(envelope.MessageId) || string.IsNullOrWhiteSpace(envelope.EventTypeName)
+                || string.IsNullOrWhiteSpace(envelope.SerializationFormat) || envelope.SequenceNumber <= expected)
+                throw new ProjectionDeliveryHistoryValidationException("delivery_identity_conflict");
+            if (expected == long.MaxValue || envelope.SequenceNumber != expected + 1 || envelope.SequenceNumber > throughSequence)
+                throw new ProjectionDeliveryHistoryValidationException("delivery_gap");
+            expected = envelope.SequenceNumber;
+        }
+        return expected;
+    }
+
     /// <summary>Checks one actor page against the requested aggregate and returns its exclusive cursor.</summary>
     internal static long Validate(
         AggregateIdentity identity,

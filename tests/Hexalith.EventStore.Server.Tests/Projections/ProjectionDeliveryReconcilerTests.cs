@@ -12,7 +12,23 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public class ProjectionDeliveryReconcilerTests {
+public partial class ProjectionDeliveryReconcilerTests {
+    [Fact]
+    public async Task GuardedRow_OrdinaryReconciliationCannotDowngradeOrDropCompletionEvidence()
+    {
+        ProjectionDeliveryState state = LegacyState(2) with { SchemaVersion = 2, WriterProtocolVersion = 2, GuardEvidenceVersion = 1 };
+        IProjectionDeliveryStateStore store = StoreReturning(state, ProjectionDeliveryStateClassification.Current);
+        IProjectionDeliveryHistoryReader history = Substitute.For<IProjectionDeliveryHistoryReader>();
+        ProjectionDeliveryReconciliationResult result = await CreateReconciler(store, history)
+            .ReconcileFromEventStoreAsync(Identity, "order-detail", "operator-7");
+        result.Status.ShouldBe(ProjectionDeliveryReconciliationStatus.RebuildRequired);
+        result.ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
+        result.PreservedSequence.ShouldBe(2);
+        await history.DidNotReceiveWithAnyArgs().ReadAsync(default!, default, default);
+        await store.DidNotReceiveWithAnyArgs().TrySaveWithReconciliationAsync(default!, default!, default!, default!, default!, default);
+        await store.DidNotReceiveWithAnyArgs().TrySaveAsync(default!, default!, default!, default!, default);
+    }
+
     private static readonly AggregateIdentity Identity = new("tenant-a", "sales", "order-42");
     private static readonly DateTimeOffset Now = new(2026, 7, 14, 10, 0, 0, TimeSpan.Zero);
 

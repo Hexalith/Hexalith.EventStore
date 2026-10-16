@@ -31,6 +31,7 @@ public partial class QueryRouter : IQueryRouter {
     private readonly IProjectionActorInvoker _invoker;
     private readonly IProjectionLifecycleGateway? _lifecycleGateway;
     private readonly ILogger<QueryRouter> _logger;
+    private readonly IProjectionSourceGuardDelivery? _sourceGuard;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QueryRouter"/> class.
@@ -62,13 +63,15 @@ public partial class QueryRouter : IQueryRouter {
     internal QueryRouter(
         IProjectionActorInvoker invoker,
         ILogger<QueryRouter> logger,
-        IProjectionLifecycleGateway lifecycleGateway) {
+        IProjectionLifecycleGateway lifecycleGateway,
+        IProjectionSourceGuardDelivery? sourceGuard = null) {
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(lifecycleGateway);
         _invoker = invoker;
         _lifecycleGateway = lifecycleGateway;
         _logger = logger;
+        _sourceGuard = sourceGuard;
     }
 
     /// <inheritdoc/>
@@ -167,13 +170,36 @@ public partial class QueryRouter : IQueryRouter {
                 QueryResponseMetadata? metadata = ApplyPersistedLifecycle(
                     result.Metadata,
                     stable ? after : LifecycleObservation.Unstable(after));
+                metadata = StampProjectionBacked(metadata);
+                if (_sourceGuard is not null)
+                {
+                    ProjectionSourceGuardDeliveryResult proof = await _sourceGuard.InspectCurrentAsync(
+                        new(query.Tenant, query.Domain, query.AggregateId), actualProjectionType, cancellationToken).ConfigureAwait(false);
+                    if (proof.Owned)
+                    {
+                        ProjectionLifecycleState state = metadata.Lifecycle == ProjectionLifecycleState.Rebuilding
+                            ? ProjectionLifecycleState.Rebuilding
+                            : metadata.Lifecycle == ProjectionLifecycleState.LocalOnly ? ProjectionLifecycleState.LocalOnly
+                            : proof.AlreadyCurrent && proof.ProvenFreshnessVersions.GetValueOrDefault(actualProjectionType) == metadata.ProjectionVersion
+                                && metadata.ProjectionVersion is not null ? ProjectionLifecycleState.Current
+                            : proof.ReasonCode == "head_changed" ? ProjectionLifecycleState.Stale
+                            : proof.ReasonCode == "delivery_state_unavailable" ? ProjectionLifecycleState.Unavailable
+                            : ProjectionLifecycleState.Unknown;
+                        metadata = metadata with
+                        {
+                            Provenance = proof.ReasonCode == "empty_no_work" ? QueryResponseProvenance.Unknown : metadata.Provenance,
+                            Lifecycle = state,
+                            IsStale = ProjectionLifecyclePolicy.ProjectIsStale(state),
+                        };
+                    }
+                }
                 Log.QueryRouted(_logger, query.CorrelationId, actorId);
                 return new QueryRouterResult(
                     Success: true,
                     Payload: payload,
                     NotFound: false,
                     ProjectionType: result.ProjectionType,
-                    Metadata: StampProjectionBacked(metadata));
+                    Metadata: metadata);
             }
 
             throw new InvalidOperationException("Projection lifecycle could not be observed coherently.");

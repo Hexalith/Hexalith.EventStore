@@ -22,6 +22,58 @@ using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
 namespace Hexalith.EventStore.Server.Tests.Events;
 
 public class EventPersisterTests {
+    [Fact]
+    public async Task PersistEventsAsync_QualifiedEmptySeedSurvivesFirstAppendWithItsOriginalIncarnation()
+    {
+        (EventPersister persister, IActorStateManager state) = CreatePersister();
+        SourceProof seed = SourceProofCodec.CreateSeed(TestIdentity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(0, DateTimeOffset.UnixEpoch, null) { SourceProof = seed }));
+        AggregateMetadata? staged = null;
+        state.SetStateAsync(TestIdentity.MetadataKey, Arg.Do<AggregateMetadata>(value => staged = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        EventPersistResult persisted = await persister.PersistEventsAsync(TestIdentity, "Counter", CreateTestCommand(),
+            DomainResult.Success([new TestEvent()]), "v1");
+        staged.ShouldNotBeNull().SourceProof.ShouldBe(SourceProofCodec.Extend(seed, persisted.PersistedEnvelopes.Single()));
+        staged.SourceProof!.SourceIncarnation.ShouldBe(seed.SourceIncarnation);
+    }
+
+    [Fact]
+    public async Task PersistEventsAsync_StagesCompleteSourceAnchorWithEnvelopesWithoutSeparateSave()
+    {
+        (EventPersister persister, IActorStateManager state) = CreatePersister();
+        ConfigureNoMetadata(state);
+        AggregateMetadata? staged = null;
+        state.SetStateAsync(TestIdentity.MetadataKey, Arg.Do<AggregateMetadata>(value => staged = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        EventPersistResult result = await persister.PersistEventsAsync(TestIdentity, "Counter", CreateTestCommand(),
+            DomainResult.Success([new TestEvent("one"), new TestEvent("two")]), "v1");
+
+        SourceProof actual = staged.ShouldNotBeNull().SourceProof.ShouldNotBeNull();
+        SourceProof expected = SourceProofCodec.CreateSeed(TestIdentity, actual.SourceIncarnation);
+        foreach (EventEnvelope envelope in result.PersistedEnvelopes) expected = SourceProofCodec.Extend(expected, envelope);
+        actual.ShouldBe(expected);
+        actual.HeadSequence.ShouldBe(2);
+        await state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task PersistEventsAsync_LegacyNonemptyStreamDoesNotInventSourceSeed()
+    {
+        (EventPersister persister, IActorStateManager state) = CreatePersister();
+        state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(7, DateTimeOffset.UnixEpoch, null)));
+        AggregateMetadata? staged = null;
+        state.SetStateAsync(TestIdentity.MetadataKey, Arg.Do<AggregateMetadata>(value => staged = value), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        await persister.PersistEventsAsync(TestIdentity, "Counter", CreateTestCommand(),
+            DomainResult.Success([new TestEvent()]), "v1");
+
+        staged.ShouldNotBeNull().CurrentSequence.ShouldBe(8);
+        staged.SourceProof.ShouldBeNull();
+    }
+
     private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
 
     private sealed record TestEvent(string Name = "test") : IEventPayload;

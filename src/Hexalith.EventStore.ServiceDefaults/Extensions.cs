@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -39,7 +40,8 @@ public static class Extensions {
         _ = builder.AddDefaultHealthChecks();
         _ = builder.Services.AddServiceDiscovery();
         _ = builder.Services.ConfigureHttpClientDefaults(static http => {
-            _ = http.AddStandardResilienceHandler();
+            _ = http.AddStandardResilienceHandler()
+                .SelectPipelineBy(static _ => GetResiliencePipelineKey);
             _ = http.AddServiceDiscovery();
         });
 
@@ -185,6 +187,27 @@ public static class Extensions {
         _ = app.MapHealthChecks(AlivenessEndpointPath, livenessOptions).AllowAnonymous();
         _ = app.MapHealthChecks(ReadinessEndpointPath, readinessOptions).AllowAnonymous();
         return app;
+    }
+
+    /// <summary>Separates Dapr target circuits even when requests share one sidecar authority.</summary>
+    private static string GetResiliencePipelineKey(HttpRequestMessage request) {
+        Uri? address = request.RequestUri;
+        if (address is null || !address.IsAbsoluteUri) {
+            return string.Empty;
+        }
+
+        string authority = $"{address.Scheme}://{address.Authority}";
+        const string invocationPrefix = "/v1.0/invoke/";
+        string path = address.AbsolutePath;
+        if (path.StartsWith(invocationPrefix, StringComparison.Ordinal)) {
+            int targetEnd = path.IndexOf("/method/", invocationPrefix.Length, StringComparison.Ordinal);
+            if (targetEnd > invocationPrefix.Length) {
+                // The target comes from the configured Dapr invocation address, never tenant or payload data.
+                return $"{authority}{path[..targetEnd]}";
+            }
+        }
+
+        return authority;
     }
 
     private static bool IsOtlpConfigured(IConfiguration configuration)

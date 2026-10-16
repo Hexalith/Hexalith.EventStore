@@ -34,6 +34,22 @@ public record ProjectionRequest(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? RebuildSourceHeadSequence { get; init; }
 
+    /// <summary>Gets the frozen persisted head identity for an explicitly guarded staged replay.</summary>
+    [JsonIgnore]
+    internal string? RebuildSourceHeadMessageId { get; init; }
+
+    /// <summary>Gets the admitted selected generations that a guarded immutable replay manifest must preserve.</summary>
+    [JsonIgnore]
+    internal IReadOnlyDictionary<string, string>? RebuildOwnerGenerations { get; init; }
+
+    /// <summary>Gets the exact admitted owner identities paired with guarded replay generations.</summary>
+    [JsonIgnore]
+    internal IReadOnlyDictionary<string, string>? RebuildOwnerIdentities { get; init; }
+
+    /// <summary>Gets the private compact attestation of the complete admitted owner bindings.</summary>
+    [JsonIgnore]
+    internal string? RebuildOwnerBindingFingerprint { get; init; }
+
     /// <summary>
     /// Gets the aggregate actor's completed-erasure observation for a protected, empty full replay.
     /// The mapped rebuild route accepts this only with an empty prefix and a zero source head.

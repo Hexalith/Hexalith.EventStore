@@ -1,4 +1,5 @@
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Server.Events;
@@ -45,6 +46,8 @@ internal static class ProjectionEventWireBuilder {
         for (int i = 0; i < events.Count; i++) {
             EventEnvelope envelope = events[i];
             cancellationToken.ThrowIfCancellationRequested();
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.WireReadabilityAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.WireReadabilityInputBytes, envelope.Payload.Length);
             EventStorePayloadProtectionMetadata storedMetadata = EventStorePayloadProtectionMetadataCarrier
                 .Read(envelope.Extensions);
             if (storedMetadata.State == PayloadProtectionState.ProviderOpaque) {
@@ -56,6 +59,7 @@ internal static class ProjectionEventWireBuilder {
             byte[] payload = envelope.Payload;
             string serializationFormat = envelope.SerializationFormat;
             if (storedMetadata.State == PayloadProtectionState.Protected) {
+                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.WireUnprotectionAttempts);
                 PayloadUnprotectionOutcome outcome;
                 try {
                     outcome = await payloadProtectionService
@@ -88,6 +92,8 @@ internal static class ProjectionEventWireBuilder {
             }
 
             EventLogicalDigest.RequireMatching(envelope, serializationFormat, payload);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.WireDecodedEvents);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.WireDecodedPayloadBytes, payload.Length);
 
             projectionEvents[i] = new ProjectionEventDto(
                 envelope.EventTypeName,

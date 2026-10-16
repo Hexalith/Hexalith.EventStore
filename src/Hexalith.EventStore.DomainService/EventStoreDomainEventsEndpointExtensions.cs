@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.DomainService;
@@ -33,7 +34,7 @@ public static class EventStoreDomainEventsEndpointExtensions {
         EventStoreDomainEventsOptions options = endpoints.ServiceProvider
             .GetRequiredService<IOptions<EventStoreDomainEventsOptions>>().Value;
 
-        _ = endpoints.MapPost(options.SubscriptionRoute, async (
+        RouteHandlerBuilder endpoint = endpoints.MapPost(options.SubscriptionRoute, async (
             EventStoreDomainEventEnvelope envelope,
             EventStoreDomainEventProcessor processor,
             CancellationToken cancellationToken) => {
@@ -42,9 +43,13 @@ public static class EventStoreDomainEventsEndpointExtensions {
                     .ConfigureAwait(false);
                 return MapProcessingResult(result);
             })
-            .WithTopic(options.PubSubName, options.TopicName)
             // Pub/sub delivery is sidecar-originated: it must present the Dapr app-channel token.
             .RequireEventStoreSidecarChannel();
+
+        if (endpoints.ServiceProvider.GetService<IConfiguration>()?.GetValue<bool>("Dapr:DeclarativeSubscriptions") != true)
+        {
+            _ = endpoint.WithTopic(options.PubSubName, options.TopicName);
+        }
 
         return endpoints;
     }

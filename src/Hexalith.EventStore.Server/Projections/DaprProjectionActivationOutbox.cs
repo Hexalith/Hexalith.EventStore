@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Configuration;
 
 using Microsoft.Extensions.Options;
@@ -11,10 +13,10 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>DAPR state-store implementation of the projection activation outbox.</summary>
-public sealed class DaprProjectionActivationOutbox(
+public sealed partial class DaprProjectionActivationOutbox(
     DaprClient daprClient,
     IOptions<ProjectionOptions> projectionOptions,
-    TimeProvider timeProvider) : IProjectionActivationOutbox {
+    TimeProvider timeProvider) : IProjectionActivationOutbox, IProjectionLegacyDeliveryOutbox {
     private const int ShardCount = 64;
     private const int MaxEtagRetries = 5;
     private const int BulkReadParallelism = 8;
@@ -51,12 +53,7 @@ public sealed class DaprProjectionActivationOutbox(
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ProjectionActivationWorkItem workItem = ProjectionActivationWorkItem.Create(identity, timeProvider.GetUtcNow());
-        (ProjectionActivationLedger? ledger, _) = await daprClient
-            .GetStateAndETagAsync<ProjectionActivationLedger>(
-                projectionOptions.Value.CheckpointStateStoreName,
-                GetKey(workItem.ActivationId),
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        (ProjectionActivationLedger? ledger, _) = await ReadLedgerAsync(GetKey(workItem.ActivationId), cancellationToken).ConfigureAwait(false);
         return ledger?.Items.FirstOrDefault(item =>
             string.Equals(item.ActivationId, workItem.ActivationId, StringComparison.Ordinal)
             && string.Equals(item.TenantId, identity.TenantId, StringComparison.Ordinal)
@@ -73,7 +70,8 @@ public sealed class DaprProjectionActivationOutbox(
             workItem.ActivationId,
             items => items.RemoveAll(item =>
                 string.Equals(item.ActivationId, workItem.ActivationId, StringComparison.Ordinal)
-                && item.Revision == workItem.Revision) > 0,
+                && item.Revision == workItem.Revision
+                && item.LegacyDelivery is null) > 0,
             cancellationToken);
     }
 
@@ -83,15 +81,29 @@ public sealed class DaprProjectionActivationOutbox(
         int maximumCount,
         CancellationToken cancellationToken = default) {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCount);
-        IReadOnlyList<BulkStateItem<ProjectionActivationLedger>> shards = await daprClient
-            .GetBulkStateAsync<ProjectionActivationLedger>(
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationScans);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationShardReads, Keys.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads, Keys.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        IReadOnlyList<BulkStateItem> shards = await daprClient
+            .GetBulkStateAsync(
                 projectionOptions.Value.CheckpointStateStoreName,
                 Keys,
                 BulkReadParallelism,
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        return [.. shards
-            .SelectMany(static shard => shard.Value?.Items ?? [])
+        var items = new List<ProjectionActivationWorkItem>();
+        foreach (BulkStateItem shard in shards)
+        {
+            long bytes = shard.Value is null ? 0 : Encoding.UTF8.GetByteCount(shard.Value);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, bytes);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationReadBytes, bytes);
+            ProjectionActivationLedger? ledger = string.IsNullOrEmpty(shard.Value) ? null
+                : JsonSerializer.Deserialize<ProjectionActivationLedger>(shard.Value, daprClient.JsonSerializerOptions);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationEntries, ledger?.Items.Count ?? 0);
+            items.AddRange(ledger?.Items ?? []);
+        }
+        return [.. items
             .Where(static item => IsValid(item))
             .Where(item => item.NextDueUtc <= dueUtc)
             .OrderBy(static item => item.NextDueUtc)
@@ -130,23 +142,31 @@ public sealed class DaprProjectionActivationOutbox(
     private async Task MutateAsync(
         string activationId,
         Func<List<ProjectionActivationWorkItem>, bool> mutation,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken, int? maxLedgerBytes = null) {
         string storeName = projectionOptions.Value.CheckpointStateStoreName;
         string key = GetKey(activationId);
         for (int attempt = 0; attempt < MaxEtagRetries; attempt++) {
-            (ProjectionActivationLedger? ledger, string etag) = await daprClient
-                .GetStateAndETagAsync<ProjectionActivationLedger>(storeName, key, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            (ProjectionActivationLedger? ledger, string etag) = await ReadLedgerAsync(key, cancellationToken).ConfigureAwait(false);
             List<ProjectionActivationWorkItem> items = [.. ledger?.Items ?? []];
             if (!mutation(items)) {
                 return;
             }
 
-            if (await daprClient.TrySaveStateAsync(
+            byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new ProjectionActivationLedger(items), daprClient.JsonSerializerOptions);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSerializationBytes, bytes.Length);
+            if (maxLedgerBytes is { } limit && bytes.Length > limit)
+                throw new ProjectionDeliveryHistoryValidationException("delivery_proof_limit_exceeded");
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationWriteAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationWriteBytes, bytes.Length);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, bytes.Length);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+            if (await daprClient.TrySaveByteStateAsync(
                     storeName,
                     key,
-                    new ProjectionActivationLedger(items),
+                    bytes,
                     etag,
+                    stateOptions: new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false)) {
                 return;
@@ -154,6 +174,20 @@ public sealed class DaprProjectionActivationOutbox(
         }
 
         throw new InvalidOperationException("Projection activation outbox update exhausted optimistic-concurrency attempts.");
+    }
+
+    private async Task<(ProjectionActivationLedger? Ledger, string Etag)> ReadLedgerAsync(string key, CancellationToken cancellationToken)
+    {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationShardReads);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        (ReadOnlyMemory<byte> body, string etag) = await daprClient.GetByteStateAndETagAsync(
+            projectionOptions.Value.CheckpointStateStoreName, key, cancellationToken: cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, body.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationReadBytes, body.Length);
+        ProjectionActivationLedger? ledger = body.IsEmpty ? null : JsonSerializer.Deserialize<ProjectionActivationLedger>(body.Span, daprClient.JsonSerializerOptions);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ActivationEntries, ledger?.Items.Count ?? 0);
+        return (ledger, etag);
     }
 
     private static string GetKey(string activationId) {

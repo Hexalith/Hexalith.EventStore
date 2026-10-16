@@ -13,6 +13,24 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 /// <summary>Target actor receipt behavior under a committed no-op outcome.</summary>
 public class TrustedEffectReceiptTests
 {
+    /// <summary>The trusted helper forwards snapshot capture arguments and retains the requested authenticated origin.</summary>
+    [Fact]
+    public async Task TrustedInvokerHelperPreservesSnapshotCaptureContract()
+    {
+        ActorTestContext actor = AggregateActorTestHelper.CreateActor();
+        (TrustedEffectSubmission submission, TrustedEffectContext context, _) = CreateEffect();
+        var command = new Hexalith.EventStore.Contracts.Commands.CommandEnvelope(
+            "message", submission.Identity.Tenant, submission.Identity.TargetDomain, submission.Identity.TargetAggregate,
+            submission.CommandType, submission.CommandPayload, "correlation", context.CausationId, context.Workload, null);
+        var origin = new TrustedEffectOrigin(submission.Identity, context.Workload, context.Purpose, context.CausationId,
+            submission.CommandType, "digest");
+        actor.Invoker.InvokeAsync(command, null, true, "snapshot-profile", Arg.Any<CancellationToken>()).Returns(DomainResult.NoOp());
+        await actor.Invoker.InvokeTrustedEffectAsync(command, null, true, "snapshot-profile", origin, TestContext.Current.CancellationToken);
+        await actor.Invoker.Received(1).InvokeAsync(command, null, true, "snapshot-profile", TestContext.Current.CancellationToken);
+        await actor.Invoker.Received(1).InvokeTrustedEffectAsync(command, null, true, "snapshot-profile", origin, TestContext.Current.CancellationToken);
+        await actor.Invoker.DidNotReceive().InvokeAsync(command, null, Arg.Any<CancellationToken>());
+    }
+
     /// <summary>Exact replay reads the committed receipt without invoking the domain again.</summary>
     [Fact]
     public async Task ExactReplayReturnsReceiptWithoutHandle()
@@ -35,6 +53,7 @@ public class TrustedEffectReceiptTests
         _ = await actor.Invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         _ = policy.DidNotReceiveWithAnyArgs().CompleteAsync(default!);
         state.CommittedState.Keys.ShouldContain("effect_receipt_" + first.EffectId);
@@ -60,6 +79,7 @@ public class TrustedEffectReceiptTests
         _ = await actor.Invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
         state.CommittedState.Keys.ShouldContain(key => key.StartsWith("effect_collision_", StringComparison.Ordinal));
     }
@@ -90,6 +110,7 @@ public class TrustedEffectReceiptTests
         _ = await actor.Invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -204,11 +225,13 @@ public class TrustedEffectReceiptTests
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
                 Arg.Any<object?>(),
+                Arg.Any<bool>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new AggregateActorTestHelper.TestEvent()]));
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
 
         TrustedEffectResult result = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
@@ -232,11 +255,13 @@ public class TrustedEffectReceiptTests
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
                 Arg.Any<object?>(),
+                Arg.Any<bool>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new AggregateActorTestHelper.TestEvent()]));
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
         state.FaultAfterCall("SaveState", 3, new IOException("acknowledgement lost"));
 
@@ -257,8 +282,9 @@ public class TrustedEffectReceiptTests
         _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
-        _ = await restoredInvoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+        _ = await restoredInvoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default, default, default);
     }
 
     /// <summary>A domain rejection is a recorded target outcome whose receipt commits with the rejection event.</summary>
@@ -273,11 +299,13 @@ public class TrustedEffectReceiptTests
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
                 Arg.Any<object?>(),
+                Arg.Any<bool>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Rejection([new AggregateActorTestHelper.TestRejectionEvent()]));
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
 
         TrustedEffectResult first = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
@@ -302,6 +330,7 @@ public class TrustedEffectReceiptTests
         _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -318,11 +347,13 @@ public class TrustedEffectReceiptTests
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
                 Arg.Any<object?>(),
+                Arg.Any<bool>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new AggregateActorTestHelper.TestEvent()]));
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy,
             trustedEffectAuditSink: audit);
         TrustedEffectResult first = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
@@ -352,6 +383,7 @@ public class TrustedEffectReceiptTests
         _ = await invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -370,11 +402,13 @@ public class TrustedEffectReceiptTests
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
                 Arg.Any<object?>(),
+                Arg.Any<bool>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new AggregateActorTestHelper.TestEvent()]));
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
         TrustedEffectResult first = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
         first.Disposition.ShouldBe(TrustedEffectDisposition.Success);
@@ -398,7 +432,7 @@ public class TrustedEffectReceiptTests
         replay.EffectId.ShouldBe(first.EffectId);
         replay.Disposition.ShouldBe(TrustedEffectDisposition.Success);
         replay.Replayed.ShouldBeTrue();
-        _ = await restoredInvoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+        _ = await restoredInvoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default, default, default);
         _ = await restored.StatusStore.DidNotReceiveWithAnyArgs().ReadStatusAsync(default!, default!, default);
         restoredState.CommittedState.Keys.ShouldNotContain(key => key.Contains(":events:2", StringComparison.Ordinal));
         restoredState.CommittedState.Keys.ShouldNotContain(key => key.StartsWith("idempotency:", StringComparison.Ordinal));
@@ -419,7 +453,7 @@ public class TrustedEffectReceiptTests
         await Should.ThrowAsync<InvalidOperationException>(() => actor.Actor.ProcessCommandAsync(command));
 
         state.Trace.ShouldBeEmpty();
-        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default, default, default);
     }
 
     /// <summary>
@@ -461,6 +495,7 @@ public class TrustedEffectReceiptTests
         _ = await actor.Invoker.Received(1).InvokeAsync(
             Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
             Arg.Any<object?>(),
+            Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -479,7 +514,7 @@ public class TrustedEffectReceiptTests
         await Should.ThrowAsync<InvalidOperationException>(
             () => actor.Actor.ProcessCommandAsync(AggregateActorTestHelper.CreateTestEnvelope()));
 
-        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+        _ = await actor.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default, default, default);
         state.CommittedState.Keys.ShouldNotContain(key => key.Contains(":events:", StringComparison.Ordinal));
         state.CommittedState.Keys.ShouldNotContain(key => key.StartsWith("idempotency:", StringComparison.Ordinal));
     }

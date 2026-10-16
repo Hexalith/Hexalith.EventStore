@@ -3,6 +3,10 @@ namespace Hexalith.EventStore.Server.Projections;
 /// <summary>Counts serialized bytes without retaining them and fails as soon as a limit is exceeded.</summary>
 internal sealed class SizeLimitedWriteStream(long maxBytes) : Stream {
     private long _bytesWritten;
+    private long _attemptedBytes;
+
+    /// <summary>Gets every attempted serialized byte, including the buffer rejected by the cap.</summary>
+    internal long AttemptedBytes => _attemptedBytes;
 
     public override bool CanRead => false;
 
@@ -41,6 +45,7 @@ internal sealed class SizeLimitedWriteStream(long maxBytes) : Stream {
     }
 
     private void Add(int count) {
+        _attemptedBytes = checked(_attemptedBytes + count);
         if (count < 0 || _bytesWritten > maxBytes - count) {
             throw new ProjectionRebuildPrefixSafetyLimitExceededException();
         }

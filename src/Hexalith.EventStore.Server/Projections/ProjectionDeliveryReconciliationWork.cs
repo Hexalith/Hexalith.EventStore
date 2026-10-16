@@ -19,4 +19,13 @@ internal sealed record ProjectionDeliveryReconciliationWork(
     long ObservedSequence,
     int DeliveryStateVersion,
     string? OperatorId,
-    DateTimeOffset RecordedAt);
+    DateTimeOffset RecordedAt)
+{
+    /// <summary>Gets exact source-guard maintenance attestations retained in the existing scope control record.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ProjectionSourceGuardMaintenance? SourceGuardMaintenance { get; init; }
+
+    /// <summary>Gets the exact qualified source incarnation and catalog admitted by this control record.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ProjectionSourceGuard? QualifiedSourceGuard { get; init; }
+}

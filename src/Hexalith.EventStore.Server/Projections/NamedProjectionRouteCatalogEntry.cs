@@ -1,9 +1,18 @@
 using System.Collections.Immutable;
 
+using Hexalith.EventStore.Contracts.Projections;
+
 namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Represents one capability-bound domain entry in the named projection route catalog.</summary>
 public sealed class NamedProjectionRouteCatalogEntry {
+    /// <summary>Gets the explicitly enrolled source-guard descriptors from this verified catalog.</summary>
+    public IReadOnlyDictionary<string, ProjectionSourceGuardCapability> SourceGuardCapabilities { get; init; }
+        = ImmutableDictionary<string, ProjectionSourceGuardCapability>.Empty;
+
+    /// <summary>Gets explicitly verified original-manifest recovery bindings without changing legacy catalog bytes.</summary>
+    public IReadOnlyDictionary<string, ProjectionReplayRecoveryBinding> ReplayRecoveryBindings { get; init; }
+        = ImmutableDictionary<string, ProjectionReplayRecoveryBinding>.Empty;
     /// <summary>Initializes a new named route catalog entry.</summary>
     /// <param name="appId">The exact DAPR app id.</param>
     /// <param name="serviceVersion">The exact domain-service version.</param>
@@ -25,7 +34,39 @@ public sealed class NamedProjectionRouteCatalogEntry {
         IEnumerable<string>? mappedOnlyStreamedProjectionTypes = null,
         IEnumerable<string>? sharedEpochProjectionTypes = null,
         IEnumerable<string>? singleEventProjectionTypes = null,
-        IEnumerable<string>? incrementalReplayProjectionTypes = null) {
+        IEnumerable<string>? incrementalReplayProjectionTypes = null)
+        : this(appId, serviceVersion, domain, dispatchVersion, dispatchCapability, catalogFingerprint,
+            projectionTypes, fullReplayProjectionTypes, mappedOnlyStreamedProjectionTypes, sharedEpochProjectionTypes,
+            singleEventProjectionTypes, incrementalReplayProjectionTypes, null) { }
+
+    /// <summary>Initializes a catalog with an explicit ordinary-delivery subset and retained rebuild routes.</summary>
+    /// <param name="appId">The exact DAPR app id.</param>
+    /// <param name="serviceVersion">The domain-service version.</param>
+    /// <param name="domain">The canonical domain.</param>
+    /// <param name="dispatchVersion">The dispatch protocol version.</param>
+    /// <param name="dispatchCapability">The capability marker.</param>
+    /// <param name="catalogFingerprint">The complete capability fingerprint.</param>
+    /// <param name="projectionTypes">The complete named route set.</param>
+    /// <param name="fullReplayProjectionTypes">One-owner full-replay routes.</param>
+    /// <param name="mappedOnlyStreamedProjectionTypes">Mapped-only streamed routes.</param>
+    /// <param name="sharedEpochProjectionTypes">Fenced shared epoch routes.</param>
+    /// <param name="singleEventProjectionTypes">Single-event ordinary routes.</param>
+    /// <param name="incrementalReplayProjectionTypes">Incremental replay routes.</param>
+    /// <param name="ordinaryProjectionTypes">Enabled ordinary routes; null preserves historical behavior.</param>
+    public NamedProjectionRouteCatalogEntry(
+        string appId,
+        string serviceVersion,
+        string domain,
+        int dispatchVersion,
+        string dispatchCapability,
+        string catalogFingerprint,
+        IEnumerable<string> projectionTypes,
+        IEnumerable<string>? fullReplayProjectionTypes,
+        IEnumerable<string>? mappedOnlyStreamedProjectionTypes,
+        IEnumerable<string>? sharedEpochProjectionTypes,
+        IEnumerable<string>? singleEventProjectionTypes,
+        IEnumerable<string>? incrementalReplayProjectionTypes,
+        IEnumerable<string>? ordinaryProjectionTypes) {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
@@ -40,6 +81,11 @@ public sealed class NamedProjectionRouteCatalogEntry {
         DispatchCapability = dispatchCapability;
         CatalogFingerprint = catalogFingerprint;
         ProjectionTypes = projectionTypes.ToImmutableArray();
+        OrdinaryProjectionTypes = (ordinaryProjectionTypes ?? ProjectionTypes).ToImmutableArray();
+        if (OrdinaryProjectionTypes.Distinct(StringComparer.Ordinal).Count() != OrdinaryProjectionTypes.Count
+            || OrdinaryProjectionTypes.Any(type => !ProjectionTypes.Contains(type, StringComparer.Ordinal))) {
+            throw new ArgumentException("Ordinary delivery must be a unique subset of the named catalog.", nameof(ordinaryProjectionTypes));
+        }
         FullReplayProjectionTypes = (fullReplayProjectionTypes ?? ProjectionTypes).ToImmutableArray();
         MappedOnlyStreamedProjectionTypes = (mappedOnlyStreamedProjectionTypes ?? []).ToImmutableArray();
         SharedEpochProjectionTypes = (sharedEpochProjectionTypes ?? []).ToImmutableArray();
@@ -86,6 +132,9 @@ public sealed class NamedProjectionRouteCatalogEntry {
 
     /// <summary>Gets the exact canonical projection types in ordinal order.</summary>
     public IReadOnlyList<string> ProjectionTypes { get; }
+
+    /// <summary>Gets named routes that accept ordinary delivery in the current host mode.</summary>
+    public IReadOnlyList<string> OrdinaryProjectionTypes { get; }
 
     /// <summary>Gets named routes that support aggregate-owned full replay for one owner.</summary>
     public IReadOnlyList<string> FullReplayProjectionTypes { get; }

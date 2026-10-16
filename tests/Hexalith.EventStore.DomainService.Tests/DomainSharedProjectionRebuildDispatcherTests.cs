@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Discovery;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Testing.Fakes;
 
@@ -168,6 +169,40 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
         handler.ObservedCompletionStates.ShouldAllBe(state => state == "stale");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AdvertisedCatalogAdmitsRebuildAndRejectsStaleOrdinaryCapability(bool ordinary)
+    {
+        var store = new InMemoryReadModelStore();
+        var handler = new SharedIndexHandler { OrdinaryDeliveryEnabled = ordinary };
+        using ServiceProvider provider = BuildProvider(store, store, handler);
+        AdminOperationalIndexMetadata.Response Metadata() => AdminOperationalIndexMetadata.Create(
+            new DiscoveryResult([], []), ["widget"], [], [handler], "widget-service", "v1",
+            new ProjectionDispatchOptions(), ["widget"]);
+        AdminOperationalIndexMetadata.Response advertised = Metadata();
+        advertised.Domains.Single().OrdinaryProjectionTypes!.Count.ShouldBe(ordinary ? 1 : 0);
+        var identity = CreateIdentity("advertised") with { CatalogFingerprint = advertised.CatalogFingerprint! };
+        var current = await DispatchAsync(provider, Begin(identity));
+        current = await DispatchAsync(provider, Accumulate(identity, 0, "aggregate-a", false, ProjectionEvent(1, 1)));
+        current = await DispatchAsync(provider, Finalize(identity, current));
+        _ = await DispatchAsync(provider, Lifecycle(identity, DomainSharedProjectionRebuildAction.Stage));
+        current = await DispatchAsync(provider, Lifecycle(identity, DomainSharedProjectionRebuildAction.Commit));
+        current.Phase.ShouldBe(DomainSharedProjectionRebuildPhase.Committed);
+        (await store.GetAsync<SharedIndex>(StoreName, IndexKey)).Value!.AggregateIds.ShouldBe(["aggregate-a"]);
+
+        handler.OrdinaryDeliveryEnabled = !ordinary;
+        _ = await Should.ThrowAsync<ProjectionDispatchValidationException>(() => DispatchAsync(provider,
+            Begin(identity with { OperationId = "stale-capability" })));
+        var changed = Metadata();
+        changed.CatalogFingerprint.ShouldNotBe(advertised.CatalogFingerprint);
+        var accepted = await DispatchAsync(provider, Begin(identity with
+        {
+            OperationId = "changed-capability", CatalogFingerprint = changed.CatalogFingerprint!,
+        }));
+        accepted.Status.ShouldBe(ProjectionDispatchStatus.Completed);
+    }
+
     private static DomainSharedProjectionRebuildRequest Accumulate(
         DomainSharedProjectionRebuildIdentity identity,
         long ordinal,
@@ -287,6 +322,8 @@ public sealed class DomainSharedProjectionRebuildDispatcherTests {
         public int CompletionCalls { get; private set; }
 
         public List<string> ObservedCompletionStates { get; } = [];
+
+        public bool OrdinaryDeliveryEnabled { get; set; } = true;
 
         public string Domain => "widget";
 

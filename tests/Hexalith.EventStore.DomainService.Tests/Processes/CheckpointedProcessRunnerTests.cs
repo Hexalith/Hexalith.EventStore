@@ -21,6 +21,64 @@ namespace Hexalith.EventStore.DomainService.Tests.Processes;
 /// <summary>Persisted checkpoint and receipt replay cases for the synthetic process runner.</summary>
 public sealed class CheckpointedProcessRunnerTests
 {
+    /// <summary>Retained plans replay no-op receipts after mutable target context disappears, and reject altered source or lowered limits.</summary>
+    [Theory]
+    [InlineData("replay")]
+    [InlineData("source")]
+    [InlineData("budget")]
+    [InlineData("payload")]
+    [InlineData("target")]
+    public async Task RetainedPlanReplaysOriginalNoOpOrRejectsChangedEvidence(string scenario)
+    {
+        var store = new InMemoryReadModelStore();
+        var options = new EventStoreProcessOptions();
+        var checkpoints = new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System);
+        var page = Page(0, true);
+        var gateway = Substitute.For<IEventStoreGatewayClient>();
+        gateway.ReadWorkloadStreamAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(_ => page);
+        var translator = Substitute.For<IProcessTranslator>();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>([new(EffectKindCatalog.Registry, "sample", "parent", 0, "Resume", [1, 2, 3])]));
+        var submitter = Substitute.For<ITrustedEffectSubmitter>();
+        string? committed = null;
+        bool first = true;
+        submitter.SubmitAsync(Arg.Any<TrustedEffectSubmission>(), Arg.Any<TrustedEffectContext>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            string id = EffectIdentityCodec.ComputeEffectId(call.Arg<TrustedEffectSubmission>().Identity);
+            if (first) { first = false; committed = id; throw new HttpRequestException("Lost committed no-op receipt."); }
+            id.ShouldBe(committed);
+            return Task.FromResult(new TrustedEffectResult(id, TrustedEffectDisposition.NoOp, true, null));
+        });
+        var runner = new CheckpointedProcessRunner(gateway, translator, Delegation(), submitter, checkpoints, Options.Create(options));
+        (await runner.RunAsync(Source)).Status.ShouldBe(ProcessSourceStatus.Retrying);
+        var retained = (await checkpoints.GetAsync(Source)).PendingPlan.ShouldNotBeNull();
+        retained.Sequence.ShouldBe(1);
+        retained.Effects.Count.ShouldBe(1);
+        translator.ClearReceivedCalls();
+        translator.TranslateAsync(Arg.Any<ProcessSource>(), Arg.Any<StreamReadEvent>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyList<ProcessEffect>>([]));
+        submitter.ClearReceivedCalls();
+        if (scenario == "source") page = page with { Events = [page.Events[0] with { Payload = [99] }] };
+        if (scenario == "budget") options.MaxCommandBytesPerEnvelope = 1;
+        if (scenario is "payload" or "target")
+        {
+            ProcessSourceState state = await checkpoints.GetAsync(Source);
+            ProcessEffect altered = scenario == "payload"
+                ? retained.Effects[0] with { CommandPayload = [9, 2, 3] }
+                : retained.Effects[0] with { TargetAggregate = "another-parent" };
+            store.SeedRaw(options.StateStoreName, ProcessStateKeys.Source(Source), state with
+            { PendingPlan = retained with { Effects = [altered] } });
+        }
+        var restarted = new CheckpointedProcessRunner(gateway, translator, Delegation(), submitter,
+            new ProcessCheckpointStore(store, Options.Create(options), TimeProvider.System), Options.Create(options));
+        var result = await restarted.RunAsync(Source);
+        (await checkpoints.GetAsync(Source)).Checkpoint.ShouldBe(scenario == "replay" ? 1 : 0);
+        result.Status.ShouldBe(scenario == "replay" ? ProcessSourceStatus.Active : ProcessSourceStatus.Quarantined);
+        translator.ReceivedCalls().ShouldBeEmpty();
+        submitter.ReceivedCalls().Count().ShouldBe(scenario == "replay" ? 1 : 0);
+        if (scenario == "replay") (await checkpoints.GetAsync(Source)).PendingPlan.ShouldBeNull();
+    }
+
     private static readonly ProcessSource Source = new("tenant-a", "sample", "aggregate-1");
 
     /// <summary>Two effects replay after an ambiguous commit and a reconstructed runner advances once.</summary>

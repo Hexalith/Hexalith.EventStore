@@ -1,3 +1,4 @@
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Configuration;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>ETag-authoritative projection delivery admission and completion state machine.</summary>
-internal sealed class ProjectionDeliveryIdempotencyCoordinator(
+internal sealed partial class ProjectionDeliveryIdempotencyCoordinator(
     IProjectionDeliveryStateStore stateStore,
     IOptions<ProjectionDeliveryIdempotencyOptions> options,
     TimeProvider timeProvider) : IProjectionDeliveryIdempotencyCoordinator {
@@ -75,7 +76,8 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         ProjectionDeliveryFingerprintHistory history,
         bool reclaimSafe,
         CancellationToken cancellationToken = default,
-        long? resumeFencingToken = null) {
+        long? resumeFencingToken = null,
+        ProjectionDeliveryGuardReservation? guardBinding = null) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(history);
         ProjectionKeySegments.Validate(projectionName, nameof(projectionName));
@@ -102,6 +104,11 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             if (!read.WriterProtocolV2Active) {
                 return Retryable(ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
             }
+
+            if (guardBinding is null && (read.SourceGuard is not null || read.State?.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion))
+                return Retryable("guard_activation_required");
+            if (guardBinding is not null && !ValidateGuardAdmission(read, identity, projectionName, history, guardBinding))
+                return Failed(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
 
             if (read.Classification is ProjectionDeliveryStateClassification.SchemaRegression
                 or ProjectionDeliveryStateClassification.Unsupported) {
@@ -179,6 +186,8 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
 
             ProjectionDeliveryReservation? active = current.ActiveReservation;
             if (active is not null) {
+                if (current.IdleBindingPending is not null) return Retryable(ProjectionDispatchReasonCodes.DeliveryInProgress);
+                if (active.GuardBinding != guardBinding) return Failed(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
                 bool sameIdentity = active.EndSequence == head.SequenceNumber
                     && string.Equals(active.HeadMessageId, head.MessageId, StringComparison.Ordinal);
                 if (!sameIdentity) {
@@ -248,7 +257,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
                 1,
                 now,
                 now + configured.ReservationLease,
-                1);
+                1) { GuardBinding = guardBinding };
             ProjectionDeliveryState reserved = current with {
                 ActiveReservation = reservation,
                 UpdatedAt = now,
@@ -289,7 +298,8 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         string projectionName,
         ProjectionDeliveryFingerprintHistory history,
         ProjectionDeliveryReservation reservation,
-        CancellationToken cancellationToken = default) {
+        CancellationToken cancellationToken = default,
+        ProjectionDeliveryGuardEvidence? guardEvidence = null) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(history);
         ArgumentNullException.ThrowIfNull(reservation);
@@ -327,6 +337,8 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             }
 
             ProjectionDeliveryState current = read.State;
+            if (guardEvidence is null && (read.SourceGuard is not null || current.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion))
+                return ProjectionDeliveryCompletion.Fenced;
             if (!IsValidCurrentState(
                 current,
                 identity,
@@ -336,8 +348,16 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             }
 
             if (IsExactCompleted(current, history.Events[^1])) {
+                if (guardEvidence is not null && (current.GuardEvidence != guardEvidence
+                    || current.ActiveReservation is not null || current.IdleBindingPending is not null
+                    || reservation.GuardBinding is not { } completedBinding
+                    || !GuardMarkerMatches(read.SourceGuard, identity, projectionName, completedBinding)
+                    || !ValidCompleteIdentityDigests(current))) return ProjectionDeliveryCompletion.Fenced;
                 return ProjectionDeliveryCompletion.AlreadyCompleted;
             }
+
+            if (guardEvidence is not null && !ValidateGuardCompletion(read, identity, projectionName, reservation, guardEvidence))
+                return ProjectionDeliveryCompletion.Fenced;
 
             if (history.BaseSequence > 0
                 && (current.LastDeliveredSequence != history.BaseSequence
@@ -357,34 +377,40 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
                 return ProjectionDeliveryCompletion.Fenced;
             }
 
-            ProjectionDeliveryReceipt[] appended = [.. history.Events
-                .Where(value => value.SequenceNumber >= reservation.StartSequence
-                    && value.SequenceNumber <= reservation.EndSequence)
-                .Select(static value => new ProjectionDeliveryReceipt(
-                    value.SequenceNumber,
-                    value.MessageId,
-                    value.EventFingerprint,
-                    value.PrefixFingerprint))];
-            if (appended.Length != reservation.EndSequence - reservation.StartSequence + 1) {
+            long retainedFloor = Math.Max(current.FirstRetainedSequence,
+                Math.Max(1, reservation.EndSequence - configured.CompletedReceiptLimit + 1));
+            var retained = new List<ProjectionDeliveryReceipt>(configured.CompletedReceiptLimit);
+            foreach (ProjectionDeliveryReceipt receipt in ProjectionDeliveryCostDiagnostics.VisitProof(current.CompletedReceipts ?? []))
+                if (receipt.SequenceNumber >= retainedFloor) retained.Add(receipt);
+            long appendedCount = 0;
+            foreach (ProjectionDeliveryEventDigest value in ProjectionDeliveryCostDiagnostics.VisitProof(history.Events))
+            {
+                if (value.SequenceNumber < reservation.StartSequence || value.SequenceNumber > reservation.EndSequence) continue;
+                appendedCount++;
+                // All supplied identities still participate in validation and
+                // the complete digest list. Only exact receipts within the
+                // configured existing horizon need a retained object/string.
+                if (value.SequenceNumber >= retainedFloor)
+                    retained.Add(new(value.SequenceNumber, value.MessageId, value.EventFingerprint, value.PrefixFingerprint));
+            }
+            if (appendedCount != reservation.EndSequence - reservation.StartSequence + 1) {
                 return ProjectionDeliveryCompletion.Fenced;
             }
 
-            ProjectionDeliveryReceipt[] compacted = [.. (current.CompletedReceipts ?? [])
-                .Concat(appended)
-                .OrderBy(static receipt => receipt.SequenceNumber)
-                .TakeLast(configured.CompletedReceiptLimit)];
+            ProjectionDeliveryReceipt[] compacted = [.. retained];
             ProjectionDeliveryEventDigest completedHead = history.Events[^1];
             ProjectionDeliveryState completed = current with {
                 LastDeliveredSequence = completedHead.SequenceNumber,
-                CompletedMessageIdDigests = history.BaseSequence == 0
-                    ? [.. history.Events.Select(static value => MessageIdentityDigest(value.MessageId))]
-                    : [.. current.CompletedMessageIdDigests!,
-                        .. history.Events.Select(static value => MessageIdentityDigest(value.MessageId))],
+                CompletedMessageIdDigests = ProjectionMessageIdDigests.Append(
+                    history.BaseSequence == 0 ? null : current.CompletedMessageIdDigests, history.Events),
                 LastCompletedMessageId = completedHead.MessageId,
                 CompletedPrefixFingerprint = completedHead.PrefixFingerprint,
                 CompletedReceipts = compacted,
                 FirstRetainedSequence = compacted[0].SequenceNumber,
                 ActiveReservation = null,
+                IdleBindingPending = null,
+                GuardEvidenceVersion = guardEvidence is null ? current.GuardEvidenceVersion : 1,
+                GuardEvidence = guardEvidence ?? current.GuardEvidence,
                 UpdatedAt = timeProvider.GetUtcNow(),
             };
             if (await TrySaveAsync(identity, projectionName, completed, read.Etag, cancellationToken).ConfigureAwait(false)) {
@@ -421,7 +447,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
 
             if (!read.WriterProtocolV2Active
                 || read.Classification != ProjectionDeliveryStateClassification.Current
-                || read.State?.ActiveReservation != reservation) {
+                || read.State?.ActiveReservation != reservation || read.State.IdleBindingPending is not null) {
                 return false;
             }
 
@@ -462,12 +488,13 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         return null;
     }
 
-    private static bool IsValidCurrentState(
+    internal static bool IsValidCurrentState(
         ProjectionDeliveryState state,
         AggregateIdentity identity,
         string projectionName,
         string initialFingerprint) {
-        if (state.SchemaVersion != ProjectionDeliveryState.CurrentSchemaVersion
+        if ((state.SchemaVersion != ProjectionDeliveryState.CurrentSchemaVersion
+                && state.SchemaVersion != ProjectionDeliveryState.GuardSchemaVersion)
             || state.WriterProtocolVersion != ProjectionDeliveryState.CurrentWriterProtocolVersion
             || !string.Equals(state.TenantId, identity.TenantId, StringComparison.Ordinal)
             || !string.Equals(state.Domain, identity.Domain, StringComparison.Ordinal)
@@ -500,7 +527,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
 
         var messageIds = new HashSet<string>(StringComparer.Ordinal);
         long expectedSequence = state.FirstRetainedSequence;
-        foreach (ProjectionDeliveryReceipt receipt in state.CompletedReceipts) {
+        foreach (ProjectionDeliveryReceipt receipt in ProjectionDeliveryCostDiagnostics.VisitProof(state.CompletedReceipts)) {
             if (receipt is null
                 || receipt.SequenceNumber != expectedSequence
                 || receipt.SequenceNumber <= 0
@@ -548,7 +575,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             return null;
         }
 
-        ProjectionDeliveryReceipt? receipt = state.CompletedReceipts!
+        ProjectionDeliveryReceipt? receipt = ProjectionDeliveryCostDiagnostics.VisitProof(state.CompletedReceipts!)
             .FirstOrDefault(value => value.SequenceNumber == head.SequenceNumber);
         if (receipt is null) {
             return Failed(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
@@ -558,7 +585,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
         }
 
-        foreach (ProjectionDeliveryReceipt overlap in state.CompletedReceipts!
+        foreach (ProjectionDeliveryReceipt overlap in ProjectionDeliveryCostDiagnostics.VisitProof(state.CompletedReceipts!)
             .Where(value => value.SequenceNumber > history.BaseSequence
                 && value.SequenceNumber <= head.SequenceNumber)) {
             ProjectionDeliveryEventDigest supplied = history.Events[
@@ -585,7 +612,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
             return Failed(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
         }
 
-        foreach (ProjectionDeliveryReceipt receipt in state.CompletedReceipts!) {
+        foreach (ProjectionDeliveryReceipt receipt in ProjectionDeliveryCostDiagnostics.VisitProof(state.CompletedReceipts!)) {
             if (receipt.SequenceNumber <= history.BaseSequence) continue;
             if (receipt.SequenceNumber > history.Events[^1].SequenceNumber
                 || !ReceiptMatches(receipt, history.Events[
@@ -615,14 +642,24 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
     private static bool HasMessageIdentityConflict(
         ProjectionDeliveryState state,
         ProjectionDeliveryFingerprintHistory history) {
-        var supplied = history.Events.ToDictionary(static value => value.MessageId, StringComparer.Ordinal);
-        if (history.BaseSequence > 0 && state.CompletedMessageIdDigests is { } complete) {
-            var earlier = complete.ToHashSet(StringComparer.Ordinal);
-            if (history.Events.Any(value => earlier.Contains(MessageIdentityDigest(value.MessageId)))) return true;
+        var receipts = ProjectionDeliveryCostDiagnostics.VisitProof(state.CompletedReceipts!)
+            .ToDictionary(static receipt => receipt.MessageId, StringComparer.Ordinal);
+        HashSet<ProjectionMessageIdDigest>? earlier = null;
+        if (history.BaseSequence > 0 && state.CompletedMessageIdDigests is { } complete)
+        {
+            earlier = ProjectionMessageIdDigests.CreateSet(complete);
+            if (earlier is null) return true;
         }
-        return state.CompletedReceipts!.Any(receipt =>
-            supplied.TryGetValue(receipt.MessageId, out ProjectionDeliveryEventDigest? value)
-            && (value.SequenceNumber != receipt.SequenceNumber || !ReceiptMatches(receipt, value)));
+        // The admitted table materializes the historical record shape only for
+        // a visit. Retaining all supplied records here would duplicate its
+        // entire event/prefix proof; index the bounded existing receipts instead.
+        foreach (ProjectionDeliveryEventDigest value in ProjectionDeliveryCostDiagnostics.VisitProof(history.Events))
+        {
+            if (earlier?.Contains(ProjectionMessageIdDigest.FromMessageId(value.MessageId)) == true
+                || receipts.TryGetValue(value.MessageId, out ProjectionDeliveryReceipt? receipt)
+                    && (value.SequenceNumber != receipt.SequenceNumber || !ReceiptMatches(receipt, value))) return true;
+        }
+        return false;
     }
 
     private static string MessageIdentityDigest(string messageId)
@@ -631,7 +668,7 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
 
     private static bool IsExactCompleted(ProjectionDeliveryState state, ProjectionDeliveryEventDigest head) =>
         state.LastDeliveredSequence >= head.SequenceNumber
-        && state.CompletedReceipts?.FirstOrDefault(value => value.SequenceNumber == head.SequenceNumber) is { } receipt
+        && ProjectionDeliveryCostDiagnostics.VisitProof(state.CompletedReceipts ?? []).FirstOrDefault(value => value.SequenceNumber == head.SequenceNumber) is { } receipt
         && ReceiptMatches(receipt, head);
 
     private static bool ReceiptMatches(ProjectionDeliveryReceipt receipt, ProjectionDeliveryEventDigest value) =>
@@ -648,6 +685,9 @@ internal sealed class ProjectionDeliveryIdempotencyCoordinator(
         CancellationToken cancellationToken) {
         try {
             return await stateStore.TrySaveAsync(identity, projectionName, state, etag, cancellationToken).ConfigureAwait(false);
+        }
+        catch (ProjectionDeliveryHistoryValidationException exception) when (exception.Message == "delivery_proof_limit_exceeded") {
+            throw;
         }
         catch (OperationCanceledException) {
             throw;

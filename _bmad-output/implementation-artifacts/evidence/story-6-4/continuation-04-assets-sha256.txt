@@ -1,0 +1,15 @@
+b4bb99ecb4d6079a3ca2f6721be97d629bac61370b1245d22a0d5d6a7f257db7  tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll
+a93e9e5fd763fda75789360e48da4eb7731ff354631e5f0e9dd43ab1cc6f077b  tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+00ea1043a4b614723a19f64761065b111a43eab073d3ad1b8a66829af9792fc3  tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+25cb291574d7cb32ca839ff59ec291357fc0a7e28cb1f75437493de3c9e1b555  tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+fc4c19b32037e18c9361e16a3820577002aa801bdc84984c7178992c0c963d35  tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+f87fc43148b6c857f8213dc1d329a087accd555d911e75c3b1c96eabd8d7d74d  tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll
+6c3fc166c2215f446338c419cc4b983b51ff58c25aca6ae2f1c155a9f7a49e3e  tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+00ea1043a4b614723a19f64761065b111a43eab073d3ad1b8a66829af9792fc3  tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+25cb291574d7cb32ca839ff59ec291357fc0a7e28cb1f75437493de3c9e1b555  tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+7ca9fe11507eb18c9665bb6f5047e33ab1cacf5259d508caba23515b77a62edf  tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+3e1115a06165d9973b53bb3eb618fa16d25964da360c41fece9dbe3705f49860  tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll
+6c3fc166c2215f446338c419cc4b983b51ff58c25aca6ae2f1c155a9f7a49e3e  tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+00ea1043a4b614723a19f64761065b111a43eab073d3ad1b8a66829af9792fc3  tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+25cb291574d7cb32ca839ff59ec291357fc0a7e28cb1f75437493de3c9e1b555  tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+7ca9fe11507eb18c9665bb6f5047e33ab1cacf5259d508caba23515b77a62edf  tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll

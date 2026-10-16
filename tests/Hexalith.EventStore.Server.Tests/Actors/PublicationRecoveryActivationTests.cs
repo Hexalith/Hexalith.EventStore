@@ -129,17 +129,37 @@ public class PublicationRecoveryActivationTests {
         IActorStateManager stateManager,
         string correlationId,
         PipelineState checkpoint)
-        => _ = stateManager.TryGetStateAsync<PipelineState>(
+    {
+        _ = stateManager.TryGetStateAsync<PipelineState>(
             $"{PipelineKeyPrefix}{correlationId}", Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<PipelineState>(true, checkpoint));
+        if (checkpoint.StartSequence is long start && checkpoint.EndSequence is long end)
+        {
+            SeedExactEvents(stateManager, start, end, checkpoint.CorrelationId, checkpoint.CausationId ?? checkpoint.MessageId ?? "cause");
+        }
+    }
 
     private static void SeedDrainRecord(
-        IActorStateManager stateManager,
-        string trackingId,
-        UnpublishedEventsRecord record)
-        => _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+        IActorStateManager stateManager, string trackingId, UnpublishedEventsRecord record)
+    {
+        record = record with { CausationId = record.CausationId ?? record.MessageId ?? trackingId };
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             UnpublishedEventsRecord.GetStateKey(trackingId), Arg.Any<CancellationToken>())
             .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        SeedExactEvents(stateManager, record.StartSequence, record.EndSequence, record.CorrelationId, record.CausationId);
+    }
+
+    private static void SeedExactEvents(IActorStateManager stateManager, long start, long end, string correlationId, string causationId)
+    {
+        if (start < 1 || end < start || end - start > 32) { return; }
+        for (long sequence = start; sequence <= end; sequence++)
+        {
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{ActorId}:events:{sequence}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, new EventEnvelope(Guid.NewGuid().ToString(),
+                    "agg-001", "test-domain", "test-tenant", "test-domain", sequence, 0, DateTimeOffset.UtcNow,
+                    correlationId, causationId, "system", "1.0.0", "Created", 1, "json", [1], null)));
+        }
+    }
 
     private static void SeedRecoverableIdempotency(IActorStateManager stateManager, string messageId)
         => _ = stateManager.TryGetStateAsync<IdempotencyRecord>(
@@ -187,18 +207,26 @@ public class PublicationRecoveryActivationTests {
     // forever -- the exact failure this story was reverted for once already.
 
     [Fact]
-    public async Task OnActivate_MalformedEntryPruned_ReleasesTheRecoverableIdempotencyRecord() {
+    public async Task OnActivate_MalformedEntry_RetainsRecoverableIdempotency() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-malformed", string.Empty));
         SeedRecoverableIdempotency(ctx.StateManager, "msg-malformed");
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        await ShouldHaveReleasedRecoverableIdempotencyAsync(ctx.StateManager, "msg-malformed");
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
-    public async Task OnActivate_BlankMessageIdEntry_PrunesWithoutThrowing() {
+    public async Task OnActivate_BlankMessageIdEntry_IsRetainedWithoutThrowing() {
         // CompleteRecoverableIdempotencyAsync must absorb the blank id; TryCompleteRecoverableAsync
         // throws ArgumentException on one, which would brick the activation hook.
         ActivationContext ctx = CreateActorForBoundedDrain();
@@ -206,13 +234,19 @@ public class PublicationRecoveryActivationTests {
 
         await Should.NotThrowAsync(() => InvokeOnActivateAsync(ctx.Actor));
 
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
+    // Keep this historical executable selector for CI; missing evidence now retains recovery ownership.
     public async Task OnActivate_MissingCheckpointPruned_ReleasesTheRecoverableIdempotencyRecord() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-nocheckpoint", "corr-nocheckpoint"));
@@ -220,11 +254,19 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        await ShouldHaveReleasedRecoverableIdempotencyAsync(ctx.StateManager, "msg-nocheckpoint");
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
-    public async Task OnActivate_IncompleteCheckpointPruned_ReleasesTheRecoverableIdempotencyRecord() {
+    public async Task OnActivate_IncompleteCheckpoint_RetainsRecoverableIdempotency() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-badrange2", "corr-badrange2"));
         SeedRecoverableIdempotency(ctx.StateManager, "msg-badrange2");
@@ -242,13 +284,21 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        await ShouldHaveReleasedRecoverableIdempotencyAsync(ctx.StateManager, "msg-badrange2");
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     // ===== Checkpoint stage is load-bearing and is not enforced downstream =====
 
     [Fact]
-    public async Task OnActivate_AlreadyPublishedCheckpoint_IsPrunedRatherThanRepublished() {
+    public async Task OnActivate_AlreadyPublishedCheckpoint_IsRetainedWithoutPublication() {
         // HandoffStaleCommittedCheckpointAsync validates identity, event count and range but NOT the
         // stage, and its other caller admits Completed/EventsPublished. Without the stage term a
         // terminal batch that failed after publishing would leave a Completed checkpoint plus a live
@@ -269,15 +319,15 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
         await ctx.StateManager.DidNotReceive().SetStateAsync(
-            "drain:msg-published",
-            Arg.Any<UnpublishedEventsRecord>(),
-            Arg.Any<CancellationToken>());
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
         await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     // ===== PR6: already-armed entries must not starve the unarmed tail =====
@@ -411,27 +461,27 @@ public class PublicationRecoveryActivationTests {
     // ===== I/O matrix row: checkpoint missing or lacking the persisted range =====
 
     [Fact]
-    public async Task OnActivate_CheckpointMissing_DropsStaleEntryWithoutFabricatingRange() {
+    public async Task OnActivate_CheckpointMissing_RetainsEvidenceWithoutFabricatingRange() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-gone", "corr-gone"));
 
         await InvokeOnActivateAsync(ctx.Actor);
 
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
         await ctx.StateManager.DidNotReceive().SetStateAsync(
-            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
-            Arg.Any<UnpublishedEventsRecord>(),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Theory]
     [InlineData(null, 2L)]
     [InlineData(1L, null)]
-    public async Task OnActivate_CheckpointWithoutPersistedRange_DropsStaleEntryWithoutFabricatingRange(
+    public async Task OnActivate_CheckpointWithoutPersistedRange_RetainsEvidenceWithoutFabricatingRange(
         long? startSequence,
         long? endSequence) {
         ActivationContext ctx = CreateActorForBoundedDrain();
@@ -450,20 +500,21 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
         await ctx.StateManager.DidNotReceive().SetStateAsync(
-            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
-            Arg.Any<UnpublishedEventsRecord>(),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData(0)]
-    public async Task OnActivate_CheckpointWithoutCommittedEvents_DropsStaleEntry(int? eventCount) {
+    public async Task OnActivate_CheckpointWithoutCommittedEvents_RetainsEvidence(int? eventCount) {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-noevents", "corr-noevents"));
         SeedCheckpoint(ctx.StateManager, "corr-noevents", new PipelineState(
@@ -480,18 +531,19 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
         await ctx.StateManager.DidNotReceive().SetStateAsync(
-            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
-            Arg.Any<UnpublishedEventsRecord>(),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
-    public async Task OnActivate_CheckpointBelongsToAnotherMessage_DropsStaleEntry() {
+    public async Task OnActivate_CheckpointBelongsToAnotherMessage_RetainsEvidence() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(ctx.StateManager, Entry("msg-mine", "corr-shared"));
         SeedCheckpoint(ctx.StateManager, "corr-shared", new PipelineState(
@@ -508,18 +560,19 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
         await ctx.StateManager.DidNotReceive().SetStateAsync(
-            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
-            Arg.Any<UnpublishedEventsRecord>(),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
-    public async Task OnActivate_MalformedEntry_IsPrunedRatherThanSkipped() {
+    public async Task OnActivate_MalformedEntry_IsRetained() {
         ActivationContext ctx = CreateActorForBoundedDrain();
         SeedPublicationIndex(
             ctx.StateManager,
@@ -527,17 +580,19 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        // Skipping without pruning would permanently consume index capacity.
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.DidNotReceive().TryGetStateAsync<UnpublishedEventsRecord>(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
-    public async Task OnActivate_NonblankMalformedEntries_ConsumeTheProbeBudgetAndLeaveTheTailDurable() {
+    public async Task OnActivate_NonblankMalformedEntries_RemainDurable() {
         const int entryCount = 40;
         ActivationContext ctx = CreateActorForBoundedDrain();
         UnpublishedPublicationEntry[] entries = [.. Enumerable.Range(0, entryCount)
@@ -552,13 +607,15 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(index =>
-                index.Entries.Count == entryCount - MaxActivationProbeEntries
-                && index.Entries[0].MessageId == "msg-malformed-32"),
-            Arg.Any<CancellationToken>());
-        CountStateReads(ctx.StateManager, "idempotency:").ShouldBe(MaxActivationProbeEntries);
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     [Fact]
@@ -577,14 +634,10 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
-        UnpublishedPublicationIndex durable = (UnpublishedPublicationIndex)stateManager
-            .CommittedState[UnpublishedPublicationIndex.StateKey];
-        durable.Entries.Select(entry => entry.MessageId).ShouldBe(
-            Enumerable.Range(MaxActivationProbeEntries, entryCount - MaxActivationProbeEntries)
-                .Select(i => $"msg-malformed-{i:D2}"));
+        ((UnpublishedPublicationIndex)stateManager.CommittedState[UnpublishedPublicationIndex.StateKey]).Entries.Count.ShouldBe(entryCount);
+        stateManager.CommittedState.Values.OfType<IdempotencyRecord>().ShouldAllBe(record => record.Disposition == IdempotencyRecordDisposition.Recoverable);
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
     }
-
-    // ===== I/O matrix row: crash after drain commit, before reminder =====
 
     [Fact]
     public async Task OnActivate_DrainRecordWithoutReminder_ReRegistersReminderAndLeavesRetryCountUnchanged() {
@@ -650,7 +703,7 @@ public class PublicationRecoveryActivationTests {
         for (int i = 0; i < unarmedCount; i++) {
             entries.Add(Entry($"msg-new-{i:D2}", $"corr-new-{i:D2}"));
             SeedDrainRecord(ctx.StateManager, $"msg-new-{i:D2}", new UnpublishedEventsRecord(
-                $"corr-new-{i:D2}", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                $"corr-new-{i:D2}", i + 1, i + 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
                 RetryCount: 0, LastFailureReason: null, MessageId: $"msg-new-{i:D2}"));
         }
 
@@ -700,7 +753,7 @@ public class PublicationRecoveryActivationTests {
     }
 
     [Fact]
-    public async Task OnActivate_CheckpointRangeInconsistentWithEventCount_IsPrunedRatherThanThrowingForever() {
+    public async Task OnActivate_CheckpointRangeInconsistentWithEventCount_IsRetained() {
         // EventCount 2 but a 6-wide range: HandoffStaleCommittedCheckpointAsync would throw on every
         // activation, and the catch does not prune, so the entry would hold a re-arm slot and an
         // index capacity slot permanently.
@@ -720,14 +773,15 @@ public class PublicationRecoveryActivationTests {
 
         await InvokeOnActivateAsync(ctx.Actor);
 
+        // Unverifiable recovery evidence remains owned for exact restore and later retry.
         await ctx.StateManager.DidNotReceive().SetStateAsync(
-            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
-            Arg.Any<UnpublishedEventsRecord>(),
-            Arg.Any<CancellationToken>());
-        await ctx.StateManager.Received(1).SetStateAsync(
-            UnpublishedPublicationIndex.StateKey,
-            Arg.Is<UnpublishedPublicationIndex>(i => i.Entries.Count == 0),
-            Arg.Any<CancellationToken>());
+            UnpublishedPublicationIndex.StateKey, Arg.Any<UnpublishedPublicationIndex>(), Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(key => key.StartsWith("idempotency:", StringComparison.Ordinal)),
+            Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().RegisterReminderAsync(Arg.Any<ActorReminder>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(Arg.Any<AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
     }
 
     // ===== I/O matrix row: activation with nothing outstanding =====
@@ -778,7 +832,7 @@ public class PublicationRecoveryActivationTests {
         SeedPublicationIndex(ctx.StateManager, entries);
         foreach (UnpublishedPublicationEntry entry in entries) {
             SeedDrainRecord(ctx.StateManager, entry.MessageId, new UnpublishedEventsRecord(
-                entry.CorrelationId, 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                entry.CorrelationId, entries.ToList().IndexOf(entry) + 1, entries.ToList().IndexOf(entry) + 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
                 RetryCount: 0, LastFailureReason: null, MessageId: entry.MessageId,
                 ReminderArmedAt: DateTimeOffset.UtcNow));
         }
@@ -890,13 +944,15 @@ public class PublicationRecoveryActivationTests {
         var stateManager = new FaultInjectingActorStateManager();
         UnpublishedEventsRecord record = new(
             "corr-owner", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
-            0, null, "msg-owner");
+            0, null, "msg-owner", CausationId: "msg-owner");
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
                 Entry("msg-owner", "corr-owner"),
             ]),
             ["pending_command_count"] = 1,
             ["drain:msg-owner"] = record,
+            [ActorId + ":events:1"] = new EventEnvelope(Guid.NewGuid().ToString(), "agg-001", "test-domain", "test-tenant", "test-domain", 1, 0,
+                DateTimeOffset.UtcNow, "corr-owner", "msg-owner", "system", "1.0.0", "Created", 1, "json", [1], null),
         });
         stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
         ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
@@ -913,13 +969,15 @@ public class PublicationRecoveryActivationTests {
         var stateManager = new FaultInjectingActorStateManager();
         UnpublishedEventsRecord record = new(
             "corr-owner", 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
-            0, null, "msg-owner");
+            0, null, "msg-owner", CausationId: "msg-owner");
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
             [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
                 Entry("msg-owner", "corr-owner"),
             ]),
             ["pending_command_count"] = 1,
             ["drain:msg-owner"] = record,
+            [ActorId + ":events:1"] = new EventEnvelope(Guid.NewGuid().ToString(), "agg-001", "test-domain", "test-tenant", "test-domain", 1, 0,
+                DateTimeOffset.UtcNow, "corr-owner", "msg-owner", "system", "1.0.0", "Created", 1, "json", [1], null),
         });
         stateManager.FaultOnCall("SaveState", 1, new InvalidOperationException("pre-commit failure"));
         ActivationContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
@@ -958,7 +1016,7 @@ public class PublicationRecoveryActivationTests {
         SeedPublicationIndex(ctx.StateManager, entries);
         foreach (UnpublishedPublicationEntry entry in entries) {
             SeedDrainRecord(ctx.StateManager, entry.MessageId, new UnpublishedEventsRecord(
-                entry.CorrelationId, 1, 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
+                entry.CorrelationId, entries.ToList().IndexOf(entry) + 1, entries.ToList().IndexOf(entry) + 1, 1, "CreateOrder", false, DateTimeOffset.UtcNow,
                 RetryCount: 0, LastFailureReason: null, MessageId: entry.MessageId));
         }
 
@@ -1104,8 +1162,8 @@ public class PublicationRecoveryActivationTests {
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UtcNow, null)));
         for (int seq = 1; seq <= 2; seq++) {
             var evt = new EventEnvelope(
-                $"evt-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
-                DateTimeOffset.UtcNow, "corr-resume", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
+                DateTimeOffset.UtcNow, "corr-resume", "msg-resume", "system", "1.0.0", "TestEvent", 1,
                 "json", [1], null);
             _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
@@ -1154,8 +1212,8 @@ public class PublicationRecoveryActivationTests {
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UtcNow, null)));
         for (int seq = 1; seq <= 2; seq++) {
             var evt = new EventEnvelope(
-                $"evt-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
-                DateTimeOffset.UtcNow, "corr-resume", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
+                DateTimeOffset.UtcNow, "corr-resume", "msg-resume", "system", "1.0.0", "TestEvent", 1,
                 "json", [1], null);
             _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
@@ -1284,8 +1342,8 @@ public class PublicationRecoveryActivationTests {
             .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(2, DateTimeOffset.UtcNow, null)));
         for (int seq = 1; seq <= 2; seq++) {
             var evt = new EventEnvelope(
-                $"evt-{seq}", "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
-                DateTimeOffset.UtcNow, "corr-resume-stamp", $"cause-{seq}", "system", "1.0.0", "TestEvent", 1,
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0,
+                DateTimeOffset.UtcNow, "corr-resume-stamp", "msg-resume-stamp", "system", "1.0.0", "TestEvent", 1,
                 "json", [1], null);
             _ = ctx.StateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
@@ -1367,6 +1425,10 @@ public class PublicationRecoveryActivationTests {
         ConfigureCommandDefaults(ctx);
         CommandEnvelope envelope = CreateEnvelope("msg-happy", "corr-happy");
         SeedPublicationIndex(ctx.StateManager, Entry("msg-happy", "corr-happy"));
+        // A pre-existing publication owner must be backed by this command's committed checkpoint.
+        SeedCheckpoint(ctx.StateManager, envelope.CorrelationId, new PipelineState(envelope.CorrelationId,
+            CommandStatus.EventsStored, envelope.CommandType, DateTimeOffset.UnixEpoch, 1, null,
+            MessageId: envelope.MessageId, CausationId: envelope.MessageId, StartSequence: 1, EndSequence: 1));
         _ = ctx.EventPublisher.PublishEventsAsync(
             Arg.Any<AggregateIdentity>(),
             Arg.Any<IReadOnlyList<EventEnvelope>>(),

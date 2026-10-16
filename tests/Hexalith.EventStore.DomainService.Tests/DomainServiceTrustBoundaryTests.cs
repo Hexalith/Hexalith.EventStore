@@ -7,6 +7,9 @@ using System.Text.Json;
 
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Testing.Fakes;
 using Hexalith.EventStore.Client.Registration;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Events;
@@ -62,6 +65,46 @@ public sealed class DomainServiceTrustBoundaryTests
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         processor.Commands.ShouldHaveSingleItem().CommandType.ShouldBe(nameof(CreateWidget));
+    }
+
+    /// <summary>Direct denied origin invocations audit before 403, or return bounded retryable 503 when audit is unavailable.</summary>
+    [Theory]
+    [InlineData("binding")]
+    [InlineData("origin")]
+    [InlineData("audit")]
+    public async Task DirectOriginDenialRequiresDurableAuditBeforeAcknowledgment(string failure)
+    {
+        var processor = new CapturingWidgetProcessor();
+        var store = new InMemoryReadModelStore();
+        IReadModelStore failing = Substitute.For<IReadModelStore>();
+        failing.GetAsync<TrustedEffectOriginDenialRecord>(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<ReadModelEntry<TrustedEffectOriginDenialRecord>>(new InvalidOperationException("unlogged secret")));
+        await using WebApplication app = await StartAsync(processor: processor,
+            settings: failure == "origin" ? new() { ["EventStore:TrustedEffectOrigin:EventStoreWorkloadId"] = "other-eventstore" } : null,
+            configureServices: services => services.AddSingleton<IReadModelStore>(failure == "audit" ? failing : store));
+        using HttpRequestMessage request = ProcessRequest(Assertion([EventStoreWorkloadOperations.DomainServiceProcess]));
+        DomainServiceRequest original = (await request.Content!.ReadFromJsonAsync<DomainServiceRequest>(TestContext.Current.CancellationToken))!;
+        var identity = new EffectIdentity("tenant-a", "widget", "source", 3, EffectKindCatalog.CascadeExpire, "widget", "widget-1", 0);
+        string messageId = EffectIdentityCodec.ComputeMessageId(identity);
+        CommandEnvelope command = original.Command with { MessageId = messageId, CausationId = "source-message", UserId = "reactor" };
+        var origin = new TrustedEffectOrigin(identity, "reactor", "cascade-expire", "source-message", command.CommandType,
+            failure == "binding" || failure == "audit" ? "wrong-digest" : EffectIdentityCodec.RenderDigest(SHA256.HashData(command.Payload)));
+        request.Content = JsonContent.Create(original with { Command = command, TrustedEffectOrigin = origin });
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(failure == "audit" ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.Forbidden);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldBeEmpty();
+        processor.Commands.ShouldBeEmpty();
+        if (failure == "audit")
+        {
+            response.Headers.RetryAfter!.Delta.ShouldBe(TimeSpan.FromSeconds(1));
+            store.Snapshot<TrustedEffectOriginDenialRecord>("statestore", DomainServiceTrustedEffectOrigin.DenialKey).ShouldBeNull();
+        }
+        else
+        {
+            var record = store.Snapshot<TrustedEffectOriginDenialRecord>("statestore", DomainServiceTrustedEffectOrigin.DenialKey).ShouldNotBeNull();
+            record.ReasonCode.ShouldBe("origin-binding-denied");
+            record.Count.ShouldBe(1);
+        }
     }
 
     /// <summary>
@@ -397,6 +440,11 @@ public sealed class DomainServiceTrustBoundaryTests
     [InlineData("/project/rebuild/commit/v1")]
     [InlineData("/project/rebuild/abort/v1")]
     [InlineData("/project/rebuild/verify/v1")]
+    [InlineData("/project/rebuild/reclaim-guarded/v1")]
+    [InlineData("/project/rebuild/reclaim-recovery/v1")]
+    [InlineData("/project/source-guard/owner-proof/v1")]
+    [InlineData("/project/source-guard/applied-receipt/v1")]
+    [InlineData("/project/source-guard/reconcile-applied-receipt/v1")]
     [InlineData("/project/rebuild/shared/v1")]
     [InlineData("/admin/operational-index-metadata")]
     public async Task EveryOperationalRoute_RequiresItsOwnOperation(string route)

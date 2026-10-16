@@ -50,6 +50,52 @@ public class FakeAggregateActor : IAggregateActor {
     /// <summary>Gets or sets the configurable events for GetEventsAsync.</summary>
     public EventEnvelope[] ConfiguredEvents { get; set; } = [];
 
+    /// <summary>Gets or sets explicit source evidence; a fake never infers a trusted anchor.</summary>
+    public SourceProofInspection? ConfiguredSourceProof { get; set; }
+
+    /// <inheritdoc/>
+    public Task<SourceProofInspection> InspectSourceProofAsync()
+        => Task.FromResult(ConfiguredSourceProof ?? new SourceProofInspection(
+            SourceProofInspectionStatus.Unsupported, ConfiguredEvents.Length > 0,
+            ConfiguredEvents.Length == 0 ? 0 : ConfiguredEvents.Max(static item => item.SequenceNumber), false, null));
+
+    /// <inheritdoc/>
+    public Task<SourceProofInspection> BootstrapSourceProofAsync(SourceProofBootstrapRequest request)
+        => throw new InvalidOperationException("Fake source bootstrap requires explicit maintenance authority and durable actor state.");
+
+    /// <inheritdoc/>
+    public async Task<EventEnvelope[]> ReadEventsBoundedRangeAsync(
+        long fromSequence, long toSequence, int maxCount, int maxBytes)
+    {
+        SourceEventRange range = await ReadMeasuredEventsBoundedRangeAsync(fromSequence, toSequence, maxCount, maxBytes).ConfigureAwait(false);
+        if (range.ReasonCode is not null) throw new InvalidOperationException(range.ReasonCode);
+        return range.Events;
+    }
+
+    /// <inheritdoc/>
+    public async Task<SourceEventRange> ReadMeasuredEventsBoundedRangeAsync(
+        long fromSequence, long toSequence, int maxCount, int maxBytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxCount, 256);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxBytes, 2);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxBytes, 2_097_152);
+        EventEnvelope[] candidates = await ReadEventsRangeAsync(fromSequence, toSequence, maxCount).ConfigureAwait(false);
+        var result = new List<EventEnvelope>();
+        long bytes = 2;
+        foreach (EventEnvelope envelope in candidates)
+        {
+            int length = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(envelope,
+                System.Text.Json.JsonSerializerOptions.Web).Length;
+            if (length > maxBytes - 2) return new([], 2) { ReasonCode = "delivery_page_limit_exceeded" };
+            long next = bytes + length + (result.Count == 0 ? 0 : 1);
+            if (next > maxBytes) break;
+            result.Add(envelope);
+            bytes = next;
+        }
+
+        return new([.. result], bytes);
+    }
+
     /// <inheritdoc/>
     public Task<EventEnvelope[]> GetEventsAsync(long fromSequence)
         => Task.FromResult(ConfiguredEvents

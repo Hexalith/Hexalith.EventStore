@@ -19,6 +19,17 @@ internal static class ReadModelBatchFingerprint {
     /// <summary>The frozen fingerprint algorithm version.</summary>
     public const int Version = 1;
 
+    /// <summary>Requires the frozen unpadded base64url encoding of exactly one SHA-256 value.</summary>
+    internal static bool IsCanonical(string? value)
+    {
+        if (value is not { Length: 46 } || !value.StartsWith("v1:", StringComparison.Ordinal)) return false;
+        string encoded = value[3..];
+        if (encoded.Any(static character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_')) return false;
+        Span<byte> bytes = stackalloc byte[SHA256.HashSizeInBytes];
+        return Convert.TryFromBase64String(encoded.Replace('-', '+').Replace('_', '/') + "=", bytes, out int written)
+            && written == SHA256.HashSizeInBytes && Base64Url(bytes.ToArray()) == encoded;
+    }
+
     private static readonly JsonWriterOptions s_writerOptions = new() { Indented = false, SkipValidation = true };
 
     /// <summary>Builds the deterministic canonical manifest bytes for a batch.</summary>
@@ -63,6 +74,7 @@ internal static class ReadModelBatchFingerprint {
             writer.WriteEndObject();
         }
 
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ManifestSerializationBytes, buffer.WrittenCount);
         return buffer.WrittenSpan.ToArray();
     }
 

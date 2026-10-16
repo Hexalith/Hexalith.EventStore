@@ -21,6 +21,36 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed class ProjectionDeliveryRetryWorkerTests {
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ScheduledCurrentCleanup_RequiresExactOriginalHeadCatalogAndDurableLease(bool exact, bool acquired) {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        ProjectionDeliveryRetryWorkItem work = WorkItem(now);
+        ProjectionDeliveryRetryWorkItem claimed = work with { Revision = work.Revision + 1, LeaseOwner = "cleanup-owner" };
+        IProjectionDeliveryRetryScheduler scheduler = Substitute.For<IProjectionDeliveryRetryScheduler>();
+        scheduler.GetDueAsync(now, 64, Arg.Any<CancellationToken>()).Returns([work]);
+        scheduler.TryAcquireAsync(work, Arg.Any<string>(), now, Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(acquired ? claimed : null);
+        IProjectionSourceGuardDelivery guard = Substitute.For<IProjectionSourceGuardDelivery>();
+        guard.ReclaimCompletedReplayAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>()).Returns(true);
+        guard.TryDeliverAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>()).Returns(
+            new ProjectionSourceGuardDeliveryResult(true, true, null) {
+                ObservedHeadSequence = work.HeadSequence,
+                ObservedHeadMessageId = exact ? work.HeadMessageId : "different-head",
+                CatalogFingerprint = work.CatalogFingerprint,
+            });
+        IActorProxyFactory actors = Substitute.For<IActorProxyFactory>();
+        using var worker = new ProjectionDeliveryRetryWorker(scheduler, Substitute.For<INamedProjectionDispatchCoordinator>(), actors,
+            Substitute.For<IEventPayloadProtectionService>(), Options.Create(new EventStoreActorOptions()),
+            Options.Create(new ProjectionDispatchOptions()), Substitute.For<IProjectionRebuildCheckpointStore>(), new FakeTimeProvider(now),
+            NullLogger<ProjectionDeliveryRetryWorker>.Instance, guard);
+        await worker.RunOnceAsync(CancellationToken.None).ConfigureAwait(true);
+        await scheduler.Received(exact && acquired ? 1 : 0).TryDeleteAsync(claimed, Arg.Any<CancellationToken>()).ConfigureAwait(true);
+        _ = actors.DidNotReceiveWithAnyArgs().CreateActorProxy<IAggregateActor>(default!, default!);
+    }
+
     [Fact]
     public async Task RunOnceAsync_MappedWorkRetriesRecordedHeadWithoutMaterializingHistory() {
         DateTimeOffset now = new(2026, 7, 13, 12, 0, 0, TimeSpan.Zero);

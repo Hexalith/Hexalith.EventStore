@@ -8,7 +8,53 @@ namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>DAPR actor proxy implementation of operation-scoped rebuild staging.</summary>
 internal sealed class DaprProjectionRebuildWriteGateway(IActorProxyFactory actorProxyFactory)
-    : IProjectionRebuildWriteGateway {
+    : IProjectionRebuildWriteGateway, IProjectionRebuildInspectionGateway, IProjectionReplayPublicationGateway {
+    /// <inheritdoc/>
+    public Task<ProjectionRebuildInspection> StageReplayAsync(string actorId, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CreatePublicationProxy(actorId).StageReplayAsync(request).WaitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ProjectionRebuildInspection> PromoteReplayAsync(string actorId, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CreatePublicationProxy(actorId).PromoteReplayAsync(request).WaitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> FinalizeReplayAsync(string actorId, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CreatePublicationProxy(actorId).FinalizeReplayAsync(request).WaitAsync(cancellationToken);
+    }
+
+    private IProjectionReplayPublicationActor CreatePublicationProxy(string actorId)
+        => actorProxyFactory.CreateActorProxy<IProjectionReplayPublicationActor>(new ActorId(actorId), QueryRouter.ProjectionActorTypeName);
+
+    /// <inheritdoc/>
+    public Task<bool> ReadReplayCompletionAsync(string actorId, ProjectionReplayPublicationRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return CreatePublicationProxy(actorId).ReadReplayCompletionAsync(request).WaitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<ProjectionRebuildInspection> InspectAsync(string actorId, string operationId,
+        CancellationToken cancellationToken) {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        IProjectionRebuildInspectionActor proxy = actorProxyFactory.CreateActorProxy<IProjectionRebuildInspectionActor>(
+            new ActorId(actorId), QueryRouter.ProjectionActorTypeName);
+        return await proxy.InspectProjectionRebuildAsync(new(operationId)).WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     /// <inheritdoc/>
     public async Task StageAsync(
         string actorId,

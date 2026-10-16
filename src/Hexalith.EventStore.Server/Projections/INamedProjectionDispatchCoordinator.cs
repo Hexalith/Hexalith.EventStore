@@ -7,6 +7,15 @@ namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Coordinates pre-admitted named projection persistence for normal delivery only.</summary>
 internal interface INamedProjectionDispatchCoordinator {
+    /// <summary>Delivers a validated complete readable prefix without retaining a second stored-envelope array.</summary>
+    Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken);
+
+    /// <summary>Delivers only the explicitly unguarded ordinary scopes from the same verified catalog snapshot.</summary>
+    Task<bool> TryDispatchCompatibleAsync(AggregateIdentity identity, NamedProjectionRouteCatalogEntry catalog,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, IReadOnlyList<string> routes,
+        CancellationToken cancellationToken);
+
     /// <summary>Checks whether every named route is either streamed full replay or fenced shared epoch delivery.</summary>
     Task<bool> SupportsMappedOnlyStreamedDeliveryAsync(
         AggregateIdentity identity, DomainServiceRegistration registration, CancellationToken cancellationToken);

@@ -109,12 +109,6 @@ public sealed class ValidateProjectionChangeNotifierOptions(IWorkloadAssertionIs
             return ValidateOptionsResult.Fail("Projection change transport must be a defined value.");
         }
 
-        if (options.Transport == ProjectionChangeTransport.PubSub
-            && !string.Equals(options.PubSubName, ProjectionChangeNotifierOptions.DefaultPubSubName, StringComparison.Ordinal)) {
-            return ValidateOptionsResult.Fail(
-                $"Projection change pub/sub transport currently requires PubSubName='{ProjectionChangeNotifierOptions.DefaultPubSubName}' to match the DAPR subscription route.");
-        }
-
         // Story 5.5: the receiver denies unbound provenance, so pub/sub without a binding issuer would silently drop
         // every notification. Refuse it before the host starts.
         if (options.Transport == ProjectionChangeTransport.PubSub && provenanceIssuer?.CanBindResources != true) {

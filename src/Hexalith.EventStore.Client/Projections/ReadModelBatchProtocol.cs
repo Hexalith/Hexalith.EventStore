@@ -25,6 +25,8 @@ internal sealed class ReadModelBatchProtocol {
     private string _scopeHash = string.Empty;
     private string _markerKey = string.Empty;
     private string _profileName = string.Empty;
+    private Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection? _ownerSelection;
+    private IReadOnlyList<Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection>? _ownerSelections;
 
     /// <summary>Initializes a new engine bound to a state accessor.</summary>
     /// <param name="accessor">The raw byte-state accessor.</param>
@@ -49,6 +51,7 @@ internal sealed class ReadModelBatchProtocol {
         IReadModelBatchFaultInjector? injector,
         CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(batch);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.BatchExecutions);
 
         ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
 
@@ -215,8 +218,12 @@ internal sealed class ReadModelBatchProtocol {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateLimits(batch);
         _batch = batch;
+        _ownerSelection = ReadModelOwnerSelectionMetadata.FromBatch(batch);
+        _ownerSelections = ReadModelOwnerSelectionMetadata.FromCoordinatedBatch(batch);
         _injector = injector;
         byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
+        if ((_ownerSelection is not null || _ownerSelections is not null) && manifest.Length > 1_048_576)
+            throw new ArgumentException("Guarded read-model batch manifest exceeds its 1048576-byte limit.");
         _fingerprint = ReadModelBatchFingerprint.ComputeFromManifest(manifest);
         _scopeHash = batch.Scope.ComputeScopeHash();
         _markerKey = ReadModelBatchKeys.MarkerKey(_scopeHash);
@@ -426,11 +433,33 @@ internal sealed class ReadModelBatchProtocol {
             Fingerprint = _fingerprint,
             Status = ReadModelBatchMarkerStatus.Prepared,
             Operations = BuildMarkerOperations(),
+            OwnerSelection = _ownerSelection,
+            OwnerSelections = _ownerSelections,
+            OriginalManifest = _ownerSelection is null && _ownerSelections is null ? null : ReadModelBatchFingerprint.BuildCanonicalManifest(_batch),
         };
         ReadOnlyMemory<byte> bytes = SerializeMarker(marker);
+        if ((_ownerSelection is not null || _ownerSelections is not null) && bytes.Length > 16_384)
+        {
+            // The manifest is existing batch recovery material, with its own one-MiB ceiling.
+            // Keep the control record bounded and reference only this scope's immutable bytes.
+            byte[] manifest = marker.OriginalManifest!;
+            marker.OriginalManifest = null;
+            marker.OriginalManifestKey = ReadModelBatchKeys.ManifestKey(_scopeHash);
+            bytes = SerializeMarker(marker);
+            if (bytes.Length > 16_384)
+                throw new ArgumentException("Guarded read-model batch control record exceeds its 16384-byte limit.");
+            if (!await _accessor.TryWriteAsync(marker.OriginalManifestKey, manifest, string.Empty, cancellationToken).ConfigureAwait(false))
+            {
+                RawStateEntry original = await _accessor.ReadAsync(marker.OriginalManifestKey, cancellationToken).ConfigureAwait(false);
+                if (!original.Exists || !original.Value.Span.SequenceEqual(manifest))
+                    throw new ArgumentException("The original immutable batch manifest conflicts with this identity.");
+            }
+        }
         bool ok = existing is null
             ? await _accessor.TryWriteAsync(_markerKey, bytes, string.Empty, cancellationToken).ConfigureAwait(false)
             : await _accessor.TryWriteAsync(_markerKey, bytes, existingEtag, cancellationToken).ConfigureAwait(false);
+        if (ok && existing is null)
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ManifestOperations, _batch.Operations.Count);
         if (!ok) {
             // Lost the create/transition race; adopt whatever is now durable.
             (ReadModelBatchMarker? current, string currentEtag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
@@ -542,6 +571,8 @@ internal sealed class ReadModelBatchProtocol {
             return ReadModelBatchResult.Indeterminate(_fingerprint, "commit-race");
         }
 
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelMutations, _batch.Operations.Count);
+
         if (_injector is not null) {
             await _injector.InjectAsync(ReadModelBatchPhase.AfterCommit, -1, cancellationToken).ConfigureAwait(false);
         }
@@ -581,6 +612,9 @@ internal sealed class ReadModelBatchProtocol {
                 }
             }
             else if (!IsCompacted(operation, current)) {
+                // A guarded owner can have been replaced by a newer generation after this batch
+                // committed. Its original receipt is recoverable; it cannot reclaim newer live keys.
+                if (_ownerSelection is not null || _ownerSelections is not null) return false;
                 // The key holds neither our envelope nor the compacted value: a concurrent single-key
                 // writer overwrote it after the commit marker became durable. The committed marker is the
                 // durable visibility decision, so reclaim the key to the committed end-state once (a foreign
@@ -625,6 +659,8 @@ internal sealed class ReadModelBatchProtocol {
             BatchId = _batch.Scope.BatchId,
             Fingerprint = _fingerprint,
             Status = ReadModelBatchMarkerStatus.Completed,
+            OwnerSelection = _ownerSelection,
+            OwnerSelections = _ownerSelections,
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
@@ -789,6 +825,8 @@ internal sealed class ReadModelBatchProtocol {
             BatchId = _batch.Scope.BatchId,
             Fingerprint = _fingerprint,
             Status = ReadModelBatchMarkerStatus.Completed,
+            OwnerSelection = _ownerSelection,
+            OwnerSelections = _ownerSelections,
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
@@ -800,6 +838,7 @@ internal sealed class ReadModelBatchProtocol {
 
         try {
             await _accessor.ExecuteTransactionAsync(operations, cancellationToken).ConfigureAwait(false);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelMutations, _batch.Operations.Count);
         }
         catch (Exception ex) when (ex is not ArgumentException and not InvalidOperationException) {
             // The atomic transaction threw (ETag/create-only rejection, transport failure, or post-dispatch
@@ -831,6 +870,7 @@ internal sealed class ReadModelBatchProtocol {
         }
 
         ReadModelBatchLog.Committed(_logger, _scopeHash, _profileName, _batch.Operations.Count);
+        await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         ReadModelBatchLog.Outcome(_logger, _scopeHash, nameof(ReadModelBatchStatus.Completed), _profileName, "transaction");
         return ReadModelBatchResult.Completed(_fingerprint);
     }
@@ -1037,9 +1077,29 @@ internal sealed class ReadModelBatchProtocol {
         }
 
         (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
-        return marker is not null
+        bool complete = marker is not null
             && marker.Status == ReadModelBatchMarkerStatus.Completed
             && string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal);
+        if (complete) await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
+        return complete;
+    }
+
+    private async Task CleanupOriginalManifestAsync(CancellationToken cancellationToken)
+    {
+        if (_ownerSelection is null && _ownerSelections is null) return;
+        try
+        {
+            string key = ReadModelBatchKeys.ManifestKey(_scopeHash);
+            RawStateEntry stored = await _accessor.ReadAsync(key, cancellationToken).ConfigureAwait(false);
+            if (stored.Exists && stored.Value.Length <= 1_048_576
+                && ReadModelBatchFingerprint.ComputeFromManifest(stored.Value.Span) == _fingerprint)
+                _ = await _accessor.TryDeleteAsync(key, stored.ETag, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // The terminal receipt and selected model are already proven. Retain immutable
+            // cleanup material on uncertainty; a mutating same-identity retry can reclaim it.
+        }
     }
 
     private bool TryGetOwnEnvelope(RawStateEntry entry, int ordinal, out ReadModelBatchEnvelope? envelope) {

@@ -23,6 +23,7 @@ internal sealed class ReminderReadinessHealthCheck(
         var data = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["passCompleted"] = snapshot.PassCompleted,
+            ["passPending"] = snapshot.PassPending,
             ["incompleteScans"] = snapshot.IncompleteScans,
             ["unresolvedItems"] = snapshot.UnresolvedItems,
             ["unresolved"] = snapshot.Unresolved,
@@ -37,7 +38,9 @@ internal sealed class ReminderReadinessHealthCheck(
                 data: data));
         }
 
-        string? reason = !snapshot.PassCompleted
+        string? reason = snapshot.PassPending
+                ? "Reminder reconciliation is pending."
+                : !snapshot.PassCompleted
                 ? "No reminder reconciliation pass has completed yet."
                 : snapshot.IncompleteScans > 0
                     ? "The last reminder reconciliation pass was incomplete."

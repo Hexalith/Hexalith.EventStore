@@ -330,6 +330,7 @@ public sealed class DomainProjectionDispatcherV2Tests {
             Substitute.For<IAsyncDomainProjectionReconciliationHandler>();
         handler.Domain.Returns("widget");
         handler.ProjectionType.Returns("widget-detail");
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         handler.ReconcileAsync(Arg.Any<ProjectionRequest>(), "dispatch-1", Arg.Any<CancellationToken>())
             .Returns(DomainProjectionHandlerResult.Completed());
         using ServiceProvider provider = BuildProvider(handler);
@@ -708,6 +709,7 @@ public sealed class DomainProjectionDispatcherV2Tests {
         IAsyncDomainProjectionHandler handler = Substitute.For<IAsyncDomainProjectionHandler>();
         handler.Domain.Returns(domain);
         handler.ProjectionType.Returns(projectionType);
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         return handler;
     }
 
@@ -715,6 +717,7 @@ public sealed class DomainProjectionDispatcherV2Tests {
         IAsyncDomainProjectionRebuildHandler handler = Substitute.For<IAsyncDomainProjectionRebuildHandler>();
         handler.Domain.Returns(domain);
         handler.ProjectionType.Returns(projectionType);
+        handler.OrdinaryDeliveryEnabled.Returns(true);
         handler.RebuildSemantics.Returns(DomainProjectionRebuildSemantics.FullReplay);
         return handler;
     }

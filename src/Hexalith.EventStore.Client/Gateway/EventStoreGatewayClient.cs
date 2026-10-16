@@ -248,6 +248,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         SubmitCommandRequest request,
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
+        if (_options.UseWorkloadTransport) {
+            return await SubmitWorkloadCommandAsync(request, cancellationToken).ConfigureAwait(false);
+        }
 
         using HttpResponseMessage response = await SendTranslatingAsync(
             () => _httpClient.PostAsJsonAsync(CreateRelativeUri(_options.CommandPath), request, JsonOptions, cancellationToken),
@@ -419,6 +422,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         StreamReadRequest request,
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
+        if (_options.UseWorkloadTransport) {
+            return await ReadWorkloadStreamAsync(request, cancellationToken).ConfigureAwait(false);
+        }
 
         using HttpResponseMessage response = await SendTranslatingAsync(
             () => _httpClient.PostAsJsonAsync(CreateRelativeUri(_options.StreamReadPath), request, JsonOptions, cancellationToken),

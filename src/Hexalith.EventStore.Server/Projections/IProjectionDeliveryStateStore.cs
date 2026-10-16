@@ -41,4 +41,14 @@ internal interface IProjectionDeliveryStateStore {
         string projectionName,
         ProjectionDeliveryReconciliationWork work,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Atomically CAS-binds exact scope admission and maintenance evidence to the unchanged qualified row.</summary>
+    Task<bool> TryActivateSourceGuardAsync(AggregateIdentity identity, string projectionName,
+        ProjectionDeliveryState state, ProjectionSourceGuard marker, ProjectionDeliveryReconciliationWork work,
+        string stateEtag, string markerEtag, CancellationToken cancellationToken = default)
+        => Task.FromResult(false);
+
+    /// <summary>Reads the existing attributable scope control record without changing it.</summary>
+    Task<ProjectionDeliveryReconciliationWork?> ReadReconciliationAsync(AggregateIdentity identity, string projectionName,
+        CancellationToken cancellationToken = default) => Task.FromResult<ProjectionDeliveryReconciliationWork?>(null);
 }

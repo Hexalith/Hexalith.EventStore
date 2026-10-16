@@ -12,6 +12,12 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     /// <summary>Gets or sets a predicate that rejects selected conditional writes.</summary>
     public Func<string, bool>? RejectTrySave { get; set; }
 
+    /// <summary>Gets or sets a synthetic observer that may block a read.</summary>
+    public Func<string, Task>? BeforeReadAsync { get; set; }
+
+    /// <summary>Gets or sets a synthetic observer that may block a conditional write.</summary>
+    public Func<string, Task>? BeforeTrySaveAsync { get; set; }
+
     /// <summary>Gets or sets an observer invoked after an accepted conditional write, before its caller re-reads.</summary>
     public Action<string>? AfterTrySave { get; set; }
 
@@ -22,11 +28,12 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     public int Reads { get; private set; }
 
     /// <inheritdoc/>
-    public Task<ReadModelEntry<TValue>> GetAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
+    public async Task<ReadModelEntry<TValue>> GetAsync<TValue>(string storeName, string key, CancellationToken cancellationToken = default)
         where TValue : class
     {
         Reads++;
-        return inner.GetAsync<TValue>(storeName, key, cancellationToken);
+        if (BeforeReadAsync is { } before) await before(key);
+        return await inner.GetAsync<TValue>(storeName, key, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -43,6 +50,7 @@ internal sealed class DispositionFailingReadModelStore(InMemoryReadModelStore in
     public async Task<bool> TrySaveAsync<TValue>(string storeName, string key, TValue value, string etag, CancellationToken cancellationToken = default)
         where TValue : class
     {
+        if (BeforeTrySaveAsync is { } before) await before(key);
         if (RejectTrySave?.Invoke(key) == true)
         {
             return false;

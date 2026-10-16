@@ -1,0 +1,75 @@
+{
+  "qualification": "explicit managed proof/transport roots only; all other phases and final gates remain open",
+  "sourceBaseline": "e17e7294f540ebba42fe25192998689f0ecd89c1",
+  "assets": "Server build28, Debug/source, uncommitted implementation",
+  "sdk": "10.0.401",
+  "runtime": "10.0.12",
+  "daprSdk": "1.18.10",
+  "grpcNetClient": "2.80.0",
+  "counts": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "notRun": 0,
+    "seconds": 1.007
+  },
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "*ProjectionProofWorkingMemoryTests",
+    "-showLiveOutput"
+  ],
+  "method": "running CoreCLR raw object sizes plus headers/alignment, unique explicit roots; one exact row carrier conservatively retained; installed real Dapr SDK ByteString and actual rented gRPC send memory observed without body copies",
+  "measurements": [
+    {
+      "head": 10000,
+      "checkpoint": 0,
+      "idLength": 26,
+      "receiptLimit": 256,
+      "serialized": 555569,
+      "retainedRootBytes": 2023928,
+      "transportRootBytes": 3628896,
+      "sendArrayBytes": 1048576,
+      "ceiling": 3789824,
+      "coverage": "unique retained proof plus one exact row carrier and actual installed Dapr ByteString/gRPC rented send array; serializer/event/provider phases remain separate"
+    },
+    {
+      "head": 10000,
+      "checkpoint": 0,
+      "idLength": 36,
+      "receiptLimit": 256,
+      "serialized": 557339,
+      "retainedRootBytes": 2029840,
+      "transportRootBytes": 3636576,
+      "sendArrayBytes": 1048576,
+      "ceiling": 3789824,
+      "coverage": "unique retained proof plus one exact row carrier and actual installed Dapr ByteString/gRPC rented send array; serializer/event/provider phases remain separate"
+    },
+    {
+      "head": 10000,
+      "checkpoint": 0,
+      "idLength": 26,
+      "receiptLimit": 4096,
+      "serialized": 1331249,
+      "retainedRootBytes": 4243448,
+      "transportRootBytes": 7672672,
+      "sendArrayBytes": 2097152,
+      "ceiling": 11654144,
+      "coverage": "unique retained proof plus one exact row carrier and actual installed Dapr ByteString/gRPC rented send array; serializer/event/provider phases remain separate"
+    },
+    {
+      "head": 10000,
+      "checkpoint": 0,
+      "idLength": 36,
+      "receiptLimit": 4096,
+      "serialized": 1371419,
+      "retainedRootBytes": 4349200,
+      "transportRootBytes": 7818592,
+      "sendArrayBytes": 2097152,
+      "ceiling": 11654144,
+      "coverage": "unique retained proof plus one exact row carrier and actual installed Dapr ByteString/gRPC rented send array; serializer/event/provider phases remain separate"
+    }
+  ]
+}

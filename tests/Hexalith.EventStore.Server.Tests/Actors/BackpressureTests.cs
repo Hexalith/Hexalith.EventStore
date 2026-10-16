@@ -263,7 +263,8 @@ public class BackpressureTests {
             _ = stateManager.SetStateAsync(PendingCommandCountKey, 0, Arg.Any<CancellationToken>());
         });
 
-        await stateManager.Received(2).SaveStateAsync(Arg.Any<CancellationToken>());
+        // Confirmed advisory acknowledgement adds one save after the unchanged terminal batch.
+        await stateManager.Received(3).SaveStateAsync(Arg.Any<CancellationToken>());
     }
 
     // --- AC #7: Counter initialization on first use ---
@@ -365,7 +366,7 @@ public class BackpressureTests {
         var record = new UnpublishedEventsRecord(
             "corr-drain", StartSequence: 1, EndSequence: 2, EventCount: 2,
             CommandType: "CreateOrder", IsRejection: false,
-            FailedAt: DateTimeOffset.UtcNow, RetryCount: 0, LastFailureReason: "Pub/sub unavailable");
+            FailedAt: DateTimeOffset.UtcNow, RetryCount: 0, LastFailureReason: "Pub/sub unavailable", MessageId: "corr-drain", CausationId: "cause-drain");
 
         _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
             "drain:corr-drain", Arg.Any<CancellationToken>())
@@ -375,7 +376,7 @@ public class BackpressureTests {
         for (int seq = 1; seq <= 2; seq++) {
             var evt = new EventEnvelope(
                 Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
-                "corr-drain", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                "corr-drain", "cause-drain", "user-1", "1.0.0", "OrderCreated", 1, "json",
                 [1, 2, 3], null);
             _ = stateManager.TryGetStateAsync<EventEnvelope>(
                 $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())

@@ -329,25 +329,28 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultOnCall("SaveState", 2, new InvalidOperationException("pre-commit conflict"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
-        result.EventCount.ShouldBe(1);
+        result.EventCount.ShouldBe(2);
         _ = await context.Invoker.Received(2).InvokeAsync(
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
-            .ShouldBe(1);
-        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
+            .ShouldBe(2);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(2);
         ((IdempotencyRecord)durable[$"idempotency:{command.MessageId}"])
             .Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
         durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(5);
+        SourceProof expectedProof = AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 2).ShouldNotBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBe(expectedProof);
     }
 
     [Fact]
@@ -362,28 +365,28 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultAfterCall("SaveState", 2, new InvalidOperationException("commit uncertain"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
-        result.EventCount.ShouldBe(1);
+        result.EventCount.ShouldBe(2);
         _ = await context.Invoker.Received(1).InvokeAsync(
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
         _ = await context.EventPublisher.Received(1).PublishEventsAsync(
             command.AggregateIdentity,
-            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1 && events[0].SequenceNumber == 1),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2 && events[0].SequenceNumber == 1 && events[1].SequenceNumber == 2),
             command.CorrelationId,
             Arg.Any<CancellationToken>(),
             false);
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
-            .ShouldBe(1);
-        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
-        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
+            .ShouldBe(2);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(2);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}3");
         durable.ShouldNotContainKey(AggregateActor.EventBatchCommitWitnessKey);
         int inspectionClear = stateManager.Trace.IndexOf("ClearCache");
         inspectionClear.ShouldBeGreaterThanOrEqualTo(0);
@@ -396,7 +399,10 @@ public class AggregateActorInfrastructureFailureTests
         stateManager.Trace.Count(operation => operation ==
                 $"TryGetState:{AggregateActor.EventBatchCommitWitnessKey}")
             .ShouldBe(1);
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        SourceProof expectedProof = AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 2).ShouldNotBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBe(expectedProof);
     }
 
     [Fact]
@@ -409,7 +415,7 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultOnCall("SaveState", 2, new IOException("pre-commit-secret"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
@@ -428,6 +434,8 @@ public class AggregateActorInfrastructureFailureTests
             default!, default!, default!);
         AssertSuccessfulRejectionEndState(stateManager, command);
         stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 0).ShouldBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBeNull();
     }
 
     [Fact]
@@ -440,29 +448,32 @@ public class AggregateActorInfrastructureFailureTests
                 Arg.Any<CommandEnvelope>(),
                 Arg.Any<object?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(DomainResult.Success([new TestEvent()]));
+            .Returns(DomainResult.Success([new TestEvent(), new TestEvent()]));
         stateManager.FaultAfterCall("SaveState", 2, new IOException("commit-uncertain-secret"));
 
         CommandProcessingResult result = await context.Actor.ProcessCommandAsync(command);
 
         result.Accepted.ShouldBeTrue();
-        result.EventCount.ShouldBe(1);
+        result.EventCount.ShouldBe(2);
         _ = await context.Invoker.Received(1).InvokeAsync(
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
         _ = await context.EventPublisher.Received(1).PublishEventsAsync(
             command.AggregateIdentity,
-            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 1 && events[0].SequenceNumber == 1),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(events => events.Count == 2 && events[0].SequenceNumber == 1 && events[1].SequenceNumber == 2),
             command.CorrelationId,
             Arg.Any<CancellationToken>(),
             false);
         IReadOnlyDictionary<string, object> durable = stateManager.CreateCommittedView();
         durable.Keys.Count(key => key.StartsWith(command.AggregateIdentity.EventStreamKeyPrefix, StringComparison.Ordinal))
-            .ShouldBe(1);
-        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(1);
-        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}2");
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+            .ShouldBe(2);
+        ((AggregateMetadata)durable[command.AggregateIdentity.MetadataKey]).CurrentSequence.ShouldBe(2);
+        durable.ShouldNotContainKey($"{command.AggregateIdentity.EventStreamKeyPrefix}3");
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
+        SourceProof expectedProof = AssertCommittedSourceChains(stateManager, command.AggregateIdentity, 2).ShouldNotBeNull();
+        (await context.Actor.InspectSourceProofAsync()).Proof.ShouldBe(expectedProof);
     }
 
     [Fact]
@@ -914,13 +925,14 @@ public class AggregateActorInfrastructureFailureTests
                 stateManager,
                 first,
                 new HttpRequestException("primary-secret")));
-        stateManager.FaultOnCall(
-            $"TryGetState:{UnpublishedPublicationIndex.StateKey}",
-            1,
-            new IOException("owner-read-1"));
+        // Read1 is the new admission ownership guard; fail the original finalizer reads2 and3.
         stateManager.FaultOnCall(
             $"TryGetState:{UnpublishedPublicationIndex.StateKey}",
             2,
+            new IOException("owner-read-1"));
+        stateManager.FaultOnCall(
+            $"TryGetState:{UnpublishedPublicationIndex.StateKey}",
+            3,
             new IOException("owner-read-2"));
 
         CommandProcessingResult firstResult = await context.Actor.ProcessCommandAsync(first);
@@ -1260,6 +1272,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
             [AggregateActor.EventBatchCommitWitnessKey] = "stale-event-batch",
         });
@@ -1306,6 +1322,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
         });
         stateManager.FaultAfterCall("SaveState", 1, new IOException("commit uncertain"));
@@ -1356,6 +1376,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
         });
         stateManager.FaultAfterCall("SaveState", 1, new IOException("commit uncertain"));
@@ -1396,6 +1420,10 @@ public class AggregateActorInfrastructureFailureTests
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [GetPipelineKey(command)] = stale,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, stale.MessageId!) with
+            {
+                CorrelationId = stale.CorrelationId, CausationId = stale.CausationId!,
+            },
             [PendingCountKey] = 0,
         });
         stateManager.FaultAfterCall(
@@ -2124,7 +2152,8 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -2284,7 +2313,8 @@ public class AggregateActorInfrastructureFailureTests
             command,
             Arg.Any<object?>(),
             Arg.Any<CancellationToken>());
-        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(3);
+        // The additional save acknowledges advisory success; terminal persistence is not repeated.
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(4);
     }
 
     [Fact]
@@ -2337,7 +2367,7 @@ public class AggregateActorInfrastructureFailureTests
             DateTimeOffset.UnixEpoch,
             RetryCount: 0,
             LastFailureReason: null,
-            MessageId: trackingId);
+            MessageId: trackingId, CausationId: command.MessageId);
         var index = new UnpublishedPublicationIndex([
             new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
         ]);
@@ -2347,7 +2377,7 @@ public class AggregateActorInfrastructureFailureTests
             [UnpublishedPublicationIndex.StateKey] = index,
             [PendingCountKey] = 1,
             [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] =
-                CreateEvent(command.AggregateIdentity, 1, command.MessageId),
+                CreateEvent(command.AggregateIdentity, 1, command.MessageId) with { CorrelationId = command.CorrelationId, CausationId = command.MessageId },
         });
         stateManager.FaultOnCall(
             $"SetState:{UnpublishedPublicationIndex.StateKey}",
@@ -2389,7 +2419,7 @@ public class AggregateActorInfrastructureFailureTests
             DateTimeOffset.UnixEpoch,
             RetryCount: 1,
             LastFailureReason: "publish failed",
-            MessageId: trackingId);
+            MessageId: trackingId, CausationId: command.MessageId);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
@@ -2397,6 +2427,10 @@ public class AggregateActorInfrastructureFailureTests
                 new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
             ]),
             [PendingCountKey] = 1,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, command.MessageId) with
+            {
+                CorrelationId = command.CorrelationId, CausationId = command.MessageId,
+            },
         });
         stateManager.FaultAfterCall(
             $"SetState:{UnpublishedEventsRecord.GetStateKey(trackingId)}",
@@ -2435,7 +2469,7 @@ public class AggregateActorInfrastructureFailureTests
             DateTimeOffset.UnixEpoch,
             RetryCount: 1,
             LastFailureReason: "publish failed",
-            MessageId: trackingId);
+            MessageId: trackingId, CausationId: command.MessageId);
         await stateManager.SeedCommittedStateAsync(new Dictionary<string, object>
         {
             [UnpublishedEventsRecord.GetStateKey(trackingId)] = record,
@@ -2443,6 +2477,10 @@ public class AggregateActorInfrastructureFailureTests
                 new UnpublishedPublicationEntry(trackingId, command.CorrelationId, DateTimeOffset.UnixEpoch),
             ]),
             [PendingCountKey] = 1,
+            [$"{command.AggregateIdentity.EventStreamKeyPrefix}1"] = CreateEvent(command.AggregateIdentity, 1, command.MessageId) with
+            {
+                CorrelationId = command.CorrelationId, CausationId = command.MessageId,
+            },
         });
         stateManager.FaultOnCall(
             $"SetState:{UnpublishedPublicationIndex.StateKey}",
@@ -2717,7 +2755,8 @@ public class AggregateActorInfrastructureFailureTests
                 stateManager.FaultOnCall("ClearCache", 2, exception);
                 break;
             case "OwnerRead":
-                stateManager.FaultOnCall($"TryGetState:{UnpublishedPublicationIndex.StateKey}", 1, exception);
+                // Admission inspects publication ownership first; target the finalizer's next read.
+                stateManager.FaultOnCall($"TryGetState:{UnpublishedPublicationIndex.StateKey}", 2, exception);
                 break;
             case "Read":
                 stateManager.FaultOnCall($"TryGetState:{PendingCountKey}", 2, exception);
@@ -2857,6 +2896,37 @@ public class AggregateActorInfrastructureFailureTests
         durable[PendingCountKey].ShouldBe(0);
         stateManager.CommittedSnapshots.ShouldAllBe(snapshot =>
             !snapshot.ContainsKey(command.AggregateIdentity.MetadataKey));
+    }
+
+    private static SourceProof? AssertCommittedSourceChains(FaultInjectingActorStateManager stateManager,
+        AggregateIdentity identity, long expectedHead)
+    {
+        SourceProof? final = null;
+        string? incarnation = null;
+        foreach (IReadOnlyDictionary<string, object> snapshot in stateManager.CommittedSnapshots.Append(stateManager.CreateCommittedView()))
+        {
+            EventEnvelope[] events = [.. snapshot.Where(pair => pair.Key.StartsWith(identity.EventStreamKeyPrefix, StringComparison.Ordinal))
+                .Select(static pair => pair.Value.ShouldBeOfType<EventEnvelope>()).OrderBy(static item => item.SequenceNumber)];
+            if (!snapshot.TryGetValue(identity.MetadataKey, out object? value))
+            {
+                events.ShouldBeEmpty();
+                continue;
+            }
+            AggregateMetadata metadata = value.ShouldBeOfType<AggregateMetadata>();
+            metadata.CurrentSequence.ShouldBe(expectedHead);
+            events.LongLength.ShouldBe(expectedHead);
+            SourceProof proof = metadata.SourceProof.ShouldNotBeNull();
+            incarnation ??= proof.SourceIncarnation;
+            proof.SourceIncarnation.ShouldBe(incarnation);
+            SourceProof rebuilt = SourceProofCodec.CreateSeed(identity, incarnation);
+            foreach (EventEnvelope envelope in events) rebuilt = SourceProofCodec.Extend(rebuilt, envelope);
+            proof.ShouldBe(rebuilt);
+            proof.HeadSequence.ShouldBe(expectedHead);
+            final = proof;
+        }
+        if (expectedHead == 0) final.ShouldBeNull();
+        else final.ShouldNotBeNull();
+        return final;
     }
 
     private static void AssertNoTerminalResidue(

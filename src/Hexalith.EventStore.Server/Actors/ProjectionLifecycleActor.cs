@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Client.Projections;
+using System.Text.Json;
 using Dapr.Actors.Runtime;
 
 using Microsoft.Extensions.Logging;
@@ -294,17 +296,27 @@ public partial class ProjectionLifecycleActor(
     }
 
     private async Task<ProjectionLifecycleActorState> ReadStateAsync() {
+        ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MetadataReads);
         ConditionalValue<ProjectionLifecycleActorState> result = await StateManager
             .TryGetStateAsync<ProjectionLifecycleActorState>(LifecycleStateKey)
             .ConfigureAwait(false);
 
         if (result.HasValue) {
+            ProjectionDeliveryCostDiagnostics.Record(
+                ProjectionDeliveryCost.MetadataReadBytes,
+                JsonSerializer.SerializeToUtf8Bytes(result.Value, JsonSerializerOptions.Web).Length);
             return result.Value;
         }
 
+        ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MetadataReads);
         ConditionalValue<long> epoch = await StateManager
             .TryGetStateAsync<long>(LifecycleEpochStateKey)
             .ConfigureAwait(false);
+        if (epoch.HasValue) ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MetadataReadBytes,
+            JsonSerializer.SerializeToUtf8Bytes(epoch.Value).Length);
         return new ProjectionLifecycleActorState(
             ProjectionLifecyclePhase.Idle,
             OperationId: null,
@@ -314,12 +326,23 @@ public partial class ProjectionLifecycleActor(
     }
 
     private async Task PersistStateAsync(ProjectionLifecycleActorState state) {
+        ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MutationAttempts, 2);
+        ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MutationBytes,
+            JsonSerializer.SerializeToUtf8Bytes(state, JsonSerializerOptions.Web).Length
+                + JsonSerializer.SerializeToUtf8Bytes(state.Revision).Length);
         await StateManager.SetStateAsync(LifecycleStateKey, state).ConfigureAwait(false);
         await StateManager.SetStateAsync(LifecycleEpochStateKey, state.Revision).ConfigureAwait(false);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
     }
 
     private async Task ClearStateAsync(long nextEpoch) {
+        ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MutationAttempts, 2);
+        ProjectionDeliveryCostDiagnostics.Record(
+            ProjectionDeliveryCost.MutationBytes,
+            JsonSerializer.SerializeToUtf8Bytes(nextEpoch).Length);
         // Commit the post-delivery epoch and transient lease removal together. The durable epoch
         // prevents an Idle(n) -> Delivering(n+1) -> Idle(n) ABA observation without retaining the
         // high-frequency lifecycle row that the absent-idle cleanup contract forbids.

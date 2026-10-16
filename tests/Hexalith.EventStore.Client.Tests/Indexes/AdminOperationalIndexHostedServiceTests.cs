@@ -24,6 +24,27 @@ namespace Hexalith.EventStore.Client.Tests.Indexes;
 
 public class AdminOperationalIndexHostedServiceTests {
     [Fact]
+    public void SourceGuardDescriptorIsFingerprintBoundWhileAbsentDescriptorPreservesHistoricalBytes()
+    {
+        var route = new ProjectionDispatchRoute("counter", "counter-detail");
+        ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route])
+            .ShouldBe("bd1e414c3500505eb2ed38e095f58c25da9500eb5a99e001dc3fd811f13c1556");
+        var capability = new ProjectionSourceGuardCapability(1, 1, 1, "single-event-v1",
+            "projection-owner-proof/v1", "event-message-id/v1", "read-model-batch/v1");
+        string guarded = ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route with { SourceGuard = capability }]);
+        guarded.ShouldNotBe(ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route]));
+        guarded.ShouldBe(ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route with { SourceGuard = capability }], [route]));
+        ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route with
+            { SourceGuard = capability with { InitialOwnerProtocol = "aggregate-first-event/v1" } }]).ShouldNotBe(guarded);
+        ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route with
+            { SourceGuard = capability with { CanonicalReplayProtocol = "staged-full-replay/v1" } }]).ShouldNotBe(guarded);
+        Should.Throw<ArgumentException>(() => ProjectionRouteCatalogFingerprint.Compute("sample", "v1", [route with
+            { SourceGuard = capability with { CanonicalReplayProtocol = "unknown" } }]));
+        Should.Throw<ArgumentException>(() => ProjectionRouteCatalogFingerprint.Compute("sample", "v1",
+            [route with { SourceGuard = capability with { SourceCodecVersion = 2 } }]));
+    }
+
+    [Fact]
     public async Task StartAsync_DuplicateDomainMetadataWithDistinctRoutesRejectsCatalog() {
         ProjectionDispatchRoute[] routes = [new("counter", "counter-detail"), new("counter", "counter-index")];
         var response = new AdminOperationalIndexMetadataResponse([

@@ -44,7 +44,7 @@ public partial class ProjectionNotificationController(
     /// Returns non-200 on actor failure to trigger DAPR retry (CM-1).
     /// </summary>
     [HttpPost("changed")]
-    [Topic(ProjectionChangeNotifierOptions.DefaultPubSubName, "*.*.projection-changed")]
+    [ProjectionNotificationTopic]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

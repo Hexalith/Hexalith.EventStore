@@ -4989,7 +4989,7 @@ So that long-stream optimizations cannot introduce out-of-order state regression
 
 **Classification:** Architecture/readiness gate. Completion authorizes Story 6.4 to start but does not count as runtime implementation progress.
 
-**Current reconciliation:** Story 6.3 remains backlog and `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` is absent. The current implementation already persists projection-scoped checkpoints and delivery state, rejects non-contiguous rebuild pages, and protects staged promotion, but no approved artifact freezes the live-delivery short-circuit/tail cost model, handler assumptions, cross-replica source-sequence guard, or fallback boundary for the optimization.
+**Current reconciliation (2026-10-15):** Story 6.3 is done for the specification gate. Jérôme Piquot (`jpiquot`), sole owner/contributor holding the Epic 6, architecture and Test owner roles for this approval, approved `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` version 1, normative SHA-256 `78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711`, its numeric budgets, W0–W6 and validation commands, and explicitly authorized Story 6.4. The detached approval records the exact session statement. OR16's specification obligation is resolved; runtime NFR8 acceptance and assurance/readiness gates remain separate.
 
 **Acceptance Criteria:**
 
@@ -5057,7 +5057,7 @@ So that projection work remains bounded while duplicate, stale, and out-of-order
 
 **Dependencies:** Story 6.3 must be complete with a valid approval explicitly authorizing this implementation, and Stories 1.18 and 1.19 must remain complete with their production-path regression evidence. The version-2 delivery-state protocol, EventStore message identity, scoped checkpoints, lifecycle fencing, and staged rebuild/promotion mechanisms remain authoritative.
 
-**Current reconciliation:** Story 6.4 remains backlog and is unauthorized because `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md` is absent. Existing live legacy delivery still calls `GetEventsAsync(0)` before evaluating projection progress, while the named path already supplies strong scoped idempotency and sequence foundations and rebuilds already enforce bounded contiguous pages; these foundations do not by themselves deliver the approved live-tail cost model.
+**Current reconciliation (2026-10-15):** Story 6.4 remains backlog and is authorized to implement the owner-approved version 1 specification at `_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md`, normative SHA-256 `78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711`. Preflight must verify that digest, detached named approval and the preserved Stories 1.18/1.19 evidence before runtime edits. Existing live legacy delivery still calls `GetEventsAsync(0)`; existing scoped idempotency and bounded rebuilds are preservation foundations, not evidence that Story 6.4's zero-event current path or bounded-tail cost model is implemented.
 
 **Acceptance Criteria:**
 

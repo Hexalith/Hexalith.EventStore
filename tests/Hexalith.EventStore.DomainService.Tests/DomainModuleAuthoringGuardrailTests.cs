@@ -415,7 +415,10 @@ public sealed class DomainModuleAuthoringGuardrailTests
     public async Task TenantsDomainService_DoesNotReferenceGeneratedApiHostOrDeclarePerMessageControllers()
     {
         string root = FindRepositoryRoot();
-        string tenantsDomainRoot = Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
+        // Umbrella workspaces may supply their already initialized root-declared module.
+        // Never initialize a nested submodule merely to run a source-boundary fixture.
+        string tenantsDomainRoot = Environment.GetEnvironmentVariable("HEXALITH_TENANTS_DOMAIN_ROOT")
+            ?? Path.Combine(root, "references", "Hexalith.Tenants", "src", "Hexalith.Tenants");
         string csproj = Path.Combine(tenantsDomainRoot, "Hexalith.Tenants.csproj");
         File.Exists(csproj).ShouldBeTrue(
             $"Expected the root-declared Tenants submodule project at {csproj}; boundary verification must not pass without its subject.");

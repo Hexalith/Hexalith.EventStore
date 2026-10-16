@@ -5957,3 +5957,14 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation.md`
   summary: Document the shared-projection source capture settings, the projection-workers switch and the rebuild-part endpoint.
   evidence: ServiceCollectionExtensions.cs:127 binds `EventStore:SharedProjectionSourceCapture` (which enables the mandatory source write fence), ServiceCollectionExtensions.cs:204 reads `EventStore:Projections:WorkersEnabled`, and EventStoreDomainServiceRoutes.cs:27 maps `/project/rebuild/part/v1`. None of these appears under `docs/`, so operators cannot discover them. Introduced by cf43d21a/0c748708, outside Story 6.2.
+
+## Deferred from: code review of spec-6-2-folded-snapshot-implementation-2.md (2026-10-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Add actor-level tests for the source write fence in `ProcessCommandCoreAsync` and for the `DomainServiceSafeDenialException` catch.
+  evidence: no test in tests/ calls `BeginWriteAsync`/`CompleteWriteAsync` through `ProcessCommandAsync`, and `rg DomainServiceSafeDenial tests` is empty; deleting either block keeps the suite green.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: Unverified medium: fence intent may stay open when persist/save throws after Begin; pruning removal in `RearmOutstandingPublicationsAsync` may let dead entries consume the probe budget.
+  evidence: AggregateActor.cs:1537-1572, 2308-2443, 4135-4220; settle by tracing the throw path and the activation budget.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
+  summary: `MaximumProtectedEnvelopeBytes` default lowered to 1 MiB + 4096 (commit 1738fff4); protected near-limit states silently skip automatic snapshots. Also: manual `RetainedFloor == currentSequence + 1` is admitted (AggregateActor.cs:2523), unverified.

@@ -73,7 +73,9 @@ public static class DomainProjectionDispatcher {
             .MaterializeAndValidate(serviceProvider.GetServices<IDomainProjectionHandler>())
             .FirstOrDefault(h => string.Equals(h.Domain, request.Domain, StringComparison.OrdinalIgnoreCase));
 
-        return handler?.Project(UpcastRequest(serviceProvider, request), cancellationToken);
+        if (handler is null) return null;
+        ProjectionRequest compatible = UpcastRequest(serviceProvider, request);
+        return MeasureHandler(handler).Project(compatible, cancellationToken);
     }
 
     /// <summary>Dispatches one v2 request to every exact admitted named projection handler.</summary>
@@ -137,13 +139,12 @@ public static class DomainProjectionDispatcher {
             .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
         if (authoritativeRoutes.Length == 0
-            || !string.Equals(
-                ProjectionRouteCatalogFingerprint.Compute(
-                    identityOptions.AppId,
-                    identityOptions.ServiceVersion,
-                    authoritativeRoutes),
-                dispatchRequest.CatalogFingerprint,
-                StringComparison.Ordinal)) {
+            || !DomainProjectionOwnerProof.MatchesCatalog(serviceProvider,
+                identityOptions.AppId, identityOptions.ServiceVersion, authoritativeRoutes,
+                allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                    && string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+                    .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType)),
+                dispatchRequest.CatalogFingerprint)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
         }
 
@@ -335,13 +336,12 @@ public static class DomainProjectionDispatcher {
             .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
         if (authoritativeRoutes.Length == 0
-            || !string.Equals(
-                ProjectionRouteCatalogFingerprint.Compute(
-                    identityOptions.AppId,
-                    identityOptions.ServiceVersion,
-                    authoritativeRoutes),
-                dispatchRequest.CatalogFingerprint,
-                StringComparison.Ordinal)) {
+            || !DomainProjectionOwnerProof.MatchesCatalog(serviceProvider,
+                identityOptions.AppId, identityOptions.ServiceVersion, authoritativeRoutes,
+                allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                    && string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+                    .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType)),
+                dispatchRequest.CatalogFingerprint)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
         }
 
@@ -350,7 +350,8 @@ public static class DomainProjectionDispatcher {
                 dispatchRequest,
                 options,
                 cancellationToken,
-                allHandlers)
+                allHandlers,
+                DomainProjectionOwnerProof.UsesGuardedCatalog(serviceProvider, dispatchRequest, identityOptions))
             .ConfigureAwait(false);
     }
 
@@ -362,13 +363,22 @@ public static class DomainProjectionDispatcher {
         DomainProjectionRebuildBatchAction action,
         CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(dispatchRequest);
+        DomainProjectionEvolutionAdmission.RequireLegacy(dispatchRequest.Request);
         ProjectionDispatchRequest transportHeader = dispatchRequest;
-        DomainProjectionRebuildPreparation? streamed = transportHeader.RebuildTransport is null
+        var guarded = DomainProjectionGuardedReplay.Resolve(serviceProvider, transportHeader, options, identityOptions);
+        ReadModelBatch? original = guarded is { } route
+            ? await DomainProjectionGuardedReplay.ReadAsync(serviceProvider, transportHeader, route.Store, cancellationToken).ConfigureAwait(false)
+            : null;
+        if (guarded is not null && original is null && ProjectionReplayTransportContext.HasOwners(transportHeader.Request)
+            && action != DomainProjectionRebuildBatchAction.Stage)
+            return FailureForEveryRoute(guarded.Value.Handlers, ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
+        DomainProjectionRebuildPreparation? streamed = original is not null || transportHeader.RebuildTransport is null
             ? null
             : await PrepareStreamedRebuildBatchAsync(serviceProvider, transportHeader, options,
                 identityOptions, cancellationToken).ConfigureAwait(false);
         DomainProjectionRebuildPreparation preparation;
-        if (streamed is not null) preparation = streamed;
+        if (original is not null) preparation = new(guarded!.Value.Handlers, original, null);
+        else if (streamed is not null) preparation = streamed;
         else
         {
             dispatchRequest = await DomainProjectionRebuildTransport.ResolveAsync(
@@ -380,7 +390,15 @@ public static class DomainProjectionDispatcher {
             return preparation.Failure;
         }
 
-        if (transportHeader.RebuildTransport is not null && preparation.Batch is not null) {
+        if (!ProjectionReplayTransportContext.HasOwners(transportHeader.Request) && preparation.Batch?.OwnerSelections is null)
+            guarded = null;
+
+        if (guarded is { } guardedRoute && original is null && preparation.Batch is not null)
+        {
+            preparation = preparation with { Batch = await DomainProjectionGuardedReplay.SaveAsync(serviceProvider,
+                transportHeader, preparation.Batch, guardedRoute.Store, cancellationToken).ConfigureAwait(false) };
+        }
+        if (guarded is null && transportHeader.RebuildTransport is not null && preparation.Batch is not null) {
             ReadModelBatch batch = action == DomainProjectionRebuildBatchAction.Stage
                 ? await DomainProjectionRebuildTransport.SavePlanAsync(serviceProvider,
                     transportHeader, preparation.Batch, options, identityOptions, cancellationToken)
@@ -492,7 +510,7 @@ public static class DomainProjectionDispatcher {
                         yield return item;
                     streamComplete = true;
                 }
-                DomainProjectionRebuildPlan plan = await ((IAsyncDomainProjectionStreamedRebuildHandler)handler)
+                DomainProjectionRebuildPlan plan = await MeasureHandler((IAsyncDomainProjectionStreamedRebuildHandler)handler)
                     .PrepareStreamedRebuildAsync(header.Request, VerifiedEvents(),
                         header.DispatchId, cancellationToken)
                     .ConfigureAwait(false);
@@ -524,10 +542,10 @@ public static class DomainProjectionDispatcher {
                         ProjectionDispatchStatus.Retryable, null, ProjectionDispatchReasonCodes.PartialRetry))]));
         var batch = new ReadModelBatch(new ReadModelBatchScope(storeName, header.Request.TenantId,
             header.Request.Domain, header.Request.AggregateId, "rebuild", header.DispatchId), operations);
-        return new(handlers, batch, null);
+        return new(handlers, DomainProjectionOwnerProof.BindRebuildBatch(services, header, batch, identity), null);
     }
 
-    private static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
+    internal static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
         IServiceProvider serviceProvider,
         ProjectionDispatchRequest dispatchRequest,
         ProjectionDispatchOptions options,
@@ -548,13 +566,12 @@ public static class DomainProjectionDispatcher {
             .Where(handler => string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
             .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))];
         if (authoritativeRoutes.Length == 0
-            || !string.Equals(
-                ProjectionRouteCatalogFingerprint.Compute(
-                    identityOptions.AppId,
-                    identityOptions.ServiceVersion,
-                    authoritativeRoutes),
-                dispatchRequest.CatalogFingerprint,
-                StringComparison.Ordinal)) {
+            || !DomainProjectionOwnerProof.MatchesCatalog(serviceProvider,
+                identityOptions.AppId, identityOptions.ServiceVersion, authoritativeRoutes,
+                allHandlers.Where(handler => handler.OrdinaryDeliveryEnabled
+                    && string.Equals(handler.Domain, dispatchRequest.Request.Domain, StringComparison.Ordinal))
+                    .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType)),
+                dispatchRequest.CatalogFingerprint)) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
         }
 
@@ -589,7 +606,7 @@ public static class DomainProjectionDispatcher {
             }
 
             try {
-                DomainProjectionRebuildPlan plan = await rebuildHandler
+                DomainProjectionRebuildPlan plan = await MeasureHandler(rebuildHandler)
                     .PrepareRebuildAsync(
                         effectiveRequest,
                         dispatchRequest.DispatchId,
@@ -656,7 +673,8 @@ public static class DomainProjectionDispatcher {
                     "rebuild",
                     dispatchRequest.DispatchId),
                 operations);
-            return new DomainProjectionRebuildPreparation(handlers, batch, null);
+            return new DomainProjectionRebuildPreparation(handlers,
+                DomainProjectionOwnerProof.BindRebuildBatch(serviceProvider, dispatchRequest, batch, identityOptions), null);
         }
         catch (Exception exception) when (exception is ArgumentException or ArgumentNullException) {
             return new DomainProjectionRebuildPreparation(
@@ -671,7 +689,8 @@ public static class DomainProjectionDispatcher {
         ProjectionDispatchRequest dispatchRequest,
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken,
-        IReadOnlyList<IAsyncDomainProjectionHandler>? materializedHandlers = null) {
+        IReadOnlyList<IAsyncDomainProjectionHandler>? materializedHandlers = null,
+        bool boundGuardCatalog = false) {
         HashSet<string> requestedTypes = new(dispatchRequest.ProjectionTypes, StringComparer.Ordinal);
         IAsyncDomainProjectionHandler[] handlers = [.. (materializedHandlers
             ?? DomainProjectionHandlerRouteValidator.MaterializeAndValidateNamed(
@@ -682,6 +701,9 @@ public static class DomainProjectionDispatcher {
         if (handlers.Length != requestedTypes.Count) {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
+
+        if (handlers.Any(handler => !handler.OrdinaryDeliveryEnabled))
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
 
         ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
 
@@ -695,8 +717,13 @@ public static class DomainProjectionDispatcher {
                         serviceProvider,
                         epochHandler,
                         effectiveRequest,
+                        serviceProvider.GetServices<DomainProjectionOwnerProofRegistration>().Any(registration =>
+                            registration.Domain == handler.Domain && registration.ProjectionType == handler.ProjectionType
+                            && registration.Capability.HandlerSemantics == "shared-epoch-v1" && registration.Capability.IsSupported
+                            && (boundGuardCatalog || serviceProvider.GetService<DomainProjectionCatalogRegistry>()?.AuthorizesSourceGuard(
+                                dispatchRequest.CatalogFingerprint, handler.Domain, handler.ProjectionType, registration.Capability) == true)),
                         cancellationToken).ConfigureAwait(false)
-                    : await handler
+                    : await MeasureHandler(handler)
                         .ProjectAsync(effectiveRequest, dispatchRequest.DispatchId, cancellationToken)
                         .ConfigureAwait(false);
                 outcome = NormalizeOutcome(handler.ProjectionType, result, options);
@@ -788,6 +815,7 @@ public static class DomainProjectionDispatcher {
         IServiceProvider serviceProvider,
         IAsyncDomainSharedProjectionEpochHandler handler,
         ProjectionRequest request,
+        bool requireAppliedProof,
         CancellationToken cancellationToken) {
         SharedProjectionEpochCoordinator? coordinator = serviceProvider.GetService<SharedProjectionEpochCoordinator>();
         if (coordinator is null) {
@@ -846,6 +874,7 @@ public static class DomainProjectionDispatcher {
         bool retry = false;
         bool ownerGap = false;
         bool catchUp = false;
+        var deliveries = new List<SharedProjectionDelivery>();
         foreach (ProjectionEventDto item in request.Events) {
             cancellationToken.ThrowIfCancellationRequested();
             var singleEventRequest = new ProjectionRequest(
@@ -860,6 +889,7 @@ public static class DomainProjectionDispatcher {
                 JsonSerializer.SerializeToUtf8Bytes(item.GlobalPosition, SerializerOptions),
                 controlIndexIntent,
                 item.SequenceNumber);
+            deliveries.Add(delivery);
             SharedProjectionJournalResult journaled;
             try {
                 journaled = await coordinator.JournalAsync(
@@ -915,6 +945,16 @@ public static class DomainProjectionDispatcher {
                 return DomainProjectionHandlerResult.Retryable(ProjectionDispatchReasonCodes.DeliveryStateUnavailable);
             }
         }
+        if (requireAppliedProof && !retry)
+        {
+            foreach (SharedProjectionDelivery delivery in deliveries)
+            {
+                SharedProjectionAppliedDeliveryProof proof = await coordinator.ReadAppliedDeliveryProofAsync(scope,
+                    delivery, cancellationToken).ConfigureAwait(false);
+                if (!proof.IsApplied)
+                    return DomainProjectionHandlerResult.Retryable(proof.ReasonCode ?? ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
+            }
+        }
         return retry
             ? DomainProjectionHandlerResult.Retryable(ownerGap
                 ? ProjectionDispatchReasonCodes.DeliveryGap
@@ -938,7 +978,7 @@ public static class DomainProjectionDispatcher {
                 null,
                 reasonCode))]);
 
-    private static void ValidateRequest(ProjectionDispatchRequest dispatchRequest, ProjectionDispatchOptions options) {
+    internal static void ValidateRequest(ProjectionDispatchRequest dispatchRequest, ProjectionDispatchOptions options) {
         if (dispatchRequest.Request is null
             || string.IsNullOrWhiteSpace(dispatchRequest.Request.TenantId)
             || string.IsNullOrWhiteSpace(dispatchRequest.Request.AggregateId)
@@ -1044,4 +1084,10 @@ public static class DomainProjectionDispatcher {
             return false;
         }
     }
+    private static THandler MeasureHandler<THandler>(THandler handler)
+    {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.HandlerAttempts);
+        return handler;
+    }
+
 }

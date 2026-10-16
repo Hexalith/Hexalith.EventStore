@@ -10,7 +10,8 @@ internal static class ProjectionDeliveryStateClassifier {
             return ProjectionDeliveryStateClassification.Absent;
         }
 
-        if (state.SchemaVersion == ProjectionDeliveryState.CurrentSchemaVersion
+        if ((state.SchemaVersion == ProjectionDeliveryState.CurrentSchemaVersion
+                || state.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion)
             && state.WriterProtocolVersion == ProjectionDeliveryState.CurrentWriterProtocolVersion) {
             return ProjectionDeliveryStateClassification.Current;
         }

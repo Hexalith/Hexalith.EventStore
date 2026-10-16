@@ -46,7 +46,7 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
 /// Provides a running Dapr environment with actor support for Tier 2 integration tests.
 /// Implements <see cref="IAsyncLifetime"/> for xUnit lifecycle management.
 /// </summary>
-public sealed class DaprTestContainerFixture : IAsyncLifetime
+public sealed partial class DaprTestContainerFixture : IAsyncLifetime
 {
     // `dapr init` publishes the control plane on different host ports depending on the CLI
     // version and platform: the container ports are 50005/50006, but recent CLIs remap them to
@@ -1023,6 +1023,13 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
 
     private static string ResolveDaprdPath()
     {
+        string? configured = Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPRD_PATH");
+        if (configured is not null)
+        {
+            if (!Path.IsPathFullyQualified(configured) || !File.Exists(configured))
+                throw new InvalidOperationException("EVENTSTORE_TEST_DAPRD_PATH must identify an existing absolute binary path.");
+            return configured;
+        }
         string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string candidate = Path.Combine(home, ".dapr", "bin", "daprd" + (OperatingSystem.IsWindows() ? ".exe" : string.Empty));
 
@@ -1072,6 +1079,7 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterDetailProjectionHandler>();
         _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterIndexProjectionHandler>();
         _ = builder.Services.AddSingleton<LiveNamedProjectionFaultControl>();
+        ConfigureGuardedCounter(builder);
 
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
         _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
@@ -1123,43 +1131,43 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
             "/project/rebuild/stage/v1",
-            async (ProjectionDispatchRequest request,
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
                    IServiceProvider serviceProvider,
                    IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
                    IOptions<DomainProjectionIdentityOptions> identityOptions,
                    CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
-                       await DomainProjectionDispatcher
-                           .StageRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Stage, context, cancellationToken)
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
             "/project/rebuild/commit/v1",
-            async (ProjectionDispatchRequest request,
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
                    IServiceProvider serviceProvider,
                    IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
                    IOptions<DomainProjectionIdentityOptions> identityOptions,
                    CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
-                       await DomainProjectionDispatcher
-                           .CommitRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Commit, context, cancellationToken)
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
             "/project/rebuild/abort/v1",
-            async (ProjectionDispatchRequest request,
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
                    IServiceProvider serviceProvider,
                    IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
                    IOptions<DomainProjectionIdentityOptions> identityOptions,
                    CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
-                       await DomainProjectionDispatcher
-                           .AbortRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Abort, context, cancellationToken)
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
             "/project/rebuild/verify/v1",
-            async (ProjectionDispatchRequest request,
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
                    IServiceProvider serviceProvider,
                    IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
                    IOptions<DomainProjectionIdentityOptions> identityOptions,
                    CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
-                       await DomainProjectionDispatcher
-                           .VerifyRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Verify, context, cancellationToken)
                            .ConfigureAwait(false)));
         _ = _testHost.MapPost(
             "/admin/operational-index-metadata",
@@ -1174,15 +1182,22 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
                         typeof(Hexalith.EventStore.Sample.Counter.State.CounterState),
                         Hexalith.EventStore.Client.Discovery.DomainKind.Aggregate)],
                     []);
-                return Microsoft.AspNetCore.Http.Results.Ok(AdminOperationalIndexMetadata.Create(
+                AdminOperationalIndexMetadata.Response response = AdminOperationalIndexMetadata.Create(
                     discovery,
                     request.Domains,
                     queryHandlers: null,
                     serviceProvider.GetServices<IAsyncDomainProjectionHandler>(),
                     identityOptions.Value.AppId,
                     identityOptions.Value.ServiceVersion,
-                    options.Value));
+                    options.Value,
+                    keyedProcessorDomains: [LiveGuardedCounterProjectionHandler.SourceDomain, LiveReplayCounterProjectionHandler.SourceDomain]);
+                return Microsoft.AspNetCore.Http.Results.Ok(request.ProjectionSourceGuardVersion == 1
+                    ? DomainProjectionReplayRecovery.BindMetadata(serviceProvider,
+                        DomainProjectionOwnerProof.BindMetadata(response, serviceProvider.GetServices<DomainProjectionOwnerProofRegistration>()),
+                        serviceProvider.GetServices<IAsyncDomainProjectionHandler>())
+                    : response);
             });
+        MapGuardedCounterProof(_testHost);
         _ = _testHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
 
         await _testHost.StartAsync().ConfigureAwait(false);
@@ -1230,6 +1245,9 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
             "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
             CreateFoldedCounterCaptureLimits());
         _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
+        _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
+        _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>().BindConfiguration("EventStore:DomainService");
+        ConfigureGuardedCounter(builder);
         _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
         _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
         _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
@@ -1240,6 +1258,13 @@ public sealed class DaprTestContainerFixture : IAsyncLifetime
         _replicaTestHost = builder.Build();
         EnsureTestingEnvironment(_replicaTestHost.Services, "replica");
         _ = _replicaTestHost.MapActorsHandlers();
+        MapGuardedCounterProof(_replicaTestHost);
+        _ = _replicaTestHost.MapPost("/project/v2",
+            async (ProjectionDispatchRequest request, IServiceProvider services,
+                IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                IOptions<DomainProjectionIdentityOptions> identity, CancellationToken cancellationToken)
+                => Microsoft.AspNetCore.Http.Results.Ok(await DomainProjectionDispatcher.DispatchAsync(
+                    services, request, options.Value, identity.Value, cancellationToken).ConfigureAwait(false)));
         _ = _replicaTestHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
         await _replicaTestHost.StartAsync().ConfigureAwait(false);
     }

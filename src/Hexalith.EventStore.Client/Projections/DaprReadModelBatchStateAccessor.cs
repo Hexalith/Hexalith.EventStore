@@ -17,9 +17,13 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
 
     /// <inheritdoc/>
     public async Task<RawStateEntry> ReadAsync(string key, CancellationToken cancellationToken) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
         (ReadOnlyMemory<byte> value, string etag) = await daprClient
             .GetByteStateAndETagAsync(storeName, key, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, value.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, value.Length);
         return string.IsNullOrEmpty(etag)
             ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty)
             : new RawStateEntry(true, value, etag);
@@ -35,8 +39,12 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
         ReadOnlyMemory<byte> value,
         string expectedETag,
         TimeSpan? timeToLive,
-        CancellationToken cancellationToken) =>
-        await daprClient
+        CancellationToken cancellationToken) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, value.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, value.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        return await daprClient
             .TrySaveByteStateAsync(
                 storeName,
                 key,
@@ -50,10 +58,13 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
                     },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+    }
 
     /// <inheritdoc/>
-    public async Task<bool> TryDeleteAsync(string key, string expectedETag, CancellationToken cancellationToken) =>
-        await daprClient
+    public async Task<bool> TryDeleteAsync(string key, string expectedETag, CancellationToken cancellationToken) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        return await daprClient
             .TryDeleteStateAsync(
                 storeName,
                 key,
@@ -61,9 +72,16 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
                 new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+    }
 
     /// <inheritdoc/>
     public async Task ExecuteTransactionAsync(IReadOnlyList<RawTransactionOperation> operations, CancellationToken cancellationToken) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.TransactionAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationAttempts, operations.Count);
+        long bytes = operations.Sum(static operation => (long)operation.Value.Length);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, bytes);
         var requests = new List<StateTransactionRequest>(operations.Count);
         foreach (RawTransactionOperation operation in operations) {
             requests.Add(new StateTransactionRequest(

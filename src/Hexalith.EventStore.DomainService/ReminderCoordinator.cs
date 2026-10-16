@@ -286,6 +286,11 @@ internal sealed class ReminderCoordinator
             return "revision-invalid";
         }
 
+        if (intent.SourceMessageId is not null && string.IsNullOrWhiteSpace(intent.SourceMessageId))
+        {
+            return "source-message-invalid";
+        }
+
         if (intent.SourceSequence <= 0)
         {
             return "source-sequence-invalid";
@@ -318,7 +323,7 @@ internal sealed class ReminderCoordinator
             intent.Kind,
             targetDomain,
             targetAggregate,
-            EffectKindCatalog.PrimaryTargetOrdinal);
+            intent.Ordinal);
 
     private static ReminderEntry CreateWitness(ReminderIntent intent, DateTimeOffset now)
     {
@@ -337,7 +342,9 @@ internal sealed class ReminderCoordinator
             ReminderEntryStatus.Pending,
             0,
             null,
-            now);
+            now,
+            intent.Ordinal,
+            intent.SourceMessageId);
     }
 
     private static bool SameWitness(ReminderEntry left, ReminderEntry right)
@@ -349,6 +356,8 @@ internal sealed class ReminderCoordinator
             && string.Equals(left.SourceDomain, right.SourceDomain, StringComparison.Ordinal)
             && string.Equals(left.SourceAggregate, right.SourceAggregate, StringComparison.Ordinal)
             && left.SourceSequence == right.SourceSequence
+            && left.Ordinal == right.Ordinal
+            && string.Equals(left.SourceMessageId, right.SourceMessageId, StringComparison.Ordinal)
             && string.Equals(left.PayloadType, right.PayloadType, StringComparison.Ordinal)
             && string.Equals(left.PayloadDigest, right.PayloadDigest, StringComparison.Ordinal);
 
@@ -396,6 +405,7 @@ internal sealed class ReminderCoordinator
             AppendText(hash, intent.SourceAggregate);
             AppendLong(hash, intent.SourceSequence);
             AppendLong(hash, intent.ScheduleRevision);
+            AppendOptionalWitnessEvidence(hash, intent.Ordinal, intent.SourceMessageId);
         }
 
         return EffectIdentityCodec.RenderDigest(hash.GetHashAndReset());
@@ -434,6 +444,7 @@ internal sealed class ReminderCoordinator
             AppendText(hash, entry.LastReasonCode);
             AppendLong(hash, entry.UpdatedAt.UtcTicks);
             AppendLong(hash, entry.UpdatedAt.Offset.Ticks);
+            AppendOptionalWitnessEvidence(hash, entry.Ordinal, entry.SourceMessageId);
         }
 
         return EffectIdentityCodec.RenderDigest(hash.GetHashAndReset());
@@ -477,6 +488,7 @@ internal sealed class ReminderCoordinator
             || string.IsNullOrWhiteSpace(entry.SourceDomain)
             || string.IsNullOrWhiteSpace(entry.SourceAggregate)
             || string.IsNullOrWhiteSpace(entry.PayloadType)
+            || entry.SourceMessageId is not null && string.IsNullOrWhiteSpace(entry.SourceMessageId)
             || !IsDigest(entry.PayloadDigest)
             || !ReminderIdentityCodec.TryParseReminderName(entry.ReminderName, out string parsedKind, out string parsedToken)
             || !string.Equals(parsedKind, entry.Kind, StringComparison.Ordinal)
@@ -510,7 +522,7 @@ internal sealed class ReminderCoordinator
                 entry.Kind,
                 state.Domain,
                 state.Aggregate,
-                EffectKindCatalog.PrimaryTargetOrdinal));
+                entry.Ordinal));
             return true;
         }
         catch (ArgumentException)
@@ -523,12 +535,29 @@ internal sealed class ReminderCoordinator
         => record is not null
             && IsDigest(record.EvidenceDigest)
             && record.ReasonCode is "intent-missing" or "target-mismatch" or "kind-unsupported" or "due-not-utc"
-                or "revision-invalid" or "source-sequence-invalid" or "payload-invalid" or "identity-invalid"
+                or "revision-invalid" or "source-sequence-invalid" or "source-message-invalid" or "payload-invalid" or "identity-invalid"
                 or "witness-collision" or "effect-collision" or "actor-collision" or "translation-failed"
                 or "translation-invalid" or "effect-identity-invalid" or "domain-invalid" or "tuple-mismatch"
                 or "stored-entry-invalid" or "stored-entry-duplicate" or "stored-quarantine-invalid"
             && record.RecordedAt.Offset == TimeSpan.Zero
             && (record.ReminderName is null || ReminderIdentityCodec.TryParseReminderName(record.ReminderName, out _, out _));
+
+    private static void AppendOptionalWitnessEvidence(IncrementalHash hash, long ordinal, string? sourceMessageId)
+    {
+        // Historical zero/null evidence has no extension bytes. Tags distinguish each present field:
+        // a raw ordinal can otherwise encode the same bytes as a length-prefixed source message.
+        if (ordinal != 0)
+        {
+            AppendText(hash, "ordinal");
+            AppendLong(hash, ordinal);
+        }
+
+        if (sourceMessageId is not null)
+        {
+            AppendText(hash, "source-message-id");
+            AppendText(hash, sourceMessageId);
+        }
+    }
 
     private static void AppendText(IncrementalHash hash, string? value)
         => AppendBytes(hash, value is null ? null : Encoding.UTF8.GetBytes(value));
@@ -1445,8 +1474,8 @@ internal sealed class ReminderCoordinator
         }
 
         string messageId = "wrk-" + effectId;
-        // Causation follows the logical effect, not its replaceable schedule witness, so a committed
-        // receipt still matches after a same-source reschedule or an uncertain response.
+        // New domain adapters retain committed source causation; historical witnesses keep their prior binding.
+        string causationId = intent.SourceMessageId ?? messageId;
         var submission = new TrustedEffectSubmission(identity, command.CommandType, command.Payload, messageId, messageId);
         string? delegation = null;
         if (_delegationTokenProvider is not null)
@@ -1455,7 +1484,7 @@ internal sealed class ReminderCoordinator
             {
                 delegation = await _delegationTokenProvider
                     .GetDelegationTokenAsync(
-                        new ReminderDelegationRequest(submission, _options.Workload, purpose, messageId),
+                        new ReminderDelegationRequest(submission, _options.Workload, purpose, causationId),
                         cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -1474,7 +1503,7 @@ internal sealed class ReminderCoordinator
         try
         {
             receipt = await _submitter
-                .SubmitAsync(submission, new TrustedEffectContext(_options.Workload, purpose, messageId, delegation), cancellationToken)
+                .SubmitAsync(submission, new TrustedEffectContext(_options.Workload, purpose, causationId, delegation), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

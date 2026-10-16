@@ -13,6 +13,15 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// Tracks all invocations for test assertions.
 /// </summary>
 public sealed class FakeDomainServiceInvoker : IDomainServiceInvoker {
+    /// <summary>Records a synthetic trusted invocation while preserving configured fake aggregate behavior.</summary>
+    public Task<DomainResult> InvokeTrustedEffectAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin origin,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        return InvokeAsync(command, currentState, includePostCommandState, snapshotCaptureProfileId, cancellationToken);
+    }
+
     private readonly ConcurrentQueue<(CommandEnvelope Command, object? CurrentState)> _invocations = new();
     private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, Task<DomainResult>>> _aggregateHandlers = new();
     private readonly ConcurrentDictionary<string, Func<CommandEnvelope, object?, bool, string?, Task<DomainResult>>> _aggregateSnapshotHandlers = new();

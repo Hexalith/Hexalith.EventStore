@@ -1,10 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Actors;
 
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -15,7 +20,116 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public class ProjectionDeliveryIdempotencyCoordinatorTests {
+public partial class ProjectionDeliveryIdempotencyCoordinatorTests {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GuardedCurrent_DoubleSamplesSourceAndPerformsNoHistoryOrMutations(bool changeHead)
+    {
+        SourceProof seed = SourceProofCodec.CreateSeed(Identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        SourceProof head = SourceProofCodec.Extend(seed, new EventEnvelope("message-1", Identity.AggregateId, "Order", Identity.TenantId,
+            Identity.Domain, 1, 1, Now, "correlation-1", "cause-1", "user-1", "v1", "OrderChanged", 1, "json", [1], null));
+        string fingerprint = new('a', 64);
+        var capability = new ProjectionSourceGuardCapability(1, 1, 1, "single-event-v1", "projection-owner-proof/v1",
+            "event-message-id/v1", "read-model-batch/v1");
+        var entry = new NamedProjectionRouteCatalogEntry("sample", "v1", Identity.Domain, 2,
+            ProjectionDispatchProtocol.Capability, fingerprint, ["order-detail"])
+        {
+            SourceGuardCapabilities = new Dictionary<string, ProjectionSourceGuardCapability> { ["order-detail"] = capability },
+        };
+        INamedProjectionRouteCatalog catalogs = Substitute.For<INamedProjectionRouteCatalog>();
+        catalogs.Current.Returns(new NamedProjectionRouteCatalogSnapshot([entry]));
+        var marker = new ProjectionSourceGuard(1, 1, 2, 2, 1, Identity.TenantId, Identity.Domain, Identity.AggregateId, "order-detail",
+            seed.SourceIncarnation, fingerprint, capability.HandlerSemantics, ProjectionSourceGuard.ApprovedSpecSha256, new string('b', 40), Now);
+        var selected = new ProjectionOwnerProof(new(1, Identity.TenantId, Identity.Domain, Identity.AggregateId, "order-detail",
+            "owner-1", "generation-1", 1, "message-1", "message-1", "version-1"), "receipt-1", "v1:" + new string('A', 43));
+        ProjectionDeliveryFingerprintHistory history = ProjectionDeliveryFingerprint.ComputeHistory(Identity, "order-detail", [Event(1)]);
+        ProjectionDeliveryState state = EmptyState() with
+        {
+            SchemaVersion = 2, GuardEvidenceVersion = 1, LastDeliveredSequence = 1, LastCompletedMessageId = "message-1",
+            CompletedPrefixFingerprint = history.PrefixFingerprint, CompletedReceipts = [Receipt(history.Events[0])], FirstRetainedSequence = 1,
+            CompletedMessageIdDigests = [Convert.ToBase64String(SHA256.HashData("message-1"u8))],
+            GuardEvidence = new(head, fingerprint, capability.HandlerSemantics, selected, 2),
+        };
+        IProjectionDeliveryStateStore store = Substitute.For<IProjectionDeliveryStateStore>();
+        store.ReadAsync(Identity, "order-detail", Arg.Any<CancellationToken>()).Returns(new ProjectionDeliveryStateReadResult(
+            state, "etag", ProjectionDeliveryStateClassification.Current, true) { SourceGuard = marker });
+        IAggregateActor source = Substitute.For<IAggregateActor>();
+        var inspection = new SourceProofInspection(SourceProofInspectionStatus.Available, true, 1, false, head);
+        source.InspectSourceProofAsync().Returns(inspection, changeHead ? inspection with { CurrentSequence = 2 } : inspection);
+        IActorProxyFactory actors = Substitute.For<IActorProxyFactory>();
+        actors.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), Arg.Any<string>(), Arg.Any<ActorProxyOptions>()).Returns(source);
+        IProjectionLifecycleGateway lifecycle = Substitute.For<IProjectionLifecycleGateway>();
+        var idle = new ProjectionLifecycleSnapshot(ProjectionLifecyclePhase.Idle, 2);
+        lifecycle.ReadSnapshotAsync(Identity, "order-detail", Arg.Any<CancellationToken>()).Returns(idle);
+        IProjectionSelectedOwnerProofGateway proof = Substitute.For<IProjectionSelectedOwnerProofGateway>();
+        proof.ReadAsync(Identity, entry, "order-detail", idle, Arg.Any<CancellationToken>()).Returns(new ProjectionOwnerProofResult(selected, null, 4, 1024));
+        var delivery = new ProjectionSourceGuardDelivery(catalogs, store, lifecycle, proof, actors, Options.Create(new EventStoreActorOptions()));
+
+        ProjectionSourceGuardDeliveryResult result = await delivery.TryDeliverAsync(Identity, CancellationToken.None);
+
+        result.Owned.ShouldBeTrue();
+        result.AlreadyCurrent.ShouldBe(!changeHead);
+        result.ReasonCode.ShouldBe(changeHead ? "head_changed" : null);
+        await source.Received(2).InspectSourceProofAsync();
+        await source.DidNotReceiveWithAnyArgs().ReadEventsRangeAsync(default, default, default);
+        await source.DidNotReceiveWithAnyArgs().ReadEventsBoundedRangeAsync(default, default, default, default);
+        await store.DidNotReceiveWithAnyArgs().TrySaveAsync(default!, default!, default!, default!, default);
+        await lifecycle.DidNotReceiveWithAnyArgs().BeginDeliveryWriteAsync(default!, default!, default!, default);
+        await lifecycle.DidNotReceiveWithAnyArgs().CompleteDeliveryWriteAsync(default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task GuardedCompletion_RequiresPendingFenceAndActualIdleBindingWhileCheckpointRemainsUnchanged()
+    {
+        SourceProof seed = SourceProofCodec.CreateSeed(Identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        var stored = new EventEnvelope("message-1", Identity.AggregateId, "Order", Identity.TenantId, Identity.Domain,
+            1, 1, Now, "correlation-1", "cause-1", "user-1", "v1", "OrderChanged", 1, "json", [1], null);
+        SourceProof head = SourceProofCodec.Extend(seed, stored);
+        string catalog = new('a', 64);
+        var marker = new ProjectionSourceGuard(1, 1, 2, 2, 1, Identity.TenantId, Identity.Domain,
+            Identity.AggregateId, "order-detail", seed.SourceIncarnation, catalog, "single-event-v1",
+            ProjectionSourceGuard.ApprovedSpecSha256, new string('b', 40), Now);
+        ProjectionDeliveryState state = EmptyState() with { SchemaVersion = 2, GuardEvidenceVersion = 1 };
+        IProjectionDeliveryStateStore store = Substitute.For<IProjectionDeliveryStateStore>();
+        int writes = 0;
+        store.ReadAsync(Identity, "order-detail", Arg.Any<CancellationToken>()).Returns(_ =>
+            new ProjectionDeliveryStateReadResult(state, "etag", ProjectionDeliveryStateClassification.Current, true) { SourceGuard = marker });
+        store.TrySaveAsync(Identity, "order-detail", Arg.Any<ProjectionDeliveryState>(), "etag", Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            state = call.ArgAt<ProjectionDeliveryState>(2);
+            writes++;
+            return true;
+        });
+        ProjectionDeliveryIdempotencyCoordinator coordinator = CreateCoordinator(store);
+        ProjectionDeliveryFingerprintHistory history = ProjectionDeliveryFingerprint.ComputeHistory(Identity, "order-detail", [Event(1)]);
+        var binding = new ProjectionDeliveryGuardReservation(seed, head, catalog, "single-event-v1", "generation-1", null);
+        ProjectionDeliveryAdmissionResult admitted = await coordinator.TryAdmitHistoryAsync(Identity, "order-detail", history,
+            true, guardBinding: binding);
+        ProjectionDeliveryReservation reservation = admitted.Reservation.ShouldNotBeNull();
+        var owner = new ProjectionOwnerProof(new(1, Identity.TenantId, Identity.Domain, Identity.AggregateId, "order-detail",
+            "owner-1", "generation-1", 1, "message-1", "message-1", "version-1"), "receipt-1", "v1:" + new string('A', 43));
+        var evidence = new ProjectionDeliveryGuardEvidence(head, catalog, "single-event-v1", owner, 2);
+
+        (await coordinator.CompleteHistoryAsync(Identity, "order-detail", history, reservation, guardEvidence: evidence))
+            .ShouldBe(ProjectionDeliveryCompletion.Fenced);
+        (await coordinator.PrepareIdleBindingAsync(Identity, "order-detail", reservation, "operation-1", owner)).ShouldBeTrue();
+        state.LastDeliveredSequence.ShouldBe(0);
+        state.ActiveReservation.ShouldBe(reservation);
+        state.IdleBindingPending.ShouldNotBeNull();
+        (await coordinator.TryReleaseAsync(Identity, "order-detail", reservation)).ShouldBeFalse();
+        (await coordinator.CompleteHistoryAsync(Identity, "order-detail", history, reservation,
+            guardEvidence: evidence with { IdleLifecycleRevision = 0 })).ShouldBe(ProjectionDeliveryCompletion.Fenced);
+        (await coordinator.CompleteHistoryAsync(Identity, "order-detail", history, reservation, guardEvidence: evidence))
+            .ShouldBe(ProjectionDeliveryCompletion.Completed);
+        state.LastDeliveredSequence.ShouldBe(1);
+        state.IdleBindingPending.ShouldBeNull();
+        state.ActiveReservation.ShouldBeNull();
+        state.GuardEvidence.ShouldBe(evidence);
+        state.CompletedMessageIdDigests.ShouldHaveSingleItem();
+        writes.ShouldBe(3);
+    }
+
     private static readonly AggregateIdentity Identity = new("tenant-a", "sales", "order-42");
     private static readonly DateTimeOffset Now = new(2026, 7, 14, 10, 0, 0, TimeSpan.Zero);
 

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Dapr.Client;
 
 using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Projections;
 
@@ -14,7 +15,27 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public class ProjectionDeliveryStateContractTests {
+public partial class ProjectionDeliveryStateContractTests {
+    [Fact]
+    public void SourceGuardKeyAndStrictJsonArePinnedWithoutChangingWriterMarkerBytes()
+    {
+        ProjectionDeliveryStateKeys.GetSourceGuardKey(Identity, "order-detail")
+            .ShouldBe("projection-delivery-source-guard:v1:8652ab6ecd743d066320b60cfb7cfcef180800d28cf3f2d55dc948f282ccb419");
+        var marker = new ProjectionSourceGuard(1, 1, 2, 2, 1, Identity.TenantId, Identity.Domain,
+            Identity.AggregateId, "order-detail", "01ARZ3NDEKTSV4RRFFQ69G5FAV", new string('a', 64),
+            "single-event-v1", ProjectionSourceGuard.ApprovedSpecSha256, new string('b', 40), DateTimeOffset.UnixEpoch);
+        marker.IsValid(Identity, "order-detail").ShouldBeTrue();
+        string json = JsonSerializer.Serialize(marker, JsonSerializerOptions.Web);
+        using JsonDocument valid = JsonDocument.Parse(json);
+        ProjectionSourceGuard.Parse(valid.RootElement, JsonSerializerOptions.Web).ShouldBe(marker);
+        using JsonDocument duplicate = JsonDocument.Parse(json.Replace("{", "{\"guardVersion\":1,", StringComparison.Ordinal));
+        Should.Throw<JsonException>(() => ProjectionSourceGuard.Parse(duplicate.RootElement, JsonSerializerOptions.Web));
+        using JsonDocument unknown = JsonDocument.Parse(json.Replace("{", "{\"wildcard\":true,", StringComparison.Ordinal));
+        Should.Throw<JsonException>(() => ProjectionSourceGuard.Parse(unknown.RootElement, JsonSerializerOptions.Web));
+        (marker with { GuardVersion = 2 }).IsValid(Identity, "order-detail").ShouldBeFalse();
+        (marker with { SpecSha256 = new string('c', 64) }).IsValid(Identity, "order-detail").ShouldBeFalse();
+    }
+
     private static readonly AggregateIdentity Identity = new("tenant-a", "sales", "order-42");
 
     [Fact]
@@ -86,17 +107,18 @@ public class ProjectionDeliveryStateContractTests {
     [Fact]
     public async Task ProtocolMarker_FirstWriteActivatesV2AndRefusesDowngrade() {
         DaprClient dapr = Substitute.For<DaprClient>();
-        _ = dapr.GetStateAndETagAsync<ProjectionDeliveryWriterProtocol>(
+        dapr.JsonSerializerOptions.Returns(JsonSerializerOptions.Web);
+        _ = dapr.GetByteStateAndETagAsync(
                 "statestore",
                 ProjectionDeliveryStateKeys.WriterProtocol,
                 consistencyMode: Arg.Any<ConsistencyMode?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
                 cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(((ProjectionDeliveryWriterProtocol, string))(null!, string.Empty));
-        _ = dapr.TrySaveStateAsync(
+            .Returns((ReadOnlyMemory<byte>.Empty, string.Empty));
+        _ = dapr.TrySaveByteStateAsync(
                 "statestore",
                 ProjectionDeliveryStateKeys.WriterProtocol,
-                Arg.Any<ProjectionDeliveryWriterProtocol>(),
+                Arg.Any<ReadOnlyMemory<byte>>(),
                 string.Empty,
                 stateOptions: Arg.Any<StateOptions?>(),
                 metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
@@ -111,16 +133,25 @@ public class ProjectionDeliveryStateContractTests {
             "commit-abc",
             new DateTimeOffset(2026, 7, 14, 10, 0, 0, TimeSpan.Zero));
 
+        byte[] originalMarkerBytes = JsonSerializer.SerializeToUtf8Bytes(marker, JsonSerializerOptions.Web);
+        using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
         (await store.TryActivateWriterProtocolAsync(marker)).ShouldBeTrue();
 
-        _ = await dapr.Received(1).TrySaveStateAsync(
+        _ = await dapr.Received(1).TrySaveByteStateAsync(
             "statestore",
             ProjectionDeliveryStateKeys.WriterProtocol,
-            marker,
+            Arg.Is<ReadOnlyMemory<byte>>(value => value.ToArray().SequenceEqual(originalMarkerBytes)),
             string.Empty,
             Arg.Is<StateOptions?>(value => value != null && value.Concurrency == ConcurrencyMode.FirstWrite),
             metadata: Arg.Any<IReadOnlyDictionary<string, string>>(),
             cancellationToken: Arg.Any<CancellationToken>());
+        cost[ProjectionDeliveryCost.WriterActivationAttempts].ShouldBe(1);
+        cost[ProjectionDeliveryCost.MarkerReads].ShouldBe(1);
+        cost[ProjectionDeliveryCost.MarkerReadBytes].ShouldBe(0);
+        cost[ProjectionDeliveryCost.StateRpcAttempts].ShouldBe(2);
+        cost[ProjectionDeliveryCost.MutationAttempts].ShouldBe(1);
+        cost[ProjectionDeliveryCost.MutationBytes].ShouldBe(originalMarkerBytes.Length);
+        cost[ProjectionDeliveryCost.MetadataSerializationBytes].ShouldBe(originalMarkerBytes.Length);
         Should.Throw<ArgumentException>(() => new ProjectionDeliveryWriterProtocol(1, 1, "old", DateTimeOffset.UtcNow));
     }
 

@@ -108,8 +108,12 @@ public partial class EventPersister(
             .ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (metadataResult.HasValue && metadataResult.Value.SourceErasurePending)
+            throw new InvalidOperationException("SourceHeadChanged: aggregate erasure is in progress.");
+
         long currentSequence = metadataResult.HasValue ? metadataResult.Value.CurrentSequence : 0;
-        if (metadataResult.HasValue && currentSequence <= 0) {
+        if (metadataResult.HasValue && (currentSequence < 0 || currentSequence == 0
+            && !SourceProofCodec.IsQualifiedEmpty(metadataResult.Value, identity))) {
             throw new InvalidOperationException("Invalid aggregate metadata: a stored CurrentSequence must be positive.");
         }
 
@@ -120,6 +124,14 @@ public partial class EventPersister(
         }
 
         long newSequence = checked(currentSequence + domainResult.Events.Count);
+        SourceProof? sourceProof = metadataResult.HasValue
+            ? metadataResult.Value.SourceProof
+            : SourceProofCodec.CreateSeed(identity, UniqueIdHelper.GenerateSortableUniqueStringId());
+        if (sourceProof is not null
+            && (!SourceProofCodec.IsValid(sourceProof, identity, currentSequence, retainedFloor) || sourceProof.Erased))
+        {
+            throw new InvalidOperationException("source_conflict");
+        }
 
         string causationId = command.CausationId ?? command.CorrelationId;
         var messageIds = new string[validatedPayloads.Count];
@@ -226,6 +238,11 @@ public partial class EventPersister(
                     ApplicationPayloadDigest = EventLogicalDigest.Compute(envelope, applicationFormat, applicationPayloadHash),
                 };
 
+                if (sourceProof is not null)
+                {
+                    sourceProof = SourceProofCodec.Extend(sourceProof, envelope);
+                }
+
                 envelopes.Add(envelope);
 
                 string key = $"{identity.EventStreamKeyPrefix}{sequenceNumber}";
@@ -241,7 +258,7 @@ public partial class EventPersister(
             cancellationToken.ThrowIfCancellationRequested();
             await stateManager
                 .SetStateAsync(identity.MetadataKey, new AggregateMetadata(
-                    newSequence, timestamp, null, retainedFloor), cancellationToken)
+                    newSequence, timestamp, null, retainedFloor) { SourceProof = sourceProof }, cancellationToken)
                 .ConfigureAwait(false);
 
             Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);

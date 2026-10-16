@@ -149,6 +149,42 @@ internal sealed class SharedProjectionControlIndexWriter
         return live;
     }
 
+    internal async Task<SharedProjectionControlIndexReadResult> ReadAvailableTenantsAsync(
+        string storeName, string indexName, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        string indexKey = StateKey(indexName);
+        ReadModelEntry<SharedProjectionControlIndexState> entry = await SharedProjectionDiscoveryReadAdmission.ReadAsync(
+            _store, storeName, indexKey,
+            ct => _store.GetAsync<SharedProjectionControlIndexState>(storeName, indexKey, ct), cancellationToken).ConfigureAwait(false);
+        if (entry.Value is null) return new([], false);
+        // A malformed global registry is never partial membership.
+        ValidateState(entry.Value, indexName);
+        var live = new List<string>();
+        bool incomplete = false;
+        foreach (string[] batch in entry.Value.TenantIds.Chunk(16))
+        {
+            (string Tenant, bool Available, bool Live)[] results = await Task.WhenAll(batch.Select(async tenant =>
+            {
+                try
+                {
+                    SharedProjectionControlIndexTombstone? tombstone = await SharedProjectionDiscoveryReadAdmission.ReadAsync(
+                        _store, storeName, TombstoneKey(indexName, tenant),
+                        ct => ReadTombstoneAsync(storeName, indexName, tenant, ct), cancellationToken).ConfigureAwait(false);
+                    return (tenant, true, tombstone is null);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+                catch (Exception) { return (tenant, false, false); }
+            })).ConfigureAwait(false);
+            foreach (var result in results)
+            {
+                incomplete |= !result.Available;
+                if (result.Available && result.Live) live.Add(result.Tenant);
+            }
+        }
+        return new(live, incomplete);
+    }
+
     internal async Task TombstoneAndPruneAsync(
         string storeName,
         string indexName,

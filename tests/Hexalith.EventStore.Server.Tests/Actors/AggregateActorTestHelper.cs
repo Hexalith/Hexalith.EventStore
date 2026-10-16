@@ -71,7 +71,8 @@ internal static class AggregateActorTestHelper {
         ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null,
         IServiceProvider? serviceProvider = null,
         string actorId = "test-tenant:test-domain:agg-001",
-        ISnapshotManager? snapshotManager = null) {
+        ISnapshotManager? snapshotManager = null,
+        bool configureTrustedInvokerSubstitute = false) {
         bool configureSubstituteStateManager = stateManager is null;
         bool configureDefaultInvoker = invoker is null;
         bool configureDefaultPublisher = eventPublisher is null;
@@ -82,6 +83,15 @@ internal static class AggregateActorTestHelper {
         }
 
         invoker ??= Substitute.For<IDomainServiceInvoker>();
+        if (configureDefaultInvoker || configureTrustedInvokerSubstitute)
+        {
+            // Forward only helper-created or explicitly opted-in substitutes. Real caller invokers
+            // must never receive argument matchers that could poison later tests.
+            IDomainServiceInvoker effectInvoker = invoker;
+            _ = invoker.InvokeTrustedEffectAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(),
+                Arg.Any<string?>(), Arg.Any<Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin>(), Arg.Any<CancellationToken>())
+                .Returns(call => effectInvoker.InvokeAsync(call.ArgAt<CommandEnvelope>(0), call.ArgAt<object?>(1), call.ArgAt<bool>(2), call.ArgAt<string?>(3), call.ArgAt<CancellationToken>(5)));
+        }
         snapshotManager ??= Substitute.For<ISnapshotManager>();
         ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
         _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
@@ -111,6 +121,8 @@ internal static class AggregateActorTestHelper {
                     Arg.Any<CommandEnvelope>(),
                     Arg.Any<object?>(),
                     Arg.Any<CancellationToken>())
+                .Returns(DomainResult.NoOp());
+            _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(DomainResult.NoOp());
         }
 

@@ -1,0 +1,129 @@
+{
+  "status": "source primitives only; incomplete workload qualification",
+  "artifacts": [
+    {
+      "name": "daprd",
+      "url": "https://github.com/dapr/dapr/releases/download/v1.18.2/daprd_linux_amd64.tar.gz",
+      "archiveSha256": "5e9b01848d256f3ee931235d0d70e3cc97dd2b8e8f4d35b2abdc97d57195a188",
+      "binarySha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "versionExit": 0,
+      "versionOutput": "1.18.2",
+      "versionCommand": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "--version"
+      ],
+      "declaredRelease": "v1.18.2"
+    },
+    {
+      "name": "placement",
+      "url": "https://github.com/dapr/dapr/releases/download/v1.18.2/placement_linux_amd64.tar.gz",
+      "archiveSha256": "ad182ea14736ba3a08edff4c787452e953aecaf6d9ce4f6e4201d389e3d4ab7c",
+      "binarySha256": "40dc8f8b525fc06aa914f930c87c52db33b02523ad1e2c0bcef2f4e1b5351d77",
+      "versionExit": 2,
+      "versionOutput": "unknown flag: --version\nunknown flag: --version",
+      "versionCommand": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+        "--version"
+      ],
+      "declaredRelease": "v1.18.2"
+    },
+    {
+      "name": "scheduler",
+      "url": "https://github.com/dapr/dapr/releases/download/v1.18.2/scheduler_linux_amd64.tar.gz",
+      "archiveSha256": "eadab79a7d836f2b5656ffdb850a06514c02222ce642bd8b9820e3e0e21964dd",
+      "binarySha256": "da84c39646cce5a30f076e9d283e67064ae6f62677f02a78014da14eda02e56a",
+      "versionExit": 2,
+      "versionOutput": "unknown flag: --version\nunknown flag: --version",
+      "versionCommand": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+        "--version"
+      ],
+      "declaredRelease": "v1.18.2"
+    }
+  ],
+  "execution": {
+    "binaryRoot": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg",
+    "placementPort": 52825,
+    "schedulerPort": 32931,
+    "commands": [
+      [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+        "--id",
+        "story64-cont06-placement",
+        "--port",
+        "52825",
+        "--listen-address",
+        "127.0.0.1",
+        "--healthz-port",
+        "59671",
+        "--metrics-port",
+        "50501",
+        "--initial-cluster",
+        "story64-cont06-placement=127.0.0.1:36689"
+      ],
+      [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+        "--id",
+        "story64-cont06-scheduler",
+        "--port",
+        "32931",
+        "--listen-address",
+        "127.0.0.1",
+        "--healthz-port",
+        "49989",
+        "--metrics-port",
+        "43527",
+        "--etcd-client-port",
+        "51899",
+        "--etcd-initial-cluster",
+        "story64-cont06-scheduler=http://127.0.0.1:44463",
+        "--etcd-data-dir",
+        "/tmp/story-6-4-cont06-pinned-final-sdancti5/etcd"
+      ]
+    ],
+    "testCommand": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-method",
+      "*SourceProof_RealActorAtomicAppend*",
+      "-showLiveOutput"
+    ],
+    "testExitCode": 0,
+    "infrastructureExitCodes": [
+      0,
+      0
+    ]
+  },
+  "sourceCosts": [
+    {
+      "head": 256,
+      "pages": 1,
+      "ranges": 2,
+      "reads": 256,
+      "returned": 256,
+      "sizingBytes": 326952,
+      "responseBytes": 327209,
+      "transportRequests": 5,
+      "transportRequestBodyBytes": 374,
+      "transportResponseBodyBytes": 226118
+    },
+    {
+      "head": 257,
+      "pages": 2,
+      "ranges": 3,
+      "reads": 257,
+      "returned": 257,
+      "sizingBytes": 328338,
+      "responseBytes": 328597,
+      "transportRequests": 6,
+      "transportRequestBodyBytes": 566,
+      "transportResponseBodyBytes": 227450
+    }
+  ],
+  "SDK": "10.0.401",
+  "runtime": "10.0.12",
+  "controlPlaneStartupVersion": "1.18.2",
+  "controlPlaneStartupCommit": "d2dd3747145e38e4d85db4714e26d7569c9c37db",
+  "component": "state.redis / Redis 6; shared dapr_redis left unchanged",
+  "measurementScope": "Canonical compact event-array bytes and actual DataContract actor HTTP request/response body bytes are separate overlapping representations; not additive totals. The observation handler buffers bodies; no memory/CPU qualification is claimed."
+}

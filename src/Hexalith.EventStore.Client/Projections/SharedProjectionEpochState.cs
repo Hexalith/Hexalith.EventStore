@@ -65,6 +65,18 @@ internal sealed record SharedProjectionEpochState(
     bool OwnerSequenceHandoffPending = false,
     int StageReservedPageCount = 0)
 {
+    /// <summary>Conflicting delivery identities, including the explicit repair audit.</summary>
+    public SharedProjectionDeliveryConflict[] DeliveryConflicts { get; init; } = [];
+
+    /// <summary>The first identity beyond the bounded evidence capacity; requires scope restore or offboarding.</summary>
+    public SharedProjectionDeliveryConflict? DeliveryConflictOverflow { get; init; }
+
+    /// <summary>Discoverable terminal fold dispositions, including sources without successful family membership.</summary>
+    public SharedProjectionParkingEvidence[] ParkingEvidence { get; init; } = [];
+
+    /// <summary>The first parked identity beyond bounded evidence capacity; requires scope restore or offboarding.</summary>
+    public SharedProjectionParkingEvidence? ParkingEvidenceOverflow { get; init; }
+
     /// <summary>The pre-copy-on-write selected generation inherited by unchanged logical keys.</summary>
     public long? CopyOnWriteAnchorGeneration { get; init; }
 
