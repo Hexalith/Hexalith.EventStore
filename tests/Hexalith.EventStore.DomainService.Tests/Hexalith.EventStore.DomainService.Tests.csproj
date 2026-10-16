@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs" Link="Fixtures/RecordingDaprClient.cs" />
   </ItemGroup>
 
 </Project>

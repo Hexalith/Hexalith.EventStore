@@ -34,7 +34,8 @@ public sealed class ProjectionDeliveryRetryWorkerTests {
         scheduler.TryAcquireAsync(work, Arg.Any<string>(), now, Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns(acquired ? claimed : null);
         IProjectionSourceGuardDelivery guard = Substitute.For<IProjectionSourceGuardDelivery>();
-        guard.ReclaimCompletedReplayAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>()).Returns(true);
+        guard.ReclaimCompletedReplayAsync(Arg.Any<AggregateIdentity>(), Arg.Any<ProjectionDeliveryRetryWorkItem>(),
+            Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>()).Returns(true);
         guard.TryDeliverAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>()).Returns(
             new ProjectionSourceGuardDeliveryResult(true, true, null) {
                 ObservedHeadSequence = work.HeadSequence,

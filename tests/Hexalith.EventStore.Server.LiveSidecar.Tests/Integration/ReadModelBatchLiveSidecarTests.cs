@@ -305,7 +305,7 @@ public class ReadModelBatchLiveSidecarTests {
     }
 
     private static async Task<ConnectionMultiplexer> ConnectRedisAsync() =>
-        await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true");
+        await ConnectionMultiplexer.ConnectAsync($"{DaprTestContainerFixture.RedisEndpoint},abortConnect=false,allowAdmin=true");
 
     private async Task<byte[]?> ReadStateJsonAsync(IDatabase db, string logicalKey) {
         RedisValue value = await db.HashGetAsync($"{_fixture.AppId}||{logicalKey}", "data");

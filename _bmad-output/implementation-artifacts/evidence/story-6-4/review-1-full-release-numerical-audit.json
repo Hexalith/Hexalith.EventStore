@@ -1,0 +1,20 @@
+{
+  "sourceSnapshot": "sourceSnapshot4",
+  "vectors": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-live-full-release1-vectors.json",
+  "sha256": "bb27cf858cf192a723787b17f37c307e4d5ed0018cec4c36d0a06ea98e826c12",
+  "observations": {
+    "ProjectionGuardActivationClosure": 1,
+    "ProjectionGuardNativeAttempts": 9,
+    "ProjectionGuardTypedFailure": 1,
+    "ProjectionGuardEmptyCost": 1,
+    "ProjectionSourceCost": 2,
+    "ProjectionReplayRecoveryAttempt": 12,
+    "ProjectionGuardCurrentMatrix": 15,
+    "ProjectionGuardCatalogColdWarm": 1,
+    "ProjectionGuardLiveCost": 7
+  },
+  "currentRowsIndependentlyAudited": 15,
+  "nonemptyTailRowsIndependentlyAudited": 6,
+  "result": "pass",
+  "limits": "Cumulative counters independently evaluated; exact per-pass B/V assertions remain owned by executable fixtures."
+}

@@ -363,7 +363,7 @@ public sealed class SharedProjectionEpochLiveSidecarTests(DaprTestContainerFixtu
 
         (await coordinator.GetCheckpointAsync(scope, "delivery-stream"))!.Position.ShouldBe(10_000);
         await using ConnectionMultiplexer redis = await ConnectionMultiplexer.ConnectAsync(
-            "localhost:6379,abortConnect=false,allowAdmin=true");
+            $"{DaprTestContainerFixture.RedisEndpoint},abortConnect=false,allowAdmin=true");
         IDatabase database = redis.GetDatabase();
         string prefix = fixture.AppId + "||";
         RedisResult[] physicalKeys = (RedisResult[])(await database.ExecuteAsync(

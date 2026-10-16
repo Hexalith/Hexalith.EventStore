@@ -11,6 +11,26 @@ namespace Hexalith.EventStore.DomainService;
 /// <summary>Retains the first guarded replay plan through the existing private rebuild transport state seam.</summary>
 internal static class DomainProjectionGuardedReplay
 {
+    private static ReadOnlySpan<byte> ManifestTag => "hexalith.guarded-replay.manifest.v3\0"u8;
+
+    private static byte[] BindManifest(byte[] manifest, string requestDigest)
+    {
+        byte[] result = new byte[ManifestTag.Length + 64 + manifest.Length];
+        ManifestTag.CopyTo(result);
+        System.Text.Encoding.ASCII.GetBytes(requestDigest, result.AsSpan(ManifestTag.Length, 64));
+        manifest.CopyTo(result, ManifestTag.Length + 64);
+        return result;
+    }
+
+    /// <summary>Returns unchanged canonical bytes from either accepted private manifest representation.</summary>
+    internal static ReadOnlyMemory<byte> OriginalManifest(byte[] bytes, string? requestDigest)
+    {
+        if (!bytes.AsSpan().StartsWith(ManifestTag)) return bytes; // accepted original private format
+        if (bytes.Length <= ManifestTag.Length + 64 || requestDigest is not null
+            && !bytes.AsSpan(ManifestTag.Length, 64).SequenceEqual(System.Text.Encoding.ASCII.GetBytes(requestDigest)))
+            throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        return bytes.AsMemory(ManifestTag.Length + 64);
+    }
     /// <summary>Resolves exact enrolled routes without invoking their domain handlers.</summary>
     internal static (IAsyncDomainProjectionHandler[] Handlers, string Store)? Resolve(IServiceProvider services,
         ProjectionDispatchRequest request, ProjectionDispatchOptions options, DomainProjectionIdentityOptions identity)
@@ -65,10 +85,27 @@ internal static class DomainProjectionGuardedReplay
             DomainProjectionRebuildTransport.Key(request, -3), cancellationToken).ConfigureAwait(false)).Value;
         if (reference is null)
         {
-            if ((await store.GetAsync<byte[]>(storeName, DomainProjectionRebuildTransport.Key(request, -2),
-                cancellationToken).ConfigureAwait(false)).Value is not null)
-                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
-            return null;
+            byte[]? orphan = (await store.GetAsync<byte[]>(storeName, DomainProjectionRebuildTransport.Key(request, -2),
+                cancellationToken).ConfigureAwait(false)).Value;
+            if (orphan is null) return null;
+            // The first write is already the entire immutable plan. Recover its owners
+            // from those bytes; never invoke preparation against a possibly advanced model.
+            ReadModelBatch recovered;
+            try
+            {
+                recovered = ReadModelBatchManifestCodec.DecodeCoordinated(OriginalManifest(orphan, RequestDigest(request)),
+                    new(storeName, request.Request.TenantId, request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId));
+                if (recovered.OwnerSelections is not { Count: > 0 } owners || owners.Count != request.ProjectionTypes.Count
+                    || owners.Any(owner => !request.ProjectionTypes.Contains(owner.ProjectionName, StringComparer.Ordinal)
+                        || owner.AppliedSequence != request.Request.RebuildSourceHeadSequence || owner.MessageId != request.DispatchId
+                        || owner.BatchId != request.DispatchId || owner.ReceiptProjectionName != "rebuild")
+                    || !ProjectionReplayTransportContext.MatchesOwners(request.Request, owners))
+                    throw new ArgumentException("The original plan does not match its admitted owners.");
+            }
+            catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException
+                or KeyNotFoundException or FormatException or OverflowException)
+            { throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired); }
+            return await SaveAsync(services, request, recovered, storeName, cancellationToken).ConfigureAwait(false);
         }
         if (reference.Owners is not { Length: > 0 }
             || JsonSerializer.SerializeToUtf8Bytes(reference, JsonSerializerOptions.Web).Length > 16_384
@@ -80,7 +117,7 @@ internal static class DomainProjectionGuardedReplay
         byte[]? bytes = (await store.GetAsync<byte[]>(storeName, DomainProjectionRebuildTransport.Key(request, -2),
             cancellationToken).ConfigureAwait(false)).Value;
         if (bytes is null) throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
-        ReadModelBatch batch = ReadModelBatchManifestCodec.Decode(bytes,
+        ReadModelBatch batch = ReadModelBatchManifestCodec.Decode(OriginalManifest(bytes, RequestDigest(request)),
             new(storeName, request.Request.TenantId, request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId),
             null, reference.Owners, reference.Fingerprint);
         return batch;
@@ -101,10 +138,11 @@ internal static class DomainProjectionGuardedReplay
             throw new ProjectionDispatchValidationException("delivery_proof_limit_exceeded");
         IReadModelStore store = services.GetRequiredService<IReadModelStore>();
         string manifestKey = DomainProjectionRebuildTransport.Key(request, -2);
-        if (!await store.TrySaveAsync(storeName, manifestKey, manifest, string.Empty, cancellationToken).ConfigureAwait(false))
+        byte[] boundManifest = BindManifest(manifest, reference.RequestDigest);
+        if (!await store.TrySaveAsync(storeName, manifestKey, boundManifest, string.Empty, cancellationToken).ConfigureAwait(false))
         {
             byte[]? original = (await store.GetAsync<byte[]>(storeName, manifestKey, cancellationToken).ConfigureAwait(false)).Value;
-            if (original is null || !original.AsSpan().SequenceEqual(manifest))
+            if (original is null || !OriginalManifest(original, reference.RequestDigest).Span.SequenceEqual(manifest))
                 throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
         }
         if (!await store.TrySaveAsync(storeName, DomainProjectionRebuildTransport.Key(request, -3), reference,
@@ -144,7 +182,7 @@ internal static class DomainProjectionGuardedReplay
         return hash.Digest.ToUpperInvariant();
     }
 
-    /// <summary>Deletes only immutable private preparation whose selected terminal batch is independently proven.</summary>
+    /// <summary>Reclaims the original manifest after terminal proof, retaining the bounded no-reprepare reference.</summary>
     internal static async Task<bool> ReclaimAsync(IServiceProvider services, ProjectionDispatchRequest completed,
         ProjectionDispatchOptions options, DomainProjectionIdentityOptions identity, CancellationToken cancellationToken)
     {
@@ -178,12 +216,12 @@ internal static class DomainProjectionGuardedReplay
             if (selected.Proof?.Selection != owner || selected.Proof.ReceiptFingerprint != original.Fingerprint) return false;
         }
         ReadModelEntry<byte[]> manifest = await store.GetAsync<byte[]>(guarded.Value.Store, manifestKey, cancellationToken).ConfigureAwait(false);
-        if (manifest.Value is not null && (ReadModelBatchFingerprint.ComputeFromManifest(manifest.Value) != original.Fingerprint
+        if (manifest.Value is not null && (ReadModelBatchFingerprint.ComputeFromManifest(OriginalManifest(manifest.Value, null).Span) != original.Fingerprint
             || manifest.ETag is not { Length: > 0 }
             || !await eraser.TryEraseAsync(guarded.Value.Store, manifestKey, manifest.ETag, cancellationToken).ConfigureAwait(false))) return false;
-        // A lost manifest-delete response leaves the independently verifiable reference in place.
-        // The next cleanup can prove the same terminal selection and finish this exact deletion.
-        return reference.ETag is { Length: > 0 }
-            && await eraser.TryEraseAsync(guarded.Value.Store, referenceKey, reference.ETag, cancellationToken).ConfigureAwait(false);
+        // Keep this small immutable reference. A delayed Stage must fail closed after
+        // manifest reclamation instead of preparing a different plan under the same ID.
+        // A lost delete response is resolved by proving this same terminal selection again.
+        return true;
     }
 }

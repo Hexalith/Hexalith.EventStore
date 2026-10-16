@@ -1,0 +1,41 @@
+{
+  "sourceSnapshot": "sourceSnapshot5",
+  "oldCompiledDiscoveryCount": 5709,
+  "freshCompiledDiscoveryCount": 5713,
+  "newCases": 4,
+  "removedCasesBeyondDocumentedRename": 0,
+  "renamedMethods": {
+    "Hexalith.EventStore.Server.Tests.Configuration.ProjectionChangeNotifierOptionsTests.Validation_PubSubTransportWithCustomComponent_Fails": 1
+  },
+  "addedAndRenamedMethods": {
+    "Hexalith.EventStore.Server.Tests.Configuration.EventStoreWorkloadRateLimitTests.AssignedConfigurationStoreUpdatesTheEffectiveTenantLimitAsync": 1,
+    "Hexalith.EventStore.Server.Tests.Configuration.ProjectionChangeNotifierOptionsTests.Validation_PubSubTransportWithAssignedComponentAndBindingIssuer_Succeeds": 1,
+    "Hexalith.EventStore.Server.Tests.Controllers.ProjectionSubscriptionMetadataTests.ProgrammaticSubscriptionUsesPublisherOptionsAndDeclarativeModeSuppressesIt": 3
+  },
+  "oldAssemblyDiscovery": {
+    "commandVector": [
+      "dotnet",
+      "/tmp/story-6-4-review1-source4-assets-lqxfaven/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "-list",
+      "full/json",
+      "-preEnumerateTheories",
+      "-noColor"
+    ],
+    "exitCode": 0,
+    "discovered": 5709,
+    "log": "/tmp/story-6-4-review1-source4-server-discovery-post-drift.json",
+    "logSha256": "255138511d04100935efb0a616762daf81b946e0bb0695f64c0fd7090e0941b9",
+    "originalAssemblyIdentity": {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "archivePath": "/tmp/story-6-4-review1-source4-assets-lqxfaven/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "bytes": 8159744,
+      "sha256": "7245bf9fb73ecd6874555ad96b5d2a6e250ab923ffbe0ac8af72e9dc6b8264cf"
+    },
+    "discoveryOnlyAugmentation": "Copied missing non-archived dependencies/content from current test-bin; original archived core DLL/deps/runtime identities remain unchanged. Current owning checkout provides shared data sources. No tests executed.",
+    "additionalFilesCopied": 690
+  },
+  "newAssemblyDiscoveryLog": "/tmp/story-6-4-review1-gate-source5-server-discovery.log",
+  "newAssemblyDiscoveryLogSha256": "3b3d3a2379b4cd30f9d5b028d67cfcbdb4ddf32fcb603decfdbffa340b9f3a7f",
+  "allOtherMethodCaseCountsUnchanged": true,
+  "result": "pass"
+}

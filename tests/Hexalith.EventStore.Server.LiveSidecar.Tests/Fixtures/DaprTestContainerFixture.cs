@@ -94,7 +94,7 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
     private const int WarmUpTimeoutSeconds = 45;
     private static readonly Lazy<Task<RedisConnectionMultiplexer>> RedisConnection =
         new(async () => await StackExchange.Redis.ConnectionMultiplexer
-            .ConnectAsync($"localhost:{RedisPort},abortConnect=false")
+            .ConnectAsync($"{RedisEndpoint},abortConnect=false")
             .ConfigureAwait(false));
 
     private Process? _daprProcess;
@@ -132,6 +132,9 @@ public sealed partial class DaprTestContainerFixture : IAsyncLifetime
     public string ReplicaDaprHttpEndpoint => _replicaDaprProcess is not null
         ? $"http://localhost:{_replicaDaprHttpPort}"
         : throw new InvalidOperationException("The live-sidecar replica has not started.");
+
+    /// <summary>Gets the configured Redis endpoint used by this fixture and its backend diagnostics.</summary>
+    internal static string RedisEndpoint => $"localhost:{RedisPort}";
 
     /// <summary>Gets the isolated Dapr application ID used by this fixture run.</summary>
     public string AppId { get; } = $"eventstore-live-{Guid.NewGuid():N}";

@@ -10,7 +10,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
-public sealed class ProjectionWireJsonSerializerTests
+public sealed partial class ProjectionWireJsonSerializerTests
 {
     [Fact]
     public async Task ConfiguredConvertersAndTypeMetadata_PreserveTheirBytesAndDeclareUnqualifiedStreamingFallback()

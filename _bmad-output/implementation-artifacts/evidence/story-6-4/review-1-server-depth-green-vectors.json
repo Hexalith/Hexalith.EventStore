@@ -1,0 +1,99 @@
+{
+  "sourceSnapshot": "sourceSnapshot4",
+  "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method '*GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers' -showLiveOutput",
+  "exitCode": 0,
+  "assets": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll",
+      "bytes": 239104,
+      "sha256": "3a5fa7e3ee76701069784d7930d87e13b9a79b70e9d565d6b481d13c82092c85"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "bytes": 1011200,
+      "sha256": "cc3c50f36f099a9cca71fda3e3660b927df3c309c08c3f8ffb44b0af595152d1"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "bytes": 695808,
+      "sha256": "31b9aca5d6cdf1ec925974a92031b86809517b905f499111d619f8eae19c8e42"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "bytes": 1104384,
+      "sha256": "5171f1f1a29f288cca42cba88d03510d984e5de06ced189ea3a7f6fb7a58ba0e"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+      "bytes": 876032,
+      "sha256": "f9078ba365f41e28fabc23c52d9947fb8a27a2e43e9eb883a59148b52654aef1"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll",
+      "bytes": 11776,
+      "sha256": "b897f71cf0a59529a9f243feb7f49571131fb5e4ae47994f6ffc5ff1acaa9f9d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll",
+      "bytes": 23552,
+      "sha256": "6802857b47f1244dcf3f8451d0621c0fcbc4228c18ccd946299fcfeef59b9da0"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "bytes": 8159744,
+      "sha256": "7245bf9fb73ecd6874555ad96b5d2a6e250ab923ffbe0ac8af72e9dc6b8264cf"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "bytes": 3226112,
+      "sha256": "3d322ff742528aab3061fee74eaaa589cc78ed2266d8050afee22d6a68259bb8"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "bytes": 121856,
+      "sha256": "a9979df5ecb4ae0a795de7c55902c0eb03147c071511529dca24c012660b35fe"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+      "bytes": 125952,
+      "sha256": "0642f161f9a70a7609917e3cc0732c3fdef58f2f4f1a6b2d681f08b673ff0d7f"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll",
+      "bytes": 11776,
+      "sha256": "afd3bf9f18e724d0c3d85994471666a97edd30d1e8277ad81a1d6dec98526cb9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.deps.json",
+      "bytes": 219615,
+      "sha256": "c6498fd8a92947f46df4a9c8e5ed9784bccc5b1e1f08e7ac62355a384f6ead89"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.runtimeconfig.json",
+      "bytes": 416,
+      "sha256": "4761a312947a31a30aec259d9ee6f10407d89806d812cd102f3b3aec250dc8b4"
+    }
+  ],
+  "observations": [
+    {
+      "kind": "ProjectionGuardDepthAllocation",
+      "value": {
+        "maxDepth": 1000000,
+        "nestedUnknownDepth": 0,
+        "bodyBytes": 1737,
+        "allocatedBytes": 16840,
+        "regressionBound": 121120
+      }
+    },
+    {
+      "kind": "ProjectionGuardDepthAllocation",
+      "value": {
+        "maxDepth": 1000000,
+        "nestedUnknownDepth": 96,
+        "bodyBytes": 1941,
+        "allocatedBytes": 17280,
+        "regressionBound": 127648
+      }
+    }
+  ]
+}

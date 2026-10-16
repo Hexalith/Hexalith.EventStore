@@ -44,7 +44,7 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// routes only with the Dapr app-channel token plus a short-lived EventStore workload assertion for exactly this
 /// audience and operation; forged headers and wire administrator flags grant nothing and cause zero domain work.
 /// </summary>
-public sealed class DomainServiceTrustBoundaryTests
+public sealed partial class DomainServiceTrustBoundaryTests
 {
     private const string AppId = "sample";
     private const string Caller = "eventstore";

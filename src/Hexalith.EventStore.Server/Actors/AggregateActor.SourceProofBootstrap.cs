@@ -36,10 +36,9 @@ public partial class AggregateActor
             .TryGetStateAsync<TrustedEffectErasureProgress>(TrustedEffectErasureProgress.StateName).ConfigureAwait(false);
         if (erased.HasValue)
         {
-            using var progressBytes = new SizeLimitedWriteStream(long.MaxValue);
-            JsonSerializer.Serialize(progressBytes, erased.Value, ActorStateJsonSerializerOptions);
-            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, progressBytes.Length);
-            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataBytes, progressBytes.Length);
+            long progressBytes = SourceActorStateBodySize.Count(erased.Value, ActorStateJsonSerializerOptions);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, progressBytes);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataBytes, progressBytes);
             return new(erased.Value.Completed ? SourceProofInspectionStatus.Unsupported : SourceProofInspectionStatus.Invalid,
                 stored.HasValue, stored.HasValue ? stored.Value.CurrentSequence : 0, true, null);
         }
@@ -97,10 +96,10 @@ public partial class AggregateActor
         if (observed.HasValue != stored.HasValue || observed.HasValue && observed.Value != metadata)
             throw new InvalidOperationException("head_changed");
         AggregateMetadata anchored = metadata with { SourceProof = proof };
-        using var anchorBytes = new SizeLimitedWriteStream(long.MaxValue);
-        JsonSerializer.Serialize(anchorBytes, anchored, ActorStateJsonSerializerOptions);
-        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSerializationBytes, anchorBytes.Length);
-        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceAnchorWriteBytes, anchorBytes.Length);
+        long anchorBytes = SourceActorStateBodySize.Count(anchored, ActorStateJsonSerializerOptions);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSerializationBytes, anchorBytes);
+        if (anchorBytes > 4096) throw new InvalidOperationException("delivery_proof_limit_exceeded");
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceAnchorWriteBytes, anchorBytes);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceAnchorWriteAttempts);
         await StateManager.SetStateAsync(identity.MetadataKey, anchored).ConfigureAwait(false);
         try
@@ -136,7 +135,8 @@ public partial class AggregateActor
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataReads);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.BootstrapStateReads);
         ConditionalValue<AggregateMetadata> result = await StateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey).ConfigureAwait(false);
-        if (result.HasValue) MeasureSourceMetadata(result.Value);
+        if (result.HasValue && MeasureSourceMetadata(result.Value) > 4096)
+            throw new InvalidOperationException("delivery_proof_limit_exceeded");
         return result;
     }
 }

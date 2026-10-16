@@ -1,0 +1,118 @@
+{
+  "observedAtUtc": "2026-10-16T10:50:47.341469+00:00",
+  "headCommit": "0b38a562cd4fb6191a0c3c78a44b4c48d1f05390",
+  "appHost": "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+  "aspireCli": "13.6.0+56f3e9c0d216c0c7069dabb49dd0464e4827744f",
+  "initialExactTargetRunning": false,
+  "startCommand": "aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --isolated --format Json --non-interactive",
+  "startExitCode": 0,
+  "waits": [
+    {
+      "resource": "security",
+      "status": "healthy",
+      "timeoutSeconds": 50,
+      "elapsedSeconds": 13.3,
+      "exitCode": 0
+    },
+    {
+      "resource": "eventstore",
+      "status": "healthy",
+      "timeoutSeconds": 50,
+      "elapsedSeconds": 0,
+      "exitCode": 0
+    }
+  ],
+  "resources": [
+    {
+      "displayName": "eventstore-admin-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "eventstore-admin",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "eventstore-admin-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "eventstore",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample-api-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "sample-api",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample-blazor-ui-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "sample-blazor-ui",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "sample",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "security",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "tenants-api-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "tenants-api",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "tenants-dapr-cli",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "displayName": "tenants",
+      "state": "Finished",
+      "healthStatus": null
+    }
+  ],
+  "stopCommand": "aspire stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive",
+  "stopExitCode": 0,
+  "ownedInstanceStoppedSuccessfully": true,
+  "scope": "pre-edit local AppHost baseline; no maintenance activation or production readiness claim; no credentials/endpoints/environment values retained",
+  "afterStopExactDescribe": "No AppHost is currently running for the exact project",
+  "afterStopDescribeExitCode": 0
+}

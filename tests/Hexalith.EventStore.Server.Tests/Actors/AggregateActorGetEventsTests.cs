@@ -23,6 +23,88 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public class AggregateActorGetEventsTests {
     [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task SourceMetadata_UsesTheSdkWriterEncodingForInspectionAndBootstrap(bool bootstrap, bool anchorPresent)
+    {
+        var serializer = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping, WriteIndented = true };
+        var identity = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("tenant-a", "counter", "counter-1");
+        var metadata = new AggregateMetadata(0, DateTimeOffset.UnixEpoch, new string('<', 650));
+        if (anchorPresent) metadata = metadata with { SourceProof = SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV") };
+        System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(metadata, serializer).Length.ShouldBeLessThan(4096);
+        using var sdkBody = new MemoryStream();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(sdkBody))
+        {
+            System.Text.Json.JsonSerializer.Serialize(writer, metadata, serializer);
+            writer.Flush();
+        }
+        TestContext.Current.TestOutputHelper?.WriteLine("SourceMetadataWriterProfile " + System.Text.Json.JsonSerializer.Serialize(new
+        { bootstrap, anchorPresent, profile = "Web/UnsafeRelaxedJsonEscaping/WriteIndented", etagCharacters = 650,
+            configuredStreamBytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(metadata, serializer).Length,
+            sdkWriterBytes = sdkBody.Length, metadataLimit = 4096 }));
+        var state = new FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [MetadataKey] = metadata });
+        (SourceProofBootstrapAuthority authority, IServiceProvider services) = BootstrapAuthority();
+        services.GetService(typeof(IOptions<ActorRuntimeOptions>)).Returns(Options.Create(new ActorRuntimeOptions { JsonSerializerOptions = serializer }));
+        (AggregateActor actor, _) = CreateActor(state, services);
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
+        if (bootstrap)
+        {
+            if (anchorPresent) sdkBody.Length.ShouldBeGreaterThan(4096);
+            else sdkBody.Length.ShouldBeLessThanOrEqualTo(4096);
+            SourceProofBootstrapRequest request = await authority.AuthorizeAsync(BootstrapRequest(0), CancellationToken.None);
+            (await Should.ThrowAsync<InvalidOperationException>(() => actor.BootstrapSourceProofAsync(request))).Message
+                .ShouldBe("delivery_proof_limit_exceeded");
+        }
+        else
+        {
+            sdkBody.Length.ShouldBeGreaterThan(4096);
+            (await actor.InspectSourceProofAsync()).Status.ShouldBe(SourceProofInspectionStatus.Invalid);
+            costs[ProjectionDeliveryCost.SourceMetadataBytes].ShouldBe(sdkBody.Length);
+        }
+        state.CommittedState[MetadataKey].ShouldBe(metadata);
+        state.Trace.ShouldNotContain("SaveState");
+    }
+
+    [Theory]
+    [InlineData(4096, 9)]
+    [InlineData(4097, 9)]
+    [InlineData(4096, 256)]
+    [InlineData(4097, 256)]
+    public async Task SourceBootstrap_EnforcesTheProposedAnchorBudgetBeforeAnyMutation(int bytes, int identifierLength)
+    {
+        string aggregate = new('a', identifierLength);
+        var identity = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("tenant-a", "counter", aggregate);
+        var metadata = new AggregateMetadata(0, DateTimeOffset.UnixEpoch, string.Empty);
+        SourceProof seed = SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        int size = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(metadata with { SourceProof = seed },
+            System.Text.Json.JsonSerializerOptions.Web).Length;
+        metadata = metadata with { ETag = new string('e', bytes - size) };
+        var state = new FaultInjectingActorStateManager();
+        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [identity.MetadataKey] = metadata });
+        (SourceProofBootstrapAuthority authority, IServiceProvider services) = BootstrapAuthority();
+        (AggregateActor actor, _) = CreateActor(state, services, identity.ActorId);
+        SourceProofBootstrapRequest request = await authority.AuthorizeAsync(BootstrapRequest(0) with { AggregateId = aggregate }, CancellationToken.None);
+        if (bytes > 4096)
+        {
+            (await Should.ThrowAsync<InvalidOperationException>(() => actor.BootstrapSourceProofAsync(request))).Message
+                .ShouldBe("delivery_proof_limit_exceeded");
+            state.CommittedState[identity.MetadataKey].ShouldBe(metadata);
+            state.Trace.ShouldNotContain("SaveState");
+            state.Trace.ShouldNotContain(item => item.StartsWith("SetState:", StringComparison.Ordinal));
+        }
+        else
+        {
+            (await actor.BootstrapSourceProofAsync(request)).Status.ShouldBe(SourceProofInspectionStatus.Available);
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(state.CommittedState[identity.MetadataKey],
+                System.Text.Json.JsonSerializerOptions.Web).Length.ShouldBe(4096);
+            (await actor.InspectSourceProofAsync()).Status.ShouldBe(SourceProofInspectionStatus.Available);
+        }
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
@@ -375,7 +457,7 @@ public class AggregateActorGetEventsTests {
     private const string EventKeyPrefix = "tenant-a:counter:counter-1:events:";
 
     private static (AggregateActor Actor, IActorStateManager StateManager) CreateActor(
-        IActorStateManager? stateManager = null, IServiceProvider? serviceProvider = null) {
+        IActorStateManager? stateManager = null, IServiceProvider? serviceProvider = null, string actorId = ActorIdString) {
         stateManager ??= Substitute.For<IActorStateManager>();
         ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
         _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
@@ -386,7 +468,7 @@ public class AggregateActorGetEventsTests {
         IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
 
         var host = ActorHost.CreateForTest<AggregateActor>(
-            new ActorTestOptions { ActorId = new ActorId(ActorIdString) });
+            new ActorTestOptions { ActorId = new ActorId(actorId) });
 
         var actor = new AggregateActor(
             host, logger, invoker, snapshotManager,

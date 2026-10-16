@@ -32,6 +32,8 @@ internal sealed class DaprProjectionDeliveryStateStore(
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofReadBytes, stateBody.Length);
+        ProjectionDeliveryStateBody.Validate(stateBody.Span, daprClient.JsonSerializerOptions,
+            idempotencyOptions?.Value.CompletedReceiptLimit ?? 256);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofParsingBytes, stateBody.Length);
         ProjectionDeliveryState? state = stateBody.IsEmpty ? null
             : JsonSerializer.Deserialize<ProjectionDeliveryState>(stateBody.Span, daprClient.JsonSerializerOptions);

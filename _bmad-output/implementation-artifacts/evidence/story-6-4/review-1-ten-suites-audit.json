@@ -1,0 +1,152 @@
+[
+  {
+    "name": "full-server-debug3",
+    "summary": {
+      "selected": 5709,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 25,
+      "notRun": 0,
+      "seconds": 790.136,
+      "passed": 5684
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "domain-full-debug3",
+    "summary": {
+      "selected": 977,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 122.401,
+      "passed": 977
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "client-full-debug2",
+    "summary": {
+      "selected": 1574,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 5.895,
+      "passed": 1574
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "full-contracts-debug2",
+    "summary": {
+      "selected": 2358,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 321.489,
+      "passed": 2358
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "live-full-debug3",
+    "summary": {
+      "selected": 192,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 1,
+      "notRun": 0,
+      "seconds": 1046.861,
+      "passed": 191
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "server-full-release1",
+    "summary": {
+      "selected": 5709,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 25,
+      "notRun": 0,
+      "seconds": 418.798,
+      "passed": 5684
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "domain-full-release1",
+    "summary": {
+      "selected": 977,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 123.386,
+      "passed": 977
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "client-full-release1",
+    "summary": {
+      "selected": 1574,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 6.008,
+      "passed": 1574
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "contracts-full-release1",
+    "summary": {
+      "selected": 2358,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 349.646,
+      "passed": 2358
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  },
+  {
+    "name": "live-full-release1",
+    "summary": {
+      "selected": 192,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 1,
+      "notRun": 0,
+      "seconds": 1157.327,
+      "passed": 191
+    },
+    "logHashMatches": true,
+    "unfiltered": true,
+    "perRunAssetsStable": true
+  }
+]

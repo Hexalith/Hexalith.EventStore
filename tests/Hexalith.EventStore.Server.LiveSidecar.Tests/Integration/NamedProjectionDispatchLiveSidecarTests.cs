@@ -99,7 +99,7 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
         await orchestrator.DeliverProjectionAsync(identity).ConfigureAwait(true);
 
         await using ConnectionMultiplexer redis = await ConnectionMultiplexer
-            .ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true")
+            .ConnectAsync($"{DaprTestContainerFixture.RedisEndpoint},abortConnect=false,allowAdmin=true")
             .ConfigureAwait(true);
         IDatabase database = redis.GetDatabase();
         string detailKey = $"{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:detail";
@@ -309,7 +309,7 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
         detailBaseline.LastDeliveredSequence.ShouldBe(2);
         indexBaseline.LastDeliveredSequence.ShouldBe(2);
         await using ConnectionMultiplexer redis = await ConnectionMultiplexer
-            .ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true")
+            .ConnectAsync($"{DaprTestContainerFixture.RedisEndpoint},abortConnect=false,allowAdmin=true")
             .ConfigureAwait(true);
         IDatabase database = redis.GetDatabase();
         string detailModelKey = $"{fixture.AppId}||{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:detail";
@@ -616,7 +616,7 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
         operatorCheckpoint.LastAppliedSequence.ShouldBe(expectedVersion);
 
         await using ConnectionMultiplexer redis = await ConnectionMultiplexer
-            .ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true")
+            .ConnectAsync($"{DaprTestContainerFixture.RedisEndpoint},abortConnect=false,allowAdmin=true")
             .ConfigureAwait(true);
         IDatabase database = redis.GetDatabase();
         string detailKey = $"{identity.TenantId}:{identity.Domain}:{identity.AggregateId}:detail";

@@ -21,6 +21,73 @@ public class AdminProjectionRebuildControllerTests {
     private const string Projection = "party-summary";
 
     [Fact]
+    public async Task SourceBootstrapResponse_ReturnsTheActorsExistingProvenIncarnationForQualification()
+    {
+        var identity = new AggregateIdentity(Tenant, "counter", "counter-1");
+        var proof = Hexalith.EventStore.Server.Events.SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        var actor = Substitute.For<Hexalith.EventStore.Server.Actors.IAggregateActor>();
+        actor.BootstrapSourceProofAsync(Arg.Any<Hexalith.EventStore.Server.Actors.SourceProofBootstrapRequest>()).Returns(
+            new Hexalith.EventStore.Server.Actors.SourceProofInspection(Hexalith.EventStore.Server.Actors.SourceProofInspectionStatus.Available,
+                true, 0, false, proof));
+        var factory = Substitute.For<Dapr.Actors.Client.IActorProxyFactory>();
+        factory.CreateActorProxy<Hexalith.EventStore.Server.Actors.IAggregateActor>(Arg.Any<Dapr.Actors.ActorId>(), Arg.Any<string>(),
+            Arg.Any<Dapr.Actors.Client.ActorProxyOptions>()).Returns(actor);
+        var keys = Substitute.For<Hexalith.EventStore.Server.Commands.IIdempotencyDigestKeyProvider>();
+        keys.GetKeyRingAsync(Arg.Any<CancellationToken>()).Returns(_ => new ValueTask<Hexalith.EventStore.Server.Commands.IdempotencyDigestKeyRing>(
+            new Hexalith.EventStore.Server.Commands.IdempotencyDigestKeyRing("v1", new Dictionary<string, byte[]> { ["v1"] = new byte[32] }, [])));
+        var authority = new Hexalith.EventStore.Server.Actors.SourceProofBootstrapAuthority(keys, TimeProvider.System);
+        using ServiceProvider services = new ServiceCollection().AddSingleton(authority).AddSingleton(factory)
+            .AddSingleton(Microsoft.Extensions.Options.Options.Create(new Hexalith.EventStore.Server.Configuration.EventStoreActorOptions()))
+            .BuildServiceProvider();
+        var controller = CreateController(Substitute.For<IProjectionRebuildCheckpointStore>(), true, serviceProvider: services);
+        var result = (await controller.BootstrapSourceProofAsync(Tenant, "counter", "counter-1",
+            new(0, new string('a', 40), "verified-backup", ProjectionSourceGuard.ApprovedSpecSha256, true, true), CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>();
+        System.Text.Json.JsonSerializer.SerializeToElement(result.Value).GetProperty("SourceIncarnation").GetString()
+            .ShouldBe(proof.SourceIncarnation);
+    }
+
+    [Theory]
+    [InlineData("bootstrap")]
+    [InlineData("qualify")]
+    [InlineData("activate")]
+    public async Task SourceMaintenance_AttributableAuthenticatedNonAdministratorCannotChangeAnyEvidence(string action)
+    {
+        using var fixture = await Projections.GuardedTailProductionHarness.CreateAsync(1, 1);
+        await fixture.UseProductionOwnersAsync();
+        string route = fixture.Catalog.OrdinaryProjectionTypes.Single();
+        ProjectionDeliveryState row = fixture.Rows[route];
+        string admissionKey = ProjectionDeliveryStateKeys.GetSourceGuardKey(fixture.Identity, route);
+        byte[] admission = fixture.Backend.ByteStoreValue(admissionKey).ToArray();
+        var source = fixture.Head;
+        int mutations = fixture.Backend.TrySaveByteOperations.Count;
+        IServiceProvider services = Substitute.For<IServiceProvider>();
+        var controller = CreateController(Substitute.For<IProjectionRebuildCheckpointStore>(), false, serviceProvider: services);
+        controller.User.Identity!.IsAuthenticated.ShouldBeTrue();
+        controller.User.FindFirst("sub")!.Value.ShouldBe("operator-1");
+        string commit = new('a', 40);
+        var body = new ProjectionSourceGuardQualificationRequestBody(1, source.SourceIncarnation, null, commit,
+            "verified-backup", ProjectionSourceGuard.ApprovedSpecSha256, true, true, true,
+            [.. new[] { "append", "immediate", "poller", "retry", "reconciliation", "rebuild", "erasure" }
+                .Select(role => new ProjectionSourceGuardWriterInventory(role, commit, "package-identity", true))]);
+        IActionResult result = action switch
+        {
+            "bootstrap" => await controller.BootstrapSourceProofAsync(Tenant, fixture.Identity.Domain, fixture.Identity.AggregateId,
+                new(1, commit, "verified-backup", ProjectionSourceGuard.ApprovedSpecSha256, true, true), CancellationToken.None),
+            "qualify" => await controller.QualifySourceGuardAsync(Tenant, fixture.Identity.Domain, fixture.Identity.AggregateId,
+                route, body, CancellationToken.None),
+            _ => await controller.ActivateSourceGuardAsync(Tenant, fixture.Identity.Domain, fixture.Identity.AggregateId,
+                route, body, CancellationToken.None),
+        };
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(403);
+        services.ReceivedCalls().ShouldBeEmpty();
+        fixture.Rows[route].ShouldBe(row);
+        fixture.Head.ShouldBe(source);
+        fixture.Backend.ByteStoreValue(admissionKey).ShouldBe(admission);
+        fixture.Backend.TrySaveByteOperations.Count.ShouldBe(mutations);
+    }
+
+    [Fact]
     public async Task SharedSourceOperatorRouteRequiresGlobalAdministratorAndExactScope()
     {
         IProjectionRebuildCheckpointStore store = Substitute.For<IProjectionRebuildCheckpointStore>();

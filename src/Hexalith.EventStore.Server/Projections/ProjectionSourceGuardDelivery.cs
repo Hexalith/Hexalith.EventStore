@@ -64,7 +64,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
                 || !marker.IsValid(identity, projection) || marker.CatalogFingerprint != catalog.CatalogFingerprint
                 || marker.HandlerSemantics != capability.HandlerSemantics || marker.SourceIncarnation != binding.Source.SourceIncarnation
                 || first.Status != SourceProofInspectionStatus.Available || first.Erased || !SourceProofCodec.SameCompletedPrefix(binding.Source, first.Proof)
-                || original is not null && (row.LastDeliveredSequence != original.HeadSequence || row.LastCompletedMessageId != original.HeadMessageId)) return false;
+                || original is not null && !CompletedOriginal(row, original)) return false;
             ProjectionLifecycleSnapshot idle = await lifecycle.ReadSnapshotAsync(identity, projection, cancellationToken).ConfigureAwait(false);
             if (idle.Phase != ProjectionLifecyclePhase.Idle || idle.Revision != binding.IdleLifecycleRevision) return false;
             ProjectionOwnerProofResult selected = await ownerProof.ReadAsync(identity, catalog, projection, idle, cancellationToken).ConfigureAwait(false);
@@ -76,6 +76,22 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
             if (transport is null || !await transport.ReclaimReplayAsync(catalog,
                 ProjectionSourceGuardReplayCleanup.CreateRequest(identity, catalog, group.ToArray()), cancellationToken).ConfigureAwait(false)) return false;
         return true;
+    }
+
+    private static bool CompletedOriginal(ProjectionDeliveryState row, ProjectionDeliveryRetryWorkItem original)
+    {
+        if (original.HeadSequence <= 0 || row.LastDeliveredSequence < original.HeadSequence) return false;
+        if (row.LastDeliveredSequence == original.HeadSequence) return row.LastCompletedMessageId == original.HeadMessageId;
+        // Only an unreserved wake-up can be superseded without original private model
+        // preparation to reclaim. Sequence order alone never establishes its identity.
+        if (original.ReservationFencingTokens.Count != 0 || row.CompletedMessageIdDigests is not { } ids
+            || original.HeadSequence > ids.Count) return false;
+        string digest = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(original.HeadMessageId)));
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ProofVisits);
+        if (ids[checked((int)original.HeadSequence - 1)] != digest) return false;
+        return original.HeadSequence < row.FirstRetainedSequence || ProjectionDeliveryCostDiagnostics.VisitProof(row.CompletedReceipts!)
+            .Any(receipt => receipt.SequenceNumber == original.HeadSequence && receipt.MessageId == original.HeadMessageId);
     }
 
     /// <inheritdoc/>
@@ -378,12 +394,12 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
             options.RetryLeaseDuration, cancellationToken).ConfigureAwait(false);
         if (claimed is null) return new(true, false, "delivery_in_progress");
         long? token = claimed.ReservationFencingTokens.TryGetValue(projection, out long fence) ? fence : null;
-        telemetry.StartFinalization(timeProvider ?? TimeProvider.System);
-        using var finalizationBudget = new CancellationTokenSource(TimeSpan.FromSeconds(30), timeProvider ?? TimeProvider.System);
+        TimeProvider clock = timeProvider ?? TimeProvider.System;
+        using var finalizationBudget = new ProjectionSourceGuardFinalizationBudget(clock, () => telemetry.StartFinalization(clock));
         try
         {
             ProjectionSourceGuardDeliveryResult recovered = await finalizer.RecoverAsync(identity, entry, projection,
-                state, pageSize, cancellationToken, token, finalizationBudget.Token).ConfigureAwait(false);
+                state, pageSize, cancellationToken, token, finalizationBudget).ConfigureAwait(false);
             return recovered with { AlreadyCurrent = false,
                 ReasonCode = recovered.AlreadyCurrent ? "delivery_already_completed" : recovered.ReasonCode };
         }
@@ -391,7 +407,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
         {
             int attempt = claimed.Attempt < options.MaxRetryAttempts ? claimed.Attempt + 1 : options.MaxRetryAttempts;
             await scheduler.TryUpdateAsync(claimed with { Attempt = attempt,
-                NextDueUtc = (timeProvider ?? TimeProvider.System).GetUtcNow() + ProjectionSourceGuardTailDelivery.GetRetryDelay(attempt, options) }, finalizationBudget.Token).ConfigureAwait(false);
+                NextDueUtc = clock.GetUtcNow() + ProjectionSourceGuardTailDelivery.GetRetryDelay(attempt, options) }, finalizationBudget.Begin()).ConfigureAwait(false);
         }
     }
 

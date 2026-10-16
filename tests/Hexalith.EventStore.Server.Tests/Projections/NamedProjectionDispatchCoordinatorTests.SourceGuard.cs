@@ -50,7 +50,7 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         fixture.Http.RejectReplayCleanup = false;
         await fixture.RunGuardedRetryAsync().ConfigureAwait(true);
         fixture.Work.ShouldNotBeNull().PendingRoutes.ShouldBe([routes[1]]);
-        retainedKeys.ShouldAllBe(key => !fixture.Backend.ByteStoreContains(key));
+        retainedKeys.ShouldAllBe(key => fixture.Backend.ByteStoreContains(key) == key.EndsWith(":-3", StringComparison.Ordinal));
         fixture.Handlers[0].RebuildCalls.ShouldBe(preparations);
         fixture.Handlers.Sum(static handler => handler.Calls).ShouldBe(calls);
         (await fixture.Probe.InspectCurrentAsync(fixture.Identity, CancellationToken.None).ConfigureAwait(true)).AlreadyCurrent.ShouldBeFalse();

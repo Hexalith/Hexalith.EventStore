@@ -86,7 +86,7 @@ internal sealed class DaprProjectionSourceGuardTransport(DaprClient dapr, IHttpC
                 "project/rebuild/part/v1", new ProjectionRebuildTransportPartRequest(header, ordinal, part));
             AddReplayContext(upload, header);
             upload.Content?.Dispose();
-            upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, part), dapr.JsonSerializerOptions);
+            upload.Content = ProjectionWireJsonSerializer.CreateContent(new ProjectionRebuildTransportPartRequest(header, ordinal, part), JsonSerializerOptions.Web);
             using HttpResponseMessage response = await clients.CreateClient().SendAsync(upload,
                 HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) throw new IOException("Guarded replay part upload was rejected.");
@@ -108,7 +108,9 @@ internal sealed class DaprProjectionSourceGuardTransport(DaprClient dapr, IHttpC
         using HttpRequestMessage request = dapr.CreateInvokeMethodRequest(app, method, body);
         if (body is ProjectionDispatchRequest replay) AddReplayContext(request, replay);
         request.Content?.Dispose();
-        request.Content = ProjectionWireJsonSerializer.CreateContent(body, dapr.JsonSerializerOptions);
+        // Guarded admission, bootstrap and replay-part digests qualify this fixed wire
+        // profile. Dapr's configurable state serializer must not change these bytes.
+        request.Content = ProjectionWireJsonSerializer.CreateContent(body, JsonSerializerOptions.Web);
         using HttpResponseMessage response = await clients.CreateClient().SendAsync(request,
             HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > 16_384) return default;

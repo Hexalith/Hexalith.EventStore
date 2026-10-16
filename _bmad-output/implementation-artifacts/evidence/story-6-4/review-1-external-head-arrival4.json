@@ -1,0 +1,131 @@
+{
+  "oldHead": "74b8a6711400fc2853acf6e63b9ea4c751078d58",
+  "newHead": "e4e906d3b5e50e5bec0ec1b141c21435cd5e0628",
+  "reflogArrivalUtc": "2026-10-16T16:03:52Z",
+  "duringGate": "source6-server-full-debug",
+  "changedCommittedInputs": [
+    {
+      "path": ".github/workflows/p1r-qualification.yml",
+      "bytes": 2735,
+      "sha256": "34344a325205c53de9fdeec951c898c2528263161950ade7f0ec6a632fc790d0"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "bytes": 14521,
+      "sha256": "d4e62c9ce4b4c63dfc39ea20558ddf4d88ade1583150b380363656aaaf26bf14"
+    },
+    {
+      "path": "scripts/validate-publication-preflight.sh",
+      "bytes": 5862,
+      "sha256": "0139088cc427e56075a7e0941254a7249414eb364b5e53b3bf1547ee763e02c2"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+      "bytes": 73064,
+      "sha256": "db88f04998973847482432df5650c38638131d44d2c252f3e4a1423d036265c9"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
+      "bytes": 7226,
+      "sha256": "637edfe42f0064b664b2c554800266754b00ae96c579aeffd241f3a0c0c02d67"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs",
+      "bytes": 3354,
+      "sha256": "8462f8c7f5df0a0ab2d4c899ce43c911d4cb02747ecc4c45105dc41333421aad"
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "bytes": 14496,
+      "sha256": "24335d59ab3b63eae184503031837dd91e6d86bdbdd4ce3e4beea69783c05139"
+    },
+    {
+      "path": "tools/p1r-published-consumers/registration-probe/RegistrationProbe.csproj",
+      "bytes": 117,
+      "sha256": "70572a81d192e8b2ff41d042f5f98f36b597b33ed6c226e6b506b3ab6a4d8e82"
+    },
+    {
+      "path": "tools/p1r-published-consumers/registration-probe/StartupHook.cs",
+      "bytes": 3658,
+      "sha256": "74579e7f33c55d533d4a306dec8db9e1e75219af6606a2e3c874ca02c6d16c98"
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "bytes": 66388,
+      "sha256": "817a51e93e520892fd1cf50d8ca553055eecf51bee451dbf994d387319656f1c"
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "bytes": 39775,
+      "sha256": "7e3164f8e9c711b2e943d52a718c4314035ab7003b5cd7edce5f7cfe55a887d8"
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "bytes": 19271,
+      "sha256": "4349e15c66266d3f61306dea14268d7e8ffa917db11a872581da1a10f3fd7507"
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "bytes": 119475,
+      "sha256": "236022454420bd131df8236d8e5490a7bae1174646d873b2a1ed53ce18badd5d"
+    },
+    {
+      "path": "tools/release-publication-identity.py",
+      "bytes": 5119,
+      "sha256": "33107a8ff65cc171ca17f335fad43fcb3dc1764dff474e99d61c38a6cce2fcf5"
+    },
+    {
+      "path": "tools/tests/release_publication_fixture.py",
+      "bytes": 2924,
+      "sha256": "a558fd274b4f3228d9c0d28276bf0043d420105dc11d845486f6372b1b8f8a1a"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "bytes": 42810,
+      "sha256": "06aeba05dc9e4a3773f613ecbb45f51f53825e24b89dc3ffd26dfbe65590c048"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "bytes": 38271,
+      "sha256": "897e80a36428b97fdab2796f51c719e34dfdea9e350674481a142e5dbeb44aa6"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "bytes": 148339,
+      "sha256": "a0f791a903e495cd8d7a0e6cae32952534c3f010e09a39041dafdf8ba0d2c28d"
+    },
+    {
+      "path": "tools/tests/test_p1r_snapshot_registration.py",
+      "bytes": 3807,
+      "sha256": "229bbc3436a3179837c2ed9b32ac9e4e9d53bcda486c8c1fe3721d741498daba"
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "bytes": 19255,
+      "sha256": "0850bdade540924442bb31c7763c4db30ba6746f9c869712ca5db444f1100bc5"
+    }
+  ],
+  "rawDiff": [
+    ":100644 100644 ffac16f7d679fa2d74749381edb4c664827ae0c1 3118b4b1782ab07a58895e2e869e18b46e42d61a M\t.github/workflows/p1r-qualification.yml",
+    ":100644 100644 14f4f2969ea45fba503f84de5b2638a4cba4a9e9 7a4fe388dc28090de2327f2636a60c760928b5ad M\t.github/workflows/release.yml",
+    ":100755 100755 d9f611713d0a6db630e4a9b7db0dacb28abf3f2e 5cef7df2037b56171f9cf5ab5afc6d29cb8cd6bd M\tscripts/validate-publication-preflight.sh",
+    ":100644 100644 136ac6545913b03985df25c057aec07b151ccf35 37487811df685da5cdbef75ff5da2f3934c7cbf9 M\ttests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+    ":100644 100644 69321490761cad25ec1406959cd1305ab833d99d 0fea5862ecf78fd06e1093b958b8c445cbbc76b9 M\ttests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
+    ":000000 100644 0000000000000000000000000000000000000000 a41019bc8d1685028a3ac766ac7ecbf5baa25cfe A\ttests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs",
+    ":100644 100644 b5a8e92eac383d76007fe19d83003d6e8dae32e9 0e2a73b960b1218f9a6af492fef06f58d552a7a8 M\ttools/p1r-published-consumers/README.md",
+    ":000000 100644 0000000000000000000000000000000000000000 8a9b10509ce9990f6a8bf04addd8cec80c10f243 A\ttools/p1r-published-consumers/registration-probe/RegistrationProbe.csproj",
+    ":000000 100644 0000000000000000000000000000000000000000 35d83e0defa3b7605ee9891a3a7bf358d03ef26a A\ttools/p1r-published-consumers/registration-probe/StartupHook.cs",
+    ":100644 100644 b0fa9d9e0fc25e4df77041169f360547f367c86c 76ed5da559535431523ce79ffd7ccf2763a9d9af M\ttools/p1r_check_witnesses.py",
+    ":100644 100644 d94061b516991a736aca19b6a84b1b311736e249 4faf6230f7b9456f3ab098a0567f4e61c6d12805 M\ttools/p1r_isolation.py",
+    ":100644 100644 1e0914074d2b6267b4a67f8a30f3726eddc9d624 efbccef9637389f317f03706fab74c1d2a52030f M\ttools/p1r_isolation_evidence.py",
+    ":100644 100644 ace4caed4a8303a8508beed6775fa7b0f052d8ff ff394383e2ebf3894b1bf12166452da4d6864fda M\ttools/p1r_published_executor.py",
+    ":000000 100644 0000000000000000000000000000000000000000 c8ee0570a8dd94becd7483fde1f661c04cc23a39 A\ttools/release-publication-identity.py",
+    ":000000 100644 0000000000000000000000000000000000000000 dec11492b4d2afdad79248d1bada2d57c118b457 A\ttools/tests/release_publication_fixture.py",
+    ":100644 100644 91cccffdeac416c584a2e202e87209bdcbc846b1 b91644dd2b160735cfb23ced76a928b56b0649b7 M\ttools/tests/test_p1r_isolation.py",
+    ":100644 100644 7f9c0890ba82c5d710f15143ff723789ee5e4b87 c444b7779e0a0816d2ebf86b4478bcefecc2d738 M\ttools/tests/test_p1r_isolation_hardening.py",
+    ":100644 100644 928ac76c85a58f5e77c65368895b917b7cdb2fc2 be87ce21d31a31ebaec1d7a831b5b38625ce2a24 M\ttools/tests/test_p1r_published_executor.py",
+    ":000000 100644 0000000000000000000000000000000000000000 2f09270ddec8f05ae4f3c1e4f9a7ad8ae11ef146 A\ttools/tests/test_p1r_snapshot_registration.py",
+    ":000000 100644 0000000000000000000000000000000000000000 69e2fbef8ad957617b1e4c39b3c267a916194451 A\ttools/tests/test_release_publication_authority.py"
+  ],
+  "classification": "20source/workflow/tool/test files; no production src delta. New Server reconciliation Fact+1; two Contracts packaging sources net-1case; standalone registration-probe project not imported into runtime graph. Nine prior frame overlaps are not the complete delta."
+}

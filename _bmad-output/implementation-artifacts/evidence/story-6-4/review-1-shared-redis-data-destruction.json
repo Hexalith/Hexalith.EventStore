@@ -1,0 +1,84 @@
+{
+  "observedUtc": "2026-10-16T12:17:05.557002+00:00",
+  "diagnosticBoundary": "Redis bounded SLOWLOG metadata only; no key values or payloads retained",
+  "broadDeletionEntries": [
+    {
+      "id": 124,
+      "timestampUtc": "2026-10-16T12:12:42+00:00",
+      "durationMicroseconds": 3031527,
+      "command": "flushall"
+    }
+  ],
+  "sourcePersistedSequenceAroundReset": [
+    {
+      "sequence": 6400,
+      "commandIdentityTimeUtc": "2026-10-16T12:12:32.702000+00:00"
+    },
+    {
+      "sequence": 6656,
+      "commandIdentityTimeUtc": "2026-10-16T12:12:36.331000+00:00"
+    },
+    {
+      "sequence": 256,
+      "commandIdentityTimeUtc": "2026-10-16T12:12:43.486000+00:00"
+    },
+    {
+      "sequence": 512,
+      "commandIdentityTimeUtc": "2026-10-16T12:12:43.552000+00:00"
+    },
+    {
+      "sequence": 768,
+      "commandIdentityTimeUtc": "2026-10-16T12:12:43.726000+00:00"
+    }
+  ],
+  "writerMarkerDiagnostic": {
+    "readBoundary": "owning Dapr state API, diagnostic only",
+    "schemaVersion": 1,
+    "writerProtocolVersion": 2,
+    "cutoverMatchesInitialFixture": false,
+    "cutoverMatchesGuardSeed": true,
+    "activatedAtUtc": "2026-10-16T12:12:57.1485664+00:00"
+  },
+  "owningActorBoundary": {
+    "operation": "InspectSourceProofAsync",
+    "status": 0,
+    "exists": true,
+    "currentSequence": 3344,
+    "erased": false,
+    "proofHead": 3344
+  },
+  "classification": "Shared Redis environmental data destruction. FLUSHALL timestamp brackets source sequence reset. Source actor now proves head3344; guard seed recreates deleted writer marker with its different fixture revision, causing existing replica activation to return Conflict.",
+  "stats": {
+    "expired_keys": "0",
+    "evicted_keys": "0"
+  },
+  "commandstats": {
+    "cmdstat_flushall": "calls=1,usec=3031527,usec_per_call=3031527.00,rejected_calls=0,failed_calls=0"
+  },
+  "sharedRedisProfile": {
+    "id": "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+    "imageId": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "imageReference": "docker.io/redis:6",
+    "command": [
+      "redis-server"
+    ],
+    "entrypoint": [
+      "docker-entrypoint.sh"
+    ],
+    "args": [
+      "redis-server"
+    ],
+    "memoryLimit": 0,
+    "memorySwap": 0,
+    "nanoCpus": 0,
+    "startedAt": "2026-10-16T07:47:20.831743606Z",
+    "restartCount": 0,
+    "mounts": [
+      {
+        "type": "volume",
+        "destination": "/data",
+        "readWrite": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers(nestedUnknownDepth: 0) [OUTPUT] ProjectionGuardDepthAllocation {"maxDepth":1000000,"nestedUnknownDepth":0,"bodyBytes":1737,"allocatedBytes":16840,"regressionBound":121120}
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers(nestedUnknownDepth: 96) [OUTPUT] ProjectionGuardDepthAllocation {"maxDepth":1000000,"nestedUnknownDepth":96,"bodyBytes":1941,"allocatedBytes":17280,"regressionBound":127648}
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 2, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.413s

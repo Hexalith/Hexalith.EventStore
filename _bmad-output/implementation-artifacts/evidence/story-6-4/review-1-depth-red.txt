@@ -1,0 +1,25 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers [OUTPUT] ProjectionGuardDepthAllocation {"maxDepth":1000000,"bodyBytes":1738,"allocatedBytes":8016800,"regressionBound":121152}
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers [FAIL]
+      Shouldly.ShouldAssertException : allocated
+          should be less than or equal to
+      121152L
+          but was
+      8016800L
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(45,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+      Output:
+        ProjectionGuardDepthAllocation {"maxDepth":1000000,"bodyBytes":1738,"allocatedBytes":8016800,"regressionBound":121152}
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.371s

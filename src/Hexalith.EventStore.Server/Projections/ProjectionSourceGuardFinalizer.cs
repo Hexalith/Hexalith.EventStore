@@ -36,11 +36,14 @@ internal sealed class ProjectionSourceGuardFinalizer(IProjectionDeliveryIdempote
     /// <summary>Recovers the same frozen pending work without handler invocation or logical model writes.</summary>
     internal async Task<ProjectionSourceGuardDeliveryResult> RecoverAsync(AggregateIdentity identity,
         NamedProjectionRouteCatalogEntry catalog, string projection, ProjectionDeliveryState observed,
-        int pageSize, CancellationToken cancellationToken, long? resumeFencingToken = null, CancellationToken finalizationToken = default)
+        int pageSize, CancellationToken cancellationToken, long? resumeFencingToken = null,
+        ProjectionSourceGuardFinalizationBudget? finalizationBudget = null)
     {
         if (observed.ActiveReservation is not { GuardBinding: { } binding } original
             || observed.IdleBindingPending is not { } pending)
             return new(true, false, "delivery_reconciliation_required");
+        using ProjectionSourceGuardFinalizationBudget? ownedBudget = finalizationBudget is null ? new(_clock) : null;
+        ProjectionSourceGuardFinalizationBudget budget = finalizationBudget ?? ownedBudget!;
         string operation = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
         if (!await lifecycle.BeginDeliveryWriteAsync(identity, projection, operation, cancellationToken).ConfigureAwait(false))
             return new(true, false, "delivery_in_progress");
@@ -60,18 +63,16 @@ internal sealed class ProjectionSourceGuardFinalizer(IProjectionDeliveryIdempote
                 return new(true, false, "source_conflict");
             // From here no domain effects are possible. Even a canceled caller may finish readback
             // and fencing for at most thirty seconds; the persisted pending row survives timeout.
-            using CancellationTokenSource? finalization = finalizationToken.CanBeCanceled ? null : new(TimeSpan.FromSeconds(30), _clock);
             releaseOwned = false;
             return await ReleaseAndBindAsync(identity, catalog, projection, admitted.History, reclaimed, operation,
-                pending.OwnerProof, finalizationToken.CanBeCanceled ? finalizationToken : finalization!.Token).ConfigureAwait(false);
+                pending.OwnerProof, budget.Begin()).ConfigureAwait(false);
         }
         finally
         {
             if (releaseOwned)
             {
-                using CancellationTokenSource? cleanup = finalizationToken.CanBeCanceled ? null : new(TimeSpan.FromSeconds(30), _clock);
                 await lifecycle.CompleteDeliveryWriteAsync(identity, projection, operation,
-                    finalizationToken.CanBeCanceled ? finalizationToken : cleanup!.Token).ConfigureAwait(false);
+                    budget.Begin()).ConfigureAwait(false);
             }
         }
     }

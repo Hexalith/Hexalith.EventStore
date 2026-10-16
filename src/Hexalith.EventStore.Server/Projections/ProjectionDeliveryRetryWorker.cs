@@ -85,20 +85,26 @@ internal sealed partial class ProjectionDeliveryRetryWorker(
                     cleanupBudget = guarded.CreateCleanupBudget(timeProvider);
                     // The current probe itself performs no cleanup. This is separately scheduled
                     // reconciliation of the exact original work under its durable revision/lease.
-                    string[] provenPending = [.. workItem.PendingRoutes.Where(guarded.ProvenFreshnessVersions.ContainsKey)];
+                    string[] provenPending = [.. workItem.PendingRoutes.Where(route => guarded.AlreadyCurrent
+                        || guarded.ProvenFreshnessVersions.ContainsKey(route))];
                     bool allCompleted = guarded.AlreadyCurrent && workItem.TerminalRoutes.Count == 0;
-                    if ((allCompleted || provenPending.Length > 0) && guarded.ObservedHeadSequence == workItem.HeadSequence
-                        && guarded.ObservedHeadMessageId == workItem.HeadMessageId
-                        && guarded.CatalogFingerprint == workItem.CatalogFingerprint
-                        && (allCompleted
-                            ? await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, cleanupBudget.Token).ConfigureAwait(false)
-                            : await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, workItem, provenPending, cleanupBudget.Token).ConfigureAwait(false)))
+                    if (provenPending.Length > 0 && guarded.ObservedHeadSequence >= workItem.HeadSequence
+                        && (guarded.ObservedHeadSequence > workItem.HeadSequence || guarded.ObservedHeadMessageId == workItem.HeadMessageId)
+                        && guarded.CatalogFingerprint == workItem.CatalogFingerprint)
                     {
                         cleanup = await scheduler.TryAcquireAsync(workItem,
                             Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture),
                             timeProvider.GetUtcNow(), options.RetryLeaseDuration, cleanupBudget.Token).ConfigureAwait(false);
                         if (cleanup is not null)
                         {
+                            // Prove the original exact ID within the completed scoped prefix
+                            // while holding that original work item's own durable revision.
+                            if (!await sourceGuardDelivery.ReclaimCompletedReplayAsync(identity, cleanup, provenPending,
+                                cleanupBudget.Token).ConfigureAwait(false))
+                            {
+                                await DeferClaimedAsync(cleanup, options, "delivery_reconciliation_required", cleanupBudget.Token).ConfigureAwait(false);
+                                return;
+                            }
                             string[] remaining = allCompleted ? [] : [.. cleanup.PendingRoutes.Except(provenPending, StringComparer.Ordinal)];
                             if (remaining.Length > 0 || cleanup.TerminalRoutes.Count > 0)
                                 await DeferClaimedAsync(cleanup with { PendingRoutes = remaining,

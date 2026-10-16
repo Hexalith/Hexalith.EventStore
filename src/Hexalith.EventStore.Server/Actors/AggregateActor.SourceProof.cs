@@ -33,10 +33,9 @@ public partial class AggregateActor
                 .ConfigureAwait(false);
             if (erasure.HasValue)
             {
-                using var bytes = new Projections.SizeLimitedWriteStream(long.MaxValue);
-                JsonSerializer.Serialize(bytes, erasure.Value, ActorStateJsonSerializerOptions);
-                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, bytes.Length);
-                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataBytes, bytes.Length);
+                long bytes = SourceActorStateBodySize.Count(erasure.Value, ActorStateJsonSerializerOptions);
+                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, bytes);
+                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataBytes, bytes);
             }
             return new(erasure.HasValue && !erasure.Value.Completed ? SourceProofInspectionStatus.Invalid : SourceProofInspectionStatus.Unsupported,
                 false, 0, erasure.HasValue, null);
@@ -196,10 +195,9 @@ public partial class AggregateActor
 
     private long MeasureSourceMetadata(AggregateMetadata metadata)
     {
-        using var count = new Projections.SizeLimitedWriteStream(long.MaxValue);
-        JsonSerializer.Serialize(count, metadata, ActorStateJsonSerializerOptions);
-        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, count.Length);
-        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataBytes, count.Length);
-        return count.Length;
+        long bytes = SourceActorStateBodySize.Count(metadata, ActorStateJsonSerializerOptions);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataSizingBytes, bytes);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceMetadataBytes, bytes);
+        return bytes;
     }
 }

@@ -38,7 +38,8 @@ public sealed partial class DaprProjectionDeliveryRetrySchedulerTests
         IProjectionSourceGuardDelivery guard = Substitute.For<IProjectionSourceGuardDelivery>();
         bool current = failure is "cleanup_failed" or "cleanup_threw" or "newer_completed_head";
         if (failure == "cleanup_threw")
-            guard.ReclaimCompletedReplayAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>())
+            guard.ReclaimCompletedReplayAsync(Arg.Any<AggregateIdentity>(), Arg.Any<ProjectionDeliveryRetryWorkItem>(),
+                Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
                 .Returns<bool>(_ => throw new IOException("Injected cleanup transport failure."));
         guard.TryDeliverAsync(Arg.Any<AggregateIdentity>(), Arg.Any<CancellationToken>()).Returns(
             new ProjectionSourceGuardDeliveryResult(true, current, current ? null : failure)

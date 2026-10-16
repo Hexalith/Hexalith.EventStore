@@ -58,7 +58,7 @@ public sealed partial class AdminProjectionRebuildController
             IAggregateActor actor = factory.CreateActorProxy<IAggregateActor>(new ActorId(identity.ActorId),
                 actorOptions.Value.AggregateActorTypeName);
             SourceProofInspection result = await actor.BootstrapSourceProofAsync(request).ConfigureAwait(false);
-            return Ok(new { result.Status, result.CurrentSequence, result.Erased });
+            return Ok(new { result.Status, result.CurrentSequence, result.Erased, SourceIncarnation = result.Proof?.SourceIncarnation });
         }
         catch (OperationCanceledException) { throw; }
         catch (InvalidOperationException)

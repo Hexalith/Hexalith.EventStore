@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.DomainService;
 using Hexalith.EventStore.Server.Projections;
 
 using Shouldly;
@@ -27,7 +28,7 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         fixture.Handlers.Single().RebuildCalls.ShouldBe(1);
         string key = fixture.Http.ReplayPreparationKeys.Single(static key => key.EndsWith(":-2", StringComparison.Ordinal));
         byte[] manifest = (await fixture.Models.GetAsync<byte[]>("models", key).ConfigureAwait(true)).Value.ShouldNotBeNull();
-        string fingerprint = ReadModelBatchFingerprint.ComputeFromManifest(manifest);
+        string fingerprint = ReadModelBatchFingerprint.ComputeFromManifest(DomainProjectionGuardedReplay.OriginalManifest(manifest, null).Span);
         fixture.Http.MaximumReplayContextHeaderBytes.ShouldBeInRange(1, 511);
         ProjectionSourceGuardDeliveryResult recovered = await fixture.DeliverAsync(256).ConfigureAwait(true);
         recovered.AlreadyCurrent.ShouldBeTrue(recovered.ReasonCode);

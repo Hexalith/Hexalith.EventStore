@@ -7,6 +7,26 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <summary>Restores only the original canonical manifest, preserving all identity and concurrency bytes.</summary>
 internal static class ReadModelBatchManifestCodec
 {
+    /// <summary>Recovers coordinated selections from the original operation bytes after an interrupted reference save.</summary>
+    internal static ReadModelBatch DecodeCoordinated(ReadOnlyMemory<byte> manifest, ReadModelBatchScope scope)
+    {
+        if (manifest.Length > 1_048_576) throw new ArgumentException("The original immutable manifest is unavailable.");
+        using JsonDocument document = JsonDocument.Parse(manifest);
+        var selections = new Dictionary<string, ProjectionOwnerSelection>(StringComparer.Ordinal);
+        foreach (JsonElement operation in document.RootElement.GetProperty("ops").EnumerateArray())
+        {
+            if (operation.GetProperty("kind").GetString() != "w") continue;
+            ProjectionOwnerSelection? owner = ReadModelOwnerSelectionMetadata.Read(operation.GetProperty("val").GetBytesFromBase64());
+            if (owner is null) continue;
+            if (selections.TryGetValue(owner.ProjectionName, out ProjectionOwnerSelection? prior) && prior != owner)
+                throw new ArgumentException("The original manifest contains conflicting selections.");
+            selections[owner.ProjectionName] = owner;
+        }
+        if (selections.Count == 0) throw new ArgumentException("The original manifest lacks coordinated selections.");
+        return Decode(manifest, scope, null, selections.Values.OrderBy(static owner => owner.ProjectionName, StringComparer.Ordinal).ToArray(),
+            ReadModelBatchFingerprint.ComputeFromManifest(manifest.Span));
+    }
+
     internal static ReadModelBatch Decode(ReadOnlyMemory<byte> manifest, ReadModelBatchScope expectedScope,
         ProjectionOwnerSelection selection, string expectedFingerprint)
         => Decode(manifest, expectedScope, selection, null, expectedFingerprint);

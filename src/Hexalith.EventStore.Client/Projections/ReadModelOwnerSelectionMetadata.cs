@@ -15,10 +15,16 @@ internal static class ReadModelOwnerSelectionMetadata
     {
         using JsonDocument document = JsonDocument.Parse(bytes);
         JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(PropertyName, out JsonElement metadata)) return null;
-        if (root.EnumerateObject().Count(static property => property.Name == PropertyName) != 1
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        JsonProperty[] owners = [.. root.EnumerateObject().Where(static property =>
+            property.Name.Equals(PropertyName, StringComparison.OrdinalIgnoreCase))];
+        if (owners.Length == 0) return null;
+        JsonProperty[] versions = [.. root.EnumerateObject().Where(static property =>
+            property.Name.Equals("projectionVersion", StringComparison.OrdinalIgnoreCase))];
+        JsonElement metadata = owners[0].Value;
+        if (owners.Length != 1 || versions.Length != 1
             || metadata.ValueKind != JsonValueKind.Object
-            || metadata.EnumerateObject().Select(static property => property.Name).Distinct(StringComparer.Ordinal).Count()
+            || metadata.EnumerateObject().Select(static property => property.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count()
                 != metadata.EnumerateObject().Count())
             throw new ArgumentException("Invalid selected-owner metadata.");
         ProjectionOwnerSelection selection = metadata.Deserialize<ProjectionOwnerSelection>(JsonSerializerOptions.Web)
@@ -27,8 +33,7 @@ internal static class ReadModelOwnerSelectionMetadata
             || new[] { selection.TenantId, selection.Domain, selection.AggregateId, selection.ProjectionName,
                 selection.OwnerIdentity, selection.OwnerGeneration, selection.MessageId, selection.BatchId,
                 selection.FreshnessVersion }.Any(string.IsNullOrWhiteSpace)
-            || !root.TryGetProperty("projectionVersion", out JsonElement freshness)
-            || freshness.ValueKind != JsonValueKind.String || freshness.GetString() != selection.FreshnessVersion)
+            || versions[0].Value.ValueKind != JsonValueKind.String || versions[0].Value.GetString() != selection.FreshnessVersion)
             throw new ArgumentException("Invalid selected-owner freshness binding.");
         return selection;
     }

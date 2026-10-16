@@ -54,6 +54,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
     internal FakeTimeProvider Clock { get; }
     internal TimeSpan ReleaseDelay { get; set; }
     internal TimeSpan CleanupDelay { get; set; }
+    internal TimeSpan HistoryReadDelay { get; set; }
     internal long? ChangeApplicationSequence { get; set; }
     internal int ReceiptLimit { get; }
     private readonly ServiceProvider _services;
@@ -224,6 +225,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             long after = call.ArgAt<long>(0), target = call.ArgAt<long>(1);
             int count = call.ArgAt<int>(2);
             Ranges.Add((after, target, count));
+            Clock.Advance(HistoryReadDelay);
             if (_productionSource is not null)
             {
                 SourceEventRange measured = await _productionSource.ReadMeasuredEventsBoundedRangeAsync(after, target, count, 2_097_152).ConfigureAwait(false);

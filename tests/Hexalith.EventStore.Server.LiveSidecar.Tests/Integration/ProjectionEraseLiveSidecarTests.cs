@@ -285,7 +285,7 @@ public class ProjectionEraseLiveSidecarTests {
         new DaprClientBuilder().UseGrpcEndpoint(_fixture.DaprGrpcEndpoint).Build();
 
     private static async Task<ConnectionMultiplexer> ConnectRedisAsync() =>
-        await ConnectionMultiplexer.ConnectAsync("localhost:6379,abortConnect=false,allowAdmin=true");
+        await ConnectionMultiplexer.ConnectAsync($"{DaprTestContainerFixture.RedisEndpoint},abortConnect=false,allowAdmin=true");
 
     private static async Task SeedDeliveryStateAsync(
         DaprClient client,
