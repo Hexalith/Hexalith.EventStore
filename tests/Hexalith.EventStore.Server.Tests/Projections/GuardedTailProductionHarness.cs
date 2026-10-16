@@ -148,16 +148,16 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
         });
         _lifecycle.BeginDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            string route = call.ArgAt<string>(1), token = call.ArgAt<string>(2);
+            string route = call.ArgAt<string>(1), operationId = call.ArgAt<string>(2);
             if (_leases.ContainsKey(route)) return false;
-            _leases[route] = token;
+            _leases[route] = operationId;
             _revisions[route]++;
             return true;
         });
         _lifecycle.CompleteDeliveryWriteAsync(Identity, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            string route = call.ArgAt<string>(1), token = call.ArgAt<string>(2);
-            if (!_leases.TryGetValue(route, out string? current) || current != token) return false;
+            string route = call.ArgAt<string>(1), operationId = call.ArgAt<string>(2);
+            if (!_leases.TryGetValue(route, out string? current) || current != operationId) return false;
             Clock.Advance(ReleaseDelay);
             call.ArgAt<CancellationToken>(3).ThrowIfCancellationRequested();
             _leases.Remove(route);

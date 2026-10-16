@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Hexalith.EventStore.Client.Projections;
@@ -224,7 +225,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
     {
         using var fixture = new LegacyReplayProductionHarness();
         await fixture.InitializeAsync(257).ConfigureAwait(true);
-        const string secret = "private-stored-field-must-not-be-logged";
+        string secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         fixture.AfterStage = async () =>
         {
             await fixture.SourceState.SetStateAsync(fixture.Identity.EventStreamKeyPrefix + 2,

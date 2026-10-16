@@ -187,3 +187,101 @@ change beyond the approved root pins is authorized by this exception.
   Restarted the existing dapr_redis container without data/config changes;
   host protocol PONG now passes. This environment failure is retained,not
   qualification. WholeDebugLive3 reruns the unchanged source71/profile.
+
+- WholeDebugLive3 finished192selected/188passed/3failed/1declared skip,
+  0errors/not-run,1078.068s,exit1; wrapper/test/control exits1/1/0/0. All49
+  projection observations are retained,without claiming whole-suite success.
+  Two replica-start failures were inotify watcher ENOSPC:1,048,525 visible
+  watches against1,048,576 capacity. Temporarily raised only max_user_watches
+  to2,097,152 via sudo sysctl; unrelated processes and HotReload unchanged.
+  OQ8 hit its30second HttpClient timeout at initial12-way admission. Shared
+  scheduler health port reset connections; restarting existing dapr_scheduler
+  restored200 health. OQ8 owned process/scratch cleanup passed and container
+  absence is verified. Current full HEAD is retained alongside unchanged
+  baseline and source71 hashes. WholeDebugLive4 reruns the unchanged profile.
+
+- Focused unchanged OQ8 Debug1 passes1/1 in19.766s,exit0 after existing
+  scheduler recovery. Wrapper controls exit0/0; own processes/scratch stopped,
+  own PostgreSQL container absent. This verifies the environmental recovery
+  independently before wholeDebugLive4; no profile/source changes.
+
+- WholeDebugLive4 passed192selected/191passed/1declared helper skip,
+  0failed/errors/not-run,1065.016s,exit0. Wrapper/test/control exits0/0/0/0;
+  all49 observations retained with new asset hashes,own processes/scratch
+  stopped and own PostgreSQL container absent. All five refreshed complete
+  Debug assemblies now pass. FullReleaseServer1 is next sole runner.
+
+- First complete ReleaseServer1 finished5102selected/5076passed/1failed/
+  exact25declared skips,0errors/not-run,392.619s,exit1. The existing tracked
+  reusable-secret scan flags three lines in newly tracked story fixtures: two
+  generic token variable assignments and one constant logging sentinel.
+  No credential exists; nevertheless the owning scanner stays unchanged.
+  Renamed lifecycle identities operationId and generate the sentinel with
+  RandomNumberGenerator. Source72 freezes only these two fixture changes.
+  Rebuild/retest owning Server Debug and Release lanes; earlier production,
+  package and other-assembly evidence retains its original identities.
+
+- Source73 also repairs only SignalR.Common Include->Update at the existing
+  authorized10.0.13 because current clean shared catalog728174f already owns
+  it. Exact owning validator/action/case expectations follow; no new package,
+  version,shared-file edit or audit change. Mutable wrapper change log records
+  the technical decision without changing original authorization/normative bytes.
+  Captured current catalog commit/raw/canonical hashes and56project pre-restore
+  library inventories for actual closure comparison. DebugServer build3 clean
+  26.79s; exact focusedServer2 passes548/548 in21.603s. ContractsDebug build6
+  clean15.07s; focused authority3 passes64/64 in215.449s. FullDebugServer2
+  nowsole runner on corrected tracked source73.
+
+- Final corrected source73 full DebugServer2 passes5077/25declared skips
+  in704.000s; Domain focus110/full904 pass94.535s/115.715s; Client full1562
+  passes5.846s. All fresh builds are warning/error-free. Actual clean-catalog
+  Release restore3/build3 and post-package restore4/build4 pass0warnings/errors.
+  New manifest inventory2 has14exact packages; package-enabled fullContracts
+  Debug3 passes2358/2358 in285.075s. Full library comparison retains inherited
+  project-version3.120->3.122,Redis/RESPite3.4.0->3.4.5 and CommandLine
+  2.0.12->2.0.13 changes; no extra central edit was made by this task.
+  Fresh exact focusedDebugLive2 passes40/40 in771.133s with0failures/skips;
+  all49 observations and actual source73/currentHEAD/catalog/assets retained,
+  wrapper/test/owned-control exits0/0/0/0. WholeDebugLive5 is next sole lane.
+
+- Whole fresh source73 DebugLive5 passes192selected/191passed/exact1
+  declared parent-worker skip,0failures/errors/not-run,1038.915s,exit0.
+  All49 observations retained with actual current source/runtime/catalog
+  bindings. Wrapper/test/control exits0/0/0/0; OQ8 owned scratch/process
+  cleanup passed and owned PostgreSQL container is absent. All five final
+  Debug assemblies now qualify the corrected tracked candidate. Complete
+  ReleaseServer2 starts next,then Domain/Client/Contracts/coherent hosts/Live
+  and the additional fresh R4096 Current matrix; formal review remains open.
+
+- Final source73 ReleaseServer2 passes5102selected/5077passed/exact25DW1
+  skips405.020s; Domain904/904115.699s; Client1562/1562,6.197s; actual14-package
+  Contracts2358/2358,291.381s. All0failures/errors/not-run. Exact restore5/build5
+  pass0warnings/errors after publication fixtures; build5 coherent hosts then
+  qualify whole ReleaseLive and the separate fresh R4096 Current matrix.
+- Four completed Release gates retain actual build4 DLL bindings. Both builds
+  use source73/current catalog and identical test deps; only Server/Gateway PE
+  hashes differ. No matching old binary backup remains,so precise PE cause is
+  unresolved. No binary/CIL equivalence is claimed or unnecessary full rerun
+  substituted. Final Live/R4096 retain their actual build5 bindings.
+
+- Final consolidation observed at 2026-10-16T10:28:34.206443+00:00: wholeReleaseLive1 passes192/191/1declared
+  helper skip in1116.889s,wrapper/test/controls all0. Fresh
+  R4096CurrentRelease1 passes5/5 in254.997s with15 exact
+  Current observations. All five complete Debug and Release suites each total
+  10118selected/10092passed/exact26declared skips,0failures/errors/not-run.
+  Cleanup and temporary inotify disposition are bound in the gate packet.
+  Current coverage addendum and mutable wrapper/checkpoint/concept/runbook
+  wording reconcile these actual local results; two source73 document deltas
+  have separate hashes. Formal parent acceptance/review,sealed CI,AD12/NFR8
+  transition and production acceptance remain open; status staysin-progress.
+
+- Guarded cleanup restored fs.inotify.max_user_watches from our unchanged
+  2,097,152 temporary setting to the original1,048,576 at
+  2026-10-16T10:28:31.835063+00:00,exit0. No unrelated process was terminated
+  and HotReload stayed unchanged. Closing audit passes:294 unchanged source73
+  files plus2 separately hashed documentation deltas,all actual per-gate
+  bindings,50 current Release test DLLs,16 host DLL/deps,5 test deps,14 packages,
+  exact60 Current observations,zero retained identifier/HTTP leaks,and no owned
+  wrapper/control processes or listening owned ports. Parent independently
+  audited final whole Release and R4096 vector packets successfully; these are
+  tool evidence,not human/AD12/CI approval. No runtime lane remains active.

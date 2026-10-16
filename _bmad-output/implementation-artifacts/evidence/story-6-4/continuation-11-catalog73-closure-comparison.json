@@ -1,0 +1,2457 @@
+{
+  "sourceSnapshot": "frozenSourceFiles73",
+  "baselineCommit": "e17e7294f540ebba42fe25192998689f0ecd89c1",
+  "currentHeadCommit": "008b83f0443c151052275fd291b0b88ac3aa996c",
+  "catalog": {
+    "path": "references/Hexalith.Builds/Props/Directory.Packages.props",
+    "commit": "728174f506d56204657e0c52e98a4453aef79f6a",
+    "sha256": "c0d2e3a0433543483f844e9feccf08e40e2c431a422fb4d7cf52656cd0728a48",
+    "canonicalLfSha256": "91e472254bd2a6800a4333c7db6c5ef4d29f1eb40f78692f6e5520c7999ce1f9",
+    "workingTreeClean": true,
+    "modifiedByThisTask": false
+  },
+  "comparison": "complete evaluated libraries including package hash/type after actual exact Release restore3 versus captured pre-repair assets",
+  "beforeSnapshot": {
+    "path": "/tmp/story-6-4-cont11-pre-repair-assets73.json",
+    "sha256": "0d9b1ed4e928398797dd757f52430030641e202b8b4ec79a9f1d29a22b8d3e3b",
+    "projectCount": 56
+  },
+  "projects": [
+    {
+      "path": "src/Hexalith.EventStore.SignalR/obj/project.assets.json",
+      "beforeLibrariesSha256": "0e1d8f0a50c7237730f13bf76810cfa4cdd1ab20ed2dff8ba7e031f012e23a77",
+      "afterLibrariesSha256": "1d138b59daac15751f1053daf5f47a1363a2e7949470bca453e68d2d9f5bce9b",
+      "beforeCount": 17,
+      "afterCount": 17,
+      "added": {
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/obj/project.assets.json",
+      "beforeLibrariesSha256": "33398f8a321f06eac1034518960e204326db069dd8a049932f5c8c8b05fd7ae8",
+      "afterLibrariesSha256": "33398f8a321f06eac1034518960e204326db069dd8a049932f5c8c8b05fd7ae8",
+      "beforeCount": 2,
+      "afterCount": 2,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Aspire/obj/project.assets.json",
+      "beforeLibrariesSha256": "30062800ec4f7acd229e6db2c8a77822a5a36d24d1e9191714f42e5b76f1bcf9",
+      "afterLibrariesSha256": "e20ae6d36e404c0cb569654a4b6e1990a49907d33edaa5e312f76306f9eb2bf3",
+      "beforeCount": 78,
+      "afterCount": 78,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Abstractions/obj/project.assets.json",
+      "beforeLibrariesSha256": "415e73e58611ab4e96f8d7342d378e1f2fbea7e04850ead9a6f2dd81fcf1322c",
+      "afterLibrariesSha256": "534c017403bda272eaa46ec42e91a2316563d5e8d32ef0f509e9c766df16b208",
+      "beforeCount": 3,
+      "afterCount": 3,
+      "added": {
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Testing.Integration/obj/project.assets.json",
+      "beforeLibrariesSha256": "5c27c742c7beac6d4f8ca1ef349bd1b41777a6f63290de0f20fe0c40be739093",
+      "afterLibrariesSha256": "837c0fed2eaf9e72adf860b4ecc07b49e411d25fe3813057f496245009849697",
+      "beforeCount": 130,
+      "afterCount": 130,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/obj/project.assets.json",
+      "beforeLibrariesSha256": "84c52842d8e1e4d338ed0dd86f30956bada484016d234f5b83236ee7c070efb7",
+      "afterLibrariesSha256": "7ebf34c2e02ecc21d72312aac21ea5a2ab518ca06efd70a8cbbb1360eb3f0fea",
+      "beforeCount": 34,
+      "afterCount": 34,
+      "added": {
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Server/obj/project.assets.json",
+      "beforeLibrariesSha256": "41c29bfdcaa432a2100bd2ea5f2fc76bb7d3b126293ea0cffc09f92ea12e5d13",
+      "afterLibrariesSha256": "dbdd8caddacec695a6492280e6069486d613ae87364821087fd32d897113ff5a",
+      "beforeCount": 18,
+      "afterCount": 18,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/obj/project.assets.json",
+      "beforeLibrariesSha256": "8e19852e48dc5170654555fd2ecff0f323bfb8b967a6bc3d154352e888c1d943",
+      "afterLibrariesSha256": "19f7768abc7a4a2456ae6abe54058aa951d6f8dcd6c05f1d21e857b47725bf23",
+      "beforeCount": 28,
+      "afterCount": 28,
+      "added": {
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/obj/project.assets.json",
+      "beforeLibrariesSha256": "b2d14f182de87cc4f40534f41fccdfa629bf5490050657b702bec78b8d4248db",
+      "afterLibrariesSha256": "e4312b291e6f4a0d5867a939b1b5aa4781e136e1a4bb973105ec0e9d023cfef9",
+      "beforeCount": 72,
+      "afterCount": 72,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Gateway/obj/project.assets.json",
+      "beforeLibrariesSha256": "9c063db4c7461d3136c2ff083e46dae63dc815e8667e5974ff65258e004e53c5",
+      "afterLibrariesSha256": "c350d5b0bc269e9d94deab78141819e1eb56e794a172d437b427c597c2ab4bcf",
+      "beforeCount": 66,
+      "afterCount": 66,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.RestApi.Generators/obj/project.assets.json",
+      "beforeLibrariesSha256": "dd0fd76ca59f3df4e3ea65f2301f53999dbd80208e316bd93d48854abd38623f",
+      "afterLibrariesSha256": "dd0fd76ca59f3df4e3ea65f2301f53999dbd80208e316bd93d48854abd38623f",
+      "beforeCount": 13,
+      "afterCount": 13,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/obj/project.assets.json",
+      "beforeLibrariesSha256": "6205cefa06912f3955acf19d4ad70c829f290e7393258fdd24f20e5c00a5d728",
+      "afterLibrariesSha256": "cd6a7de596b3eaad36afa291ce654250245f4df0de993103a60f246d13b36d96",
+      "beforeCount": 48,
+      "afterCount": 48,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Testing/obj/project.assets.json",
+      "beforeLibrariesSha256": "1385bcb3d3e7a0d0cc076a5edab378f11101010b996d0d9d929158cc8f86ba3f",
+      "afterLibrariesSha256": "0e43ce5abaed06a9a6a102761f6a5877e868b854b17190587d9f1f42e58f68dc",
+      "beforeCount": 82,
+      "afterCount": 82,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.AppHost/obj/project.assets.json",
+      "beforeLibrariesSha256": "8a1248ed69a1c328d9ec0743788fbe5efef3929590a96044e6daf69337de381c",
+      "afterLibrariesSha256": "fe33ecb1fa409c2cf64ce42fac4877961a61902859c64ab95e60d6ca3637d6d7",
+      "beforeCount": 109,
+      "afterCount": 109,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore.Aspire/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore.Aspire/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Operations/obj/project.assets.json",
+      "beforeLibrariesSha256": "8f7ae1be0d97048f17f36c3a7bbc61a16411dfef4965ac884495780f26f3299b",
+      "afterLibrariesSha256": "2ed56bc761fd9de2d769b9632dbe763df1b5502bfa144471f4aecb24ec0829ca",
+      "beforeCount": 48,
+      "afterCount": 48,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Mcp/obj/project.assets.json",
+      "beforeLibrariesSha256": "73b4dd7e80472edbaace6ca13c77fd0cefd8784619fef0d0e5e475e219e63296",
+      "afterLibrariesSha256": "edeece910c87fe0fc52f4c2af4d1227963cf37431049e4df7a0f8aa8e92bf12e",
+      "beforeCount": 37,
+      "afterCount": 37,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Server.Host/obj/project.assets.json",
+      "beforeLibrariesSha256": "1428809b48a8040990a7869c5db5d42a4fb3a6de8dccfed6ba0132dd84087da9",
+      "afterLibrariesSha256": "30724be0d830df746e976613a57c37ab4d29805694b256f2cd6fd5e2b1eab88a",
+      "beforeCount": 52,
+      "afterCount": 52,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore/obj/project.assets.json",
+      "beforeLibrariesSha256": "c587cfc6aba0e7bab0407fcc105f8664e2dabe73b9f2a9cd501f1b17f66fe324",
+      "afterLibrariesSha256": "27afd95ea05143abfd347d58c82d35da6f57bf58bb27c3fb724f48da181c5165",
+      "beforeCount": 67,
+      "afterCount": 67,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.Cli/obj/project.assets.json",
+      "beforeLibrariesSha256": "d1e32bdcf25f5d44f6771725bb7072d53fb76eac581564fc44e9144d81efdf5c",
+      "afterLibrariesSha256": "73bc993cc70f3a47e986bf84d76f2d3c0948b9a275266a57349dfaa9ec4a6f04",
+      "beforeCount": 5,
+      "afterCount": 5,
+      "added": {
+        "System.CommandLine/2.0.13": {
+          "type": "package",
+          "sha512": "TIO2lMV+sSP7WW7pD/oCRHD9ENWY+jqwXmYzgks3R46cEdDzwjQOAhsiBn+M3EegfGjgTpa2h+eIrcU+AM2k6A=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "System.CommandLine/2.0.12": {
+          "type": "package",
+          "sha512": "FpW672e6qqrTd1EfKqsvUtFZaJWlTlszUR1o8tdakXhkzKbnEZVndtpfd4K3fUPCFcIs9UmcswMyYGJP1zp/rg=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.Admin.UI/obj/project.assets.json",
+      "beforeLibrariesSha256": "d7e6ddf4329e7f6712dd637f0ae4e57509fb021df1eae7520806c52461e76728",
+      "afterLibrariesSha256": "054a1048268c8534febb8ec75da5f272a551386bbb9dc5d4290a2cb4f4dabd6f",
+      "beforeCount": 53,
+      "afterCount": 53,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "src/Hexalith.EventStore.PayloadProtection/obj/project.assets.json",
+      "beforeLibrariesSha256": "9d1bca7d58493ed8e8d3a43dc0cfeb8c06b5be1669bdb4763249428949c87222",
+      "afterLibrariesSha256": "9d1bca7d58493ed8e8d3a43dc0cfeb8c06b5be1669bdb4763249428949c87222",
+      "beforeCount": 4,
+      "afterCount": 4,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.ProviderVerification.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "60da2e2a89330a129b606474e765723f698d2c70eecec68326fc70bea5f2d294",
+      "afterLibrariesSha256": "6754c0da8881b6a7487754f2d7d6d47211935475a401159bb527a228fab15784",
+      "beforeCount": 132,
+      "afterCount": 132,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ProviderVerification/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ProviderVerification/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.UI.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "5bf39f38daf9db10c8396ca6cc86a7554700bf2fe8d3b56633682232b14764bf",
+      "afterLibrariesSha256": "3b4f6d531522e36edbf54fc5fe8449dbacae26c1d7d71ef5f8de9e23542fdaaf",
+      "beforeCount": 153,
+      "afterCount": 153,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.UI/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.UI/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.TestContracts/obj/project.assets.json",
+      "beforeLibrariesSha256": "24001e58657fdc44a1894bf737349641e432098ab470e12b890d5f1d765f5862",
+      "afterLibrariesSha256": "56e729ef0e639bb23602c18ba3081c2e399355b734809f439cf8975f73efa11e",
+      "beforeCount": 34,
+      "afterCount": 34,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Testing.Integration.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "7b0e70e4e36e79710b9f23f7033f523f19ffaa2844c20772e512164a1763a2ad",
+      "afterLibrariesSha256": "856ec8727a86182f24db017f8535142aaa46c9107cbb6d023de448a00e93a0f9",
+      "beforeCount": 155,
+      "afterCount": 155,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing.Integration/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing.Integration/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.UI.E2E/obj/project.assets.json",
+      "beforeLibrariesSha256": "adfe24afeafbb41629e9e5379c906dd870ef4a6512611056164c45c3f9135ed5",
+      "afterLibrariesSha256": "f0e10f0f0e89b5bbc3de2132f2c8df01fe9495d4dffbecd383f5ba8b88360c58",
+      "beforeCount": 134,
+      "afterCount": 134,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.UI/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.UI/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Sample.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "32efb4c1e87b98c92ef5f4aed6801e6cbbc6f6fb895aab26c5d481fc584c242f",
+      "afterLibrariesSha256": "670536effc07f8bd940cbf70b150585794f45a8f969429acbe2f31186f44c206",
+      "beforeCount": 142,
+      "afterCount": 142,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Api/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.BlazorUI/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Api/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.BlazorUI/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.PayloadProtection.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "b04339b8469b691e1ff167024dce776cb78803301760a2a960405a98b8bf6b3e",
+      "afterLibrariesSha256": "b04339b8469b691e1ff167024dce776cb78803301760a2a960405a98b8bf6b3e",
+      "beforeCount": 39,
+      "afterCount": 39,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Mcp.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "4e42c7bc89761f66f47b416df1742d33547cd18b43a63ccbd883be656c7c1516",
+      "afterLibrariesSha256": "8d94d1fc022e4a39e64969e8d6b6db0165cb74f66ef94cd61dd8a9f05029c5c1",
+      "beforeCount": 126,
+      "afterCount": 126,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Mcp/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Mcp/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Operations.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "55eba4ed2d10304994151940f12107eef6963a73125a37b96967047304138f9f",
+      "afterLibrariesSha256": "68d3e34e4a403a446ca96d46477c5bc9471cfc64090809b97fd5174a0a1f5baa",
+      "beforeCount": 124,
+      "afterCount": 124,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Operations/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Operations/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "73981cddc9df9de10781da8293c40113dacceef0fa99cdb5c923928bd1cef905",
+      "afterLibrariesSha256": "d54f44ba414ca9fcb685323d94b7b6b70edd8abefc3b2043359a8dc3f5518ae9",
+      "beforeCount": 137,
+      "afterCount": 137,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing.Integration/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing.Integration/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.LoadTests.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "8175e4822c2d98dae612c37868343e64d310745a54a78c098c8cd8ad9640f186",
+      "afterLibrariesSha256": "48c3a8bb755d396b2da973ff86b43bbaef198505297647df206c1ae6628c5888",
+      "beforeCount": 83,
+      "afterCount": 83,
+      "added": {
+        "System.CommandLine/2.0.13": {
+          "type": "package",
+          "sha512": "TIO2lMV+sSP7WW7pD/oCRHD9ENWY+jqwXmYzgks3R46cEdDzwjQOAhsiBn+M3EegfGjgTpa2h+eIrcU+AM2k6A=="
+        },
+        "Hexalith.EventStore.LoadTests/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "System.CommandLine/2.0.12": {
+          "type": "package",
+          "sha512": "FpW672e6qqrTd1EfKqsvUtFZaJWlTlszUR1o8tdakXhkzKbnEZVndtpfd4K3fUPCFcIs9UmcswMyYGJP1zp/rg=="
+        },
+        "Hexalith.EventStore.LoadTests/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Testing.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "2ed5477cbea547b611e5f72853ba59c70fe1b361f085a61e8ba02309c3682411",
+      "afterLibrariesSha256": "2de092dc5c4606dfe22a9ef4e03b237f394cf67dae4f477b1ae19c56a0e3a74c",
+      "beforeCount": 106,
+      "afterCount": 106,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.SignalR.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "9ae63cfcbe770e3571022bd5ef72b2ce90937de669592001618d6062344a49ab",
+      "afterLibrariesSha256": "58088cb73f518c51d8af286cfc781f9902e5d63c24167da6471300ba083049fb",
+      "beforeCount": 53,
+      "afterCount": 53,
+      "added": {
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.QueryRouting.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "e63cc3f7fcd716c3d1efe065d43e6268a4c4452f9c944549359da6861533ab08",
+      "afterLibrariesSha256": "6828610b1a3920b45e7573d2f2bc3674fe84f10de5f8937733dcf1e526b93cb2",
+      "beforeCount": 124,
+      "afterCount": 124,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "a0747c877eb40144c5ad9abeeed4bc1e4e39c4f98bb28c2f6475fccb31c0d483",
+      "afterLibrariesSha256": "d97e9831994ab348c6cc146e159de27fbf308204c8db0f973818bf70fcf3955d",
+      "beforeCount": 91,
+      "afterCount": 91,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "3ae037227936d54ad92e0401fda8bd75d1118c584d93691dfc93d31cf8858b0d",
+      "afterLibrariesSha256": "4d08dcd153a86c9a9d294ec4245bc7265b0bf6fb7171300d592445fb79a68032",
+      "beforeCount": 110,
+      "afterCount": 110,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DeferredWorkGovernance.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "3d0fbf5c22f2ed4d9381db25490e5e89abfc3469d2f01ee3c1d2abfb9c8a9d65",
+      "afterLibrariesSha256": "3d0fbf5c22f2ed4d9381db25490e5e89abfc3469d2f01ee3c1d2abfb9c8a9d65",
+      "beforeCount": 32,
+      "afterCount": 32,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.IntegrationTests/obj/project.assets.json",
+      "beforeLibrariesSha256": "aada0f0687d48ef1921fe3d97c4388fec9c36fd94eacc08df88ec61118fafb6a",
+      "afterLibrariesSha256": "85b282d41e610c434fe26273578df02ea98a4dc4dbeeafd1b32326c440d8050a",
+      "beforeCount": 211,
+      "afterCount": 211,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.AppHost/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Aspire/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.AppHost/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Aspire/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "549fca267e4ab88aba65beaa57dd9a02f602c39db2e9ceb82092452956eb3501",
+      "afterLibrariesSha256": "bef74945cff91ae71224a176a3f02aed11c4be32c841adde92d9bb694db2b532",
+      "beforeCount": 107,
+      "afterCount": 107,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Cli.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "9f02b77c73029b9fc69d08c1e0b5b4925ce20b8b0ba2c8f502a5145ca8956940",
+      "afterLibrariesSha256": "39ed03e64eb4368450067563c5f4abc1211b86bd00df1c8a8ffd719e0bdda48a",
+      "beforeCount": 112,
+      "afterCount": 112,
+      "added": {
+        "System.CommandLine/2.0.13": {
+          "type": "package",
+          "sha512": "TIO2lMV+sSP7WW7pD/oCRHD9ENWY+jqwXmYzgks3R46cEdDzwjQOAhsiBn+M3EegfGjgTpa2h+eIrcU+AM2k6A=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Cli/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "System.CommandLine/2.0.12": {
+          "type": "package",
+          "sha512": "FpW672e6qqrTd1EfKqsvUtFZaJWlTlszUR1o8tdakXhkzKbnEZVndtpfd4K3fUPCFcIs9UmcswMyYGJP1zp/rg=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Cli/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.AppHost.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "7f259bf12d4d66fbf0d87a189e5ace39f460f88e90c68c5af5aae277ab5073fd",
+      "afterLibrariesSha256": "adc84c6fcc44e6060e2351df62d98cc45f99fdff4504cb400cf8489c0e371f9f",
+      "beforeCount": 187,
+      "afterCount": 187,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore.AppHost/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Aspire/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore.AppHost/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Aspire/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.ProviderVerification/obj/project.assets.json",
+      "beforeLibrariesSha256": "dd5c800e78705d8973be4ec819915fa6b51202b24288e72e4543f9ff83734f11",
+      "afterLibrariesSha256": "385b612acf1315aad82594c651bc57458bb83606c2fb83546624910e79579ac9",
+      "beforeCount": 85,
+      "afterCount": 85,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Server.Host.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "947b3ad84a2d9c5e03e36ccd7550cb57a51d5fc8521390e0408f12883db270a2",
+      "afterLibrariesSha256": "0153ced70ae488fd10f4140fd4ca9acaf3487ec6f9c165a38cec1f2ef6d4d51c",
+      "beforeCount": 121,
+      "afterCount": 121,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server.Host/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server.Host/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Server.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "507272134e08a6330f168171d3b5c7f26e75a2092b87f10881dc361893cffec6",
+      "afterLibrariesSha256": "21dcf2ff8d478bc92d86fba0f0869059eaf88b26ab18e4c5448030e95aa3c9dd",
+      "beforeCount": 130,
+      "afterCount": 130,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "e31c06cd0ece73aa9f05348e3b577c24afca2da9d7e51f038394e68532801e8f",
+      "afterLibrariesSha256": "e31c06cd0ece73aa9f05348e3b577c24afca2da9d7e51f038394e68532801e8f",
+      "beforeCount": 33,
+      "afterCount": 33,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.TestSubscriber/obj/project.assets.json",
+      "beforeLibrariesSha256": "a3f2d9afff3660a6ebef159759b35a7d593dcfcdb48b1f5ab8902fc88e823b69",
+      "afterLibrariesSha256": "a3f2d9afff3660a6ebef159759b35a7d593dcfcdb48b1f5ab8902fc88e823b69",
+      "beforeCount": 5,
+      "afterCount": 5,
+      "added": {},
+      "removed": {},
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "839029179d697f0a9e34cb7e393682a5a0958140c8ed349b089f5413c6cd57f1",
+      "afterLibrariesSha256": "551151c9f998ec7a68cce94c81b4dbdfd7f8b2a8645e48bd7ec72c4a12a1605d",
+      "beforeCount": 141,
+      "afterCount": 141,
+      "added": {
+        "RESPite/3.4.5": {
+          "type": "package",
+          "sha512": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
+        },
+        "StackExchange.Redis/3.4.5": {
+          "type": "package",
+          "sha512": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ=="
+        },
+        "Hexalith.EventStore/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client.TestContracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "RESPite/3.4.0": {
+          "type": "package",
+          "sha512": "BEdf42Eugi6oNw84vSQuLvYOzoY9KLv6gKsxFbSbv1zm23DiCULeQ8jobRgGip43T0GoAJstFW0TXvKRx9Ewlg=="
+        },
+        "StackExchange.Redis/3.4.0": {
+          "type": "package",
+          "sha512": "29fvhba1pHQ2Vs+FIiG2201G62xL4EayGMm7yNZrHh/IcOZbzhl4g1CKQQP9xhznzDHybFURyj3XN433QctdPA=="
+        },
+        "Hexalith.EventStore/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client.TestContracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Gateway/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Admin.Abstractions.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "7965b59277099b1df525415fefe1b561d3b1956b285368c59855df40c8eac29c",
+      "afterLibrariesSha256": "a82c9d387baa95ffe661c1f8c3454d5cab2aeec31fbfc4b77e056bc31b3a1254",
+      "beforeCount": 107,
+      "afterCount": 107,
+      "added": {
+        "Hexalith.EventStore.Admin.Abstractions/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Admin.Abstractions/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Server/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Testing/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "tests/Hexalith.EventStore.RestApi.Generators.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "6c00b5520c9ff758bb0918c65ef008d81ff08a184b710c1b8a021f728da017d6",
+      "afterLibrariesSha256": "c00de0bc2887c6dd05915a2c27a770e58d872b510ea99d47149c98e239b707ad",
+      "beforeCount": 49,
+      "afterCount": 49,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.RestApi.Generators/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.RestApi.Generators/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample.BlazorUI/obj/project.assets.json",
+      "beforeLibrariesSha256": "76eb50a679b6d4be57fae5e08d68ef13c56efbaeff3027655ac4233f6636decd",
+      "afterLibrariesSha256": "ac1e31116544992eb05fdb679a1a974ceb3fd0e248fe79b40766ff31901cfd4e",
+      "beforeCount": 53,
+      "afterCount": 53,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.SignalR/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample.Tests/obj/project.assets.json",
+      "beforeLibrariesSha256": "1b18f3ea5a950a4557c019bd981f2116efb091543b2f0ef9a083bb5beec79c9e",
+      "afterLibrariesSha256": "8b0f8bea952c0d6db021042160f0d57fe9f57bf16eeb0ca25132ac1e19fa9fc8",
+      "beforeCount": 100,
+      "afterCount": 100,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample.Contracts/obj/project.assets.json",
+      "beforeLibrariesSha256": "415e73e58611ab4e96f8d7342d378e1f2fbea7e04850ead9a6f2dd81fcf1322c",
+      "afterLibrariesSha256": "534c017403bda272eaa46ec42e91a2316563d5e8d32ef0f509e9c766df16b208",
+      "beforeCount": 3,
+      "afterCount": 3,
+      "added": {
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample.Api/obj/project.assets.json",
+      "beforeLibrariesSha256": "d18f3837141bd36e3cc4e821873211626f240f927df0ecf0ce9633d73037425a",
+      "afterLibrariesSha256": "5357208b0b783c1dd2bdb7fbc16db7db5a363c58c96a81b72b39df113b027937",
+      "beforeCount": 46,
+      "afterCount": 46,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "samples/Hexalith.EventStore.Sample/obj/project.assets.json",
+      "beforeLibrariesSha256": "ded4981e85e905f4be446d1a7a904e2ce73661410e34776b9f5f47a90c59aa76",
+      "afterLibrariesSha256": "5bcd0c2f87d259f4e9c96df245cd3cdc5d6964dc2fba77e696a22421d2003817",
+      "beforeCount": 50,
+      "afterCount": 50,
+      "added": {
+        "Hexalith.EventStore.Client/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.122.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.122.0": {
+          "type": "project"
+        }
+      },
+      "removed": {
+        "Hexalith.EventStore.Client/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.DomainService/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.Sample.Contracts/3.120.0": {
+          "type": "project"
+        },
+        "Hexalith.EventStore.ServiceDefaults/3.120.0": {
+          "type": "project"
+        }
+      },
+      "changed": {}
+    },
+    {
+      "path": "perf/Hexalith.EventStore.LoadTests/obj/project.assets.json",
+      "beforeLibrariesSha256": "00ba895de1a762eb8a53d3374225e116acf8bbeb5d5bf52c6153db348e370765",
+      "afterLibrariesSha256": "a64538bb3e508ba3a7fc1b38bb8de1e305836f9838bf690f3ed4e2b3fd610931",
+      "beforeCount": 52,
+      "afterCount": 52,
+      "added": {
+        "System.CommandLine/2.0.13": {
+          "type": "package",
+          "sha512": "TIO2lMV+sSP7WW7pD/oCRHD9ENWY+jqwXmYzgks3R46cEdDzwjQOAhsiBn+M3EegfGjgTpa2h+eIrcU+AM2k6A=="
+        }
+      },
+      "removed": {
+        "System.CommandLine/2.0.12": {
+          "type": "package",
+          "sha512": "FpW672e6qqrTd1EfKqsvUtFZaJWlTlszUR1o8tdakXhkzKbnEZVndtpfd4K3fUPCFcIs9UmcswMyYGJP1zp/rg=="
+        }
+      },
+      "changed": {}
+    }
+  ]
+}

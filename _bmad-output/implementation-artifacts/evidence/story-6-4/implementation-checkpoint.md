@@ -1,5 +1,44 @@
 # Story 6.4 implementation checkpoint
 
+**Continuation11 local qualification is complete on corrected source73; formal acceptance remains open.**
+Read the [current coverage addendum](continuation-11-coverage-addendum.md),
+[gate packet](continuation-11-final-gates.json), [closing audit](continuation-11-final-audit.json)
+and [progress](continuation-11-progress.md). They supersede the pre-update
+handoff below while preserving every historical result and run binding.
+
+The preserved baseline remains `e17e7294f540ebba42fe25192998689f0ecd89c1`;
+actual HEAD is `008b83f0443c151052275fd291b0b88ac3aa996c` plus recorded working-tree
+changes. All 296 source73 identities and actual per-gate assets/catalog/dependency/
+package bindings are retained. Final concept/runbook qualification wording is a
+separate documentation-only before/after hash delta. The approved normative
+SHA256 and original human authorization are unchanged.
+
+All five complete Debug and all five complete Release assemblies passed: each
+configuration selected 10,118/passed 10,092/exactly 26 declared skips, zero failures/
+errors/not-run. Exact focused Server 548/Domain 110/Live 40, owning authority 64 and
+fresh R4096 Current 5 cases/15 observations pass. Actual exact Release/package
+restore/build and14-package manifest pack pass with zero warnings/errors. All
+owned controls/processes and OQ8 scratch/container cleanup are verified; the
+inotify adjustment is restored or an external value preserved in the packet.
+
+The five servicing versions remain 10.0.13. SignalR.Common uses Update because
+the current clean shared catalog already owns it; the strict owning adapter and
+negative expectations follow that action. Two fixtures use an operationId name
+and generated logging sentinel under the unchanged tracked-secret scanner.
+No shared reference/audit-policy or additional package/version edit occurred.
+Inherited catalog closure changes and actual DLL identities prompted all fresh
+source73 gates; earlier source71 passes remain historical. Four complete Release
+suites retain build4 bindings; final Release Live/R4096 use build5. Server/Gateway
+PE hashes differ with unchanged source/catalog/configuration/deps; exact cause is
+unresolved and no binary/CIL equivalence is claimed.
+
+Parent owns step-03 acceptance and subsequent independent step-04 review. Keep
+wrapper/sprint in progress. Local results do not establish authenticated exact-
+head sealed CI, the formal AD-12/NFR8 transition or production acceptance. This refresh performed no
+activation, cutover, deployment, package publication or source commit.
+
+## Preserved pre-update handoff
+
 **Dependency exception authorized; revalidation pending.** Continue the existing
 parent-owned sequential step-03 workflow. The implementation subagent is being
 re-engaged for the exact five-pin update recorded in the wrapper. All earlier

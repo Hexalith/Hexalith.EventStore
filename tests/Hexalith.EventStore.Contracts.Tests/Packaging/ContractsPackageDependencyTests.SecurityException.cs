@@ -167,14 +167,14 @@ public sealed partial class ContractsPackageDependencyTests
                     new XAttribute("Include", "Unapproved.Package"), new XAttribute("Version", "10.0.13")));
                 break;
             case "action":
-                first.Attribute("Include")!.Remove();
-                first.SetAttributeValue("Update", "Microsoft.AspNetCore.SignalR.Common");
+                first.Attribute("Update")!.Remove();
+                first.SetAttributeValue("Include", "Microsoft.AspNetCore.SignalR.Common");
                 break;
             case "version":
                 first.SetAttributeValue("Version", "10.0.14");
                 break;
             case "identity-case":
-                first.SetAttributeValue("Include", "microsoft.AspNetCore.SignalR.Common");
+                first.SetAttributeValue("Update", "microsoft.AspNetCore.SignalR.Common");
                 break;
             case "item-condition":
                 first.SetAttributeValue("Condition", "'$(Configuration)' == 'Release'");

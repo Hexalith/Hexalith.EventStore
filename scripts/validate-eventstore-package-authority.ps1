@@ -16,9 +16,10 @@ $ErrorActionPreference = 'Stop'
 
 # The owner approved precisely these five EventStore overrides on 2026-10-16.
 # This adapter leaves the shared authority files and every other check intact.
+# SignalR.Common uses Update because the current shared catalog already declares it.
 function Get-EventStoreApprovedPackagePins {
     $pins = [System.Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
-    $pins.Add('Microsoft.AspNetCore.SignalR.Common', 'Include')
+    $pins.Add('Microsoft.AspNetCore.SignalR.Common', 'Update')
     $pins.Add('System.Security.Cryptography.Pkcs', 'Include')
     $pins.Add('System.Security.Cryptography.Xml', 'Include')
     $pins.Add('Microsoft.Extensions.DependencyInjection.Abstractions', 'Update')
