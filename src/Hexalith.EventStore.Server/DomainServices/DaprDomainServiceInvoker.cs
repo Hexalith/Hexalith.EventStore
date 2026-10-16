@@ -75,7 +75,17 @@ public partial class DaprDomainServiceInvoker(
 
     /// <inheritdoc/>
     public async Task<DomainResult> InvokeAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
-        string? snapshotCaptureProfileId, string? humanAuthorityReceipt, CancellationToken cancellationToken = default) {
+        string? snapshotCaptureProfileId, string? humanAuthorityReceipt, CancellationToken cancellationToken = default)
+        => await InvokeCoreAsync(command, currentState, includePostCommandState, snapshotCaptureProfileId, humanAuthorityReceipt, null, cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public Task<DomainResult> InvokeTrustedEffectAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin origin, CancellationToken cancellationToken = default)
+        => InvokeCoreAsync(command, currentState, includePostCommandState, snapshotCaptureProfileId, null, origin, cancellationToken);
+
+    private async Task<DomainResult> InvokeCoreAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, string? humanAuthorityReceipt,
+        Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin? origin, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(command);
 
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
@@ -105,6 +115,7 @@ public partial class DaprDomainServiceInvoker(
                 IncludePostCommandState = includePostCommandState,
                 SnapshotCaptureProfileId = includePostCommandState ? snapshotCaptureProfileId : null,
                 HumanAuthorityReceipt = humanAuthorityReceipt,
+                TrustedEffectOrigin = origin,
             };
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,

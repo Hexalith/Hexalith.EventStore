@@ -8,6 +8,12 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// The server calls domain services via DAPR; in tests, this is faked.
 /// </summary>
 public interface IDomainServiceInvoker {
+    /// <summary>Invokes with ephemeral target-admitted effect origin; unsupported invokers fail closed.</summary>
+    Task<DomainResult> InvokeTrustedEffectAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
+        string? snapshotCaptureProfileId, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin origin,
+        CancellationToken cancellationToken = default)
+        => throw new InvalidOperationException("The domain-service invoker cannot convey authenticated effect origin.");
+
     /// <summary>Invokes a domain service with an optional request for post-command folded state.</summary>
     /// <param name="command">The command envelope.</param>
     /// <param name="currentState">The current aggregate state.</param>

@@ -15,6 +15,60 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// </summary>
 public sealed class ReminderCoordinatorTests
 {
+    /// <summary>Produced invalid-message evidence retains its identity and reason after every reload.</summary>
+    [Fact]
+    public async Task InvalidSourceMessageQuarantineIsStableAcrossConvergenceAndRestart()
+    {
+        var harness = new ReminderTestHarness();
+        var target = ReminderTestHarness.Target("invalid-message");
+        harness.Source.Set(target, ReminderTestHarness.Intent(target, harness.Time.Now.AddHours(1)) with { SourceMessageId = " " });
+        await harness.CreateRegistrar().ConvergeAsync(target);
+        var original = harness.ItemState(ReminderTestHarness.ActorId(target))!.Quarantine.ShouldHaveSingleItem();
+        original.ReasonCode.ShouldBe("source-message-invalid");
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            harness.Time.Advance(TimeSpan.FromMinutes(1));
+            await harness.CreateRegistrar(new ReminderRuntimeStatus()).ConvergeAsync(target);
+            harness.ItemState(ReminderTestHarness.ActorId(target))!.Quarantine.ShouldHaveSingleItem().ShouldBe(original);
+        }
+    }
+
+    /// <summary>Restored entries obey the fresh optional-message rule before any callback or rescheduling can use them.</summary>
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("committed-message", false)]
+    [InlineData("", true)]
+    [InlineData(" ", true)]
+    [InlineData("\t", true)]
+    public async Task PersistedSourceMessageValidationSurvivesReconstruction(string? sourceMessage, bool invalid)
+    {
+        var harness = new ReminderTestHarness();
+        var target = ReminderTestHarness.Target("stored-message");
+        string actor = ReminderTestHarness.ActorId(target);
+        var intent = ReminderTestHarness.Intent(target, harness.Time.Now.AddHours(1));
+        harness.Source.Set(target, intent);
+        await harness.CreateRegistrar().ConvergeAsync(target);
+        var original = harness.ItemState(actor)!;
+        harness.SeedItemState(actor, original with { Entries = [original.Entries.Single() with { SourceMessageId = sourceMessage }] });
+        harness.Source.Set(target, intent with { SourceMessageId = invalid ? null : sourceMessage });
+        await harness.CreateRegistrar(new ReminderRuntimeStatus()).ConvergeAsync(target);
+        var restored = harness.ItemState(actor)!;
+        if (invalid)
+        {
+            var evidence = restored.Quarantine.ShouldHaveSingleItem();
+            evidence.ReasonCode.ShouldBe("stored-entry-invalid");
+            harness.Disposition(actor, evidence.EvidenceDigest)!.Disposition.ShouldBe(ReminderDisposition.Quarantined);
+            await harness.CreateRegistrar(new ReminderRuntimeStatus()).ConvergeAsync(target);
+            harness.ItemState(actor)!.Quarantine.ShouldHaveSingleItem().ShouldBe(evidence);
+        }
+        else
+        {
+            restored.Quarantine.ShouldBeEmpty();
+            restored.Entries.ShouldHaveSingleItem().SourceMessageId.ShouldBe(sourceMessage);
+        }
+        harness.Submitter.Calls.ShouldBeEmpty();
+    }
+
     private static readonly ReminderTarget Item = ReminderTestHarness.Target("item-1");
 
     /// <summary>Slow submission, audit, and cancellation failures start backoff when the failure is settled.</summary>

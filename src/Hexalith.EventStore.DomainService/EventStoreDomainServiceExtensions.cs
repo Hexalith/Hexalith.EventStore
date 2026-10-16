@@ -303,7 +303,23 @@ public static class EventStoreDomainServiceExtensions {
                     return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
                 }
 
-                DomainServiceWireResult result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false);
+                DomainServiceWireResult result;
+                try
+                {
+                    result = await DomainServiceRequestRouter.ProcessAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false);
+                }
+                catch (DomainServiceTrustedEffectAuditUnavailableException)
+                {
+                    httpContext.Response.Headers.RetryAfter = "1";
+                    httpContext.Response.ContentLength = 0;
+                    return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+                }
+                catch (Exception exception) when (exception is UnauthorizedAccessException
+                    or System.Reflection.TargetInvocationException { InnerException: UnauthorizedAccessException })
+                {
+                    httpContext.Response.ContentLength = 0;
+                    return Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
                 return DomainServiceRequestRouter.HasBoundedV1Producer(serviceProvider, verified.Command.Domain)
                     ? (IResult)new BoundedV1WireResultResponse(result)
                     : Results.Ok(result);
@@ -616,6 +632,7 @@ public static class EventStoreDomainServiceExtensions {
         // Internal trust boundary (FR28): app-channel token + trusted-issuer workload assertion on every
         // operational route, sidecar-channel token on sidecar-originated deliveries, and an authenticated
         // fallback for every other endpoint. Only /health, /alive, and /ready stay anonymous.
+        _ = builder.Services.AddHttpContextAccessor();
         _ = builder.Services.AddEventStoreDomainServiceSecurity();
 
         // Domain services use DAPR-backed SDK facilities such as persisted read models. Keep this canonical

@@ -13,4 +13,8 @@ internal sealed record ReminderRuntimeSnapshot(
     int IncompleteScans,
     int UnresolvedItems,
     int Unresolved,
-    int Quarantined);
+    int Quarantined)
+{
+    /// <summary>Whether this host has begun a pass whose catalog and index work has not finished.</summary>
+    public bool PassPending { get; init; }
+}

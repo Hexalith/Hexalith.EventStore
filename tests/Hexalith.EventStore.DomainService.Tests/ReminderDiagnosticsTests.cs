@@ -126,7 +126,7 @@ public sealed class ReminderDiagnosticsTests
         ReminderReconciliationPass pass = await reconciler.RunPassAsync(CancellationToken.None);
 
         pass.Incomplete.ShouldBe(1);
-        var entry = logger.Entries.ShouldHaveSingleItem();
+        var entry = logger.Entries.Where(static entry => entry.EventId.Id == 200212).ShouldHaveSingleItem();
         entry.EventId.Id.ShouldBe(200212);
         entry.Level.ShouldBe(LogLevel.Warning);
         entry.Fields.Keys.Order().ShouldBe(new[] { "{OriginalFormat}", "ExceptionType", "ReasonCode", "Scope" }.Order());

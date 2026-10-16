@@ -82,6 +82,10 @@ internal static class AggregateActorTestHelper {
         }
 
         invoker ??= Substitute.For<IDomainServiceInvoker>();
+        IDomainServiceInvoker effectInvoker = invoker;
+        _ = invoker.InvokeTrustedEffectAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(),
+            Arg.Any<string?>(), Arg.Any<Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin>(), Arg.Any<CancellationToken>())
+            .Returns(call => effectInvoker.InvokeAsync(call.ArgAt<CommandEnvelope>(0), call.ArgAt<object?>(1), call.ArgAt<bool>(2), call.ArgAt<string?>(3), call.ArgAt<CancellationToken>(5)));
         snapshotManager ??= Substitute.For<ISnapshotManager>();
         ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
         _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
@@ -111,6 +115,8 @@ internal static class AggregateActorTestHelper {
                     Arg.Any<CommandEnvelope>(),
                     Arg.Any<object?>(),
                     Arg.Any<CancellationToken>())
+                .Returns(DomainResult.NoOp());
+            _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(DomainResult.NoOp());
         }
 

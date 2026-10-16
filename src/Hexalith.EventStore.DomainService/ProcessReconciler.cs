@@ -195,6 +195,8 @@ public sealed class ProcessReconciler(
                 if (page.NextKey is not null && page.NextKey != previousKey)
                     throw new InvalidOperationException("Process catalog continuation is not a strict keyset.");
                 offset = 0;
+                if (page.IsIncomplete)
+                    state = await RecordScanFailureAsync(state, "catalog-unavailable", static current => current, cancellationToken).ConfigureAwait(false);
             }
 
             if (offset < page.Sources.Count)

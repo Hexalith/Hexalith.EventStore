@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -103,9 +104,9 @@ public sealed class CheckpointedProcessRunner(
 
             if (page.Events.Count == 0)
             {
-                if (owned.FailureSequence is { } failedSequence && failedSequence > owned.Checkpoint)
+                if (owned.PendingPlan is not null || owned.FailureSequence is { } failedSequence && failedSequence > owned.Checkpoint)
                 {
-                    owned = await FailAsync(owned, "invalid-evidence", failedSequence, true, sweepOwner, cancellationToken).ConfigureAwait(false);
+                    owned = await FailAsync(owned, "invalid-evidence", owned.PendingPlan?.Sequence ?? owned.FailureSequence, true, sweepOwner, cancellationToken).ConfigureAwait(false);
                     return Result(owned, 0);
                 }
                 owned = await WithDeadline(ct => _checkpoints.UpdateOwnedAsync(owned, state => state with
@@ -143,11 +144,25 @@ public sealed class CheckpointedProcessRunner(
                 IReadOnlyList<ProcessEffect> effects;
                 try
                 {
-                    effects = await CaptureEnvelopeAsync(source, streamEvent, cancellationToken).ConfigureAwait(false);
+                    if (owned.PendingPlan is { } retained)
+                    {
+                        effects = CaptureEffects(source, streamEvent, retained.Effects);
+                        if (retained.Sequence != streamEvent.SequenceNumber || retained.EvidenceDigest != EvidenceDigest(streamEvent, effects))
+                            throw new InvalidOperationException("Retained process plan differs from committed source evidence.");
+                    }
+                    else
+                    {
+                        effects = await CaptureEnvelopeAsync(source, streamEvent, cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch (ProcessReadAdmissionException)
                 {
                     owned = await FailAsync(owned, "read-worker-exhausted", streamEvent.SequenceNumber, false, sweepOwner, cancellationToken).ConfigureAwait(false);
+                    return Result(owned, processed);
+                }
+                catch (ProcessEvidenceUnavailableException)
+                {
+                    owned = await FailAsync(owned, "evidence-unavailable", streamEvent.SequenceNumber, false, sweepOwner, cancellationToken).ConfigureAwait(false);
                     return Result(owned, processed);
                 }
                 catch (Exception exception) when (exception is TimeoutException || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested)
@@ -171,6 +186,24 @@ public sealed class CheckpointedProcessRunner(
                 {
                     owned = await FailAsync(owned, "invalid-evidence", streamEvent.SequenceNumber, true, sweepOwner, cancellationToken).ConfigureAwait(false);
                     return Result(owned, processed);
+                }
+
+                if (owned.PendingPlan is null)
+                {
+                    try
+                    {
+                        // SDK-owned original plan survives mutable target state, including a no-op
+                        // receipt with no event. No target submission can precede this durable CAS.
+                        owned = await WithDeadline(ct => _checkpoints.UpdateOwnedAsync(owned, state => state with
+                        {
+                            PendingPlan = new ProcessEnvelopePlan(streamEvent.SequenceNumber, EvidenceDigest(streamEvent, effects), effects),
+                        }, ct, sweepOwner), cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception exception) when (IsOperational(exception, cancellationToken))
+                    {
+                        owned = await FailAsync(owned, "plan-unavailable", streamEvent.SequenceNumber, false, sweepOwner, cancellationToken).ConfigureAwait(false);
+                        return Result(owned, processed);
+                    }
                 }
 
                 foreach (ProcessEffect effect in effects)
@@ -230,6 +263,7 @@ public sealed class CheckpointedProcessRunner(
                 owned = await WithDeadline(ct => _checkpoints.UpdateOwnedAsync(owned, state => state with
                 {
                     Checkpoint = streamEvent.SequenceNumber,
+                    PendingPlan = null,
                     Status = ProcessSourceStatus.Incomplete,
                     Attempts = 0,
                     ReasonCode = null,
@@ -286,6 +320,11 @@ public sealed class CheckpointedProcessRunner(
     private async Task<IReadOnlyList<ProcessEffect>> CaptureEnvelopeAsync(ProcessSource source, StreamReadEvent streamEvent, CancellationToken cancellationToken)
     {
         IReadOnlyList<ProcessEffect> translated = await WithReadDeadline(ct => _translator.TranslateAsync(source, streamEvent, ct).AsTask(), cancellationToken).ConfigureAwait(false);
+        return CaptureEffects(source, streamEvent, translated);
+    }
+
+    private IReadOnlyList<ProcessEffect> CaptureEffects(ProcessSource source, StreamReadEvent streamEvent, IReadOnlyList<ProcessEffect> translated)
+    {
         if (translated is null || translated.Count > _options.MaxEffectsPerEnvelope) throw new InvalidOperationException("Process translation exceeds effect limits.");
         int envelopeBytes = 0;
         var ordinals = new HashSet<(string, string, string, long)>();
@@ -308,6 +347,17 @@ public sealed class CheckpointedProcessRunner(
 
         return effects;
     }
+
+    private static string EvidenceDigest(StreamReadEvent envelope, IReadOnlyList<ProcessEffect> effects)
+        => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            envelope.SequenceNumber, envelope.MessageId, envelope.EventTypeName, envelope.Payload,
+            envelope.SerializationFormat, envelope.MetadataVersion, envelope.PayloadVersion,
+            Effects = effects.Select(static effect => new
+            {
+                effect.Kind, effect.Ordinal, effect.TargetDomain, effect.TargetAggregate, effect.CommandType, effect.CommandPayload,
+            }),
+        })));
 
     private async Task<ProcessSourceState> FailAsync(ProcessSourceState owned, string reason, long? sequence, bool quarantine, ProcessSweepState? sweepOwner, CancellationToken cancellationToken)
         => await WithDeadline(ct => _checkpoints.UpdateOwnedAsync(owned, state => state with

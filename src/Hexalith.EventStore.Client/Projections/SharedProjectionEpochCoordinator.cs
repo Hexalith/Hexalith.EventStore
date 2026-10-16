@@ -2460,6 +2460,29 @@ public sealed partial class SharedProjectionEpochCoordinator
         throw RetryExhausted();
     }
 
+    /// <summary>Bounds all epoch, reconciliation and pinned-generation acquisition for one discovery family.</summary>
+    /// <remarks>Uses independent finite discovery admission held until actual provider completion. An outstanding
+    /// provider/store/scope/key is refused on repeated scans, including through a reconstructed coordinator;
+    /// late results are discarded and every subsequent admitted read validates fresh offboarding evidence.</remarks>
+    public Task<SharedProjectionReadResult<TValue>> ReadDiscoveryAsync<TValue>(
+        SharedProjectionScope scope, string logicalKey, CancellationToken cancellationToken = default)
+        where TValue : class
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        scope.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(logicalKey);
+        return SharedProjectionDiscoveryReadAdmission.ReadAsync(_store, scope.StoreName,
+            "family:" + scope.ComputeHash() + ":" + logicalKey, async token =>
+            {
+                SharedProjectionEpochStatus status = await GetStatusAsync(scope, token).ConfigureAwait(false);
+                if (status.IsOffboarded)
+                    return new SharedProjectionReadResult<TValue>(null, status.ActiveGeneration, false, false);
+                SharedProjectionReadResult<TValue> read = await ReadAsync<TValue>(scope, logicalKey, token).ConfigureAwait(false);
+                return read with { IsDegraded = read.IsDegraded || status.IsDegraded,
+                    IsAvailable = read.IsAvailable && status.ActiveGeneration == read.Generation };
+            }, cancellationToken);
+    }
+
     /// <summary>Returns the checkpoint accepted atomically with the latest source journal entry.</summary>
     public async Task<SharedProjectionCheckpoint?> GetCheckpointAsync(
         SharedProjectionScope scope,
@@ -2679,6 +2702,12 @@ public sealed partial class SharedProjectionEpochCoordinator
         string indexName,
         CancellationToken cancellationToken = default)
         => _controlIndexes.ReadTenantsAsync(storeName, indexName, cancellationToken);
+
+    /// <summary>Reads validated live membership while retaining tenant-local tombstone unavailability explicitly.</summary>
+    /// <remarks>The global registry must validate. Unreadable or malformed tombstones never establish live membership.</remarks>
+    public Task<SharedProjectionControlIndexReadResult> GetAvailableControlIndexTenantsAsync(
+        string storeName, string indexName, CancellationToken cancellationToken = default)
+        => _controlIndexes.ReadAvailableTenantsAsync(storeName, indexName, cancellationToken);
 
     /// <summary>Reads several keys from one pinned committed generation.</summary>
     public async Task<SharedProjectionReadResult<IReadOnlyDictionary<string, TValue?>>> ReadManyAsync<TValue>(

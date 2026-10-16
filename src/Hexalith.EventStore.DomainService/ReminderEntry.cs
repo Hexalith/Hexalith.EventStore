@@ -19,6 +19,8 @@ namespace Hexalith.EventStore.DomainService;
 /// <param name="Status">The persisted lifecycle status.</param>
 /// <param name="Attempts">The retry count for unresolved submission, admission, audit, or cancellation work; it determines backoff.</param>
 /// <param name="LastReasonCode">The bounded reason code of the last non-durable outcome.</param>
+/// <param name="SourceMessageId">Committed source envelope message identifier, absent on historical records.</param>
+/// <param name="Ordinal">The immutable target effect role; historical records default to zero.</param>
 /// <param name="UpdatedAt">When the witness last changed.</param>
 internal sealed record ReminderEntry(
     string ReminderName,
@@ -34,4 +36,6 @@ internal sealed record ReminderEntry(
     [property: JsonConverter(typeof(JsonStringEnumConverter))] ReminderEntryStatus Status,
     int Attempts,
     string? LastReasonCode,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] long Ordinal = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? SourceMessageId = null);

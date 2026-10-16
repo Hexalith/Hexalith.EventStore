@@ -89,7 +89,7 @@ public sealed class EventStoreProcessOptions
         if (SourceServiceQuantum < TimeSpan.FromMilliseconds(100) || SourceServiceQuantum > TimeSpan.FromMinutes(10))
             errors.Add("SourceServiceQuantum must be 100 ms..10 minutes.");
         if (OperationTimeout > TimeSpan.Zero && MaxEffectsPerEnvelope > 0
-            && SourceServiceQuantum.Ticks < (long)(3 + 5 * MaxEffectsPerEnvelope) * OperationTimeout.Ticks)
+            && SourceServiceQuantum.Ticks < (long)(4 + 5 * MaxEffectsPerEnvelope) * OperationTimeout.Ticks)
             errors.Add("SourceServiceQuantum must fit one envelope's translation, effects, and checkpoint deadlines.");
         if (ReconciliationInterval < TimeSpan.FromSeconds(1) || ReconciliationInterval > TimeSpan.FromMinutes(5)) errors.Add("ReconciliationInterval must be 1 second..5 minutes.");
         if (ReadinessMaxAge <= ReconciliationInterval || ReadinessMaxAge > TimeSpan.FromMinutes(30)) errors.Add("ReadinessMaxAge must exceed the interval and be at most 30 minutes.");

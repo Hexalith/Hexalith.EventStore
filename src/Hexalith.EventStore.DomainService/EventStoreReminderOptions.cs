@@ -63,6 +63,18 @@ public sealed partial class EventStoreReminderOptions
     /// <summary>Gets or sets the most candidates one tenant index may hold before registration fails closed.</summary>
     public int MaxCandidatesPerTenant { get; set; } = 10_000;
 
+    /// <summary>Gets or sets the maximum catalog pages admitted after indexed work in one pass (1..8).</summary>
+    public int CatalogPagesPerPass { get; set; } = 2;
+
+    /// <summary>Gets or sets the maximum targets requested per catalog page (1..64).</summary>
+    public int CatalogPageSize { get; set; } = 16;
+
+    /// <summary>Gets or sets the bounded wait for a catalog read, publication or discovery-state operation (100 ms..30 s).</summary>
+    public TimeSpan CatalogOperationTimeout { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>Gets or sets the total discovery service budget after indexed work (100 ms..30 s).</summary>
+    public TimeSpan CatalogServiceBudget { get; set; } = TimeSpan.FromSeconds(2);
+
     /// <summary>Gets or sets the bounded number of compare-and-swap attempts for one index update.</summary>
     public int IndexWriteAttempts { get; set; } = 8;
 
@@ -105,6 +117,17 @@ public sealed partial class EventStoreReminderOptions
         if (MaxCandidatesPerTenant <= 0)
         {
             errors.Add("MaxCandidatesPerTenant must be positive.");
+        }
+
+        if (CatalogPagesPerPass is < 1 or > 8 || CatalogPageSize is < 1 or > 64)
+        {
+            errors.Add("CatalogPagesPerPass must be 1..8 and CatalogPageSize must be 1..64.");
+        }
+
+        if (CatalogOperationTimeout < TimeSpan.FromMilliseconds(100) || CatalogOperationTimeout > TimeSpan.FromSeconds(30)
+            || CatalogServiceBudget < TimeSpan.FromMilliseconds(100) || CatalogServiceBudget > TimeSpan.FromSeconds(30))
+        {
+            errors.Add("CatalogOperationTimeout and CatalogServiceBudget must each be 100 milliseconds..30 seconds.");
         }
 
         if (IndexWriteAttempts is < 1 or > 100)

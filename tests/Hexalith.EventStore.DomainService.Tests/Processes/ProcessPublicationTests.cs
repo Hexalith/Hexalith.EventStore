@@ -145,7 +145,7 @@ public sealed class ProcessPublicationTests
             SupportedCandidateCount = 6,
             MaxEffectsPerEnvelope = 1,
             OperationTimeout = TimeSpan.FromMilliseconds(100),
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(800),
+            SourceServiceQuantum = TimeSpan.FromMilliseconds(900),
             ReconciliationInterval = TimeSpan.FromSeconds(1),
             ReadinessMaxAge = TimeSpan.FromMilliseconds(44500),
         };
@@ -732,7 +732,7 @@ public sealed class ProcessPublicationTests
             SourcesPerPass = 4096,
             OperationTimeout = TimeSpan.FromMilliseconds(100),
             MaxEffectsPerEnvelope = 1,
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(800),
+            SourceServiceQuantum = TimeSpan.FromMilliseconds(900),
             ReconciliationInterval = TimeSpan.FromSeconds(1),
             ReadinessMaxAge = TimeSpan.FromMinutes(30),
         };
@@ -759,7 +759,7 @@ public sealed class ProcessPublicationTests
             SourcesPerPass = 4096,
             OperationTimeout = TimeSpan.FromMilliseconds(100),
             MaxEffectsPerEnvelope = 1,
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(800),
+            SourceServiceQuantum = TimeSpan.FromMilliseconds(900),
             ReconciliationInterval = TimeSpan.FromSeconds(1),
             ReadinessMaxAge = TimeSpan.FromMinutes(30),
         };
@@ -1291,7 +1291,7 @@ public sealed class ProcessPublicationTests
             SourcesPerPass = 8,
             OperationTimeout = TimeSpan.FromMilliseconds(100),
             MaxEffectsPerEnvelope = 1,
-            SourceServiceQuantum = TimeSpan.FromMilliseconds(800),
+            SourceServiceQuantum = TimeSpan.FromMilliseconds(900),
             ReconciliationInterval = TimeSpan.FromSeconds(1),
             LeaseDuration = TimeSpan.FromSeconds(1),
             ReadinessMaxAge = TimeSpan.FromSeconds(9),

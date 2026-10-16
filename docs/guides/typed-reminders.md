@@ -581,37 +581,14 @@ Story 4.16 owns these proofs.
 
 ## Evidence handed to Story 4.15
 
-Works adopts this seam in Story 4.15:
+Works uses this seam in its exclusive Story 4.15 SDK runtime:
 
-- Implement `IReminderIntentSource` for `DateResume` and `Expiry` from the
-  Work Item stream.
-- Call `IReminderRegistrar.ConvergeAsync` from the committed-event handlers that
-  change a schedule.
-- Set `ActorTypeName` to `WorkItemReminderActor` and configure both purposes.
-- When the host uses `AddEventStoreDomainModule`, set
-  `EventStore__Reminders__Workload` to the Works Dapr app ID. That helper sets
-  `EventStore__DomainService__AppId` but not `DAPR_APP_ID`, so the reminder
-  workload otherwise falls back to the application name.
-- Replace the host's own `MapActorsHandlers()` with `MapEventStoreReminders()`,
-  which `UseEventStoreDomainService` also calls when reminders are registered, or
-  keep a self-mapping that carries `.RequireEventStoreSidecarChannel()` and runs
-  before `UseEventStoreDomainService`. `WorksHost` calls `app.MapActorsHandlers()`
-  after `app.UseEventStoreDomainService()`, so its startup inventory fails as soon
-  as Works consumes 3.117 or later. Its own `MapPost("/project")` also needs
-  `.RequireEventStoreDomainServicePolicy("/project")`, and its
-  `MapWorksDomainEvents()` topic route needs `.RequireEventStoreSidecarChannel()`
-  attached to the `MapPost` result inside
-  `WorksDomainEventEndpointExtensions.MapWorksDomainEvents()`.
-  Sibling-source Debug builds already consume this endpoint inventory and expose
-  these failures.
-- Attach `.AddEventStoreTrustedEffectWorkloadAssertion()` to the submitter
-  client.
-- Allow-list the Works workload in EventStore's
-  `Authentication:DaprInternal:AllowedCallers`.
-- Retire `DateReminderActor`, `DateReminderReconciler`, and the startup-only
-  `ReminderReconciliationService` only after the 4.15 to 4.16 parity proof.
-
-Producer evidence:
+- `WorksReminderIntentSource` derives DateResume and Expiry intents from the authoritative Work Item stream, and committed-event handlers request `IReminderRegistrar.ConvergeAsync`.
+- The actor type is `WorksSdkReminderActor`; Works configures its workload and distinct date-resume/expiry purposes. When composing through `AddEventStoreDomainModule`, set `EventStore__Reminders__Workload` explicitly to the Works Dapr app ID: that helper sets `EventStore__DomainService__AppId`, rather than `DAPR_APP_ID`.
+- In SDK recovery mode, `UseEventStoreDomainService` supplies the protected SDK reminder mappings. Works maps its legacy date actor handlers only in legacy mode, with `.RequireEventStoreSidecarChannel()`, so the two actor writers are never composed together. A host that supplies its own SDK actor mapping must protect it and map it before SDK activation as described above.
+- Both Works `/project` branches carry `.RequireEventStoreDomainServicePolicy("/project")`. `MapWorksDomainEvents()` attaches `.RequireEventStoreSidecarChannel()` to its topic endpoint; the existing protected ingress remains active.
+- The trusted submitter client uses `.AddEventStoreTrustedEffectWorkloadAssertion()`, with the Works workload allow-listed by EventStore's `Authentication:DaprInternal:AllowedCallers`.
+- `DateReminderActor`, `DateReminderReconciler` and startup-only `ReminderReconciliationService` remain exclusive legacy-mode components until the separate Platform/Story 4.16 parity and removal gates pass.
 
 | Proof | Command or test |
 | --- | --- |
@@ -620,5 +597,10 @@ Producer evidence:
 | Redis/Dapr registration, direct callback, restart replay, Scheduler re-arm | `Hexalith.EventStore.Server.LiveSidecar.Tests -class '*ReminderRecoveryLiveSidecarTests*'` |
 | Package-only consumers with no Works types | `EVENTSTORE_PACKAGE_CONTRACT_DIR=<dir> Hexalith.EventStore.Contracts.Tests -method '*PackagedReminderApi*'` |
 
-The release record names the public package version, source SHA, and
-package-only results. 4.15 must consume that version or a later one.
+A published release record names its package version, source SHA and package-only results.
+Story 4.15 records its selected local candidate and synthetic consumer proof separately;
+upstream publication remains a separate gate.
+
+The optional `IReminderTargetCatalog` supplies validated keyset pages for lost initial registration, including targets absent from the reminder index. `ProcessSourcePage.IsIncomplete` carries omitted-scope evidence alongside healthy members. Shared-projection adapters can use `GetAvailableControlIndexTenantsAsync`: the global control registry must validate, and only a successfully read absent tenant tombstone establishes live membership. Unavailable or malformed tombstones produce an incomplete result and never resurrect an offboarded scope; the original all-or-error tenant reader remains compatible.
+
+Indexed reconciliation and initial discovery each have a separate `CatalogServiceBudget` slice, using the smaller remaining time and `CatalogOperationTimeout` for normal operations. Indexed attempts are capped at `CatalogPagesPerPass × CatalogPageSize` (32 by default). Each phase persists pending ownership/generation and its continuation before service; progress, failure cleanup and completion commit only against the current exact revision and ETag. A stale proof is never re-merged after conflict. A bounded failure-evidence cleanup allowance of at most 500 ms follows an interrupted slice. Registered actor turns have separate finite keyed admission; abandoned turns retain admission until actual completion, so repeated passes cannot add another detached call for the same actor. Both phases continue across pass/restart boundaries. Unavailable scopes require a fresh full sweep before completeness clears. Local readiness pruning accumulates full sweep coverage and invalidates that proof when another owner's progress was not observed, preserving callback updates after the sweep began.

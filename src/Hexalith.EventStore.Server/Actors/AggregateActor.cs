@@ -1469,7 +1469,14 @@ public partial class AggregateActor(
                             }
                         }
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
-                        domainResult = humanAuthorityReceipt is null
+                        domainResult = effectAdmission is not null
+                            ? await domainServiceInvoker.InvokeTrustedEffectAsync(command, currentState, snapshotRequestDue,
+                                snapshotQualification?.ProfileId,
+                                new TrustedEffectOrigin(effectAdmission.Submission.Identity, effectAdmission.Context.Workload,
+                                    effectAdmission.Context.Purpose, effectAdmission.Context.CausationId, command.CommandType,
+                                    EffectIdentityCodec.RenderDigest(System.Security.Cryptography.SHA256.HashData(command.Payload))),
+                                cancellationToken).ConfigureAwait(false)
+                            : humanAuthorityReceipt is null
                             ? snapshotRequestDue
                                 ? await domainServiceInvoker.InvokeAsync(command, currentState, true,
                                     snapshotQualification?.ProfileId, cancellationToken).ConfigureAwait(false)

@@ -566,7 +566,9 @@ public sealed class ReminderReconcilerTests
 
         pass.ShouldBe(new ReminderReconciliationPass(0, 0, 0, 0, 0, 0, 0, 0));
         (await CheckAsync(harness)).Status.ShouldBe(HealthStatus.Healthy);
-        harness.Store.Count.ShouldBe(0);
+        harness.Store.Count.ShouldBe(1);
+        harness.Store.Snapshot<ReminderCatalogDiscoveryState>(harness.Options.StateStoreName,
+            ReminderStateKeys.TenantRegistry(harness.Options.ActorTypeName) + ":indexed")!.Complete.ShouldBeTrue();
         harness.Source.Reads.ShouldBe(0);
     }
 

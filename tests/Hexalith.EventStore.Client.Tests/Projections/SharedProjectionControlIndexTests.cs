@@ -405,6 +405,45 @@ public sealed class SharedProjectionControlIndexTests
             restarted.ReconcileControlIndexInventoryAsync([s_scope, s_scope]));
     }
 
+    /// <summary>Unknown or malformed tenant tombstones never establish live membership in a partial read.</summary>
+    [Theory]
+    [InlineData("tenant")]
+    [InlineData("index")]
+    [InlineData("audit")]
+    [InlineData("json")]
+    public async Task PartialMembershipExcludesMalformedTombstoneWhileStrictReaderStillFails(string corruption)
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        foreach (SharedProjectionScope scope in new[] { s_scope, s_scope with { TenantId = "tenant-b" } })
+        {
+            SharedProjectionLease lease = await coordinator.RegisterWriterAsync(scope, "ordinary-dispatch");
+            await coordinator.JournalAsync(scope, lease, Delivery(1));
+            await coordinator.CatchUpAsync(scope, Fold());
+        }
+        string key = SharedProjectionControlIndexWriter.TombstoneKey(ControlIndexName, s_scope.TenantId);
+        if (corruption == "json") store.SeedRaw(s_scope.StoreName, key, "unreadable tombstone");
+        else store.SeedRaw(s_scope.StoreName, key, new SharedProjectionControlIndexTombstone(
+            corruption == "index" ? "foreign-index" : ControlIndexName,
+            corruption == "tenant" ? "foreign-tenant" : s_scope.TenantId, corruption == "audit" ? "" : "audit"));
+        SharedProjectionControlIndexReadResult result = await coordinator.GetAvailableControlIndexTenantsAsync(s_scope.StoreName, ControlIndexName);
+        result.IsIncomplete.ShouldBeTrue();
+        result.Tenants.ShouldBe(["tenant-b"]);
+        await Should.ThrowAsync<Exception>(() => coordinator.GetControlIndexTenantsAsync(s_scope.StoreName, ControlIndexName));
+    }
+
+    /// <summary>A corrupt global registry cannot be turned into healthy partial membership.</summary>
+    [Fact]
+    public async Task PartialReadStillRequiresValidatedGlobalRegistry()
+    {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        store.SeedRaw(s_scope.StoreName, SharedProjectionControlIndexWriter.StateKey(ControlIndexName),
+            new SharedProjectionControlIndexState(999, ControlIndexName, "widget", "widget-index", ["tenant-a"],
+                new Dictionary<string, SharedProjectionControlIndexReceipt>()));
+        await Should.ThrowAsync<InvalidOperationException>(() => coordinator.GetAvailableControlIndexTenantsAsync(s_scope.StoreName, ControlIndexName));
+    }
+
     private static SharedProjectionDelivery Delivery(long position)
         => new(
             "widget-a",

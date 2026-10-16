@@ -105,6 +105,7 @@ public sealed class TrustedEffectJointOffboardingTests
         _ = invoker.InvokeAsync(
                 Arg.Any<Hexalith.EventStore.Contracts.Commands.CommandEnvelope>(),
                 Arg.Any<object?>(),
+                Arg.Any<bool>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(DomainResult.Success([new AggregateActorTestHelper.TestEvent()]));
         ActorTestContext target = AggregateActorTestHelper.CreateActor(
@@ -353,7 +354,7 @@ public sealed class TrustedEffectJointOffboardingTests
 
         await Should.ThrowAsync<InvalidOperationException>(() => target.Actor.ProcessTrustedEffectAsync(
             submission, context, "synthetic-proof"));
-        _ = await target.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default);
+        _ = await target.Invoker.DidNotReceiveWithAnyArgs().InvokeAsync(default!, default, default, default, default);
         await admissionPolicy.DidNotReceiveWithAnyArgs().CompleteAsync(default!, default);
         sourceStore.CreateCommittedView().Keys.ShouldNotContain(sourceIdentity.MetadataKey);
         sourceStore.CreateCommittedView().Keys.ShouldNotContain(sourceIdentity.EventStreamKeyPrefix + "1");

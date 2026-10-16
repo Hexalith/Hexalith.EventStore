@@ -3,6 +3,8 @@ namespace Hexalith.EventStore.Client.Streams;
 /// <summary>One monotonic operational budget for gateway invocation, pagination and source evidence release.</summary>
 public sealed class AuthoritativeStreamReadDeadline : IDisposable
 {
+    private static readonly SemaphoreSlim ReadSlots = new(16, 16);
+
     private readonly CancellationToken _callerToken;
     private readonly TimeProvider _timeProvider;
     private readonly long _startedAt;
@@ -48,6 +50,30 @@ public sealed class AuthoritativeStreamReadDeadline : IDisposable
         }
 
         _linkedSource.Token.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>Bounds provider work with sixteen shared admission slots held until actual provider completion, including after caller abandonment.</summary>
+    /// <exception cref="AuthoritativeStreamReadAdmissionException">All provider workers remain occupied; the operation is not invoked.</exception>
+    public async Task<T> ReadWithAdmissionAsync<T>(Func<CancellationToken, Task<T>> read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        ThrowIfCancellationRequested();
+        if (!await ReadSlots.WaitAsync(0, _callerToken).ConfigureAwait(false))
+            throw new AuthoritativeStreamReadAdmissionException();
+        bool transferred = false;
+        try
+        {
+            return await ReadAsync(read, operationStarted: pending =>
+            {
+                transferred = true;
+                _ = pending.ContinueWith(static _ => ReadSlots.Release(), CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (!transferred) ReadSlots.Release();
+        }
     }
 
     /// <summary>Bounds both synchronous provider invocation and its noncooperative returned task.</summary>

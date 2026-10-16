@@ -17,6 +17,10 @@ public sealed record ProcessSourceState(
     long ObservedCycle,
     DateTimeOffset UpdatedAt)
 {
+    /// <summary>Original effect plan retained until its terminal target receipts and source checkpoint commit together.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ProcessEnvelopePlan? PendingPlan { get; init; }
+
     /// <summary>Whether this source already contributed an unresolved reason in its observed cycle.</summary>
     public bool ObservedUnresolved { get; init; }
 
@@ -38,6 +42,11 @@ public sealed record ProcessSourceState(
             || (Owner is null) != (LeaseUntil is null)
             || (Status is ProcessSourceStatus.Parked or ProcessSourceStatus.Quarantined or ProcessSourceStatus.Retrying) != (ReasonCode is not null)
             || LastTransitionToken is { Length: 0 }
+            || PendingPlan is { } plan && (plan.Sequence != Checkpoint + 1 || plan.EvidenceDigest is not { Length: 64 }
+                || plan.EvidenceDigest.Any(static character => !char.IsAsciiHexDigit(character))
+                || plan.Effects is null || plan.Effects.Count > 256
+                || plan.Effects.Any(static effect => effect is null || effect.CommandPayload is null || effect.CommandType is null)
+                || plan.Effects.Sum(static effect => (long)effect.CommandPayload.Length + System.Text.Encoding.UTF8.GetByteCount(effect.CommandType)) > 1024 * 1024)
             || UpdatedAt == default)
         {
             throw new InvalidOperationException("Process source state is invalid.");
