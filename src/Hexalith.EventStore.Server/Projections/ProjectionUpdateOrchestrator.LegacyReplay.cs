@@ -69,7 +69,21 @@ internal partial class ProjectionUpdateOrchestrator
                 if (sampledWork is null || sampledWork.LegacyDelivery is not null) return true;
             }
             string invocation = UniqueIdHelper.GenerateSortableUniqueStringId();
-            if (original?.InvocationToken is not null && original.LeaseExpiresAtUtc > clock.GetUtcNow()) return true;
+            if (original?.InvocationToken is not null && original.LeaseExpiresAtUtc > clock.GetUtcNow())
+            {
+                // Named delivery owns independent durable reservations. A failed or still-running
+                // legacy attempt must not freeze later named heads behind its compatibility lease.
+                // Preserve that exact legacy intent and validate the current authoritative prefix
+                // before allowing the named coordinator to admit its own routes.
+                if (namedProjectionDispatchCoordinator is not null)
+                {
+                    (ProjectionEventDto[] namedEvents, string _, string namedHeadId) = await ReadLegacyReplayPrefixAsync(
+                        source, identity, metadata.CurrentSequence, sourceInspection.Proof, true, cancellationToken).ConfigureAwait(false);
+                    _ = await namedProjectionDispatchCoordinator.TryDispatchHeadAsync(identity, registration,
+                        metadata.CurrentSequence, namedHeadId, namedEvents, cancellationToken).ConfigureAwait(false);
+                }
+                return true;
+            }
             (ProjectionEventDto[] events, string fingerprint, string headId) = await ReadLegacyReplayPrefixAsync(
                 source, identity, head, anchor, true, cancellationToken).ConfigureAwait(false);
             if (original is not null && (original.HeadMessageId != headId || original.SourceFingerprint != fingerprint))
