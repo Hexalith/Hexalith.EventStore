@@ -71,7 +71,8 @@ internal static class AggregateActorTestHelper {
         ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null,
         IServiceProvider? serviceProvider = null,
         string actorId = "test-tenant:test-domain:agg-001",
-        ISnapshotManager? snapshotManager = null) {
+        ISnapshotManager? snapshotManager = null,
+        bool configureTrustedInvokerSubstitute = false) {
         bool configureSubstituteStateManager = stateManager is null;
         bool configureDefaultInvoker = invoker is null;
         bool configureDefaultPublisher = eventPublisher is null;
@@ -82,10 +83,10 @@ internal static class AggregateActorTestHelper {
         }
 
         invoker ??= Substitute.For<IDomainServiceInvoker>();
-        if (configureDefaultInvoker)
+        if (configureDefaultInvoker || configureTrustedInvokerSubstitute)
         {
-            // Caller-supplied invokers are real implementations. Configuring them leaves argument
-            // matchers that fail this setup and poison later tests in the same process.
+            // Forward only helper-created or explicitly opted-in substitutes. Real caller invokers
+            // must never receive argument matchers that could poison later tests.
             IDomainServiceInvoker effectInvoker = invoker;
             _ = invoker.InvokeTrustedEffectAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(),
                 Arg.Any<string?>(), Arg.Any<Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin>(), Arg.Any<CancellationToken>())

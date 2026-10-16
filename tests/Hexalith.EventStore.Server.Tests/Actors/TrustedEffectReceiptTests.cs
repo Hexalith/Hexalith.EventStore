@@ -231,6 +231,7 @@ public class TrustedEffectReceiptTests
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
 
         TrustedEffectResult result = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
@@ -260,6 +261,7 @@ public class TrustedEffectReceiptTests
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
         state.FaultAfterCall("SaveState", 3, new IOException("acknowledgement lost"));
 
@@ -303,6 +305,7 @@ public class TrustedEffectReceiptTests
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
 
         TrustedEffectResult first = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
@@ -350,6 +353,7 @@ public class TrustedEffectReceiptTests
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy,
             trustedEffectAuditSink: audit);
         TrustedEffectResult first = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
@@ -404,6 +408,7 @@ public class TrustedEffectReceiptTests
         ActorTestContext actor = AggregateActorTestHelper.CreateActor(
             stateManager: state,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: policy);
         TrustedEffectResult first = await actor.Actor.ProcessTrustedEffectAsync(submission, context, "test-proof");
         first.Disposition.ShouldBe(TrustedEffectDisposition.Success);
