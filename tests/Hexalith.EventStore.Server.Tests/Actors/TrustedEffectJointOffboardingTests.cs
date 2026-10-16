@@ -111,6 +111,7 @@ public sealed class TrustedEffectJointOffboardingTests
         ActorTestContext target = AggregateActorTestHelper.CreateActor(
             stateManager: targetStore,
             invoker: invoker,
+            configureTrustedInvokerSubstitute: true,
             trustedEffectAdmissionPolicy: admissionPolicy,
             trustedEffectErasureAuthority: erasureAuthority);
         ActorTestContext source = AggregateActorTestHelper.CreateActor(
