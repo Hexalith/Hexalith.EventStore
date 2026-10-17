@@ -1,0 +1,455 @@
+{
+  "capturedUtc": "2026-10-17T06:22:22.186656+00:00",
+  "head": "b99a03dfc29021af16511ee664820e05126b73f8",
+  "preservedBaselineCommit": "e17e7294f540ebba42fe25192998689f0ecd89c1",
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+  "normativeFileSha256": "cec17b8fcc1402b34a5519d736f0d2fc4976bf1ad2c17dac67e014fde1db96ba",
+  "approvedRoles": "Original detached owner approval for Epic 6, architecture and Test roles remains unchanged.",
+  "implementationTasksChecked": 41,
+  "sourceHashScope": 3590,
+  "unchangedSourceInputsDuringAllCommands": true,
+  "review5MatchingSourceHashes": 3588,
+  "review5SourceDrift": {
+    "src/Hexalith.EventStore.Server/Commands/TrustedEffectRouter.cs": {
+      "review5Sha256": "c200e570bd5c354fac42868f5b79a3fa6b9b2c5512b0a83725b6761ace9cbbcb",
+      "currentSha256": "72914b80e9b29780bee4c0d79e35cc9217c660d3e6d7daa971d40a25babc2eaa",
+      "lastModifyingCommit": "9dbb3aaf0254a607e5b6489e0de2a8aee0f82edb",
+      "review5MatchesPriorCommittedBlob": true,
+      "modifiedSinceEntryCommit": false
+    },
+    "src/Hexalith.EventStore.Server/Projections/ProjectionUpdateOrchestrator.LegacyReplay.cs": {
+      "review5Sha256": "0b90d5dfd124fa0412ae2508f13061c313c4d43591c12441130d01568b403530",
+      "currentSha256": "c9307868b330405e20757acc793df6893b60ad346f8779064411b6e72cabf75c",
+      "lastModifyingCommit": "9dbb3aaf0254a607e5b6489e0de2a8aee0f82edb",
+      "review5MatchesPriorCommittedBlob": true,
+      "modifiedSinceEntryCommit": false
+    }
+  },
+  "assetHashScope": 153,
+  "assetsUnchangedFromReview5AndDuringCommands": true,
+  "runtimeHashScope": 322,
+  "entryRuntimeMatchesReview5": true,
+  "buildRuntimeChanges": {
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": {
+      "beforeSha256": "4fed0a4efd86207a689e1f7b2416508e0f0f187dd854b179573a302fd6172424",
+      "afterSha256": "4f86e98d347236322b4f82fbfa300c99a09c300b43b44af364d821621f04824c"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.pdb": {
+      "beforeSha256": "b4a76e12f49d16c860e53fc3ae8f7a9bdd00f48564897791c2275f754349da82",
+      "afterSha256": "214515145d83fe51cb1a336e15caff5d7fe2a2a3e4e916cb3e4ca022f1250095"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": {
+      "beforeSha256": "fc7df277d7ccc2406137e85534118ff196371b0aeb8274d54eeeb20a3832b4e4",
+      "afterSha256": "517be0f615db6d4adbade838d89cc61cef7cc8f0182ccbdc8cdd0b58b46cd9d5"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb": {
+      "beforeSha256": "92184ed84b17b8cff0d649c0b5c6d9ade3d31452038b05a53d474138327cb732",
+      "afterSha256": "d1ea43ae0be7f30eddc1523f2f2ce94b24f2d7e9d75e6d5163b02ae446680d67"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": {
+      "beforeSha256": "01c9983990a547902b7e23889cd3128ec105e69369a64b15ce7917012a0c752a",
+      "afterSha256": "3270cfc06ac16abf71c53d726503a5b1a8d3c873ed9ab9ada193a29b6e73420e"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb": {
+      "beforeSha256": "8b1729d0723de46211a31e6612231cf54a5f37e6cbf82f4ac469b14ac6a8fc0d",
+      "afterSha256": "a789585c07d0c9416170a8e22a8a33454fb7fbea0a8c47c26af1c6ee712ef42e"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": {
+      "beforeSha256": "436ed47952539a0368db9c0a39fbaebffdd0074e2b16f5da6c3ac21e9d5ce7c1",
+      "afterSha256": "12640698d538c6ef5a084697d9672bd62b7a9ea91891fa5ba39d3e088b3fbfd6"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.pdb": {
+      "beforeSha256": "3a9c771fd2c6625aafd15f6d3221f72eeb55c2c3999707a1be518f606f1e601d",
+      "afterSha256": "3976c182e174e5bf122040208aa1f0f6e90b394367a2d38d821c84061c1fda5d"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": {
+      "beforeSha256": "36f7454a8770e9df0dac8ac0a5e0a40a5c43f82cf2e2587b26bbbf8606b01861",
+      "afterSha256": "143d389ab9f584bb51bf7e137f2fd1cfd5ea18993a78e400a909a127ea194833"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.pdb": {
+      "beforeSha256": "8983e1b15f02fa0b8e1f44aa871ebc26e679c00d79a98db5df035ce38e097774",
+      "afterSha256": "ad9ff817d627b509e49808bedbbdf494fe71e72be65859d5623c91a14ad44a9e"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll": {
+      "beforeSha256": "b959dfd535218dad6ed55142e213e5acc4300e51d1e809e45510dc317d594bbd",
+      "afterSha256": "b6e4f8fde3ef47e3fa9dca9c45c021c9d1bbe1f022d434923b53cb24c32cf713"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.pdb": {
+      "beforeSha256": "2477c1137770d31e5f3af661d06b031a2be6f84fbd0cf1a8410479e03c566e6a",
+      "afterSha256": "f13a03fdf9fefacf3e31de7b9fc552fe2f45a4d50214c8f23bd4b5e872cca564"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll": {
+      "beforeSha256": "ff6159448cab1ab9fbfc0616378708ba3976c758e076447423ac7273914313ae",
+      "afterSha256": "54b61a86d56edfead6905106a9fd93a41f6de7b78374dcbd0413b57b7bf4de62"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.pdb": {
+      "beforeSha256": "d41bac9d4a6cacdc9a5f35819bb166ccdc06da0e326bda6e30ca7df3d280610f",
+      "afterSha256": "7f0057977139aa1c77c0a5032ffea97cfa577c1e734cb1d1faab488240ae71f9"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll": {
+      "beforeSha256": "e4a5140c6049c9b6807ea050f3c5beb1218f6d8efcc569f17b9942145b2eb536",
+      "afterSha256": "592ec76279aeb1ac5473e074f667c2b9740f66145b1d2083312b39ff238cd4c7"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.pdb": {
+      "beforeSha256": "968e1147a1621a9a2e9502765fdf5ec914da81c30d311ac361f487e094c2ba41",
+      "afterSha256": "76b67f57dd95a419d1423c77999954511f322d70661b706d8aee9ef033aad237"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": {
+      "beforeSha256": "57454d3ba4cad350883166729d8b1e88c1a6de15d2af9aee285c182c0de4f3ee",
+      "afterSha256": "a0d3de368dfb62594fb9dcfb08231bad68b2ccc8ede5fe6d562d8ea4fcd00b4f"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.pdb": {
+      "beforeSha256": "2bf0d01f63bc8156212e75d0f8ab9af5477dbed3c83f32a31350ca1d02cad194",
+      "afterSha256": "30711643dd79d230a17ba313359b01285f86740a26c8c9af48665413e651d588"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": {
+      "beforeSha256": "1a96306d281180eccf87a9aa66481f40dc72a36c22672792beef39b9002097e3",
+      "afterSha256": "039f92b8e49b737ae8178c5f61bb44a8aecf4aa024039d316876bc2c3a8534d8"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.pdb": {
+      "beforeSha256": "c68475658237674bc477fd5fbabd44e6f61bf0edb4d16315ea599bace2115935",
+      "afterSha256": "5078992aae0efb13d50a26aeabadd34f697bacd05f5dae1d2700efc0ddc61418"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll": {
+      "beforeSha256": "e8a70556218c88eda9534a365bf2e6ba55d3c4106f7920cecd26b5537213714c",
+      "afterSha256": "e99ee49f7adfb2f8ce0c023095ce2e2dd3dd8e28920253ee7cf173a73b7886d3"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.pdb": {
+      "beforeSha256": "44aa51c98471271f80a5bb3d9e09b084b0eb634739985401ac7675cfcab06921",
+      "afterSha256": "e0619805c19e1db1bee3b3d046bc8b4d3e90ca006eca790cef66a5c954ccccf0"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll": {
+      "beforeSha256": "a15a8d142e6caeb533da33a3dcf5d1685c9ab8a10a4a5e850f74bb8e83117b9e",
+      "afterSha256": "7ff378acd837d7bbcaf9bcc94b2ff99eda2f690a653f383442e1446089448213"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.pdb": {
+      "beforeSha256": "46a9b21650c1f9d996647376b84560fea4bc23a91a4de115ad24191cec425c0a",
+      "afterSha256": "dfa7784edb1ab0fb49dd6f6db743bd0550c77878a8baa2c36ec8acf96d96ddd8"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll": {
+      "beforeSha256": "1bda54a40d5a2a589f264b0db954f654709c9c20e2c5b2a6e33ada43867cb307",
+      "afterSha256": "685caeb388bfb7627f6bba157c512abc1dd17cac4bd8799584e4cc284f89dc8f"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.pdb": {
+      "beforeSha256": "6184ea2a47ffc61370ab03e268d6ca5830dc0d67a4c6f2ce8f925d1fac86a628",
+      "afterSha256": "3e2b82015292fe869eb3e51c146724eef6efd2ac16b31d6407121165258bd9de"
+    }
+  },
+  "allNativeTestsUseFreshBuildRuntimeAfter": true,
+  "runtimeUnchangedDuringBothNativeTestRuns": true,
+  "nativeCommandsSequential": true,
+  "distinctFocusedCases": 45,
+  "totalPassed": 45,
+  "totalFailed": 0,
+  "totalErrors": 0,
+  "totalSkipped": 0,
+  "totalNotRun": 0,
+  "nativeFrames": [
+    {
+      "packet": "review-5-resume-server-build-1.json",
+      "packetSha256": "77b44f738574b9de4d0d7049e161b4652a3e8c2f01465b615babb76a8e9f74ad",
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "-c",
+        "Debug",
+        "--no-restore",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:GeneratePackageOnBuild=false",
+        "-m:1"
+      ],
+      "exitCode": 0,
+      "startedAt": "2026-10-17T06:20:59.420281+00:00",
+      "endedAt": "2026-10-17T06:21:22.540876+00:00",
+      "log": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-server-build-1.log",
+      "logSha256": "a422fab26148a311e58fe5f04ee416e373c3624f4627afbe4d1b12b20dae7eb8",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "packet": "review-5-resume-trusted-projection-1.json",
+      "packetSha256": "ecb2a1756e198a65dc2409effcbb2ebebe4f71d5274aba74e53fe693cadf1158",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-class",
+        "*TrustedEffectRouterProjectionTests",
+        "-parallelMode",
+        "none",
+        "-result-xml",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-trusted-projection-1.xml"
+      ],
+      "exitCode": 0,
+      "startedAt": "2026-10-17T06:21:31.620275+00:00",
+      "endedAt": "2026-10-17T06:21:32.311448+00:00",
+      "log": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-trusted-projection-1.log",
+      "logSha256": "e6579a06cf0f3573228afbee8a2abf5ad4df63674c037dacf32547475e51bf78",
+      "nativeXml": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-trusted-projection-1.xml",
+      "nativeXmlSha256": "f44ef5870615b7db25d95a8f456d43f16ec74548da3d15b25cdb23dac1e85a79",
+      "nativeAssembly": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "4eac5627-893a-4715-98c1-4867f6828be6",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "06:21:31",
+        "start-rtf": "2026-10-17T06:21:31.9877918+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-17T06:21:32.1767544+00:00",
+        "not-run": "0",
+        "passed": "15",
+        "skipped": "0",
+        "time": "0.189",
+        "time-rtf": "00:00:00.1890000",
+        "total": "15"
+      },
+      "cases": [
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.MissingRetentionPolicyFailsBeforeActivation",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.DeliveryStartsOnlyAfterTargetAndRetentionTurnsFinish",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.ActivationFailureStopsBeforeActorAndRetention",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.EveryReceiptKeepsDurableTargetActivationAndPostTurnDelivery(disposition: Success, replayed: False)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.EveryReceiptKeepsDurableTargetActivationAndPostTurnDelivery(disposition: Success, replayed: True)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.EveryReceiptKeepsDurableTargetActivationAndPostTurnDelivery(disposition: Rejection, replayed: False)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.EveryReceiptKeepsDurableTargetActivationAndPostTurnDelivery(disposition: Rejection, replayed: True)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.EveryReceiptKeepsDurableTargetActivationAndPostTurnDelivery(disposition: NoOp, replayed: False)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.EveryReceiptKeepsDurableTargetActivationAndPostTurnDelivery(disposition: NoOp, replayed: True)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.CancellationBeforeRoutingDoesNotTouchActorOrOutbox",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.RetentionFailureAfterCommitKeepsDurableRecoveryWork",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.SlowProjectionDoesNotHoldTheCommittedReceipt",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.FailedOpportunisticDeliveryRetainsDurableWork",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.ReleasedConstructorSignatureRemainsAvailable",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Commands.TrustedEffectRouterProjectionTests.ActorFailurePreservesActivationWithoutClaimingCompletion",
+          "result": "Pass"
+        }
+      ]
+    },
+    {
+      "packet": "review-5-resume-legacy-projection-1.json",
+      "packetSha256": "1d01661e398931818d50301694e5316333bfe8aa5058f23aaa5bac964a43d303",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "*ProjectionRebuildProductionPathTests.NamedDelivery_*",
+        "-method",
+        "*ProjectionRebuildProductionPathTests.LegacyFallback_*",
+        "-parallelMode",
+        "none",
+        "-result-xml",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-legacy-projection-1.xml"
+      ],
+      "exitCode": 0,
+      "startedAt": "2026-10-17T06:21:34.657248+00:00",
+      "endedAt": "2026-10-17T06:21:37.096465+00:00",
+      "log": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-legacy-projection-1.log",
+      "logSha256": "8cbcc93baa2e755732c80dd48a4cc435820aff2d076d7d5a2f73cbd8a82489e2",
+      "nativeXml": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-legacy-projection-1.xml",
+      "nativeXmlSha256": "ab2155af0d3246514ed93e0a90c921f74ba9f309b585be75243eaea847d81db5",
+      "nativeAssembly": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "5aac2039-1948-43a3-b85e-3185f5c86962",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "06:21:35",
+        "start-rtf": "2026-10-17T06:21:35.0439360+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-17T06:21:36.9551511+00:00",
+        "not-run": "0",
+        "passed": "30",
+        "skipped": "0",
+        "time": "1.912",
+        "time-rtf": "00:00:01.9120000",
+        "total": "30"
+      },
+      "cases": [
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ProductionActorsReplayCompletePrefixOnceAndPersistScopedCompletion(head: 0)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ProductionActorsReplayCompletePrefixOnceAndPersistScopedCompletion(head: 256)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ProductionActorsReplayCompletePrefixOnceAndPersistScopedCompletion(head: 257)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ProductionActorsReplayCompletePrefixOnceAndPersistScopedCompletion(head: 771)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ProductionActorsReplayCompletePrefixOnceAndPersistScopedCompletion(head: 10000)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_AppendDuringStageRetainsFrozenHeadAndNewerActivationThenDeliversNextHead",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_NotificationFailureSettlesPublicationWithOnlyBoundedUnknownRouteOutcome",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_OneFinalizationDeadlineRetainsCommittedOriginalWorkUntilRecovery",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_OverOwnerLimitFailsBeforeHistoryPreparationOrPublication",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ChangedStoredPrefixAfterStagePreservesCandidatePendingWorkAndOldCompletion",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.NamedDelivery_AdvancedHeadProgressesWhileUnsuccessfulLegacyReplayKeepsItsOriginalLease",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_CompletedRowWithFailedOutboxCleanupRetainsProofAndReportsPendingRecovery(failActivationRemoval: False)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_CompletedRowWithFailedOutboxCleanupRetainsProofAndReportsPendingRecovery(failActivationRemoval: True)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.NamedDelivery_UnchangedHeadRetriesIndependentlyWithoutRebindingLegacyIntent(namedCompleted: False)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.NamedDelivery_UnchangedHeadRetriesIndependentlyWithoutRebindingLegacyIntent(namedCompleted: True)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_InterruptedOriginalWorkResumesWithoutAnotherPreparationOrLogicalPublication(boundary: \\\"stage\\\")",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_InterruptedOriginalWorkResumesWithoutAnotherPreparationOrLogicalPublication(boundary: \\\"promote\\\")",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_InterruptedOriginalWorkResumesWithoutAnotherPreparationOrLogicalPublication(boundary: \\\"release\\\")",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_InterruptedOriginalWorkResumesWithoutAnotherPreparationOrLogicalPublication(boundary: \\\"cancel\\\")",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_UnactivatedWriterRetainsCompatibleScopedCheckpointProtocol",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_IndependentWorkersRespectOriginalIntentClaimAndExpiredWorkerCannotRepublish(expireFirstClaim: False)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_IndependentWorkersRespectOriginalIntentClaimAndExpiredWorkerCannotRepublish(expireFirstClaim: True)",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_PausedBeforeLeaseCannotRegressNewOperatorSelectionAndRebuildDoesNotAdvanceDeliveryCheckpoint",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_GuardedScopeRemainsFencedWhenCatalogDescriptorIsAbsent",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_OriginalPromotionReceiptResolvesLostResponseWithoutRepreparing",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_AnchorAbsentPrefixMutationDuringPromotionRetainsOldCheckpointAndPendingOriginalWork",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ValidationFailureExportsBoundedUnknownRouteWithoutPayloadOrExceptionLogging",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_RepeatedCompletedTriggerReadsExactSelectedProofWithoutAnotherPublication",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_ReleasedCompletedRowWithExistingActorSettlesReadOnlyThenNextHeadUsesBoundedReplay",
+          "result": "Pass"
+        },
+        {
+          "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests.LegacyFallback_NoSourceAnchorUsesCanonicalReplayWithoutManufacturingGuardEvidence",
+          "result": "Pass"
+        }
+      ]
+    }
+  ],
+  "effectiveDependencyAudit": {
+    "path": "review-5-resume-effective-dependency-audit.json",
+    "sha256": "5186b785083e4e98c454357f4a4da6f8ba1563147fdb0de55619b18a8bcf69ce"
+  },
+  "sourceOrTestChangesMadeThisResume": false,
+  "acceptance": "Focused verification only. All 41 implementation tasks were already complete; external edits preserved. No whole/latest section 10 qualification or formal acceptance is asserted.",
+  "openGates": [
+    "Recorded historical loader/governance/scanner/auth/Live failures and unresolved timeout causes",
+    "Latest whole-checkout section 10 qualification",
+    "Authenticated exact-head sealed CI and required owner assurance",
+    "AD-12/NFR8 formal acceptance transition"
+  ],
+  "scopeLimits": [
+    "No renderer, restore, dependency/policy/P1R change, full-suite, Release, pack, Live, R4096 or new external host queue",
+    "Existing tests exercise production actor/orchestration/store code using owning in-process test seams; no new real-sidecar qualification is claimed",
+    "Historical review packets remain bound to their original source/runtime frames; these 45 cases do not requalify the earlier 145-case frame"
+  ],
+  "gitMutationsPerformed": false
+}
