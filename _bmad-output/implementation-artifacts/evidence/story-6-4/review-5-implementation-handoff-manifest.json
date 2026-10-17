@@ -1,0 +1,35 @@
+{
+  "capturedUtc": "2026-10-16T20:52:48.172382+00:00",
+  "sourceBefore": "review-5-implementation-before-inputs.json",
+  "sourceFinal": "review-5-implementation-final-inputs.json",
+  "owningSourceDelta": {
+    "src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs": {
+      "beforeSha256": "55a11795b2ea488a29938bde84835972b80d7c195f4934c5e8f0592d43871f13",
+      "afterSha256": "1905646cf7fd482f71aa43c0bb64501f34887f305420b987d98cdf8a56389087"
+    },
+    "src/Hexalith.EventStore.Server/Actors/SourceProofBootstrapAuthority.cs": {
+      "beforeSha256": "37a7413f5ee0a30312a3e760a0e26246941fc077604a1d3994bd6dc323a1721d",
+      "afterSha256": "184d88ea76d98fcf0e4e0c548818df3b1c9a4f71886ff2f0ee5b1858d9fd48e4"
+    },
+    "src/Hexalith.EventStore.Server/Queries/QueryRouter.cs": {
+      "beforeSha256": "544fdff92dd9bbfe0866159b29568399e5f1ccacb0703bcb8502a0c227b6c1b6",
+      "afterSha256": "ab8fcf22d007e9ea04fc984e0faf06f3e7d951079be4ad9f1b728199071fe1fc"
+    },
+    "tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelBatchTests.ReceiptProof.cs": {
+      "beforeSha256": null,
+      "afterSha256": "d36914efbfbf5156ff4529aad5367485b45c676740706a875335d647ec92099c"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs": {
+      "beforeSha256": "1c3ef956d7e1a70bd1d360545f8fc47eb833333ddebd31b1f983556bed7facf5",
+      "afterSha256": "7aa69341944a37f276b06bf994e7362464f754f687066c81b2894a3925f66d6e"
+    },
+    "tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterComposedRegistrationTests.cs": {
+      "beforeSha256": "d827f000520ade026d218b527c6a297981be075c9c7eecefd78820a5090abded",
+      "afterSha256": "ae048adf6126a1864664acd5a979e5014bec875691ef600095567262d8f042fc"
+    }
+  },
+  "documentationAfter": {
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md": "f5d9d2a98f0fbffbe1aa5e8d7a5fd22c0c86c3cf72456f20e37f05d7203494ae",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-implementation-coverage.md": "3894c474d8754973b9048b9289c24d7a464866bb9f348e006768244ee29f29b3"
+  }
+}

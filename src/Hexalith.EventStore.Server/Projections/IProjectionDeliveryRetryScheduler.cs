@@ -2,6 +2,13 @@ namespace Hexalith.EventStore.Server.Projections;
 
 /// <summary>Durable scheduler for immediate-mode named projection retry work.</summary>
 public interface IProjectionDeliveryRetryScheduler {
+    /// <summary>Reads one original head's durable work without changing its lease, due time or revision.</summary>
+    /// <param name="workId">The deterministic original work identity.</param>
+    /// <param name="cancellationToken">Propagates persistence cancellation.</param>
+    /// <returns>The original work, or null only when its owning shard proves it absent.</returns>
+    Task<ProjectionDeliveryRetryWorkItem?> ReadAsync(string workId, CancellationToken cancellationToken = default)
+        => Task.FromException<ProjectionDeliveryRetryWorkItem?>(new NotSupportedException("delivery_reconciliation_required"));
+
     /// <summary>Registers work before remote dispatch, preserving an existing stable item.</summary>
     /// <param name="workItem">The payload-free work metadata.</param>
     /// <param name="cancellationToken">Propagates persistence cancellation.</param>

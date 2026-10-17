@@ -1,0 +1,133 @@
+{
+  "capturedUtc": "2026-10-16T20:18:05.501586+00:00",
+  "reviewRound": 4,
+  "rawDiff": {
+    "path": "/tmp/story-6-4-root-review4-final-1kgczxgr.diff",
+    "bytes": 910814004,
+    "sha256": "c03fcd486bca3e4b3c6b87da5ad2f1899b78072dcaa064146122e6abc8ce4a7a"
+  },
+  "classificationBeforeGrouping": true,
+  "findings": [
+    {
+      "id": "R4-B1",
+      "verdict": "high",
+      "route": "bad_spec",
+      "group": "G30",
+      "location": "ProjectionDeliveryStateBody.cs:94",
+      "evidence": "CompletedReceipts is scanned without cardinality or element-shape admission, then deserialized before ValidateSize. The reviewed owning probe accepts a 300071-byte H=10000 row with 100000 empty receipt objects; its retained typed graph is 5848792 bytes versus 4S=3789824, and owning sizing dereferences the missing MessageId. This is a separate unbounded collection from R3-E2 digest storage and a retained-memory result, not only cumulative allocations."
+    },
+    {
+      "id": "R4-B2",
+      "verdict": "medium",
+      "route": "bad_spec",
+      "group": "G31",
+      "location": "ProjectionSourceGuardTailDelivery.cs:248",
+      "evidence": "The explicit no-effect DeliveryRebuildRequired branch requires plans.Count==1 and later selects plans[0]. Two qualified single-event routes therefore never enter their supported canonical fallback; the production harness reproduction reports repeated delivery_rebuild_required, no rebuild preparation and no second-route call. Resolve fallback by actual route while preserving complete admission, coordinated identities and stable recovery."
+    },
+    {
+      "id": "R4-B3",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D1",
+      "location": "ProcessReadDeadline.cs:71",
+      "evidence": "carried R2-B1/R2-E2/R3-B3: same synchronous provider cancellation callback stall in unchanged external recovery code. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B4",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D6",
+      "location": "ReminderReconciler.cs:188",
+      "evidence": "carried R3-B4: same reminder catalog scope disposal while noncooperative provider work remains alive in unchanged external code. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B5",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D7",
+      "location": "ReminderReconciler.cs:152",
+      "evidence": "carried R3-B5: same invalid candidate ActorId persisted into indexed continuation in unchanged external code. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B6",
+      "verdict": "high",
+      "route": "defer",
+      "group": "D8",
+      "location": "ReminderReconciler.cs:188",
+      "evidence": "carried R3-B6: same scope creation/catalog resolution outside the hosted discovery exception boundary in unchanged external code. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B7",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D2",
+      "location": "CheckpointedProcessRunner.cs:351",
+      "evidence": "carried R2-B6/R3-B7: same omitted translator-visible metadata in the unchanged external retained process digest. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B8",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D3",
+      "location": "SharedProjectionControlIndexWriter.cs:321",
+      "evidence": "carried R2-B7/R3-B8: same persisted capacity omissions in ValidateState before available-tenant fanout; the reviewer now cites the validator body rather than its caller. Code and claim are unchanged. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B9",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D9",
+      "location": "DomainServiceTrustedEffectOrigin.cs:38",
+      "evidence": "carried R3-B9: same malformed identity codec exception before denial audit in unchanged external code. Preserve verdict/route, skip reverification, no duplicate deferred entry."
+    },
+    {
+      "id": "R4-B10",
+      "verdict": "medium",
+      "route": "defer",
+      "group": "D11",
+      "location": "ProcessReconciler.cs:101",
+      "evidence": "The process pass owns an await-using scope containing catalog and runner. Catalog reads use WithReadDeadline/ProcessReadDeadline and runner translator/provider operations use that same abandonment helper; timeout/cancellation can return while scoped work continues, then RunPass disposes the scope. This is the distinct process caller lifetime boundary in external 0b38 recovery work, separate from D6 reminder scope ownership."
+    },
+    {
+      "id": "R4-E1",
+      "verdict": "medium",
+      "route": "patch",
+      "group": "G32",
+      "location": "ProjectionSourceGuardTailDelivery.cs:400",
+      "evidence": "Partial non-replay sibling completion removes completed routes from pending but merges every reservation token into the replacement work. Scheduler ValidateWorkItem explicitly rejects a token whose route is not pending before any mutation. Thus a real interrupted sibling completion cannot persist its intended retry update. Filter merged tokens to the exact remaining pending inventory; included in higher cascade."
+    },
+    {
+      "id": "R4-V1",
+      "verdict": "high",
+      "route": "bad_spec",
+      "group": "G33",
+      "location": "DomainQueryRoutingServiceCollectionExtensions.cs:31",
+      "evidence": "Verified as an Other finding: Program calls AddEventStoreDomainQueryRouting after AddEventStoreServer. The decorator resolves concrete QueryRouter from TryAddScoped<QueryRouter>(), so DI chooses its public two-argument constructor and never supplies _sourceGuard. The guarded IQueryRouter factory is overridden. Persisted Idle/metadata can therefore report Current after source growth or guard invalidity. Preserve one guarded owning construction path through actual decorated production registration and test the composed route."
+    }
+  ],
+  "groups": {
+    "bad_spec": [
+      "G30",
+      "G31",
+      "G33"
+    ],
+    "patchIncludedByCascade": [
+      "G32"
+    ],
+    "newDeferred": [
+      "D11"
+    ],
+    "carriedDeferred": [
+      "D1",
+      "D2",
+      "D3",
+      "D6",
+      "D7",
+      "D8",
+      "D9"
+    ]
+  },
+  "deferredLedgerReadOrAppended": false,
+  "loopFrom": 3,
+  "loopTo": 4
+}

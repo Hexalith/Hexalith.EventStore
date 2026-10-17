@@ -65,8 +65,13 @@
       "readWrite": true
     }
   ],
-  "cleanupPending": true,
+  "cleanupPending": false,
   "fixtureOverride": "EVENTSTORE_TEST_REDIS_PORT",
   "reason": "Isolate regular fixture data from observed unrelated shared FLUSHALL. Existing source/component/engine/settings/cost ceilings unchanged.",
-  "existingHardcodedDiagnostic": "ReadObservedRedisPersistenceAsync still samples docker exec dapr_redis. That result remains shared-container diagnostics; this separate owning-container profile supplies the actual isolated environment evidence."
+  "existingHardcodedDiagnostic": "ReadObservedRedisPersistenceAsync still samples docker exec dapr_redis. That result remains shared-container diagnostics; this separate owning-container profile supplies the actual isolated environment evidence.",
+  "cleanupCompletedUtc": "2026-10-16T18:37:02.297473+00:00",
+  "cleanupReceipt": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-owned-resources-final-cleanup.json",
+    "sha256": "af81360f71ca85a39a7de0a68ee626cf13143dcfbc936a9d440806e23a923b54"
+  }
 }

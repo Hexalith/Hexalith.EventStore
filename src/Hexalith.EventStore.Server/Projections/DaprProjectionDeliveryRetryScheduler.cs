@@ -31,6 +31,22 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
     private int _legacyMigrationCompleted;
 
     /// <inheritdoc/>
+    public async Task<ProjectionDeliveryRetryWorkItem?> ReadAsync(string workId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workId);
+        await MigrateLegacyLedgerAsync(cancellationToken).ConfigureAwait(false);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerShardReads);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+        ProjectionDeliveryRetryLedger? ledger = await daprClient.GetStateAsync<ProjectionDeliveryRetryLedger>(
+            projectionOptions.Value.CheckpointStateStoreName, GetLedgerKey(workId), cancellationToken: cancellationToken).ConfigureAwait(false);
+        RecordLedgerRead(ledger);
+        if (ledger is not null && (ledger.Items is null || ledger.Items.Any(static item => !IsValidPersistedWorkItem(item))
+            || ledger.Items.Count(item => item.WorkId == workId) > 1))
+            throw new InvalidOperationException("delivery_reconciliation_required");
+        return ledger?.Items.SingleOrDefault(item => item.WorkId == workId);
+    }
+
+    /// <inheritdoc/>
     public async Task<ProjectionDeliveryRetryWorkItem> ScheduleAsync(
         ProjectionDeliveryRetryWorkItem workItem,
         CancellationToken cancellationToken = default) {
@@ -287,7 +303,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
 
     private void RecordLedgerRead(ProjectionDeliveryRetryLedger? ledger)
     {
-        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerEntries, ledger?.Items.Count ?? 0);
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerEntries, ledger?.Items?.Count ?? 0);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerReadBytes,
             ledger is null ? 0 : MeasureBody(ledger));
     }
@@ -443,7 +459,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             RecordMigrationReadBody(legacy);
-            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationEntries, legacy?.Items.Count ?? 0);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SchedulerMigrationEntries, legacy?.Items?.Count ?? 0);
             foreach (ProjectionDeliveryRetryWorkItem workItem in (legacy?.Items ?? [])
                 .Where(IsValidPersistedWorkItem)
                 .OrderBy(static item => item.WorkId, StringComparer.Ordinal)) {

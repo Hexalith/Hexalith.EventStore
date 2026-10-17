@@ -494,8 +494,9 @@ public static class DomainProjectionDispatcher {
             .MaterializeAndValidateNamed(services.GetServices<IAsyncDomainProjectionHandler>(), options)
             .Where(handler => StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain)
                 && header.ProjectionTypes.Contains(handler.ProjectionType, StringComparer.Ordinal))];
-        if (handlers.Any(handler => handler is not IAsyncDomainProjectionStreamedRebuildHandler)) return null;
+        if (handlers.All(handler => handler is not IAsyncDomainProjectionStreamedRebuildHandler)) return null;
 
+        ProjectionRequest? fullReplayRequest = null;
         var operations = new List<ReadModelBatchOperation>();
         var failures = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         foreach (IAsyncDomainProjectionHandler handler in handlers)
@@ -510,13 +511,30 @@ public static class DomainProjectionDispatcher {
                         yield return item;
                     streamComplete = true;
                 }
-                DomainProjectionRebuildPlan plan = await MeasureHandler((IAsyncDomainProjectionStreamedRebuildHandler)handler)
-                    .PrepareStreamedRebuildAsync(header.Request, VerifiedEvents(),
-                        header.DispatchId, cancellationToken)
-                    .ConfigureAwait(false);
-                if (!streamComplete)
-                    throw new DomainProjectionRebuildRejectedException(
-                        ProjectionDispatchReasonCodes.DeliveryGap);
+                DomainProjectionRebuildPlan plan;
+                if (handler is IAsyncDomainProjectionStreamedRebuildHandler streamedHandler)
+                {
+                    plan = await MeasureHandler(streamedHandler).PrepareStreamedRebuildAsync(header.Request,
+                        VerifiedEvents(), header.DispatchId, cancellationToken).ConfigureAwait(false);
+                    if (!streamComplete)
+                        throw new DomainProjectionRebuildRejectedException(ProjectionDispatchReasonCodes.DeliveryGap);
+                }
+                else
+                {
+                    if (handler is not IAsyncDomainProjectionRebuildHandler fullHandler
+                        || fullHandler.RebuildSemantics != DomainProjectionRebuildSemantics.FullReplay)
+                        throw new DomainProjectionRebuildRejectedException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                    if (fullReplayRequest is null)
+                    {
+                        ProjectionDispatchRequest complete = await DomainProjectionRebuildTransport.ResolveAsync(services,
+                            header, options, identity, cancellationToken).ConfigureAwait(false);
+                        ValidateRequest(complete, options);
+                        ValidateRebuildEventHistory(complete.Request, options.MaxRebuildEventCount);
+                        fullReplayRequest = UpcastRequest(services, complete.Request);
+                    }
+                    plan = await MeasureHandler(fullHandler).PrepareRebuildAsync(fullReplayRequest,
+                        header.DispatchId, cancellationToken).ConfigureAwait(false);
+                }
                 if (!StringComparer.Ordinal.Equals(plan.StoreName, storeName))
                     throw new DomainProjectionRebuildRejectedException(
                         ProjectionDispatchReasonCodes.UnsupportedCapability);

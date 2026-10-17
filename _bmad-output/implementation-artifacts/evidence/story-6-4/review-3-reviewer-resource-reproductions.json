@@ -1,0 +1,85 @@
+{
+  "capturedUtc": "2026-10-16T19:49:43.257302+00:00",
+  "producer": "review3_edge_case_hunter",
+  "parentReran": false,
+  "commandReported": [
+    "dotnet",
+    "run",
+    "--project",
+    "/tmp/review3-edge-probe/probe.csproj",
+    "--configuration",
+    "Debug"
+  ],
+  "mechanism": "Actual built owning production Dapr state store and GuardedTailProductionHarness; reflection to invoke internal test/production entry points. No provider boundary bypass. Parent read probe source.",
+  "allocationMeaning": "GC.GetAllocatedBytesForCurrentThread cumulative allocations, not peak-live/retained working set.",
+  "normativeS": 947456,
+  "normative4S": 3789824,
+  "reportedObservations": [
+    {
+      "fixture": "valid H10000 row baseline",
+      "bodyBytes": 555718
+    },
+    {
+      "fixture": "valid H10000 plus50000 unknown siblings",
+      "bodyBytes": 855999,
+      "preflightAllocated": 70746912,
+      "typedAllocated": 2688448,
+      "owningReadAllocated": 73444856
+    },
+    {
+      "fixture": "valid H10000 plus1000 unknown siblings",
+      "owningReadAllocated": 4463256
+    },
+    {
+      "fixture": "oversized unknown property name",
+      "bodyBytes": 5000024,
+      "allocated": 10001288,
+      "reason": "delivery_proof_limit_exceeded"
+    },
+    {
+      "fixture": "H10000 with160000 null digest entries",
+      "bodyBytes": 853229,
+      "owningReadAllocated": 23129456,
+      "owningRead": "typed state materialized; later identity proof invalid",
+      "minimumRetainedDigestArrayBytes": 5120000
+    }
+  ],
+  "files": [
+    {
+      "path": "/tmp/review3-edge-probe/Program.cs",
+      "exists": true,
+      "bytes": 5478,
+      "sha256": "90b254dcc196669a4eaec22e23cc672789172fa38e234e58c2dbc443b1477c51"
+    },
+    {
+      "path": "/tmp/review3-edge-probe/probe.csproj",
+      "exists": true,
+      "bytes": 291,
+      "sha256": "ec1296b003c1ada0b86164f7519a2fb0a438b138341ed1544439340af90af975"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "exists": true,
+      "bytes": 3227136,
+      "sha256": "977f4dbd968ad74b119aa80290c523c3b460c966b43803483870eff62c1a6ced"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "exists": true,
+      "bytes": 8219136,
+      "sha256": "3a95fbe763b2aca01e709647a795e87185612a6a33b52c65df7907ec450fd705"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateBody.cs",
+      "exists": true,
+      "bytes": 7520,
+      "sha256": "143b125db9ebf2d18df49e9590d5dc2d8cc1c6d1020ddba09b09079c27f3e1c6"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Projections/ProjectionMessageIdDigestsJsonConverter.cs",
+      "exists": true,
+      "bytes": 2136,
+      "sha256": "825f035c313983089ec4fa60998644fbf8f338ebee0a6ff0575dbc856d55f40a"
+    }
+  ]
+}

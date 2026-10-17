@@ -64,8 +64,6 @@ internal sealed class DaprProjectionSourceGuardTransport(DaprClient dapr, IHttpC
     {
         if (!request.ProjectionTypes.Any(route => catalog.MappedOnlyStreamedProjectionTypes.Contains(route, StringComparer.Ordinal)))
             return request;
-        if (request.ProjectionTypes.Any(route => !catalog.MappedOnlyStreamedProjectionTypes.Contains(route, StringComparer.Ordinal)))
-            return null;
         using var measure = new ProjectionRebuildHashCountStream();
         try { await ProjectionWireJsonSerializer.SerializeAsync(measure, request.Request.Events, JsonSerializerOptions.Web, cancellationToken).ConfigureAwait(false); }
         finally { ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ReplayTransportSerializationBytes, measure.Length); }

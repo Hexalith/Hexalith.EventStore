@@ -1,0 +1,85 @@
+{
+  "actualBinaryDisjointUnion": {
+    "selected": 5719,
+    "passed": 5691,
+    "failed": 3,
+    "skipped": 25,
+    "errors": 0,
+    "notRun": 0
+  },
+  "nativeFailedMethods": [
+    "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+    "Hexalith.EventStore.Server.Tests.Authentication.DaprInternalAuthenticationHandlerTests.DelegatedAdministratorCredential_BootstrapsTheGlobalAdministrator",
+    "Hexalith.EventStore.Server.Tests.Authentication.DaprInternalAuthenticationHandlerTests.ValidSignedWorkloadCommandReachesRouter"
+  ],
+  "coreAssetsAndCompiledDepsBeforeAfterEqual": true,
+  "gates": [
+    {
+      "name": "source9-server-current-policy-target-release",
+      "summary": {
+        "selected": 3,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 540.846,
+        "passed": 2
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.QualifiedCountAndStructuralJsonValues_AreNotUsableSecrets",
+        "-method",
+        "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.SealedHistoricalSecretLines_RequireExactBytes"
+      ],
+      "logSha256": "e2d1136a476b8721b262288c5ba7b785d3851f88c4bcbbc4f902d53008e14bca",
+      "actualRuntimeClosure": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-source9-server-cutoff-runtime-closure.json",
+        "sha256": "21d7d1be7d217418ca4917db6be43ea3c258e854ea1e77fa84298cf4c4621c4d",
+        "fileCount": 2956,
+        "capturedUtc": "2026-10-16T17:36:13.338792+00:00",
+        "targetCutoff": "server"
+      },
+      "targetRuntimeChangesDuringGate": [],
+      "relevantInputChangesDuringGate": []
+    },
+    {
+      "name": "source9-server-independent-remaining-release",
+      "summary": {
+        "selected": 5716,
+        "errors": 0,
+        "failed": 2,
+        "skipped": 25,
+        "notRun": 0,
+        "seconds": 445.777,
+        "passed": 5689
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-method-",
+        "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+        "-method-",
+        "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.QualifiedCountAndStructuralJsonValues_AreNotUsableSecrets",
+        "-method-",
+        "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.SealedHistoricalSecretLines_RequireExactBytes"
+      ],
+      "logSha256": "6d97b94b45c8b5ca4e92d216b33d84185d45c0a612bcd0d82dd3578e17b89af3",
+      "actualRuntimeClosure": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-source9-server-cutoff-runtime-closure.json",
+        "sha256": "21d7d1be7d217418ca4917db6be43ea3c258e854ea1e77fa84298cf4c4621c4d",
+        "fileCount": 2956,
+        "capturedUtc": "2026-10-16T17:36:13.338792+00:00",
+        "targetCutoff": "server"
+      },
+      "targetRuntimeChangesDuringGate": [],
+      "relevantInputChangesDuringGate": []
+    }
+  ],
+  "exactWholeSection10PassClaimed": false,
+  "latestCheckoutQualified": false,
+  "diagnosticNarrowOutcomesDoNotReplaceFailedPartition": true
+}

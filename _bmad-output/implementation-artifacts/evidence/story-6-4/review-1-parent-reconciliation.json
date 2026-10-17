@@ -1,0 +1,106 @@
+{
+  "auditedUtc": "2026-10-16T18:46:38.474248+00:00",
+  "supportingAudits": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-final-handoff-audit.json",
+      "sha256": "4f57e03bf7ee80b84c626db03f7df762dead4b306828d3b8258ece44584b565d",
+      "bytes": 7786,
+      "source": "/tmp/story-6-4-root-final-handoff-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-regression-coverage-audit.json",
+      "sha256": "198bff6d6c2e73767717a66e0a4972041f86052f0d7420c06bc3c6c3fd637038",
+      "bytes": 6506,
+      "source": "/tmp/story-6-4-root-r1-regression-coverage-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-frozen-matrix-outcome-audit.json",
+      "sha256": "1aa00b03ea71d3e79cc967f664e26fd2e1ca91a72f7833e63377fcab3cb9d6ee",
+      "bytes": 5144,
+      "source": "/tmp/story-6-4-root-frozen-matrix-outcome-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-server-enrollment-audit.json",
+      "sha256": "082ff827a9f900b475e13a6cad85787692b7a840450e652420e36da49687c06d",
+      "bytes": 763,
+      "source": "/tmp/story-6-4-root-source9-server-enrollment-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-server-union-audit.json",
+      "sha256": "f52bac10376c6e9c219027ecad0ed087e3b619ae82ec04fdfa6f2b5c4e9053b3",
+      "bytes": 3632,
+      "source": "/tmp/story-6-4-root-source9-server-union-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-current-scanner-audit.json",
+      "sha256": "2ff9cfda2f6965877486d32252e1f28b6a9d4a645d2824395c2197cd8bc9bb20",
+      "bytes": 1059,
+      "source": "/tmp/story-6-4-root-source9-current-scanner-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-contracts-debug-outcome-audit.json",
+      "sha256": "af80fd2ab61951d5fa06ac4bc66ac60f0efd73520a21cad656ad60385e8ffe44",
+      "bytes": 1581,
+      "source": "/tmp/story-6-4-root-source9-contracts-debug-outcome-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-contracts-release-union-audit.json",
+      "sha256": "57634ec00adfa615b4e4b14e79c94fd996920e87ada89121e9614b1f903e7856",
+      "bytes": 3533,
+      "source": "/tmp/story-6-4-root-source9-contracts-release-union-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-contracts-release-governance-audit.json",
+      "sha256": "336f11e7be36c28e8c18a04855bdca6036e61f73a96a3da357d358d1fd053a7c",
+      "bytes": 3309,
+      "source": "/tmp/story-6-4-root-source9-contracts-release-governance-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-contracts-release-authority-identity-audit.json",
+      "sha256": "06108c9575c2075a7fa90509035fdfd919196be12c93de01796133f3a55c7a92",
+      "bytes": 1472,
+      "source": "/tmp/story-6-4-root-source9-contracts-release-authority-identity-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-contracts-loader-audit.json",
+      "sha256": "c5e52be3f40e3abd1766021116e548fafb88c41e06ea08cc4828c6fcee3fa78b",
+      "bytes": 2840,
+      "source": "/tmp/story-6-4-root-source9-contracts-loader-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-failed-live-numeric-row-audit.json",
+      "sha256": "2a1eebc304992eebaba19be12cd1f955bb14b5e06424b193c0e735e009bfd09c",
+      "bytes": 1195,
+      "source": "/tmp/story-6-4-root-source9-failed-live-numeric-row-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-source9-r4096-numeric-audit.json",
+      "sha256": "441228e49fbbb4532d895be9c1e0491854b32523a2f7221fb0900cfe8a9dacd7",
+      "bytes": 1390,
+      "source": "/tmp/story-6-4-root-source9-r4096-numeric-audit.json"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-parent-package-audit.json",
+      "sha256": "76c9a630ffae899e108d5781040377249eeba850ed985caaa448220981116cd2",
+      "bytes": 257,
+      "source": "/tmp/story-6-4-root-current-package-audit.json"
+    }
+  ],
+  "documentationBefore": {
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md": "0f886202bf52f1db8422ae7b74b4a9ec7cd659304eb66bdd0d30cf1e16d7c73f",
+    "docs/concepts/projection-delivery.md": "4401d96fd6058fe5321d74467521a6a989be3077b87fc122ff57d073b417bfb4",
+    "docs/operations/projection-delivery-v2-cutover.md": "1f3ff989803f3501713bf482b3840d2fb5c33b5081771e135ac9b03d10f9fbc5",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-coverage-addendum.md": "8465b751f3413110d25167a338278f40613230616c49e38700279bcf395eb985"
+  },
+  "documentationAfter": {
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md": "198469555c6953def9a20babe1ea67d894e8aa9ec36269ee4baa26b39d398714",
+    "docs/concepts/projection-delivery.md": "a9afc9835ca8ef4489f34e10582fdaddb9b6f4b11693e919f19270f04924a26f",
+    "docs/operations/projection-delivery-v2-cutover.md": "bc9d16bd8293ca616da238940c148cc00c90fb6ae48721789c81406927ce49c2",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-coverage-addendum.md": "17193d6afa11850d006dc66e7d4c64ffcc75d8784833ca6ce2ac7d0265e6a707"
+  },
+  "frozenTagSha256": "698aade75fcdb478202785f05d4e9885d7ad0fffa3f76022c3477fb0b05d661f",
+  "globalAcceptance": false,
+  "independentReview": "pending; user explicitly authorized independent checks with P1R preserved",
+  "agentNativePacketUnmodified": true,
+  "reviewStatus": "temporarily in-review during independent review; sprint in-progress; no formal acceptance"
+}

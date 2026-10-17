@@ -131,7 +131,9 @@ internal static class SourceProofCodec
             && string.Equals(proof.AggregateId, identity.AggregateId, StringComparison.Ordinal)
             && Ulid.TryParse(proof.SourceIncarnation, null, out _)
             && IsDigest(proof.CumulativeDigest)
-            && (head == 0 ? proof.HeadMessageId is null : !string.IsNullOrWhiteSpace(proof.HeadMessageId));
+            && (head == 0 ? proof.HeadMessageId is null
+                && proof.CumulativeDigest == CreateSeed(identity, proof.SourceIncarnation).CumulativeDigest
+                : !string.IsNullOrWhiteSpace(proof.HeadMessageId));
 
     /// <summary>Recognizes only an authenticated actor-owned empty seed, preserving rejection of unproven zero metadata.</summary>
     internal static bool IsQualifiedEmpty(AggregateMetadata metadata, AggregateIdentity identity)

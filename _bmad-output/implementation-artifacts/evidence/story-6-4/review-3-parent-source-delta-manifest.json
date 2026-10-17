@@ -1,0 +1,93 @@
+[
+  {
+    "path": "src/Hexalith.EventStore.Server/Events/SourceProofCodec.cs",
+    "beforeSha256": "5dbf0f466f652eba559b598174be7814bd6232b1c5d4630771b5ff0445592620",
+    "afterSha256": "f6e56578f53dbbcf5183c4732e52c4f3ea2f04530ce4852874de58044e9adf41",
+    "beforeBytes": 8700,
+    "afterBytes": 8824
+  },
+  {
+    "path": "src/Hexalith.EventStore.Server/Projections/DaprProjectionDeliveryRetryScheduler.cs",
+    "beforeSha256": "3d20379b4c4fee909356a40221cb2b44cfee7b6589345a293da883b43fd60875",
+    "afterSha256": "8b60e4dee84d07ecb62a428e9cecb5a8b447fcc7580bc43e558eab8a7a61c7ec",
+    "beforeBytes": 26726,
+    "afterBytes": 27861
+  },
+  {
+    "path": "src/Hexalith.EventStore.Server/Projections/IProjectionDeliveryRetryScheduler.cs",
+    "beforeSha256": "c621d84eadf184fb629caca03d8051a697c59fd2723c711f8d5bc7e0701820f8",
+    "afterSha256": "c596f09c6d6d966bf7fc4b99336db72b440f72f6d74fa8e6dc1904a5149bc9ca",
+    "beforeBytes": 3714,
+    "afterBytes": 4337
+  },
+  {
+    "path": "src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateBody.cs",
+    "beforeSha256": "143b125db9ebf2d18df49e9590d5dc2d8cc1c6d1020ddba09b09079c27f3e1c6",
+    "afterSha256": "7302342a17aa239ebe98568a24db68ff8bf22229b55ba9d3acf99a36d0ac43dc",
+    "beforeBytes": 7520,
+    "afterBytes": 11600
+  },
+  {
+    "path": "src/Hexalith.EventStore.Server/Projections/ProjectionMessageIdDigestsJsonConverter.cs",
+    "beforeSha256": "825f035c313983089ec4fa60998644fbf8f338ebee0a6ff0575dbc856d55f40a",
+    "afterSha256": "033a0589aa06672b2db78e305c738fe9521f0b7255b3672e0426a0977737bba0",
+    "beforeBytes": 2136,
+    "afterBytes": 2829
+  },
+  {
+    "path": "src/Hexalith.EventStore.Server/Projections/ProjectionSourceGuardDelivery.cs",
+    "beforeSha256": "73361d1981ed90f2c9298427cc6d69c4b620b1eb69cda98b8b00900543161081",
+    "afterSha256": "a27385d7afca9200757d4465fc03433ce6c65fb7229a97913be4b7dae3ad2778",
+    "beforeBytes": 29908,
+    "afterBytes": 30594
+  },
+  {
+    "path": "src/Hexalith.EventStore.Server/Projections/ProjectionSourceGuardTailDelivery.cs",
+    "beforeSha256": "5305b17864bd041db8a11e884bb65cf27757417ab3eaf16ce3c60cb6aa13a9bf",
+    "afterSha256": "e119bd83e71dfc3183160e97a813cb47e4770d136c946a3ab48e1e32277f4a8d",
+    "beforeBytes": 33783,
+    "afterBytes": 38260
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs",
+    "beforeSha256": "98137ec1f1d7c619ec50faf2fa3656e1cc6f04f4fce9c3d7defe7a8f81bf55b1",
+    "afterSha256": "1c3ef956d7e1a70bd1d360545f8fc47eb833333ddebd31b1f983556bed7facf5",
+    "beforeBytes": 35541,
+    "afterBytes": 38642
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.Tests/Controllers/AdminProjectionRebuildControllerTests.cs",
+    "beforeSha256": "08453dbea865501035c65589d65961bde49c14b22bc328e57ea3e344ba47fb77",
+    "afterSha256": "5aaacec8fb558dead59c06aa9818a32c24e86dcdff1a37e8035263bbfa2adfcc",
+    "beforeBytes": 46488,
+    "afterBytes": 51265
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.Tests/Projections/DaprProjectionDeliveryRetrySchedulerTests.cs",
+    "beforeSha256": "4094927e0355e410bbeb89b5a318a4b2d948fd740843a357c3036a284dc1cab4",
+    "afterSha256": "19bc89ecce555498d6c7e8427d1d386212a117ccf188f7e868446c816c1ae34f",
+    "beforeBytes": 23427,
+    "afterBytes": 24740
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.Tests/Projections/GuardedTailProductionHarness.cs",
+    "beforeSha256": "5a87ac18c926656b4616d406a45956733a0b76fdedae07b2338ac9e90de47dcc",
+    "afterSha256": "ca9da7da13c5210b3dde4519a702862e389e65f4a590ec29f1abc053cd55ed05",
+    "beforeBytes": 38428,
+    "afterBytes": 40468
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs",
+    "beforeSha256": "cab7d864b647cbb504031dc4712e9fdbf3730d0180b1a5dfad2f16d743339c37",
+    "afterSha256": "121d1d83cfedee6f75e32b9c34e601178b578feec72d9023033ed5fddf38a858",
+    "beforeBytes": 71215,
+    "afterBytes": 76241
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs",
+    "beforeSha256": "db67e4b510878ed76c14751f5cd3994610c284f89ceb2b429699ab7d381e0cd5",
+    "afterSha256": "4725e4330cbadfbf8e1f58c53ccc5e8f020eba844cb0392cb424adaab37d6b8a",
+    "beforeBytes": 11917,
+    "afterBytes": 24074
+  }
+]

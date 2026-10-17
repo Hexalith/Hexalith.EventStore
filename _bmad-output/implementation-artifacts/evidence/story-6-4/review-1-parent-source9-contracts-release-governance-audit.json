@@ -1,0 +1,37 @@
+{
+  "gate": "source9-contracts-changed-classes-release",
+  "sourceSnapshot": "sourceSnapshot9",
+  "logSha256": "7386aa1b95ba18f3501632676d7765122a4ea526e1fac653b2bc8cf18816a269",
+  "summary": {
+    "selected": 64,
+    "errors": 0,
+    "failed": 33,
+    "skipped": 0,
+    "notRun": 0,
+    "seconds": 1.57,
+    "passed": 31
+  },
+  "failedMethodCounts": {
+    "Hexalith.EventStore.Contracts.Tests.Packaging.TrustedPublishingReleaseTests.PublishJobRetainsExactSourceAndDestinationPreflights": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseCallerPinsSharedExecutionAndSameRunPublicationAuthorityInputs": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReservedVersionMismatchRejectsBeforePreflightOrPublication": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsInvalidCorrectiveInputs": 4,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAuthorityArgumentsWhenTheGateIsEnabled": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleasePackageCountContractMatchesManifestCallerAndWrapper": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.RejectedPreflightBehaviorallyBlocksNuGetAndContainerMutation": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseAuthorityOwnerIsBoundToTheExplicitDispatchInput": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightRejectsMalformedBypassWithoutOutput": 4,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsDisabledAuthority": 2,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsAnUndeclaredOrMalformedPosture": 5,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.DocumentationAndContainerDefaultsDescribeTheExactReleaseContract": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsExactReviewedPackageCount": 2,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperRejectsIgnoredReservationInputs": 3,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PosixGovernanceCasesSkipOnWindowsInsteadOfVacuousEarlyReturn": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.ReleaseSourcePreflightFailsClosedAndEmitsSelectedSuccessfulPushProof": 1,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperForwardsAllowedSourceWorkflowUnchanged": 2,
+    "Hexalith.EventStore.Contracts.Tests.Packaging.ContainerPublishingGovernanceTests.PublicationPreflightWrapperBindsReleaseIdentityAndSharedContract": 1
+  },
+  "runtimeChanges": [],
+  "inputChangesDuringGate": [],
+  "disposition": "Stale compiled governance tests versus later external workflow/publication input changes; no repair or current-global-pass inferred."
+}

@@ -1,0 +1,40 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_ConfiguredQuotedIntegersRoundtripTheOwnSerializedLargeHead [FAIL]
+      Shouldly.ShouldAssertException : fixture.Backend.TrySaveByteOperations.Count
+          should be
+      1
+          but was
+      8
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(62,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_ConfiguredQuotedIntegersRoundtripTheOwnSerializedLargeHead()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_MixedStreamedAndFullRoutesResumeOneOriginalCoordinatedManifest(lostAction: "stage") [FAIL]
+      System.ArgumentException : An incremental replay route is absent from mapped streamed replay. (Parameter 'incrementalReplayProjectionTypes')
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogEntry.cs(102,0): at Hexalith.EventStore.Server.Projections.NamedProjectionRouteCatalogEntry..ctor(String appId, String serviceVersion, String domain, Int32 dispatchVersion, String dispatchCapability, String catalogFingerprint, IEnumerable`1 projectionTypes, IEnumerable`1 fullReplayProjectionTypes, IEnumerable`1 mappedOnlyStreamedProjectionTypes, IEnumerable`1 sharedEpochProjectionTypes, IEnumerable`1 singleEventProjectionTypes, IEnumerable`1 incrementalReplayProjectionTypes, IEnumerable`1 ordinaryProjectionTypes)
+        src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogEntry.cs(38,0): at Hexalith.EventStore.Server.Projections.NamedProjectionRouteCatalogEntry..ctor(String appId, String serviceVersion, String domain, Int32 dispatchVersion, String dispatchCapability, String catalogFingerprint, IEnumerable`1 projectionTypes, IEnumerable`1 fullReplayProjectionTypes, IEnumerable`1 mappedOnlyStreamedProjectionTypes, IEnumerable`1 sharedEpochProjectionTypes, IEnumerable`1 singleEventProjectionTypes, IEnumerable`1 incrementalReplayProjectionTypes)
+        tests/Hexalith.EventStore.Server.Tests/Projections/GuardedTailProductionHarness.cs(104,0): at Hexalith.EventStore.Server.Tests.Projections.GuardedTailProductionHarness..ctor(Int32 head, Int32 baseSequence, Int32 routeCount, String handlerSemantics, Boolean sharedLastRoute, Int32 receiptLimit, Boolean unguardedLastRoute, Boolean extraDomain, Int32 manifestLimit, Boolean productionScheduler, Int32 transitionAttempts, Boolean mixedReplay)
+        tests/Hexalith.EventStore.Server.Tests/Projections/GuardedTailProductionHarness.cs(308,0): at Hexalith.EventStore.Server.Tests.Projections.GuardedTailProductionHarness.CreateAsync(Int32 head, Int32 baseSequence, Int32 routeCount, String handlerSemantics, Boolean sharedLastRoute, Int32 receiptLimit, Boolean unguardedLastRoute, Boolean extraDomain, Int32 manifestLimit, Boolean productionScheduler, Int32 transitionAttempts, String ownerGeneration, Boolean mixedReplay)
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(525,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_MixedStreamedAndFullRoutesResumeOneOriginalCoordinatedManifest(String lostAction)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_MixedStreamedAndFullRoutesResumeOneOriginalCoordinatedManifest(lostAction: "commit") [FAIL]
+      System.ArgumentException : An incremental replay route is absent from mapped streamed replay. (Parameter 'incrementalReplayProjectionTypes')
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogEntry.cs(102,0): at Hexalith.EventStore.Server.Projections.NamedProjectionRouteCatalogEntry..ctor(String appId, String serviceVersion, String domain, Int32 dispatchVersion, String dispatchCapability, String catalogFingerprint, IEnumerable`1 projectionTypes, IEnumerable`1 fullReplayProjectionTypes, IEnumerable`1 mappedOnlyStreamedProjectionTypes, IEnumerable`1 sharedEpochProjectionTypes, IEnumerable`1 singleEventProjectionTypes, IEnumerable`1 incrementalReplayProjectionTypes, IEnumerable`1 ordinaryProjectionTypes)
+        src/Hexalith.EventStore.Server/Projections/NamedProjectionRouteCatalogEntry.cs(38,0): at Hexalith.EventStore.Server.Projections.NamedProjectionRouteCatalogEntry..ctor(String appId, String serviceVersion, String domain, Int32 dispatchVersion, String dispatchCapability, String catalogFingerprint, IEnumerable`1 projectionTypes, IEnumerable`1 fullReplayProjectionTypes, IEnumerable`1 mappedOnlyStreamedProjectionTypes, IEnumerable`1 sharedEpochProjectionTypes, IEnumerable`1 singleEventProjectionTypes, IEnumerable`1 incrementalReplayProjectionTypes)
+        tests/Hexalith.EventStore.Server.Tests/Projections/GuardedTailProductionHarness.cs(104,0): at Hexalith.EventStore.Server.Tests.Projections.GuardedTailProductionHarness..ctor(Int32 head, Int32 baseSequence, Int32 routeCount, String handlerSemantics, Boolean sharedLastRoute, Int32 receiptLimit, Boolean unguardedLastRoute, Boolean extraDomain, Int32 manifestLimit, Boolean productionScheduler, Int32 transitionAttempts, Boolean mixedReplay)
+        tests/Hexalith.EventStore.Server.Tests/Projections/GuardedTailProductionHarness.cs(308,0): at Hexalith.EventStore.Server.Tests.Projections.GuardedTailProductionHarness.CreateAsync(Int32 head, Int32 baseSequence, Int32 routeCount, String handlerSemantics, Boolean sharedLastRoute, Int32 receiptLimit, Boolean unguardedLastRoute, Boolean extraDomain, Int32 manifestLimit, Boolean productionScheduler, Int32 transitionAttempts, String ownerGeneration, Boolean mixedReplay)
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(525,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_MixedStreamedAndFullRoutesResumeOneOriginalCoordinatedManifest(String lostAction)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 18, Errors: 0, Failed: 3, Skipped: 0, Not Run: 0, Time: 3.360s

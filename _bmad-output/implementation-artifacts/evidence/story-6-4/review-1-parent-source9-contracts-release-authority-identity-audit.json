@@ -1,0 +1,48 @@
+[
+  {
+    "name": "source9-contracts-authority-release",
+    "sourceSnapshot": "sourceSnapshot9",
+    "summary": {
+      "selected": 1,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 213.925,
+      "passed": 1
+    },
+    "logSha256": "831064cab119d49bcd70f312b90b1a2bc4c262d221820c785b396668762de105",
+    "commandVector": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "-method",
+      "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync"
+    ],
+    "targetRuntimeChangesDuringGate": [],
+    "relevantInputChangesDuringGate": [
+      "tools/release-publication-identity.py"
+    ]
+  },
+  {
+    "name": "source9-contracts-event-identity-release",
+    "sourceSnapshot": "sourceSnapshot9",
+    "summary": {
+      "selected": 20,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "notRun": 0,
+      "seconds": 0.176,
+      "passed": 20
+    },
+    "logSha256": "86a4ea68689d49b6f42cebfceeb86e7baa6dcb98107c56d08ec3cc2412f04ab3",
+    "commandVector": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "-class",
+      "*EventIdentityValidatorTests"
+    ],
+    "targetRuntimeChangesDuringGate": [],
+    "relevantInputChangesDuringGate": []
+  }
+]

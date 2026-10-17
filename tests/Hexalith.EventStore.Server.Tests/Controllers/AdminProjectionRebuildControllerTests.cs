@@ -20,6 +20,63 @@ public class AdminProjectionRebuildControllerTests {
     private const string Tenant = "tenant-a";
     private const string Projection = "party-summary";
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SourceMaintenance_AuthorizedControllerQualifiesOrActivatesOnlyItsAttributedExactScope(bool activate)
+    {
+        using var fixture = await Projections.GuardedTailProductionHarness.CreateAsync(3, 3, 2);
+        await fixture.UseProductionOwnersAsync(activateGuard: false);
+        string route = fixture.Catalog.OrdinaryProjectionTypes[0], sibling = fixture.Catalog.OrdinaryProjectionTypes[1];
+        var store = new DaprProjectionDeliveryStateStore(fixture.Backend,
+            Microsoft.Extensions.Options.Options.Create(new Hexalith.EventStore.Server.Configuration.ProjectionOptions()));
+        ProjectionDeliveryState original = (await store.ReadAsync(fixture.Identity, route)).State.ShouldNotBeNull();
+        byte[] writer = fixture.Backend.ByteStoreValue(ProjectionDeliveryStateKeys.WriterProtocol).ToArray();
+        byte[] siblingRow = fixture.Backend.ByteStoreValue(ProjectionDeliveryStateKeys.GetStateKey(fixture.Identity, sibling)).ToArray();
+        var source = fixture.Head;
+        var qualification = fixture.CreateQualification(store);
+        using ServiceProvider services = new ServiceCollection().AddSingleton(qualification).BuildServiceProvider();
+        var controller = CreateController(Substitute.For<IProjectionRebuildCheckpointStore>(), true, serviceProvider: services);
+        ((ClaimsIdentity)controller.User.Identity!).AddClaim(new(ClaimTypes.NameIdentifier, "operator-authorized"));
+        string commit = new('a', 40);
+        var inventory = new[] { "append", "immediate", "poller", "retry", "reconciliation", "rebuild", "erasure" }
+            .Select(role => new ProjectionSourceGuardWriterInventory(role, commit, "package-identity", true)).ToArray();
+        var body = new ProjectionSourceGuardQualificationRequestBody(3, source.SourceIncarnation, null, commit,
+            "verified-backup", ProjectionSourceGuard.ApprovedSpecSha256, true, true, true, inventory);
+        IActionResult response = activate
+            ? await controller.ActivateSourceGuardAsync(fixture.Identity.TenantId, fixture.Identity.Domain, fixture.Identity.AggregateId,
+                route, body, CancellationToken.None)
+            : await controller.QualifySourceGuardAsync(fixture.Identity.TenantId, fixture.Identity.Domain, fixture.Identity.AggregateId,
+                route, body, CancellationToken.None);
+        var result = System.Text.Json.JsonSerializer.SerializeToElement(response.ShouldBeOfType<OkObjectResult>().Value);
+        result.GetProperty("Qualified").GetBoolean().ShouldBeTrue();
+        result.GetProperty("Activated").GetBoolean().ShouldBe(activate);
+        result.GetProperty("ReasonCode").GetString().ShouldBe("delivery_reconciled");
+        result.GetProperty("PreservedSequence").GetInt64().ShouldBe(3);
+        ProjectionDeliveryStateReadResult persisted = await store.ReadAsync(fixture.Identity, route);
+        persisted.State.ShouldNotBeNull().LastDeliveredSequence.ShouldBe(original.LastDeliveredSequence);
+        persisted.State.CompletedMessageIdDigests.ShouldBe(original.CompletedMessageIdDigests);
+        persisted.State.CompletedReceipts.ShouldBe(original.CompletedReceipts);
+        persisted.State.GuardEvidence.ShouldNotBeNull().Source.SourceIncarnation.ShouldBe(source.SourceIncarnation);
+        (persisted.SourceGuard is not null).ShouldBe(activate);
+        ProjectionDeliveryReconciliationWork audit = (await store.ReadReconciliationAsync(fixture.Identity, route)).ShouldNotBeNull();
+        audit.OperatorId.ShouldBe("operator-authorized");
+        audit.TenantId.ShouldBe(fixture.Identity.TenantId);
+        audit.Domain.ShouldBe(fixture.Identity.Domain);
+        audit.AggregateId.ShouldBe(fixture.Identity.AggregateId);
+        audit.ProjectionName.ShouldBe(route);
+        audit.SourceGuardMaintenance.ShouldNotBeNull().OperatorId.ShouldBe("operator-authorized");
+        audit.SourceGuardMaintenance.WriterInventory.ShouldBe(inventory);
+        audit.QualifiedSourceGuard.ShouldNotBeNull().IsValid(fixture.Identity, route).ShouldBeTrue();
+        if (activate) persisted.SourceGuard.ShouldBe(audit.QualifiedSourceGuard);
+        else fixture.Backend.ByteStoreContains(ProjectionDeliveryStateKeys.GetSourceGuardKey(fixture.Identity, route)).ShouldBeFalse();
+        (await store.ReadAsync(fixture.Identity, sibling)).SourceGuard.ShouldBeNull();
+        fixture.Backend.ByteStoreValue(ProjectionDeliveryStateKeys.GetStateKey(fixture.Identity, sibling)).ShouldBe(siblingRow);
+        fixture.Backend.ByteStoreValue(ProjectionDeliveryStateKeys.WriterProtocol).ShouldBe(writer);
+        fixture.Head.ShouldBe(source);
+        fixture.Handlers.ShouldAllBe(handler => handler.Calls == 0 && handler.RebuildCalls == 0);
+    }
+
     [Fact]
     public async Task SourceBootstrapResponse_ReturnsTheActorsExistingProvenIncarnationForQualification()
     {

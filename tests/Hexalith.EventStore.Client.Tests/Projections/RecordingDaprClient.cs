@@ -18,6 +18,10 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public bool? TryDeleteResult { get; init; }
 
+    public Func<string, bool?> TryDeleteByteOverride { get; set; }
+
+    public Action<string> AfterTryDeleteByteState { get; set; }
+
     public Exception ExecuteStateTransactionException { get; init; }
 
     public int ExecuteStateTransactionCallCount { get; private set; }
@@ -325,6 +329,7 @@ internal sealed class RecordingDaprClient : DaprClient
             key,
             etag,
             stateOptions.Concurrency ?? throw new InvalidOperationException("Conditional delete requires a concurrency mode.")));
+        if (TryDeleteByteOverride?.Invoke(key) is { } overridden) return Task.FromResult(overridden);
         if (TryDeleteResult is not null)
         {
             return Task.FromResult(TryDeleteResult.Value);
@@ -337,6 +342,7 @@ internal sealed class RecordingDaprClient : DaprClient
         }
 
         _ = _byteStore.Remove(key);
+        AfterTryDeleteByteState?.Invoke(key);
         return Task.FromResult(true);
     }
 

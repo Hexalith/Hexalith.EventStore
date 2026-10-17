@@ -69,10 +69,12 @@ public static class EventStoreServerServiceCollectionExtensions {
         });
         services.TryAddSingleton<IIdempotencyAdmissionCoordinator, IdempotencyAdmissionCoordinator>();
         services.TryAddSingleton<IdempotencyTenantLifecyclePurger>();
-        services.TryAddScoped<IQueryRouter>(provider => new QueryRouter(
-            new DefaultProjectionActorInvoker(provider.GetRequiredService<IActorProxyFactory>()),
+        services.TryAddScoped<IProjectionActorInvoker, DefaultProjectionActorInvoker>();
+        services.TryAddScoped<QueryRouter>(provider => new QueryRouter(
+            provider.GetRequiredService<IProjectionActorInvoker>(),
             provider.GetRequiredService<ILogger<QueryRouter>>(), provider.GetRequiredService<IProjectionLifecycleGateway>(),
             provider.GetRequiredService<IProjectionSourceGuardDelivery>()));
+        services.TryAddScoped<IQueryRouter>(provider => provider.GetRequiredService<QueryRouter>());
         services.TryAddScoped<IETagService, DaprETagService>();
         services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
         services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();

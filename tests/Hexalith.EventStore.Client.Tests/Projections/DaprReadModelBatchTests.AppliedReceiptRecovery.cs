@@ -10,6 +10,67 @@ namespace Hexalith.EventStore.Client.Tests.Projections;
 public partial class DaprReadModelBatchTests
 {
     [Theory]
+    [InlineData(ReadModelBatchStoreProfile.Resumable, false)]
+    [InlineData(ReadModelBatchStoreProfile.Resumable, true)]
+    [InlineData(ReadModelBatchStoreProfile.TransactionQualified, false)]
+    [InlineData(ReadModelBatchStoreProfile.TransactionQualified, true)]
+    public async Task OriginalEventManifest_TerminalCleanupUncertaintyRetainsSameIdentityRecoveryWithoutModelWrites(
+        ReadModelBatchStoreProfile profile, bool throws)
+    {
+        using var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client, profile);
+        ReadModelBatchScope scope = Scope();
+        var selected = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType,
+            "owner-1", "generation-1", 2, scope.BatchId, scope.BatchId, "version-2");
+        const string detail = "tenant-1:counter:agg-1:detail";
+        const string index = "tenant-1:counter:agg-1:index";
+        var batch = new ReadModelBatch(scope,
+        [ReadModelBatchOperation.Write(detail, new { Count = 2, ProjectionVersion = selected.FreshnessVersion, ProjectionOwner = selected }, ReadModelBatchConcurrency.CreateOnly),
+            ReadModelBatchOperation.Write(index, new { Value = new string('x', 32_768) }, ReadModelBatchConcurrency.CreateOnly)]) { OwnerSelection = selected };
+        string key = ReadModelBatchKeys.ManifestKey(scope.ComputeScopeHash());
+        client.TryDeleteByteOverride = target => target == key ? throws ? throw new IOException("Lost cleanup before deletion.") : false : null;
+        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeFalse();
+        client.ByteStoreValue(key).ShouldBe(ReadModelBatchFingerprint.BuildCanonicalManifest(batch));
+        byte[] modelBefore = client.ByteStoreValue(detail), indexBefore = client.ByteStoreValue(index);
+        byte[] receiptBefore = client.ByteStoreValue(scope.ComputeMarkerKey());
+        var request = new ProjectionAppliedReceiptRequest(new(scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType, "catalog"),
+            2, scope.BatchId, selected.OwnerIdentity, selected.OwnerGeneration);
+        int deletes = client.TryDeleteByteOperations.Count;
+        (await store.ReadAppliedReceiptAsync(request, new(Store, "detail"))).Proof.ShouldNotBeNull();
+        client.TryDeleteByteOperations.Count.ShouldBe(deletes, "read-only receipt inspection cannot clean up");
+        (await store.ReconcileAppliedReceiptAsync(request, new(Store, "detail"))).Proof.ShouldBeNull();
+        client.ByteStoreContains(key).ShouldBeTrue();
+        client.TryDeleteByteOverride = null!;
+        using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
+        ProjectionOwnerProofResult recovered = await store.ReconcileAppliedReceiptAsync(request, new(Store, "detail"));
+        recovered.Proof.ShouldNotBeNull().ReceiptFingerprint.ShouldBe(ReadModelBatchFingerprint.Compute(batch));
+        client.ByteStoreContains(key).ShouldBeFalse();
+        client.ByteStoreValue(detail).ShouldBe(modelBefore);
+        client.ByteStoreValue(index).ShouldBe(indexBefore);
+        client.ByteStoreValue(scope.ComputeMarkerKey()).ShouldBe(receiptBefore);
+        cost[ProjectionDeliveryCost.ModelMutations].ShouldBe(0);
+        cost[ProjectionDeliveryCost.BatchExecutions].ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task OriginalEventManifest_LostSuccessfulDeleteResponseIsProvenBySameIdentityReadback()
+    {
+        using var client = new RecordingDaprClient();
+        DaprReadModelStore store = CreateStore(client);
+        ReadModelBatchScope scope = Scope();
+        var selected = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType,
+            "owner-1", "generation-1", 2, scope.BatchId, scope.BatchId, "version-2");
+        var batch = new ReadModelBatch(scope,
+        [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail", new { ProjectionVersion = selected.FreshnessVersion,
+            ProjectionOwner = selected, Value = new string('x', 32_768) }, ReadModelBatchConcurrency.CreateOnly)]) { OwnerSelection = selected };
+        string key = ReadModelBatchKeys.ManifestKey(scope.ComputeScopeHash());
+        client.AfterTryDeleteByteState = target => { if (target == key) throw new IOException("Lost successful cleanup response."); };
+        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
+        client.ByteStoreContains(key).ShouldBeFalse();
+        client.TryDeleteByteOperations.Count.ShouldBe(1);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task OriginalEventManifest_ConflictingPrivateBytesOrForeignReferenceNeverResumeEffects(bool foreignReference)

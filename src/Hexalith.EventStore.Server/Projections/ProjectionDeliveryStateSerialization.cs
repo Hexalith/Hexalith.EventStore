@@ -9,7 +9,12 @@ internal static class ProjectionDeliveryStateSerialization
 {
     internal static byte[] Serialize(ProjectionDeliveryState state, JsonSerializerOptions? options, int receiptLimit)
     {
+        ProjectionDeliveryReceiptValidation.Validate(state, receiptLimit);
         options ??= JsonSerializerOptions.Default;
+        if (state.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion
+            && (options.NumberHandling & System.Text.Json.Serialization.JsonNumberHandling.WriteAsString) != 0
+            && (options.NumberHandling & System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString) == 0)
+            throw new JsonException("Guarded integer serialization must support its own quoted output.");
         using var size = new SizeLimitedWriteStream(state.SchemaVersion == ProjectionDeliveryState.GuardSchemaVersion
             ? ProjectionDeliveryStateSize.AbsoluteLimit : long.MaxValue);
         try { Write(size, state, options); }

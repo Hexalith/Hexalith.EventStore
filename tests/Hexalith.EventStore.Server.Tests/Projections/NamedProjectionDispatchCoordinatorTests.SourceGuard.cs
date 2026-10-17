@@ -13,6 +13,87 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class NamedProjectionDispatchCoordinatorTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GuardedCanonicalSiblings_InterruptedSecondPendingWriteResumesCompleteOriginalInventory(bool mixedReplay)
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(3, 1, 2,
+            handlerSemantics: mixedReplay ? "mapped-incremental-replay-v1" : "full-replay-v1", mixedReplay: mixedReplay);
+        if (mixedReplay)
+        {
+            string mapped = fixture.Catalog.MappedOnlyStreamedProjectionTypes.Single();
+            foreach (string key in new[] { fixture.Identity.ActorId + ":" + mapped, fixture.Identity.ActorId + ":" + mapped + "-index" })
+            {
+                ReadModelEntry<GuardedTailModel> prior = await fixture.Models.GetAsync<GuardedTailModel>("models", key);
+                (await fixture.Models.TryEraseAsync("models", key, prior.ETag!)).ShouldBeTrue();
+            }
+        }
+        await fixture.UseProductionOwnersAsync();
+        string[] routes = fixture.Catalog.OrdinaryProjectionTypes.ToArray();
+        fixture.InterruptBeforePendingRoute = routes[1];
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeFalse();
+        fixture.Rows[routes[0]].LastDeliveredSequence.ShouldBe(3);
+        fixture.Rows[routes[1]].LastDeliveredSequence.ShouldBe(1);
+        fixture.Rows[routes[1]].ActiveReservation.ShouldNotBeNull();
+        fixture.Rows[routes[1]].IdleBindingPending.ShouldBeNull();
+        fixture.Work.ShouldNotBeNull().PendingRoutes.ShouldBe(routes);
+        string[] keys = fixture.Http.ReplayPreparationKeys.ToArray();
+        keys.Length.ShouldBe(2);
+        keys.ShouldAllBe(key => fixture.Backend.ByteStoreContains(key));
+        fixture.Handlers.ShouldAllBe(handler => handler.RebuildCalls == 1);
+        string dispatch = fixture.Work.DispatchId;
+        fixture.InterruptBeforePendingRoute = null;
+        fixture.ReconstructGuardedDelivery();
+        await fixture.RunGuardedRetryAsync();
+        fixture.Work.ShouldBeNull();
+        fixture.Rows.Values.ShouldAllBe(row => row.LastDeliveredSequence == 3 && row.ActiveReservation == null && row.IdleBindingPending == null
+            && row.GuardEvidence!.OwnerProof.Selection.BatchId == dispatch);
+        fixture.Handlers.ShouldAllBe(handler => handler.RebuildCalls == 1);
+        keys.ShouldAllBe(key => fixture.Backend.ByteStoreContains(key) == key.EndsWith(":-3", StringComparison.Ordinal));
+        using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
+        (await fixture.Probe.InspectCurrentAsync(fixture.Identity, CancellationToken.None)).AlreadyCurrent.ShouldBeTrue();
+        cost[ProjectionDeliveryCost.MutationAttempts].ShouldBe(0);
+        cost[ProjectionDeliveryCost.SourceEventReads].ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("single-event-v1")]
+    [InlineData("full-replay-v1")]
+    public async Task GuardedReservedCleanup_SchedulerFailureHoldsNewerHeadUntilExactOriginalReclamation(string semantics)
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(3, 1, handlerSemantics: semantics);
+        await fixture.UseProductionOwnersAsync();
+        if (semantics == "full-replay-v1") fixture.Http.LoseReplayResponseAfterAction = "commit";
+        else fixture.Http.LoseResponseAfterSequence = 2;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeFalse();
+        fixture.Work.ShouldNotBeNull().ReservationFencingTokens.ShouldNotBeEmpty();
+        fixture.RejectSchedulerDelete = true;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Work.ShouldNotBeNull().HeadSequence.ShouldBe(3);
+        fixture.Work.ReservationFencingTokens.ShouldNotBeEmpty();
+        int preparationCount = fixture.Handlers.Single().RebuildCalls;
+        await fixture.AppendPersistedSourceEventAsync();
+        fixture.ReconstructGuardedDelivery();
+        using (ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope())
+        {
+            (await fixture.Probe.InspectCurrentAsync(fixture.Identity, CancellationToken.None)).AlreadyCurrent.ShouldBeFalse();
+            cost[ProjectionDeliveryCost.MutationAttempts].ShouldBe(0);
+            cost[ProjectionDeliveryCost.SourceEventReads].ShouldBe(0);
+        }
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeFalse();
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(3);
+        fixture.Work.HeadSequence.ShouldBe(3);
+        fixture.Handlers.Single().RebuildCalls.ShouldBe(preparationCount);
+        fixture.RejectSchedulerDelete = false;
+        await fixture.RunGuardedRetryAsync();
+        fixture.Work.ShouldBeNull();
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(3);
+        fixture.Handlers.Single().RebuildCalls.ShouldBe(preparationCount);
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(4);
+    }
+
     [Fact]
     public async Task GuardedDelivery_CallerCancellationPropagatesBeforeSourceOrHandlerWork()
     {
@@ -303,6 +384,73 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
             .Value.ShouldNotBeNull().Count.ShouldBe(2);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GuardedCanonicalFallback_PrivateBatchManifestCleanupRemainsOwnedUntilSameWorkRetry(bool throws)
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(257, 1, 1, "full-replay-v1");
+        fixture.Handlers.Single().RebuildPaddingBytes = 7_000;
+        string key = ReadModelBatchKeys.ManifestKey(new ReadModelBatchScope("models", fixture.Identity.TenantId,
+            fixture.Identity.Domain, fixture.Identity.AggregateId, "rebuild", fixture.Head.HeadMessageId!).ComputeScopeHash());
+        fixture.Backend.TryDeleteByteOverride = target => target == key ? throws ? throw new IOException("Cleanup unavailable.") : false : null;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeFalse();
+        ProjectionDeliveryRetryWorkItem original = fixture.Work.ShouldNotBeNull();
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(1);
+        fixture.Backend.ByteStoreContains(key).ShouldBeTrue();
+        string route = fixture.Catalog.OrdinaryProjectionTypes.Single();
+        string modelKey = fixture.Identity.ActorId + ":" + route;
+        byte[] detailBefore = fixture.Backend.ByteStoreValue(modelKey), indexBefore = fixture.Backend.ByteStoreValue(modelKey + "-index");
+        fixture.Backend.TryDeleteByteOverride = null!;
+        using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Work.ShouldBeNull();
+        fixture.Backend.ByteStoreContains(key).ShouldBeFalse();
+        fixture.Handlers.Single().RebuildCalls.ShouldBe(1);
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(257);
+        fixture.Rows.Values.Single().GuardEvidence.ShouldNotBeNull().OwnerProof.Selection.BatchId.ShouldBe(original.DispatchId);
+        fixture.Backend.ByteStoreValue(modelKey).ShouldBe(detailBefore);
+        fixture.Backend.ByteStoreValue(modelKey + "-index").ShouldBe(indexBefore);
+        cost[ProjectionDeliveryCost.ModelMutations].ShouldBe(0);
+        cost[ProjectionDeliveryCost.BatchExecutions].ShouldBe(1, "the same staging recovery attempt is charged");
+        int deletes = fixture.Backend.TryDeleteByteOperations.Count, writes = fixture.RowWrites;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Backend.TryDeleteByteOperations.Count.ShouldBe(deletes);
+        fixture.RowWrites.ShouldBe(writes);
+    }
+
+    [Fact]
+    public async Task GuardedCanonicalFallback_CompletedRetryReclaimsTheSeparateOriginalBatchManifestWithoutRepreparing()
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(257, 1, 1, "full-replay-v1");
+        fixture.Handlers.Single().RebuildPaddingBytes = 7_000;
+        string batchManifestKey = ReadModelBatchKeys.ManifestKey(new ReadModelBatchScope("models", fixture.Identity.TenantId,
+            fixture.Identity.Domain, fixture.Identity.AggregateId, "rebuild", fixture.Head.HeadMessageId!).ComputeScopeHash());
+        byte[]? originalManifest = null;
+        fixture.Backend.BeforeTrySaveByteState = (key, value) => { if (key == batchManifestKey) originalManifest = value.ToArray(); };
+        fixture.Http.RejectReplayCleanup = true;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        ProjectionDeliveryRetryWorkItem work = fixture.Work.ShouldNotBeNull();
+        originalManifest.ShouldNotBeNull();
+        // Retained terminal work from an earlier writer can outlive its private
+        // cleanup response. Recreate those exact immutable original bytes.
+        fixture.Backend.SeedByteStore(batchManifestKey, originalManifest!);
+        int writes = fixture.RowWrites, deletes = fixture.Backend.TryDeleteByteOperations.Count;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Backend.TryDeleteByteOperations.Count.ShouldBe(deletes);
+        fixture.Backend.ByteStoreContains(batchManifestKey).ShouldBeTrue();
+        fixture.Http.RejectReplayCleanup = false;
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
+        await fixture.RunGuardedRetryAsync(work);
+        fixture.Work.ShouldBeNull();
+        fixture.Backend.ByteStoreContains(batchManifestKey).ShouldBeFalse();
+        fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(257);
+        fixture.RowWrites.ShouldBe(writes);
+        fixture.Handlers.Single().RebuildCalls.ShouldBe(1);
+        costs[ProjectionDeliveryCost.ModelMutations].ShouldBe(0);
+        costs[ProjectionDeliveryCost.BatchExecutions].ShouldBe(0);
+    }
+
     [Fact]
     public async Task CanonicalCleanupFailure_PreservesOriginalRetryMaterialAndCurrentProbeStaysReadOnly()
     {
@@ -485,8 +633,11 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
     {
         using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(head, 1, 1,
             "full-replay-v1").ConfigureAwait(true);
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
         ProjectionSourceGuardDeliveryResult result = await fixture.DeliverAsync(256).ConfigureAwait(true);
         result.AlreadyCurrent.ShouldBeTrue();
+        costs[ProjectionDeliveryCost.BatchExecutions].ShouldBe(1);
+        costs[ProjectionDeliveryCost.ModelMutations].ShouldBe(2);
         fixture.Handlers.Single().RebuildCalls.ShouldBe(1);
         fixture.Handlers.Single().Calls.ShouldBe(0);
         fixture.ReturnedSequences.Count.ShouldBe(2 * head);
@@ -512,6 +663,51 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         fixture.Ranges.ShouldBeEmpty();
         fixture.RowWrites.ShouldBe(3);
         fixture.Handlers.Single().RebuildCalls.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("stage")]
+    [InlineData("commit")]
+    public async Task GuardedCanonicalFallback_MixedStreamedAndFullRoutesResumeOneOriginalCoordinatedManifest(string lostAction)
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(257, 1, routeCount: 2,
+            handlerSemantics: "mapped-incremental-replay-v1", mixedReplay: true);
+        string mapped = fixture.Catalog.MappedOnlyStreamedProjectionTypes.ShouldHaveSingleItem();
+        foreach (string key in new[] { fixture.Identity.ActorId + ":" + mapped, fixture.Identity.ActorId + ":" + mapped + "-index" })
+        {
+            ReadModelEntry<GuardedTailModel> prior = await fixture.Models.GetAsync<GuardedTailModel>("models", key);
+            (await fixture.Models.TryEraseAsync("models", key, prior.ETag!)).ShouldBeTrue();
+        }
+        fixture.Http.LoseReplayResponseAfterAction = lostAction;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeFalse();
+        fixture.Work.ShouldNotBeNull().PendingRoutes.Count.ShouldBe(2);
+        fixture.Rows.Values.ShouldAllBe(static row => row.LastDeliveredSequence == 1 && row.ActiveReservation != null);
+        string dispatch = fixture.Work!.DispatchId;
+        fixture.Http.ReplayPreparationKeys.Count.ShouldBe(2);
+        fixture.Handlers.ShouldAllBe(static handler => handler.RebuildCalls == 1 && handler.Calls == 0);
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Work.ShouldBeNull();
+        fixture.Http.ReplayPreparationKeys.Count.ShouldBe(2);
+        fixture.Handlers.ShouldAllBe(static handler => handler.RebuildCalls == 1 && handler.Calls == 0);
+        fixture.Http.ReplayPartSizes.ShouldNotBeEmpty();
+        fixture.Http.ReplayPartSizes.ShouldAllBe(static size => size > 0 && size <= ProjectionRebuildTransportReference.PartBytes);
+        string? fingerprint = null;
+        foreach (string route in fixture.Catalog.OrdinaryProjectionTypes)
+        {
+            ProjectionDeliveryState row = fixture.Rows[route];
+            row.LastDeliveredSequence.ShouldBe(257);
+            ProjectionOwnerProof proof = row.GuardEvidence.ShouldNotBeNull().OwnerProof;
+            proof.Selection.BatchId.ShouldBe(dispatch);
+            proof.Selection.ReceiptProjectionName.ShouldBe("rebuild");
+            fingerprint ??= proof.ReceiptFingerprint;
+            proof.ReceiptFingerprint.ShouldBe(fingerprint);
+            GuardedTailModel model = (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + route)).Value.ShouldNotBeNull();
+            model.Count.ShouldBe(257);
+            (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + route + "-index")).Value.ShouldBe(model);
+        }
+        int writes = fixture.Backend.TrySaveByteOperations.Count;
+        (await fixture.DeliverAsync(256)).AlreadyCurrent.ShouldBeTrue();
+        fixture.Backend.TrySaveByteOperations.Count.ShouldBe(writes);
     }
 
     [Theory]
@@ -938,6 +1134,21 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         (await fixture.DeliverAsync(1)).AlreadyCurrent.ShouldBeTrue();
         fixture.Rows.Values.Single().LastDeliveredSequence.ShouldBe(5);
         fixture.Handlers.Single().Calls.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task GuardedTail_AllSiblingsVerifyBeforeTheSharedFinalizationDeadlineStarts()
+    {
+        using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(2, 1, routeCount: 2);
+        fixture.HistoryReadDelay = TimeSpan.FromSeconds(31);
+        fixture.ReleaseDelay = TimeSpan.FromSeconds(1);
+        fixture.CleanupDelay = TimeSpan.FromSeconds(1);
+        ProjectionSourceGuardDeliveryResult result = await fixture.DeliverAsync(1);
+        result.AlreadyCurrent.ShouldBeTrue();
+        fixture.Work.ShouldBeNull();
+        fixture.ReturnedSequences.Count.ShouldBe(5);
+        fixture.Handlers.ShouldAllBe(static handler => handler.Calls == 1);
+        fixture.Rows.Values.ShouldAllBe(static row => row.LastDeliveredSequence == 2 && row.IdleBindingPending == null);
     }
 
     [Fact]

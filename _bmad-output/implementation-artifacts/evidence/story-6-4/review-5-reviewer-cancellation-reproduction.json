@@ -1,0 +1,22 @@
+{
+  "producer": "review5_edge_case_hunter",
+  "parentReran": false,
+  "codePathVerified": "ProcessReadDeadline.CreateLinkedTokenSource and synchronous work.Cancel",
+  "commandReported": [
+    "dotnet",
+    "run",
+    "--project",
+    "/tmp/review5-edge-convergence-repro/repro.csproj",
+    "--verbosity",
+    "quiet"
+  ],
+  "reportedOutput": [
+    "Shared host cancellation returned: False",
+    "Read returned after caller cancellation: False"
+  ],
+  "probeFiles": {
+    "/tmp/review5-edge-convergence-repro/Program.cs": "b502656ec78601aa1d63c7961dd88fc3fa031fb5e9c791250aa1d642f53f88ed",
+    "/tmp/review5-edge-convergence-repro/repro.csproj": "ec0d50c8fa336fd466da203c1ab592b0e68001c260e23cd03936796314f450ea"
+  },
+  "pendingGroup": "D1 existing cancellation isolation root cause; caller cancellation trigger added"
+}

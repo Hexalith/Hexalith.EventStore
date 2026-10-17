@@ -1,0 +1,12 @@
+{
+  "sourceSnapshot": "sourceSnapshot9",
+  "vectors": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-source9-live-current-r4096-release-vectors.json",
+  "sha256": "eb5a89844a930abcf1085e36e3e77e501639a9c8c918faddad3fe30cc426d959",
+  "observations": {
+    "ProjectionGuardCurrentMatrix": 15
+  },
+  "currentRowsIndependentlyAudited": 15,
+  "nonemptyTailRowsIndependentlyAudited": 0,
+  "result": "pass",
+  "limits": "Cumulative counters independently evaluated; exact per-pass B/V assertions remain owned by executable fixtures."
+}

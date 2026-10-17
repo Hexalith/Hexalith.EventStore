@@ -372,6 +372,89 @@ public class AggregateActorGetEventsTests {
         state.Trace.Count(static item => item == "SaveState").ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SourceProof_CorruptZeroHeadSeedFailsInspectionAndBootstrapWithoutMutation(bool bootstrap)
+    {
+        var identity = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("tenant-a", "counter", "counter-1");
+        SourceProof seed = SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        SourceProofCodec.IsValid(seed, identity, 0, 1).ShouldBeTrue();
+        SourceProof corrupt = seed with { CumulativeDigest = new string('0', 64) };
+        SourceProofCodec.IsValid(corrupt, identity, 0, 1).ShouldBeFalse();
+        var state = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(0, DateTimeOffset.UnixEpoch, "preserved") { SourceProof = corrupt };
+        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [MetadataKey] = metadata });
+        (SourceProofBootstrapAuthority authority, IServiceProvider services) = BootstrapAuthority();
+        (AggregateActor actor, _) = CreateActor(state, services);
+        if (bootstrap)
+        {
+            SourceProofBootstrapRequest request = await authority.AuthorizeAsync(BootstrapRequest(0), CancellationToken.None);
+            (await Should.ThrowAsync<InvalidOperationException>(() => actor.BootstrapSourceProofAsync(request))).Message.ShouldBe("source_conflict");
+        }
+        else (await actor.InspectSourceProofAsync()).Status.ShouldBe(SourceProofInspectionStatus.Invalid);
+        state.CommittedState.Count.ShouldBe(1);
+        state.CommittedState[MetadataKey].ShouldBe(metadata);
+        state.Trace.ShouldNotContain("SaveState");
+        state.Trace.ShouldNotContain(item => item.StartsWith("SetState:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task SourceBootstrap_UnchangedSignedRequestExpiresAtActorBoundaryBeforeAnyStateAccess()
+    {
+        var state = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "preserved");
+        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [MetadataKey] = metadata });
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.Parse("2026-10-16T12:00:00Z",
+            System.Globalization.CultureInfo.InvariantCulture));
+        (SourceProofBootstrapAuthority authority, IServiceProvider services) = BootstrapAuthority(clock);
+        (AggregateActor actor, _) = CreateActor(state, services);
+        SourceProofBootstrapRequest request = await authority.AuthorizeAsync(BootstrapRequest(2), CancellationToken.None);
+        await authority.ValidateAsync(request, new("tenant-a", "counter", "counter-1"));
+        clock.SetUtcNow(request.ExpiresAt);
+        (await Should.ThrowAsync<InvalidOperationException>(() => actor.BootstrapSourceProofAsync(request))).Message.ShouldBe("guard_activation_required");
+        state.Trace.ShouldBeEmpty();
+        state.CommittedState.Count.ShouldBe(1);
+        state.CommittedState[MetadataKey].ShouldBe(metadata);
+    }
+
+    [Fact]
+    public async Task SourceBootstrap_KeyAuthenticationCrossingExactExpiryRefusesBeforeAnyActorStateAccess()
+    {
+        var state = new FaultInjectingActorStateManager();
+        var metadata = new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "preserved");
+        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [MetadataKey] = metadata });
+        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.Parse("2026-10-16T12:00:00Z",
+            System.Globalization.CultureInfo.InvariantCulture));
+        var retrieval = new TaskCompletionSource<IdempotencyDigestKeyRing>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool suspended = false;
+        IIdempotencyDigestKeyProvider keys = Substitute.For<IIdempotencyDigestKeyProvider>();
+        keys.GetKeyRingAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (!suspended) return new ValueTask<IdempotencyDigestKeyRing>(new IdempotencyDigestKeyRing("v1",
+                new Dictionary<string, byte[]> { ["v1"] = new byte[32] }, []));
+            entered.SetResult();
+            return new ValueTask<IdempotencyDigestKeyRing>(retrieval.Task);
+        });
+        var authority = new SourceProofBootstrapAuthority(keys, clock);
+        IServiceProvider services = Substitute.For<IServiceProvider>();
+        services.GetService(typeof(SourceProofBootstrapAuthority)).Returns(authority);
+        (AggregateActor actor, _) = CreateActor(state, services);
+        SourceProofBootstrapRequest request = await authority.AuthorizeAsync(BootstrapRequest(2), CancellationToken.None);
+        suspended = true;
+        Task<SourceProofInspection> pending = actor.BootstrapSourceProofAsync(request);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        pending.IsCompleted.ShouldBeFalse();
+        state.Trace.ShouldBeEmpty();
+        clock.SetUtcNow(request.ExpiresAt);
+        retrieval.SetResult(new IdempotencyDigestKeyRing("v1", new Dictionary<string, byte[]> { ["v1"] = new byte[32] }, []));
+        (await Should.ThrowAsync<InvalidOperationException>(() => pending)).Message.ShouldBe("guard_activation_required");
+        state.Trace.ShouldBeEmpty();
+        state.CommittedState.Count.ShouldBe(1);
+        state.CommittedState[MetadataKey].ShouldBe(metadata);
+    }
+
     [Fact]
     public async Task SourceBootstrap_ChangedAuthorizationRefusesBeforeAnyActorStateAccess()
     {
@@ -387,12 +470,12 @@ public class AggregateActorGetEventsTests {
         "operator-1", new string('a', 40), "verified-backup-1", "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
         true, true, default, string.Empty, string.Empty);
 
-    private static (SourceProofBootstrapAuthority Authority, IServiceProvider Services) BootstrapAuthority()
+    private static (SourceProofBootstrapAuthority Authority, IServiceProvider Services) BootstrapAuthority(TimeProvider? clock = null)
     {
         IIdempotencyDigestKeyProvider keys = Substitute.For<IIdempotencyDigestKeyProvider>();
         keys.GetKeyRingAsync(Arg.Any<CancellationToken>()).Returns(_ => new ValueTask<IdempotencyDigestKeyRing>(
             new IdempotencyDigestKeyRing("v1", new Dictionary<string, byte[]> { ["v1"] = new byte[32] }, [])));
-        var authority = new SourceProofBootstrapAuthority(keys, TimeProvider.System);
+        var authority = new SourceProofBootstrapAuthority(keys, clock ?? TimeProvider.System);
         IServiceProvider services = Substitute.For<IServiceProvider>();
         services.GetService(typeof(SourceProofBootstrapAuthority)).Returns(authority);
         return (authority, services);

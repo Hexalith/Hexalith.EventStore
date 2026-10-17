@@ -1,0 +1,110 @@
+{
+  "frame": "Actual existing Source9 Release Contracts binary and per-run read-inputs",
+  "disjointPartitionUnion": {
+    "selected": 2357,
+    "passed": 2324,
+    "failed": 33,
+    "skipped": 0,
+    "errors": 0,
+    "notRun": 0
+  },
+  "gates": [
+    {
+      "name": "source9-contracts-changed-classes-release",
+      "summary": {
+        "selected": 64,
+        "errors": 0,
+        "failed": 33,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 1.57,
+        "passed": 31
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-class",
+        "*ContainerPublishingGovernanceTests",
+        "-class",
+        "*TrustedPublishingReleaseTests"
+      ],
+      "logSha256": "7386aa1b95ba18f3501632676d7765122a4ea526e1fac653b2bc8cf18816a269",
+      "targetRuntimeChangesDuringGate": [],
+      "relevantInputChangesDuringGate": []
+    },
+    {
+      "name": "source9-contracts-authority-release",
+      "summary": {
+        "selected": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 213.925,
+        "passed": 1
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-method",
+        "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync"
+      ],
+      "logSha256": "831064cab119d49bcd70f312b90b1a2bc4c262d221820c785b396668762de105",
+      "targetRuntimeChangesDuringGate": [],
+      "relevantInputChangesDuringGate": [
+        "tools/release-publication-identity.py"
+      ]
+    },
+    {
+      "name": "source9-contracts-event-identity-release",
+      "summary": {
+        "selected": 20,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 0.176,
+        "passed": 20
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-class",
+        "*EventIdentityValidatorTests"
+      ],
+      "logSha256": "86a4ea68689d49b6f42cebfceeb86e7baa6dcb98107c56d08ec3cc2412f04ab3",
+      "targetRuntimeChangesDuringGate": [],
+      "relevantInputChangesDuringGate": []
+    },
+    {
+      "name": "source9-contracts-independent-release",
+      "summary": {
+        "selected": 2272,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 615.414,
+        "passed": 2272
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-method-",
+        "Hexalith.EventStore.Contracts.Tests.Packaging.ContractsPackageDependencyTests.SharedConsumerAuthorityValidatorPassesForEveryTrackedMsBuildSurfaceAsync",
+        "-class-",
+        "*ContainerPublishingGovernanceTests",
+        "-class-",
+        "*TrustedPublishingReleaseTests",
+        "-class-",
+        "*EventIdentityValidatorTests"
+      ],
+      "logSha256": "dea342e105daf486bdafe4f318766732f88da68599e3cbdee180e1ae166c2830",
+      "targetRuntimeChangesDuringGate": [],
+      "relevantInputChangesDuringGate": []
+    }
+  ],
+  "exactWholeSection10GateClaimed": false,
+  "latestCheckoutQualified": false,
+  "noRequalificationOfLaterOutputs": true
+}

@@ -1,0 +1,110 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.Schema1DigestConverter_PreservesHistoricalMalformedValuesForOwningClassification(encoded: "\"short\"", expected: "short") [FAIL]
+      Shouldly.ShouldAssertException : await store.ReadAsync(fixture.Identity, route)).State.ShouldNotBeNull().CompletedMessageIdDigests.ShouldHaveSingleItem(
+          should be
+      "short"
+          but was
+      "EKbbeTLOhe+/kCYRMXy0S7yNClhDEYG0O+rpBnWux4k="
+          difference
+      Difference     |  |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |        
+                     | \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/       
+      Index          | 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   ...  
+      Expected Value | s    h    o    r    t                                                                                    ...  
+      Actual Value   | E    K    b    b    e    T    L    O    h    e    +    /    k    C    Y    R    M    X    y    0    S    ...  
+      Expected Code  | 115  104  111  114  116                                                                                  ...  
+      Actual Code    | 69   75   98   98   101  84   76   79   104  101  43   47   107  67   89   82   77   88   121  48   83   ...  
+      
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |        
+                     |      \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/       
+      Index          | ...  21   22   23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   40   41   ...  
+      Expected Value | ...                                                                                                           ...  
+      Actual Value   | ...  7    y    N    C    l    h    D    E    Y    G    0    O    +    r    p    B    n    W    u    x    4    ...  
+      Expected Code  | ...                                                                                                           ...  
+      Actual Code    | ...  55   121  78   67   108  104  68   69   89   71   48   79   43   114  112  66   110  87   117  120  52   ...  
+      
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |   
+                     |      \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  \|/  
+      Index          | ...  23   24   25   26   27   28   29   30   31   32   33   34   35   36   37   38   39   40   41   42   43   
+      Expected Value | ...                                                                                                           
+      Actual Value   | ...  N    C    l    h    D    E    Y    G    0    O    +    r    p    B    n    W    u    x    4    k    =    
+      Expected Code  | ...                                                                                                           
+      Actual Code    | ...  78   67   108  104  68   69   89   71   48   79   43   114  112  66   110  87   117  120  52   107  61   
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(143,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.Schema1DigestConverter_PreservesHistoricalMalformedValuesForOwningClassification(String encoded, String expected)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.ScheduledGuardedSubsetCleanup_PreservesUnguardedAndTerminalSiblingWork(mismatchedWork: False) [FAIL]
+      Shouldly.ShouldAssertException : retained.PendingRoutes
+          should be
+      ["counter-route-2"]
+          but was (case sensitive comparison)
+      ["counter-route-1"]
+          difference
+      [*"counter-route-1"*]
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(278,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.ScheduledGuardedSubsetCleanup_PreservesUnguardedAndTerminalSiblingWork(Boolean mismatchedWork)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_PrivateBatchManifestCleanupRemainsOwnedUntilSameWorkRetry(throws: False) [FAIL]
+      Shouldly.ShouldAssertException : cost[ProjectionDeliveryCost.BatchExecutions]
+          should be
+      1L
+          but was
+      0L
+      
+      Additional Info:
+          the same staging recovery attempt is charged
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(415,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_PrivateBatchManifestCleanupRemainsOwnedUntilSameWorkRetry(Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_PrivateBatchManifestCleanupRemainsOwnedUntilSameWorkRetry(throws: True) [FAIL]
+      Shouldly.ShouldAssertException : cost[ProjectionDeliveryCost.BatchExecutions]
+          should be
+      1L
+          but was
+      0L
+      
+      Additional Info:
+          the same staging recovery attempt is charged
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(415,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalFallback_PrivateBatchManifestCleanupRemainsOwnedUntilSameWorkRetry(Boolean throws)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.ScheduledCompletedReplaySubset_CleanupFailureRetainsItsOriginalMaterialBeforeExactPruning [FAIL]
+      Shouldly.ShouldAssertException : fixture.Work.ShouldNotBeNull().PendingRoutes
+          should be
+      ["counter-route-2"]
+          but was (case sensitive comparison)
+      ["counter-route-1", "counter-route-2"]
+          difference
+      [*"counter-route-1"*, *"counter-route-2"*]
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(133,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.ScheduledCompletedReplaySubset_CleanupFailureRetainsItsOriginalMaterialBeforeExactPruning()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 417, Errors: 0, Failed: 5, Skipped: 0, Not Run: 0, Time: 25.515s

@@ -5968,3 +5968,68 @@ status: open
   evidence: AggregateActor.cs:1537-1572, 2308-2443, 4135-4220; settle by tracing the throw path and the activation budget.
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-folded-snapshot-implementation-2.md`
   summary: `MaximumProtectedEnvelopeBytes` default lowered to 1 MiB + 4096 (commit 1738fff4); protected near-limit states silently skip automatic snapshots. Also: manual `RetainedFloor == currentSequence + 1` is admitted (AggregateActor.cs:2523), unverified.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Unverified potential high: determine whether an owning actor serializer/provider can retain uncounted raw metadata padding or unknown properties.
+  evidence: The typed IActorStateManager seam does not expose the cited raw storage body. A permitted serializer/provider reproducer is needed to establish whether those bytes exist and count under the approved logical-body budget; no direct-provider bypass is authorized.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Repair the external process renewal fixture continuation race.
+  evidence: The same-DLL complete Domain cohort failed Fired before the queued source-release continuation set it; the narrow unchanged test and later complete runs passed. Preserve the failed and passing frames and coordinate the assertion with actual continuation completion without weakening persisted-state assertions.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Keep ProcessReadDeadline callers bounded when provider cancellation callbacks block.
+  evidence: The deadline catch synchronously invokes work.Cancel; a noncooperative provider callback can block the waiting continuation indefinitely. External recovery code is unchanged by Story 6.4; R2-B1/R2-E2 and later repeats share this root cause. Directly linking the provider token also lets a provider callback block caller.Cancel and host shutdown; isolate both cancellation paths.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Bind all translator-visible envelope evidence in the external retained process digest.
+  evidence: CheckpointedProcessRunner retains a digest omitting timestamp/global position/correlation/causation/user/protection metadata although translators receive the full envelope. Same identity and payload with changed omitted metadata can reuse retained effects without conflict.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Enforce persisted shared projection control-index capacity before discovery fanout.
+  evidence: ReadAvailableTenantsAsync uses structural ValidateState without MaxTenants, MaxReceipts or serialized-state limits, then schedules tombstone reads for every persisted tenant. Corrupt oversized registries bypass writer-only limits.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Add abandoned-provider and reconstructed-coordinator tests for discovery admission lifetime.
+  evidence: Pre-verified gap: immediate in-memory tests never retain provider work after timeout or reconstruct the coordinator; prematurely releasing the lifetime reservation would evade the assertions.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Independently fail each required release proof in the release workflow tests.
+  evidence: The fake gh result is uniform for CI, P1R and Commitlint. A reproduced break after successful CI passes current tests while skipping the two additional proofs; tests must distinguish and deny each missing workflow proof.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Retain reminder catalog scope until timed-out provider work actually finishes.
+  evidence: ReminderReconciler uses a pass-owned using scope while ProcessReadDeadline may return before a noncooperative catalog ListAsync completes, disposing dependencies still used by the abandoned work.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Validate reminder indexed-continuation components before persisting a failed candidate cursor.
+  evidence: After actor identity mismatch the code still writes the original candidate.ActorId into indexedAfter. Empty/separator-bearing corrupt values can persist a cursor rejected on every later pass and starve healthy candidates.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Contain reminder catalog scope and DI-resolution failures inside the hosted discovery boundary.
+  evidence: CreateScope/GetService execute outside the discovery try block. Constructor or scope-factory exceptions escape RunPass; ExecuteAsync catches only shutdown cancellation and can fault the host.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Audit malformed trusted-effect identity denials before the identity codec can throw.
+  evidence: An authenticated scoped request with invalid sequence, ordinal or kind reaches ComputeMessageId inside the denial predicate. Its exception occurs before RecordDenialAsync and before the router adapter-denial catch, so rejection lacks the required audit.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Test bounded partial tenant discovery when a tombstone provider stalls.
+  evidence: Pre-verified gap: existing partial-membership tests return immediately. Replacing the bounded tombstone call with direct await evades them; a controlled stalled provider should produce a bounded incomplete result while retaining healthy tenants. This differs from D4 lifetime-reservation coverage.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Retain process catalog/runner scope until abandoned provider and translator work terminates.
+  evidence: ProcessReconciler disposes its await-using scope when a pass exits although catalog and runner operations can outlive ProcessReadDeadline. This is the process caller boundary, separate from the reminder scope in D6.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Make indexed reminder sweeps progress past a bounded slice of null candidate entries.
+  evidence: ListCandidatesAsync passes null elements through; nulls sort first and consume the slice without advancing indexedAfter. Repeated passes starve healthy candidates after a full malformed slice.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Resolve equal-schedule distinct reminder roles without scheduler-name collisions.
+  evidence: Ordinal distinguishes effect identity while the frozen schedule tuple/name ignores it. Different roles with the same kind/due/revision collide and cannot arm independently; the multiple-role test changes due and revision too. The external owner must choose a compatible protocol or explicit validated restriction.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md`
+  summary: Give concurrent reminder discovery replicas bounded ownership or another durable progress mechanism.
+  evidence: ClaimDiscoveryAsync immediately replaces owner/generation even for an unfinished sweep, while cursor CAS rejects old owners. Interleaved healthy replicas can repeatedly invalidate cursor advancement during slow convergence.
+

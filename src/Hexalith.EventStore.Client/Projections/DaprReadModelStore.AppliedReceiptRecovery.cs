@@ -36,7 +36,15 @@ public sealed partial class DaprReadModelStore : IReadModelAppliedReceiptRecover
                 || selection.OwnerGeneration != request.OwnerGeneration)
                 return new(null, "delivery_reconciliation_required", 1, bytes);
             if (marker.Status == ReadModelBatchMarkerStatus.Completed)
-                return IncludeRecoveryReads(await ReadAppliedReceiptAsync(request, binding, cancellationToken).ConfigureAwait(false), accessor);
+            {
+                ProjectionOwnerProofResult completed = await ReadAppliedReceiptAsync(request, binding, cancellationToken).ConfigureAwait(false);
+                if (completed.Proof is null) return IncludeRecoveryReads(completed, accessor);
+                bool reclaimed = await ReadModelBatchProtocol.ReclaimOriginalManifestAsync(accessor,
+                    scope.ComputeScopeHash(), marker.Fingerprint, cancellationToken).ConfigureAwait(false);
+                return reclaimed ? IncludeRecoveryReads(completed, accessor)
+                    : new(null, "delivery_reconciliation_required", accessor.ReadCount + completed.MetadataKeyReads,
+                        accessor.ReadBytes + completed.ReadBodyBytes);
+            }
             if (marker.Status is not ReadModelBatchMarkerStatus.Prepared and not ReadModelBatchMarkerStatus.Committed
                 || marker.Operations is null || marker.OriginalManifest is not null && marker.OriginalManifestKey is not null)
                 return new(null, "delivery_reconciliation_required", 1, bytes);

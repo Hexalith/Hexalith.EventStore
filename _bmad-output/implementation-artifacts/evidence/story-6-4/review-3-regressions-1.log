@@ -1,0 +1,103 @@
+The '-parallel' switch has been deprecated in favor of '-parallelMode' and will be removed in the next major version
+The '-xml' switch has been deprecated in favor of '-result-xml' and will be removed in the next major version
+
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_RejectsUnderCapNullDigestFloodBeforeTypedAllocation(quotedHead: False) [FAIL]
+      Shouldly.ShouldAssertException : allocated
+          should be less than
+      65536L
+          but was
+      56578384L
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(89,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_RejectsUnderCapNullDigestFloodBeforeTypedAllocation(Boolean quotedHead)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+      Output:
+        ProjectionGuardMalformedDigestCumulativeAllocation {"quotedHead":false,"digestCount":160000,"bodyBytes":800079,"cumulativeAllocatedBytes":56578384,"peakLiveBytesMeasured":false}
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_RejectsUnderCapNullDigestFloodBeforeTypedAllocation(quotedHead: True) [FAIL]
+      Shouldly.ShouldAssertException : allocated
+          should be less than
+      65536L
+          but was
+      132408L
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(89,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_RejectsUnderCapNullDigestFloodBeforeTypedAllocation(Boolean quotedHead)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+      Output:
+        ProjectionGuardMalformedDigestCumulativeAllocation {"quotedHead":true,"digestCount":160000,"bodyBytes":800081,"cumulativeAllocatedBytes":132408,"peakLiveBytesMeasured":false}
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_WideUnknownPropertiesAvoidPerNameAllocationThroughOwningStore(beforeHeader: False) [FAIL]
+      Hexalith.EventStore.Server.Projections.ProjectionDeliveryHistoryValidationException : delivery_proof_limit_exceeded
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateBody.cs(192,0): at Hexalith.EventStore.Server.Projections.ProjectionDeliveryStateBody.RejectSize()
+        src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateBody.cs(49,0): at Hexalith.EventStore.Server.Projections.ProjectionDeliveryStateBody.Validate(ReadOnlySpan`1 body, JsonSerializerOptions options, Int32 receiptLimit)
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(31,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_WideUnknownPropertiesAvoidPerNameAllocationThroughOwningStore(Boolean beforeHeader)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_WideUnknownPropertiesAvoidPerNameAllocationThroughOwningStore(beforeHeader: True) [FAIL]
+      Hexalith.EventStore.Server.Projections.ProjectionDeliveryHistoryValidationException : delivery_proof_limit_exceeded
+      Stack Trace:
+        src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateBody.cs(192,0): at Hexalith.EventStore.Server.Projections.ProjectionDeliveryStateBody.RejectSize()
+        src/Hexalith.EventStore.Server/Projections/ProjectionDeliveryStateBody.cs(49,0): at Hexalith.EventStore.Server.Projections.ProjectionDeliveryStateBody.Validate(ReadOnlySpan`1 body, JsonSerializerOptions options, Int32 receiptLimit)
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(31,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_WideUnknownPropertiesAvoidPerNameAllocationThroughOwningStore(Boolean beforeHeader)
+        --- End of stack trace from previous location ---
+    Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_OversizedUnknownNameIsRejectedWithoutAllocatingItsString [FAIL]
+      Shouldly.ShouldAssertException : allocated
+          should be less than
+      65536L
+          but was
+      273427136L
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionDeliveryStateContractTests.Ambiguity.cs(62,0): at Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests.GuardedBody_OversizedUnknownNameIsRejectedWithoutAllocatingItsString()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalSiblings_InterruptedSecondPendingWriteResumesCompleteOriginalInventory(mixedReplay: False) [FAIL]
+      Shouldly.ShouldAssertException : (await fixture.DeliverAsync(256)).AlreadyCurrent
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(35,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalSiblings_InterruptedSecondPendingWriteResumesCompleteOriginalInventory(Boolean mixedReplay)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalSiblings_InterruptedSecondPendingWriteResumesCompleteOriginalInventory(mixedReplay: True) [FAIL]
+      Shouldly.ShouldAssertException : (await fixture.DeliverAsync(256)).AlreadyCurrent
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.Tests/Projections/NamedProjectionDispatchCoordinatorTests.SourceGuard.cs(35,0): at Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests.GuardedCanonicalSiblings_InterruptedSecondPendingWriteResumesCompleteOriginalInventory(Boolean mixedReplay)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Server.Tests (ID = 'a22c81c1644009a3e6b0a7fd61c21c28090d74900df170ecbf330b134b2940c6')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 22, Errors: 0, Failed: 7, Skipped: 0, Not Run: 0, Time: 1.868s

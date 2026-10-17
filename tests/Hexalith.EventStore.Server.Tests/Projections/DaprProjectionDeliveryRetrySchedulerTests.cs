@@ -14,6 +14,25 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class DaprProjectionDeliveryRetrySchedulerTests {
     [Fact]
+    public async Task ReadAsync_OriginalNotDueReservedWorkIsReadWithoutMutationOrLeaseChanges()
+    {
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
+        DaprClient dapr = CreateStatefulDaprClient(state);
+        var scheduler = CreateScheduler(dapr);
+        ProjectionDeliveryRetryWorkItem original = CreateWorkItem("work-a", "aggregate-a") with
+        { NextDueUtc = DateTimeOffset.UtcNow.AddHours(1), ReservationFencingTokens = new Dictionary<string, long> { ["counter-detail"] = 7 } };
+        await scheduler.ScheduleAsync(original);
+        int writes = dapr.ReceivedCalls().Count(call => call.GetMethodInfo().Name == "TrySaveStateAsync");
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
+        (await scheduler.ReadAsync(original.WorkId)).ShouldBe(original);
+        (await scheduler.ReadAsync("absent-work")).ShouldBeNull();
+        costs[ProjectionDeliveryCost.SchedulerShardReads].ShouldBe(2);
+        costs[ProjectionDeliveryCost.SchedulerScans].ShouldBe(0);
+        dapr.ReceivedCalls().Count(call => call.GetMethodInfo().Name == "TrySaveStateAsync").ShouldBe(writes);
+        state.Values.SelectMany(static ledger => ledger.Items).ShouldHaveSingleItem().ShouldBe(original);
+    }
+
+    [Fact]
     public async Task ScheduleAsync_DifferentShardWorkItems_PersistToDistinctV2LedgerKeys() {
         DaprClient daprClient = Substitute.For<DaprClient>();
         _ = daprClient.GetStateAndETagAsync<ProjectionDeliveryRetryLedger>(
@@ -278,6 +297,29 @@ public sealed partial class DaprProjectionDeliveryRetrySchedulerTests {
         first.ShouldBeTrue();
         stale.ShouldBeFalse();
         state.Values.SelectMany(static ledger => ledger.Items).ShouldHaveSingleItem().Attempt.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetDueAsync_NullItemsShardPreservesHealthyWorkAndFailsMaintenanceClosed()
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        ProjectionDeliveryRetryWorkItem healthy = CreateWorkItem("work-healthy", "aggregate-a") with { NextDueUtc = now.AddMinutes(-1) };
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal)
+        {
+            ["projection-delivery-retry:ledger:v2:00"] = new(null!),
+            ["projection-delivery-retry:ledger:v2:01"] = new([healthy]),
+        };
+        DaprClient dapr = CreateStatefulDaprClient(state);
+        DaprProjectionDeliveryRetryScheduler scheduler = CreateScheduler(dapr);
+        using ProjectionDeliveryCostScope costs = ProjectionDeliveryCostDiagnostics.BeginScope();
+        (await scheduler.GetDueAsync(now, 8)).ShouldBe([healthy]);
+        (await scheduler.HasUnresolvedConflictAsync()).ShouldBeTrue();
+        costs[ProjectionDeliveryCost.SchedulerEntries].ShouldBe(2);
+        costs[ProjectionDeliveryCost.SchedulerReadBytes].ShouldBeGreaterThan(0);
+        state["projection-delivery-retry:ledger:v2:00"].Items.ShouldBeNull();
+        state["projection-delivery-retry:ledger:v2:01"].Items.ShouldBe([healthy]);
+        await dapr.DidNotReceiveWithAnyArgs().TrySaveStateAsync(default!, default!, default(ProjectionDeliveryRetryLedger)!,
+            default!, stateOptions: default, metadata: default, cancellationToken: default);
     }
 
     [Fact]

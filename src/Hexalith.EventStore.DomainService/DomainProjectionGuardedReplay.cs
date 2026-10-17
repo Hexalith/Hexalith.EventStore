@@ -215,6 +215,26 @@ internal static class DomainProjectionGuardedReplay
                 completed.Request.AggregateId, owner.ProjectionName, completed.CatalogFingerprint), enrolled.Binding, cancellationToken).ConfigureAwait(false);
             if (selected.Proof?.Selection != owner || selected.Proof.ReceiptFingerprint != original.Fingerprint) return false;
         }
+        // The coordinated SDK batch has a separate private manifest. Retain the
+        // original cleanup work until both owning stores prove reclamation, even
+        // for a terminal retry whose guarded replay manifest was already removed.
+        var batchScope = new ReadModelBatchScope(guarded.Value.Store, completed.Request.TenantId,
+            completed.Request.Domain, completed.Request.AggregateId, "rebuild", completed.DispatchId);
+        string batchManifestKey = ReadModelBatchKeys.ManifestKey(batchScope.ComputeScopeHash());
+        ReadModelEntry<JsonDocument> batchManifest = await store.GetAsync<JsonDocument>(guarded.Value.Store,
+            batchManifestKey, cancellationToken).ConfigureAwait(false);
+        if (batchManifest.Value is { } document)
+        {
+            using (document)
+            {
+                byte[] bytes = System.Text.Encoding.UTF8.GetBytes(document.RootElement.GetRawText());
+                ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ManifestSerializationBytes, bytes.Length);
+                if (bytes.Length > 1_048_576 || ReadModelBatchFingerprint.ComputeFromManifest(bytes) != original.Fingerprint
+                    || batchManifest.ETag is not { Length: > 0 }
+                    || !await eraser.TryEraseAsync(guarded.Value.Store, batchManifestKey, batchManifest.ETag,
+                        cancellationToken).ConfigureAwait(false)) return false;
+            }
+        }
         ReadModelEntry<byte[]> manifest = await store.GetAsync<byte[]>(guarded.Value.Store, manifestKey, cancellationToken).ConfigureAwait(false);
         if (manifest.Value is not null && (ReadModelBatchFingerprint.ComputeFromManifest(OriginalManifest(manifest.Value, null).Span) != original.Fingerprint
             || manifest.ETag is not { Length: > 0 }

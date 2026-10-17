@@ -1,0 +1,144 @@
+{
+  "frozenIntentSha256": "698aade75fcdb478202785f05d4e9885d7ad0fffa3f76022c3477fb0b05d661f",
+  "matrix": {
+    "Proven C=H": [
+      {
+        "method": "GuardedCurrent_ProductionActorsAndStoresMeetExactLogicalReadAndZeroMutationBudget",
+        "cases": 30,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+        ]
+      },
+      {
+        "method": "SourceGuard_CurrentMatrixUsesExactlyElevenMetadataReadsAndPreservesEveryOwningSurface",
+        "cases": 5,
+        "classes": [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests"
+        ]
+      }
+    ],
+    "Valid C<H": [
+      {
+        "method": "GuardedTail_ProductionDispatchAndStoreMatchCanonicalReplayWithinSourcePassCeilings",
+        "cases": 10,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+        ]
+      },
+      {
+        "method": "GuardedTail_ProductionActorStoreAndHandlerCostsStayInsideEveryIndependentCeiling",
+        "cases": 8,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+        ]
+      }
+    ],
+    "Unsupported handler": [
+      {
+        "method": "Rebuild_MoreThanTwoPages_PersistsOracleEquivalentActorDetailIndexVersionsAndCheckpoints",
+        "cases": 1,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests"
+        ]
+      },
+      {
+        "method": "ReplayRecovery_GenericHandlerReusesOneOriginalManifestAcrossThreeLostDurableResponses",
+        "cases": 4,
+        "classes": [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests"
+        ]
+      }
+    ],
+    "Duplicate/gap/conflict/race/crash": [
+      {
+        "method": "GuardedOwningLostReleaseResponseAfterPendingCasSettlesOriginalCompletionWithoutRedispatch",
+        "cases": 2,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+        ]
+      },
+      {
+        "method": "ConcurrentClaims_ProduceOneReservationAndOneDeferredDuplicate",
+        "cases": 1,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryIdempotencyCoordinatorTests"
+        ]
+      },
+      {
+        "method": "GuardedOwningCancellationAfterClaimOrReservationPreservesOriginalWorkBeforeAnyHandler",
+        "cases": 4,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+        ]
+      }
+    ],
+    "Empty/unknown/erased": [
+      {
+        "method": "SourceBootstrap_EmptyNewOrTouchedSourceRetainsOneSeedWithoutInventingEnvelopes",
+        "cases": 2,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Actors.AggregateActorGetEventsTests"
+        ]
+      },
+      {
+        "method": "SourceGuardQualification_ExplicitNewEmptyScopeInitializesZeroWithoutModelOrCompletionReceipt",
+        "cases": 2,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryReconcilerTests"
+        ]
+      },
+      {
+        "method": "Rebuild_ActorProvenErasedEmptyStreamDeletesSelectedNamedRows",
+        "cases": 1,
+        "classes": [
+          "Hexalith.EventStore.Server.Tests.Projections.ProjectionRebuildProductionPathTests"
+        ]
+      },
+      {
+        "method": "SourceGuard_QualifiedTouchedEmptySourceStaysUnknownAndCreatesNoReceiptOrDeliveryEffects",
+        "cases": 1,
+        "classes": [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests"
+        ]
+      }
+    ]
+  },
+  "outcomeEvidence": {
+    "source6-server-full-debug": {
+      "summary": {
+        "selected": 5715,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 25,
+        "notRun": 0,
+        "seconds": 882.499,
+        "passed": 5689
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll"
+      ],
+      "logSha256": "20da084c2fe10846963e2101e2270b37459cef49e0067327d709d77fd4b781c6"
+    },
+    "source7-live-full-debug": {
+      "summary": {
+        "selected": 192,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 1,
+        "notRun": 0,
+        "seconds": 1303.898,
+        "passed": 191
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-showLiveOutput"
+      ],
+      "logSha256": "72ed58d899bb6fa6b0ce08d4cdeacc60031c1f3b40c59b5af7a8e2846d0da05a"
+    }
+  },
+  "scope": "Actual recorded Debug frames; no latest-head/global qualification inferred.",
+  "soleServerFailure": "TrackedReusableContent_DoesNotContainUsableSecrets; independent scanner outcome/path audit verifies this is the sole failure and no mapped matrix witness is it.",
+  "allFiveFrozenMatrixRowsHaveNativePassedWitnesses": true
+}

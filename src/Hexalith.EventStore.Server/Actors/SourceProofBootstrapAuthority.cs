@@ -48,6 +48,7 @@ internal sealed class SourceProofBootstrapAuthority(IIdempotencyDigestKeyProvide
                 throw new InvalidOperationException("guard_activation_required");
         }
         finally { CryptographicOperations.ZeroMemory(key); }
+        ValidateFields(request);
     }
 
     private void ValidateFields(SourceProofBootstrapRequest request)

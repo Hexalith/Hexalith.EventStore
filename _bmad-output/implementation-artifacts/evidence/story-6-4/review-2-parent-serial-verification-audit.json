@@ -1,0 +1,93 @@
+{
+  "auditedUtc": "2026-10-16T19:29:20.228828+00:00",
+  "serialNativeGates": [
+    {
+      "record": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-server-affected-classes-serial.json",
+      "recordSha256": "7d646166790b1218b449632a3a656f3351d6fd46f1be76bd49f071b8ef32a129",
+      "xml": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-server-affected-classes-serial.xml",
+      "xmlSha256": "1f8c17924b907d21909b556822c531f1d9c49e3ee588ecc279546a84571a6430",
+      "logSha256": "a2126a524c0d83640e9b594fa979c72c5536d21f3f12671e263f2c59619585d6",
+      "passed": 245,
+      "startedAt": "2026-10-16T19:26:03.743553+00:00",
+      "endedAt": "2026-10-16T19:26:29.132619+00:00",
+      "runtimeFiles": 431,
+      "sourceAndRuntimeStable": true
+    },
+    {
+      "record": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-client-affected-class-serial.json",
+      "recordSha256": "394f458de679012a6797673177fcba1bd40c7695dc144a77a414b6340a941864",
+      "xml": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-client-affected-class-serial.xml",
+      "xmlSha256": "4c41c5012b09e7f3b3409baaf722276ef0abf17a87c06bf5aff36eca70cd459e",
+      "logSha256": "7ccc707db7f6c392c0cd60815298ed2100345a6d730340cdd74de637af924751",
+      "passed": 64,
+      "startedAt": "2026-10-16T19:26:42.215765+00:00",
+      "endedAt": "2026-10-16T19:26:43.111835+00:00",
+      "runtimeFiles": 431,
+      "sourceAndRuntimeStable": true
+    },
+    {
+      "record": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-domain-affected-classes-serial.json",
+      "recordSha256": "90d30e819a3d7d22d7c6aa75a04e8e4f8bdf9b2ac182cab24074bbfb5562b7a5",
+      "xml": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-domain-affected-classes-serial.xml",
+      "xmlSha256": "561fd1684cd3d9be594b13e0342245f9b94102f9a03cd9eb00481d81774a4a33",
+      "logSha256": "08608cf2b6c70eb63c279a7872fba148ead960d38a2ea1d08287e00bfc665640",
+      "passed": 51,
+      "startedAt": "2026-10-16T19:26:47.017069+00:00",
+      "endedAt": "2026-10-16T19:26:47.852792+00:00",
+      "runtimeFiles": 431,
+      "sourceAndRuntimeStable": true
+    }
+  ],
+  "selected": 360,
+  "passed": 360,
+  "failed": 0,
+  "skipped": 0,
+  "sourceInputsVerified": 3721,
+  "assetInputsVerified": 55,
+  "allSourceAssetAndRuntimeHashesMatch": true,
+  "actualNativeLifetimesSequential": true,
+  "vectors": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-2-parent-serial-vectors.json",
+  "vectorsSha256": "dcd10db0a38429ed3de177ba2b65be21beb26eeab298a9e21388deb622a1a437",
+  "observationKinds": {
+    "ProjectionRetryCost": 5,
+    "ProjectionSchedulerMutationCost": 4,
+    "ProjectionActualGuardRetryCosts": 1,
+    "ProjectionSchedulerCost": 2,
+    "ProjectionGuardActualDepthAllocation": 1,
+    "ProjectionGuardDepthAllocation": 2,
+    "ProjectionCost": 50,
+    "ProjectionTransitionCapCost": 6,
+    "ProjectionReplayContext": 1
+  },
+  "independentCurrentRows": 30,
+  "independentSingleRouteTailRows": 8,
+  "independentSharedThreeRouteRows": 2,
+  "finiteConfiguredDepthCases": [
+    {
+      "maxDepth": 1000000,
+      "nestedUnknownDepth": 0,
+      "bodyBytes": 1743,
+      "allocatedBytes": 25296,
+      "regressionBound": 121312
+    },
+    {
+      "maxDepth": 1000000,
+      "nestedUnknownDepth": 96,
+      "bodyBytes": 1941,
+      "allocatedBytes": 26800,
+      "regressionBound": 127648
+    }
+  ],
+  "actualDeepUnknownCase": [
+    {
+      "depth": 50000,
+      "bodyBytes": 855995,
+      "allocatedBytes": 374848,
+      "owningAllocatedBytes": 3362936,
+      "proofWorkingByteLimit": 3789824
+    }
+  ],
+  "frozenIntentAndR1NativeEvidencePreserved": true,
+  "result": "pass",
+  "scope": "Focused Debug/project-reference correction verification and independent Current/tail/depth math only. Earlier parallel class passes are retained supplements, not this serial gate. Does not replace failed R1 cohorts or qualify whole/latest section10, packages, Live or formal acceptance."
+}

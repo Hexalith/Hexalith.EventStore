@@ -1,0 +1,55 @@
+{
+  "gate": "source9-server-observations-release",
+  "sourceSnapshot": "sourceSnapshot9",
+  "vectorSha256": "4ecffd8efdca65591b9d4c3332239454f51f78d806a05b4fcfde1a48288a0b0a",
+  "nativeSummary": {
+    "selected": 275,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "notRun": 0,
+    "seconds": 26.977,
+    "passed": 275
+  },
+  "kinds": {
+    "ProjectionCost": 50,
+    "ProjectionReplayContext": 1,
+    "ProjectionTransitionCapCost": 6,
+    "SourceMetadataWriterProfile": 3,
+    "ProjectionSchedulerCost": 2,
+    "ProjectionRetryCost": 5,
+    "ProjectionSchedulerMutationCost": 4,
+    "ProjectionGuardDepthAllocation": 2
+  },
+  "independentCurrentRows": 30,
+  "independentSingleRouteUniformTailRows": 8,
+  "independentSharedThreeRouteRows": 2,
+  "finiteDepthAllocationCases": [
+    {
+      "maxDepth": 1000000,
+      "nestedUnknownDepth": 0,
+      "bodyBytes": 1743,
+      "allocatedBytes": 16840,
+      "regressionBound": 121312
+    },
+    {
+      "maxDepth": 1000000,
+      "nestedUnknownDepth": 96,
+      "bodyBytes": 1941,
+      "allocatedBytes": 17280,
+      "regressionBound": 127648
+    }
+  ],
+  "sourceMetadataProfiles": 3,
+  "perRunCoreAssetsStable": true,
+  "targetRuntimeChanges": [],
+  "actualRuntimeClosure": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-1-source9-observer-cutoff-runtime-closure.json",
+    "sha256": "f47c0a1a4974e85e27e5e1cac9372ffcd7c1453d933b404722b35332b3683c03",
+    "fileCount": 2956,
+    "capturedUtc": "2026-10-16T18:03:54.162803+00:00",
+    "targetCutoff": "observer"
+  },
+  "result": "pass",
+  "scope": "Actual observer-only current closure. Aggregate shared counters retain per-route budgets and the special seven-source-pass ceiling, with nine independent route hashes for three routes; exact per-route allocations/B/V remain fixture assertions. Does not replace earlier failed Server partitions/auth diagnostics or qualify latest external state."
+}

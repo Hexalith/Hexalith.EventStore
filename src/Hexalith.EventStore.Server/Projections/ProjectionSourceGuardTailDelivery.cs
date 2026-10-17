@@ -31,6 +31,37 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
         if (head.SourceIncarnation != observedHead.SourceIncarnation || head.HeadSequence > observedHead.HeadSequence
             || observedHead.RetainedFloor - 1 > observations.Min(static item => item.State.LastDeliveredSequence))
             return new(true, false, "source_conflict");
+        // A completed row can still own original retry/private cleanup. Keep that
+        // selected generation intact until its exact old work has been reclaimed;
+        // a later head must never make the old reserved completion unverifiable.
+        foreach (long completed in observations.Where(static item => item.State.ActiveReservation is null
+            && item.State.LastDeliveredSequence > 0 && item.State.LastDeliveredSequence == item.State.GuardEvidence?.Source.HeadSequence)
+            .Select(static item => item.State.LastDeliveredSequence).Where(value => value < head.HeadSequence).Distinct())
+        {
+            string originalId = ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, completed);
+            if (await scheduler.ReadAsync(originalId, cancellationToken).ConfigureAwait(false) is { } retained
+                && (retained.ReservationFencingTokens.Count > 0 || observations.Any(item => item.State.LastDeliveredSequence == completed
+                    && item.State.GuardEvidence?.OwnerProof.Selection is { ReceiptProjectionName: "rebuild" } selection
+                    && selection.BatchId == retained.DispatchId)))
+            {
+                var completedOwners = observations.Where(item => item.State.ActiveReservation is null
+                    && item.State.LastDeliveredSequence == retained.HeadSequence && item.State.LastCompletedMessageId == retained.HeadMessageId
+                    && item.State.GuardEvidence is { } binding && binding.CatalogFingerprint == catalog.CatalogFingerprint
+                    && binding.OwnerProof == item.Selected.Proof && item.Lifecycle.Phase == ProjectionLifecyclePhase.Idle
+                    && item.Lifecycle.Revision == binding.IdleLifecycleRevision)
+                    .ToDictionary(static item => item.Projection, static item => item.Selected.Proof!.Selection.FreshnessVersion, StringComparer.Ordinal);
+                return new(true, false, "delivery_in_progress") { ObservedHeadSequence = observedHead.HeadSequence,
+                    ObservedHeadMessageId = observedHead.HeadMessageId, CatalogFingerprint = catalog.CatalogFingerprint,
+                    ProvenFreshnessVersions = completedOwners };
+            }
+        }
+        var completedReplayOwners = observations.Where(item => item.State.ActiveReservation is null
+            && item.State.LastDeliveredSequence == head.HeadSequence && item.State.GuardEvidence is { } binding
+            && binding.CatalogFingerprint == catalog.CatalogFingerprint && binding.Source == head
+            && binding.OwnerProof == item.Selected.Proof && item.Lifecycle.Phase == ProjectionLifecyclePhase.Idle
+            && item.Lifecycle.Revision == binding.IdleLifecycleRevision && binding.OwnerProof.Selection.BatchId == head.HeadMessageId
+            && binding.OwnerProof.Selection.ReceiptProjectionName == "rebuild")
+            .Select(static item => item.Selected.Proof!).ToArray();
         foreach (ProjectionSourceGuardRouteObservation item in observations)
         {
             string route = item.Projection;
@@ -182,13 +213,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                 applied.Add(plan.Projection, k);
             }
 
-            if (plans.Any(static plan => plan.ReplayEvents is not null))
-            {
-                string? replayFailure = await ApplyCanonicalReplayAsync(identity, catalog, plans, snapshots,
-                    work.DispatchId, cancellationToken).ConfigureAwait(false);
-                if (replayFailure is not null) return new(true, false, reason = replayFailure);
-            }
-            bool canonicalFallbackRequested = false;
+            var canonicalFallbackRoutes = new HashSet<string>(StringComparer.Ordinal);
             foreach (IGrouping<SourceProof, ProjectionSourceGuardTailPlan> group in plans.Where(static plan => plan.ReplayEvents is null)
                 .GroupBy(static plan => plan.Binding.BaseSource))
             {
@@ -202,7 +227,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                         {
                             if (!Matches(plan, item, page.SourceEventDigests[index]))
                                 return new(true, false, reason = "source_conflict");
-                            if (item.SequenceNumber <= applied[plan.Projection]) continue;
+                            if (canonicalFallbackRoutes.Contains(plan.Projection) || item.SequenceNumber <= applied[plan.Projection]) continue;
                             cancellationToken.ThrowIfCancellationRequested();
                             if (await lifecycle.ReadSnapshotAsync(identity, plan.Projection, cancellationToken).ConfigureAwait(false)
                                 != snapshots[plan.Projection]) return new(true, false, reason = "delivery_in_progress");
@@ -212,7 +237,6 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                             {
                                 if (result.Status == ProjectionDispatchStatus.Retryable
                                     && result.ReasonCode == ProjectionDispatchReasonCodes.DeliveryRebuildRequired
-                                    && plans.Count == 1 && plan.State.ActiveReservation is null
                                     && applied[plan.Projection] == plan.Binding.BaseSource.HeadSequence
                                     && SupportsCanonicalReplay(catalog, plan.Projection))
                                 {
@@ -220,10 +244,11 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                                     // choose one canonical fallback. An ambiguous response never enters here.
                                     ProjectionOwnerProofResult unchanged = await ReconcileOriginalProgressAsync(identity, catalog, plan,
                                         snapshots[plan.Projection], cancellationToken).ConfigureAwait(false);
-                                    if (unchanged.Proof != plan.Binding.BaseOwnerProof)
+                                    if (unchanged.Proof != plan.Binding.BaseOwnerProof || unchanged.Proof is null
+                                        && unchanged.ReasonCode != ProjectionDispatchReasonCodes.DeliveryRebuildRequired)
                                         return new(true, false, reason = "delivery_reconciliation_required");
-                                    canonicalFallbackRequested = true;
-                                    break;
+                                    canonicalFallbackRoutes.Add(plan.Projection);
+                                    continue;
                                 }
                                 return new(true, false, reason = result.ReasonCode == ProjectionDispatchReasonCodes.DeliveryRebuildRequired
                                     ? ProjectionDispatchReasonCodes.DeliveryRebuildRequired : "handler_failure");
@@ -235,25 +260,31 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                                 return new(true, false, reason = output.ReasonCode ?? "delivery_reconciliation_required");
                             applied[plan.Projection] = item.SequenceNumber;
                         }
-                        if (canonicalFallbackRequested) break;
                     }
-                    if (canonicalFallbackRequested) break;
                 }
-                if (canonicalFallbackRequested) break;
             }
-            if (canonicalFallbackRequested)
+            foreach (string route in canonicalFallbackRoutes)
             {
-                ProjectionSourceGuardTailPlan original = plans[0];
+                int planIndex = plans.FindIndex(plan => plan.Projection == route);
+                ProjectionSourceGuardTailPlan original = plans[planIndex];
                 ProjectionSourceGuardReplayAdmission replay = await history.AdmitReplayAsync(identity, original.Projection,
-                    original.State, head, pageSize, cancellationToken).ConfigureAwait(false);
+                    original.State, head, pageSize, true, cancellationToken, sharedReplayEvents, true).ConfigureAwait(false);
+                sharedReplayEvents ??= replay.Events;
                 ProjectionDeliveryReservation? reservation = await coordinator.TrySwitchToCanonicalReplayAsync(identity,
                     original.Projection, reservations[original.Projection], cancellationToken).ConfigureAwait(false);
                 if (reservation?.GuardBinding is not { } binding) return new(true, false, reason = "delivery_in_progress");
                 reservations[original.Projection] = reservation;
-                plans[0] = original with { Binding = binding, Admitted = replay.Tail, ReplayEvents = replay.Events };
-                string? failure = await ApplyCanonicalReplayAsync(identity, catalog, plans, snapshots, work.DispatchId,
-                    cancellationToken).ConfigureAwait(false);
-                if (failure is not null) return new(true, false, reason = failure);
+                plans[planIndex] = original with { Binding = binding, Admitted = replay.Tail, ReplayEvents = replay.Events };
+            }
+            // Collect every explicit no-effect fallback before preparing the one
+            // original coordinated manifest. Already-proven tail siblings stay intact.
+            if (plans.Any(static plan => plan.ReplayEvents is not null) && (completedReplayOwners.Length == 0
+                || plans.Any(plan => plan.ReplayEvents is not null && (plan.ObservedOwner?.Selection.AppliedSequence != head.HeadSequence
+                    || plan.ObservedOwner.Selection.BatchId != work.DispatchId || plan.ObservedOwner.Selection.ReceiptProjectionName != "rebuild"))))
+            {
+                string? replayFailure = await ApplyCanonicalReplayAsync(identity, catalog, plans, snapshots,
+                    work.DispatchId, cancellationToken).ConfigureAwait(false);
+                if (replayFailure is not null) return new(true, false, reason = replayFailure);
             }
 
             // Publication has consumed the complete canonical prefix. Retain
@@ -264,7 +295,8 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                 if (plans[index].ReplayEvents is not null) plans[index] = plans[index] with { ReplayEvents = [] };
 
             bool allCurrent = true;
-            var replayOwners = new List<ProjectionOwnerProof>();
+            var replayOwners = new List<ProjectionOwnerProof>(completedReplayOwners);
+            var verifiedOwners = new Dictionary<string, ProjectionOwnerProof>(StringComparer.Ordinal);
             foreach (ProjectionSourceGuardTailPlan plan in plans)
             {
                 if (plan.ReplayEvents is not null)
@@ -279,11 +311,16 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                     || selected.Selection.MessageId != head.HeadMessageId || selected.Selection.BatchId != head.HeadMessageId
                     || plan.ReplayEvents is not null && selected.Selection.ReceiptProjectionName != "rebuild")
                     return new(true, false, reason = output.ReasonCode ?? "delivery_reconciliation_required");
-                if (finalizationBudget is null)
-                {
-                    telemetry?.StartFinalization(clock);
-                    finalizationBudget = new(TimeSpan.FromSeconds(30), clock);
-                }
+                verifiedOwners.Add(plan.Projection, selected);
+            }
+            // Every sibling's frozen-history and output checks use the caller's
+            // verification lifetime. Only the shared completion/cleanup phase
+            // consumes the independent deadline.
+            telemetry?.StartFinalization(clock);
+            finalizationBudget = new(TimeSpan.FromSeconds(30), clock);
+            foreach (ProjectionSourceGuardTailPlan plan in plans)
+            {
+                ProjectionOwnerProof selected = verifiedOwners[plan.Projection];
                 ProjectionSourceGuardDeliveryResult final = await finalizer.FinalizeAsync(identity, catalog, plan.Projection,
                     plan.Admitted.History, reservations[plan.Projection], operation, selected, cancellationToken,
                     finalizationBudget.Token).ConfigureAwait(false);
@@ -336,9 +373,23 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
             }
             foreach (string route in held)
                 await lifecycle.CompleteDeliveryWriteAsync(identity, route, operation, cleanup.Token).ConfigureAwait(false);
-            string[] pending = [.. work.PendingRoutes.Where(route => !completedRoutes.Contains(route) || !replayCleanupComplete)];
+            bool coordinatedReplayPending = (completedReplayOwners.Length > 0 || plans.Any(static plan => plan.ReplayEvents is not null))
+                && (completedRoutes.Count != plans.Count || !replayCleanupComplete);
+            string[] pending = [.. work.PendingRoutes.Where(route => coordinatedReplayPending || !completedRoutes.Contains(route)
+                && !completedReplayOwners.Any(owner => owner.Selection.ProjectionName == route))];
             if (pending.Length == 0 && work.TerminalRoutes.Count == 0)
-                await scheduler.TryDeleteAsync(work, cleanup.Token).ConfigureAwait(false);
+            {
+                if (!await scheduler.TryDeleteAsync(work, cleanup.Token).ConfigureAwait(false))
+                {
+                    int attempt = work.Attempt < options.MaxRetryAttempts ? work.Attempt + 1 : options.MaxRetryAttempts;
+                    await scheduler.TryUpdateAsync(work with { Attempt = attempt,
+                        NextDueUtc = clock.GetUtcNow() + GetRetryDelay(attempt, options),
+                        ReservationFencingTokens = work.ReservationFencingTokens.Concat(reservations.Select(static pair =>
+                            new KeyValuePair<string, long>(pair.Key, pair.Value.FencingToken)))
+                            .GroupBy(static pair => pair.Key, StringComparer.Ordinal).ToDictionary(static group => group.Key, static group => group.Last().Value, StringComparer.Ordinal),
+                    }, cleanup.Token).ConfigureAwait(false);
+                }
+            }
             else
             {
                 int attempt = work.Attempt < options.MaxRetryAttempts ? work.Attempt + 1 : options.MaxRetryAttempts;
@@ -348,6 +399,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                     Attempt = attempt, NextDueUtc = clock.GetUtcNow() + GetRetryDelay(attempt, options),
                     ReservationFencingTokens = work.ReservationFencingTokens.Concat(reservations.Select(static pair =>
                         new KeyValuePair<string, long>(pair.Key, pair.Value.FencingToken)))
+                        .Where(pair => pending.Contains(pair.Key, StringComparer.Ordinal))
                         .GroupBy(static pair => pair.Key, StringComparer.Ordinal).ToDictionary(static group => group.Key, static group => group.Last().Value, StringComparer.Ordinal),
                 }, cleanup.Token).ConfigureAwait(false);
             }

@@ -1,0 +1,15 @@
+{
+  "recordedUtc": "2026-10-16T20:34:22.049773+00:00",
+  "purpose": "Parent documentation-only status and current acceptance links after verification; not runtime qualification",
+  "before": {
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md": "d16aacbd0e2e2d5980d65dbcf27a675b5f59c564c15d0c9928aca514633bfa45",
+    "docs/concepts/projection-delivery.md": "2d4a9671e78122150e44b4f070f17c72e7558cf0fd1ec414429eafc76c5796f3",
+    "docs/operations/projection-delivery-v2-cutover.md": "f98958c5c8e83cbb57e21c32789c6028b179ff82f5cc796a94bc9dbdd885b4e1"
+  },
+  "after": {
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md": "f0f98eac8e15b3d2c857beccb3c7f4a0041f3c49fd2b8bcb308ac2defe7230e7",
+    "docs/concepts/projection-delivery.md": "85800eb05d7f8609f697e6fad34ee1db2a1de28e98ca3e79e6a640c508833dc6",
+    "docs/operations/projection-delivery-v2-cutover.md": "78e5192b7ab8d865ae14e24e3d22e7232b7103c7812e2252ec72142525a1c6f9"
+  },
+  "frozenUnchanged": true
+}

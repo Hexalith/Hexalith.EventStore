@@ -1,0 +1,24 @@
+{
+  "gate": "source9-server-current-policy-target-release",
+  "summary": {
+    "selected": 3,
+    "errors": 0,
+    "failed": 1,
+    "skipped": 0,
+    "notRun": 0,
+    "seconds": 540.846,
+    "passed": 2
+  },
+  "logSha256": "e2d1136a476b8721b262288c5ba7b785d3851f88c4bcbbc4f902d53008e14bca",
+  "soleFailedMethod": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+  "reportedLocations": 1,
+  "reportedPath": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.HistoricalLines.cs",
+  "reportedLine": 57,
+  "diagnosticRecordSha256": "eeb0460bf4314fd3349ca38b35e7d9dd10c207981a874b5fcc9b12cdd0bfa88c",
+  "targetRuntimeChanges": [],
+  "relevantInputChanges": [],
+  "failureContext": "Externally added synthetic FindViolations regression context; no credential usability inferred; distinct from historic Source6 89locations77P1Rfiles.",
+  "repairByAgent": false,
+  "remainingIndependentCasesPending": 5716,
+  "soleNativeFailureAndDiagnosticRecordIndependentlyMatched": true
+}

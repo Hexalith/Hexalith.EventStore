@@ -196,14 +196,19 @@ internal static class DomainProjectionRebuildTransport
         IAsyncDomainProjectionHandler[] selected = [.. allHandlers.Where(handler =>
             StringComparer.Ordinal.Equals(handler.Domain, header.Request.Domain)
             && types.Contains(handler.ProjectionType))];
-        if (selected.Length != types.Count || selected.Any(handler => handler is not IAsyncDomainProjectionRebuildHandler
-            || handler is not IAsyncDomainProjectionRebuildTransportHandler))
+        if (selected.Length != types.Count || selected.Any(handler => handler is not IAsyncDomainProjectionRebuildHandler))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
-        string[] stores = [.. selected.Cast<IAsyncDomainProjectionRebuildTransportHandler>()
-            .Select(handler => handler.RebuildTransportStoreName).Distinct(StringComparer.Ordinal)];
+        // A guarded mixed catalog uploads one canonical prefix for one coordinated
+        // batch. Full-replay siblings use their already enrolled owning store;
+        // mapped siblings retain their explicit streaming transport capability.
+        bool guarded = DomainProjectionOwnerProof.UsesGuardedCatalog(services, header, identity);
+        string?[] stores = [.. selected.Select(handler => handler is IAsyncDomainProjectionRebuildTransportHandler transport
+            ? transport.RebuildTransportStoreName : guarded ? services.GetServices<DomainProjectionOwnerProofRegistration>()
+                .SingleOrDefault(item => item.Domain == header.Request.Domain && item.ProjectionType == handler.ProjectionType)?.Binding.StoreName
+                : null).Distinct(StringComparer.Ordinal)];
         if (stores.Length != 1 || string.IsNullOrWhiteSpace(stores[0]))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
-        return stores[0];
+        return stores[0]!;
     }
 
     internal static string Key(ProjectionDispatchRequest header, int ordinal)

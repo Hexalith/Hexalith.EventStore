@@ -1,0 +1,48 @@
+{
+  "closedUtc": "2026-10-16T20:58:27.922001+00:00",
+  "authorizedLocalWork": "complete",
+  "formalStoryAndSprint": "in-progress",
+  "implementedTasks": 41,
+  "reviewRounds": 5,
+  "finalDirectPatchesVerified": [
+    "G34",
+    "G35",
+    "G36"
+  ],
+  "distinctFinalFocusedCasesPassed": 145,
+  "finalNewCasesPassed": 23,
+  "deferredGroupsAppendedOnce": 16,
+  "priorLedgerEntriesRead": false,
+  "sourceAndRuntimeStillMatchFinalNativeCandidate": true,
+  "trackedAndNewSourceWhitespace": "pass",
+  "activeTargetNativeProcesses": [],
+  "finalDiff": {
+    "capturedUtc": "2026-10-16T20:57:37.120464+00:00",
+    "baseline": "e17e7294f540ebba42fe25192998689f0ecd89c1",
+    "head": "0737c0befce5338e294a789092a0e223e8264a04",
+    "diffFile": "/tmp/story-6-4-root-final-handoff-py5axtis.diff",
+    "sha256": "036f69e16818559751a6649f9791f096c65ec9dab2bc0cad5ba3cf6038bae793",
+    "bytes": 938377884,
+    "sourceSlice": "/tmp/story-6-4-root-final-handoff-py5axtis.diff.source.diff",
+    "documentationSlice": "/tmp/story-6-4-root-final-handoff-py5axtis.diff.documentation.diff",
+    "untrackedIncluded": 217,
+    "stagingPerformed": false
+  },
+  "artifactHashes": {
+    "review-5-parent-verification-audit.json": "6429a12cfc057a265b541ddc1eb37fff046dd2575b5d7ea479b1e459c98ad5de",
+    "review-5-parent-acceptance.md": "01273f948ca9954e3b5f9c3f3226f7a37857433db1b3b39ff16b9e05577525da",
+    "review-5-deferred-append-receipt.json": "778eb28a039646d02920dc4b17f3a1cd36e2cc4b4870ace4596f3e61674d7960",
+    "review-5-parent-documentation-delta.json": "05a6bbd474b25ffbf6d074691cc11ea0cd6d7575f85c8f9809b8d0324d7411e9",
+    "review-1-corrections-gates.json": "b8ff323f067d3ad6af1ccb9067ee87fd74c4f5ae0b9204c66c5e3131b017438a",
+    "review-1-source9-closing-audit.json": "b37c049772b8f2b985c6dd37041204a40316bda49581efc5c740e2e14d43a784"
+  },
+  "blocked": [
+    "P1R bulk-evidence owner disposition",
+    "whole/latest-checkout qualification and recorded failed/unproven broad gates",
+    "authenticated exact-head sealed CI and required owner assurance",
+    "AD-12/NFR8 Done transition"
+  ],
+  "doneTransitionPerformed": false,
+  "agentGitMutationPerformed": false,
+  "nextAction": "Resolve blocked acceptance gates or use bmad-walkthrough"
+}

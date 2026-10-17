@@ -63,7 +63,10 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
                 || !capability.IsSupported || binding.HandlerSemantics != capability.HandlerSemantics
                 || !marker.IsValid(identity, projection) || marker.CatalogFingerprint != catalog.CatalogFingerprint
                 || marker.HandlerSemantics != capability.HandlerSemantics || marker.SourceIncarnation != binding.Source.SourceIncarnation
-                || first.Status != SourceProofInspectionStatus.Available || first.Erased || !SourceProofCodec.SameCompletedPrefix(binding.Source, first.Proof)
+                || first.Status != SourceProofInspectionStatus.Available || first.Erased || first.Proof is not { } sourceProof
+                || sourceProof.SourceIncarnation != binding.Source.SourceIncarnation || sourceProof.HeadSequence < binding.Source.HeadSequence
+                || !SourceProofCodec.IsValid(sourceProof, identity, sourceProof.HeadSequence, sourceProof.RetainedFloor)
+                || sourceProof.HeadSequence == binding.Source.HeadSequence && !SourceProofCodec.SameCompletedPrefix(binding.Source, sourceProof)
                 || original is not null && !CompletedOriginal(row, original)) return false;
             ProjectionLifecycleSnapshot idle = await lifecycle.ReadSnapshotAsync(identity, projection, cancellationToken).ConfigureAwait(false);
             if (idle.Phase != ProjectionLifecyclePhase.Idle || idle.Revision != binding.IdleLifecycleRevision) return false;
@@ -183,6 +186,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
         string? incompleteReason = null;
         var freshness = new Dictionary<string, string>(StringComparer.Ordinal);
         var tails = new List<ProjectionSourceGuardRouteObservation>();
+        var completedSiblings = new List<ProjectionSourceGuardRouteObservation>();
         var compatibleRoutes = new List<string>();
         foreach (string projection in entry.OrdinaryProjectionTypes)
         {
@@ -319,17 +323,20 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
                 || evidence.OwnerProof != selected.Proof || evidence.IdleLifecycleRevision != before.Revision)
                 return new(true, false, selected.ReasonCode ?? "delivery_reconciliation_required");
             freshness[projection] = selected.Proof.Selection.FreshnessVersion;
+            completedSiblings.Add(new(projection, state, before, selected));
             telemetry.Terminal(projection, "current", "already_completed", "delivery_already_completed",
                 sourceProof.HeadSequence, state.LastDeliveredSequence);
         }
 
         if (!owned) return new(false, false, null);
-        if (originalWork is not null && observedSource?.Proof is { } retryHead
+        // Retry-only settlement may leave unrelated compatible work pending.
+        // A current sibling must never short-circuit unfinished guarded tails.
+        if (tails.Count == 0 && originalWork is not null && observedSource?.Proof is { } retryHead
             && originalWork.TenantId == identity.TenantId && originalWork.Domain == identity.Domain
             && originalWork.AggregateId == identity.AggregateId && originalWork.CatalogFingerprint == entry.CatalogFingerprint
             && originalWork.HeadSequence == retryHead.HeadSequence && originalWork.HeadMessageId == retryHead.HeadMessageId
             && originalWork.PendingRoutes.Any(freshness.ContainsKey))
-            return new(true, !emptyNoWork && incompleteReason is null && tails.Count == 0, incompleteReason ?? (tails.Count > 0 ? "head_changed" : null))
+            return new(true, !emptyNoWork && incompleteReason is null, incompleteReason)
             {
                 ObservedHeadSequence = retryHead.HeadSequence, ObservedHeadMessageId = retryHead.HeadMessageId,
                 CatalogFingerprint = entry.CatalogFingerprint, ProvenFreshnessVersions = freshness,
@@ -339,7 +346,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
             if (!allowDelivery) return new(true, false, incompleteReason ?? "head_changed");
             ProjectionSourceGuardDeliveryResult delivered = tailDelivery is null || observedSource?.Proof is not { } head
                 ? new(true, false, "delivery_rebuild_required")
-                : await tailDelivery.DeliverAsync(identity, entry, head, tails, pageSize, cancellationToken, telemetry).ConfigureAwait(false);
+                : await tailDelivery.DeliverAsync(identity, entry, head, tails.Concat(completedSiblings).ToArray(), pageSize, cancellationToken, telemetry).ConfigureAwait(false);
             if (compatibleRoutes.Count > 0 && observedSource?.Proof is { } compatibleHead)
                 await DeliverCompatibleAsync(identity, entry, compatibleHead, compatibleRoutes, cancellationToken).ConfigureAwait(false);
             return incompleteReason is null ? delivered : delivered with { AlreadyCurrent = false, ReasonCode = incompleteReason };

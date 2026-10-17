@@ -179,6 +179,7 @@ public partial class QueryRouter : IQueryRouter {
                     {
                         ProjectionLifecycleState state = metadata.Lifecycle == ProjectionLifecycleState.Rebuilding
                             ? ProjectionLifecycleState.Rebuilding
+                            : metadata.Lifecycle == ProjectionLifecycleState.Degraded ? ProjectionLifecycleState.Degraded
                             : metadata.Lifecycle == ProjectionLifecycleState.LocalOnly ? ProjectionLifecycleState.LocalOnly
                             : proof.AlreadyCurrent && proof.ProvenFreshnessVersions.GetValueOrDefault(actualProjectionType) == metadata.ProjectionVersion
                                 && metadata.ProjectionVersion is not null ? ProjectionLifecycleState.Current
@@ -190,6 +191,7 @@ public partial class QueryRouter : IQueryRouter {
                             Provenance = proof.ReasonCode == "empty_no_work" ? QueryResponseProvenance.Unknown : metadata.Provenance,
                             Lifecycle = state,
                             IsStale = ProjectionLifecyclePolicy.ProjectIsStale(state),
+                            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(state, metadata.IsDegraded),
                         };
                     }
                 }

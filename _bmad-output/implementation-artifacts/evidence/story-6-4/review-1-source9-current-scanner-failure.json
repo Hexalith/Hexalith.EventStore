@@ -1,0 +1,74 @@
+{
+  "capturedUtc": "2026-10-16T17:48:02.773111+00:00",
+  "nativeGate": "source9-server-current-policy-target-release",
+  "summary": {
+    "selected": 3,
+    "errors": 0,
+    "failed": 1,
+    "skipped": 0,
+    "notRun": 0,
+    "seconds": 540.846,
+    "passed": 2
+  },
+  "logSha256": "e2d1136a476b8721b262288c5ba7b785d3851f88c4bcbbc4f902d53008e14bca",
+  "failedMethod": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+  "locationCount": 1,
+  "locations": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.HistoricalLines.cs",
+      "line": 57,
+      "fileSha256": "19dd774483d18fb05af270c34c42aa756145a39d83b9bf0a32a6e75fbe9c4e6d",
+      "lineSha256": "4453eec17a919be53213b7210b367fd3b6700dbad145c88097ee933fa6bcb2d3",
+      "classification": "External C# scanner regression source line, synthetic FindViolations input/assertion context; actual values withheld. Credential usability neither tested nor inferred.",
+      "callsFindViolations": true,
+      "assertsNonempty": true
+    }
+  ],
+  "targetRuntimeChangesDuringGate": [],
+  "actualReadInputChangesDuringGate": [],
+  "preExistingSourceReadArrivals": [
+    {
+      "path": ".github/workflows/release.yml",
+      "frameSha256": "d4e62c9ce4b4c63dfc39ea20558ddf4d88ade1583150b380363656aaaf26bf14",
+      "actualReadInputSha256": "a05bc9ec813cac7138f9a7ceadbb4445e3473fd9b99fd0940bffd20b407db187"
+    },
+    {
+      "path": "scripts/validate-publication-preflight.sh",
+      "frameSha256": "0139088cc427e56075a7e0941254a7249414eb364b5e53b3bf1547ee763e02c2",
+      "actualReadInputSha256": "8ca9a323a723af3cffe7c8e95cf14f9b43e7e77284f4f0c06bed2b17797dfdef"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContainerPublishingGovernanceTests.cs",
+      "frameSha256": "db88f04998973847482432df5650c38638131d44d2c252f3e4a1423d036265c9",
+      "actualReadInputSha256": "4ddb303e3c9b3a88a40e7b914401fe8ad8bd203464cd37f6b9e8d9a407f8b347"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Packaging/TrustedPublishingReleaseTests.cs",
+      "frameSha256": "637edfe42f0064b664b2c554800266754b00ae96c579aeffd241f3a0c0c02d67",
+      "actualReadInputSha256": "43a0f640a5750005bcb85973ec1645ea5a22e4d64e1c1f779464889b4cd5ec53"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.HistoricalLines.cs",
+      "frameSha256": "8649cbc27fb0c9bf7c8b3980725b3a0cac65d0b15cfe0af0b277c7ecab81b9de",
+      "actualReadInputSha256": "19dd774483d18fb05af270c34c42aa756145a39d83b9bf0a32a6e75fbe9c4e6d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "frameSha256": "b6ae0ce6b3096fc408c2314f032559e07b7efccf1b8496c82bf7bfa3d4a5f84d",
+      "actualReadInputSha256": "cb2304579704130d855fb746a2d5928fc8c2a8a535a7db178d9ea1a6ef5ee901"
+    },
+    {
+      "path": "tools/release-publication-identity.py",
+      "frameSha256": "33107a8ff65cc171ca17f335fad43fcb3dc1764dff474e99d61c38a6cce2fcf5",
+      "actualReadInputSha256": "f466a12adec0cdfea3812ba10b2dd071ebf1c40b7e310733e61cee7d209027a8"
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "frameSha256": "0850bdade540924442bb31c7763c4db30ba6746f9c869712ca5db444f1100bc5",
+      "actualReadInputSha256": "9a7c0150a79877555507ea832da522a7df403eaae1933f6392419bb384bff38d"
+    }
+  ],
+  "historical89LocationsAreSeparate": true,
+  "noRepeatOrSourcePolicyRepair": true,
+  "fullQualification": false
+}

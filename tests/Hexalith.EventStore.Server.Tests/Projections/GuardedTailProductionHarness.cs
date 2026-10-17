@@ -46,7 +46,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
     internal Exception? InspectionFailure { get; set; }
     internal Exception? StateReadFailure { get; set; }
     internal NamedProjectionRouteCatalogEntry Catalog { get; }
-    internal ProjectionSourceGuardDelivery Probe { get; }
+    internal ProjectionSourceGuardDelivery Probe { get; private set; }
     internal ProjectionSourceGuardTailDelivery Tail { get; }
     internal GuardedTailProductionHttpHandler Http { get; }
     internal ProjectionDeliveryRetryWorkItem? Work { get; private set; }
@@ -54,6 +54,9 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
     internal FakeTimeProvider Clock { get; }
     internal TimeSpan ReleaseDelay { get; set; }
     internal TimeSpan CleanupDelay { get; set; }
+    internal bool RejectSchedulerDelete { get; set; }
+    internal string? InterruptBeforePendingRoute { get; set; }
+    internal string? InterruptBeforeCanonicalRoute { get; set; }
     internal TimeSpan HistoryReadDelay { get; set; }
     internal long? ChangeApplicationSequence { get; set; }
     internal int ReceiptLimit { get; }
@@ -72,7 +75,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
     private readonly IProjectionDeliveryRetryScheduler _scheduler;
 
     private GuardedTailProductionHarness(int head, int baseSequence, int routeCount, string handlerSemantics, bool sharedLastRoute,
-        int receiptLimit, bool unguardedLastRoute, bool extraDomain, int manifestLimit, bool productionScheduler, int transitionAttempts)
+        int receiptLimit, bool unguardedLastRoute, bool extraDomain, int manifestLimit, bool productionScheduler, int transitionAttempts, bool mixedReplay)
     {
         ReceiptLimit = receiptLimit;
         TransitionAttempts = transitionAttempts;
@@ -93,7 +96,8 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             fullReplay ? null : "event-message-id/v1", fullReplay ? null : mapped ? "mapped-append/v1" : "read-model-batch/v1")
             { InitialOwnerProtocol = baseSequence == 0 && !mapped && !fullReplay ? "aggregate-first-event/v1" : null,
                 CanonicalReplayProtocol = !mapped && !fullReplay ? "staged-full-replay/v1" : null };
-        ProjectionSourceGuardCapability CapabilityFor(string route) => sharedLastRoute && route == routes[^1]
+        ProjectionSourceGuardCapability CapabilityFor(string route) => mixedReplay && route == routes[^1]
+            ? new(1, 1, 1, "full-replay-v1", "projection-owner-proof/v1", null, null) : sharedLastRoute && route == routes[^1]
             ? new(1, 1, 1, "shared-epoch-v1", "projection-owner-proof/v1", "source-sequence-position/v1", "shared-applied/v1") : capability;
         bool Guarded(string route) => !unguardedLastRoute || route != routes[^1];
         ProjectionDispatchRoute[] descriptors = [.. routes.Select(route => new ProjectionDispatchRoute(Identity.Domain, route)
@@ -104,8 +108,8 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             fullReplayProjectionTypes: mapped || fullReplay ? routes.Where(route => CapabilityFor(route).HandlerSemantics != "shared-epoch-v1") : [],
             singleEventProjectionTypes: mapped || fullReplay ? [] : routes.Where(route => CapabilityFor(route).HandlerSemantics != "shared-epoch-v1"),
             sharedEpochProjectionTypes: routes.Where(route => CapabilityFor(route).HandlerSemantics == "shared-epoch-v1"),
-            mappedOnlyStreamedProjectionTypes: mapped ? routes.Where(route => CapabilityFor(route).HandlerSemantics != "shared-epoch-v1") : [],
-            incrementalReplayProjectionTypes: mapped ? routes.Where(route => CapabilityFor(route).HandlerSemantics != "shared-epoch-v1") : [])
+            mappedOnlyStreamedProjectionTypes: mapped ? routes.Where(route => CapabilityFor(route).HandlerSemantics == "mapped-incremental-replay-v1") : [],
+            incrementalReplayProjectionTypes: mapped ? routes.Where(route => CapabilityFor(route).HandlerSemantics == "mapped-incremental-replay-v1") : [])
         { SourceGuardCapabilities = routes.Where(Guarded).ToDictionary(static route => route, CapabilityFor, StringComparer.Ordinal) };
         var services = new ServiceCollection();
         services.AddSingleton(Options.Create(new DomainProjectionIdentityOptions { AppId = "sample", ServiceVersion = "v1" }));
@@ -120,7 +124,8 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
         {
             var handler = new GuardedTailProjectionHandler(route, Models, baseSequence == 0 && !mapped);
             Handlers.Add(handler);
-            services.AddSingleton<IAsyncDomainProjectionHandler>(handler);
+            services.AddSingleton<IAsyncDomainProjectionHandler>(mixedReplay && route == routes[^1]
+                ? new GuardedFullReplayProjectionHandler(handler) : handler);
             if (Guarded(route)) services.AddSingleton(new DomainProjectionOwnerProofRegistration(Identity.Domain, route, CapabilityFor(route), new("models", route)));
             _revisions[route] = 1;
         }
@@ -183,6 +188,13 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
         });
         states.TrySaveAsync(Identity, Arg.Any<string>(), Arg.Any<ProjectionDeliveryState>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
         {
+            if (InterruptBeforeCanonicalRoute == call.ArgAt<string>(1)
+                && call.ArgAt<ProjectionDeliveryState>(2).ActiveReservation?.GuardBinding?.CanonicalReplay == true)
+                throw new InvalidOperationException("injected canonical mode switch interruption");
+            if (InterruptBeforePendingRoute == call.ArgAt<string>(1) && call.ArgAt<ProjectionDeliveryState>(2).IdleBindingPending is not null)
+            {
+                throw new InvalidOperationException("injected pending interruption");
+            }
             if (_productionStates is not null)
             {
                 bool saved = await _productionStates.TrySaveAsync(Identity, call.ArgAt<string>(1), call.ArgAt<ProjectionDeliveryState>(2),
@@ -253,6 +265,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
         _scheduler = scheduler;
         if (!productionScheduler)
         {
+            scheduler.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call => Work?.WorkId == call.ArgAt<string>(0) ? Work : null);
             scheduler.ScheduleAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<CancellationToken>()).Returns(call => Work ??= call.ArgAt<ProjectionDeliveryRetryWorkItem>(0));
             scheduler.TryAcquireAsync(Arg.Any<ProjectionDeliveryRetryWorkItem>(), Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>()).Returns(call =>
             {
@@ -271,6 +284,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             {
                 Clock.Advance(CleanupDelay);
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+                if (RejectSchedulerDelete) return false;
                 Work = null;
                 return true;
             });
@@ -301,9 +315,9 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
     internal static async Task<GuardedTailProductionHarness> CreateAsync(int head, int baseSequence, int routeCount = 1,
         string handlerSemantics = "single-event-v1", bool sharedLastRoute = false, int receiptLimit = 256,
         bool unguardedLastRoute = false, bool extraDomain = false, int manifestLimit = 1_048_576, bool productionScheduler = false, int transitionAttempts = 8,
-        string ownerGeneration = "generation-1")
+        string ownerGeneration = "generation-1", bool mixedReplay = false)
     {
-        var result = new GuardedTailProductionHarness(head, baseSequence, routeCount, handlerSemantics, sharedLastRoute, receiptLimit, unguardedLastRoute, extraDomain, manifestLimit, productionScheduler, transitionAttempts);
+        var result = new GuardedTailProductionHarness(head, baseSequence, routeCount, handlerSemantics, sharedLastRoute, receiptLimit, unguardedLastRoute, extraDomain, manifestLimit, productionScheduler, transitionAttempts, mixedReplay);
         if (ownerGeneration != "generation-1")
             foreach (GuardedTailProjectionHandler handler in result.Handlers) handler.ReplayGenerationOverride = ownerGeneration;
         SourceProof source = SourceProofCodec.CreateSeed(result.Identity, result.Head.SourceIncarnation);
@@ -352,6 +366,28 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             typeof(CounterIncremented).FullName!, 1, "json", JsonSerializer.SerializeToUtf8Bytes(new CounterIncremented(), JsonSerializerOptions.Web), null);
         Events = [.. Events, item];
         Head = SourceProofCodec.Extend(Head, item);
+    }
+
+    internal void ReconstructGuardedDelivery()
+    {
+        INamedProjectionRouteCatalog catalogs = Substitute.For<INamedProjectionRouteCatalog>();
+        catalogs.Current.Returns(new NamedProjectionRouteCatalogSnapshot([Catalog]));
+        var actorOptions = Options.Create(new EventStoreActorOptions());
+        var coordinator = new ProjectionDeliveryIdempotencyCoordinator(_states, Options.Create(new ProjectionDeliveryIdempotencyOptions
+            { CompletedReceiptLimit = ReceiptLimit, MaxStateTransitionAttempts = TransitionAttempts }), Clock);
+        var finalizer = new ProjectionSourceGuardFinalizer(coordinator, _states, _lifecycle, _owners, _history, _actors, actorOptions, Clock);
+        var transport = new DaprProjectionSourceGuardTransport(_invocation, SubstituteClients());
+        var tail = new ProjectionSourceGuardTailDelivery(_history, coordinator, _scheduler, _lifecycle, _owners, transport,
+            finalizer, Options.Create(new ProjectionDispatchOptions()), Clock);
+        Probe = new(catalogs, _states, _lifecycle, _owners, _actors, actorOptions, finalizer, _scheduler,
+            Options.Create(new ProjectionDispatchOptions()), Clock, tail, transport, _named, _history);
+    }
+
+    private IHttpClientFactory SubstituteClients()
+    {
+        IHttpClientFactory clients = Substitute.For<IHttpClientFactory>();
+        clients.CreateClient(Arg.Any<string>()).Returns(_http);
+        return clients;
     }
 
     internal Task<ProjectionSourceGuardDeliveryResult> DeliverAsync(int pageSize)

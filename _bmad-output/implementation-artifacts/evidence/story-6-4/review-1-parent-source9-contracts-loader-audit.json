@@ -1,0 +1,84 @@
+{
+  "utc": "2026-10-16T17:12:27.280285+00:00",
+  "scope": "read-only actual Contracts dependency manifests and local DLLs; no metadata equivalence inferred",
+  "modes": {
+    "Debug": {
+      "depsSha256": "69623ed92a8b9b156d59b7d7bae026b4119a2780aace78799ae91840295d8250",
+      "entries": {
+        "Hexalith.Commons.UniqueIds/2.30.1": {
+          "runtime": {
+            "lib/net10.0/Hexalith.Commons.UniqueIds.dll": {
+              "assemblyVersion": "2.30.1.0",
+              "fileVersion": "2.30.1.0"
+            }
+          },
+          "dependencies": {
+            "ByteAether.Ulid": "1.4.2"
+          }
+        },
+        "Hexalith.EventStore.Contracts/3.123.0": {
+          "runtime": {
+            "Hexalith.EventStore.Contracts.dll": {
+              "assemblyVersion": "3.122.0.0",
+              "fileVersion": "3.122.0.0"
+            }
+          },
+          "dependencies": {
+            "Hexalith.Commons.UniqueIds": "2.30.1"
+          }
+        }
+      },
+      "files": [
+        {
+          "path": "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+          "bytes": 9728,
+          "sha256": "14f40a3801490d32cca54e56a1d1b020510e8fa2c7a02f3e566b47940a31d317"
+        },
+        {
+          "path": "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+          "bytes": 695808,
+          "sha256": "5b6ea806b448650338bcb3f88e768f59b9005c28d18a9de35c4c283636543cf1"
+        }
+      ]
+    },
+    "Release": {
+      "depsSha256": "feb3f851b8848935f3887346e5cdcf7e77e77b2ffb25171957885de2d031669d",
+      "entries": {
+        "Hexalith.Commons.UniqueIds/2.30.1": {
+          "runtime": {
+            "lib/net10.0/Hexalith.Commons.UniqueIds.dll": {
+              "assemblyVersion": "2.30.1.0",
+              "fileVersion": "2.30.1.0"
+            }
+          },
+          "dependencies": {
+            "ByteAether.Ulid": "1.4.2"
+          }
+        },
+        "Hexalith.EventStore.Contracts/3.123.0": {
+          "runtime": {
+            "Hexalith.EventStore.Contracts.dll": {
+              "assemblyVersion": "3.123.0.0",
+              "fileVersion": "3.123.0.0"
+            }
+          },
+          "dependencies": {
+            "Hexalith.Commons.UniqueIds": "2.30.1"
+          }
+        }
+      },
+      "files": [
+        {
+          "path": "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.Commons.UniqueIds.dll",
+          "bytes": 9728,
+          "sha256": "14f40a3801490d32cca54e56a1d1b020510e8fa2c7a02f3e566b47940a31d317"
+        },
+        {
+          "path": "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.dll",
+          "bytes": 675840,
+          "sha256": "a0bbb3b16d1af237e0facb6e1175e7ed72cd94e1ef644ea7ea8a21cd50aabaf4"
+        }
+      ]
+    }
+  }
+}

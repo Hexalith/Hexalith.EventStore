@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 
@@ -14,9 +15,22 @@ internal sealed class ReadModelBatchMarker {
     internal static ReadModelBatchMarker? ReadProof(ReadOnlyMemory<byte> bytes)
     {
         using JsonDocument document = JsonDocument.Parse(bytes);
-        return document.RootElement.ValueKind == JsonValueKind.Object && !HasDuplicateProperties(document.RootElement)
-            ? document.RootElement.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web) : null;
+        JsonElement root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object || HasDuplicateProperties(root)
+            || !root.EnumerateObject().Any(static property => property.Name.Equals("v", StringComparison.OrdinalIgnoreCase)))
+            return null;
+        ReadModelBatchMarker? marker = root.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web);
+        return marker is { Version: 1 } && (marker.Status != ReadModelBatchMarkerStatus.Completed
+            || IsUtcTerminalTime(marker.TerminalTimeUtc)) ? marker : null;
     }
+
+    private static bool IsUtcTerminalTime(string? value)
+        => value is not null && (value.EndsWith('Z') || value.EndsWith("+00:00", StringComparison.Ordinal))
+            && DateTimeOffset.TryParseExact(value,
+                ["yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'",
+                    "yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz"],
+                CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset timestamp)
+            && timestamp.Offset == TimeSpan.Zero;
 
     private static bool HasDuplicateProperties(JsonElement value)
     {

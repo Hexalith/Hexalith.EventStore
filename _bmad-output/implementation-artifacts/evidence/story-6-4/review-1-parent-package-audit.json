@@ -1,0 +1,9 @@
+{
+  "sourceSnapshot": "sourceSnapshot5",
+  "producerGate": "source5-packages3b",
+  "actualManifestPackages": 14,
+  "actualEmbeddedDllHashesChecked": 16,
+  "actualInternalVersionPinsChecked": 22,
+  "effectiveVersion": "999.0.0-ci-test",
+  "result": "pass"
+}

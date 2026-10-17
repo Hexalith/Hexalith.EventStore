@@ -24,14 +24,25 @@ internal sealed class ProjectionMessageIdDigestsJsonConverter : JsonConverter<IR
         int index = 0;
         while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
         {
-            string? value = reader.GetString();
             Span<byte> target = bytes.AsSpan(index * SHA256.HashSizeInBytes, SHA256.HashSizeInBytes);
-            if (value is null || !Convert.TryFromBase64String(value, target, out int written)
-                || written != SHA256.HashSizeInBytes || Convert.ToBase64String(target) != value)
-                (malformed ??= []).Add(index, value);
+            if (!TryReadCanonicalDigest(ref reader, target))
+                (malformed ??= []).Add(index, reader.GetString());
             index++;
         }
         return new ProjectionMessageIdDigests(bytes, malformed);
+    }
+
+    /// <summary>Validates the exact decoded legacy Base64 representation without allocating a digest string.</summary>
+    internal static bool TryReadCanonicalDigest(ref Utf8JsonReader reader, scoped Span<byte> target)
+    {
+        if (reader.TokenType != JsonTokenType.String
+            || (reader.HasValueSequence ? reader.ValueSequence.Length : reader.ValueSpan.Length) > 264) return false;
+        Span<char> encoded = stackalloc char[264];
+        Span<char> canonical = stackalloc char[44];
+        int length = reader.CopyString(encoded);
+        return length == 44 && Convert.TryFromBase64Chars(encoded[..length], target, out int written) && written == SHA256.HashSizeInBytes
+            && Convert.TryToBase64Chars(target, canonical, out int characters) && characters == length
+            && encoded[..length].SequenceEqual(canonical);
     }
 
     /// <inheritdoc/>

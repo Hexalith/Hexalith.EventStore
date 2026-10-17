@@ -1,0 +1,192 @@
+{
+  "coverageSelectors": {
+    "GuardedBody_LargeSupportedSerializerDepthDoesNotPreallocateUnvisitedContainers": {
+      "project": "Server",
+      "cases": 2,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests"
+      ]
+    },
+    "GuardedBody_RejectsByteBudgetBeforeMaterializingTheMalformedDigestGraph": {
+      "project": "Server",
+      "cases": 2,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests"
+      ]
+    },
+    "GuardedBody_RejectsDuplicateEvidenceWithTheActualWebNameMatching": {
+      "project": "Server",
+      "cases": 4,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.ProjectionDeliveryStateContractTests"
+      ]
+    },
+    "GuardedPendingRecovery_SlowReadOnlyHistoryCannotConsumeItsFinalizationDeadline": {
+      "project": "Server",
+      "cases": 1,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+      ]
+    },
+    "GuardedPreparation_CompletedCleanupRetainsEvidenceThatFencesDelayedStage": {
+      "project": "Server",
+      "cases": 1,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+      ]
+    },
+    "GuardedPreparation_FirstWriteLostResponseRetainsItsRequestBindingAndNeverPreparesAgain": {
+      "project": "Server",
+      "cases": 1,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+      ]
+    },
+    "GuardedPreparation_InterruptedReferenceReusesTheFirstImmutableManifest": {
+      "project": "Server",
+      "cases": 3,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+      ]
+    },
+    "GuardedRetry_OwningSchedulerSettlesOriginalWakeupAfterNewerHeadCompletion": {
+      "project": "Server",
+      "cases": 1,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+      ]
+    },
+    "GuardedRetry_SupersededUnreservedWorkRequiresItsExactCompletedMessageId": {
+      "project": "Server",
+      "cases": 2,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.NamedProjectionDispatchCoordinatorTests"
+      ]
+    },
+    "GuardedTransport_UsesTheAdmittedWireProfileDespiteConfigurableDaprStateSerialization": {
+      "project": "Server",
+      "cases": 1,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Projections.ProjectionWireJsonSerializerTests"
+      ]
+    },
+    "RecoveryBoundReplay_ActualSdkMappingsReuseOnePersistentManifestAcrossRetryAndFreshHosts": {
+      "project": "Domain",
+      "cases": 3,
+      "classes": [
+        "Hexalith.EventStore.DomainService.Tests.DomainServiceTrustBoundaryTests"
+      ]
+    },
+    "SelectedOwner_RejectsAmbiguousPersistedMetadataBeforeAuthorizingReceipts": {
+      "project": "Client",
+      "cases": 7,
+      "classes": [
+        "Hexalith.EventStore.Client.Tests.Projections.DaprReadModelBatchTests"
+      ]
+    },
+    "SourceBootstrapResponse_ReturnsTheActorsExistingProvenIncarnationForQualification": {
+      "project": "Server",
+      "cases": 1,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Controllers.AdminProjectionRebuildControllerTests"
+      ]
+    },
+    "SourceBootstrap_EnforcesTheProposedAnchorBudgetBeforeAnyMutation": {
+      "project": "Server",
+      "cases": 4,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Actors.AggregateActorGetEventsTests"
+      ]
+    },
+    "SourceMaintenance_AttributableAuthenticatedNonAdministratorCannotChangeAnyEvidence": {
+      "project": "Server",
+      "cases": 3,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Controllers.AdminProjectionRebuildControllerTests"
+      ]
+    },
+    "SourceMetadata_UsesTheSdkWriterEncodingForInspectionAndBootstrap": {
+      "project": "Server",
+      "cases": 3,
+      "classes": [
+        "Hexalith.EventStore.Server.Tests.Actors.AggregateActorGetEventsTests"
+      ]
+    }
+  },
+  "regressionMethodCount": 16,
+  "regressionDiscoveredCases": 39,
+  "outcomeEvidence": [
+    {
+      "name": "source6-server-full-debug",
+      "summary": {
+        "selected": 5715,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 25,
+        "notRun": 0,
+        "seconds": 882.499,
+        "passed": 5689
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll"
+      ],
+      "logSha256": "20da084c2fe10846963e2101e2270b37459cef49e0067327d709d77fd4b781c6"
+    },
+    {
+      "name": "source5-domain-full-debug",
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 132.682,
+        "passed": 978
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll"
+      ],
+      "logSha256": "f886319a1109daecde6e1e9812cb25014eb4954a56b03a9c2e35486a19fb0892"
+    },
+    {
+      "name": "source5-client-full-debug",
+      "summary": {
+        "selected": 1574,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "seconds": 7.386,
+        "passed": 1574
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll"
+      ],
+      "logSha256": "b6bde3e0e545d44131327c2e6a2a5dea90cec6032bb60dfa3ad21b57d285d8de"
+    },
+    {
+      "name": "source7-live-full-debug",
+      "summary": {
+        "selected": 192,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 1,
+        "notRun": 0,
+        "seconds": 1303.898,
+        "passed": 191
+      },
+      "commandVector": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-showLiveOutput"
+      ],
+      "logSha256": "72ed58d899bb6fa6b0ce08d4cdeacc60031c1f3b40c59b5af7a8e2846d0da05a"
+    }
+  ],
+  "serverException": "Source6 one failed unrelated broad tracked-content scanner; all mapped R1 regressions are distinct from scanner and declared skips; current Release supplement pending.",
+  "allMappedR1TestsSelectedAndPassedInRecordedDebugFrames": true,
+  "currentExactWholeQualification": "not claimed"
+}

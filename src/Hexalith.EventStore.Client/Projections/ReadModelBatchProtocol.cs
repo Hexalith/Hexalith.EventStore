@@ -85,6 +85,7 @@ internal sealed class ReadModelBatchProtocol {
         ReadModelBatch batch,
         IReadModelBatchFaultInjector? injector,
         CancellationToken cancellationToken) {
+        ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.BatchExecutions);
         ReadModelBatchStoreProfile profile = Initialize(batch, injector, cancellationToken);
         if (profile != ReadModelBatchStoreProfile.Resumable) {
             return Staging(ReadModelBatchStagingStatus.Indeterminate, "transaction-profile-not-stageable");
@@ -126,6 +127,7 @@ internal sealed class ReadModelBatchProtocol {
 
             if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
                 return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified");
             }
@@ -245,6 +247,7 @@ internal sealed class ReadModelBatchProtocol {
 
             if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
                 return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified");
             }
@@ -380,7 +383,9 @@ internal sealed class ReadModelBatchProtocol {
 
             switch (marker.Status) {
                 case ReadModelBatchMarkerStatus.Completed:
-                    return ReadModelBatchResult.AlreadyCompleted(_fingerprint);
+                    return await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
+                        ? ReadModelBatchResult.AlreadyCompleted(_fingerprint)
+                        : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 case ReadModelBatchMarkerStatus.Committed:
                     return await CompactAndCompleteAsync(cancellationToken).ConfigureAwait(false)
                         ? ReadModelBatchResult.Completed(_fingerprint)
@@ -799,6 +804,7 @@ internal sealed class ReadModelBatchProtocol {
                 // Never trust the receipt the (possibly mis-qualified) transaction wrote on a retry: prove
                 // the operation keys are durable before reporting idempotent success.
                 return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
+                    && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
                     ? ReadModelBatchResult.AlreadyCompleted(_fingerprint)
                     : ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-partial-on-retry");
             }
@@ -870,7 +876,8 @@ internal sealed class ReadModelBatchProtocol {
         }
 
         ReadModelBatchLog.Committed(_logger, _scopeHash, _profileName, _batch.Operations.Count);
-        await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
+        if (!await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false))
+            return ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
         ReadModelBatchLog.Outcome(_logger, _scopeHash, nameof(ReadModelBatchStatus.Completed), _profileName, "transaction");
         return ReadModelBatchResult.Completed(_fingerprint);
     }
@@ -932,6 +939,7 @@ internal sealed class ReadModelBatchProtocol {
                 // The receipt is part of the transaction, so a durable receipt only proves completion when
                 // the operation keys are also durable.
                 return await VerifyOperationKeysAsync(token).ConfigureAwait(false)
+                    && await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
                     ? ReadModelBatchResult.Completed(_fingerprint)
                     : ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-partial");
             }
@@ -973,7 +981,9 @@ internal sealed class ReadModelBatchProtocol {
 
             switch (marker.Status) {
                 case ReadModelBatchMarkerStatus.Completed:
-                    return ReadModelBatchResult.Completed(_fingerprint);
+                    return await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
+                        ? ReadModelBatchResult.Completed(_fingerprint)
+                        : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 case ReadModelBatchMarkerStatus.Committed:
                     return await CompactAndCompleteAsync(token).ConfigureAwait(false)
                         ? ReadModelBatchResult.Completed(_fingerprint)
@@ -1014,6 +1024,7 @@ internal sealed class ReadModelBatchProtocol {
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "compaction-race"),
                 ReadModelBatchMarkerStatus.Completed => await VerifyOperationKeysAsync(token).ConfigureAwait(false)
+                    && await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified"),
                 ReadModelBatchMarkerStatus.Aborted => Staging(ReadModelBatchStagingStatus.Aborted),
@@ -1080,26 +1091,33 @@ internal sealed class ReadModelBatchProtocol {
         bool complete = marker is not null
             && marker.Status == ReadModelBatchMarkerStatus.Completed
             && string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal);
-        if (complete) await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
-        return complete;
+        return complete && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task CleanupOriginalManifestAsync(CancellationToken cancellationToken)
+    private Task<bool> CleanupOriginalManifestAsync(CancellationToken cancellationToken)
+        => _ownerSelection is null && _ownerSelections is null ? Task.FromResult(true)
+            : ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken);
+
+    /// <summary>Reclaims only the same terminal receipt's original immutable manifest; uncertainty retains owned retry work.</summary>
+    internal static async Task<bool> ReclaimOriginalManifestAsync(IReadModelBatchStateAccessor accessor,
+        string scopeHash, string fingerprint, CancellationToken cancellationToken)
     {
-        if (_ownerSelection is null && _ownerSelections is null) return;
+        string key = ReadModelBatchKeys.ManifestKey(scopeHash);
         try
         {
-            string key = ReadModelBatchKeys.ManifestKey(_scopeHash);
-            RawStateEntry stored = await _accessor.ReadAsync(key, cancellationToken).ConfigureAwait(false);
-            if (stored.Exists && stored.Value.Length <= 1_048_576
-                && ReadModelBatchFingerprint.ComputeFromManifest(stored.Value.Span) == _fingerprint)
-                _ = await _accessor.TryDeleteAsync(key, stored.ETag, cancellationToken).ConfigureAwait(false);
+            RawStateEntry stored = await accessor.ReadAsync(key, cancellationToken).ConfigureAwait(false);
+            if (!stored.Exists) return true;
+            if (stored.Value.Length > 1_048_576
+                || ReadModelBatchFingerprint.ComputeFromManifest(stored.Value.Span) != fingerprint) return false;
+            if (await accessor.TryDeleteAsync(key, stored.ETag, cancellationToken).ConfigureAwait(false)) return true;
         }
         catch (Exception)
         {
-            // The terminal receipt and selected model are already proven. Retain immutable
-            // cleanup material on uncertainty; a mutating same-identity retry can reclaim it.
+            // A lost response can still have deleted the exact manifest. Read back
+            // below under this same bounded attempt; no model operation is repeated.
         }
+        try { return !(await accessor.ReadAsync(key, cancellationToken).ConfigureAwait(false)).Exists; }
+        catch (Exception) { return false; }
     }
 
     private bool TryGetOwnEnvelope(RawStateEntry entry, int ordinal, out ReadModelBatchEnvelope? envelope) {

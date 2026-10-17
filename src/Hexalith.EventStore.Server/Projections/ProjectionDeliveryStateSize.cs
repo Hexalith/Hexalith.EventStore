@@ -13,6 +13,7 @@ internal static class ProjectionDeliveryStateSize
     /// <summary>Returns S(H,R), including a frozen pending head when present.</summary>
     internal static long GetLimit(ProjectionDeliveryState state, int receiptLimit)
     {
+        ProjectionDeliveryReceiptValidation.Validate(state, receiptLimit);
         // S(H,R) qualifies the frozen fixture identifier lengths. Longer identifiers keep
         // their existing compatibility and are measured against the absolute cap.
         if (new[] { state.TenantId, state.Domain, state.AggregateId, state.ProjectionName }

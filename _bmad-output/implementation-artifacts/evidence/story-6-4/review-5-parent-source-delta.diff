@@ -1,0 +1,290 @@
+--- pre-pass5/src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs
++++ current/src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs
+@@ -1,3 +1,4 @@
++using System.Globalization;
+ using System.Text.Json.Serialization;
+ using System.Text.Json;
+ 
+@@ -14,9 +15,22 @@
+     internal static ReadModelBatchMarker? ReadProof(ReadOnlyMemory<byte> bytes)
+     {
+         using JsonDocument document = JsonDocument.Parse(bytes);
+-        return document.RootElement.ValueKind == JsonValueKind.Object && !HasDuplicateProperties(document.RootElement)
+-            ? document.RootElement.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web) : null;
++        JsonElement root = document.RootElement;
++        if (root.ValueKind != JsonValueKind.Object || HasDuplicateProperties(root)
++            || !root.EnumerateObject().Any(static property => property.Name.Equals("v", StringComparison.OrdinalIgnoreCase)))
++            return null;
++        ReadModelBatchMarker? marker = root.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web);
++        return marker is { Version: 1 } && (marker.Status != ReadModelBatchMarkerStatus.Completed
++            || IsUtcTerminalTime(marker.TerminalTimeUtc)) ? marker : null;
+     }
++
++    private static bool IsUtcTerminalTime(string? value)
++        => value is not null && (value.EndsWith('Z') || value.EndsWith("+00:00", StringComparison.Ordinal))
++            && DateTimeOffset.TryParseExact(value,
++                ["yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'",
++                    "yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz"],
++                CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset timestamp)
++            && timestamp.Offset == TimeSpan.Zero;
+ 
+     private static bool HasDuplicateProperties(JsonElement value)
+     {
+--- pre-pass5/src/Hexalith.EventStore.Server/Actors/SourceProofBootstrapAuthority.cs
++++ current/src/Hexalith.EventStore.Server/Actors/SourceProofBootstrapAuthority.cs
+@@ -48,6 +48,7 @@
+                 throw new InvalidOperationException("guard_activation_required");
+         }
+         finally { CryptographicOperations.ZeroMemory(key); }
++        ValidateFields(request);
+     }
+ 
+     private void ValidateFields(SourceProofBootstrapRequest request)
+--- pre-pass5/src/Hexalith.EventStore.Server/Queries/QueryRouter.cs
++++ current/src/Hexalith.EventStore.Server/Queries/QueryRouter.cs
+@@ -179,6 +179,7 @@
+                     {
+                         ProjectionLifecycleState state = metadata.Lifecycle == ProjectionLifecycleState.Rebuilding
+                             ? ProjectionLifecycleState.Rebuilding
++                            : metadata.Lifecycle == ProjectionLifecycleState.Degraded ? ProjectionLifecycleState.Degraded
+                             : metadata.Lifecycle == ProjectionLifecycleState.LocalOnly ? ProjectionLifecycleState.LocalOnly
+                             : proof.AlreadyCurrent && proof.ProvenFreshnessVersions.GetValueOrDefault(actualProjectionType) == metadata.ProjectionVersion
+                                 && metadata.ProjectionVersion is not null ? ProjectionLifecycleState.Current
+@@ -190,6 +191,7 @@
+                             Provenance = proof.ReasonCode == "empty_no_work" ? QueryResponseProvenance.Unknown : metadata.Provenance,
+                             Lifecycle = state,
+                             IsStale = ProjectionLifecyclePolicy.ProjectIsStale(state),
++                            IsDegraded = ProjectionLifecyclePolicy.ProjectIsDegraded(state, metadata.IsDegraded),
+                         };
+                     }
+                 }
+--- pre-pass5/tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelBatchTests.ReceiptProof.cs
++++ current/tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelBatchTests.ReceiptProof.cs
+@@ -0,0 +1,135 @@
++using System.Text.Json;
++using System.Text.Json.Nodes;
++
++using Hexalith.EventStore.Client.Projections;
++using Hexalith.EventStore.Contracts.Projections;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Client.Tests.Projections;
++
++public partial class DaprReadModelBatchTests
++{
++    [Theory]
++    [InlineData("missing_version")]
++    [InlineData("unsupported_version")]
++    [InlineData("missing_time")]
++    [InlineData("invalid_time")]
++    [InlineData("no_offset")]
++    [InlineData("wrong_offset")]
++    [InlineData("invalid_day")]
++    public async Task ReceiptProof_MalformedTerminalControlsCannotAuthorizeOwnerOrAppliedProofOrMutate(string corruption)
++    {
++        using var client = new RecordingDaprClient();
++        DaprReadModelStore store = CreateStore(client);
++        ReadModelBatchScope scope = Scope();
++        var selected = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType,
++            "owner-1", "generation-1", 2, scope.BatchId, scope.BatchId, "version-2");
++        var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail", new
++        { Count = 2, ProjectionVersion = selected.FreshnessVersion, ProjectionOwner = selected }, ReadModelBatchConcurrency.CreateOnly)])
++        { OwnerSelection = selected };
++        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
++        var request = new ProjectionAppliedReceiptRequest(new(scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType, "catalog"),
++            2, scope.BatchId, selected.OwnerIdentity, selected.OwnerGeneration);
++        (await store.ReadOwnerProofAsync(request.Scope, new(Store, "detail"))).Proof.ShouldNotBeNull();
++        (await store.ReadAppliedReceiptAsync(request, new(Store, "detail"))).Proof.ShouldNotBeNull();
++        byte[] original = client.ByteStoreValue(scope.ComputeMarkerKey());
++        var marker = JsonNode.Parse(original)!.AsObject();
++        if (corruption == "missing_version") marker.Remove("v");
++        else if (corruption == "unsupported_version") marker["v"] = 2;
++        else if (corruption == "missing_time") marker.Remove("time");
++        else marker["time"] = corruption switch
++        {
++            "invalid_time" => "not-a-timestamp",
++            "no_offset" => "2026-10-16T12:00:00",
++            "wrong_offset" => "2026-10-16T12:00:00+01:00",
++            _ => "2026-02-30T12:00:00Z",
++        };
++        byte[] malformed = JsonSerializer.SerializeToUtf8Bytes(marker);
++        client.SeedByteStore(scope.ComputeMarkerKey(), malformed);
++        int writes = client.TrySaveByteOperations.Count, deletes = client.TryDeleteByteOperations.Count;
++        ProjectionOwnerProofResult owner = await store.ReadOwnerProofAsync(request.Scope, new(Store, "detail"));
++        ProjectionOwnerProofResult applied = await store.ReadAppliedReceiptAsync(request, new(Store, "detail"));
++        owner.Proof.ShouldBeNull();
++        owner.ReasonCode.ShouldBe("delivery_reconciliation_required");
++        applied.Proof.ShouldBeNull();
++        applied.ReasonCode.ShouldBe("delivery_reconciliation_required");
++        client.TrySaveByteOperations.Count.ShouldBe(writes);
++        client.TryDeleteByteOperations.Count.ShouldBe(deletes);
++        client.ByteStoreValue(scope.ComputeMarkerKey()).ShouldBe(malformed);
++        client.SeedByteStore(scope.ComputeMarkerKey(), original);
++        (await store.ReadOwnerProofAsync(request.Scope, new(Store, "detail"))).Proof.ShouldNotBeNull();
++        (await store.ReadAppliedReceiptAsync(request, new(Store, "detail"))).Proof.ShouldNotBeNull();
++        client.ByteStoreValue(scope.ComputeMarkerKey()).ShouldBe(original);
++        client.TrySaveByteOperations.Count.ShouldBe(writes);
++    }
++
++    [Theory]
++    [InlineData("2026-10-16T12:00:00Z")]
++    [InlineData("2026-10-16T12:00:00.1Z")]
++    [InlineData("2026-10-16T12:00:00.1234567Z")]
++    [InlineData("2026-10-16T12:00:00+00:00")]
++    [InlineData("2026-10-16T12:00:00.1234567+00:00")]
++    public async Task ReceiptProof_ExplicitVersionAndLegitimateUtcTerminalRepresentationsPreserveWriterBytes(string terminal)
++    {
++        using var client = new RecordingDaprClient();
++        DaprReadModelStore store = CreateStore(client);
++        ReadModelBatchScope scope = Scope();
++        var selected = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType,
++            "owner-1", "generation-1", 2, scope.BatchId, scope.BatchId, "version-2");
++        var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("tenant-1:counter:agg-1:detail", new
++        { Count = 2, ProjectionVersion = selected.FreshnessVersion, ProjectionOwner = selected }, ReadModelBatchConcurrency.CreateOnly)])
++        { OwnerSelection = selected };
++        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
++        byte[] original = client.ByteStoreValue(scope.ComputeMarkerKey());
++        ReadModelBatchMarker.ReadProof(original).ShouldNotBeNull();
++        var marker = JsonNode.Parse(original)!.AsObject();
++        marker["time"] = terminal;
++        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(marker);
++        client.SeedByteStore(scope.ComputeMarkerKey(), bytes);
++        int writes = client.TrySaveByteOperations.Count;
++        var request = new ProjectionAppliedReceiptRequest(new(scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType, "catalog"),
++            2, scope.BatchId, selected.OwnerIdentity, selected.OwnerGeneration);
++        (await store.ReadOwnerProofAsync(request.Scope, new(Store, "detail"))).Proof.ShouldNotBeNull();
++        (await store.ReadAppliedReceiptAsync(request, new(Store, "detail"))).Proof.ShouldNotBeNull();
++        client.TrySaveByteOperations.Count.ShouldBe(writes);
++        client.ByteStoreValue(scope.ComputeMarkerKey()).ShouldBe(bytes);
++    }
++
++    [Theory]
++    [InlineData(0)]
++    [InlineData(1)]
++    [InlineData(2)]
++    [InlineData(3)]
++    public void ReceiptProof_NonterminalRecoveryDoesNotRequireTerminalTime(int status)
++    {
++        var marker = new ReadModelBatchMarker { Status = (ReadModelBatchMarkerStatus)status, Operations = [], OriginalManifest = [1, 2, 3] };
++        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(marker, JsonSerializerOptions.Web);
++        ReadModelBatchMarker read = ReadModelBatchMarker.ReadProof(bytes).ShouldNotBeNull();
++        read.Status.ShouldBe((ReadModelBatchMarkerStatus)status);
++        read.OriginalManifest.ShouldBe(marker.OriginalManifest);
++        read.TerminalTimeUtc.ShouldBeNull();
++    }
++
++    [Theory]
++    [InlineData(true)]
++    [InlineData(false)]
++    public async Task ReceiptProof_StrictProofParsingPreservesLegacyGuardOffBatchExecution(bool missingVersion)
++    {
++        using var client = new RecordingDaprClient();
++        DaprReadModelStore store = CreateStore(client);
++        ReadModelBatchScope scope = Scope();
++        var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("detail", new Detail(1), ReadModelBatchConcurrency.CreateOnly)]);
++        (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
++        var marker = JsonNode.Parse(client.ByteStoreValue(scope.ComputeMarkerKey()))!.AsObject();
++        if (missingVersion) marker.Remove("v");
++        else marker["time"] = "legacy-nonblank-time";
++        byte[] legacy = JsonSerializer.SerializeToUtf8Bytes(marker);
++        client.SeedByteStore(scope.ComputeMarkerKey(), legacy);
++        ReadModelBatchMarker.ReadProof(legacy).ShouldBeNull();
++        int writes = client.TrySaveByteOperations.Count;
++        (await store.ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
++        client.ByteStoreValue(scope.ComputeMarkerKey()).ShouldBe(legacy);
++        client.TrySaveByteOperations.Count.ShouldBe(writes);
++    }
++}
+--- pre-pass5/tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs
++++ current/tests/Hexalith.EventStore.Server.Tests/Actors/AggregateActorGetEventsTests.cs
+@@ -419,6 +419,43 @@
+     }
+ 
+     [Fact]
++    public async Task SourceBootstrap_KeyAuthenticationCrossingExactExpiryRefusesBeforeAnyActorStateAccess()
++    {
++        var state = new FaultInjectingActorStateManager();
++        var metadata = new AggregateMetadata(2, DateTimeOffset.UnixEpoch, "preserved");
++        await state.SeedCommittedStateAsync(new Dictionary<string, object> { [MetadataKey] = metadata });
++        var clock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.Parse("2026-10-16T12:00:00Z",
++            System.Globalization.CultureInfo.InvariantCulture));
++        var retrieval = new TaskCompletionSource<IdempotencyDigestKeyRing>(TaskCreationOptions.RunContinuationsAsynchronously);
++        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
++        bool suspended = false;
++        IIdempotencyDigestKeyProvider keys = Substitute.For<IIdempotencyDigestKeyProvider>();
++        keys.GetKeyRingAsync(Arg.Any<CancellationToken>()).Returns(_ =>
++        {
++            if (!suspended) return new ValueTask<IdempotencyDigestKeyRing>(new IdempotencyDigestKeyRing("v1",
++                new Dictionary<string, byte[]> { ["v1"] = new byte[32] }, []));
++            entered.SetResult();
++            return new ValueTask<IdempotencyDigestKeyRing>(retrieval.Task);
++        });
++        var authority = new SourceProofBootstrapAuthority(keys, clock);
++        IServiceProvider services = Substitute.For<IServiceProvider>();
++        services.GetService(typeof(SourceProofBootstrapAuthority)).Returns(authority);
++        (AggregateActor actor, _) = CreateActor(state, services);
++        SourceProofBootstrapRequest request = await authority.AuthorizeAsync(BootstrapRequest(2), CancellationToken.None);
++        suspended = true;
++        Task<SourceProofInspection> pending = actor.BootstrapSourceProofAsync(request);
++        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
++        pending.IsCompleted.ShouldBeFalse();
++        state.Trace.ShouldBeEmpty();
++        clock.SetUtcNow(request.ExpiresAt);
++        retrieval.SetResult(new IdempotencyDigestKeyRing("v1", new Dictionary<string, byte[]> { ["v1"] = new byte[32] }, []));
++        (await Should.ThrowAsync<InvalidOperationException>(() => pending)).Message.ShouldBe("guard_activation_required");
++        state.Trace.ShouldBeEmpty();
++        state.CommittedState.Count.ShouldBe(1);
++        state.CommittedState[MetadataKey].ShouldBe(metadata);
++    }
++
++    [Fact]
+     public async Task SourceBootstrap_ChangedAuthorizationRefusesBeforeAnyActorStateAccess()
+     {
+         var state = new FaultInjectingActorStateManager();
+--- pre-pass5/tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterComposedRegistrationTests.cs
++++ current/tests/Hexalith.EventStore.Server.Tests/Queries/QueryRouterComposedRegistrationTests.cs
+@@ -23,13 +23,17 @@
+ public sealed class QueryRouterComposedRegistrationTests
+ {
+     [Theory]
+-    [InlineData("current", false, ProjectionLifecycleState.Current)]
+-    [InlineData("growth", false, ProjectionLifecycleState.Stale)]
+-    [InlineData("invalid", false, ProjectionLifecycleState.Unknown)]
+-    [InlineData("guard_off", false, ProjectionLifecycleState.Current)]
+-    [InlineData("growth", true, ProjectionLifecycleState.Unknown)]
++    [InlineData("current", false, ProjectionLifecycleState.Current, false)]
++    [InlineData("growth", false, ProjectionLifecycleState.Stale, false)]
++    [InlineData("invalid", false, ProjectionLifecycleState.Unknown, false)]
++    [InlineData("guard_off", false, ProjectionLifecycleState.Current, false)]
++    [InlineData("growth", true, ProjectionLifecycleState.Unknown, false)]
++    [InlineData("current", false, ProjectionLifecycleState.Degraded, true)]
++    [InlineData("growth", false, ProjectionLifecycleState.Degraded, true)]
++    [InlineData("invalid", false, ProjectionLifecycleState.Degraded, true)]
++    [InlineData("guard_off", false, ProjectionLifecycleState.Degraded, true)]
+     public async Task ProductionDecorator_UsesOwningGuardedConcreteRouterAndPreservesDeclaredHandlerRouting(
+-        string state, bool declaredHandler, ProjectionLifecycleState expected)
++        string state, bool declaredHandler, ProjectionLifecycleState expected, bool degraded)
+     {
+         using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(1, 1,
+             unguardedLastRoute: state == "guard_off");
+@@ -46,7 +50,8 @@
+         IProjectionActorInvoker actor = Substitute.For<IProjectionActorInvoker>();
+         actor.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(
+             QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { count = 1 }), route,
+-                new QueryResponseMetadata(ProjectionVersion: "version-1", IsStale: false) { Lifecycle = ProjectionLifecycleState.Current }));
++                new QueryResponseMetadata(ProjectionVersion: "version-1", IsStale: false, IsDegraded: degraded ? false : null)
++                { Lifecycle = degraded ? ProjectionLifecycleState.Degraded : ProjectionLifecycleState.Current }));
+         IDomainQueryHandlerRegistry registry = Substitute.For<IDomainQueryHandlerRegistry>();
+         registry.SupportsQueryAsync(fixture.Identity.Domain, "query-counter", Arg.Any<CancellationToken>()).Returns(declaredHandler);
+         IDomainQueryInvoker handler = Substitute.For<IDomainQueryInvoker>();
+@@ -74,6 +79,9 @@
+         result.Success.ShouldBeTrue();
+         result.Metadata.ShouldNotBeNull().Lifecycle.ShouldBe(expected);
+         result.Metadata.Provenance.ShouldBe(declaredHandler ? QueryResponseProvenance.HandlerComputed : QueryResponseProvenance.ProjectionBacked);
++        result.Metadata.IsStale.ShouldBe(ProjectionLifecyclePolicy.ProjectIsStale(expected));
++        result.Metadata.IsDegraded.ShouldBe(degraded ? true : null);
++        ProjectionLifecyclePolicy.CanMutate(true, result.Metadata.Provenance, result.Metadata.Lifecycle).ShouldBe(expected == ProjectionLifecycleState.Current);
+         if (declaredHandler)
+         {
+             await handler.Received(1).InvokeAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>());

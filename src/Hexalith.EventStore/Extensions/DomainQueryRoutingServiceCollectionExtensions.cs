@@ -28,7 +28,7 @@ public static class DomainQueryRoutingServiceCollectionExtensions {
         // router. The factory passes the concrete QueryRouter as the inner router (resolving IQueryRouter
         // here would resolve back to the decorator). Added after AddEventStoreServer's TryAddScoped, so the
         // last IQueryRouter registration — the decorator — wins.
-        services.TryAddScoped<QueryRouter>();
+        // AddEventStoreServer owns concrete construction, including source-guard and lifecycle proof.
         _ = services.AddScoped<IQueryRouter>(serviceProvider => new HandlerAwareQueryRouter(
             serviceProvider.GetRequiredService<QueryRouter>(),
             serviceProvider.GetRequiredService<IDomainQueryHandlerRegistry>(),

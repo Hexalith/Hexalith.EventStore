@@ -1,0 +1,29 @@
+{
+  "finalNativeCommand": [
+    "env",
+    "TZ=Europe/Paris",
+    "dotnet",
+    "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+    "-method",
+    "*ReceiptProof_*",
+    "-method",
+    "*OwnerProof_*",
+    "-method",
+    "*AppliedReceipt_*",
+    "-method",
+    "*OriginalEventManifest_*",
+    "-method",
+    "*CoordinatedReplayOwners_*",
+    "-parallelMode",
+    "none",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-client-focused-2.xml"
+  ],
+  "timezone": "Europe/Paris",
+  "fixedUtcInstant": "2026-10-16T12:00:00Z",
+  "zoneAtFixedUtcInstant": "CEST +0200",
+  "preliminaryFailurePacket": "review-5-client-focused-1.json",
+  "preliminaryFailedControls": "Three legitimate Z representations; +00:00 and rejection controls remained passing.",
+  "correction": "DateTimeStyles.AssumeUniversal after exact ISO shape/suffix admission, with zero-offset validation.",
+  "finalNativeXml": "review-5-client-focused-2.xml"
+}
