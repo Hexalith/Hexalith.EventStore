@@ -29,8 +29,9 @@ namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 /// separately for every (audience, operation) pair through the scopes built by
 /// <see cref="WorkloadAssertionIssuerOptions.BuildScope"/>. Before a token is attached or cached, its <c>aud</c> claim
 /// must name exactly the requested audience and its <c>eventstore:operation</c> claim exactly the requested operation;
-/// a broader or different token is discarded. Per-request bindings cannot be embedded, so a request carrying bindings
-/// is refused rather than answered with an unbound token. Tokens are cached per pair until shortly before expiry.
+/// a broader or different token is discarded. Bound requests require an explicitly enabled authority profile;
+/// its signed response must match the whole request and the enrolled workload. Bound tokens are never cached.
+/// Ordinary client-credentials tokens are cached per pair until shortly before expiry.
 /// </para>
 /// </remarks>
 public sealed partial class JwtWorkloadAssertionIssuer(
@@ -52,18 +53,21 @@ public sealed partial class JwtWorkloadAssertionIssuer(
     private static readonly char[] OperationSeparators = [' ', '\t', '\r', '\n'];
 
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly ConcurrentDictionary<(string Audience, string Operation), CachedAssertion> _cache = new();
-    private string? _discoveredTokenEndpoint;
+    private readonly ConcurrentDictionary<(string Configuration, string Audience, string Operation), CachedAssertion> _cache = new();
+    private readonly SemaphoreSlim _metadataGate = new(1, 1);
+    private (string Key, OpenIdConnectConfiguration Metadata, DateTimeOffset RefreshAfter)? _authorityMetadata;
 
     /// <inheritdoc />
-    /// <remarks>Only the symmetric signing mode, which the shared contract admits outside Production only, can bind.</remarks>
+    /// <remarks>Binding requires admitted symmetric Development signing or explicit enrolled authority-profile support.</remarks>
     public bool CanBindResources
     {
         get
         {
             JwtBearerAuthenticationOptions contract = contractOptions.Get(EventStoreWorkloadAuthenticationDefaults.JwtContractOptionsName);
-            return !string.IsNullOrWhiteSpace(contract.SigningKey)
-                && !string.IsNullOrWhiteSpace(issuerOptions.CurrentValue.Workload)
+            WorkloadAssertionIssuerOptions issuer = issuerOptions.CurrentValue;
+            return !string.IsNullOrWhiteSpace(issuer.Workload)
+                && (!string.IsNullOrWhiteSpace(contract.SigningKey)
+                    || issuer.EnableResourceBindingRequests && issuer.HasClientCredentials())
                 && JwtBearerAuthenticationContract.Validate(contract, environment, EventStoreWorkloadAuthenticationDefaults.JwtContractSection).Succeeded;
         }
     }
@@ -132,10 +136,18 @@ public sealed partial class JwtWorkloadAssertionIssuer(
 
         if (request.Bindings is { Count: > 0 })
         {
-            // A client-credentials token cannot carry the requested bindings; an unbound assertion would be replayable
-            // for any tenant or topic, so none is issued.
-            LogIssuerUnavailable(logger, "bindings-unsupported");
-            return null;
+            if (!issuer.EnableResourceBindingRequests || !issuer.HasClientCredentials() || string.IsNullOrWhiteSpace(issuer.Workload))
+            {
+                LogIssuerUnavailable(logger, "bindings-unsupported");
+                return null;
+            }
+            return await AcquireBoundAssertionAsync(contract, issuer, request, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (issuer.EnableResourceBindingRequests)
+        {
+            if (!issuer.HasClientCredentials() || string.IsNullOrWhiteSpace(issuer.Workload)) return null;
+            return await AcquireBoundAssertionAsync(contract, issuer, request, cancellationToken).ConfigureAwait(false);
         }
 
         return await AcquireClientCredentialsAsync(
@@ -147,7 +159,11 @@ public sealed partial class JwtWorkloadAssertionIssuer(
     }
 
     /// <inheritdoc />
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+    {
+        _gate.Dispose();
+        _metadataGate.Dispose();
+    }
 
     private string? Sign(JwtBearerAuthenticationOptions contract, WorkloadAssertionIssuerOptions issuer, WorkloadAssertionRequest request)
     {
@@ -207,7 +223,7 @@ public sealed partial class JwtWorkloadAssertionIssuer(
             return null;
         }
 
-        (string Audience, string Operation) key = (audience, operation);
+        (string Configuration, string Audience, string Operation) key = (GetIssuerConfigurationKey(contract, issuer), audience, operation);
         if (TryGetCached(key, out string? cached))
         {
             return cached;
@@ -235,18 +251,16 @@ public sealed partial class JwtWorkloadAssertionIssuer(
                 ["scope"] = issuer.BuildScope(audience, operation),
             });
             HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-            using HttpResponseMessage response = await client.PostAsync(new Uri(endpoint), form, cancellationToken).ConfigureAwait(false);
+            using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, new Uri(endpoint)) { Content = form };
+            using HttpResponseMessage response = await client.SendAsync(tokenRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 LogTokenRequestFailed(logger, (int)response.StatusCode);
                 return null;
             }
 
-            await response.Content.LoadIntoBufferAsync(MaximumTokenResponseBytes, cancellationToken).ConfigureAwait(false);
-            Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            await using (stream.ConfigureAwait(false))
+            using (JsonDocument document = await ReadBoundedTokenResponseAsync(response.Content, cancellationToken).ConfigureAwait(false))
             {
-                using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
                 if (!document.RootElement.TryGetProperty("access_token", out JsonElement tokenElement)
                     || tokenElement.ValueKind != JsonValueKind.String
                     || string.IsNullOrWhiteSpace(tokenElement.GetString()))
@@ -282,7 +296,7 @@ public sealed partial class JwtWorkloadAssertionIssuer(
         {
             throw;
         }
-        catch (Exception exception) when (exception is HttpRequestException or JsonException or IOException or InvalidOperationException or TaskCanceledException)
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or IOException or InvalidDataException or InvalidOperationException or TaskCanceledException)
         {
             LogIssuerUnavailable(logger, "token-endpoint-unavailable");
             return null;
@@ -334,7 +348,7 @@ public sealed partial class JwtWorkloadAssertionIssuer(
         return lifetime;
     }
 
-    private bool TryGetCached((string Audience, string Operation) key, out string? token)
+    private bool TryGetCached((string Configuration, string Audience, string Operation) key, out string? token)
     {
         if (_cache.TryGetValue(key, out CachedAssertion? cached) && clock.GetUtcNow() < cached.RefreshAfter)
         {
@@ -352,39 +366,68 @@ public sealed partial class JwtWorkloadAssertionIssuer(
         CancellationToken cancellationToken)
     {
         string? endpoint = issuer.TokenEndpoint;
-        bool discovered = false;
         if (string.IsNullOrWhiteSpace(endpoint))
         {
-            endpoint = _discoveredTokenEndpoint;
+            OpenIdConnectConfiguration? metadata = await GetAuthorityMetadataAsync(contract, cancellationToken, issuer.EnableResourceBindingRequests).ConfigureAwait(false);
+            endpoint = metadata?.TokenEndpoint;
         }
-
-        if (string.IsNullOrWhiteSpace(endpoint))
-        {
-            string metadataAddress = contract.Authority!.Trim().TrimEnd('/') + "/.well-known/openid-configuration";
-            HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-            OpenIdConnectConfiguration metadata = await OpenIdConnectConfigurationRetriever.GetAsync(
-                metadataAddress,
-                new HttpDocumentRetriever(client) { RequireHttps = contract.RequireHttpsMetadata },
-                cancellationToken).ConfigureAwait(false);
-            endpoint = metadata.TokenEndpoint;
-            discovered = true;
-        }
-
-        if (!Uri.TryCreate(endpoint?.Trim(), UriKind.Absolute, out Uri? uri)
-            || !(string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                || (environment.IsDevelopment() && string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))))
+        if (!IsValidTokenEndpoint(endpoint))
         {
             LogIssuerUnavailable(logger, "token-endpoint-invalid");
             return null;
         }
+        return new Uri(endpoint!.Trim()).AbsoluteUri;
+    }
 
-        // A discovered endpoint is reused only after it passed validation; an invalid one is rediscovered next time.
-        if (discovered)
+    private bool IsValidTokenEndpoint(string? endpoint) => Uri.TryCreate(endpoint?.Trim(), UriKind.Absolute, out Uri? uri)
+        && string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Fragment)
+        && (uri.Scheme == Uri.UriSchemeHttps || environment.IsDevelopment() && uri.Scheme == Uri.UriSchemeHttp);
+
+    private async Task<OpenIdConnectConfiguration?> GetAuthorityMetadataAsync(JwtBearerAuthenticationOptions contract,
+        CancellationToken cancellationToken, bool requireSigningKeys = false)
+    {
+        string key = JsonSerializer.Serialize(new { contract.Authority, contract.Issuer, contract.RequireHttpsMetadata, contract.AllowedAlgorithms, requireSigningKeys });
+        await _metadataGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            _discoveredTokenEndpoint = uri.AbsoluteUri;
+            DateTimeOffset now = clock.GetUtcNow();
+            if (_authorityMetadata is { } cached && cached.Key == key && now < cached.RefreshAfter) return cached.Metadata;
+            // Keep one trust snapshot, not an unbounded authority registry. Expired/changed trust never falls back.
+            _authorityMetadata = null;
+            HttpClient client = httpClientFactory.CreateClient(HttpClientName);
+            OpenIdConnectConfiguration metadata = await OpenIdConnectConfigurationRetriever.GetAsync(
+                contract.Authority!.Trim().TrimEnd('/') + "/.well-known/openid-configuration",
+                new HttpDocumentRetriever(client) { RequireHttps = contract.RequireHttpsMetadata }, cancellationToken).ConfigureAwait(false);
+            if (metadata.Issuer != contract.Issuer.Trim() || !IsValidTokenEndpoint(metadata.TokenEndpoint)
+                || requireSigningKeys && metadata.SigningKeys.Count == 0) return null;
+            _authorityMetadata = (key, metadata, now.AddMinutes(5));
+            return metadata;
         }
+        finally { _metadataGate.Release(); }
+    }
 
-        return uri.AbsoluteUri;
+    private static string GetIssuerConfigurationKey(JwtBearerAuthenticationOptions contract, WorkloadAssertionIssuerOptions issuer)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        {
+            contract.Authority, contract.Issuer, contract.RequireHttpsMetadata, contract.AllowedAlgorithms,
+            issuer.ClientId, issuer.ClientSecret, issuer.TokenEndpoint, issuer.AudienceScopePrefix, issuer.OperationScopePrefix,
+        }))));
+
+    private static async Task<JsonDocument> ReadBoundedTokenResponseAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        if (content.Headers.ContentLength > MaximumTokenResponseBytes) throw new InvalidDataException("Token response exceeds its bound.");
+        using Stream input = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var output = new MemoryStream();
+        byte[] buffer = new byte[8192];
+        while (true)
+        {
+            int requested = (int)Math.Min(buffer.Length, MaximumTokenResponseBytes + 1 - output.Length);
+            int read = await input.ReadAsync(buffer.AsMemory(0, requested), cancellationToken).ConfigureAwait(false);
+            if (read == 0) break;
+            output.Write(buffer, 0, read);
+            if (output.Length > MaximumTokenResponseBytes) throw new InvalidDataException("Token response exceeds its bound.");
+        }
+        return JsonDocument.Parse(output.ToArray());
     }
 
     [LoggerMessage(

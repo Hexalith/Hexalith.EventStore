@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -183,7 +184,8 @@ public static class EventStoreWorkloadAuthenticationExtensions
             _ = options.PostConfigure(applyDefaults);
         }
 
-        _ = services.AddHttpClient(JwtWorkloadAssertionIssuer.HttpClientName);
+        _ = services.AddHttpClient(JwtWorkloadAssertionIssuer.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(static () => new HttpClientHandler { AllowAutoRedirect = false });
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton(WorkloadSecurityClock.System);
         services.TryAddSingleton<IWorkloadAssertionIssuer, JwtWorkloadAssertionIssuer>();
@@ -218,9 +220,26 @@ public static class EventStoreWorkloadAuthenticationExtensions
         _ = services.AddSingleton<WorkloadContractMarker>();
         OptionsBuilder<JwtBearerAuthenticationOptions> contract = services
             .AddOptions<JwtBearerAuthenticationOptions>(EventStoreWorkloadAuthenticationDefaults.JwtContractOptionsName);
-        _ = configuration is null
-            ? contract.BindConfiguration(EventStoreWorkloadAuthenticationDefaults.JwtContractSection)
-            : contract.Bind(configuration.GetSection(EventStoreWorkloadAuthenticationDefaults.JwtContractSection));
+        if (configuration is null)
+        {
+            _ = contract.Configure<IConfiguration>(static (options, root) => BindWorkloadContract(options, root));
+            _ = services.AddSingleton<IOptionsChangeTokenSource<JwtBearerAuthenticationOptions>>(provider =>
+                new ConfigurationChangeTokenSource<JwtBearerAuthenticationOptions>(EventStoreWorkloadAuthenticationDefaults.JwtContractOptionsName,
+                    provider.GetRequiredService<IConfiguration>()));
+        }
+        else
+        {
+            _ = contract.Configure(options => BindWorkloadContract(options, configuration));
+            _ = services.AddSingleton<IOptionsChangeTokenSource<JwtBearerAuthenticationOptions>>(
+                new ConfigurationChangeTokenSource<JwtBearerAuthenticationOptions>(EventStoreWorkloadAuthenticationDefaults.JwtContractOptionsName, configuration));
+        }
+    }
+
+    private static void BindWorkloadContract(JwtBearerAuthenticationOptions options, IConfiguration root)
+    {
+        IConfigurationSection dedicated = root.GetSection(EventStoreWorkloadAuthenticationDefaults.DedicatedJwtContractSection);
+        // A partially configured dedicated contract must fail closed rather than inherit a public issuer or signing key.
+        (dedicated.Exists() ? dedicated : root.GetSection(EventStoreWorkloadAuthenticationDefaults.JwtContractSection)).Bind(options);
     }
 
     private static void AddSharedWorkloadServices(IServiceCollection services)

@@ -226,7 +226,8 @@ public static class EventStoreServiceCollectionExtensions {
                 }
 
                 // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1), then verified internal identity.
-                string tenantId = context.User?.FindFirst("eventstore:tenant")?.Value
+                string tenantId = context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
+                    ?? context.User?.FindFirst("eventstore:tenant")?.Value
                     ?? EventStoreRateLimitPartition.TrustedTenantKey(context.User)
                     ?? EventStoreRateLimitPartition.TrustedInternalKey(context.User)
                     ?? "anonymous";
@@ -266,9 +267,10 @@ public static class EventStoreServiceCollectionExtensions {
                 // Human consumer identity comes from JWT "sub"; verified internal identities have their own
                 // bounded buckets. All other traffic shares one anonymous consumer bucket.
                 string? rawConsumerId = context.User?.FindFirst("sub")?.Value;
-                string consumerId = !string.IsNullOrWhiteSpace(rawConsumerId)
-                    ? rawConsumerId
-                    : EventStoreRateLimitPartition.TrustedInternalKey(context.User) ?? "anonymous";
+                string consumerId = context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
+                    ?? (!string.IsNullOrWhiteSpace(rawConsumerId)
+                        ? rawConsumerId
+                        : EventStoreRateLimitPartition.TrustedInternalKey(context.User) ?? "anonymous");
 
                 IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
                 RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;

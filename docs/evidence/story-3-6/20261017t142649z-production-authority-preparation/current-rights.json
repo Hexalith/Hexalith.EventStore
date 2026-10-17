@@ -1,0 +1,211 @@
+{
+  "observedAt": "2026-10-17T14:26:49.229445+00:00",
+  "context": "jpiquot@local",
+  "identity": {
+    "username": "jpiquot",
+    "groups": [
+      "system:authenticated"
+    ]
+  },
+  "scope": "Current native Kubernetes authorization only; not Timesheets domain, enrollment or migration authority. auth can-i uses nonpersisting SelfSubjectAccessReview. No grants changed.",
+  "checks": [
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "get",
+        "namespaces"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": "Warning: resource 'namespaces' is not namespace scoped"
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "list",
+        "namespaces"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": "Warning: resource 'namespaces' is not namespace scoped"
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "get",
+        "deployments.apps",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "list",
+        "deployments.apps",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "create",
+        "deployments.apps",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "patch",
+        "deployments.apps",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "delete",
+        "deployments.apps",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "create",
+        "secrets",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "create",
+        "namespaces"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": "Warning: resource 'namespaces' is not namespace scoped"
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "create",
+        "rolebindings.rbac.authorization.k8s.io",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "get",
+        "pods",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "kubectl",
+        "--context",
+        "jpiquot@local",
+        "--request-timeout=15s",
+        "auth",
+        "can-i",
+        "get",
+        "pods/log",
+        "-n",
+        "hx-recovery-staging"
+      ],
+      "exitCode": 0,
+      "answer": "yes",
+      "stderr": ""
+    }
+  ]
+}

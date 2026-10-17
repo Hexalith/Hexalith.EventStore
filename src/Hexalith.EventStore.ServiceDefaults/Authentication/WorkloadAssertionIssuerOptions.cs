@@ -41,6 +41,12 @@ public sealed class WorkloadAssertionIssuerOptions
     /// <summary>Gets or sets an explicit token endpoint; when omitted it is discovered from the authority metadata.</summary>
     public string? TokenEndpoint { get; set; }
 
+    /// <summary>
+    /// Gets or sets explicit support for the enrolled authority's EventStore authorization_details profile.
+    /// Default false. Enabling this does not create a grant or establish authority enrollment.
+    /// </summary>
+    public bool EnableResourceBindingRequests { get; set; }
+
     /// <summary>Gets or sets the lifetime of a self-signed assertion in seconds.</summary>
     public int LifetimeSeconds { get; set; } = DefaultLifetimeSeconds;
 

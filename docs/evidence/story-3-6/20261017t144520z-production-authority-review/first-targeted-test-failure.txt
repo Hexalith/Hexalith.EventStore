@@ -1,0 +1,15 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
+  Discovering: Hexalith.EventStore.Server.Tests
+  Discovered:  Hexalith.EventStore.Server.Tests
+  Starting:    Hexalith.EventStore.Server.Tests
+    Hexalith.EventStore.Server.Tests.Authentication.WorkloadBindingAuthorityTests.BoundClientChecksSignatureAndWholeResourceScope(shape: "oversized-response", success: False) [FAIL]
+      System.IO.InvalidDataException : Token response exceeds its bound.
+      Stack Trace:
+        src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs(428,0): at Hexalith.EventStore.ServiceDefaults.Authentication.JwtWorkloadAssertionIssuer.ReadBoundedTokenResponseAsync(HttpContent content, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs(28,0): at Hexalith.EventStore.ServiceDefaults.Authentication.JwtWorkloadAssertionIssuer.AcquireBoundAssertionAsync(JwtBearerAuthenticationOptions contract, WorkloadAssertionIssuerOptions issuer, WorkloadAssertionRequest request, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs(144,0): at Hexalith.EventStore.ServiceDefaults.Authentication.JwtWorkloadAssertionIssuer.IssueAsync(WorkloadAssertionRequest request, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs(184,0): at Hexalith.EventStore.Server.Tests.Authentication.WorkloadBindingAuthorityTests.BoundClientChecksSignatureAndWholeResourceScope(String shape, Boolean success)
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.Tests (ID = '9b0bbc259962f3185dcdbc74041e11fd8029f6fadba91780c3ea61f475afd481')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.Tests  Total: 83, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 2.210s

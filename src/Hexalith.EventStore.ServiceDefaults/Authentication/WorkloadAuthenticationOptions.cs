@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.ServiceDefaults.Authentication;
 /// </summary>
 /// <remarks>
 /// Issuer, signing keys, algorithms, clock skew, and lifetime validation always come from the shared JWT
-/// contract (<c>Authentication:JwtBearer</c>); these settings only narrow the accepted audience, callers, and
+/// contract (<c>Authentication:WorkloadJwtBearer</c>, falling back to <c>Authentication:JwtBearer</c> only when absent); these settings only narrow the accepted audience, callers, and
 /// assertion lifetime.
 /// </remarks>
 public sealed class WorkloadAuthenticationOptions

@@ -1,0 +1,129 @@
+{
+  "recordedAt": "2026-10-17T14:52:23.987348+00:00",
+  "kind": "review-follow-up-local-technical-verification",
+  "deployedAcceptance": false,
+  "signerOrGrantEnrolled": false,
+  "previousEvidencePreserved": "../20261017t142649z-production-authority-preparation",
+  "preReviewSnapshot": "pre-review-sources.json",
+  "checks": [
+    {
+      "command": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+        "--no-restore",
+        "-p:UseHexalithProjectReferences=true",
+        "-m:1",
+        "--nologo",
+        "-v:minimal"
+      ],
+      "environment": {
+        "DOTNET_CLI_HOME": "/tmp/dotnet-cli-home"
+      },
+      "exitCode": 0,
+      "result": "Build succeeded, zero warnings/errors; 10.80s.",
+      "log": "build.txt"
+    },
+    {
+      "command": [
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests",
+        "-class",
+        "*WorkloadBindingAuthorityTests",
+        "-class",
+        "*JwtWorkloadAssertionIssuerTests",
+        "-class",
+        "*EventStoreWorkloadRateLimitTests",
+        "-noColor"
+      ],
+      "environment": {
+        "DOTNET_CLI_HOME": "/tmp/dotnet-cli-home"
+      },
+      "startedAt": "2026-10-17T14:52:21.435339+00:00",
+      "endedAt": "2026-10-17T14:52:23.987365+00:00",
+      "exitCode": 0,
+      "log": "targeted-tests.txt"
+    }
+  ],
+  "sources": [
+    {
+      "path": "docs/security/workload-binding-authority.md",
+      "sha256": "c48b2494bf93e8af030da481819b09238e42a246da554f35c75b4f833f7a9045"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+      "sha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+      "sha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+      "sha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+      "sha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+      "sha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+      "sha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+      "sha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+      "sha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+      "sha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+      "sha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+      "sha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+      "sha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "sha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Program.cs",
+      "sha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+      "sha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+      "sha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+      "sha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "sha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+      "sha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2"
+    }
+  ]
+}

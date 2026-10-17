@@ -33,6 +33,9 @@ public static class EventStoreWorkloadAuthenticationDefaults
     /// <summary>Gets the configuration section holding the shared JWT validation contract.</summary>
     public const string JwtContractSection = "Authentication:JwtBearer";
 
+    /// <summary>Gets the optional dedicated JWT contract for workload issuers and receivers, independent from public user JWTs.</summary>
+    public const string DedicatedJwtContractSection = "Authentication:WorkloadJwtBearer";
+
     /// <summary>Gets the named options instance that carries the shared JWT contract for workload schemes.</summary>
     public const string JwtContractOptionsName = "EventStoreWorkloadContract";
 

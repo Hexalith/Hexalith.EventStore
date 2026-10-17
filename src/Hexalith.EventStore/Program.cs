@@ -6,6 +6,7 @@ using Hexalith.EventStore.Middleware;
 using Hexalith.EventStore.OpenApi;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.ServiceDefaults;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.SignalRHub;
 
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -21,6 +22,12 @@ builder.Services.AddEventStore();
 builder.Services.AddEventStoreServer(builder.Configuration);
 builder.Services.AddEventStoreDomainQueryRouting();
 builder.Services.AddEventStoreSignalR(builder.Configuration);
+
+bool workloadAuthorityEnabled = builder.Configuration.GetValue<bool>("Authentication:WorkloadAuthority:Enabled");
+if (workloadAuthorityEnabled)
+{
+    builder.Services.AddEventStoreWorkloadBindingAuthority(builder.Configuration);
+}
 
 WebApplication app = builder.Build();
 
@@ -51,6 +58,10 @@ if (!declarativeSubscriptions)
     app.MapSubscribeHandler();
 }
 app.MapActorsHandlers();
+if (workloadAuthorityEnabled)
+{
+    app.MapEventStoreWorkloadBindingAuthority();
+}
 app.MapApplicationRuntimeProofEndpoints();
 
 // SignalR hub for real-time projection change notifications (conditional)

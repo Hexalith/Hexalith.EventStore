@@ -1,0 +1,529 @@
+
+using System.Text.Json;
+using System.Threading.RateLimiting;
+
+using FluentValidation;
+
+using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Commands;
+using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Filters;
+using Hexalith.EventStore.Indexes;
+using Hexalith.EventStore.Middleware;
+using Hexalith.EventStore.OpenApi;
+using Hexalith.EventStore.Pipeline;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Pipeline;
+using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Services;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Hexalith.EventStore.Validation;
+
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
+
+using ExtensionMetadataSanitizer = Hexalith.EventStore.Validation.ExtensionMetadataSanitizer;
+
+namespace Hexalith.EventStore.Extensions;
+
+public static class EventStoreServiceCollectionExtensions {
+    public static IServiceCollection AddEventStore(this IServiceCollection services) {
+        ArgumentNullException.ThrowIfNull(services);
+
+        _ = services.AddProblemDetails();
+        _ = services.AddExceptionHandler<ValidationExceptionHandler>();
+        _ = services.AddExceptionHandler<AuthorizationServiceUnavailableHandler>();  // 503 — BEFORE 403
+        _ = services.AddExceptionHandler<AuthorizationExceptionHandler>();           // 403
+        _ = services.AddExceptionHandler<BackpressureExceptionHandler>();
+        _ = services.AddExceptionHandler<IdempotencyKeyExpiredExceptionHandler>();
+        _ = services.AddExceptionHandler<IdempotencyConflictExceptionHandler>();
+        _ = services.AddExceptionHandler<IdempotencyAdmissionFailureExceptionHandler>();
+        _ = services.AddExceptionHandler<CommandIdentityConflictExceptionHandler>();
+        _ = services.AddExceptionHandler<ConcurrencyConflictExceptionHandler>();
+        _ = services.AddExceptionHandler<DomainCommandRejectedExceptionHandler>();
+        _ = services.AddExceptionHandler<QueryNotFoundExceptionHandler>();           // 404
+        _ = services.AddExceptionHandler<QueryExecutionFailedExceptionHandler>();    // 403 / 501 query failures
+        _ = services.AddExceptionHandler<BackpressureExceptionHandler>();             // 429 (per-aggregate backpressure)
+        _ = services.AddExceptionHandler<DaprSidecarUnavailableHandler>();          // 503 (sidecar down)
+        _ = services.AddExceptionHandler<GlobalExceptionHandler>();
+
+        _ = services.AddHttpContextAccessor();
+
+        // JWT Bearer Authentication (replaces auth stubs from Story 2.1)
+        _ = services.AddOptions<EventStoreAuthenticationOptions>()
+            .BindConfiguration("Authentication:JwtBearer")
+            .ValidateOnStart();
+
+        _ = services.AddSingleton<IValidateOptions<EventStoreAuthenticationOptions>, ValidateEventStoreAuthenticationOptions>();
+        _ = services.AddSingleton<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
+        _ = services.AddSingleton<ITrustedEffectDelegationVerifier, JwtTrustedEffectDelegationVerifier>();
+
+        // Bind internal DAPR caller options (allow-list of trusted service app-ids).
+        _ = services.AddOptions<DaprInternalAuthenticationOptions>(DaprInternalAuthenticationOptions.SchemeName)
+            .BindConfiguration("Authentication:DaprInternal");
+        _ = services.AddSingleton<DaprAppChannelTokenValidator>();
+        _ = services.AddSingleton<ProjectionNotificationProvenanceVerifier>();
+
+        const string HexalithPolicyScheme = "Hexalith";
+
+        // Composite policy scheme (FR28): a request presenting a workload assertion is authenticated only by the
+        // DaprInternal workload scheme — the Dapr app-channel token plus a short-lived assertion from the trusted
+        // JWT issuer naming an allow-listed caller and its granted operations. Every other request uses the user
+        // JwtBearer scheme. A sidecar channel token selects its own scheme only when no bearer token is present;
+        // a valid channel token proves the channel, never a workload or human authority. The plaintext
+        // dapr-caller-app-id header never selects a scheme or mints claims, and
+        // the DaprInternal principal carries no tenant, permission, or global-administrator claim.
+        _ = services
+            .AddAuthentication(options => {
+                options.DefaultScheme = HexalithPolicyScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddPolicyScheme(HexalithPolicyScheme, HexalithPolicyScheme, policyOptions =>
+                policyOptions.ForwardDefaultSelector = context =>
+                    context.Request.Headers.ContainsKey(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName)
+                        ? DaprInternalAuthenticationOptions.SchemeName
+                        : context.Request.Headers.ContainsKey(DaprAppChannelToken.HeaderName)
+                            && !context.Request.Headers.ContainsKey("Authorization")
+                            ? EventStoreWorkloadAuthenticationDefaults.SidecarChannelScheme
+                            : JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer()
+            .AddEventStoreWorkloadScheme(
+                DaprInternalAuthenticationOptions.SchemeName,
+                "Authentication:DaprInternal",
+                static (options, _) => {
+                    if (string.IsNullOrWhiteSpace(options.Audience)) {
+                        options.Audience = DaprInternalAuthenticationOptions.DefaultAudience;
+                    }
+                })
+            .AddEventStoreSidecarChannelScheme();
+        _ = services.AddEventStoreWorkloadPolicies(
+            DaprInternalAuthenticationOptions.SchemeName,
+            [EventStoreWorkloadOperations.TrustedEffect,
+             EventStoreWorkloadOperations.GatewayCommandSubmit,
+             EventStoreWorkloadOperations.GatewayCommandStatus,
+             EventStoreWorkloadOperations.GatewayStreamRead,
+             EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery]);
+
+        _ = services.AddAuthorization();
+
+        // FR28: a plain [Authorize] endpoint serves authenticated human callers only. The default policy authenticates
+        // the JwtBearer scheme alone, so a workload principal, even a valid one, never satisfies it; an internal
+        // operation names its own workload policy (for example DaprInternalAuthenticationOptions.TrustedEffectPolicy).
+        _ = services.Configure<AuthorizationOptions>(static options =>
+            options.DefaultPolicy = CreateHumanDefaultPolicy());
+
+        // Authorization options (Story 17-1) — claims-based default, actor-based when configured
+        _ = services.AddOptions<EventStoreAuthorizationOptions>()
+            .BindConfiguration("EventStore:Authorization")
+            .ValidateOnStart();
+
+        _ = services.AddSingleton<IValidateOptions<EventStoreAuthorizationOptions>, ValidateEventStoreAuthorizationOptions>();
+
+        // Register concrete claims-based implementations (always available)
+        _ = services.AddScoped<ClaimsTenantValidator>();
+        _ = services.AddScoped<ClaimsRbacValidator>();
+
+        // Register concrete actor-based implementations (always available for DI)
+        _ = services.AddScoped<ActorTenantValidator>();
+        _ = services.AddScoped<ActorRbacValidator>();
+        _ = services.AddScoped<AdminTenantAuthorizationFilter>();
+
+        // Factory delegate selects implementation at resolve-time based on configuration
+        _ = services.AddScoped<ITenantValidator>(sp => {
+            EventStoreAuthorizationOptions opts = sp.GetRequiredService<IOptions<EventStoreAuthorizationOptions>>().Value;
+            if (opts.TenantValidatorActorName is null) {
+                return sp.GetRequiredService<ClaimsTenantValidator>();
+            }
+
+            return sp.GetRequiredService<ActorTenantValidator>();
+        });
+
+        _ = services.AddScoped<IRbacValidator>(sp => {
+            EventStoreAuthorizationOptions opts = sp.GetRequiredService<IOptions<EventStoreAuthorizationOptions>>().Value;
+            if (opts.RbacValidatorActorName is null) {
+                return sp.GetRequiredService<ClaimsRbacValidator>();
+            }
+
+            return sp.GetRequiredService<ActorRbacValidator>();
+        });
+
+        _ = services.AddHostedService<EventStoreAuthorizationStartupValidator>();
+
+        // Claims transformation
+        _ = services.AddTransient<IClaimsTransformation, EventStoreClaimsTransformation>();
+
+        // Command status tracking (Story 2.6)
+        _ = services.AddOptions<CommandStatusOptions>()
+            .BindConfiguration("EventStore:CommandStatus");
+        _ = services.AddSingleton<ICommandStatusStore, DaprCommandStatusStore>();
+        _ = services.AddOptions<CommandCorrelationIndexOptions>()
+            .BindConfiguration("EventStore:CommandCorrelationIndex")
+            .Validate(
+                o => o.Capacity > 0 && o.MaxConcurrencyRetries >= 0,
+                "Command correlation index Capacity must be greater than zero and MaxConcurrencyRetries must be non-negative.")
+            .ValidateOnStart();
+        _ = services.AddSingleton<ICommandCorrelationIndex, DaprCommandCorrelationIndex>();
+
+        // Command archive for replay (Story 2.7)
+        _ = services.AddSingleton<ICommandArchiveStore, DaprCommandArchiveStore>();
+
+        // Command activity tracking for admin UI Commands page (DAPR state store backed).
+        _ = services.AddSingleton<DaprCommandActivityTracker>();
+        _ = services.AddSingleton<ICommandActivityTracker>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
+        _ = services.AddSingleton<ICommandActivityReader>(sp => sp.GetRequiredService<DaprCommandActivityTracker>());
+
+        _ = services.AddSingleton<DaprSnapshotPolicyRepository>();
+        _ = services.AddSingleton<ISnapshotPolicyResolver>(sp => sp.GetRequiredService<DaprSnapshotPolicyRepository>());
+        _ = services.AddSingleton<ICommandAggregateTypeResolver, DaprCommandAggregateTypeResolver>();
+
+        // Stream activity tracking for admin UI Streams/Events pages (DAPR state store backed).
+        // Writer only — the reader lives in DaprStreamQueryService on the Admin.Server side.
+        _ = services.AddSingleton<DaprStreamActivityTracker>();
+        _ = services.AddSingleton<IStreamActivityTracker>(sp => sp.GetRequiredService<DaprStreamActivityTracker>());
+        _ = services.AddSingleton<AdminOperationalIndexHostedService>();
+        _ = services.AddSingleton<INamedProjectionCatalogRefresher>(
+            static serviceProvider => serviceProvider.GetRequiredService<AdminOperationalIndexHostedService>());
+        _ = services.AddHostedService(
+            static serviceProvider => serviceProvider.GetRequiredService<AdminOperationalIndexHostedService>());
+
+        // Extension metadata sanitization (Story 5.4, SEC-4)
+        _ = services.AddOptions<ExtensionMetadataOptions>()
+            .BindConfiguration("EventStore:ExtensionMetadata")
+            .ValidateOnStart();
+
+        _ = services.AddSingleton<IValidateOptions<ExtensionMetadataOptions>, ValidateExtensionMetadataOptions>();
+        _ = services.AddSingleton<ExtensionMetadataSanitizer>();
+
+        // Rate limiting (Story 2.9)
+        _ = services.AddOptions<RateLimitingOptions>()
+            .BindConfiguration("EventStore:RateLimiting")
+            .ValidateOnStart();
+
+        _ = services.AddSingleton<IValidateOptions<RateLimitingOptions>, ValidateRateLimitingOptions>();
+
+        // DAPR config store sync for per-tenant rate limit overrides (optional, graceful fallback)
+        _ = services.AddHostedService<DaprRateLimitConfigSync>();
+
+        _ = services.AddRateLimiter(rateLimiterOptions => {
+            rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            // Per-tenant limiter; verified internal callers have separate bounded partitions because they carry
+            // no human tenant claim. Unverified traffic remains in the anonymous partition.
+            var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+                // Health endpoints must never be rate limited (H2)
+                string path = context.Request.Path.Value ?? string.Empty;
+                if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
+                    return RateLimitPartition.GetNoLimiter<string>("__health");
+                }
+
+                // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1), then verified internal identity.
+                string tenantId = context.User?.FindFirst("eventstore:tenant")?.Value
+                    ?? EventStoreRateLimitPartition.TrustedTenantKey(context.User)
+                    ?? EventStoreRateLimitPartition.TrustedInternalKey(context.User)
+                    ?? "anonymous";
+
+                IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
+                RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;
+
+                // Per-tenant resolution: TenantPermitLimits[tenantId] > PermitLimit (default).
+                // Note: PartitionedRateLimiter caches SlidingWindowRateLimiter instances per partition key.
+                // Updated options only affect partitions created after the change. Existing active partitions
+                // keep their old limits until they expire from idle timeout (~60 seconds). This eventual-
+                // consistency is acceptable by design.
+                int permitLimit = rateLimitOptions.TenantPermitLimits.TryGetValue(tenantId, out int tenantLimit)
+                    ? tenantLimit
+                    : rateLimitOptions.PermitLimit;
+
+                return RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ =>
+                    new SlidingWindowRateLimiterOptions {
+                        PermitLimit = permitLimit,
+                        Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
+                        SegmentsPerWindow = rateLimitOptions.SegmentsPerWindow,
+                        QueueLimit = rateLimitOptions.QueueLimit,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    });
+            });
+
+            // Per-consumer limiter keyed by human JWT subject or verified workload identity.
+            var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+                // Health endpoints must never be rate limited (same exemption as per-tenant)
+                string path = context.Request.Path.Value ?? string.Empty;
+                if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
+                    path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
+                    return RateLimitPartition.GetNoLimiter<string>("__health");
+                }
+
+                // Human consumer identity comes from JWT "sub"; verified internal identities have their own
+                // bounded buckets. All other traffic shares one anonymous consumer bucket.
+                string? rawConsumerId = context.User?.FindFirst("sub")?.Value;
+                string consumerId = !string.IsNullOrWhiteSpace(rawConsumerId)
+                    ? rawConsumerId
+                    : EventStoreRateLimitPartition.TrustedInternalKey(context.User) ?? "anonymous";
+
+                IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
+                RateLimitingOptions rateLimitOptions = optionsMonitor.CurrentValue;
+
+                // Per-consumer resolution: ConsumerPermitLimits[consumerId] > ConsumerPermitLimit (default)
+                int permitLimit = rateLimitOptions.ConsumerPermitLimits.TryGetValue(consumerId, out int consumerLimit)
+                    ? consumerLimit
+                    : rateLimitOptions.ConsumerPermitLimit;
+
+                return RateLimitPartition.GetSlidingWindowLimiter(consumerId, _ =>
+                    new SlidingWindowRateLimiterOptions {
+                        PermitLimit = permitLimit,
+                        Window = TimeSpan.FromSeconds(rateLimitOptions.ConsumerWindowSeconds),
+                        SegmentsPerWindow = rateLimitOptions.ConsumerSegmentsPerWindow,
+                        // QueueLimit is intentionally shared — if per-consumer queuing is ever needed,
+                        // it would require a separate ConsumerQueueLimit property
+                        QueueLimit = rateLimitOptions.QueueLimit,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    });
+            });
+
+            // CreateChained short-circuits on first rejection — Retry-After reflects the rejecting
+            // limiter's window (tenant=60s, consumer=1s). This is correct: clients should retry based
+            // on the limit they actually hit.
+            rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.CreateChained(tenantLimiter, consumerLimiter);
+
+            rateLimiterOptions.OnRejected = async (context, cancellationToken) => {
+                // H10: Wrap entire OnRejected body in try/catch for resilience
+                try {
+                    IOptionsMonitor<RateLimitingOptions> optionsMonitor = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>();
+                    ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
+
+                    string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
+                    string tenantId = context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
+                        ?? EventStoreRateLimitPartition.TrustedTenantKey(context.HttpContext.User)
+                        ?? context.HttpContext.Items["RequestTenantId"]?.ToString()
+                        ?? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User)
+                        ?? "unknown";
+                    string? rawConsumerId = context.HttpContext.User?.FindFirst("sub")?.Value;
+                    string consumerId = string.IsNullOrWhiteSpace(rawConsumerId)
+                        ? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User) ?? "anonymous"
+                        : rawConsumerId;
+                    string? sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
+
+                    // H11: Use RetryAfter metadata if available, fall back to WindowSeconds
+                    int retryAfterSeconds = optionsMonitor.CurrentValue.WindowSeconds;
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter)) {
+                        retryAfterSeconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
+                    }
+
+                    logger.LogWarning(
+                        "Rate limit exceeded: CorrelationId={CorrelationId}, TenantId={TenantId}, ConsumerId={ConsumerId}, SourceIP={SourceIP}",
+                        correlationId,
+                        tenantId,
+                        consumerId,
+                        sourceIp);
+
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+                    context.HttpContext.Response.ContentType = "application/problem+json";
+
+                    var problemDetails = new ProblemDetails {
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = "Too Many Requests",
+                        Type = ErrorHandling.ProblemTypeUris.RateLimitExceeded,
+                        Detail = "Rate limit exceeded. Please retry after the specified interval.",
+                        Instance = context.HttpContext.Request.Path.Value,
+                        Extensions =
+                        {
+                            ["correlationId"] = correlationId,
+                            ["tenantId"] = tenantId,
+                            ["consumerId"] = consumerId,
+                        },
+                    };
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(
+                        problemDetails,
+                        (JsonSerializerOptions?)null,
+                        "application/problem+json",
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) {
+                    // Fallback: if OnRejected throws, ASP.NET Core returns bare 500. Write minimal 429 instead.
+                    // Use GetService (not GetRequiredService) to avoid a secondary throw if DI is unavailable.
+                    ILogger? logger = context.HttpContext.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("Hexalith.EventStore.RateLimiting");
+                    string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
+                    logger?.LogError(ex, "OnRejected callback failed: CorrelationId={CorrelationId}", correlationId);
+
+                    if (context.HttpContext.Response.HasStarted) {
+                        return;
+                    }
+
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.HttpContext.Response.ContentType = "application/problem+json";
+
+                    // Preserve Retry-After in fallback: try to read from options, default to 60s
+                    int fallbackRetryAfter = 60;
+                    try {
+                        RateLimitingOptions? opts = context.HttpContext.RequestServices
+                            .GetService<IOptionsMonitor<RateLimitingOptions>>()?.CurrentValue;
+                        if (opts is not null) {
+                            fallbackRetryAfter = opts.WindowSeconds;
+                        }
+                    }
+                    catch (Exception) {
+                        // Best-effort: keep default if DI fails
+                    }
+
+                    context.HttpContext.Response.Headers.RetryAfter = fallbackRetryAfter.ToString();
+
+                    var fallbackProblemDetails = new ProblemDetails {
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Title = "Too Many Requests",
+                        Type = ErrorHandling.ProblemTypeUris.RateLimitExceeded,
+                        Detail = "Rate limit exceeded. Please retry after the specified interval.",
+                        Instance = context.HttpContext.Request.Path.Value,
+                    };
+                    await context.HttpContext.Response.WriteAsync(
+                        JsonSerializer.Serialize(fallbackProblemDetails),
+                        CancellationToken.None).ConfigureAwait(false);
+                }
+            };
+        });
+
+        // OpenAPI document generation (Story 2.9)
+        _ = services.AddOpenApi(options => {
+            _ = options.AddDocumentTransformer((document, context, ct) => {
+                document.Info = new OpenApiInfo {
+                    Title = "Hexalith EventStore Gateway API",
+                    Version = "v1",
+                    Description = "Versioned v1 gateway API for multi-tenant command processing, projection queries, JWT authentication, and command status tracking. Error reference documentation is available at `/problems`, `/problems/catalog.json`, and `/problems/{error-type}` on this server. Domain rejection documentation is available at `/problems/domain-rejections/{reasonCode}`. MVP compliance notice: Hexalith Parties is not GDPR-compliant for regulated EU personal data until v1.1; development and API documentation surfaces intentionally keep that warning visible. In production, error type URIs resolve at `https://hexalith.io/problems/{error-type}`.",
+                };
+
+                // Add JWT Bearer security scheme
+                OpenApiComponents components = document.Components ??= new OpenApiComponents();
+                components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "JWT Bearer token. Obtain from your identity provider and include as: Authorization: Bearer {token}",
+                };
+
+                var schemeReference = new OpenApiSecuritySchemeReference("Bearer", document);
+                document.Security ??= [];
+                document.Security.Add(new OpenApiSecurityRequirement
+                {
+                    { schemeReference, new List<string>() },
+                });
+
+                return Task.CompletedTask;
+            });
+
+            // Add 429 response documentation to all operations (H14)
+            _ = options.AddOperationTransformer((operation, context, ct) => {
+                operation.Responses ??= [];
+                _ = operation.Responses.TryAdd("429", new OpenApiResponse {
+                    Description = "Too Many Requests - Rate limit exceeded. See Retry-After header for when to retry.",
+                });
+
+                return Task.CompletedTask;
+            });
+
+            _ = options.AddOperationTransformer<CommandDocumentationTransformer>();
+
+            // Add pre-populated example payloads (Story 3.6, UX-DR13)
+            _ = options.AddOperationTransformer<CommandExampleTransformer>();
+        });
+
+        _ = services.AddMediatR(cfg => {
+            _ = cfg.RegisterServicesFromAssemblyContaining<SubmitCommandHandler>();
+            // Authorization runs first so denied requests never reach LoggingBehavior's
+            // "MediatR pipeline entry" log — the rejection is logged by AuthorizationBehavior
+            // itself, and pipeline entry/exit logs are reserved for requests that passed auth.
+            _ = cfg.AddOpenBehavior(typeof(AuthorizationBehavior<,>));
+            _ = cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            _ = cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+        });
+
+        _ = services.AddValidatorsFromAssemblyContaining<SubmitCommandRequestValidator>();
+
+        _ = services.AddControllers(options => options.Filters.Add<ValidateModelFilter>());
+
+        _ = services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context => {
+            string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? "unknown";
+            string? tenantId = context.HttpContext.Items.TryGetValue("RequestTenantId", out object? tenantObj)
+                && tenantObj is string tenant
+                && !string.IsNullOrWhiteSpace(tenant)
+                    ? tenant
+                    : null;
+
+            List<(string Key, string Message)> failures = context.ModelState
+                .Where(kvp => kvp.Value is { Errors.Count: > 0 })
+                .SelectMany(kvp => kvp.Value!.Errors.Select(err => {
+                    string message = string.IsNullOrWhiteSpace(err.ErrorMessage)
+                        ? "Invalid value."
+                        : err.ErrorMessage;
+                    return (NormalizeModelStateKey(kvp.Key), message);
+                }))
+                .ToList();
+
+            var errors = failures
+                .GroupBy(f => f.Key)
+                .ToDictionary(g => g.Key, g => string.Join("; ", g.Select(f => f.Message)));
+
+            int errorCount = failures.Count;
+            ProblemDetails problemDetails = ValidationProblemDetailsFactory.Create(
+                $"The command has {errorCount} validation error(s). See 'errors' for specifics.",
+                errors,
+                correlationId,
+                tenantId);
+            problemDetails.Instance = context.HttpContext.Request.Path;
+
+            var result = new BadRequestObjectResult(problemDetails);
+            result.ContentTypes.Add("application/problem+json");
+            return result;
+        });
+
+        return services;
+    }
+
+    private static string NormalizeModelStateKey(string key) {
+        if (string.IsNullOrWhiteSpace(key)) {
+            return "request";
+        }
+
+        string normalized = key.Trim();
+        if (normalized.StartsWith("$.", StringComparison.Ordinal)) {
+            normalized = normalized[2..];
+        }
+        else if (normalized.StartsWith("$", StringComparison.Ordinal)) {
+            normalized = normalized[1..];
+        }
+
+        if (normalized.StartsWith(".", StringComparison.Ordinal)) {
+            normalized = normalized[1..];
+        }
+
+        if (string.IsNullOrWhiteSpace(normalized)) {
+            return "request";
+        }
+
+        return string.Join(
+            ".",
+            normalized
+                .Split('.', StringSplitOptions.RemoveEmptyEntries)
+                .Select(JsonNamingPolicy.CamelCase.ConvertName));
+    }
+
+    /// <summary>
+    /// Creates the gateway default authorization policy: an authenticated principal from the JwtBearer scheme only.
+    /// </summary>
+    /// <returns>The default policy.</returns>
+    public static AuthorizationPolicy CreateHumanDefaultPolicy()
+        => new AuthorizationPolicyBuilder(JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
+}

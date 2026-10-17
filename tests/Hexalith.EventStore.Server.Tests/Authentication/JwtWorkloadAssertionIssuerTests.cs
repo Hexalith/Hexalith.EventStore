@@ -263,6 +263,26 @@ public sealed class JwtWorkloadAssertionIssuerTests
         authority.TokenRequests.ShouldBe(2);
     }
 
+    /// <summary>Validated discovery is reused during a five-minute trust snapshot and refreshed after that bounded interval.</summary>
+    [Fact]
+    public async Task AuthorityDiscoveryRefreshesAfterBoundedTrustSnapshot()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        Dictionary<string, string?> settings = AuthorityWithClient();
+        settings["Authentication:WorkloadIssuer:TokenEndpoint"] = null;
+        var authority = new DiscoveringAuthority(TokenEndpoint, clock.GetUtcNow);
+        await using ServiceProvider services = Build(Environments.Production, settings, "eventstore", authority, clock);
+        IWorkloadAssertionIssuer issuer = services.GetRequiredService<IWorkloadAssertionIssuer>();
+        (await issuer.IssueAsync(new("sample", EventStoreWorkloadOperations.DomainServiceProcess), TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        clock.Advance(TimeSpan.FromSeconds(60));
+        (await issuer.IssueAsync(new("tenants", EventStoreWorkloadOperations.DomainServiceQuery), TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        authority.MetadataRequests.ShouldBe(1);
+        clock.Advance(TimeSpan.FromSeconds(241));
+        (await issuer.IssueAsync(new("sample", EventStoreWorkloadOperations.DomainServiceProcess), TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        authority.MetadataRequests.ShouldBe(2);
+        authority.TokenRequests.ShouldBe(3);
+    }
+
     /// <summary>Story 5.5 (P-5): authority mode without the workload client fails options validation, naming settings only.</summary>
     /// <param name="mode">The contract mode and client state.</param>
     /// <param name="expectedValid">Whether validation succeeds.</param>
@@ -456,9 +476,9 @@ public sealed class JwtWorkloadAssertionIssuerTests
     }
 
     /// <summary>An authority that publishes metadata with a configurable token endpoint and mints exact tokens.</summary>
-    private sealed class DiscoveringAuthority(string discoveredTokenEndpoint) : HttpMessageHandler
+    private sealed class DiscoveringAuthority(string discoveredTokenEndpoint, Func<DateTimeOffset>? clock = null) : HttpMessageHandler
     {
-        private readonly ScopedWorkloadTokenEndpoint _tokens = new();
+        private readonly ScopedWorkloadTokenEndpoint _tokens = new() { Clock = clock ?? (static () => DateTimeOffset.UtcNow) };
 
         public string DiscoveredTokenEndpoint { get; set; } = discoveredTokenEndpoint;
 

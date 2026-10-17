@@ -118,6 +118,40 @@ public sealed class EventStoreWorkloadRateLimitTests
         genuine.IsAcquired.ShouldBeTrue();
     }
 
+    [Fact]
+    public void AuthorityRoutesHaveThreeBoundedPreAuthenticationPartitionsInActualGlobalLimiter()
+    {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["EventStore:RateLimiting:PermitLimit"] = "2", ["EventStore:RateLimiting:WindowSeconds"] = "60",
+            ["EventStore:RateLimiting:SegmentsPerWindow"] = "1", ["EventStore:RateLimiting:ConsumerPermitLimit"] = "2",
+            ["EventStore:RateLimiting:ConsumerWindowSeconds"] = "60", ["EventStore:RateLimiting:ConsumerSegmentsPerWindow"] = "1",
+        }).Build();
+        var services = new ServiceCollection(); services.AddSingleton(configuration); services.AddLogging(); services.AddEventStore();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        PartitionedRateLimiter<HttpContext> limiter = provider.GetRequiredService<IOptions<RateLimiterOptions>>().Value.GlobalLimiter.ShouldNotBeNull();
+        using RateLimitLease anonymous1 = limiter.AttemptAcquire(Context(provider, null));
+        using RateLimitLease anonymous2 = limiter.AttemptAcquire(Context(provider, null));
+        using RateLimitLease anonymous3 = limiter.AttemptAcquire(Context(provider, null));
+        anonymous1.IsAcquired.ShouldBeTrue(); anonymous2.IsAcquired.ShouldBeTrue(); anonymous3.IsAcquired.ShouldBeFalse();
+        foreach (WorkloadAuthorityEndpointMetadata marker in new[] { WorkloadAuthorityEndpointMetadata.Token, WorkloadAuthorityEndpointMetadata.Discovery, WorkloadAuthorityEndpointMetadata.Keys })
+        {
+            DefaultHttpContext first = Context(provider, null); first.Request.QueryString = new QueryString("?client_id=one");
+            first.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(marker), "synthetic-authority-endpoint"));
+            DefaultHttpContext second = Context(provider, new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "untrusted-two")], "Bearer")));
+            second.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(marker), "synthetic-authority-endpoint"));
+            DefaultHttpContext third = Context(provider, new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "untrusted-three")], "Bearer")));
+            third.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(marker), "synthetic-authority-endpoint"));
+            using RateLimitLease lease1 = limiter.AttemptAcquire(first);
+            using RateLimitLease lease2 = limiter.AttemptAcquire(second);
+            using RateLimitLease lease3 = limiter.AttemptAcquire(third);
+            lease1.IsAcquired.ShouldBeTrue(); lease2.IsAcquired.ShouldBeTrue(); lease3.IsAcquired.ShouldBeFalse();
+        }
+        DefaultHttpContext spoofedPath = Context(provider, null); spoofedPath.Request.Path = "/workload-authority/token";
+        using RateLimitLease spoofed = limiter.AttemptAcquire(spoofedPath);
+        spoofed.IsAcquired.ShouldBeFalse();
+    }
+
     private static DefaultHttpContext Context(IServiceProvider provider, ClaimsPrincipal? principal)
         => new() { RequestServices = provider, User = principal ?? new ClaimsPrincipal() };
 
