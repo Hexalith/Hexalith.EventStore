@@ -1,0 +1,63 @@
+{
+  "checkedUtc": "2026-10-17T10:34:11.130497+00:00",
+  "scriptSha256": "849fe2397b91c7dbb642796280f022023584515f917339206e63846ed6ac5c91",
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "indexUnchanged": true,
+  "protectedFilesUnchanged": 11962,
+  "originalWrapperBytesPreserved": 92776,
+  "wrapperAppendOnly": true,
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+  "allNativeCohortsUseSameFrozenSourceInputs": true,
+  "sourceInputCount": 9644,
+  "changedSourceInputs": [
+    "tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestRuntimeConfiguration.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8DiscoveryConfiguration.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8DiscoveryConfigurationTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8FailedInitializationCleanupTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs"
+  ],
+  "productionDependencyPolicyChanges": [],
+  "nativeFrames": [
+    {
+      "name": "domain-debug-full",
+      "nativeWrapperExitCode": 0,
+      "sourceInputs": 9644,
+      "sourceAssetsRuntimeChanges": {
+        "sourceInputsChanges": [],
+        "assetsChanges": [],
+        "runtimeChanges": []
+      }
+    },
+    {
+      "name": "live-debug-full-native",
+      "nativeWrapperExitCode": 0,
+      "sourceInputs": 9644,
+      "sourceAssetsRuntimeChanges": {
+        "sourceInputsChanges": [],
+        "assetsChanges": [],
+        "runtimeChanges": []
+      }
+    },
+    {
+      "name": "live-release-full",
+      "nativeWrapperExitCode": 1,
+      "sourceInputs": 9644,
+      "sourceAssetsRuntimeChanges": {
+        "sourceInputsChanges": [],
+        "assetsChanges": [],
+        "runtimeChanges": []
+      }
+    }
+  ],
+  "nativeAssetObjectsVerified": 184,
+  "gitDiffCheck": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0
+  },
+  "scope": "Preservation and identity checks only. A failed native cohort remains failed; this audit supplies no runtime approval or CI seal."
+}

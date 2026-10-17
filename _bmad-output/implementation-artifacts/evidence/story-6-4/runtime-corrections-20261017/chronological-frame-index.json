@@ -1,0 +1,256 @@
+{
+  "frames": [
+    {
+      "name": "domain-debug-build",
+      "kind": "build",
+      "startedAt": "2026-10-17T09:31:59.585519+00:00",
+      "endedAt": "2026-10-17T09:32:31.200426+00:00",
+      "exitCode": 0,
+      "summary": null,
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-build.json",
+        "sha256": "8cb3487762ea55dc17204fff140303425d50a3f07df48a0d54de9b9b6feb0776",
+        "bytes": 5207125
+      }
+    },
+    {
+      "name": "domain-debug-focused",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:33:13.109371+00:00",
+      "endedAt": "2026-10-17T09:33:14.624537+00:00",
+      "exitCode": 0,
+      "summary": {
+        "selected": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 4,
+        "seconds": 1.187
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-focused.json",
+        "sha256": "644cd92e134677384093c2763366c075fbc5acbb6a8f683d215ccf54e84e2ee6",
+        "bytes": 5207215
+      }
+    },
+    {
+      "name": "live-debug-build",
+      "kind": "build",
+      "startedAt": "2026-10-17T09:33:27.326616+00:00",
+      "endedAt": "2026-10-17T09:33:49.353321+00:00",
+      "exitCode": 1,
+      "summary": null,
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build.json",
+        "sha256": "516d27ad256474d98d1a35a3ff30b944c5f7c8b685ba3b9e839673154bf188b1",
+        "bytes": 5208713
+      }
+    },
+    {
+      "name": "live-debug-build-2",
+      "kind": "build",
+      "startedAt": "2026-10-17T09:34:51.123389+00:00",
+      "endedAt": "2026-10-17T09:35:09.278597+00:00",
+      "exitCode": 0,
+      "summary": null,
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff",
+        "bytes": 5209423
+      }
+    },
+    {
+      "name": "live-debug-fixture-focused",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:35:27.349467+00:00",
+      "endedAt": "2026-10-17T09:35:27.907106+00:00",
+      "exitCode": 0,
+      "summary": {
+        "selected": 10,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 10,
+        "seconds": 0.287
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-fixture-focused.json",
+        "sha256": "fcd07853fe65e84d1d74c87c6659ee4177d0eac136c26791bfd868e1fdb47133",
+        "bytes": 5207361
+      }
+    },
+    {
+      "name": "live-debug-runtime-focused",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:35:52.678307+00:00",
+      "endedAt": "2026-10-17T09:37:03.728709+00:00",
+      "exitCode": 1,
+      "summary": {
+        "selected": 4,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 3,
+        "seconds": 62.234
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused.json",
+        "sha256": "7c3c0059f8b60af1e05143f802841f443afbf5e38c9147db41fed438757758c2",
+        "bytes": 5207067
+      }
+    },
+    {
+      "name": "live-debug-oq8-focused-2",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:37:40.225399+00:00",
+      "endedAt": "2026-10-17T09:37:43.024862+00:00",
+      "exitCode": 1,
+      "summary": null,
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-2.json",
+        "sha256": "09c2aca9814cc71e39edd6c493a1410d4280041e9b1eae4a6869ebbaac70cd23",
+        "bytes": 5205866
+      }
+    },
+    {
+      "name": "live-release-build",
+      "kind": "build",
+      "startedAt": "2026-10-17T09:38:09.307412+00:00",
+      "endedAt": "2026-10-17T09:38:56.582976+00:00",
+      "exitCode": 0,
+      "summary": null,
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-build.json",
+        "sha256": "a2e36e3c19ac80254ddbcabc9e32ad149c900232605975a0bca1fe63c24d9616",
+        "bytes": 5212164
+      }
+    },
+    {
+      "name": "live-debug-oq8-focused-3",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:39:18.134315+00:00",
+      "endedAt": "2026-10-17T09:39:59.635501+00:00",
+      "exitCode": 1,
+      "summary": {
+        "selected": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 0,
+        "seconds": 34.183
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3.json",
+        "sha256": "33978d83746cdb435d3287fb3bbad33eaaf65ff26b3d548274a18016a2fd241e",
+        "bytes": 5207058
+      }
+    },
+    {
+      "name": "live-debug-oq8-focused-4",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:40:41.654479+00:00",
+      "endedAt": "2026-10-17T09:41:31.282168+00:00",
+      "exitCode": 0,
+      "summary": {
+        "selected": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 1,
+        "seconds": 40.983
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4.json",
+        "sha256": "c3011b63cb4055a1545ec58800fdd1569e032af4bc6beacb85761b2fb0212e80",
+        "bytes": 5207058
+      }
+    },
+    {
+      "name": "domain-debug-full",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:41:47.358336+00:00",
+      "endedAt": "2026-10-17T09:45:13.446739+00:00",
+      "exitCode": 0,
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 978,
+        "seconds": 205.602
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.json",
+        "sha256": "2ceb9b758eda4259faa1b4823e09d5e7a1909710675d8aa14edf98e5d4c3c113",
+        "bytes": 5207173
+      }
+    },
+    {
+      "name": "live-debug-full",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:45:28.917618+00:00",
+      "endedAt": "2026-10-17T09:45:33.515664+00:00",
+      "exitCode": 1,
+      "summary": null,
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full.json",
+        "sha256": "520898c2df9bfaed0a2a1f8eda437cc6f0d48f019c35c5508c7e0d7ea62697fc",
+        "bytes": 5205840
+      }
+    },
+    {
+      "name": "live-debug-full-native",
+      "kind": "test",
+      "startedAt": "2026-10-17T09:47:08.629617+00:00",
+      "endedAt": "2026-10-17T10:08:46.129315+00:00",
+      "exitCode": 0,
+      "summary": {
+        "selected": 195,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 1,
+        "notRun": 0,
+        "passed": 194,
+        "seconds": 1288.678
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.json",
+        "sha256": "f0b64cdaf5ec8530b426a5077ad9793a23848382de8befeeda098596e0478252",
+        "bytes": 5207065
+      }
+    },
+    {
+      "name": "live-release-full",
+      "kind": "test",
+      "startedAt": "2026-10-17T10:09:23.106328+00:00",
+      "endedAt": "2026-10-17T10:32:23.952279+00:00",
+      "exitCode": 1,
+      "summary": {
+        "selected": 195,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 1,
+        "notRun": 0,
+        "passed": 193,
+        "seconds": 1372.603
+      },
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.json",
+        "sha256": "d172fdb626c9e633e96538f9fd43a84a931e4bc4cdd3cd3c20e5bce0b86ee5c3",
+        "bytes": 5207049
+      }
+    }
+  ],
+  "nativeSlotMapping": {
+    "domain-debug-full": "domain-debug-full",
+    "live-debug-full": "live-debug-full-native",
+    "live-release-full": "live-release-full"
+  },
+  "note": "All preliminary failed native frames and pre-native preparations remain retained. The Debug alias does not hide the failed preparation."
+}

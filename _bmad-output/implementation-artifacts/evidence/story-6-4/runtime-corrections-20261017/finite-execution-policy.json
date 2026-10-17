@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-10-17T10:08:13.086932+00:00",
+  "domainOuterSeconds": 900,
+  "liveOuterSeconds": 2700,
+  "drainSeconds": 30,
+  "retryNativeCohort": false,
+  "basis": "Parent-verified historical watchdog policy, explicitly retained for these finite full-cohort corrections. Native assertions and operation budgets remain unchanged.",
+  "activeDebugEnforcement": "Independent PID/start-tick-verified watchdog attaches before the deadline; active immutable runner is unchanged.",
+  "domainCompletedSeconds": 205.602
+}

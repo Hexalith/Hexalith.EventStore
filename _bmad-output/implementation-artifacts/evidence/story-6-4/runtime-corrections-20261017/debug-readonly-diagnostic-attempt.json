@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-10-17T10:17:26.948201+00:00",
+  "nativePid": 92122,
+  "nativeStartTicks": "9405461",
+  "lastObservedOwner": "P1RRemediationPersistenceTests.CurrentFencePersistsEventWhileStaleAndForgedCapabilitiesLeaveInventoryUnchanged",
+  "availableTools": {
+    "dotnet-stack": false,
+    "dotnet-trace": false,
+    "dotnet-dump": true
+  },
+  "attemptedRead": "/proc/92122/stat, then planned read-only thread wait-channel and socket ownership samples",
+  "result": "FileNotFoundError before first sample: native process had completed naturally. No managed stack or exact wait cause was obtained.",
+  "noDumpOrAttach": true,
+  "noSignalFromDiagnostic": true,
+  "nativeOutcome": "PASS 194/195 plus one original helper skip; 1288.678 seconds; watchdog timedOut=false"
+}

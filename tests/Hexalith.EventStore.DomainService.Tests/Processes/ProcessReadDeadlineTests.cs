@@ -90,19 +90,26 @@ public sealed class ProcessReadDeadlineTests
             catch (TimeoutException) { }
         }
 
-        int? recovered = null;
-        for (int attempt = 0; attempt < 100 && recovered is null; attempt++)
+        try
         {
-            try
+            int? recovered = null;
+            for (int attempt = 0; attempt < 100 && recovered is null; attempt++)
             {
-                recovered = await ProcessReadDeadline.RunAsync(_ => Task.FromResult(1), TimeSpan.FromSeconds(1), CancellationToken.None);
+                try
+                {
+                    recovered = await ProcessReadDeadline.RunAsync(_ => Task.FromResult(1), TimeSpan.FromSeconds(1), CancellationToken.None);
+                }
+                catch (ProcessReadAdmissionException)
+                {
+                    await Task.Delay(10);
+                }
             }
-            catch (ProcessReadAdmissionException)
-            {
-                await Task.Delay(10);
-            }
+            recovered.ShouldBe(1);
         }
-        recovered.ShouldBe(1);
+        finally
+        {
+            await DrainAdapterWorkersAsync();
+        }
     }
 
     /// <summary>All adapter slots can be wedged while control reads still persist a degraded source.</summary>
@@ -138,6 +145,7 @@ public sealed class ProcessReadDeadlineTests
             held.SetResult(1);
             try { await Task.WhenAll(blocked); }
             catch (TimeoutException) { }
+            await DrainAdapterWorkersAsync();
         }
     }
 
@@ -177,6 +185,44 @@ public sealed class ProcessReadDeadlineTests
             held.TrySetResult(1);
             try { await Task.WhenAll(blocked); }
             catch (TimeoutException) { }
+            await DrainAdapterWorkersAsync();
+        }
+    }
+
+    // Deadline wrappers can finish before their underlying workers return the static slots.
+    // Hold every slot simultaneously, then await normal completion, before another test runs.
+    private static async Task DrainAdapterWorkersAsync()
+    {
+        using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(5));
+        TaskCompletionSource<int> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        List<Task<int>> workers = [];
+        try
+        {
+            while (workers.Count < 16)
+            {
+                TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                Task<int> worker = ProcessReadDeadline.RunAsync(_ =>
+                {
+                    entered.SetResult();
+                    return release.Task;
+                }, TimeSpan.FromSeconds(5), deadline.Token);
+                await Task.WhenAny(worker, entered.Task).WaitAsync(deadline.Token);
+                if (!entered.Task.IsCompleted)
+                {
+                    await Should.ThrowAsync<ProcessReadAdmissionException>(() => worker);
+                    await Task.Delay(10, deadline.Token);
+                    continue;
+                }
+
+                workers.Add(worker);
+            }
+
+            workers.Count.ShouldBe(16);
+        }
+        finally
+        {
+            release.SetResult(1);
+            await Task.WhenAll(workers);
         }
     }
 }

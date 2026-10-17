@@ -66,6 +66,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     private readonly List<object> _sidecarNamespaceObservations = [];
     private string _repositoryRoot = string.Empty;
     private string _runtimeDirectory = string.Empty;
+    private bool _initialized;
     private IPEndPoint? _placementHostEndpoint;
     private IPEndPoint? _schedulerHostEndpoint;
 
@@ -106,7 +107,8 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             {
                 _discoveryRegistryFile = Path.Combine(_runtimeDirectory, "discovery.sqlite");
                 _discoveryConfigurationFile = Path.Combine(_runtimeDirectory, "discovery.yaml");
-                File.WriteAllText(_discoveryConfigurationFile, Oq8DiscoveryConfiguration.Create(_discoveryRegistryFile));
+                File.WriteAllText(_discoveryConfigurationFile, Oq8DiscoveryConfiguration.Create(
+                    _discoveryRegistryFile, Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPR_HOT_RELOAD")));
             }
             SetClock(new DateTimeOffset(2026, 8, 10, 8, 0, 0, TimeSpan.Zero));
             PrepareShadowApplications();
@@ -121,6 +123,7 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             }
 
             await Task.Delay(2000).ConfigureAwait(false);
+            _initialized = true;
         }
         catch
         {
@@ -611,7 +614,14 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
     {
         try
         {
-            await EmitEvidenceIfRequestedAsync().ConfigureAwait(false);
+            if (_initialized)
+            {
+                await EmitEvidenceIfRequestedAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                await EmitInitializationFailureIfRequestedAsync().ConfigureAwait(false);
+            }
         }
         finally
         {
@@ -1394,6 +1404,29 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
         File.Move(temporary, target, overwrite: true);
     }
 
+    private async Task EmitInitializationFailureIfRequestedAsync()
+    {
+        string? evidenceDirectory = Environment.GetEnvironmentVariable("HEXALITH_OQ8_EVIDENCE_DIRECTORY");
+        if (string.IsNullOrWhiteSpace(evidenceDirectory))
+        {
+            return;
+        }
+
+        // InitializeAsync already released the shadow runtime. This is a failure receipt,
+        // never the complete runtime-identity and invariant proof emitted after a real run.
+        string json = JsonSerializer.Serialize(new
+        {
+            schemaVersion = 1,
+            captureKind = "initialization-failed",
+            initializationCompleted = false,
+            runtimeProofAvailable = false,
+            diagnostics = ScanBoundedDiagnostics(),
+        }, _jsonOptions);
+        EnsureSanitized(json);
+        _ = Directory.CreateDirectory(evidenceDirectory);
+        await File.WriteAllTextAsync(Path.Combine(evidenceDirectory, "initialization-failure.json"), json).ConfigureAwait(false);
+    }
+
     private void EnsureSanitized(string value)
     {
         lock (_sensitiveLock)
@@ -1503,7 +1536,9 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
             }
         }
 
-        return sanitized.Replace(_repositoryRoot, "[workspace]", StringComparison.Ordinal);
+        return string.IsNullOrEmpty(_repositoryRoot)
+            ? sanitized
+            : sanitized.Replace(_repositoryRoot, "[workspace]", StringComparison.Ordinal);
     }
 
     private async Task DisposeResourcesAsync()

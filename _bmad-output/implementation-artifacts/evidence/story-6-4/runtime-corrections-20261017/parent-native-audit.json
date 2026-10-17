@@ -1,0 +1,564 @@
+{
+  "auditedUtc": "2026-10-17T10:33:54.348399+00:00",
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "script": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent_native_audit.py",
+    "sha256": "2ecf01707fe5f1c287d3e943f2162370d00adf2c4ead67cbf5e702d78a99df6a",
+    "bytes": 9470
+  },
+  "aliases": {
+    "domain-debug-full": "domain-debug-full",
+    "live-debug-full": "live-debug-full-native",
+    "live-release-full": "live-release-full"
+  },
+  "liveFullPreparations": [
+    {
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-controls.json",
+        "sha256": "826822c463b4c14dbbe76163dc4d1cf746570a0b971fd6dfb64f3879f3699a8c",
+        "bytes": 5934
+      },
+      "lane": "live-debug-full",
+      "nativeStarted": false,
+      "nativeCommand": null,
+      "nativeExitCode": null,
+      "wrapperFailure": "CalledProcessError"
+    },
+    {
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-controls.json",
+        "sha256": "df303317f67be8a4d024c6229af7d0c0867e942da2f047dd036f5cf8619eccc9",
+        "bytes": 302570
+      },
+      "lane": "live-debug-full-native",
+      "nativeStarted": true,
+      "nativeCommand": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.xml"
+      ],
+      "nativeExitCode": 0,
+      "wrapperFailure": null
+    },
+    {
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-controls.json",
+        "sha256": "50cef54f94fc4e186d63d59f81ffa2e1ba1a66e0339ce5316b2b0015572b9486",
+        "bytes": 295747
+      },
+      "lane": "live-release-full",
+      "nativeStarted": true,
+      "nativeCommand": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.xml"
+      ],
+      "nativeExitCode": 1,
+      "wrapperFailure": null
+    }
+  ],
+  "frames": [
+    {
+      "slot": "domain-debug-full",
+      "lane": "domain-debug-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.json",
+        "sha256": "2ceb9b758eda4259faa1b4823e09d5e7a1909710675d8aa14edf98e5d4c3c113",
+        "bytes": 5207173
+      },
+      "nativeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.xml",
+        "sha256": "ce516d942a03d6b9e20748b5b0bea14c6db05cd9d98db50e626588dc78d7c6cc",
+        "bytes": 660054
+      },
+      "nativeXmlAvailable": true,
+      "nativeGate": "pass",
+      "nativeAssembly": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, parallel (collections, 14 threads)]",
+        "id": "f227cc0e-e956-4dde-bc1f-148b1457a0b1",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "09:41:47",
+        "start-rtf": "2026-10-17T09:41:47.7080600+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-17T09:45:13.2969183+00:00",
+        "not-run": "0",
+        "passed": "978",
+        "skipped": "0",
+        "time": "205.602",
+        "time-rtf": "00:03:25.6020000",
+        "total": "978"
+      },
+      "outcomes": {
+        "Pass": 978
+      },
+      "runnerErrors": 0,
+      "exitCode": 0,
+      "missingHistoricalCases": [],
+      "newCases": [],
+      "skipsExactlyPreserved": true,
+      "stableSourceAssetsRuntimeDuringExecution": true
+    },
+    {
+      "slot": "live-debug-full",
+      "lane": "live-debug-full-native",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.json",
+        "sha256": "f0b64cdaf5ec8530b426a5077ad9793a23848382de8befeeda098596e0478252",
+        "bytes": 5207065
+      },
+      "nativeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.xml",
+        "sha256": "6d5b5fbd279eb112721d37c1f99b27a1c2a89ed7d6720732e14e409c66798b95",
+        "bytes": 326055
+      },
+      "nativeXmlAvailable": true,
+      "nativeGate": "pass",
+      "nativeAssembly": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "8fdb6a00-4f9b-489a-a3ea-844ef3b3db19",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "09:47:14",
+        "start-rtf": "2026-10-17T09:47:14.5604885+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-17T10:08:43.1672642+00:00",
+        "not-run": "0",
+        "passed": "194",
+        "skipped": "1",
+        "time": "1288.678",
+        "time-rtf": "00:21:28.6780000",
+        "total": "195"
+      },
+      "outcomes": {
+        "Pass": 194,
+        "Skip": 1
+      },
+      "runnerErrors": 0,
+      "exitCode": 0,
+      "missingHistoricalCases": [],
+      "newCases": [
+        [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests",
+          "DisabledHotReloadPreservesPrivateDiscovery",
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests.DisabledHotReloadPreservesPrivateDiscovery"
+        ],
+        [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests",
+          "MalformedHotReloadOverrideFailsClosed",
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests.MalformedHotReloadOverrideFailsClosed"
+        ],
+        [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8FailedInitializationCleanupTests",
+          "FailedPreflightDisposesWithoutSuccessfulRuntimeEvidence",
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8FailedInitializationCleanupTests.FailedPreflightDisposesWithoutSuccessfulRuntimeEvidence"
+        ]
+      ],
+      "skipsExactlyPreserved": true,
+      "stableSourceAssetsRuntimeDuringExecution": true,
+      "numericalAudit": {
+        "file": {
+          "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-vectors.json",
+          "sha256": "da93301c2867cc4cab388304ffbc8fbc5401d3171939ca71b29bfec76ccd4c34",
+          "bytes": 189668
+        },
+        "counts": {
+          "ProjectionGuardActivationClosure": 1,
+          "ProjectionSourceCost": 2,
+          "ProjectionGuardNativeAttempts": 9,
+          "ProjectionGuardTypedFailure": 1,
+          "ProjectionGuardCurrentMatrix": 15,
+          "ProjectionGuardEmptyCost": 1,
+          "ProjectionReplayRecoveryAttempt": 12,
+          "ProjectionGuardCatalogColdWarm": 1,
+          "ProjectionGuardLiveCost": 7
+        },
+        "current": [
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 256,
+            "checkpoint": 256,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 256,
+            "checkpoint": 256,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 256,
+            "checkpoint": 256,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 257,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 257,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 257,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9999,
+            "checkpoint": 9999,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9999,
+            "checkpoint": 9999,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9999,
+            "checkpoint": 9999,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 10000,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 10000,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 10000,
+            "pageSize": 256,
+            "receiptLimit": 256
+          }
+        ],
+        "tails": [
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "delta": 0,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 2,
+            "checkpoint": 1,
+            "delta": 1,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 1,
+            "delta": 256,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 258,
+            "checkpoint": 1,
+            "delta": 257,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 772,
+            "checkpoint": 1,
+            "delta": 771,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9771,
+            "checkpoint": 9000,
+            "delta": 771,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 9999,
+            "delta": 1,
+            "pageSize": 256,
+            "receiptLimit": 256
+          }
+        ],
+        "completeCurrentMatrix": true,
+        "completeTailMatrix": true,
+        "originalReplicaRecoveryWitness": true
+      }
+    },
+    {
+      "slot": "live-release-full",
+      "lane": "live-release-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.json",
+        "sha256": "d172fdb626c9e633e96538f9fd43a84a931e4bc4cdd3cd3c20e5bce0b86ee5c3",
+        "bytes": 5207049
+      },
+      "nativeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.xml",
+        "sha256": "ae0b1703990c79281b8231ed58aa223c9fc71a4a2fe66740caf3d0f9a856dbca",
+        "bytes": 331682
+      },
+      "nativeXmlAvailable": true,
+      "nativeGate": "failed/unproven",
+      "nativeAssembly": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "e9280b45-ceb3-4645-9121-c2977abad420",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "10:09:28",
+        "start-rtf": "2026-10-17T10:09:28.7713084+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "1",
+        "finish-rtf": "2026-10-17T10:32:21.2963106+00:00",
+        "not-run": "0",
+        "passed": "193",
+        "skipped": "1",
+        "time": "1372.603",
+        "time-rtf": "00:22:52.6030000",
+        "total": "195"
+      },
+      "outcomes": {
+        "Fail": 1,
+        "Pass": 193,
+        "Skip": 1
+      },
+      "runnerErrors": 0,
+      "exitCode": 1,
+      "missingHistoricalCases": [],
+      "newCases": [
+        [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests",
+          "DisabledHotReloadPreservesPrivateDiscovery",
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests.DisabledHotReloadPreservesPrivateDiscovery"
+        ],
+        [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests",
+          "MalformedHotReloadOverrideFailsClosed",
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests.MalformedHotReloadOverrideFailsClosed"
+        ],
+        [
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8FailedInitializationCleanupTests",
+          "FailedPreflightDisposesWithoutSuccessfulRuntimeEvidence",
+          "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8FailedInitializationCleanupTests.FailedPreflightDisposesWithoutSuccessfulRuntimeEvidence"
+        ]
+      ],
+      "skipsExactlyPreserved": true,
+      "stableSourceAssetsRuntimeDuringExecution": true,
+      "numericalAudit": {
+        "file": {
+          "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-vectors.json",
+          "sha256": "a9e4ea942640e26a34e2068915c613827b8066b92ed05cd6ea9cb80ed8f4b2fa",
+          "bytes": 192495
+        },
+        "counts": {
+          "ProjectionGuardActivationClosure": 1,
+          "ProjectionGuardNativeAttempts": 9,
+          "ProjectionGuardTypedFailure": 1,
+          "ProjectionGuardEmptyCost": 1,
+          "ProjectionSourceCost": 2,
+          "ProjectionReplayRecoveryAttempt": 12,
+          "ProjectionGuardCurrentMatrix": 15,
+          "ProjectionGuardCatalogColdWarm": 1,
+          "ProjectionGuardLiveCost": 7
+        },
+        "current": [
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 256,
+            "checkpoint": 256,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 256,
+            "checkpoint": 256,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 256,
+            "checkpoint": 256,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 257,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 257,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 257,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9999,
+            "checkpoint": 9999,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9999,
+            "checkpoint": 9999,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9999,
+            "checkpoint": 9999,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 10000,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 10000,
+            "pageSize": 16,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 10000,
+            "pageSize": 256,
+            "receiptLimit": 256
+          }
+        ],
+        "tails": [
+          {
+            "head": 1,
+            "checkpoint": 1,
+            "delta": 0,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 2,
+            "checkpoint": 1,
+            "delta": 1,
+            "pageSize": 1,
+            "receiptLimit": 256
+          },
+          {
+            "head": 257,
+            "checkpoint": 1,
+            "delta": 256,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 258,
+            "checkpoint": 1,
+            "delta": 257,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 772,
+            "checkpoint": 1,
+            "delta": 771,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 9771,
+            "checkpoint": 9000,
+            "delta": 771,
+            "pageSize": 256,
+            "receiptLimit": 256
+          },
+          {
+            "head": 10000,
+            "checkpoint": 9999,
+            "delta": 1,
+            "pageSize": 256,
+            "receiptLimit": 256
+          }
+        ],
+        "completeCurrentMatrix": true,
+        "completeTailMatrix": true,
+        "originalReplicaRecoveryWitness": true
+      }
+    }
+  ],
+  "scope": "Three authorized full native reruns, original case/skip enrollment, stable execution inputs, native result counts and selected unchanged Current/tail budgets. The retained failed live-debug-full startup never invoked a native cohort; live-debug-full-native is its explicit single native replacement. Producer freshness, OQ8 copy identity, preservation and physical cleanup require their separate audits. No authenticated CI seal, owner assurance, production qualification or whole-queue acceptance is asserted."
+}

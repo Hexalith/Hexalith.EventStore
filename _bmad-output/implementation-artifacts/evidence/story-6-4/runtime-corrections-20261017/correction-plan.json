@@ -1,0 +1,21 @@
+{
+  "scope": "Only the three failed runtime cohorts named by the final wrapper authorization.",
+  "retainedEvidence": "../qualification-20261017-parent/qualification-handoff.md",
+  "domainDiagnosis": "Original timed-out wrapper tasks can finish before the held adapter workers return static admission slots; native predecessor ended about 0.38 ms before the audited-disposition test.",
+  "domainCorrection": "Test teardown temporarily occupies all sixteen adapter slots with bounded probes, then releases and awaits normal completion. Existing production helper, assertions and recovery timing are unchanged.",
+  "liveDiagnosis": "Regular pinned 1.18.2 primary/replica startup and OQ8 installed 1.18.7 startup have native fatal HotReload watcher ENOSPC. No shared sysctl or service mutation is needed.",
+  "liveCorrection": "Existing optional regular private runtime override is reused; the same strict optional override is threaded into existing OQ8 private sqlite discovery configuration. Defaults and production component files stay unchanged.",
+  "cleanupDiagnosis": "After OQ8 failed initialization has released/deleted its runtime, DisposeAsync attempts complete evidence hashing from deleted shadow files.",
+  "cleanupCorrection": "Successful initialization alone permits full observations evidence; failed startup emits a distinct failure receipt without runtime proof, and disposal still cleans owned resources.",
+  "sources": [
+    "https://docs.dapr.io/operations/components/component-updates/",
+    "https://raw.githubusercontent.com/dapr/dapr/v1.18.2/pkg/config/configuration.go",
+    "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/config/configuration.go"
+  ],
+  "profileLimitations": [
+    "Fresh live tests use explicitly private HotReload=false configurations and are not an unmodified production-profile qualification.",
+    "The preliminary focused runner disables Redis RDB save; full-cohort runner must preserve historical Redis default save and appendonly=no.",
+    "Debug OQ8 consumes fresh Debug hosts using existing complete isolation overrides, instead of historical default Release hosts."
+  ],
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711"
+}

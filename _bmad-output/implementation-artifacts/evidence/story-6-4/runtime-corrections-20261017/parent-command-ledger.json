@@ -1,0 +1,1529 @@
+{
+  "recordedAt": "2026-10-17T10:36:26.141104+00:00",
+  "workingDirectory": "/home/administrator/projects/hexalith/eventstore",
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "frames": [
+    {
+      "frame": "domain-debug-build",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-build.json",
+        "sha256": "8cb3487762ea55dc17204fff140303425d50a3f07df48a0d54de9b9b6feb0776",
+        "bytes": 5207125
+      },
+      "startedAt": "2026-10-17T09:31:59.585519+00:00",
+      "endedAt": "2026-10-17T09:32:31.200426+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+        "-c",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:GeneratePackageOnBuild=false",
+        "-m:1"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": null,
+      "producer": null
+    },
+    {
+      "frame": "domain-debug-focused",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-focused.json",
+        "sha256": "644cd92e134677384093c2763366c075fbc5acbb6a8f683d215ccf54e84e2ee6",
+        "bytes": 5207215
+      },
+      "startedAt": "2026-10-17T09:33:13.109371+00:00",
+      "endedAt": "2026-10-17T09:33:14.624537+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-class",
+        "*ProcessReadDeadlineTests",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-focused.xml"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 4,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 4,
+        "seconds": 1.187
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-build.json",
+        "bytes": 5207125,
+        "sha256": "8cb3487762ea55dc17204fff140303425d50a3f07df48a0d54de9b9b6feb0776"
+      }
+    },
+    {
+      "frame": "live-debug-build",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build.json",
+        "sha256": "516d27ad256474d98d1a35a3ff30b944c5f7c8b685ba3b9e839673154bf188b1",
+        "bytes": 5208713
+      },
+      "startedAt": "2026-10-17T09:33:27.326616+00:00",
+      "endedAt": "2026-10-17T09:33:49.353321+00:00",
+      "exitCode": 1,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+        "-c",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:GeneratePackageOnBuild=false",
+        "-m:1"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": null,
+      "producer": null
+    },
+    {
+      "frame": "live-debug-build-2",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff",
+        "bytes": 5209423
+      },
+      "startedAt": "2026-10-17T09:34:51.123389+00:00",
+      "endedAt": "2026-10-17T09:35:09.278597+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+        "-c",
+        "Debug",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:GeneratePackageOnBuild=false",
+        "-m:1"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": null,
+      "producer": null
+    },
+    {
+      "frame": "live-debug-fixture-focused",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-fixture-focused.json",
+        "sha256": "fcd07853fe65e84d1d74c87c6659ee4177d0eac136c26791bfd868e1fdb47133",
+        "bytes": 5207361
+      },
+      "startedAt": "2026-10-17T09:35:27.349467+00:00",
+      "endedAt": "2026-10-17T09:35:27.907106+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-class",
+        "*DaprTestRuntimeConfigurationTests",
+        "-class",
+        "*Oq8DiscoveryConfigurationTests",
+        "-class",
+        "*Oq8FailedInitializationCleanupTests",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-fixture-focused.xml"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 10,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 10,
+        "seconds": 0.287
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "bytes": 5209423,
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff"
+      }
+    },
+    {
+      "frame": "live-debug-runtime-focused",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused.json",
+        "sha256": "7c3c0059f8b60af1e05143f802841f443afbf5e38c9147db41fed438757758c2",
+        "bytes": 5207067
+      },
+      "startedAt": "2026-10-17T09:35:52.678307+00:00",
+      "endedAt": "2026-10-17T09:37:03.728709+00:00",
+      "exitCode": 1,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner.py",
+        "live-debug-runtime-focused",
+        "__FOCUSED__",
+        "Debug"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 4,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 3,
+        "seconds": 62.234
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "bytes": 5209423,
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused-controls.json",
+        "sha256": "34fcab6136ec0072d6509703ebf60802562ef0d5bbf89e3036b27a8e2bc4a232"
+      },
+      "nativeArgv": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-method",
+        "*SourceGuard_TwoRealReplicas*",
+        "-method",
+        "*MultiHostAdmission_PrimaryHostRemoved*",
+        "-method",
+        "*TwoSidecarsAndRestartPreserve*",
+        "-method",
+        "*ProductionMatrix_IndependentProcesses*",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused.xml"
+      ],
+      "recordedNativeEnvironmentOverlay": {
+        "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "EVENTSTORE_TEST_PLACEMENT_PORT": "49713",
+        "EVENTSTORE_TEST_SCHEDULER_PORT": "37203",
+        "EVENTSTORE_TEST_REDIS_PORT": "64386",
+        "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+        "HEXALITH_OQ8_DAPRD_PATH": "/home/administrator/.dapr/bin/daprd",
+        "HEXALITH_OQ8_CONFIGURATION": "Debug",
+        "HEXALITH_OQ8_PLACEMENT_CONTAINER": "g6-oq8-rc-0f70bf49be-placement",
+        "HEXALITH_OQ8_SCHEDULER_CONTAINER": "g6-oq8-rc-0f70bf49be-scheduler",
+        "HEXALITH_OQ8_REDIS_ENDPOINT": "127.0.0.1:64386",
+        "HEXALITH_OQ8_NAMESPACE": "g6-oq8-rc-0f70bf49be",
+        "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused-oq8",
+        "HEXALITH_OQ8_CLEANUP_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused-oq8-cleanup.json"
+      },
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "49713",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "32985",
+          "--metrics-port",
+          "50645",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:58941"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "37203",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "48163",
+          "--metrics-port",
+          "50869",
+          "--etcd-client-port",
+          "58665",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:45251",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-debug-runtime-focused-gx7xgdzx/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-0f70bf49be-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no",
+          "--save",
+          ""
+        ],
+        [
+          "docker",
+          "inspect",
+          "49eeec416f14a5750194f4d3119b70d0d6cd43ffbd6d6ed91459b31f3f332e11"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-0f70bf49be-placement",
+          "-p",
+          "127.0.0.1::50005",
+          "--entrypoint",
+          "./placement",
+          "daprio/dapr:1.18.7"
+        ],
+        [
+          "docker",
+          "inspect",
+          "6f505191a80c397398e3f2c3fcd149f2e3bce4dbdfa20815e5c0b9e86f992db3"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-0f70bf49be-scheduler",
+          "-p",
+          "127.0.0.1::50006",
+          "--entrypoint",
+          "./scheduler",
+          "daprio/dapr:1.18.7",
+          "--etcd-data-dir=/var/lock/dapr/scheduler",
+          "--etcd-client-listen-address=0.0.0.0"
+        ],
+        [
+          "docker",
+          "inspect",
+          "af0eb65d61864feba96242487580b23cfb3c027dde7ca0c35ff0c7b3bf0a876b"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+          "--version"
+        ],
+        [
+          "/home/administrator/.dapr/bin/daprd",
+          "--version"
+        ]
+      ],
+      "runtimeVersions": {
+        "regular": "1.18.2",
+        "oq8": "1.18.7"
+      },
+      "sidecarBinaries": {
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+        "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+      },
+      "nativeStarted": true
+    },
+    {
+      "frame": "live-debug-oq8-focused-2",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-2.json",
+        "sha256": "09c2aca9814cc71e39edd6c493a1410d4280041e9b1eae4a6869ebbaac70cd23",
+        "bytes": 5205866
+      },
+      "startedAt": "2026-10-17T09:37:40.225399+00:00",
+      "endedAt": "2026-10-17T09:37:43.024862+00:00",
+      "exitCode": 1,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner-v2.py",
+        "live-debug-oq8-focused-2",
+        "__OQ8__",
+        "Debug"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": null,
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "bytes": 5209423,
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-2-controls.json",
+        "sha256": "0914780faf6a76e2daaa1b5ac3aaed68036bec7688f6d410cd08f51507aa36c9"
+      },
+      "nativeArgv": null,
+      "recordedNativeEnvironmentOverlay": {},
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "59275",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "44523",
+          "--metrics-port",
+          "34337",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:53229"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "50311",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "34565",
+          "--metrics-port",
+          "57137",
+          "--etcd-client-port",
+          "51075",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:43503",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-debug-oq8-focused-2-4baia6q2/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-f096fe011e-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no",
+          "--save",
+          "3600 1 300 100 60 10000"
+        ],
+        [
+          "docker",
+          "inspect",
+          "77ffdc0957c5b9172fe5858665126dac8037f255ac503aeb37a9b35579eb53fe"
+        ],
+        [
+          "docker",
+          "exec",
+          "77ffdc0957c5b9172fe5858665126dac8037f255ac503aeb37a9b35579eb53fe",
+          "redis-server",
+          "--version"
+        ],
+        [
+          "docker",
+          "exec",
+          "77ffdc0957c5b9172fe5858665126dac8037f255ac503aeb37a9b35579eb53fe",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "save"
+        ],
+        [
+          "docker",
+          "exec",
+          "77ffdc0957c5b9172fe5858665126dac8037f255ac503aeb37a9b35579eb53fe",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "appendonly"
+        ]
+      ],
+      "runtimeVersions": null,
+      "sidecarBinaries": null,
+      "nativeStarted": false
+    },
+    {
+      "frame": "live-release-build",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-build.json",
+        "sha256": "a2e36e3c19ac80254ddbcabc9e32ad149c900232605975a0bca1fe63c24d9616",
+        "bytes": 5212164
+      },
+      "startedAt": "2026-10-17T09:38:09.307412+00:00",
+      "endedAt": "2026-10-17T09:38:56.582976+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "build",
+        "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+        "-c",
+        "Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true",
+        "-p:GeneratePackageOnBuild=false",
+        "-m:1"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": null,
+      "producer": null
+    },
+    {
+      "frame": "live-debug-oq8-focused-3",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3.json",
+        "sha256": "33978d83746cdb435d3287fb3bbad33eaaf65ff26b3d548274a18016a2fd241e",
+        "bytes": 5207058
+      },
+      "startedAt": "2026-10-17T09:39:18.134315+00:00",
+      "endedAt": "2026-10-17T09:39:59.635501+00:00",
+      "exitCode": 1,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner-v3.py",
+        "live-debug-oq8-focused-3",
+        "__OQ8__",
+        "Debug"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 1,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 0,
+        "seconds": 34.183
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-build.json",
+        "bytes": 5212164,
+        "sha256": "a2e36e3c19ac80254ddbcabc9e32ad149c900232605975a0bca1fe63c24d9616"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3-controls.json",
+        "sha256": "4f03c506b902d59068880d8a12510d4076bfc002bb2bc7c87d42605b88b640cf"
+      },
+      "nativeArgv": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-method",
+        "*ProductionMatrix_IndependentProcesses*",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3.xml"
+      ],
+      "recordedNativeEnvironmentOverlay": {
+        "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "EVENTSTORE_TEST_PLACEMENT_PORT": "32887",
+        "EVENTSTORE_TEST_SCHEDULER_PORT": "47101",
+        "EVENTSTORE_TEST_REDIS_PORT": "54736",
+        "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+        "HEXALITH_OQ8_DAPRD_PATH": "/home/administrator/.dapr/bin/daprd",
+        "HEXALITH_OQ8_CONFIGURATION": "Release",
+        "HEXALITH_OQ8_PLACEMENT_CONTAINER": "g6-oq8-rc-683348cc19-placement",
+        "HEXALITH_OQ8_SCHEDULER_CONTAINER": "g6-oq8-rc-683348cc19-scheduler",
+        "HEXALITH_OQ8_REDIS_ENDPOINT": "127.0.0.1:54736",
+        "HEXALITH_OQ8_NAMESPACE": "g6-oq8-rc-683348cc19",
+        "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3-oq8",
+        "HEXALITH_OQ8_CLEANUP_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3-oq8-cleanup.json",
+        "HEXALITH_OQ8_DIAGNOSTICS_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3-oq8-diagnostics.json"
+      },
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "32887",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "46213",
+          "--metrics-port",
+          "49971",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:43697"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "47101",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "40005",
+          "--metrics-port",
+          "55787",
+          "--etcd-client-port",
+          "37659",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:53899",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-debug-oq8-focused-3-cif8aeem/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-683348cc19-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no"
+        ],
+        [
+          "docker",
+          "inspect",
+          "c684d4587ce716761281dfbffbaf16eed7d6197dfa4ffb7c51bffb31f1bc9b26"
+        ],
+        [
+          "docker",
+          "exec",
+          "c684d4587ce716761281dfbffbaf16eed7d6197dfa4ffb7c51bffb31f1bc9b26",
+          "redis-cli",
+          "CONFIG",
+          "SET",
+          "save",
+          "3600 1 300 100 60 10000"
+        ],
+        [
+          "docker",
+          "exec",
+          "c684d4587ce716761281dfbffbaf16eed7d6197dfa4ffb7c51bffb31f1bc9b26",
+          "redis-server",
+          "--version"
+        ],
+        [
+          "docker",
+          "exec",
+          "c684d4587ce716761281dfbffbaf16eed7d6197dfa4ffb7c51bffb31f1bc9b26",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "save"
+        ],
+        [
+          "docker",
+          "exec",
+          "c684d4587ce716761281dfbffbaf16eed7d6197dfa4ffb7c51bffb31f1bc9b26",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "appendonly"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-683348cc19-placement",
+          "-p",
+          "127.0.0.1::50005",
+          "--entrypoint",
+          "./placement",
+          "daprio/dapr:1.18.7"
+        ],
+        [
+          "docker",
+          "inspect",
+          "c74e60599c52e1aa10b4334d9a5d5ae3b97940efc07f074aefb69db90ba1ebba"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-683348cc19-scheduler",
+          "-p",
+          "127.0.0.1::50006",
+          "--entrypoint",
+          "./scheduler",
+          "daprio/dapr:1.18.7",
+          "--etcd-data-dir=/var/lock/dapr/scheduler",
+          "--etcd-client-listen-address=0.0.0.0"
+        ],
+        [
+          "docker",
+          "inspect",
+          "dc1e36d2138e30d8c3914af57cd85c5ab742489ee7f04921fd1d8c5876ba8929"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+          "--version"
+        ],
+        [
+          "/home/administrator/.dapr/bin/daprd",
+          "--version"
+        ]
+      ],
+      "runtimeVersions": {
+        "regular": "1.18.2",
+        "oq8": "1.18.7"
+      },
+      "sidecarBinaries": {
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+        "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+      },
+      "nativeStarted": true
+    },
+    {
+      "frame": "live-debug-oq8-focused-4",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4.json",
+        "sha256": "c3011b63cb4055a1545ec58800fdd1569e032af4bc6beacb85761b2fb0212e80",
+        "bytes": 5207058
+      },
+      "startedAt": "2026-10-17T09:40:41.654479+00:00",
+      "endedAt": "2026-10-17T09:41:31.282168+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner-v4.py",
+        "live-debug-oq8-focused-4",
+        "__OQ8__",
+        "Debug"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 1,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 1,
+        "seconds": 40.983
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-build.json",
+        "bytes": 5212164,
+        "sha256": "a2e36e3c19ac80254ddbcabc9e32ad149c900232605975a0bca1fe63c24d9616"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4-controls.json",
+        "sha256": "2c04c28327b29554d645132eed0ea1ab4bf02cfd50d97dc95bd82cf854f064b8"
+      },
+      "nativeArgv": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-method",
+        "*ProductionMatrix_IndependentProcesses*",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4.xml"
+      ],
+      "recordedNativeEnvironmentOverlay": {
+        "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "EVENTSTORE_TEST_PLACEMENT_PORT": "53937",
+        "EVENTSTORE_TEST_SCHEDULER_PORT": "37839",
+        "EVENTSTORE_TEST_REDIS_PORT": "63808",
+        "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+        "HEXALITH_OQ8_DAPRD_PATH": "/home/administrator/.dapr/bin/daprd",
+        "HEXALITH_OQ8_CONFIGURATION": "Release",
+        "HEXALITH_OQ8_PLACEMENT_CONTAINER": "g6-oq8-rc-4c2634a3a6-placement",
+        "HEXALITH_OQ8_SCHEDULER_CONTAINER": "g6-oq8-rc-4c2634a3a6-scheduler",
+        "HEXALITH_OQ8_REDIS_ENDPOINT": "127.0.0.1:63808",
+        "HEXALITH_OQ8_NAMESPACE": "g6-oq8-rc-4c2634a3a6",
+        "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4-oq8",
+        "HEXALITH_OQ8_CLEANUP_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4-oq8-cleanup.json",
+        "HEXALITH_OQ8_DIAGNOSTICS_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4-oq8-diagnostics.json"
+      },
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "53937",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "33583",
+          "--metrics-port",
+          "45523",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:32889"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "37839",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "53105",
+          "--metrics-port",
+          "44527",
+          "--etcd-client-port",
+          "56693",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:45129",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-debug-oq8-focused-4-joot7kx7/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-4c2634a3a6-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no"
+        ],
+        [
+          "docker",
+          "inspect",
+          "0898821e032a53ceeb1a2d0778de71c937d749ad094fd0007495cccf165eb81d"
+        ],
+        [
+          "docker",
+          "exec",
+          "0898821e032a53ceeb1a2d0778de71c937d749ad094fd0007495cccf165eb81d",
+          "redis-cli",
+          "CONFIG",
+          "SET",
+          "save",
+          "3600 1 300 100 60 10000"
+        ],
+        [
+          "docker",
+          "exec",
+          "0898821e032a53ceeb1a2d0778de71c937d749ad094fd0007495cccf165eb81d",
+          "redis-server",
+          "--version"
+        ],
+        [
+          "docker",
+          "exec",
+          "0898821e032a53ceeb1a2d0778de71c937d749ad094fd0007495cccf165eb81d",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "save"
+        ],
+        [
+          "docker",
+          "exec",
+          "0898821e032a53ceeb1a2d0778de71c937d749ad094fd0007495cccf165eb81d",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "appendonly"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-4c2634a3a6-placement",
+          "-p",
+          "127.0.0.1::50005",
+          "--entrypoint",
+          "./placement",
+          "daprio/dapr:1.18.7"
+        ],
+        [
+          "docker",
+          "inspect",
+          "9b5236f1ad7c1a51055e2aba468c344ebe33ed0a23c14a4ee8e471c1b2f39989"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-4c2634a3a6-scheduler",
+          "-p",
+          "127.0.0.1:36679:50006",
+          "--entrypoint",
+          "./scheduler",
+          "daprio/dapr:1.18.7",
+          "--etcd-data-dir=/var/lock/dapr/scheduler",
+          "--etcd-client-listen-address=0.0.0.0",
+          "--override-broadcast-host-port=localhost:36679"
+        ],
+        [
+          "docker",
+          "inspect",
+          "6dc8a627f2a376569804c0878ff6a45d489c8dadbb27a4816066c2416397b5b4"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+          "--version"
+        ],
+        [
+          "/home/administrator/.dapr/bin/daprd",
+          "--version"
+        ]
+      ],
+      "runtimeVersions": {
+        "regular": "1.18.2",
+        "oq8": "1.18.7"
+      },
+      "sidecarBinaries": {
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+        "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+      },
+      "nativeStarted": true
+    },
+    {
+      "frame": "domain-debug-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.json",
+        "sha256": "2ceb9b758eda4259faa1b4823e09d5e7a1909710675d8aa14edf98e5d4c3c113",
+        "bytes": 5207173
+      },
+      "startedAt": "2026-10-17T09:41:47.358336+00:00",
+      "endedAt": "2026-10-17T09:45:13.446739+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.xml"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 978,
+        "seconds": 205.602
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-build.json",
+        "bytes": 5207125,
+        "sha256": "8cb3487762ea55dc17204fff140303425d50a3f07df48a0d54de9b9b6feb0776"
+      }
+    },
+    {
+      "frame": "live-debug-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full.json",
+        "sha256": "520898c2df9bfaed0a2a1f8eda437cc6f0d48f019c35c5508c7e0d7ea62697fc",
+        "bytes": 5205840
+      },
+      "startedAt": "2026-10-17T09:45:28.917618+00:00",
+      "endedAt": "2026-10-17T09:45:33.515664+00:00",
+      "exitCode": 1,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner-v5.py",
+        "live-debug-full",
+        "__FULL__",
+        "Debug"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": null,
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "bytes": 5209423,
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-controls.json",
+        "sha256": "826822c463b4c14dbbe76163dc4d1cf746570a0b971fd6dfb64f3879f3699a8c"
+      },
+      "nativeArgv": null,
+      "recordedNativeEnvironmentOverlay": {},
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "52369",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "50569",
+          "--metrics-port",
+          "35353",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:47805"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "47719",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "49297",
+          "--metrics-port",
+          "48917",
+          "--etcd-client-port",
+          "42061",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:37451",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-debug-full-t4hu9ynw/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-b370baba6f-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no"
+        ],
+        [
+          "docker",
+          "inspect",
+          "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486"
+        ],
+        [
+          "docker",
+          "exec",
+          "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+          "redis-cli",
+          "CONFIG",
+          "SET",
+          "save",
+          "3600 1 300 100 60 10000"
+        ],
+        [
+          "docker",
+          "exec",
+          "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+          "redis-server",
+          "--version"
+        ],
+        [
+          "docker",
+          "exec",
+          "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "save"
+        ],
+        [
+          "docker",
+          "exec",
+          "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "appendonly"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-b370baba6f-placement",
+          "-p",
+          "127.0.0.1::50005",
+          "--entrypoint",
+          "./placement",
+          "daprio/dapr:1.18.7"
+        ],
+        [
+          "docker",
+          "inspect",
+          "bc1727785dd810d58250937436dde65f66a1466c80b0a52da4e00da83dc1e17f"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-b370baba6f-scheduler",
+          "-p",
+          "127.0.0.1:51701:50006",
+          "--entrypoint",
+          "./scheduler",
+          "daprio/dapr:1.18.7",
+          "--etcd-data-dir=/var/lock/dapr/scheduler",
+          "--etcd-client-listen-address=0.0.0.0",
+          "--override-broadcast-host-port=localhost:51701"
+        ]
+      ],
+      "runtimeVersions": null,
+      "sidecarBinaries": null,
+      "nativeStarted": false
+    },
+    {
+      "frame": "live-debug-full-native",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.json",
+        "sha256": "f0b64cdaf5ec8530b426a5077ad9793a23848382de8befeeda098596e0478252",
+        "bytes": 5207065
+      },
+      "startedAt": "2026-10-17T09:47:08.629617+00:00",
+      "endedAt": "2026-10-17T10:08:46.129315+00:00",
+      "exitCode": 0,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner-v6.py",
+        "live-debug-full-native",
+        "__FULL__",
+        "Debug"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 195,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 1,
+        "notRun": 0,
+        "passed": 194,
+        "seconds": 1288.678
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+        "bytes": 5209423,
+        "sha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-controls.json",
+        "sha256": "df303317f67be8a4d024c6229af7d0c0867e942da2f047dd036f5cf8619eccc9"
+      },
+      "nativeArgv": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.xml"
+      ],
+      "recordedNativeEnvironmentOverlay": {
+        "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "EVENTSTORE_TEST_PLACEMENT_PORT": "43571",
+        "EVENTSTORE_TEST_SCHEDULER_PORT": "44617",
+        "EVENTSTORE_TEST_REDIS_PORT": "53677",
+        "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+        "HEXALITH_OQ8_DAPRD_PATH": "/home/administrator/.dapr/bin/daprd",
+        "HEXALITH_OQ8_CONFIGURATION": "Release",
+        "HEXALITH_OQ8_PLACEMENT_CONTAINER": "g6-oq8-rc-66f936c087-placement",
+        "HEXALITH_OQ8_SCHEDULER_CONTAINER": "g6-oq8-rc-66f936c087-scheduler",
+        "HEXALITH_OQ8_REDIS_ENDPOINT": "127.0.0.1:53677",
+        "HEXALITH_OQ8_NAMESPACE": "g6-oq8-rc-66f936c087",
+        "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-oq8",
+        "HEXALITH_OQ8_CLEANUP_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-oq8-cleanup.json",
+        "HEXALITH_OQ8_DIAGNOSTICS_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-oq8-diagnostics.json"
+      },
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "43571",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "34503",
+          "--metrics-port",
+          "54309",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:60157"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "44617",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "38967",
+          "--metrics-port",
+          "57825",
+          "--etcd-client-port",
+          "43887",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:36815",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-debug-full-native-jt4s1vo2/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-66f936c087-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no"
+        ],
+        [
+          "docker",
+          "inspect",
+          "2266940358c039afc5d9b258aaec6a5ffc9495593bff0833ddb894fb902d9f05"
+        ],
+        [
+          "docker",
+          "exec",
+          "2266940358c039afc5d9b258aaec6a5ffc9495593bff0833ddb894fb902d9f05",
+          "redis-cli",
+          "CONFIG",
+          "SET",
+          "save",
+          "3600 1 300 100 60 10000"
+        ],
+        [
+          "docker",
+          "exec",
+          "2266940358c039afc5d9b258aaec6a5ffc9495593bff0833ddb894fb902d9f05",
+          "redis-server",
+          "--version"
+        ],
+        [
+          "docker",
+          "exec",
+          "2266940358c039afc5d9b258aaec6a5ffc9495593bff0833ddb894fb902d9f05",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "save"
+        ],
+        [
+          "docker",
+          "exec",
+          "2266940358c039afc5d9b258aaec6a5ffc9495593bff0833ddb894fb902d9f05",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "appendonly"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-66f936c087-placement",
+          "-p",
+          "127.0.0.1::50005",
+          "--entrypoint",
+          "./placement",
+          "daprio/dapr:1.18.7"
+        ],
+        [
+          "docker",
+          "inspect",
+          "eafb323d45521d4eacc96ee1594b031d71de9f0cc85c2f1cba015284d96d9dd5"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-66f936c087-scheduler",
+          "-p",
+          "127.0.0.1:20900:50006",
+          "--entrypoint",
+          "./scheduler",
+          "daprio/dapr:1.18.7",
+          "--etcd-data-dir=/var/lock/dapr/scheduler",
+          "--etcd-client-listen-address=0.0.0.0",
+          "--override-broadcast-host-port=localhost:20900"
+        ],
+        [
+          "docker",
+          "inspect",
+          "e8e4afb1f6462f644c6dc75321a9d31af3955ed588474ecad5b576806df838cd"
+        ],
+        [
+          "docker",
+          "inspect",
+          "e8e4afb1f6462f644c6dc75321a9d31af3955ed588474ecad5b576806df838cd"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+          "--version"
+        ],
+        [
+          "/home/administrator/.dapr/bin/daprd",
+          "--version"
+        ]
+      ],
+      "runtimeVersions": {
+        "regular": "1.18.2",
+        "oq8": "1.18.7"
+      },
+      "sidecarBinaries": {
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+        "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+      },
+      "nativeStarted": true
+    },
+    {
+      "frame": "live-release-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.json",
+        "sha256": "d172fdb626c9e633e96538f9fd43a84a931e4bc4cdd3cd3c20e5bce0b86ee5c3",
+        "bytes": 5207049
+      },
+      "startedAt": "2026-10-17T10:09:23.106328+00:00",
+      "endedAt": "2026-10-17T10:32:23.952279+00:00",
+      "exitCode": 1,
+      "wrapperOrNativeArgv": [
+        "python3",
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-runner-v7.py",
+        "live-release-full",
+        "__FULL__",
+        "Release"
+      ],
+      "recordedWrapperEnvironmentOverlay": {},
+      "summary": {
+        "selected": 195,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 1,
+        "notRun": 0,
+        "passed": 193,
+        "seconds": 1372.603
+      },
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-build.json",
+        "bytes": 5212164,
+        "sha256": "a2e36e3c19ac80254ddbcabc9e32ad149c900232605975a0bca1fe63c24d9616"
+      },
+      "controlsReceipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-controls.json",
+        "sha256": "50cef54f94fc4e186d63d59f81ffa2e1ba1a66e0339ce5316b2b0015572b9486"
+      },
+      "nativeArgv": [
+        "dotnet",
+        "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "-showLiveOutput",
+        "-noColor",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.xml"
+      ],
+      "recordedNativeEnvironmentOverlay": {
+        "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "EVENTSTORE_TEST_PLACEMENT_PORT": "49135",
+        "EVENTSTORE_TEST_SCHEDULER_PORT": "59485",
+        "EVENTSTORE_TEST_REDIS_PORT": "61779",
+        "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+        "HEXALITH_OQ8_DAPRD_PATH": "/home/administrator/.dapr/bin/daprd",
+        "HEXALITH_OQ8_CONFIGURATION": "Release",
+        "HEXALITH_OQ8_PLACEMENT_CONTAINER": "g6-oq8-rc-54f551ef1b-placement",
+        "HEXALITH_OQ8_SCHEDULER_CONTAINER": "g6-oq8-rc-54f551ef1b-scheduler",
+        "HEXALITH_OQ8_REDIS_ENDPOINT": "127.0.0.1:61779",
+        "HEXALITH_OQ8_NAMESPACE": "g6-oq8-rc-54f551ef1b",
+        "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-oq8",
+        "HEXALITH_OQ8_CLEANUP_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-oq8-cleanup.json",
+        "HEXALITH_OQ8_DIAGNOSTICS_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-oq8-diagnostics.json"
+      },
+      "taskControlCommands": [
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+          "--id",
+          "story64-rc-placement",
+          "--port",
+          "49135",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "36597",
+          "--metrics-port",
+          "52873",
+          "--initial-cluster",
+          "story64-rc-placement=127.0.0.1:47931"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+          "--id",
+          "story64-rc-scheduler",
+          "--port",
+          "59485",
+          "--listen-address",
+          "127.0.0.1",
+          "--healthz-port",
+          "47793",
+          "--metrics-port",
+          "55927",
+          "--etcd-client-port",
+          "48597",
+          "--etcd-initial-cluster",
+          "story64-rc-scheduler=http://127.0.0.1:57309",
+          "--etcd-data-dir",
+          "/tmp/story64-runtime-live-release-full-lt_39qql/etcd"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-54f551ef1b-redis",
+          "-p",
+          "127.0.0.1::6379",
+          "--entrypoint",
+          "redis-server",
+          "redis:6",
+          "--appendonly",
+          "no"
+        ],
+        [
+          "docker",
+          "inspect",
+          "a17f5c6b1b2dcd4f6b525b96b9ce8bcb87ad788b132d396e234dc4d98eca70a5"
+        ],
+        [
+          "docker",
+          "exec",
+          "a17f5c6b1b2dcd4f6b525b96b9ce8bcb87ad788b132d396e234dc4d98eca70a5",
+          "redis-cli",
+          "CONFIG",
+          "SET",
+          "save",
+          "3600 1 300 100 60 10000"
+        ],
+        [
+          "docker",
+          "exec",
+          "a17f5c6b1b2dcd4f6b525b96b9ce8bcb87ad788b132d396e234dc4d98eca70a5",
+          "redis-server",
+          "--version"
+        ],
+        [
+          "docker",
+          "exec",
+          "a17f5c6b1b2dcd4f6b525b96b9ce8bcb87ad788b132d396e234dc4d98eca70a5",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "save"
+        ],
+        [
+          "docker",
+          "exec",
+          "a17f5c6b1b2dcd4f6b525b96b9ce8bcb87ad788b132d396e234dc4d98eca70a5",
+          "redis-cli",
+          "--raw",
+          "CONFIG",
+          "GET",
+          "appendonly"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-54f551ef1b-placement",
+          "-p",
+          "127.0.0.1::50005",
+          "--entrypoint",
+          "./placement",
+          "daprio/dapr:1.18.7"
+        ],
+        [
+          "docker",
+          "inspect",
+          "de679a5303fa7625bc736e573d25976d9a3d34cd4094342a4f558d70ea880762"
+        ],
+        [
+          "docker",
+          "run",
+          "--rm",
+          "-d",
+          "--name",
+          "g6-oq8-rc-54f551ef1b-scheduler",
+          "-p",
+          "127.0.0.1:19260:50006",
+          "--entrypoint",
+          "./scheduler",
+          "daprio/dapr:1.18.7",
+          "--etcd-data-dir=/var/lock/dapr/scheduler",
+          "--etcd-client-listen-address=0.0.0.0",
+          "--override-broadcast-host-port=localhost:19260"
+        ],
+        [
+          "docker",
+          "inspect",
+          "cdea4742a62a17437f36ca1880db76e536cf1f770b562accffcb8ee206fcc701"
+        ],
+        [
+          "docker",
+          "inspect",
+          "cdea4742a62a17437f36ca1880db76e536cf1f770b562accffcb8ee206fcc701"
+        ],
+        [
+          "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+          "--version"
+        ],
+        [
+          "/home/administrator/.dapr/bin/daprd",
+          "--version"
+        ]
+      ],
+      "runtimeVersions": {
+        "regular": "1.18.2",
+        "oq8": "1.18.7"
+      },
+      "sidecarBinaries": {
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+        "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+      },
+      "nativeStarted": true
+    }
+  ],
+  "scope": "Exact recorded command vectors and allowlisted environment overlays, not a complete inherited environment or replay instruction. Producer/execution packets retain complete source, effective assets, runtime and module identities. Retained failed preparations are distinct from native invocations."
+}

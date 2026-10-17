@@ -47,6 +47,8 @@ _bmad-output/implementation-artifacts/evidence/story-8-3/verification-2026-10-08
 
 # Story 8.3 closure receipts preserve exact command, TRX, inventory, and binding bytes.
 _bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/** -text -whitespace
+# Story 6.4 runtime correction receipts bind exact native bytes, including mixed-newline logs.
+_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/** -text -whitespace
 # Authorized sanitized replacements retain exact one-field transformation bytes.
 _bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/** -text -whitespace
 

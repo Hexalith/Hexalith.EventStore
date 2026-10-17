@@ -1,0 +1,22 @@
+{
+  "utc": "2026-10-17T09:46:42.997280+00:00",
+  "purpose": "Exact safe control-command reproduction only; no native test execution.",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "-d",
+    "--name",
+    "g6-oq8-rc-b370baba6f-scheduler",
+    "-p",
+    "127.0.0.1:51701:50006",
+    "--entrypoint",
+    "./scheduler",
+    "daprio/dapr:1.18.7",
+    "--etcd-data-dir=/var/lock/dapr/scheduler",
+    "--etcd-client-listen-address=0.0.0.0",
+    "--override-broadcast-host-port=localhost:51701"
+  ],
+  "exitCode": 125,
+  "output": "ac635588ac2d53cb70928162c7942a3698621ce33f818802b4a326e47238f0c1\ndocker: Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:51701 -> 127.0.0.1:0: /forwards/expose returned unexpected status: 500\n\nRun 'docker run --help' for more information\n"
+}

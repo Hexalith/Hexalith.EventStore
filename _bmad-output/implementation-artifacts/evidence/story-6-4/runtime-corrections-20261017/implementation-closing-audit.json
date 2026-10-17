@@ -1,0 +1,213 @@
+{
+  "recordedAt": "2026-10-17T10:34:00.695536+00:00",
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "sourceChanges": [
+    "tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestRuntimeConfiguration.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8DiscoveryConfiguration.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8DiscoveryConfigurationTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8FailedInitializationCleanupTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs"
+  ],
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+  "cohorts": [
+    {
+      "frame": "domain-debug-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.json",
+        "sha256": "2ceb9b758eda4259faa1b4823e09d5e7a1909710675d8aa14edf98e5d4c3c113",
+        "bytes": 5207173
+      },
+      "nativeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/domain-debug-full.xml",
+        "sha256": "ce516d942a03d6b9e20748b5b0bea14c6db05cd9d98db50e626588dc78d7c6cc",
+        "bytes": 660054
+      },
+      "exitCode": 0,
+      "nativeCounts": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, parallel (collections, 14 threads)]",
+        "id": "f227cc0e-e956-4dde-bc1f-148b1457a0b1",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "09:41:47",
+        "start-rtf": "2026-10-17T09:41:47.7080600+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-17T09:45:13.2969183+00:00",
+        "not-run": "0",
+        "passed": "978",
+        "skipped": "0",
+        "time": "205.602",
+        "time-rtf": "00:03:25.6020000",
+        "total": "978"
+      },
+      "failedCases": [],
+      "declaredSkips": [],
+      "sourceAssetsRuntimeStable": true
+    },
+    {
+      "frame": "live-debug-full-native",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.json",
+        "sha256": "f0b64cdaf5ec8530b426a5077ad9793a23848382de8befeeda098596e0478252",
+        "bytes": 5207065
+      },
+      "nativeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native.xml",
+        "sha256": "6d5b5fbd279eb112721d37c1f99b27a1c2a89ed7d6720732e14e409c66798b95",
+        "bytes": 326055
+      },
+      "exitCode": 0,
+      "nativeCounts": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "8fdb6a00-4f9b-489a-a3ea-844ef3b3db19",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "09:47:14",
+        "start-rtf": "2026-10-17T09:47:14.5604885+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-17T10:08:43.1672642+00:00",
+        "not-run": "0",
+        "passed": "194",
+        "skipped": "1",
+        "time": "1288.678",
+        "time-rtf": "00:21:28.6780000",
+        "total": "195"
+      },
+      "failedCases": [],
+      "declaredSkips": [
+        "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessWorkerTests.ApplyPersistedHistoryAsync"
+      ],
+      "sourceAssetsRuntimeStable": true
+    },
+    {
+      "frame": "live-release-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.json",
+        "sha256": "d172fdb626c9e633e96538f9fd43a84a931e4bc4cdd3cd3c20e5bce0b86ee5c3",
+        "bytes": 5207049
+      },
+      "nativeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full.xml",
+        "sha256": "ae0b1703990c79281b8231ed58aa223c9fc71a4a2fe66740caf3d0f9a856dbca",
+        "bytes": 331682
+      },
+      "exitCode": 1,
+      "nativeCounts": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "e9280b45-ceb3-4645-9121-c2977abad420",
+        "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+        "run-date": "2026-10-17",
+        "run-time": "10:09:28",
+        "start-rtf": "2026-10-17T10:09:28.7713084+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "1",
+        "finish-rtf": "2026-10-17T10:32:21.2963106+00:00",
+        "not-run": "0",
+        "passed": "193",
+        "skipped": "1",
+        "time": "1372.603",
+        "time-rtf": "00:22:52.6030000",
+        "total": "195"
+      },
+      "failedCases": [
+        "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants"
+      ],
+      "declaredSkips": [
+        "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessWorkerTests.ApplyPersistedHistoryAsync"
+      ],
+      "sourceAssetsRuntimeStable": true
+    }
+  ],
+  "originalReplicaCases": {
+    "live-debug-full-native": {
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.SourceGuard_TwoRealReplicasResumeOriginalCommittedEventReceiptsWithoutRepeatingEffects": "Pass",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.DaprEventEvolutionLogicalReadbackLiveSidecarTests.TwoSidecarsAndRestartPreserveCommittedApplicationBytesAndMessageIdentity": "Pass",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica": "Pass"
+    },
+    "live-release-full": {
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.SourceGuard_TwoRealReplicasResumeOriginalCommittedEventReceiptsWithoutRepeatingEffects": "Pass",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica": "Pass",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.DaprEventEvolutionLogicalReadbackLiveSidecarTests.TwoSidecarsAndRestartPreserveCommittedApplicationBytesAndMessageIdentity": "Pass"
+    }
+  },
+  "numericalRecords": {
+    "live-debug-full-native": {
+      "observations": 49,
+      "kinds": {
+        "ProjectionGuardActivationClosure": 1,
+        "ProjectionSourceCost": 2,
+        "ProjectionGuardNativeAttempts": 9,
+        "ProjectionGuardTypedFailure": 1,
+        "ProjectionGuardCurrentMatrix": 15,
+        "ProjectionGuardEmptyCost": 1,
+        "ProjectionReplayRecoveryAttempt": 12,
+        "ProjectionGuardCatalogColdWarm": 1,
+        "ProjectionGuardLiveCost": 7
+      },
+      "claim": "Native numerical records remain separate from whole-cohort acceptance."
+    },
+    "live-release-full": {
+      "observations": 49,
+      "kinds": {
+        "ProjectionGuardActivationClosure": 1,
+        "ProjectionGuardNativeAttempts": 9,
+        "ProjectionGuardTypedFailure": 1,
+        "ProjectionGuardEmptyCost": 1,
+        "ProjectionSourceCost": 2,
+        "ProjectionReplayRecoveryAttempt": 12,
+        "ProjectionGuardCurrentMatrix": 15,
+        "ProjectionGuardCatalogColdWarm": 1,
+        "ProjectionGuardLiveCost": 7
+      },
+      "claim": "Native numerical records remain separate from whole-cohort acceptance."
+    }
+  },
+  "physicalCleanup": {
+    "live-debug-full-native": {
+      "zeroChildrenAfterNative": true,
+      "containersAbsent": true,
+      "volumesAbsent": true,
+      "portsClosed": true,
+      "scratchRemoved": true,
+      "fixtureDirectoriesRemoved": true,
+      "oq8PostgresAbsent": true,
+      "oq8RuntimeRemoved": true,
+      "oq8ProcessesStopped": true
+    },
+    "live-release-full": {
+      "zeroChildrenAfterNative": true,
+      "containersAbsent": true,
+      "volumesAbsent": true,
+      "portsClosed": true,
+      "scratchRemoved": true,
+      "fixtureDirectoriesRemoved": true,
+      "oq8PostgresAbsent": true,
+      "oq8RuntimeRemoved": true,
+      "oq8ProcessesStopped": true
+    }
+  },
+  "nativeSlotMapping": {
+    "domain-debug-full": "domain-debug-full",
+    "live-debug-full": "live-debug-full-native",
+    "live-release-full": "live-release-full"
+  },
+  "retainedPreNativeDebugPreparation": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full.json",
+    "sha256": "520898c2df9bfaed0a2a1f8eda437cc6f0d48f019c35c5508c7e0d7ea62697fc",
+    "bytes": 5205840
+  },
+  "preNativePreparationNativeInvocations": 0,
+  "nativeFullInvocationsPerAuthorizedSlot": 1,
+  "releaseOq8BodyLimit": "The initial writer await failed at test line 44/SubmitAsync line197. Later authority/replay/expiry/leakage and persisted invariant assertions in that method are unproven for this Release cohort, regardless of not-run=0. Debug/focused OQ8 passes are not substituted.",
+  "releaseOq8ObservedFailure": "HttpClient 30-second timeout, with correlated sqlite/v1 name-resolution host registration context deadlines in sanitized diagnostics. SQLite root cause remains unproven.",
+  "formalAcceptance": "open; Story and sprint remain in-progress",
+  "noRetry": true
+}

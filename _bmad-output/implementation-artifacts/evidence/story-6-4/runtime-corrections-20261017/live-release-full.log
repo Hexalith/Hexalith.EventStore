@@ -1,0 +1,2 @@
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 195, Errors: 0, Failed: 1, Skipped: 1, Not Run: 0, Time: 1372.603s
+{"lane": "live-release-full", "testExitCode": 1, "wrapperFailureClass": null, "liveChildrenAfterNative": 0, "controls": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-controls.json"}

@@ -1,0 +1,39 @@
+{
+  "utc": "2026-10-17T09:37:18.851012+00:00",
+  "commands": [
+    {
+      "command": [
+        "dotnet",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "10.0.401\n"
+    },
+    {
+      "command": [
+        "dotnet",
+        "--info"
+      ],
+      "exitCode": 0,
+      "output": ".NET SDK:\n Version:           10.0.401\n Commit:            e34a38d2ae\n Workload version:  10.0.400-manifests.63b36e85\n MSBuild version:   18.9.11+e34a38d2a\n\nRuntime Environment:\n OS Name:     ubuntu\n OS Version:  26.04\n OS Platform: Linux\n RID:         linux-x64\n Base Path:   /home/administrator/.dotnet/sdk/10.0.401/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.12\n  Architecture: x64\n  Commit:       95017c711e\n\n.NET SDKs installed:\n  10.0.302 [/home/administrator/.dotnet/sdk]\n  10.0.400 [/home/administrator/.dotnet/sdk]\n  10.0.401 [/home/administrator/.dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/administrator/.cache/dotnet_bundle_extract]\n  DOTNET_ROOT                              [/home/administrator/.dotnet]\n\nglobal.json file:\n  /home/administrator/projects/hexalith/eventstore/global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n"
+    },
+    {
+      "command": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "1.18.2\n",
+      "binarySha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6"
+    },
+    {
+      "command": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "1.18.7\n",
+      "binarySha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+    }
+  ]
+}

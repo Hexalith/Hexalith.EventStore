@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-10-17T10:35:03.913370+00:00",
+  "path": "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md",
+  "beforeSha256": "bce3030a7a38b4ffb6f90e1ce99925749e658d8b20830c087f65452683b3724a",
+  "afterSha256": "b13b4d476aa46e21e953010a168515ecd775155a04686c8a7a859016c7b2d056",
+  "originalBytesPreserved": 95137,
+  "appendedBytes": 3151,
+  "appendOnly": true,
+  "handoffSha256": "abde08715200291d29ccc8fa852964ec2bf19d9657978486d6c255793ec25dcd"
+}

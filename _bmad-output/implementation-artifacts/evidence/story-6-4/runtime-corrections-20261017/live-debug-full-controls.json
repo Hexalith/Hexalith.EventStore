@@ -1,0 +1,235 @@
+{
+  "lane": "live-debug-full",
+  "configuration": "Debug",
+  "work": "/tmp/story64-runtime-live-debug-full-t4hu9ynw",
+  "commands": [
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+      "--id",
+      "story64-rc-placement",
+      "--port",
+      "52369",
+      "--listen-address",
+      "127.0.0.1",
+      "--healthz-port",
+      "50569",
+      "--metrics-port",
+      "35353",
+      "--initial-cluster",
+      "story64-rc-placement=127.0.0.1:47805"
+    ],
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+      "--id",
+      "story64-rc-scheduler",
+      "--port",
+      "47719",
+      "--listen-address",
+      "127.0.0.1",
+      "--healthz-port",
+      "49297",
+      "--metrics-port",
+      "48917",
+      "--etcd-client-port",
+      "42061",
+      "--etcd-initial-cluster",
+      "story64-rc-scheduler=http://127.0.0.1:37451",
+      "--etcd-data-dir",
+      "/tmp/story64-runtime-live-debug-full-t4hu9ynw/etcd"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-rc-b370baba6f-redis",
+      "-p",
+      "127.0.0.1::6379",
+      "--entrypoint",
+      "redis-server",
+      "redis:6",
+      "--appendonly",
+      "no"
+    ],
+    [
+      "docker",
+      "inspect",
+      "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486"
+    ],
+    [
+      "docker",
+      "exec",
+      "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+      "redis-cli",
+      "CONFIG",
+      "SET",
+      "save",
+      "3600 1 300 100 60 10000"
+    ],
+    [
+      "docker",
+      "exec",
+      "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+      "redis-server",
+      "--version"
+    ],
+    [
+      "docker",
+      "exec",
+      "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+      "redis-cli",
+      "--raw",
+      "CONFIG",
+      "GET",
+      "save"
+    ],
+    [
+      "docker",
+      "exec",
+      "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+      "redis-cli",
+      "--raw",
+      "CONFIG",
+      "GET",
+      "appendonly"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-rc-b370baba6f-placement",
+      "-p",
+      "127.0.0.1::50005",
+      "--entrypoint",
+      "./placement",
+      "daprio/dapr:1.18.7"
+    ],
+    [
+      "docker",
+      "inspect",
+      "bc1727785dd810d58250937436dde65f66a1466c80b0a52da4e00da83dc1e17f"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-rc-b370baba6f-scheduler",
+      "-p",
+      "127.0.0.1:51701:50006",
+      "--entrypoint",
+      "./scheduler",
+      "daprio/dapr:1.18.7",
+      "--etcd-data-dir=/var/lock/dapr/scheduler",
+      "--etcd-client-listen-address=0.0.0.0",
+      "--override-broadcast-host-port=localhost:51701"
+    ]
+  ],
+  "containers": [
+    {
+      "id": "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+      "name": "g6-oq8-rc-b370baba6f-redis",
+      "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "imageReference": "redis:6",
+      "mounts": [
+        {
+          "Type": "volume",
+          "Name": "dd3c7d5097722c3c2340cb314857d298dd36bc64d33311f142e92fb90cf1828f",
+          "Source": "/var/lib/docker/volumes/dd3c7d5097722c3c2340cb314857d298dd36bc64d33311f142e92fb90cf1828f/_data",
+          "Destination": "/data",
+          "Driver": "local",
+          "Mode": "",
+          "RW": true,
+          "Propagation": ""
+        }
+      ],
+      "ports": {
+        "6379/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "57590"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bc1727785dd810d58250937436dde65f66a1466c80b0a52da4e00da83dc1e17f",
+      "name": "g6-oq8-rc-b370baba6f-placement",
+      "image": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "imageReference": "daprio/dapr:1.18.7",
+      "mounts": [],
+      "ports": {
+        "50005/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "57591"
+          }
+        ]
+      }
+    }
+  ],
+  "processes": [
+    {
+      "role": "placement",
+      "pid": 44356,
+      "binarySha256": "40dc8f8b525fc06aa914f930c87c52db33b02523ad1e2c0bcef2f4e1b5351d77"
+    },
+    {
+      "role": "scheduler",
+      "pid": 44382,
+      "binarySha256": "da84c39646cce5a30f076e9d283e67064ae6f62677f02a78014da14eda02e56a"
+    }
+  ],
+  "testExitCode": null,
+  "profile": "test-local HotReload=false; OQ8 private discovery; no production-profile qualification",
+  "redisConfiguration": {
+    "version": "Redis server v=6.2.21 sha=00000000:0 malloc=jemalloc-5.1.0 bits=64 build=bfa2c172d6556ada",
+    "save": "save\n3600 1 300 100 60 10000",
+    "appendonly": "appendonly\nno"
+  },
+  "wrapperFailureClass": "CalledProcessError",
+  "observedChildren": [],
+  "ownedChildrenAliveAfterNative": [],
+  "controlExitCodes": [
+    0,
+    0
+  ],
+  "containerCleanup": [
+    {
+      "id": "bc1727785dd810d58250937436dde65f66a1466c80b0a52da4e00da83dc1e17f",
+      "exitCode": 0
+    },
+    {
+      "id": "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486",
+      "exitCode": 0
+    }
+  ],
+  "containerPhysicalAbsence": {
+    "f71a82dcf0739b733ef6d6de7cbdaf3297bdb327f44ed4d3245cab099e6c1486": true,
+    "bc1727785dd810d58250937436dde65f66a1466c80b0a52da4e00da83dc1e17f": true
+  },
+  "volumePhysicalAbsence": {
+    "dd3c7d5097722c3c2340cb314857d298dd36bc64d33311f142e92fb90cf1828f": true
+  },
+  "resourceDirectoriesRemoved": {},
+  "physicalPortsClosed": {
+    "47719": true,
+    "50569": true,
+    "37451": true,
+    "42061": true,
+    "52369": true,
+    "49297": true,
+    "48917": true,
+    "57590": true,
+    "57591": true,
+    "35353": true,
+    "47805": true
+  },
+  "scratchRemoved": true,
+  "runnerSha256": "a5769c24946dde0ef46374adb982e723cae6a86a4593c3fb22786e38eb6fbc15",
+  "completedAt": "2026-10-17T09:45:33.502563+00:00"
+}

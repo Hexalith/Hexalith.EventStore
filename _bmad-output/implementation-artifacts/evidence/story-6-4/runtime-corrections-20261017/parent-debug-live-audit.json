@@ -1,0 +1,227 @@
+{
+  "utc": "2026-10-17T10:10:45.081209+00:00",
+  "slot": "live-debug-full",
+  "nativeFrame": "live-debug-full-native",
+  "nativeAssembly": {
+    "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+    "id": "8fdb6a00-4f9b-489a-a3ea-844ef3b3db19",
+    "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "run-date": "2026-10-17",
+    "run-time": "09:47:14",
+    "start-rtf": "2026-10-17T09:47:14.5604885+00:00",
+    "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+    "target-framework": ".NETCoreApp,Version=v10.0",
+    "errors": "0",
+    "failed": "0",
+    "finish-rtf": "2026-10-17T10:08:43.1672642+00:00",
+    "not-run": "0",
+    "passed": "194",
+    "skipped": "1",
+    "time": "1288.678",
+    "time-rtf": "00:21:28.6780000",
+    "total": "195"
+  },
+  "outcomes": {
+    "Pass": 194,
+    "Skip": 1
+  },
+  "originalCasesMissing": [],
+  "newCases": [
+    [
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests",
+      "DisabledHotReloadPreservesPrivateDiscovery",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests.DisabledHotReloadPreservesPrivateDiscovery"
+    ],
+    [
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests",
+      "MalformedHotReloadOverrideFailsClosed",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8DiscoveryConfigurationTests.MalformedHotReloadOverrideFailsClosed"
+    ],
+    [
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8FailedInitializationCleanupTests",
+      "FailedPreflightDisposesWithoutSuccessfulRuntimeEvidence",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures.Oq8FailedInitializationCleanupTests.FailedPreflightDisposesWithoutSuccessfulRuntimeEvidence"
+    ]
+  ],
+  "skipsExactlyPreserved": true,
+  "producerBindings": {
+    "entryHosts": {
+      "producer": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-build.json",
+      "producerSha256": "a2e36e3c19ac80254ddbcabc9e32ad149c900232605975a0bca1fe63c24d9616",
+      "matchingConsumedOutputHashes": 702
+    },
+    "testAssembly": {
+      "producer": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-build-2.json",
+      "producerSha256": "a2daf53e60192399a4b45b4ef89b5bede62b31002ca9cd1650e8802edb0fc5ff",
+      "matchingConsumedOutputHashes": 705
+    }
+  },
+  "numericalAudit": {
+    "file": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-full-native-vectors.json",
+      "sha256": "da93301c2867cc4cab388304ffbc8fbc5401d3171939ca71b29bfec76ccd4c34",
+      "bytes": 189668
+    },
+    "counts": {
+      "ProjectionGuardActivationClosure": 1,
+      "ProjectionSourceCost": 2,
+      "ProjectionGuardNativeAttempts": 9,
+      "ProjectionGuardTypedFailure": 1,
+      "ProjectionGuardCurrentMatrix": 15,
+      "ProjectionGuardEmptyCost": 1,
+      "ProjectionReplayRecoveryAttempt": 12,
+      "ProjectionGuardCatalogColdWarm": 1,
+      "ProjectionGuardLiveCost": 7
+    },
+    "current": [
+      {
+        "head": 1,
+        "checkpoint": 1,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 1,
+        "checkpoint": 1,
+        "pageSize": 16,
+        "receiptLimit": 256
+      },
+      {
+        "head": 1,
+        "checkpoint": 1,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 256,
+        "checkpoint": 256,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 256,
+        "checkpoint": 256,
+        "pageSize": 16,
+        "receiptLimit": 256
+      },
+      {
+        "head": 256,
+        "checkpoint": 256,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 257,
+        "checkpoint": 257,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 257,
+        "checkpoint": 257,
+        "pageSize": 16,
+        "receiptLimit": 256
+      },
+      {
+        "head": 257,
+        "checkpoint": 257,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 9999,
+        "checkpoint": 9999,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 9999,
+        "checkpoint": 9999,
+        "pageSize": 16,
+        "receiptLimit": 256
+      },
+      {
+        "head": 9999,
+        "checkpoint": 9999,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 10000,
+        "checkpoint": 10000,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 10000,
+        "checkpoint": 10000,
+        "pageSize": 16,
+        "receiptLimit": 256
+      },
+      {
+        "head": 10000,
+        "checkpoint": 10000,
+        "pageSize": 256,
+        "receiptLimit": 256
+      }
+    ],
+    "tails": [
+      {
+        "head": 1,
+        "checkpoint": 1,
+        "delta": 0,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 2,
+        "checkpoint": 1,
+        "delta": 1,
+        "pageSize": 1,
+        "receiptLimit": 256
+      },
+      {
+        "head": 257,
+        "checkpoint": 1,
+        "delta": 256,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 258,
+        "checkpoint": 1,
+        "delta": 257,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 772,
+        "checkpoint": 1,
+        "delta": 771,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 9771,
+        "checkpoint": 9000,
+        "delta": 771,
+        "pageSize": 256,
+        "receiptLimit": 256
+      },
+      {
+        "head": 10000,
+        "checkpoint": 9999,
+        "delta": 1,
+        "pageSize": 256,
+        "receiptLimit": 256
+      }
+    ],
+    "completeCurrentMatrix": true,
+    "completeTailMatrix": true,
+    "originalReplicaRecoveryWitness": true
+  },
+  "Oq8NativeShadowCopyHashesMatch": true,
+  "reportedResourceCleanupChecksPass": true,
+  "nativeLogSha256": "ca85bcfc6685b885855486eadb7782aca5b3801f3ad32a5f5652784286412313",
+  "scope": "Independent completed Debug native/XML/cohort, producer-copy identity, numerical and recorded-cleanup audit. Independent later physical checks and formal acceptance remain separate."
+}

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "dotnet",
+    "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-method",
+    "*ProductionMatrix_IndependentProcesses*",
+    "-showLiveOutput",
+    "-noColor",
+    "-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-3.xml"
+  ],
+  "exitCode": 1,
+  "observations": []
+}

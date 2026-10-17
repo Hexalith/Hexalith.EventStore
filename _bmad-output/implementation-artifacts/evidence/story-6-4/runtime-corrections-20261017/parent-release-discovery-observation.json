@@ -1,0 +1,28 @@
+{
+  "capturedUtc": "2026-10-17T10:15:47.762922+00:00",
+  "diagnosticPath": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-release-full-oq8-diagnostics.json",
+  "diagnosticSha256": "ab00bb432649b39e8cc2a54d20787b3481bccb6721c6bd181fbe2bfa0712c6e2",
+  "observedNodes": [
+    {
+      "node": "eventstore-1",
+      "matchingRegistrationDeadlineLines": 10,
+      "firstLine": "time=\"2026-10-17T12:09:42.864217744+02:00\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=eventstore component=\"nr (sqlite/v1)\" instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7",
+      "lastLine": "time=\"2026-10-17T12:10:18.860808195+02:00\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=eventstore component=\"nr (sqlite/v1)\" instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7"
+    },
+    {
+      "node": "eventstore-2",
+      "matchingRegistrationDeadlineLines": 10,
+      "firstLine": "time=\"2026-10-17T12:09:43.9072107+02:00\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=eventstore component=\"nr (sqlite/v1)\" instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7",
+      "lastLine": "time=\"2026-10-17T12:10:19.903755807+02:00\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=eventstore component=\"nr (sqlite/v1)\" instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7"
+    },
+    {
+      "node": "sample",
+      "matchingRegistrationDeadlineLines": 12,
+      "firstLine": "time=\"2026-10-17T12:09:45.963453616+02:00\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=sample component=\"nr (sqlite/v1)\" instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7",
+      "lastLine": "time=\"2026-10-17T12:10:32.311497972+02:00\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=sample component=\"nr (sqlite/v1)\" instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7"
+    }
+  ],
+  "owningCase": "IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
+  "observedNativeFailure": "Initial concurrent writer request exceeded existing HttpClient.Timeout of 30 seconds; exact final native exception/stack remains owned by the completed XML/log packet.",
+  "classification": "Recorded private-discovery registration failure associated with the HTTP timeout. SQLite root cause is unproven; no timeout extension, resolver change, policy change, retry or runtime success is asserted."
+}

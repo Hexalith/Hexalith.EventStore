@@ -1,0 +1,24 @@
+{
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "reviewedFiles": [
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md",
+    "tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/DaprTestRuntimeConfiguration.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8DiscoveryConfiguration.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8DiscoveryConfigurationTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8FailedInitializationCleanupTests.cs"
+  ],
+  "domainTest": {
+    "path": "tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs",
+    "originalShouldlyLines": 15,
+    "originalShouldlyLinesRemoved": [],
+    "newShouldlyLines": {
+      "await Should.ThrowAsync<ProcessReadAdmissionException>(() => worker);": 1,
+      "workers.Count.ShouldBe(16);": 1
+    },
+    "originalRecoveryBudgetPreserved": "Original 100 attempts / 10ms backoff / 1s operation remain before new drain, including failure cleanup."
+  },
+  "productionDependencyProfileChanges": [],
+  "manualReview": "Original test bodies, assertions and operating budgets retained. New drain holds all 16 slots, fails on bounded inability to acquire them, then awaits normal completion before the next test. OQ8 private config preserves default bytes when override absent; failed-initialization evidence declares runtimeProofAvailable=false and does not hash deleted shadow files. No production/policy/dependency edit. Successful double-dispose beyond the demonstrated failed-initialization lifecycle is not newly promised."
+}

@@ -1,0 +1,65 @@
+{
+  "checkedUtc": "2026-10-17T10:37:25.466663+00:00",
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "boundFiles": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent_handoff_audit.py",
+      "sha256": "e72b9787619a77fee38dca300d7b93c0bf52e2154bb7b4cfaee2bcf3e7422bfa"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-final-handoff.md",
+      "sha256": "ff835f638bace2874fb614568d6c866808b9a443838f64ac0d1cd88a08b8761a"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/correction-handoff.md",
+      "sha256": "abde08715200291d29ccc8fa852964ec2bf19d9657978486d6c255793ec25dcd"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/implementation-closing-audit.json",
+      "sha256": "be31c1dd33081fa2ec7ecc8217375320eb4c8bf7c7887627150cb60bde45a6d3"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-command-ledger.json",
+      "sha256": "df12a4b855a597705f0762e4599f9a9cc01e749396f93f569a3b33b5582d59df"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-native-audit.json",
+      "sha256": "5d10f761608273a9467a9954094e2d4cf046e336798220369b5d7d06f9ef748b"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-completed-release-audit.json",
+      "sha256": "ef6bd2a5cc709c00cda99f935b0400ad198b637be39857fdd89aa83cbcff9c20"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-final-preservation-audit.json",
+      "sha256": "a8bbf659e645b0257cddb8a7b5bb19edac79d9af88d144c1a66eb39d9148dfac"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-final-resource-audit.json",
+      "sha256": "1c9a969d0928480d9dc2613c91bf1522208fb7569357b3f8edc75a582c43081e"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-all-runtime-frame-resource-audit.json",
+      "sha256": "8be215b93456509f8c0430a7157002e1f82a0ccb62a8cf4f916889d0997f8cf9"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md",
+      "sha256": "fe8327745fee697d573a930648f1a425f63b38cf50a869196dcf50b998577ce7"
+    }
+  ],
+  "protectedFilesUnchanged": 11962,
+  "wrapperOriginalPrefixBytes": 92776,
+  "wrapperAppendOnly": true,
+  "sourceInputsStillMatchCompletedCohorts": 9644,
+  "indexUnchanged": true,
+  "gitDiffCheck": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0
+  },
+  "acceptance": "in-progress; Release failed/unproven; separate formal gates open",
+  "scope": "Local final preservation/handoff audit only. No native execution, Git mutation, approval or authenticated CI seal."
+}

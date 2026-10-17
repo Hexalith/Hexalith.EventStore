@@ -1,0 +1,756 @@
+{
+  "lane": "live-debug-runtime-focused",
+  "configuration": "Debug",
+  "work": "/tmp/story64-runtime-live-debug-runtime-focused-gx7xgdzx",
+  "commands": [
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+      "--id",
+      "story64-rc-placement",
+      "--port",
+      "49713",
+      "--listen-address",
+      "127.0.0.1",
+      "--healthz-port",
+      "32985",
+      "--metrics-port",
+      "50645",
+      "--initial-cluster",
+      "story64-rc-placement=127.0.0.1:58941"
+    ],
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+      "--id",
+      "story64-rc-scheduler",
+      "--port",
+      "37203",
+      "--listen-address",
+      "127.0.0.1",
+      "--healthz-port",
+      "48163",
+      "--metrics-port",
+      "50869",
+      "--etcd-client-port",
+      "58665",
+      "--etcd-initial-cluster",
+      "story64-rc-scheduler=http://127.0.0.1:45251",
+      "--etcd-data-dir",
+      "/tmp/story64-runtime-live-debug-runtime-focused-gx7xgdzx/etcd"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-rc-0f70bf49be-redis",
+      "-p",
+      "127.0.0.1::6379",
+      "--entrypoint",
+      "redis-server",
+      "redis:6",
+      "--appendonly",
+      "no",
+      "--save",
+      ""
+    ],
+    [
+      "docker",
+      "inspect",
+      "49eeec416f14a5750194f4d3119b70d0d6cd43ffbd6d6ed91459b31f3f332e11"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-rc-0f70bf49be-placement",
+      "-p",
+      "127.0.0.1::50005",
+      "--entrypoint",
+      "./placement",
+      "daprio/dapr:1.18.7"
+    ],
+    [
+      "docker",
+      "inspect",
+      "6f505191a80c397398e3f2c3fcd149f2e3bce4dbdfa20815e5c0b9e86f992db3"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "g6-oq8-rc-0f70bf49be-scheduler",
+      "-p",
+      "127.0.0.1::50006",
+      "--entrypoint",
+      "./scheduler",
+      "daprio/dapr:1.18.7",
+      "--etcd-data-dir=/var/lock/dapr/scheduler",
+      "--etcd-client-listen-address=0.0.0.0"
+    ],
+    [
+      "docker",
+      "inspect",
+      "af0eb65d61864feba96242487580b23cfb3c027dde7ca0c35ff0c7b3bf0a876b"
+    ],
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "--version"
+    ],
+    [
+      "/home/administrator/.dapr/bin/daprd",
+      "--version"
+    ]
+  ],
+  "containers": [
+    {
+      "id": "49eeec416f14a5750194f4d3119b70d0d6cd43ffbd6d6ed91459b31f3f332e11",
+      "name": "g6-oq8-rc-0f70bf49be-redis",
+      "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "imageReference": "redis:6",
+      "mounts": [
+        {
+          "Type": "volume",
+          "Name": "33d745c1c3347bcbaf7c5c7504c5b04e4c696a93172b7322e1aed066811375ce",
+          "Source": "/var/lib/docker/volumes/33d745c1c3347bcbaf7c5c7504c5b04e4c696a93172b7322e1aed066811375ce/_data",
+          "Destination": "/data",
+          "Driver": "local",
+          "Mode": "",
+          "RW": true,
+          "Propagation": ""
+        }
+      ],
+      "ports": {
+        "6379/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "64386"
+          }
+        ]
+      }
+    },
+    {
+      "id": "6f505191a80c397398e3f2c3fcd149f2e3bce4dbdfa20815e5c0b9e86f992db3",
+      "name": "g6-oq8-rc-0f70bf49be-placement",
+      "image": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "imageReference": "daprio/dapr:1.18.7",
+      "mounts": [],
+      "ports": {
+        "50005/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "64387"
+          }
+        ]
+      }
+    },
+    {
+      "id": "af0eb65d61864feba96242487580b23cfb3c027dde7ca0c35ff0c7b3bf0a876b",
+      "name": "g6-oq8-rc-0f70bf49be-scheduler",
+      "image": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "imageReference": "daprio/dapr:1.18.7",
+      "mounts": [],
+      "ports": {
+        "50006/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "64388"
+          }
+        ]
+      }
+    }
+  ],
+  "processes": [
+    {
+      "role": "placement",
+      "pid": 74684,
+      "binarySha256": "40dc8f8b525fc06aa914f930c87c52db33b02523ad1e2c0bcef2f4e1b5351d77"
+    },
+    {
+      "role": "scheduler",
+      "pid": 74710,
+      "binarySha256": "da84c39646cce5a30f076e9d283e67064ae6f62677f02a78014da14eda02e56a"
+    }
+  ],
+  "testExitCode": 1,
+  "profile": "test-local HotReload=false; OQ8 private discovery; no production-profile qualification",
+  "environment": {
+    "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+    "EVENTSTORE_TEST_PLACEMENT_PORT": "49713",
+    "EVENTSTORE_TEST_SCHEDULER_PORT": "37203",
+    "EVENTSTORE_TEST_REDIS_PORT": "64386",
+    "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+    "HEXALITH_OQ8_DAPRD_PATH": "/home/administrator/.dapr/bin/daprd",
+    "HEXALITH_OQ8_CONFIGURATION": "Debug",
+    "HEXALITH_OQ8_PLACEMENT_CONTAINER": "g6-oq8-rc-0f70bf49be-placement",
+    "HEXALITH_OQ8_SCHEDULER_CONTAINER": "g6-oq8-rc-0f70bf49be-scheduler",
+    "HEXALITH_OQ8_REDIS_ENDPOINT": "127.0.0.1:64386",
+    "HEXALITH_OQ8_NAMESPACE": "g6-oq8-rc-0f70bf49be",
+    "HEXALITH_OQ8_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused-oq8",
+    "HEXALITH_OQ8_CLEANUP_PATH": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused-oq8-cleanup.json"
+  },
+  "runtimeVersions": {
+    "regular": "1.18.2",
+    "oq8": "1.18.7"
+  },
+  "sidecarBinaries": {
+    "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+    "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+  },
+  "testCommand": [
+    "dotnet",
+    "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-method",
+    "*SourceGuard_TwoRealReplicas*",
+    "-method",
+    "*MultiHostAdmission_PrimaryHostRemoved*",
+    "-method",
+    "*TwoSidecarsAndRestartPreserve*",
+    "-method",
+    "*ProductionMatrix_IndependentProcesses*",
+    "-showLiveOutput",
+    "-noColor",
+    "-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused.xml"
+  ],
+  "testPid": 76512,
+  "observedChildren": [
+    {
+      "pid": 76512,
+      "ppid": 74670,
+      "startTicks": "9337825",
+      "executable": "/home/administrator/.dotnet/dotnet",
+      "executableSha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753",
+      "safeArguments": [],
+      "configurations": [],
+      "entryAssemblies": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "sha256": "14412fc631852b043d1c66ff89c9d67fa9e529c2fd0d26ec4060fdfc4baf9c21"
+        }
+      ]
+    },
+    {
+      "pid": 76882,
+      "ppid": 76512,
+      "startTicks": "9337970",
+      "executable": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "executableSha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "safeArguments": [
+        "--app-id",
+        "eventstore-live-ded980e887404d6b97dd4685609f46e1",
+        "--app-port",
+        "42097",
+        "--dapr-http-port",
+        "35295",
+        "--dapr-grpc-port",
+        "36285",
+        "--dapr-internal-grpc-port",
+        "42321",
+        "--metrics-port",
+        "38659",
+        "--profile-port",
+        "46799",
+        "--resources-path",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac",
+        "--placement-host-address",
+        "localhost:49713",
+        "--scheduler-host-address",
+        "localhost:37203",
+        "--config",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml",
+          "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 79098,
+      "ppid": 76512,
+      "startTicks": "9338399",
+      "executable": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "executableSha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "safeArguments": [
+        "--app-id",
+        "eventstore-live-ded980e887404d6b97dd4685609f46e1",
+        "--app-port",
+        "34941",
+        "--dapr-http-port",
+        "36159",
+        "--dapr-grpc-port",
+        "35605",
+        "--dapr-internal-grpc-port",
+        "44573",
+        "--metrics-port",
+        "46529",
+        "--profile-port",
+        "43029",
+        "--resources-path",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac",
+        "--placement-host-address",
+        "localhost:49713",
+        "--scheduler-host-address",
+        "localhost:37203",
+        "--config",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml",
+          "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 80759,
+      "ppid": 76512,
+      "startTicks": "9338837",
+      "executable": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "executableSha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "safeArguments": [
+        "--app-id",
+        "eventstore-live-ded980e887404d6b97dd4685609f46e1",
+        "--app-port",
+        "40479",
+        "--dapr-http-port",
+        "37379",
+        "--dapr-grpc-port",
+        "43117",
+        "--dapr-internal-grpc-port",
+        "46797",
+        "--metrics-port",
+        "34919",
+        "--profile-port",
+        "42721",
+        "--resources-path",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac",
+        "--placement-host-address",
+        "localhost:49713",
+        "--scheduler-host-address",
+        "localhost:37203",
+        "--config",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml",
+          "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 81991,
+      "ppid": 76512,
+      "startTicks": "9339183",
+      "executable": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "executableSha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "safeArguments": [
+        "--app-id",
+        "eventstore-live-ded980e887404d6b97dd4685609f46e1",
+        "--app-port",
+        "42097",
+        "--dapr-http-port",
+        "35295",
+        "--dapr-grpc-port",
+        "36285",
+        "--dapr-internal-grpc-port",
+        "42321",
+        "--metrics-port",
+        "38659",
+        "--profile-port",
+        "46799",
+        "--resources-path",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac",
+        "--placement-host-address",
+        "localhost:49713",
+        "--scheduler-host-address",
+        "localhost:37203",
+        "--config",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml",
+          "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 82822,
+      "ppid": 76512,
+      "startTicks": "9339522",
+      "executable": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "executableSha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "safeArguments": [
+        "--app-id",
+        "eventstore-live-ded980e887404d6b97dd4685609f46e1",
+        "--app-port",
+        "38945",
+        "--dapr-http-port",
+        "34205",
+        "--dapr-grpc-port",
+        "42145",
+        "--dapr-internal-grpc-port",
+        "38329",
+        "--metrics-port",
+        "35529",
+        "--profile-port",
+        "39043",
+        "--resources-path",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac",
+        "--placement-host-address",
+        "localhost:49713",
+        "--scheduler-host-address",
+        "localhost:37203",
+        "--config",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml",
+          "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 85913,
+      "ppid": 76512,
+      "startTicks": "9340150",
+      "executable": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+      "executableSha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6",
+      "safeArguments": [
+        "--app-id",
+        "eventstore-live-ded980e887404d6b97dd4685609f46e1",
+        "--app-port",
+        "42097",
+        "--dapr-http-port",
+        "35295",
+        "--dapr-grpc-port",
+        "36285",
+        "--dapr-internal-grpc-port",
+        "42321",
+        "--metrics-port",
+        "38659",
+        "--profile-port",
+        "46799",
+        "--resources-path",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac",
+        "--placement-host-address",
+        "localhost:49713",
+        "--scheduler-host-address",
+        "localhost:37203",
+        "--config",
+        "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/dapr-components-2e066bc6cb5146a080d73a45e9de0eac/test-runtime.yaml",
+          "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 87554,
+      "ppid": 76512,
+      "startTicks": "9340475",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 87642,
+      "ppid": 76512,
+      "startTicks": "9340493",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 88113,
+      "ppid": 76512,
+      "startTicks": "9340580",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 88542,
+      "ppid": 76512,
+      "startTicks": "9340658",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 88730,
+      "ppid": 76512,
+      "startTicks": "9340721",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 90280,
+      "ppid": 76512,
+      "startTicks": "9341157",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 91628,
+      "ppid": 76512,
+      "startTicks": "9341220",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 92135,
+      "ppid": 76512,
+      "startTicks": "9341343",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 92163,
+      "ppid": 76512,
+      "startTicks": "9341371",
+      "executable": "/home/administrator/.dotnet/dotnet",
+      "executableSha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753",
+      "safeArguments": [],
+      "configurations": [],
+      "entryAssemblies": [
+        {
+          "path": "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/sample/Hexalith.EventStore.Sample.dll",
+          "sha256": "c4831715536d2287e218944a7ab087bf22e12a3b0ca8a8755b28837e11d5b4b6"
+        }
+      ]
+    },
+    {
+      "pid": 92165,
+      "ppid": 76512,
+      "startTicks": "9341372",
+      "executable": "/home/administrator/.dapr/bin/daprd",
+      "executableSha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+      "safeArguments": [
+        "--app-id",
+        "sample",
+        "--app-port",
+        "33585",
+        "--dapr-http-port",
+        "40461",
+        "--dapr-grpc-port",
+        "38409",
+        "--dapr-internal-grpc-port",
+        "34339",
+        "--metrics-port",
+        "41517",
+        "--profile-port",
+        "38401",
+        "--resources-path",
+        "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/components",
+        "--placement-host-address",
+        "127.0.0.1:64387",
+        "--scheduler-host-address",
+        "127.0.0.1:64388",
+        "--config",
+        "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/discovery.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/discovery.yaml",
+          "sha256": "d5c336838b3b93423896bed8d86fd55d1d39b18380db48baa7d23981265444c8",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 92472,
+      "ppid": 76512,
+      "startTicks": "9341473",
+      "executable": "/home/administrator/.dotnet/dotnet",
+      "executableSha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753",
+      "safeArguments": [],
+      "configurations": [],
+      "entryAssemblies": [
+        {
+          "path": "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/eventstore/Hexalith.EventStore.dll",
+          "sha256": "2c51b85a5b002d18043c4a3dca8beff98ae08226f23acdadeaf56b2e8b833135"
+        }
+      ]
+    },
+    {
+      "pid": 92473,
+      "ppid": 76512,
+      "startTicks": "9341473",
+      "executable": "/home/administrator/.dapr/bin/daprd",
+      "executableSha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+      "safeArguments": [
+        "--app-id",
+        "eventstore",
+        "--app-port",
+        "42397",
+        "--dapr-http-port",
+        "44341",
+        "--dapr-grpc-port",
+        "32971",
+        "--dapr-internal-grpc-port",
+        "37207",
+        "--metrics-port",
+        "44187",
+        "--profile-port",
+        "37177",
+        "--resources-path",
+        "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/components",
+        "--placement-host-address",
+        "127.0.0.1:64387",
+        "--scheduler-host-address",
+        "127.0.0.1:64388",
+        "--config",
+        "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/discovery.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/discovery.yaml",
+          "sha256": "d5c336838b3b93423896bed8d86fd55d1d39b18380db48baa7d23981265444c8",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 93211,
+      "ppid": 76512,
+      "startTicks": "9341629",
+      "executable": "/home/administrator/.dotnet/dotnet",
+      "executableSha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753",
+      "safeArguments": [],
+      "configurations": [],
+      "entryAssemblies": [
+        {
+          "path": "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/eventstore/Hexalith.EventStore.dll",
+          "sha256": "2c51b85a5b002d18043c4a3dca8beff98ae08226f23acdadeaf56b2e8b833135"
+        }
+      ]
+    },
+    {
+      "pid": 93212,
+      "ppid": 76512,
+      "startTicks": "9341629",
+      "executable": "/home/administrator/.dapr/bin/daprd",
+      "executableSha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+      "safeArguments": [
+        "--app-id",
+        "eventstore",
+        "--app-port",
+        "33959",
+        "--dapr-http-port",
+        "34271",
+        "--dapr-grpc-port",
+        "38281",
+        "--dapr-internal-grpc-port",
+        "38987",
+        "--metrics-port",
+        "37873",
+        "--profile-port",
+        "44387",
+        "--resources-path",
+        "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/components",
+        "--placement-host-address",
+        "127.0.0.1:64387",
+        "--scheduler-host-address",
+        "127.0.0.1:64388",
+        "--config",
+        "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/discovery.yaml"
+      ],
+      "configurations": [
+        {
+          "path": "/tmp/eventstore-oq8-runtime-7db1a93d0e62428b9d4157c59d8cd3f6/discovery.yaml",
+          "sha256": "d5c336838b3b93423896bed8d86fd55d1d39b18380db48baa7d23981265444c8",
+          "hotReloadDisabled": true
+        }
+      ]
+    },
+    {
+      "pid": 94644,
+      "ppid": 76512,
+      "startTicks": "9341935",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 2720,
+      "ppid": 76512,
+      "startTicks": "9343657",
+      "executable": "/home/administrator/.dapr/bin/daprd",
+      "executableSha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+      "safeArguments": [],
+      "configurations": []
+    },
+    {
+      "pid": 3828,
+      "ppid": 76512,
+      "startTicks": "9343999",
+      "executable": "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker",
+      "executableSha256": "6f7a95d27f98fc8c5f6b220898988bf8f61dd9b040936797917cbdc72c6cabe6",
+      "safeArguments": [],
+      "configurations": []
+    }
+  ],
+  "ownedChildrenAliveAfterNative": [],
+  "controlExitCodes": [
+    0,
+    0
+  ],
+  "containerCleanup": [
+    {
+      "id": "af0eb65d61864feba96242487580b23cfb3c027dde7ca0c35ff0c7b3bf0a876b",
+      "exitCode": 0
+    },
+    {
+      "id": "6f505191a80c397398e3f2c3fcd149f2e3bce4dbdfa20815e5c0b9e86f992db3",
+      "exitCode": 0
+    },
+    {
+      "id": "49eeec416f14a5750194f4d3119b70d0d6cd43ffbd6d6ed91459b31f3f332e11",
+      "exitCode": 0
+    }
+  ],
+  "containerPhysicalAbsence": {
+    "49eeec416f14a5750194f4d3119b70d0d6cd43ffbd6d6ed91459b31f3f332e11": true,
+    "6f505191a80c397398e3f2c3fcd149f2e3bce4dbdfa20815e5c0b9e86f992db3": true,
+    "af0eb65d61864feba96242487580b23cfb3c027dde7ca0c35ff0c7b3bf0a876b": true
+  },
+  "vectors": {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-runtime-focused-vectors.json",
+    "sha256": "00d96e115333d9705b97b36ac26a277c37b673818f2d984160169eb095bce42c"
+  },
+  "nativeLogSha256": "3598e070c4114ef2aa9a553fa503bde6400b11a342c51f05defa73710fb4d112",
+  "scratchRemoved": true,
+  "runnerSha256": "b0415c8c52f4b132d9f6cf5f08dfff086c5a5d3453a371d44f7ad6a425a00fd1",
+  "completedAt": "2026-10-17T09:37:03.690621+00:00"
+}

@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-17T09:49:22.599838+00:00",
+  "head": "7842a1fb81aa329ecac6271d885b959b40522767",
+  "protectedFilesChecked": 11962,
+  "changedProtectedFiles": [],
+  "originalWrapperBytes": 92776,
+  "wrapperAppendOnly": true,
+  "indexHashUnchanged": true,
+  "headUnchanged": true,
+  "inotifyLimitsUnchanged": true,
+  "scope": "Parent preservation check during the full Debug Live invocation. No historical/P1R/specification/dependency/configuration bytes changed. The mutable wrapper preserves every entry byte and may gain append-only current notes. Final native outcomes and physical cleanup are audited separately."
+}

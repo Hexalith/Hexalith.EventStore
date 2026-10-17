@@ -1,0 +1,7 @@
+{
+  "recordedAt": "2026-10-17T10:35:03.848066+00:00",
+  "operation": "Chronological evidence index generation after the implementation-closing-audit.json had been written successfully.",
+  "error": "AttributeError: 'list' object has no attribute 'keys'",
+  "correction": "Require a dictionary before matching frame keys; preserved every packet and wrote the index as a new file.",
+  "nativeCommandsExecuted": false
+}

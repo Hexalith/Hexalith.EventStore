@@ -1,0 +1,49 @@
+{
+  "checkedUtc": "2026-10-17T10:16:15.076569+00:00",
+  "frames": [
+    {
+      "frame": "domain-debug-build",
+      "phase": "after",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    },
+    {
+      "frame": "live-debug-build-2",
+      "phase": "after",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    },
+    {
+      "frame": "live-release-build",
+      "phase": "after",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    },
+    {
+      "frame": "domain-debug-full",
+      "phase": "before",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    },
+    {
+      "frame": "domain-debug-full",
+      "phase": "after",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    },
+    {
+      "frame": "live-debug-full-native",
+      "phase": "before",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    },
+    {
+      "frame": "live-debug-full-native",
+      "phase": "after",
+      "assetIdentities": 184,
+      "rawBytesMissing": []
+    }
+  ],
+  "uniqueArchivedAssetObjectsChecked": 197,
+  "scope": "Raw effective project.assets.json identities for fresh producer outputs and completed native runs. Completed v1 frames use the separately recorded matching-byte supplement; no historical packet rewritten. Release execution is still active and will be checked in the final audit."
+}
