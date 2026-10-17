@@ -46,6 +46,9 @@ public static class ReadModelStoreServiceCollectionExtensions {
         services.TryAddSingleton<IReadModelBatchStore>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelBatchStore
             ?? sp.GetRequiredService<DaprReadModelStore>());
+        services.TryAddSingleton<IReadModelPendingBatchRecoveryStore>(static sp =>
+            sp.GetService<IReadModelStore>() as IReadModelPendingBatchRecoveryStore
+            ?? sp.GetRequiredService<DaprReadModelStore>());
         services.TryAddSingleton<IReadModelOwnerProofStore>(static sp =>
             sp.GetService<IReadModelStore>() as IReadModelOwnerProofStore
             ?? sp.GetRequiredService<DaprReadModelStore>());

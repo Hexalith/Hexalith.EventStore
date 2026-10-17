@@ -60,12 +60,14 @@ public sealed class HandlerAwareQueryRouter(
             query.IsDelegated,
             query.Scopes,
             query.Audience,
-            query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof };
+            query.DelegationId) { IdentityAdmissionProof = query.IdentityAdmissionProof, CallerAuthority = query.CallerAuthority };
 
         QueryResult result = await invoker.InvokeAsync(envelope, cancellationToken).ConfigureAwait(false);
 
         if (!result.Success) {
-            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
+            return result.ErrorMessage == "safe-denial"
+                ? new QueryRouterResult(Success: false, Payload: null, NotFound: true)
+                : new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: result.ErrorMessage, Metadata: result.Metadata);
         }
 
         if (result.PayloadBytes is not { Length: > 0 }) {

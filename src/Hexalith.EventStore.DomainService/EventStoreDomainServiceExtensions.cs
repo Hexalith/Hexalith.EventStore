@@ -336,17 +336,13 @@ public static class EventStoreDomainServiceExtensions {
         _ = app.MapPost(
             "/query",
             async (QueryEnvelope query, HttpContext httpContext, IServiceProvider serviceProvider, CancellationToken cancellationToken) => {
-                QueryEnvelope verified;
                 try {
-                    verified = await DomainServiceAdministratorAssertions
-                        .RebuildAsync(serviceProvider, query, cancellationToken)
-                        .ConfigureAwait(false);
+                    return (IResult)Results.Ok(await DomainQueryDispatcher.ExecuteWithAdministratorVerificationAsync(
+                        serviceProvider, query, cancellationToken).ConfigureAwait(false));
                 }
                 catch (DomainServiceAdministratorVerificationException) {
                     return DomainServiceAdministratorAssertions.VerifierUnavailable(httpContext);
                 }
-
-                return (IResult)Results.Ok(await DomainQueryDispatcher.ExecuteAsync(serviceProvider, verified, cancellationToken).ConfigureAwait(false));
             })
             .RequireEventStoreDomainServicePolicy("/query");
 

@@ -33,7 +33,7 @@ internal static class ReadModelBatchManifestCodec
 
     /// <summary>Restores the same coordinated replay manifest and its fingerprint-bound owner selections.</summary>
     internal static ReadModelBatch Decode(ReadOnlyMemory<byte> manifest, ReadModelBatchScope expectedScope,
-        ProjectionOwnerSelection? selection, IReadOnlyList<ProjectionOwnerSelection>? selections, string expectedFingerprint)
+        ProjectionOwnerSelection? selection, IReadOnlyList<ProjectionOwnerSelection>? selections, string expectedFingerprint, bool retainManifestForRecovery = false)
     {
         if (manifest.Length > 1_048_576 || ReadModelBatchFingerprint.ComputeFromManifest(manifest.Span) != expectedFingerprint)
             throw new ArgumentException("The original immutable manifest is unavailable.");
@@ -65,7 +65,7 @@ internal static class ReadModelBatchManifestCodec
             };
             operations.Add(operation);
         }
-        var result = new ReadModelBatch(scope, operations) { OwnerSelection = selection, OwnerSelections = selections };
+        var result = new ReadModelBatch(scope, operations) { OwnerSelection = selection, OwnerSelections = selections, RetainManifestForRecovery = retainManifestForRecovery };
         if (!ReadModelBatchFingerprint.BuildCanonicalManifest(result).AsSpan().SequenceEqual(manifest.Span)
             || ReadModelOwnerSelectionMetadata.FromBatch(result) != selection
             || !(ReadModelOwnerSelectionMetadata.FromCoordinatedBatch(result) ?? []).SequenceEqual(selections ?? []))

@@ -27,12 +27,26 @@ public sealed class WorkloadAssertionValidator(
     /// <param name="allowedCallersOverride">An optional caller allow-list replacing the scheme's allow-list.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>The evaluation.</returns>
-    public async Task<WorkloadAssertionEvaluation> ValidateAsync(
+    public Task<WorkloadAssertionEvaluation> ValidateAsync(
         string schemeName,
         string? assertion,
         string requiredOperation,
         IReadOnlyCollection<string>? allowedCallersOverride,
         CancellationToken cancellationToken = default)
+        => ValidateCoreAsync(schemeName, assertion, requiredOperation, allowedCallersOverride, null, cancellationToken);
+
+    /// <summary>Validates nested provenance for an audience derived from an already authenticated requesting workload.
+    /// Signature, issuer, algorithm, lifetime and operation policy remain the registered scheme's contract.</summary>
+    public Task<WorkloadAssertionEvaluation> ValidateForAudienceAsync(string schemeName, string? assertion,
+        string requiredOperation, IReadOnlyCollection<string> allowedCallers, string authenticatedRequestingWorkload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(authenticatedRequestingWorkload);
+        return ValidateCoreAsync(schemeName, assertion, requiredOperation, allowedCallers, authenticatedRequestingWorkload, cancellationToken);
+    }
+
+    private async Task<WorkloadAssertionEvaluation> ValidateCoreAsync(string schemeName, string? assertion,
+        string requiredOperation, IReadOnlyCollection<string>? allowedCallersOverride, string? audienceOverride, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(schemeName);
         ArgumentException.ThrowIfNullOrWhiteSpace(requiredOperation);
@@ -57,6 +71,13 @@ public sealed class WorkloadAssertionValidator(
         }
 
         TokenValidationParameters parameters = options.TokenValidationParameters.Clone();
+        if (audienceOverride is not null)
+        {
+            parameters.ValidateAudience = true;
+            parameters.ValidAudience = audienceOverride;
+            parameters.ValidAudiences = [audienceOverride];
+            parameters.AudienceValidator = null;
+        }
         if (options.ConfigurationManager is not null)
         {
             OpenIdConnectConfiguration configuration;
@@ -97,6 +118,9 @@ public sealed class WorkloadAssertionValidator(
 
             return WorkloadAssertionEvaluation.Failure(WorkloadAssertionEvaluator.ClassifyFailure(result.Exception));
         }
+
+        if (audienceOverride is not null && !new JsonWebToken(assertion).Audiences.SequenceEqual([audienceOverride], StringComparer.Ordinal))
+            return WorkloadAssertionEvaluation.Failure(WorkloadAuthenticationReasons.BindingMismatch);
 
         WorkloadAssertionEvaluation evaluation = WorkloadAssertionEvaluator.Evaluate(
             new ClaimsPrincipal(result.ClaimsIdentity),

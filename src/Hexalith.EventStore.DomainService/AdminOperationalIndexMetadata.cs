@@ -94,6 +94,7 @@ public static class AdminOperationalIndexMetadata {
             : new HashSet<string>(discovery.Aggregates.Select(a => a.DomainName), StringComparer.OrdinalIgnoreCase);
 
         IDomainQueryHandler[] materializedQueryHandlers = DomainQueryHandlerRouteValidator.MaterializeAndValidate(queryHandlers);
+        if (requestedDomains is not { Count: > 0 }) requested.UnionWith(materializedQueryHandlers.Select(static handler => handler.Domain));
         IAsyncDomainProjectionHandler[] materializedNamedHandlers = options is null
             ? []
             : DomainProjectionHandlerRouteValidator.MaterializeAndValidateNamed(namedProjectionHandlers, options);
@@ -179,6 +180,16 @@ public static class AdminOperationalIndexMetadata {
                 .Where(handler => handler.OrdinaryDeliveryEnabled && string.Equals(handler.Domain, domain.Domain, StringComparison.Ordinal))
                 .Select(static handler => handler.ProjectionType).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)],
         })];
+
+        // Handler-only domains have a valid /query route even without an SDK aggregate. Advertise only
+        // their registered query types; this must not admit orphan named projections or invent aggregate metadata.
+        foreach (string domain in materializedQueryHandlers.Select(static handler => handler.Domain)
+            .Where(requested.Contains).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal)) {
+            if (domains.All(item => !string.Equals(item.Domain, domain, StringComparison.OrdinalIgnoreCase)))
+                domains.Add(new DomainMetadata(domain, [], [], [], [], [],
+                    [.. queryTypesByDomain[domain].Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]));
+        }
+        domains = [.. domains.OrderBy(static domain => domain.Domain, StringComparer.OrdinalIgnoreCase)];
 
         if (materializedNamedHandlers.Length == 0 || appId is null || serviceVersion is null) {
             return new Response(domains);

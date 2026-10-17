@@ -298,6 +298,10 @@ public record QueryEnvelope {
     [DataMember]
     public string? IdentityAdmissionProof { get; init; }
 
+    /// <summary>Untrusted caller authority; the receiving SDK verifies its exact signed query binding.</summary>
+    [DataMember]
+    public QueryCallerAuthority? CallerAuthority { get; init; }
+
     private readonly string[]? _scopes;
     private readonly string[]? _audience;
 
@@ -383,7 +387,8 @@ public record QueryEnvelope {
             && StringSequenceEquals(Scopes, other.Scopes)
             && StringSequenceEquals(Audience, other.Audience)
             && DelegationId == other.DelegationId
-            && IdentityAdmissionProof == other.IdentityAdmissionProof;
+            && IdentityAdmissionProof == other.IdentityAdmissionProof
+            && CallerAuthority == other.CallerAuthority;
     }
 
     /// <inheritdoc/>
@@ -407,6 +412,7 @@ public record QueryEnvelope {
         AddStringSequenceHash(ref hash, Audience);
         hash.Add(DelegationId);
         hash.Add(IdentityAdmissionProof);
+        hash.Add(CallerAuthority);
         return hash.ToHashCode();
     }
 

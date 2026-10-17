@@ -68,10 +68,12 @@ public sealed partial class DomainServiceWorkloadAssertionHandler(IServiceProvid
 
             // Resolved per request so building an unrelated HTTP client never requires the issuer's configuration.
             IWorkloadAssertionIssuer? issuer = ResolveIssuer();
+            IReadOnlyDictionary<string, string>? bindings = route!.Operation == EventStoreWorkloadOperations.DomainServiceQuery
+                && request.Options.TryGetValue(QueryCallerAuthorityBinding.RequestBindings, out var queryBindings) ? queryBindings : null;
             string? assertion = issuer is null
                 ? null
                 : await issuer
-                    .IssueAsync(new WorkloadAssertionRequest(appId!, route!.Operation), cancellationToken)
+                    .IssueAsync(new WorkloadAssertionRequest(appId!, route!.Operation, bindings), cancellationToken)
                     .ConfigureAwait(false);
             if (assertion is null)
             {

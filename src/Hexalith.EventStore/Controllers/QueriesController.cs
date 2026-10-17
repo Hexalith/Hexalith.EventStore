@@ -35,7 +35,8 @@ public partial class QueriesController(
     IRbacValidator rbacValidator,
     ILogger<QueriesController> logger,
     IIdentityGatewayAdmission? identityAdmission = null,
-    IConfiguration? configuration = null) : ControllerBase {
+    IConfiguration? configuration = null,
+    WorkloadAssertionValidator? assertionValidator = null) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
     private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
@@ -67,6 +68,20 @@ public partial class QueriesController(
             return Forbid();
         }
 
+        QueryCallerAuthority? ownerAuthority = null;
+        if (request.OriginatingQuery is not null || request.OriginatingAssertion is not null)
+        {
+            if (request.OriginatingQuery is not { CallerAuthority.Origin: "authenticated-caller" } original
+                || original.TenantId != query.Tenant || original.UserId != request.PrincipalId || assertionValidator is null)
+                return Forbid();
+            string gatewayWorkload = configuration?["Authentication:QueryAuthority:GatewayWorkloadId"] ?? "eventstore";
+            WorkloadAssertionEvaluation origin = await assertionValidator.ValidateForAudienceAsync(
+                DaprInternalAuthenticationOptions.SchemeName, request.OriginatingAssertion,
+                EventStoreWorkloadOperations.DomainServiceQuery, [gatewayWorkload], caller, cancellationToken).ConfigureAwait(false);
+            if (!origin.Succeeded || origin.Principal is null || !QueryCallerAuthorityBinding.Verify(original, origin.Principal, gatewayWorkload)) return Forbid();
+            ownerAuthority = new("delegated-owner-query", [], original.CallerAuthority.Permissions);
+        }
+
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
             ?? Guid.NewGuid().ToString();
         byte[] payload = JsonSerializer.SerializeToUtf8Bytes(query.Payload.Value);
@@ -75,7 +90,7 @@ public partial class QueriesController(
         var submitted = new SubmitQuery(query.Tenant, query.Domain, query.AggregateId, query.QueryType,
             payload, correlationId, request.PrincipalId, EntityId: query.AggregateId,
             ProjectionType: query.Domain, AuthenticatedWorkloadId: caller,
-            OriginalActorId: request.PrincipalId, IsDelegated: true);
+            OriginalActorId: request.PrincipalId, IsDelegated: true) { CallerAuthority = ownerAuthority };
         SubmitQueryResult result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false);
         Response.Headers.CacheControl = "no-store";
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload,
@@ -108,7 +123,7 @@ public partial class QueriesController(
 
         // Extract UserId from JWT -- use 'sub' claim ONLY (F-RT2: 'name' may be user-controllable)
         string? userId = User.FindFirst("sub")?.Value;
-        if (string.IsNullOrWhiteSpace(userId)) {
+        if (string.IsNullOrWhiteSpace(userId) || User.FindAll("sub").Count() != 1) {
             logger.LogWarning(
                 "JWT 'sub' claim missing for query submission. Rejecting request as unauthorized. CorrelationId={CorrelationId}.",
                 correlationId);
@@ -152,6 +167,16 @@ public partial class QueriesController(
             Response.Headers.CacheControl = "no-store";
         }
 
+        QueryCallerAuthority? callerAuthority;
+        try
+        {
+            callerAuthority = Hexalith.EventStore.Queries.GatewayQueryCallerAuthority.Capture(User, configuration, request.Domain, request.QueryType);
+        }
+        catch (InvalidOperationException)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
         var query = new SubmitQuery(
             Tenant: request.Tenant,
             Domain: request.Domain,
@@ -172,7 +197,7 @@ public partial class QueriesController(
             IsDelegated: dualPrincipal.IsDelegated,
             Scopes: dualPrincipal.Scopes,
             Audience: dualPrincipal.Audience,
-            DelegationId: dualPrincipal.DelegationId) { IdentityAdmissionProof = identityProof };
+            DelegationId: dualPrincipal.DelegationId) { IdentityAdmissionProof = identityProof, CallerAuthority = callerAuthority };
 
         SubmitQueryResult result = await mediator.Send(query, cancellationToken).ConfigureAwait(false);
 
