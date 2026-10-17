@@ -1,0 +1,813 @@
+[
+  {
+    "id": "missing-record",
+    "operation": "missing-record",
+    "reason": "missing-input"
+  },
+  {
+    "id": "duplicate-json",
+    "operation": "duplicate-json",
+    "reason": "json"
+  },
+  {
+    "id": "nonfinite-json",
+    "operation": "nonfinite-json",
+    "reason": "json"
+  },
+  {
+    "id": "unknown-field",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "unknown",
+    "value": true
+  },
+  {
+    "id": "wrong-version",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "version",
+    "value": 2
+  },
+  {
+    "id": "boolean-version",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "version",
+    "value": true
+  },
+  {
+    "id": "corrective-flag-false",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "corrective-work-only",
+    "value": false
+  },
+  {
+    "id": "unknown-gate",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "failed_gate/id",
+    "value": "G-NOT-A-GATE"
+  },
+  {
+    "id": "unknown-derivation",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "derivation",
+    "value": "caller-rule"
+  },
+  {
+    "id": "readiness-forbidden",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "readiness",
+    "value": true
+  },
+  {
+    "id": "release-forbidden",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "release",
+    "value": true
+  },
+  {
+    "id": "deployment-forbidden",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "deployment",
+    "value": true
+  },
+  {
+    "id": "production-forbidden",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "production",
+    "value": true
+  },
+  {
+    "id": "migration-forbidden",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "migration",
+    "value": true
+  },
+  {
+    "id": "removal-forbidden",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "removal",
+    "value": true
+  },
+  {
+    "id": "expired",
+    "operation": "record-field",
+    "reason": "expired",
+    "field": "expires_at",
+    "value": "2001-01-01T00:00:00Z"
+  },
+  {
+    "id": "future-issuance",
+    "operation": "record-field",
+    "reason": "expired",
+    "field": "issued_at",
+    "value": "2098-01-01T00:00:00Z"
+  },
+  {
+    "id": "record-revoked",
+    "operation": "record-field",
+    "reason": "revoked",
+    "field": "revoked",
+    "value": true
+  },
+  {
+    "id": "wrong-baseline",
+    "operation": "wrong-baseline",
+    "reason": "baseline"
+  },
+  {
+    "id": "authorization-drift",
+    "operation": "auth-drift",
+    "reason": "authorization-digest"
+  },
+  {
+    "id": "input-subject-drift",
+    "operation": "input-drift",
+    "reason": "input-subject"
+  },
+  {
+    "id": "prd-drift",
+    "operation": "immutable-drift",
+    "reason": "binding",
+    "field": "prd"
+  },
+  {
+    "id": "owner_role_registry-baseline-drift",
+    "operation": "immutable-drift",
+    "reason": "baseline-input",
+    "field": "owner_role_registry",
+    "rebind": true
+  },
+  {
+    "id": "validator-baseline-drift",
+    "operation": "immutable-drift",
+    "reason": "baseline-input",
+    "field": "validator",
+    "rebind": true
+  },
+  {
+    "id": "contract-baseline-drift",
+    "operation": "immutable-drift",
+    "reason": "baseline-input",
+    "field": "contract",
+    "rebind": true
+  },
+  {
+    "id": "registry-unknown-field",
+    "operation": "initial",
+    "reason": "schema",
+    "initial": "registry-unknown"
+  },
+  {
+    "id": "registry-duplicate-human",
+    "operation": "initial",
+    "reason": "schema",
+    "initial": "registry-duplicate"
+  },
+  {
+    "id": "passed-gate",
+    "operation": "initial",
+    "reason": "schema",
+    "initial": "gate-pass"
+  },
+  {
+    "id": "different-gate",
+    "operation": "initial",
+    "reason": "failed-gate",
+    "initial": "gate-mismatch"
+  },
+  {
+    "id": "unregistered-owner",
+    "operation": "record-field",
+    "reason": "owner",
+    "field": "owner/github_id",
+    "value": 124
+  },
+  {
+    "id": "wrong-role",
+    "operation": "record-field",
+    "reason": "owner",
+    "field": "owner/role",
+    "value": "not-an-owner"
+  },
+  {
+    "id": "wrong-human",
+    "operation": "receipt-field",
+    "reason": "receipt",
+    "field": "user/id",
+    "value": 124
+  },
+  {
+    "id": "bot",
+    "operation": "receipt-field",
+    "reason": "receipt",
+    "field": "user/type",
+    "value": "Bot"
+  },
+  {
+    "id": "edited-receipt",
+    "operation": "receipt-field",
+    "reason": "receipt",
+    "field": "updated_at",
+    "value": "2001-01-01T00:00:00Z"
+  },
+  {
+    "id": "foreign-endpoint",
+    "operation": "receipt-field",
+    "reason": "receipt",
+    "field": "url",
+    "value": "https://evil.invalid/comments/102"
+  },
+  {
+    "id": "app-receipt",
+    "operation": "receipt-field",
+    "reason": "receipt",
+    "field": "performed_via_github_app",
+    "value": {}
+  },
+  {
+    "id": "nonprivileged-association",
+    "operation": "receipt-field",
+    "reason": "receipt",
+    "field": "author_association",
+    "value": "NONE"
+  },
+  {
+    "id": "wrong-registry-issuer",
+    "operation": "receipt-field",
+    "reason": "registry",
+    "issue": 10,
+    "field": "user/id",
+    "value": 124
+  },
+  {
+    "id": "missing-approval",
+    "operation": "missing-approval",
+    "reason": "receipt"
+  },
+  {
+    "id": "duplicate-approval",
+    "operation": "duplicate-approval",
+    "reason": "receipt"
+  },
+  {
+    "id": "live-revocation",
+    "operation": "revocation",
+    "reason": "revoked"
+  },
+  {
+    "id": "unavailable-authority",
+    "operation": "http-failure",
+    "reason": "receipt"
+  },
+  {
+    "id": "concurrent-source-drift",
+    "operation": "concurrent-drift",
+    "reason": "concurrent-drift"
+  },
+  {
+    "id": "broad-glob",
+    "operation": "record-field",
+    "reason": "scope",
+    "field": "scope/allowed/0/path",
+    "value": "src/**"
+  },
+  {
+    "id": "traversal",
+    "operation": "record-field",
+    "reason": "path",
+    "field": "scope/allowed/0/path",
+    "value": "../escape"
+  },
+  {
+    "id": "absolute-path",
+    "operation": "record-field",
+    "reason": "path",
+    "field": "scope/allowed/0/path",
+    "value": "/tmp/escape"
+  },
+  {
+    "id": "dot-segment",
+    "operation": "record-field",
+    "reason": "path",
+    "field": "scope/allowed/0/path",
+    "value": "src/./correction.txt"
+  },
+  {
+    "id": "out-of-scope-worktree",
+    "operation": "out-of-scope",
+    "reason": "out-of-scope",
+    "layer": "worktree"
+  },
+  {
+    "id": "out-of-scope-index",
+    "operation": "out-of-scope",
+    "reason": "out-of-scope",
+    "layer": "index"
+  },
+  {
+    "id": "out-of-scope-committed",
+    "operation": "out-of-scope",
+    "reason": "out-of-scope",
+    "layer": "committed"
+  },
+  {
+    "id": "out-of-scope-untracked",
+    "operation": "out-of-scope",
+    "reason": "out-of-scope",
+    "layer": "untracked"
+  },
+  {
+    "id": "unauthorized-delete",
+    "operation": "delete",
+    "reason": "mutation"
+  },
+  {
+    "id": "unauthorized-mode",
+    "operation": "mode",
+    "reason": "mutation"
+  },
+  {
+    "id": "prohibited-path",
+    "operation": "prohibited",
+    "reason": "prohibited-path"
+  },
+  {
+    "id": "unsafe-symlink",
+    "operation": "symlink",
+    "reason": "filesystem"
+  },
+  {
+    "id": "unsafe-hardlink",
+    "operation": "hardlink",
+    "reason": "filesystem"
+  },
+  {
+    "id": "unsafe-fifo",
+    "operation": "fifo",
+    "reason": "filesystem"
+  },
+  {
+    "id": "changed-gitlink",
+    "operation": "gitlink",
+    "reason": "gitlink"
+  },
+  {
+    "id": "ignored-evidence",
+    "operation": "ignored-evidence",
+    "reason": "ignored-evidence"
+  },
+  {
+    "id": "nonrepository-validator",
+    "operation": "wrong-validator",
+    "reason": "validator"
+  },
+  {
+    "id": "failing-evidence",
+    "operation": "evidence-failed",
+    "reason": "evidence"
+  },
+  {
+    "id": "missing-evidence",
+    "operation": "missing-evidence",
+    "reason": "missing-input"
+  },
+  {
+    "id": "missing-postflight",
+    "operation": "postflight-missing",
+    "reason": "missing-completion"
+  },
+  {
+    "id": "postflight-source-drift",
+    "operation": "postflight-drift",
+    "reason": "postflight",
+    "target": "source"
+  },
+  {
+    "id": "postflight-evidence-drift",
+    "operation": "postflight-drift",
+    "reason": "binding",
+    "target": "evidence"
+  },
+  {
+    "id": "postflight-postflight-drift",
+    "operation": "postflight-drift",
+    "reason": "postflight",
+    "target": "postflight"
+  },
+  {
+    "id": "postflight-validator-drift",
+    "operation": "postflight-drift",
+    "reason": "binding",
+    "target": "validator"
+  },
+  {
+    "id": "postflight-rewrite-drift",
+    "operation": "postflight-drift",
+    "reason": "postflight",
+    "target": "rewrite"
+  },
+  {
+    "id": "deferred-unscoped-validator",
+    "operation": "deferred-output",
+    "reason": "validator",
+    "target": "unscoped-validator"
+  },
+  {
+    "id": "deferred-unscoped-evidence",
+    "operation": "deferred-output",
+    "reason": "evidence",
+    "target": "unscoped-evidence"
+  },
+  {
+    "id": "deferred-validator-mismatch",
+    "operation": "deferred-output",
+    "reason": "binding",
+    "target": "validator-mismatch"
+  },
+  {
+    "id": "deferred-evidence-drift",
+    "operation": "deferred-output",
+    "reason": "postflight",
+    "target": "evidence-drift"
+  },
+  {
+    "id": "record-location",
+    "operation": "record-field",
+    "reason": "record-location",
+    "field": "authorization_id",
+    "value": "different-id"
+  },
+  {
+    "id": "immutable-path-contract",
+    "operation": "record-field",
+    "reason": "contract",
+    "field": "prd/path",
+    "value": "src/correction.txt"
+  },
+  {
+    "id": "malformed-time",
+    "operation": "record-field",
+    "reason": "time",
+    "field": "issued_at",
+    "value": "not-a-time"
+  },
+  {
+    "id": "unmerged-index",
+    "operation": "unmerged-index",
+    "reason": "index"
+  },
+  {
+    "id": "hidden-registry-index-drift",
+    "operation": "immutable-index",
+    "reason": "baseline-input"
+  },
+  {
+    "id": "duplicate-scope-path",
+    "operation": "duplicate-path",
+    "reason": "scope"
+  },
+  {
+    "id": "incomplete-prohibited-actions",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "scope/prohibited_actions",
+    "value": [
+      "readiness"
+    ]
+  },
+  {
+    "id": "changed-action-contract",
+    "operation": "record-field",
+    "reason": "scope",
+    "field": "scope/prohibited_actions",
+    "value": [
+      "release",
+      "readiness",
+      "deployment",
+      "production",
+      "migration",
+      "removal"
+    ]
+  },
+  {
+    "id": "unapproved-validator-bytes",
+    "operation": "record-field",
+    "reason": "schema",
+    "field": "expected_evidence/0/validator/sha256",
+    "value": null
+  },
+  {
+    "id": "hidden-raw-content-assume-unchanged",
+    "operation": "hidden-content",
+    "reason": "out-of-scope",
+    "flag": "assume-unchanged"
+  },
+  {
+    "id": "hidden-gitlink-assume-unchanged",
+    "operation": "hidden-gitlink",
+    "reason": "gitlink",
+    "flag": "assume-unchanged",
+    "initial": "baseline-gitlink"
+  },
+  {
+    "id": "hidden-raw-mode-assume-unchanged",
+    "operation": "hidden-mode",
+    "reason": "mutation",
+    "flag": "assume-unchanged"
+  },
+  {
+    "id": "hidden-raw-content-skip-worktree",
+    "operation": "hidden-content",
+    "reason": "out-of-scope",
+    "flag": "skip-worktree"
+  },
+  {
+    "id": "hidden-gitlink-skip-worktree",
+    "operation": "hidden-gitlink",
+    "reason": "gitlink",
+    "flag": "skip-worktree",
+    "initial": "baseline-gitlink"
+  },
+  {
+    "id": "hidden-raw-mode-skip-worktree",
+    "operation": "hidden-mode",
+    "reason": "mutation",
+    "flag": "skip-worktree"
+  },
+  {
+    "id": "mode-core-filemode-false",
+    "operation": "hidden-mode",
+    "reason": "mutation"
+  },
+  {
+    "id": "postflight-allowed-source-index-shadow",
+    "operation": "shadow-drift",
+    "reason": "postflight",
+    "layer": "index"
+  },
+  {
+    "id": "postflight-allowed-source-committed-shadow",
+    "operation": "shadow-drift",
+    "reason": "postflight",
+    "layer": "committed"
+  },
+  {
+    "id": "prohibited-spelling-9",
+    "operation": "prohibited-spelling",
+    "reason": "path",
+    "value": "src///"
+  },
+  {
+    "id": "prohibited-spelling-10",
+    "operation": "prohibited-spelling",
+    "reason": "path",
+    "value": "src//"
+  },
+  {
+    "id": "prohibited-spelling-11",
+    "operation": "prohibited-spelling",
+    "reason": "path",
+    "value": "src/./"
+  },
+  {
+    "id": "prohibited-spelling-12",
+    "operation": "prohibited-spelling",
+    "reason": "path",
+    "value": "src/../"
+  },
+  {
+    "id": "baseline-external-symlink",
+    "operation": "initial",
+    "reason": "filesystem",
+    "initial": "baseline-external-symlink"
+  },
+  {
+    "id": "missing-owner-completion",
+    "operation": "postflight-missing",
+    "reason": "missing-completion"
+  },
+  {
+    "id": "reset-completion-False-False",
+    "operation": "reset-completion",
+    "reason": "completion",
+    "committed": false,
+    "arguments": []
+  },
+  {
+    "id": "reset-completion-False-True",
+    "operation": "reset-completion",
+    "reason": "completion",
+    "committed": false,
+    "arguments": [
+      "--postflight",
+      "--write-postflight"
+    ]
+  },
+  {
+    "id": "reset-completion-True-False",
+    "operation": "reset-completion",
+    "reason": "completion",
+    "committed": true,
+    "arguments": []
+  },
+  {
+    "id": "reset-completion-True-True",
+    "operation": "reset-completion",
+    "reason": "completion",
+    "committed": true,
+    "arguments": [
+      "--postflight",
+      "--write-postflight"
+    ]
+  },
+  {
+    "id": "committed-reset-completion",
+    "operation": "reset-completion",
+    "reason": "completion",
+    "committed": true,
+    "commit_reset": true
+  },
+  {
+    "id": "cleared-envelope-same-output",
+    "operation": "reset-completion",
+    "reason": "postflight",
+    "change": false
+  },
+  {
+    "id": "duplicate-owner-completion",
+    "operation": "completion-receipt",
+    "reason": "completion",
+    "target": "duplicate"
+  },
+  {
+    "id": "edited-owner-completion",
+    "operation": "completion-receipt",
+    "reason": "receipt",
+    "target": "field",
+    "field": "updated_at",
+    "value": "2001-01-01T00:00:00Z"
+  },
+  {
+    "id": "foreign-owner-completion-endpoint",
+    "operation": "completion-receipt",
+    "reason": "receipt",
+    "target": "field",
+    "field": "url",
+    "value": "https://evil.invalid/completion"
+  },
+  {
+    "id": "page-two-authenticated-revocation",
+    "operation": "paginated-revocation",
+    "reason": "revoked"
+  },
+  {
+    "id": "revocation-during-evidence",
+    "operation": "late-revocation",
+    "reason": "revoked",
+    "flag": "revoke_on_second_approval_read"
+  },
+  {
+    "id": "revocation-current-fetched-time",
+    "operation": "late-revocation",
+    "reason": "revoked",
+    "flag": "revocation_fetched_now"
+  },
+  {
+    "id": "malformed-record-root-0",
+    "operation": "raw-record",
+    "reason": "schema",
+    "value": []
+  },
+  {
+    "id": "malformed-record-root-1",
+    "operation": "raw-record",
+    "reason": "schema",
+    "value": null
+  },
+  {
+    "id": "malformed-record-root-2",
+    "operation": "raw-record",
+    "reason": "schema",
+    "value": {}
+  },
+  {
+    "id": "malformed-record-root-3",
+    "operation": "raw-record",
+    "reason": "schema",
+    "value": true
+  },
+  {
+    "id": "malformed-record-root-4",
+    "operation": "raw-record",
+    "reason": "schema",
+    "value": "record"
+  },
+  {
+    "id": "malformed-record-root-5",
+    "operation": "raw-record",
+    "reason": "schema",
+    "value": 4
+  },
+  {
+    "id": "late-authorization-core",
+    "operation": "new-record-core",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "fixed-evidence-preflight-missing",
+    "operation": "fixed-evidence-preflight",
+    "reason": "missing-input",
+    "target": "missing"
+  },
+  {
+    "id": "fixed-evidence-preflight-mismatch",
+    "operation": "fixed-evidence-preflight",
+    "reason": "binding",
+    "target": "mismatch"
+  },
+  {
+    "id": "unscoped-second-envelope-worktree",
+    "operation": "second-record-envelope",
+    "reason": "out-of-scope",
+    "layer": "worktree"
+  },
+  {
+    "id": "unscoped-second-envelope-index",
+    "operation": "second-record-envelope",
+    "reason": "out-of-scope",
+    "layer": "index"
+  },
+  {
+    "id": "unscoped-second-envelope-committed",
+    "operation": "second-record-envelope",
+    "reason": "out-of-scope",
+    "layer": "committed"
+  },
+  {
+    "id": "argparse-help-evidence-positional",
+    "operation": "option-evidence",
+    "reason": "evidence",
+    "initial": "argparse-rejector"
+  },
+  {
+    "id": "scoped-approved-ignored-validator",
+    "operation": "ignored-validator",
+    "reason": "ignored-validator"
+  },
+  {
+    "id": "prohibited-directory-without-slash",
+    "operation": "prohibited-spelling",
+    "reason": "prohibited-path",
+    "value": "src"
+  },
+  {
+    "id": "deep-malformed-record",
+    "operation": "deep-json",
+    "reason": "json",
+    "nesting_depth": 100000
+  },
+  {
+    "id": "nonempty-uninitialized-gitlink-preflight",
+    "operation": "uninitialized-gitlink-content",
+    "reason": "gitlink",
+    "initial": "baseline-gitlink",
+    "postflight": false
+  },
+  {
+    "id": "nonempty-uninitialized-gitlink-postflight",
+    "operation": "uninitialized-gitlink-content",
+    "reason": "gitlink",
+    "initial": "baseline-gitlink",
+    "postflight": true
+  },
+  {
+    "id": "control-character-evidence-argument-preflight",
+    "operation": "record-field",
+    "reason": "validator",
+    "field": "expected_evidence/0/arguments",
+    "value": [
+      "bad\nargument"
+    ]
+  },
+  {
+    "id": "authorized-output-mode-postflight-drift",
+    "operation": "authorized-mode-drift",
+    "reason": "postflight"
+  },
+  {
+    "id": "approved-nonempty-argument-rejected",
+    "operation": "approved-arguments",
+    "reason": "evidence",
+    "initial": "argument-validator"
+  }
+]

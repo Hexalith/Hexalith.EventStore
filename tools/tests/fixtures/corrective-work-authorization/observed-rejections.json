@@ -1,0 +1,647 @@
+[
+  {
+    "id": "missing-record",
+    "result": "FAIL",
+    "reason": "missing-input"
+  },
+  {
+    "id": "duplicate-json",
+    "result": "FAIL",
+    "reason": "json"
+  },
+  {
+    "id": "nonfinite-json",
+    "result": "FAIL",
+    "reason": "json"
+  },
+  {
+    "id": "unknown-field",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "wrong-version",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "boolean-version",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "corrective-flag-false",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "unknown-gate",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "unknown-derivation",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "readiness-forbidden",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "release-forbidden",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "deployment-forbidden",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "production-forbidden",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "migration-forbidden",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "removal-forbidden",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "expired",
+    "result": "FAIL",
+    "reason": "expired"
+  },
+  {
+    "id": "future-issuance",
+    "result": "FAIL",
+    "reason": "expired"
+  },
+  {
+    "id": "record-revoked",
+    "result": "FAIL",
+    "reason": "revoked"
+  },
+  {
+    "id": "wrong-baseline",
+    "result": "FAIL",
+    "reason": "baseline"
+  },
+  {
+    "id": "authorization-drift",
+    "result": "FAIL",
+    "reason": "authorization-digest"
+  },
+  {
+    "id": "input-subject-drift",
+    "result": "FAIL",
+    "reason": "input-subject"
+  },
+  {
+    "id": "prd-drift",
+    "result": "FAIL",
+    "reason": "binding"
+  },
+  {
+    "id": "owner_role_registry-baseline-drift",
+    "result": "FAIL",
+    "reason": "baseline-input"
+  },
+  {
+    "id": "validator-baseline-drift",
+    "result": "FAIL",
+    "reason": "baseline-input"
+  },
+  {
+    "id": "contract-baseline-drift",
+    "result": "FAIL",
+    "reason": "baseline-input"
+  },
+  {
+    "id": "registry-unknown-field",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "registry-duplicate-human",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "passed-gate",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "different-gate",
+    "result": "FAIL",
+    "reason": "failed-gate"
+  },
+  {
+    "id": "unregistered-owner",
+    "result": "FAIL",
+    "reason": "owner"
+  },
+  {
+    "id": "wrong-role",
+    "result": "FAIL",
+    "reason": "owner"
+  },
+  {
+    "id": "wrong-human",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "bot",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "edited-receipt",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "foreign-endpoint",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "app-receipt",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "nonprivileged-association",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "wrong-registry-issuer",
+    "result": "FAIL",
+    "reason": "registry"
+  },
+  {
+    "id": "missing-approval",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "duplicate-approval",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "live-revocation",
+    "result": "FAIL",
+    "reason": "revoked"
+  },
+  {
+    "id": "unavailable-authority",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "concurrent-source-drift",
+    "result": "FAIL",
+    "reason": "concurrent-drift"
+  },
+  {
+    "id": "broad-glob",
+    "result": "FAIL",
+    "reason": "scope"
+  },
+  {
+    "id": "traversal",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "absolute-path",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "dot-segment",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "out-of-scope-worktree",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "out-of-scope-index",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "out-of-scope-committed",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "out-of-scope-untracked",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "unauthorized-delete",
+    "result": "FAIL",
+    "reason": "mutation"
+  },
+  {
+    "id": "unauthorized-mode",
+    "result": "FAIL",
+    "reason": "mutation"
+  },
+  {
+    "id": "prohibited-path",
+    "result": "FAIL",
+    "reason": "prohibited-path"
+  },
+  {
+    "id": "unsafe-symlink",
+    "result": "FAIL",
+    "reason": "filesystem"
+  },
+  {
+    "id": "unsafe-hardlink",
+    "result": "FAIL",
+    "reason": "filesystem"
+  },
+  {
+    "id": "unsafe-fifo",
+    "result": "FAIL",
+    "reason": "filesystem"
+  },
+  {
+    "id": "changed-gitlink",
+    "result": "FAIL",
+    "reason": "gitlink"
+  },
+  {
+    "id": "ignored-evidence",
+    "result": "FAIL",
+    "reason": "ignored-evidence"
+  },
+  {
+    "id": "nonrepository-validator",
+    "result": "FAIL",
+    "reason": "validator"
+  },
+  {
+    "id": "failing-evidence",
+    "result": "FAIL",
+    "reason": "evidence"
+  },
+  {
+    "id": "missing-evidence",
+    "result": "FAIL",
+    "reason": "missing-input"
+  },
+  {
+    "id": "missing-postflight",
+    "result": "FAIL",
+    "reason": "missing-completion"
+  },
+  {
+    "id": "postflight-source-drift",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "postflight-evidence-drift",
+    "result": "FAIL",
+    "reason": "binding"
+  },
+  {
+    "id": "postflight-postflight-drift",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "postflight-validator-drift",
+    "result": "FAIL",
+    "reason": "binding"
+  },
+  {
+    "id": "postflight-rewrite-drift",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "deferred-unscoped-validator",
+    "result": "FAIL",
+    "reason": "validator"
+  },
+  {
+    "id": "deferred-unscoped-evidence",
+    "result": "FAIL",
+    "reason": "evidence"
+  },
+  {
+    "id": "deferred-validator-mismatch",
+    "result": "FAIL",
+    "reason": "binding"
+  },
+  {
+    "id": "deferred-evidence-drift",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "record-location",
+    "result": "FAIL",
+    "reason": "record-location"
+  },
+  {
+    "id": "immutable-path-contract",
+    "result": "FAIL",
+    "reason": "contract"
+  },
+  {
+    "id": "malformed-time",
+    "result": "FAIL",
+    "reason": "time"
+  },
+  {
+    "id": "unmerged-index",
+    "result": "FAIL",
+    "reason": "index"
+  },
+  {
+    "id": "hidden-registry-index-drift",
+    "result": "FAIL",
+    "reason": "baseline-input"
+  },
+  {
+    "id": "duplicate-scope-path",
+    "result": "FAIL",
+    "reason": "scope"
+  },
+  {
+    "id": "incomplete-prohibited-actions",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "changed-action-contract",
+    "result": "FAIL",
+    "reason": "scope"
+  },
+  {
+    "id": "unapproved-validator-bytes",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "hidden-raw-content-assume-unchanged",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "hidden-gitlink-assume-unchanged",
+    "result": "FAIL",
+    "reason": "gitlink"
+  },
+  {
+    "id": "hidden-raw-mode-assume-unchanged",
+    "result": "FAIL",
+    "reason": "mutation"
+  },
+  {
+    "id": "hidden-raw-content-skip-worktree",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "hidden-gitlink-skip-worktree",
+    "result": "FAIL",
+    "reason": "gitlink"
+  },
+  {
+    "id": "hidden-raw-mode-skip-worktree",
+    "result": "FAIL",
+    "reason": "mutation"
+  },
+  {
+    "id": "mode-core-filemode-false",
+    "result": "FAIL",
+    "reason": "mutation"
+  },
+  {
+    "id": "postflight-allowed-source-index-shadow",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "postflight-allowed-source-committed-shadow",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "prohibited-spelling-9",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "prohibited-spelling-10",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "prohibited-spelling-11",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "prohibited-spelling-12",
+    "result": "FAIL",
+    "reason": "path"
+  },
+  {
+    "id": "baseline-external-symlink",
+    "result": "FAIL",
+    "reason": "filesystem"
+  },
+  {
+    "id": "missing-owner-completion",
+    "result": "FAIL",
+    "reason": "missing-completion"
+  },
+  {
+    "id": "reset-completion-False-False",
+    "result": "FAIL",
+    "reason": "completion"
+  },
+  {
+    "id": "reset-completion-False-True",
+    "result": "FAIL",
+    "reason": "completion"
+  },
+  {
+    "id": "reset-completion-True-False",
+    "result": "FAIL",
+    "reason": "completion"
+  },
+  {
+    "id": "reset-completion-True-True",
+    "result": "FAIL",
+    "reason": "completion"
+  },
+  {
+    "id": "committed-reset-completion",
+    "result": "FAIL",
+    "reason": "completion"
+  },
+  {
+    "id": "cleared-envelope-same-output",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "duplicate-owner-completion",
+    "result": "FAIL",
+    "reason": "completion"
+  },
+  {
+    "id": "edited-owner-completion",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "foreign-owner-completion-endpoint",
+    "result": "FAIL",
+    "reason": "receipt"
+  },
+  {
+    "id": "page-two-authenticated-revocation",
+    "result": "FAIL",
+    "reason": "revoked"
+  },
+  {
+    "id": "revocation-during-evidence",
+    "result": "FAIL",
+    "reason": "revoked"
+  },
+  {
+    "id": "revocation-current-fetched-time",
+    "result": "FAIL",
+    "reason": "revoked"
+  },
+  {
+    "id": "malformed-record-root-0",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-record-root-1",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-record-root-2",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-record-root-3",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-record-root-4",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-record-root-5",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "late-authorization-core",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "fixed-evidence-preflight-missing",
+    "result": "FAIL",
+    "reason": "missing-input"
+  },
+  {
+    "id": "fixed-evidence-preflight-mismatch",
+    "result": "FAIL",
+    "reason": "binding"
+  },
+  {
+    "id": "unscoped-second-envelope-worktree",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "unscoped-second-envelope-index",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "unscoped-second-envelope-committed",
+    "result": "FAIL",
+    "reason": "out-of-scope"
+  },
+  {
+    "id": "argparse-help-evidence-positional",
+    "result": "FAIL",
+    "reason": "evidence"
+  },
+  {
+    "id": "scoped-approved-ignored-validator",
+    "result": "FAIL",
+    "reason": "ignored-validator"
+  },
+  {
+    "id": "prohibited-directory-without-slash",
+    "result": "FAIL",
+    "reason": "prohibited-path"
+  },
+  {
+    "id": "deep-malformed-record",
+    "result": "FAIL",
+    "reason": "json"
+  },
+  {
+    "id": "nonempty-uninitialized-gitlink-preflight",
+    "result": "FAIL",
+    "reason": "gitlink"
+  },
+  {
+    "id": "nonempty-uninitialized-gitlink-postflight",
+    "result": "FAIL",
+    "reason": "gitlink"
+  },
+  {
+    "id": "control-character-evidence-argument-preflight",
+    "result": "FAIL",
+    "reason": "validator"
+  },
+  {
+    "id": "authorized-output-mode-postflight-drift",
+    "result": "FAIL",
+    "reason": "postflight"
+  },
+  {
+    "id": "approved-nonempty-argument-rejected",
+    "result": "FAIL",
+    "reason": "evidence"
+  }
+]

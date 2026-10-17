@@ -1,0 +1,259 @@
+{
+  "observed_at": "2026-10-17T19:18:49.344228+00:00",
+  "scope": "Synthetic CLI controls and truthful missing-authority live evaluation; no live authorization, roster, seal or gate transition.",
+  "source_files": {
+    "tools/validate-corrective-work-authorization.py": "b34fe37745bdfde72e7d243e4413d3406da9193cbd8a275d11136e3af23b5062",
+    "tools/corrective-work-authorization.schema.json": "e3650beeb2c754be557c2fd4f73b9f0f1c40ec8154148c514f76d31b1b59c110",
+    "tools/tests/test_corrective_work_authorization.py": "df94292c0c41911a6c9f8c7a24978c6489186e2d5cd7e1750ac12308e68a48eb",
+    ".github/workflows/corrective-work-authorization.yml": "6958fb2397a4f9c47000f7f3149b4a372a83970253bab24d4aff50d9a01cb935",
+    "tools/tests/fixtures/corrective-work-authorization/authority_cli.py": "a03a6c4ebf2bf335417846a1276a9f49ab0450977e7379b0b180ae1b4b2686a0",
+    "tools/tests/fixtures/corrective-work-authorization/README.md": "6f5e5c0eac2c559a0bb01291622ba34b75c57495118ac28a2aa1051a8a06f7bf",
+    "tools/tests/fixtures/corrective-work-authorization/malformed-records.json": "375881dfdd07e7184109ea4c005049db4346e10a741d0ff7fdcfbb794fe29856",
+    "tools/tests/fixtures/corrective-work-authorization/subject-vectors.json": "7e6df62ef837b992e80251429ca1ba06b5c1c9554dca998803f16eead73fbb7c"
+  },
+  "fixture_catalog_sha256": "ef47cfe7668c199398dad8bd5d51012a3239b58dbf3a749b71d5345196b40a34",
+  "observed_rejections_sha256": "7b6b5f190ae888f16cb3ad4a8e4f89270188ccc1eb43418ff73d276cd99c4272",
+  "commitlint_preflight": {
+    "argv": [
+      "node",
+      "node_modules/@commitlint/cli/cli.js",
+      "--config",
+      "commitlint.config.mjs"
+    ],
+    "pinned_version": "21.1.0",
+    "candidates": [
+      {
+        "full_message": "test: seed corrective authorization fixture\n",
+        "exit_code": 0
+      },
+      {
+        "full_message": "test: commit corrective authorization fixture\n",
+        "exit_code": 0
+      },
+      {
+        "full_message": "feat(governance): enforce corrective-work authorization\n",
+        "argv": [
+          "node",
+          "node_modules/@commitlint/cli/cli.js",
+          "--config",
+          "commitlint.config.mjs",
+          "--edit",
+          "/tmp/story-9-1-final-commit-message.txt",
+          "--verbose"
+        ],
+        "exit_code": 0,
+        "stdout": "\u29d7   --- input ---\nfeat(governance): enforce corrective-work authorization\n\u2714   found 0 problems, 0 warnings\n",
+        "purpose": "final local Story 9.1 commit"
+      }
+    ],
+    "validated_at": "2026-10-17"
+  },
+  "review_loop_iteration": 1,
+  "workspace_inventory_observation": {
+    "source_commit": "bb986902d3c1b2f3b1c209fe8eb0ffa0292153d9",
+    "entries": 22834,
+    "architecture_symlink_sha256": "1e71c1890c1abe261bdfccbb82ff5eabe14d6de46639bbe5f61b9a88c36a3cde",
+    "existing_raw_worktree_differences_preserved": true,
+    "authorizing": false
+  },
+  "patch_checks": {
+    "observed_at": "2026-10-17T19:12:38.831537+00:00",
+    "prior_commands_are_historical": true,
+    "parent_full_verification_pending": false,
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_corrective_work_authorization.py"
+        ],
+        "exit_code": 1,
+        "test_methods": 18,
+        "duration_seconds": "31.209",
+        "detail": "All controls except the deep-JSON fixture expectations passed. This interpreter decodes depth 2000; fixture depth was increased to 100000 to exercise the actual decoder RecursionError."
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "test_corrective_work_authorization.CorrectiveWorkAuthorizationTests.test_checked_in_rejection_fixtures",
+          "test_corrective_work_authorization.CorrectiveWorkAuthorizationTests.test_registry_reports_each_malformed_record_and_continues"
+        ],
+        "environment": {
+          "PYTHONPATH": "tools/tests"
+        },
+        "exit_code": 0,
+        "test_methods": 2,
+        "negative_scenarios": 129,
+        "malformed_registry_cases": 7,
+        "duration_seconds": "25.204"
+      }
+    ]
+  },
+  "historical_commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_corrective_work_authorization.py"
+      ],
+      "exit_code": 0,
+      "test_methods": 14,
+      "negative_scenarios": 115,
+      "duration_seconds": "26.743"
+    },
+    {
+      "argv": [
+        "python3",
+        "-O",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_corrective_work_authorization.py"
+      ],
+      "exit_code": 0,
+      "test_methods": 14,
+      "negative_scenarios": 115,
+      "duration_seconds": "76.896"
+    },
+    {
+      "argv": [
+        "actionlint",
+        ".github/workflows/corrective-work-authorization.yml"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "tools/validate-corrective-work-authorization.py",
+        "--evaluate-registry"
+      ],
+      "exit_code": 1,
+      "verdict": {
+        "contract_sha256": "45a509e6bf40820d70eb960f844cfc419603b154d60f9bc99122003898b32abb",
+        "corrective-work-only": true,
+        "deployment": false,
+        "detail": "live corrective-work authorization registry is absent",
+        "migration": false,
+        "phase": "registry",
+        "production": false,
+        "readiness": false,
+        "reason": "missing-authority",
+        "release": false,
+        "removal": false,
+        "result": "FAIL",
+        "source_commit": "bb986902d3c1b2f3b1c209fe8eb0ffa0292153d9",
+        "validator_sha256": "09d498ff35b111c16c05bf7bd5ad82e6d97aff9ed5f1b09ca327eaa4e3b3d5b7"
+      }
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_corrective_work_authorization.py"
+      ],
+      "exit_code": 0,
+      "test_methods": 18,
+      "negative_scenarios": 129,
+      "malformed_registry_cases": 7,
+      "duration_seconds": "28.962"
+    },
+    {
+      "argv": [
+        "python3",
+        "-O",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_corrective_work_authorization.py"
+      ],
+      "exit_code": 0,
+      "test_methods": 18,
+      "negative_scenarios": 129,
+      "malformed_registry_cases": 7,
+      "duration_seconds": "82.391"
+    },
+    {
+      "argv": [
+        "actionlint",
+        ".github/workflows/corrective-work-authorization.yml"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "tools/validate-corrective-work-authorization.py",
+        "--evaluate-registry"
+      ],
+      "exit_code": 1,
+      "verdict": {
+        "contract_sha256": "e3650beeb2c754be557c2fd4f73b9f0f1c40ec8154148c514f76d31b1b59c110",
+        "corrective-work-only": true,
+        "deployment": false,
+        "detail": "live corrective-work authorization registry is absent",
+        "migration": false,
+        "phase": "registry",
+        "production": false,
+        "readiness": false,
+        "reason": "missing-authority",
+        "release": false,
+        "removal": false,
+        "result": "FAIL",
+        "source_commit": "9ed9b9742bd006e568f026cc1c588275cf9db097",
+        "validator_sha256": "b34fe37745bdfde72e7d243e4413d3406da9193cbd8a275d11136e3af23b5062"
+      }
+    }
+  ],
+  "final_review": {
+    "rounds": 2,
+    "surviving_findings_resolved": true,
+    "deferred_work": [],
+    "known_answer_vectors": "subject-vectors.json",
+    "source_commit_before_local_commit": "9ed9b9742bd006e568f026cc1c588275cf9db097",
+    "preserved_external_commit": "9ed9b9742bd006e568f026cc1c588275cf9db097",
+    "planning_baseline_unchanged": true,
+    "live_authority_created": false
+  }
+}

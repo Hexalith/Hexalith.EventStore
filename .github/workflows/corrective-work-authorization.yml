@@ -1,0 +1,66 @@
+name: Corrective Work Authorization
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  authorization-controls:
+    name: Corrective authorization fixture controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      - name: Verify positive controls and every retained rejection
+        run: python3 -m unittest discover -s tools/tests -p 'test_corrective_work_authorization.py'
+
+      - name: Verify controls with Python assertions disabled
+        run: python3 -O -m unittest discover -s tools/tests -p 'test_corrective_work_authorization.py'
+
+  live-evaluation:
+    name: Publish current live authorization verdicts
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+
+      # The evaluator remains read-only. Outputs go outside the repository so
+      # publishing evidence cannot add files to the source subject it evaluates.
+      # Its truthful FAIL is retrievable evidence, not a readiness transition.
+      - name: Evaluate the complete live registry
+        id: evaluate
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/validate-corrective-work-authorization.py --evaluate-registry > "$RUNNER_TEMP/corrective-work-authorization.json"
+
+      - name: Retain exact workflow identity
+        if: always()
+        run: cp .github/workflows/corrective-work-authorization.yml "$RUNNER_TEMP/corrective-work-authorization-workflow.yml"
+
+      - name: Publish content-bound live PASS or FAIL
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: corrective-work-authorization-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/corrective-work-authorization.json
+            ${{ runner.temp }}/corrective-work-authorization-workflow.yml
+          if-no-files-found: error
+          retention-days: 90

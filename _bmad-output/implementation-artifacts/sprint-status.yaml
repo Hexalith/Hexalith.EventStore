@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '15-10-2026 18:02'
+last_updated: '2026-10-17'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -294,10 +294,10 @@ development_status:
   8-11-g5-evidence-and-approval-closure: backlog
   epic-8-retrospective: optional
 
-  epic-9: backlog
+  epic-9: in-progress
   # Story 9.1 (OR28) must pass before Story 9.2 can be handed off under PRD section 0.
   # Story 9.2 closes on sealed CI plus a time-separated owner attestation (single-maintainer-attested).
-  9-1-corrective-work-authorization-record-and-validator: backlog
+  9-1-corrective-work-authorization-record-and-validator: review
   9-2-phase-4-high-risk-gate-matrix-and-assurance-control: backlog
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07): G-BASELINE validator with the OR8
   # drift and OR15 lifecycle guards, G-CLAUSE, and G-MVP-COVERAGE. Each live gate result
