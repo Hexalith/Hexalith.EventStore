@@ -778,6 +778,35 @@ public class ProjectionAdapterContractTests {
         QueryAdapterFailureReason.ActorNotFoundInfrastructure.ShouldBe("actor-not-found-infrastructure");
     }
 
+    /// <summary>
+    /// Verifies page and cursor failure categories retain their stable wire values.
+    /// </summary>
+    /// <param name="reason">The adapter failure category.</param>
+    /// <param name="expected">The expected wire value.</param>
+    [Theory]
+    [InlineData(QueryAdapterFailureReason.InvalidPage, "invalid-page")]
+    [InlineData(QueryAdapterFailureReason.InvalidCursor, "invalid-cursor")]
+    public void QueryResult_PaginationFailure_PreservesStableWireCategory(string reason, string expected)
+    {
+        reason.ShouldBe(expected);
+        var original = QueryResult.Failure(reason);
+        var serializer = new DataContractSerializer(typeof(QueryResult));
+        using var stream = new MemoryStream();
+        serializer.WriteObject(stream, original);
+        stream.Position = 0;
+
+        var restored = (QueryResult?)serializer.ReadObject(stream);
+        restored.ShouldNotBeNull().ErrorMessage.ShouldBe(expected);
+        restored.Success.ShouldBeFalse();
+        restored.PayloadBytes.ShouldBeNull();
+        string json = JsonSerializer.Serialize(original);
+        QueryResult jsonRestored = JsonSerializer.Deserialize<QueryResult>(json).ShouldNotBeNull();
+        jsonRestored.ErrorMessage.ShouldBe(expected);
+        jsonRestored.Success.ShouldBeFalse();
+        jsonRestored.PayloadBytes.ShouldBeNull();
+        QueryProblemReasonCodes.InvalidPage.ShouldBe("query_invalid_page");
+    }
+
     [Fact]
     public void ContractsAssembly_DoesNotReferenceDaprGrpcOrProtobufAssemblies() {
         string[] referencedAssemblies = typeof(QueryEnvelope).Assembly

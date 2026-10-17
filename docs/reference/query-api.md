@@ -77,6 +77,33 @@ The gateway owns HTTP validator behavior. A strong response `ETag` header wins f
 
 `metadata.paging` can carry `pageSize`, `offset`, `nextCursor`, `totalCount`, and nullable `hasMore`. `hasMore = true` means the producer determined another page exists; `hasMore = false` means the producer determined the current page is complete; omission means the producer did not provide page-completeness evidence. The gateway does not derive `hasMore` from the requested page size, offset, cursor, or total count.
 
+### Paging failure categories
+
+The public gateway accepts page sizes from 1 through 200. Domain query handlers may
+support a narrower range; Parties list/search handlers retain a maximum of 100.
+A handler signals unsupported paging options with
+`QueryAdapterFailureReason.InvalidPage` (`invalid-page`). Exact sentinels and
+colon-prefixed details map to HTTP 400 with `reasonCode = query_invalid_page`,
+`reason = invalid-page`, and the generic detail `The supplied page is invalid.`.
+Adapter detail text is discarded from the response and sanitized in query-routing
+and submission logs, including details containing protected input or words such
+as “not found” or “not implemented”. Other strings that merely contain the marker
+are not classified as this sentinel.
+
+Cursor failures continue to use `invalid-cursor`, HTTP 400,
+`reasonCode = query_invalid_page`, `reason = invalid-cursor`, and
+`The supplied cursor is invalid.`. `QueryExecutionFailedException` keeps its
+existing constructor and adds the optional init-only `AdapterFailureReason`
+property. An explicit `invalid-page` discriminator distinguishes page failures;
+legacy HTTP 400 exceptions with `query_invalid_page` and no discriminator retain
+the existing safe cursor response.
+
+Rollout requires publishing the shared Contracts/Server/gateway SDK support before
+a domain producer starts emitting `invalid-page`. An older gateway treats that
+unknown sentinel as an internal failure. Parties adoption remains gated on a
+compatible published SDK and passing pinned-package build/gateway checks; its
+prepared consumer change stays unapplied until those checks can pass.
+
 ### Example
 
 ```bash
@@ -208,6 +235,8 @@ public sealed class PartyProjectionActor : Actor, IPartyProjectionActor
 | -------------------------------- | ------------------------------------------------------------------------ |
 | `missing-payload`                | Actor returned success without payload bytes.                            |
 | `invalid-envelope`               | Query envelope was malformed or incompatible.                            |
+| `invalid-page`                   | Paging options exceed the handler's supported range; safe HTTP 400.       |
+| `invalid-cursor`                 | Cursor validation failed; safe HTTP 400 without protected input details. |
 | `actor-response-mismatch`        | Actor returned null or an incompatible response shape.                   |
 | `unsupported-query-type`         | Actor does not support the query type.                                   |
 | `serialization-failure`          | Payload bytes could not be serialized/deserialized as the public shape.  |

@@ -447,7 +447,9 @@ public partial class QueryRouter : IQueryRouter {
     private static string? GetSafeLogErrorMessage(string? errorMessage)
         => IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)
             ? QueryAdapterFailureReason.InvalidCursor
-            : errorMessage;
+            : IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidPage)
+                ? QueryAdapterFailureReason.InvalidPage
+                : errorMessage;
 
     private static bool IsSentinel(string? errorMessage, string sentinel)
         => !string.IsNullOrEmpty(errorMessage)

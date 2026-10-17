@@ -105,6 +105,60 @@ public class QueryProblemDetailsTests {
             .ShouldBe(QueryAdapterFailureReason.InvalidCursor);
     }
 
+    /// <summary>
+    /// Verifies explicit and fallback paging categories produce safe HTTP responses.
+    /// </summary>
+    /// <param name="adapterReason">The optional adapter failure discriminator.</param>
+    /// <param name="expectedReason">The expected public reason.</param>
+    /// <param name="expectedDetail">The expected safe detail.</param>
+    /// <returns>A task that represents the verification.</returns>
+    [Theory]
+    [InlineData(QueryAdapterFailureReason.InvalidPage, "invalid-page", "The supplied page is invalid.")]
+    [InlineData(QueryAdapterFailureReason.InvalidCursor, "invalid-cursor", "The supplied cursor is invalid.")]
+    [InlineData("unknown-category", "invalid-cursor", "The supplied cursor is invalid.")]
+    public async Task QueryExecutionFailedExceptionHandler_PaginationDiscriminator_UsesSafe400(
+        string adapterReason,
+        string expectedReason,
+        string expectedDetail)
+    {
+        var handler = new QueryExecutionFailedExceptionHandler(NullLogger<QueryExecutionFailedExceptionHandler>.Instance);
+        DefaultHttpContext context = CreateHttpContext();
+        var exception = new QueryExecutionFailedException(
+            "corr-1", "tenant-a", "party", "party-1", "SearchParties",
+            StatusCodes.Status400BadRequest,
+            "protected.cursor.payload not found not implemented",
+            QueryProblemReasonCodes.InvalidPage)
+        {
+            AdapterFailureReason = adapterReason,
+        };
+
+        (await handler.TryHandleAsync(context, exception, CancellationToken.None)).ShouldBeTrue();
+
+        ProblemDetails problem = await ReadProblemDetailsAsync(context);
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status400BadRequest);
+        problem.Type.ShouldBe(ProblemTypeUris.BadRequest);
+        problem.Status.ShouldBe(StatusCodes.Status400BadRequest);
+        problem.Detail.ShouldBe(expectedDetail);
+        GetExtensionString(problem, GatewayProblemDetailsExtensions.ReasonCode)
+            .ShouldBe(QueryProblemReasonCodes.InvalidPage);
+        GetExtensionString(problem, GatewayProblemDetailsExtensions.Reason).ShouldBe(expectedReason);
+        JsonSerializer.Serialize(problem).ShouldNotContain("protected.cursor.payload");
+    }
+
+    /// <summary>
+    /// Verifies existing exception callers do not need an adapter discriminator.
+    /// </summary>
+    [Fact]
+    public void QueryExecutionFailedException_ExistingConstructor_DefaultsDiscriminatorToNull()
+    {
+        var exception = new QueryExecutionFailedException(
+            "corr-1", "tenant-a", "party", "party-1", "SearchParties", 400,
+            "legacy detail", QueryProblemReasonCodes.InvalidPage);
+
+        exception.AdapterFailureReason.ShouldBeNull();
+        exception.Detail.ShouldBe("legacy detail");
+    }
+
     [Fact]
     public async Task QueryExecutionFailedExceptionHandler_Forbidden_IncludesInsufficientPermissionReasonCode() {
         var handler = new QueryExecutionFailedExceptionHandler(NullLogger<QueryExecutionFailedExceptionHandler>.Instance);

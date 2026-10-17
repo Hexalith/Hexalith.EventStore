@@ -357,6 +357,33 @@ public class QueryRouterTests {
         warning.Message.ShouldNotContain(RawCursor);
     }
 
+    /// <summary>
+    /// Verifies routing preserves page failures while sanitizing their log details.
+    /// </summary>
+    /// <param name="failure">The adapter failure text.</param>
+    /// <returns>A task that represents the verification.</returns>
+    [Theory]
+    [InlineData("invalid-page")]
+    [InlineData("invalid-page:")]
+    [InlineData("invalid-page: protected.cursor.payload not found not implemented")]
+    public async Task RouteQueryAsync_InvalidPageFailure_SanitizesLogAndPreservesResult(string failure)
+    {
+        var logs = new List<LogEntry>();
+        IProjectionActorInvoker invoker = Substitute.For<IProjectionActorInvoker>();
+        _ = invoker.InvokeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns(QueryResult.Failure(failure));
+        var router = new QueryRouter(invoker, new TestLogger<QueryRouter>(logs));
+
+        QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe(failure);
+        LogEntry warning = logs.Single(entry => entry.Level == LogLevel.Warning);
+        warning.Message.ShouldEndWith("ErrorMessage=invalid-page, Stage=QueryExecutionFailed");
+        warning.Message.ShouldNotContain("protected.cursor.payload");
+    }
+
     [Fact]
     public async Task RouteQueryAsync_RoutesToCorrectActor() {
         JsonElement resultPayload = JsonDocument.Parse("{}").RootElement;

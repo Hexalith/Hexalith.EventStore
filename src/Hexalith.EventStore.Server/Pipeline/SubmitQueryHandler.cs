@@ -69,8 +69,24 @@ public partial class SubmitQueryHandler(
         // a "sentinel: detail" message carries caller-supplied text (e.g. an invalid audit category
         // value), so a detail containing "not found" / "not implemented" would otherwise be
         // misclassified as 404/501 instead of the intended 400. The message is preserved as the
-        // ProblemDetails detail so consumers can react. Invalid cursor failures are intentionally
-        // replaced with a generic detail below so a raw protected cursor is never echoed.
+        // ProblemDetails detail so consumers can react. Page and cursor failures are intentionally
+        // replaced with generic details below so protected pagination input is never echoed.
+        if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidPage))
+        {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                400,
+                "The supplied page is invalid.",
+                QueryProblemReasonCodes.InvalidPage)
+            {
+                AdapterFailureReason = QueryAdapterFailureReason.InvalidPage,
+            };
+        }
+
         if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)) {
             return new QueryExecutionFailedException(
                 request.CorrelationId,
@@ -80,7 +96,10 @@ public partial class SubmitQueryHandler(
                 request.QueryType,
                 400,
                 "The supplied cursor is invalid.",
-                QueryProblemReasonCodes.InvalidPage);
+                QueryProblemReasonCodes.InvalidPage)
+            {
+                AdapterFailureReason = QueryAdapterFailureReason.InvalidCursor,
+            };
         }
 
         if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidEnvelope)) {
@@ -133,7 +152,9 @@ public partial class SubmitQueryHandler(
     private static string? GetSafeLogErrorMessage(string? errorMessage)
         => IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)
             ? QueryAdapterFailureReason.InvalidCursor
-            : errorMessage;
+            : IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidPage)
+                ? QueryAdapterFailureReason.InvalidPage
+                : errorMessage;
 
     private static bool IsNotFound(string? errorMessage)
         => !string.IsNullOrWhiteSpace(errorMessage)

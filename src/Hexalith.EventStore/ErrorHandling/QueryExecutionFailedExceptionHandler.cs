@@ -15,6 +15,7 @@ namespace Hexalith.EventStore.ErrorHandling;
 public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedExceptionHandler> logger) : IExceptionHandler {
     private const string ProblemJsonContentType = "application/problem+json";
     private const string InvalidCursorDetail = "The supplied cursor is invalid.";
+    private const string InvalidPageDetail = "The supplied page is invalid.";
 
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(httpContext);
@@ -64,8 +65,11 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
             problemDetails.Extensions[GatewayProblemDetailsExtensions.TenantId] = queryFailure.Tenant;
         }
 
-        if (IsInvalidCursorFailure(queryFailure)) {
-            problemDetails.Extensions[GatewayProblemDetailsExtensions.Reason] = QueryAdapterFailureReason.InvalidCursor;
+        if (IsInvalidPagingFailure(queryFailure))
+        {
+            problemDetails.Extensions[GatewayProblemDetailsExtensions.Reason] = IsInvalidPageFailure(queryFailure)
+                ? QueryAdapterFailureReason.InvalidPage
+                : QueryAdapterFailureReason.InvalidCursor;
         }
 
         httpContext.Response.StatusCode = queryFailure.StatusCode;
@@ -84,14 +88,18 @@ public class QueryExecutionFailedExceptionHandler(ILogger<QueryExecutionFailedEx
     private static string GetSafeDetail(QueryExecutionFailedException queryFailure)
         => queryFailure.StatusCode switch {
             StatusCodes.Status400BadRequest when string.Equals(queryFailure.ReasonCode, QueryProblemReasonCodes.InvalidPage, StringComparison.Ordinal) =>
-                InvalidCursorDetail,
+                IsInvalidPageFailure(queryFailure) ? InvalidPageDetail : InvalidCursorDetail,
             StatusCodes.Status403Forbidden => AuthorizationExceptionHandler.SanitizeForbiddenTerms(queryFailure.Detail),
             _ => queryFailure.Detail,
         };
 
-    private static bool IsInvalidCursorFailure(QueryExecutionFailedException queryFailure)
+    private static bool IsInvalidPagingFailure(QueryExecutionFailedException queryFailure)
         => queryFailure.StatusCode == StatusCodes.Status400BadRequest
             && string.Equals(queryFailure.ReasonCode, QueryProblemReasonCodes.InvalidPage, StringComparison.Ordinal);
+
+    private static bool IsInvalidPageFailure(QueryExecutionFailedException queryFailure)
+        => IsInvalidPagingFailure(queryFailure)
+            && string.Equals(queryFailure.AdapterFailureReason, QueryAdapterFailureReason.InvalidPage, StringComparison.Ordinal);
 
     private static string GetProblemTypeUri(int statusCode)
         => statusCode switch {

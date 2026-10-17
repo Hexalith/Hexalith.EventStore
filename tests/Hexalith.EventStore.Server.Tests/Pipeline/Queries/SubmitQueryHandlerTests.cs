@@ -390,6 +390,64 @@ public class SubmitQueryHandlerTests {
         warning.Message.ShouldNotContain(RawCursor);
     }
 
+    /// <summary>
+    /// Verifies page failures map to safe client errors and sanitized logs.
+    /// </summary>
+    /// <param name="failure">The adapter failure text.</param>
+    /// <returns>A task that represents the verification.</returns>
+    [Theory]
+    [InlineData("invalid-page")]
+    [InlineData("invalid-page:")]
+    [InlineData("invalid-page: protected.cursor.payload")]
+    [InlineData("invalid-page: protected payload not found")]
+    [InlineData("invalid-page: protected payload not implemented")]
+    [InlineData("invalid-page: no projection state available")]
+    public async Task Handle_InvalidPage_UsesSafe400AndSanitizedLogs(string failure)
+    {
+        List<LogEntry> logs = [];
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: failure));
+        var handler = new SubmitQueryHandler(router, new TestLogger<SubmitQueryHandler>(logs));
+
+        QueryExecutionFailedException exception = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        exception.StatusCode.ShouldBe(400);
+        exception.ReasonCode.ShouldBe(QueryProblemReasonCodes.InvalidPage);
+        exception.AdapterFailureReason.ShouldBe(QueryAdapterFailureReason.InvalidPage);
+        exception.Detail.ShouldBe("The supplied page is invalid.");
+        exception.Message.ShouldBe(exception.Detail);
+        LogEntry warning = logs.Single(entry => entry.Level == LogLevel.Warning);
+        warning.Message.ShouldEndWith("ErrorMessage=invalid-page, Stage=QueryFailed");
+        warning.Message.ShouldNotContain("protected");
+    }
+
+    /// <summary>
+    /// Verifies unrelated text is not treated as the page failure sentinel.
+    /// </summary>
+    /// <param name="failure">The internal failure text.</param>
+    /// <returns>A task that represents the verification.</returns>
+    [Theory]
+    [InlineData("invalid-page-other")]
+    [InlineData("invalid-page other")]
+    [InlineData("prefix invalid-page")]
+    [InlineData("INVALID-PAGE")]
+    public async Task Handle_InvalidPageLookalike_PreservesInternalFailure(string failure)
+    {
+        IQueryRouter router = Substitute.For<IQueryRouter>();
+        _ = router.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: failure));
+        var handler = new SubmitQueryHandler(router, NullLogger<SubmitQueryHandler>.Instance);
+
+        QueryExecutionFailedException exception = await Should.ThrowAsync<QueryExecutionFailedException>(
+            () => handler.Handle(CreateTestQuery(), CancellationToken.None));
+
+        exception.StatusCode.ShouldBe(500);
+        exception.ReasonCode.ShouldBe(QueryProblemReasonCodes.InternalError);
+        exception.AdapterFailureReason.ShouldBeNull();
+    }
+
     private sealed class TestLogger<T>(List<LogEntry> entries) : ILogger<T> {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 

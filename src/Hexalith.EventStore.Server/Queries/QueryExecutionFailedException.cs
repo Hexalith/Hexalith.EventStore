@@ -81,4 +81,13 @@ public sealed class QueryExecutionFailedException : Exception {
     /// Gets the stable query reason code to expose in ProblemDetails.
     /// </summary>
     public string? ReasonCode { get; }
+
+    /// <summary>
+    /// Gets the optional adapter failure category that distinguishes failures sharing a reason code.
+    /// </summary>
+    public string? AdapterFailureReason
+    {
+        get;
+        init;
+    }
 }

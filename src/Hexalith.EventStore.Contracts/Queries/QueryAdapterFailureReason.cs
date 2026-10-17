@@ -26,6 +26,12 @@ public static class QueryAdapterFailureReason {
     public const string InvalidCursor = "invalid-cursor";
 
     /// <summary>
+    /// The supplied pagination options are outside the query handler's supported range.
+    /// Maps to HTTP 400 independently of cursor validation.
+    /// </summary>
+    public const string InvalidPage = "invalid-page";
+
+    /// <summary>
     /// The actor response shape was null or otherwise incompatible.
     /// </summary>
     public const string ActorResponseMismatch = "actor-response-mismatch";
