@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "0776785f494fcefc8ad933b5b17b9c8d5cbe0513",
+  "key": "story-4-5-generic-etag-79244279c5f440ceae3d43309becf9c4",
+  "seedStatus": 204,
+  "original": {
+    "etag": "1",
+    "value": {
+      "writer": "seed",
+      "version": 0
+    }
+  },
+  "interveningUpdate": {
+    "status": 204,
+    "etag": "2",
+    "value": {
+      "version": 1,
+      "writer": "first"
+    },
+    "etagAdvanced": true
+  },
+  "staleReplay": {
+    "suppliedEtag": "1",
+    "status": 409,
+    "responseBody": "{\u0022errorCode\u0022:\u0022ERR_STATE_SAVE\u0022,\u0022message\u0022:\u0022failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-75036f49b0224db1b96dde8e0d9655c4||story-4-5-generic-etag-79244279c5f440ceae3d43309becf9c4\u0022}",
+    "errorCode": "ERR_STATE_SAVE",
+    "errorMessage": "failed saving state in state store statestore: possible etag mismatch. error from state store: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-75036f49b0224db1b96dde8e0d9655c4||story-4-5-generic-etag-79244279c5f440ceae3d43309becf9c4"
+  },
+  "redisRetainedValue": {
+    "version": 1,
+    "writer": "first"
+  }
+}

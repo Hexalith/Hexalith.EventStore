@@ -1,0 +1,2 @@
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 27.995s
+{"lane": "oq8-baseline", "testExitCode": 0, "wrapperFailureClass": null, "liveChildrenAfterNative": 0, "controls": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/oq8-baseline-controls.json"}

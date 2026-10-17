@@ -1,0 +1,295 @@
+"""Adapted finite native capture; all controls and containers are private to one lane."""
+import datetime, hashlib, json, os, pathlib, signal, socket, sqlite3, subprocess, sys, tempfile, threading, time
+
+ROOT = pathlib.Path('/home/administrator/projects/hexalith/eventstore')
+EVIDENCE = ROOT / '_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017'
+lane, pattern, configuration = sys.argv[1:4]
+assert configuration in ('Debug', 'Release')
+target = EVIDENCE / (lane + '-controls.json')
+assert not target.exists()
+assert not (EVIDENCE/(lane+'.native.log')).exists()
+assert not (EVIDENCE/(lane+'.xml')).exists()
+work = pathlib.Path(tempfile.mkdtemp(prefix='story64-runtime-' + lane + '-'))
+regular = pathlib.Path('/tmp/story-6-4-dapr-1.18.2-wpll4ztg')
+oq8_daprd = pathlib.Path('/home/administrator/.dapr/bin/daprd')
+token = 'g6-oq8-rc-' + os.urandom(5).hex()
+packet = {'lane': lane, 'configuration': configuration, 'work': str(work), 'commands': [], 'containers': [],
+          'processes': [], 'testExitCode': None, 'profile': 'test-local HotReload=false; OQ8 private discovery; no production-profile qualification'}
+containers, controls, streams, observed = [], [], [], {}
+test = None
+registry_observations = []
+registry_paths = set()
+last_registry_sample = 0
+monitor_done = threading.Event()
+
+def sha(path): return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+def command(args):
+    packet['commands'].append(args)
+    result = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if result.returncode:
+        packet.setdefault('commandFailures', []).append({'command': args, 'exitCode': result.returncode, 'output': result.stdout})
+        raise subprocess.CalledProcessError(result.returncode, args, result.stdout)
+    return result.stdout.strip()
+def ports(count):
+    handles = [socket.socket() for _ in range(count)]
+    try:
+        for handle in handles: handle.bind(('127.0.0.1', 0))
+        return [handle.getsockname()[1] for handle in handles]
+    finally:
+        for handle in handles: handle.close()
+def wait_port(port):
+    until = time.monotonic() + 40
+    while time.monotonic() < until:
+        if any(process.poll() is not None for process in controls): raise RuntimeError('private control exited')
+        with socket.socket() as handle:
+            handle.settimeout(.2)
+            if handle.connect_ex(('127.0.0.1', port)) == 0: return
+        time.sleep(.1)
+    raise TimeoutError('private control readiness')
+def start_container(name, image, arguments, published, host_ports=None):
+    argv = ['docker', 'run', '--rm', '-d', '--name', name]
+    for port in published: argv += ['-p', '127.0.0.1:' + (str(host_ports[port]) if host_ports else '') + ':' + str(port)]
+    argv += ['--entrypoint', arguments[0], image] + arguments[1:]
+    identity = command(argv)
+    containers.append(identity)
+    details = json.loads(command(['docker', 'inspect', identity]))[0]
+    packet['containers'].append({'id': identity, 'name': name, 'image': details['Image'],
+        'imageReference': image, 'mounts': details['Mounts'], 'ports': details['NetworkSettings']['Ports']})
+    return {port: int(details['NetworkSettings']['Ports'][str(port) + '/tcp'][0]['HostPort']) for port in published}
+def process_table():
+    table = {}
+    for entry in pathlib.Path('/proc').iterdir():
+        if not entry.name.isdigit(): continue
+        try:
+            raw = (entry/'stat').read_text(); tail = raw[raw.rindex(')')+2:].split()
+            table[int(entry.name)] = (int(tail[1]), tail[19], entry)
+        except (OSError, ValueError, IndexError): pass
+    return table
+def monitor():
+    # Save only allowlisted startup arguments and configuration hashes. Never read environments
+    # or copy generated PostgreSQL components (which contain the private disposable password).
+    allowed = {'--app-id', '--config', '--resources-path', '--app-port', '--dapr-http-port', '--dapr-grpc-port',
+               '--dapr-internal-grpc-port', '--metrics-port', '--profile-port', '--placement-host-address', '--scheduler-host-address'}
+    global last_registry_sample
+    while not monitor_done.wait(.1):
+        if test is None: continue
+        table = process_table(); owned = {test.pid}
+        for _ in range(8): owned.update(pid for pid,(ppid,_,_) in table.items() if ppid in owned)
+        for pid in owned:
+            if pid not in table: continue
+            ppid, started, entry = table[pid]; key = str(pid) + ':' + started
+            if key in observed: continue
+            try:
+                args = (entry/'cmdline').read_bytes().split(b'\0'); args = [a.decode(errors='replace') for a in args if a]
+                executable = str((entry/'exe').resolve())
+                item = {'pid': pid, 'ppid': ppid, 'startTicks': started, 'executable': executable,
+                        'executableSha256': sha(executable), 'safeArguments': [], 'configurations': []}
+                for index, arg in enumerate(args):
+                    if arg in allowed and index+1 < len(args):
+                        value = args[index+1]; item['safeArguments'] += [arg, value]
+                        if arg == '--config' and pathlib.Path(value).is_file():
+                            body = pathlib.Path(value).read_bytes()
+                            item['configurations'].append({'path': value, 'sha256': hashlib.sha256(body).hexdigest(),
+                                'hotReloadDisabled': b'name: HotReload' in body and b'enabled: false' in body})
+                            if pathlib.Path(value).name == 'discovery.yaml':
+                                registry_paths.add(pathlib.Path(value).with_name('discovery.sqlite'))
+                            if pathlib.Path(value).name == 'test-runtime.yaml':
+                                copy = EVIDENCE / (lane + '-regular-runtime.yaml')
+                                if not copy.exists(): copy.write_bytes(body)
+                    elif arg.endswith('.dll') and pathlib.Path(arg).is_file():
+                        item.setdefault('entryAssemblies', []).append({'path': arg, 'sha256': sha(arg)})
+                observed[key] = item
+            except (OSError, ValueError): pass
+        if time.monotonic() - last_registry_sample >= .5:
+            last_registry_sample = time.monotonic()
+            for registry in registry_paths:
+                sample = {'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'registryIdentitySha256': hashlib.sha256(str(registry).encode()).hexdigest(), 'diagnosticOnly': True}
+                try:
+                    sample['files'] = {suffix: {'bytes': pathlib.Path(str(registry)+suffix).stat().st_size, 'mtimeNs': pathlib.Path(str(registry)+suffix).stat().st_mtime_ns} for suffix in ('', '-wal', '-shm') if pathlib.Path(str(registry)+suffix).exists()}
+                    with sqlite3.connect(registry.as_uri()+'?mode=ro', uri=True, timeout=.05) as connection:
+                        sample['registrations'] = connection.execute("select app_id,count(*),min(unixepoch('now')-last_update),max(unixepoch('now')-last_update) from hosts group by app_id").fetchall()
+                    sample['outcome'] = 'read'
+                except (OSError, sqlite3.Error) as failure:
+                    sample['outcome'] = type(failure).__name__
+                    sample['errorClass'] = str(failure) if str(failure) in ('database is locked', 'database is busy', 'no such table: hosts', 'unable to open database file') else 'other'
+                registry_observations.append(sample)
+
+thread = threading.Thread(target=monitor, daemon=True)
+try:
+    placement_port, scheduler_port, ph, pm, peer, sh, sm, etcd_client, etcd_peer = ports(9)
+    commands = [
+        [str(regular/'placement'), '--id', 'story64-rc-placement', '--port', str(placement_port), '--listen-address', '127.0.0.1',
+         '--healthz-port', str(ph), '--metrics-port', str(pm), '--initial-cluster', 'story64-rc-placement=127.0.0.1:' + str(peer)],
+        [str(regular/'scheduler'), '--id', 'story64-rc-scheduler', '--port', str(scheduler_port), '--listen-address', '127.0.0.1',
+         '--healthz-port', str(sh), '--metrics-port', str(sm), '--etcd-client-port', str(etcd_client),
+         '--etcd-initial-cluster', 'story64-rc-scheduler=http://127.0.0.1:' + str(etcd_peer), '--etcd-data-dir', str(work/'etcd')]]
+    for role, args in zip(('placement', 'scheduler'), commands):
+        stream = (work/(role+'.log')).open('w'); streams.append(stream)
+        process = subprocess.Popen(args, stdout=stream, stderr=subprocess.STDOUT)
+        controls.append(process); packet['commands'].append(args)
+        packet['processes'].append({'role': role, 'pid': process.pid, 'binarySha256': sha(args[0])})
+    wait_port(placement_port); wait_port(scheduler_port)
+    redis = start_container(token+'-redis', 'redis:6', ['redis-server', '--appendonly', 'no'], [6379])
+    wait_port(redis[6379])
+    redis_identity = containers[-1]
+    assert packet['containers'][-1]['image'] == 'sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf'
+    assert command(['docker', 'exec', redis_identity, 'redis-cli', 'CONFIG', 'SET', 'save', '3600 1 300 100 60 10000']) == 'OK'
+    packet['redisConfiguration'] = {
+        'version': command(['docker', 'exec', redis_identity, 'redis-server', '--version']),
+        'save': command(['docker', 'exec', redis_identity, 'redis-cli', '--raw', 'CONFIG', 'GET', 'save']),
+        'appendonly': command(['docker', 'exec', redis_identity, 'redis-cli', '--raw', 'CONFIG', 'GET', 'appendonly'])}
+    assert packet['redisConfiguration']['save'] == 'save\n3600 1 300 100 60 10000'
+    assert packet['redisConfiguration']['appendonly'] == 'appendonly\nno'
+
+    oq8_placement = start_container(token+'-placement', 'daprio/dapr:1.18.7', ['./placement'], [50005])
+    # Docker Desktop's forwarding layer rejects some host ephemeral ports even when
+    # this Linux process can bind them. Reserve a free non-ephemeral private test port.
+    oq8_scheduler_port = None
+    for _ in range(16):
+        candidate_port = 18000 + int.from_bytes(os.urandom(2), 'little') % 5000
+        with socket.socket() as reservation:
+            try: reservation.bind(('127.0.0.1', candidate_port))
+            except OSError: continue
+            oq8_scheduler_port = candidate_port
+            break
+    assert oq8_scheduler_port is not None
+    oq8_scheduler = start_container(token+'-scheduler', 'daprio/dapr:1.18.7', ['./scheduler', '--etcd-data-dir=/var/lock/dapr/scheduler',
+        '--etcd-client-listen-address=0.0.0.0', '--override-broadcast-host-port=localhost:'+str(oq8_scheduler_port)], [50006], {50006:oq8_scheduler_port})
+    wait_port(oq8_placement[50005]); wait_port(oq8_scheduler[50006])
+    scheduler_details = json.loads(command(['docker', 'inspect', containers[-1]]))[0]
+    expected_broadcast = '--override-broadcast-host-port=localhost:'+str(oq8_scheduler[50006])
+    assert expected_broadcast in scheduler_details['Config']['Cmd']
+    assert scheduler_details['Config']['Entrypoint'] == ['./scheduler']
+    assert scheduler_details['Image'] == 'sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc'
+    packet['schedulerEndpointPreflight'] = {
+        'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'containerId': containers[-1],
+        'actualImage': scheduler_details['Image'], 'actualArguments': scheduler_details['Config']['Cmd'],
+        'publishedHost': '127.0.0.1', 'publishedPort': oq8_scheduler[50006],
+        'broadcastMatchesPublishedPort': True, 'publishedEndpointReachable': True, 'nativeStarted': False}
+
+    env = os.environ.copy()
+    env.update(EVENTSTORE_TEST_DAPRD_PATH=str(regular/'daprd'), EVENTSTORE_TEST_PLACEMENT_PORT=str(placement_port),
+        EVENTSTORE_TEST_SCHEDULER_PORT=str(scheduler_port), EVENTSTORE_TEST_REDIS_PORT=str(redis[6379]), EVENTSTORE_TEST_DAPR_HOT_RELOAD='false',
+        HEXALITH_OQ8_DAPRD_PATH=str(oq8_daprd), HEXALITH_OQ8_CONFIGURATION='Release',
+        HEXALITH_OQ8_PLACEMENT_CONTAINER=token+'-placement', HEXALITH_OQ8_SCHEDULER_CONTAINER=token+'-scheduler',
+        HEXALITH_OQ8_REDIS_ENDPOINT='127.0.0.1:'+str(redis[6379]), HEXALITH_OQ8_NAMESPACE=token)
+    oq8_evidence = EVIDENCE/(lane+'-oq8'); assert not oq8_evidence.exists()
+    env.update(HEXALITH_OQ8_EVIDENCE_DIRECTORY=str(oq8_evidence), HEXALITH_OQ8_CLEANUP_PATH=str(EVIDENCE/(lane+'-oq8-cleanup.json')))
+    env['HEXALITH_OQ8_DIAGNOSTICS_PATH'] = str(EVIDENCE/(lane+'-oq8-diagnostics.json'))
+    packet['producerBindings'] = {}
+    for role, packet_name, prefixes in [
+        ('entryHosts', 'release-build-baseline.json', ['src/Hexalith.EventStore/bin/Release/net10.0/', 'samples/Hexalith.EventStore.Sample/bin/Release/net10.0/']),
+        ('testAssembly', 'release-build-baseline.json', ['tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/'+configuration+'/net10.0/'])]:
+        producer_file = EVIDENCE/packet_name
+        producer = json.loads(producer_file.read_text())
+        assert producer['exitCode'] == 0
+        expected = {name:digest for name,digest in producer['after']['runtime'].items() if any(name.startswith(prefix) for prefix in prefixes)}
+        assert expected
+        assert all((ROOT/name).exists() and sha(ROOT/name)==digest for name,digest in expected.items())
+        packet['producerBindings'][role] = {'path': str(producer_file), 'sha256': sha(producer_file), 'consumedOutputs': expected}
+    packet['environment'] = {k:v for k,v in env.items() if k.startswith(('EVENTSTORE_TEST_', 'HEXALITH_OQ8_'))}
+    packet['runtimeVersions'] = {'regular': command([str(regular/'daprd'), '--version']), 'oq8': command([str(oq8_daprd), '--version'])}
+    packet['sidecarBinaries'] = {str(p): sha(p) for p in (regular/'daprd', oq8_daprd)}
+    assembly = ROOT/'tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin'/configuration/'net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll'
+    native = ['dotnet', str(assembly)]
+    if pattern == '__FOCUSED__':
+        for method in ('*SourceGuard_TwoRealReplicas*', '*MultiHostAdmission_PrimaryHostRemoved*', '*TwoSidecarsAndRestartPreserve*',
+                       '*ProductionMatrix_IndependentProcesses*'):
+            native += ['-method', method]
+    elif pattern == '__OQ8__': native += ['-method', '*ProductionMatrix_IndependentProcesses*']
+    elif pattern != '__FULL__': native += ['-class', pattern]
+    native += ['-showLiveOutput', '-noColor', '-xml', str(EVIDENCE/(lane+'.xml'))]
+    packet['testCommand'] = native
+    # Persist startup ownership immediately, for safe recovery even if the wrapper is interrupted.
+    (EVIDENCE/(lane+'-active-controls.json')).write_text(json.dumps(packet, indent=2)+'\n')
+    thread.start()
+    with (EVIDENCE/(lane+'.native.log')).open('w') as log:
+        packet['nativeInvocationStartedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        test = subprocess.Popen(native, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        packet['testPid'] = test.pid
+        packet['nativeStartTicks'] = process_table()[test.pid][1]
+        packet['outerLimitSeconds'] = 2700
+        packet['outerDrainSeconds'] = 30
+        try:
+            packet['testExitCode'] = test.wait(timeout=2700)
+        except subprocess.TimeoutExpired:
+            packet['outerTimedOut'] = True
+            packet['outerTimeoutAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            owned_now = process_table().get(test.pid)
+            assert owned_now is not None and owned_now[1] == packet['nativeStartTicks'] and os.getpgid(test.pid)==test.pid
+            os.killpg(test.pid, signal.SIGINT)
+            try: packet['nativeExitCode'] = test.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                owned_now = process_table().get(test.pid)
+                assert owned_now is not None and owned_now[1] == packet['nativeStartTicks']
+                os.killpg(test.pid, signal.SIGKILL)
+                packet['nativeExitCode'] = test.wait(timeout=5)
+            packet['testExitCode'] = 124
+
+except Exception as failure:
+    packet['wrapperFailureClass'] = type(failure).__name__
+finally:
+    monitor_done.set()
+    if thread.is_alive(): thread.join(timeout=3)
+    packet['observedChildren'] = list(observed.values())
+    packet['privateRegistryDiagnostics'] = registry_observations
+    current = process_table()
+    alive = [item for item in observed.values() if item['pid'] in current and current[item['pid']][1] == item['startTicks']]
+    packet['ownedChildrenAliveAfterNative'] = alive
+    for item in alive:
+        try: os.kill(item['pid'], signal.SIGKILL)
+        except ProcessLookupError: pass
+    for process in controls:
+        if process.poll() is None: process.terminate()
+    for process in controls:
+        try: process.wait(timeout=15)
+        except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=5)
+    packet['controlExitCodes'] = [p.returncode for p in controls]
+    for stream in streams: stream.close()
+    for role in ('placement', 'scheduler'):
+        source = work/(role+'.log')
+        if source.exists(): (EVIDENCE/(lane+'-'+role+'.log')).write_bytes(source.read_bytes())
+    for identity in reversed(containers):
+        result = subprocess.run(['docker', 'rm', '-f', '-v', identity], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        packet.setdefault('containerCleanup', []).append({'id': identity, 'exitCode': result.returncode})
+    packet['containerPhysicalAbsence'] = {identity: subprocess.run(['docker','inspect',identity], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0 for identity in containers}
+    native_log = EVIDENCE/(lane+'.native.log')
+    if native_log.exists():
+        import re
+        observations = []
+        for line in native_log.read_text(errors='replace').splitlines():
+            match = re.search(r'\[OUTPUT\] (\w+) (\{.*\})$', line)
+            if match and match[1].startswith(('Projection', 'SourceMetadata', 'SourceCost')):
+                observations.append({'kind': match[1], 'value': json.loads(match[2])})
+            if 'Total:' in line: print(line)
+        vectors = EVIDENCE/(lane+'-vectors.json')
+        assert not vectors.exists()
+        vectors.write_text(json.dumps({'command': packet.get('testCommand'), 'exitCode': packet['testExitCode'], 'observations': observations}, indent=2)+'\n')
+        packet['vectors'] = {'path': str(vectors), 'sha256': sha(vectors)}
+        packet['nativeLogSha256'] = sha(native_log)
+    packet['volumePhysicalAbsence'] = {mount['Name']: subprocess.run(['docker','volume','inspect',mount['Name']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0
+        for container in packet['containers'] for mount in container['mounts'] if mount['Type']=='volume'}
+    packet['resourceDirectoriesRemoved'] = {item['safeArguments'][i+1]: not pathlib.Path(item['safeArguments'][i+1]).exists()
+        for item in observed.values() for i,arg in enumerate(item['safeArguments']) if arg=='--resources-path'}
+    checked_ports = {int(item['HostPort']) for container in packet['containers'] for group in container['ports'].values() if group for item in group}
+    checked_ports.update([placement_port, scheduler_port, ph, pm, peer, sh, sm, etcd_client, etcd_peer])
+    for item in observed.values():
+        for i,arg in enumerate(item['safeArguments']):
+            if arg in ('--app-port','--dapr-http-port','--dapr-grpc-port','--dapr-internal-grpc-port','--metrics-port','--profile-port'):
+                checked_ports.add(int(item['safeArguments'][i+1]))
+    packet['physicalPortsClosed'] = {}
+    for port in checked_ports:
+        with socket.socket() as check:
+            check.settimeout(.2)
+            packet['physicalPortsClosed'][str(port)] = check.connect_ex(('127.0.0.1',port)) != 0
+    import shutil
+    shutil.rmtree(work)
+    packet['scratchRemoved'] = not work.exists()
+    packet['runnerSha256'] = sha(__file__)
+    packet['completedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    target.write_text(json.dumps(packet, indent=2)+'\n')
+    active = EVIDENCE/(lane+'-active-controls.json')
+    if active.exists(): active.unlink()
+print(json.dumps({'lane': lane, 'testExitCode': packet['testExitCode'], 'wrapperFailureClass': packet.get('wrapperFailureClass'),
+                  'liveChildrenAfterNative': len(packet.get('ownedChildrenAliveAfterNative', [])), 'controls': str(target)}), flush=True)
+sys.exit(packet['testExitCode'] if packet['testExitCode'] is not None else 1)

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "story": "8.2",
+  "normativeDigest": "de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e",
+  "eventStoreSource": "dfc0ac557c43363159b55bffb4d40feceab1f787",
+  "files": [
+    {
+      "path": "g-001.json",
+      "sha256": "a821f36321bd5a020b35f89b1e3d18e7dc3070e3dbf694db5c0413847a012610",
+      "vectors": ["V001", "V002"],
+      "sections": ["7.1", "7.2", "8.5"]
+    },
+    {
+      "path": "nist-gcm-256-count0.json",
+      "sha256": "528a81472dc6bd4db653bf01dc52a16d5e092c7bcde2ef622f42878ba794a319",
+      "vectors": ["V003"],
+      "sections": ["8.5"]
+    },
+    {
+      "path": "vector-ownership.json",
+      "sha256": "a3886eac22cf3b77c210ae2bb166f237980bc5e8cf1e9cbaf8c569aa6b4dc087",
+      "vectors": ["V001-V138"],
+      "sections": ["15.4", "16.2"]
+    },
+    {
+      "path": "../../../../../scripts/payload-protection/verify-golden-vectors.mjs",
+      "sha256": "5b0892d8ed6fa3dbe29159b0a6777636206350ec43b0f33b22b2a706c040b06a",
+      "toolchain": "Node.js node:crypto"
+    },
+    {
+      "path": "../../../../../scripts/payload-protection/verify-golden-vectors.py",
+      "sha256": "f6a5003726478c445635653c8c0bd4c73a92001cdd65c4bdacf217d094851cf9",
+      "toolchain": "Python cryptography"
+    },
+    {
+      "path": "../../../../../scripts/payload-protection/requirements.txt",
+      "sha256": "70c867286e0e8fae9c36dff5d479b0a017c1b2892e03382cbf772608714cce74",
+      "toolchain": "Python dependency lock"
+    }
+  ],
+  "expected": {
+    "executedVectors": ["V001", "V002", "V003"],
+    "predecessorGatedVectorCount": 135,
+    "manifestSha256": "c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8",
+    "aadSha256": "cb83c07f5aee433bdc0a36e70d80e9841063598a1a72a3a72044996245046e7b",
+    "envelopeSha256": "247381efe70c9c4844af998ddec864b41665461b466bda418beb8edc0e5406be",
+    "wrapperSha256": "35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3",
+    "outcome": "PASS"
+  }
+}

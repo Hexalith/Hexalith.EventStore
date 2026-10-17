@@ -1,0 +1,22 @@
+[
+  {
+    "frame": "oq8-baseline",
+    "successfulReadsWhileRegistryExists": 40,
+    "absentAfterFixtureCleanup": 0,
+    "lockedBusyErrors": 0,
+    "otherErrors": 0,
+    "lastSuccessfulUtc": "2026-10-17T15:05:15.419629+00:00",
+    "firstAbsentUtc": null,
+    "scope": "Read-only diagnostic observer; post-cleanup absence is expected. No database/actor correctness assertion is inferred from these reads."
+  },
+  {
+    "frame": "release-live-full",
+    "successfulReadsWhileRegistryExists": 42,
+    "absentAfterFixtureCleanup": 2175,
+    "lockedBusyErrors": 0,
+    "otherErrors": 0,
+    "lastSuccessfulUtc": "2026-10-17T15:06:17.362917+00:00",
+    "firstAbsentUtc": "2026-10-17T15:06:17.972741+00:00",
+    "scope": "Read-only diagnostic observer; post-cleanup absence is expected. No database/actor correctness assertion is inferred from these reads."
+  }
+]

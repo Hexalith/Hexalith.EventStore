@@ -1,0 +1,42 @@
+{
+  "recordedUtc": "2026-10-17T16:51:23.694883+00:00",
+  "purpose": "Requested Git recording/push preflight only; story completion and formal acceptance remain open.",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-method",
+    "*TrackedReusableContent_DoesNotContainUsableSecrets",
+    "-noColor",
+    "-xml",
+    "/tmp/story64-push-oywzwjip/tracked-secrets.xml"
+  ],
+  "exitCode": 1,
+  "nativeSummary": {
+    "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+    "id": "8e3b5060-7430-4127-8aae-bf99a8b1c843",
+    "name": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "run-date": "2026-10-17",
+    "run-time": "16:37:57",
+    "start-rtf": "2026-10-17T16:37:57.2902455+00:00",
+    "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+    "target-framework": ".NETCoreApp,Version=v10.0",
+    "errors": "0",
+    "failed": "1",
+    "finish-rtf": "2026-10-17T16:44:36.2948418+00:00",
+    "not-run": "0",
+    "passed": "0",
+    "skipped": "0",
+    "time": "399.024",
+    "time-rtf": "00:06:39.0240000",
+    "total": "1"
+  },
+  "repositoryReportedFindings": 2810,
+  "newStagedFindings": 788,
+  "otherTrackedFindings": 2022,
+  "newFindingClassification": "Each new match is one of five NuGet package IDs assigned a valid version/range in a captured assets/dependency manifest; exact bytes and original manifest paths verified.",
+  "policyChanged": false,
+  "gate": "failed; no waiver or exemption added",
+  "commitlintPinnedVersion": "21.1.0",
+  "commitlintInitialValidation": "Passed with zero errors/warnings; exact candidate and successful log retained outside the repository.",
+  "preservation": "Original qualification packet bytes/inventory remain unchanged; these are additive Git preflight records."
+}

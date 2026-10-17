@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "vectorId": "V001",
+  "normativeDigest": "de9ba8866fd98a480629890ee2b89a492fbad96d4d5a927388e6aaa0fdd72b4e",
+  "sections": ["7.1", "7.2", "8.5"],
+  "input": {
+    "dekHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "nonceHex": "000000000000000000000000",
+    "tenant": {"text": "tenant-a", "utf8Hex": "74656e616e742d61"},
+    "domain": {"text": "parties", "utf8Hex": "70617274696573"},
+    "aggregate": {"text": "party-01", "utf8Hex": "70617274792d3031"},
+    "payloadType": {"text": "Hexalith.Parties.Contracts.Events.PartyCreated", "utf8Hex": "486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e506172747943726561746564"},
+    "propertyPath": {"text": "/email", "utf8Hex": "2f656d61696c"},
+    "keyReference": {"text": "01J00000000000000000000000", "utf8Hex": "30314a3030303030303030303030303030303030303030303030"},
+    "dekVersion": 1,
+    "fieldOrdinal": 0,
+    "recordSequence": "1",
+    "serializationFormat": {"text": "json+pdenc-v2", "utf8Hex": "6a736f6e2b7064656e632d7632"},
+    "plaintext": {"text": "\"alice@example.com\"", "utf8Hex": "22616c696365406578616d706c652e636f6d22"}
+  },
+  "pathManifest": {
+    "entries": [{"text": "/email", "utf8Hex": "2f656d61696c"}],
+    "encodedHex": "4858504d0100000001000000062f656d61696c",
+    "sha256": "c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8"
+  },
+  "aadFields": [
+    {"id": 1, "type": 1, "name": "tenant", "encoding": "strict-utf8", "valueHex": "74656e616e742d61"},
+    {"id": 2, "type": 1, "name": "domain", "encoding": "strict-utf8", "valueHex": "70617274696573"},
+    {"id": 3, "type": 1, "name": "aggregate", "encoding": "strict-utf8", "valueHex": "70617274792d3031"},
+    {"id": 4, "type": 1, "name": "payload-type", "encoding": "strict-utf8", "valueHex": "486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e506172747943726561746564"},
+    {"id": 5, "type": 1, "name": "property-path", "encoding": "strict-utf8", "valueHex": "2f656d61696c"},
+    {"id": 6, "type": 1, "name": "dek-reference", "encoding": "strict-utf8", "valueHex": "30314a3030303030303030303030303030303030303030303030"},
+    {"id": 7, "type": 2, "name": "dek-version", "encoding": "u32-big-endian", "valueHex": "00000001"},
+    {"id": 8, "type": 1, "name": "serialization-format", "encoding": "strict-utf8", "valueHex": "6a736f6e2b7064656e632d7632"},
+    {"id": 9, "type": 2, "name": "field-ordinal", "encoding": "u32-big-endian", "valueHex": "00000000"},
+    {"id": 10, "type": 3, "name": "record-sequence", "encoding": "u64-big-endian", "valueHex": "0000000000000001"},
+    {"id": 11, "type": 4, "name": "path-manifest-commitment", "encoding": "sha256", "valueHex": "c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8"}
+  ],
+  "expected": {
+    "aadHex": "4858414401010b0001010000000874656e616e742d610201000000077061727469657303010000000870617274792d303104010000002e486578616c6974682e506172746965732e436f6e7472616374732e4576656e74732e5061727479437265617465640501000000062f656d61696c06010000001a30314a30303030303030303030303030303030303030303030300702000000040000000108010000000d6a736f6e2b7064656e632d7632090200000004000000000a030000000800000000000000010b0400000020c9eb5924af88fb4ae2d03028e0e6365c5a7e9e3c3f8e1bb228be946541e794f8",
+    "aadSha256": "cb83c07f5aee433bdc0a36e70d80e9841063598a1a72a3a72044996245046e7b",
+    "ciphertextHex": "2cddd9b7d649c3d870c9c4457449bffabd2e74",
+    "tagHex": "d4796bedb772b2a5f62daa1c34920159",
+    "envelopeHex": "4858503202010101001c001a00000001000000000c1000000000001330314a30303030303030303030303030303030303030303030300000000000000000000000002cddd9b7d649c3d870c9c4457449bffabd2e74d4796bedb772b2a5f62daa1c34920159",
+    "envelopeBase64Url": "SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAALN3Zt9ZJw9hwycRFdEm_-r0udNR5a-23crKl9i2qHDSSAVk",
+    "envelopeSha256": "247381efe70c9c4844af998ddec864b41665461b466bda418beb8edc0e5406be",
+    "wrapper": "{\"$pdenc\":\"SFhQMgIBAQEAHAAaAAAAAQAAAAAMEAAAAAAAEzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwAAAAAAAAAAAAAAAALN3Zt9ZJw9hwycRFdEm_-r0udNR5a-23crKl9i2qHDSSAVk\"}",
+    "wrapperSha256": "35388a17c7d950f775378c47b6263d75088be358fbe6372a71f2bec55a3356c3",
+    "outcome": "PASS"
+  }
+}

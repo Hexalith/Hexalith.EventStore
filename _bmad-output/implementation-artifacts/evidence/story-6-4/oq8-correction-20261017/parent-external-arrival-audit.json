@@ -1,0 +1,527 @@
+{
+  "checkedUtc": "2026-10-17T15:32:00.345140+00:00",
+  "entryHead": "1353b83939de812671260f1d7a5910ee8fb60119",
+  "externalObservedHead": "ac059da7e13047600d65c592dad3204238fd9eb5",
+  "fullSourceSnapshotChanges": 85,
+  "byRoot": {
+    "docs": 66,
+    "src": 14,
+    "tests": 5
+  },
+  "allChangesMatchObservedExternalCommitBlobs": true,
+  "changes": [
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/README.md",
+      "committedBlob": "54e66e3aa0129ec23cdda9c714d658bd69a1101c",
+      "afterSha256": "7ac24a0c0e6c8446096eae83d477817f59f09f32c609ef3deed600d272d60111",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/current-rights.json",
+      "committedBlob": "8d5e68602ecc69fb94e674f15aba650752171bad",
+      "afterSha256": "5f59192495975cdb260f15517713a4c7f73cde693a50886bafdbe59aad04ec0a",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verification.json",
+      "committedBlob": "26dc8b1cbf25d20d1585c44656350d4a2664bc92",
+      "afterSha256": "d9e8da45b4798c5e0c54425e0b126bfa6e6df8bc2d450b5ba18d3119543fc85d",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/README.md",
+      "committedBlob": "78e2a7255d1da67c3845e23f7136b4e5a39f9feb",
+      "afterSha256": "13a3fe7fb63393127848f16a1c561c2379b5689c72ebd6b4e81504e32b959f72",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json",
+      "committedBlob": "1f2e44706ce4d40bca5a50d993b0f54f0648894d",
+      "afterSha256": "cc98b1cb35a0ca6dfb47a92393f16e05e14c903aff92f4114dc8beb6cf5cd681",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/docs/security/workload-binding-authority.md",
+      "committedBlob": "bd3e1954ae036b35a5bedf6b3d3d8cbc1066e680",
+      "afterSha256": "c48b2494bf93e8af030da481819b09238e42a246da554f35c75b4f833f7a9045",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+      "committedBlob": "f6cf13aa6ff9c1d46c83fabfed21573409c42872",
+      "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+      "committedBlob": "96664e3a21884a6492d097f4090c90792638312f",
+      "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+      "committedBlob": "3b163aabd751fc930483f29eb54fe19555c5e595",
+      "afterSha256": "dad5e5e12120190f92b272f766ec8debfa52b22505137f9935728edfeb96a585",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+      "committedBlob": "f837e0eb1745699bbc0a16f914124f95a1acc3ed",
+      "afterSha256": "09cb070d8df3dfe8065cdecde59baeb90ca302d2ece3c657407b2bd7eaed5b17",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+      "committedBlob": "4af747943340bce1055a8bc24cb4e44c4f303c2c",
+      "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+      "committedBlob": "07d44ef32fb69ac40dfa92d12da65c9ec0236950",
+      "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+      "committedBlob": "b0943ef74b894a88aef17f8bb9d9bbcc1c4feab9",
+      "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+      "committedBlob": "48b571a20de8f313f1dc1dd81075fbbb02aa4e60",
+      "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+      "committedBlob": "984d229400ba3123a24ae4ce71655a7bcdb0460f",
+      "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+      "committedBlob": "aef6efce8846b622ba2cac17ea363568c996946f",
+      "afterSha256": "18236d80cd194135f229804cf933201c17eadede4f4d3c4fef7ae5a13a3c77ae",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+      "committedBlob": "e71519f2c8bebfb74912760402979c64cabf759b",
+      "afterSha256": "1200e5938c3a9c19f41b5c647fd719916af6da21979be25112589708ccce7f20",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "committedBlob": "619cae0fbb60ac7122cd464d098035d802ebe50a",
+      "afterSha256": "4dbd2cbc98f2efbe5a93c2ee137828e9c373db7f0d7dba4a84ea101ec6da9b84",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore/Program.cs",
+      "committedBlob": "6c4fc024ef5487023654fa0a9374c88be5a4a87e",
+      "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+      "committedBlob": "d5facfc76ab1b063e07ee3423885609963740927",
+      "afterSha256": "7a4aa0c2e0a5cf4065b963cc9ed1dd61b9d3a63d15981d134f69cfebb14bf7a3",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+      "committedBlob": "e1f2cc5445d555cb50fadd6ae7d92aff84ed66db",
+      "afterSha256": "3e2bcf033b668ff307e0b1c37ce923dd20cab857dffb41d98ab3bd0e449fc775",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "committedBlob": "c7b7afba78655139e7a3665727430496d2c5b8cf",
+      "afterSha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+      "committedBlob": "faf07ddc99f494327b269771a34df8536753f14d",
+      "afterSha256": "498f6fbeb980bdc45a22fd39c3a7b70ca668606c168ddd38764b6f1050b79fd8",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/docs/security/workload-binding-authority.md",
+      "committedBlob": "37c06cc1504c31f2fea5cdc1381efa46b231e761",
+      "afterSha256": "f8cab6a90a2d191f8176ebe06d280fdb6cbbe5e74b6714d4331751ccf1bf0660",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+      "committedBlob": "f6cf13aa6ff9c1d46c83fabfed21573409c42872",
+      "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+      "committedBlob": "96664e3a21884a6492d097f4090c90792638312f",
+      "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+      "committedBlob": "a9507ecf2cc1d11299c2029bdaa8b1e2117d13de",
+      "afterSha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+      "committedBlob": "5494e8d07bb15e40746e38a9336cac450c0a009e",
+      "afterSha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+      "committedBlob": "4af747943340bce1055a8bc24cb4e44c4f303c2c",
+      "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+      "committedBlob": "07d44ef32fb69ac40dfa92d12da65c9ec0236950",
+      "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+      "committedBlob": "658cc7a7769d65c2c05053a3637ba0a0c0a0fdf7",
+      "afterSha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+      "committedBlob": "b0943ef74b894a88aef17f8bb9d9bbcc1c4feab9",
+      "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+      "committedBlob": "48b571a20de8f313f1dc1dd81075fbbb02aa4e60",
+      "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+      "committedBlob": "984d229400ba3123a24ae4ce71655a7bcdb0460f",
+      "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+      "committedBlob": "d3400992c052134c3e317f25c3446c1bfeb1cf29",
+      "afterSha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+      "committedBlob": "560aa097a14ae4e8c16839c348c7d3a49c5034ac",
+      "afterSha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "committedBlob": "30795810f498ca1477a7b41cfdbd88b79feca048",
+      "afterSha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore/Program.cs",
+      "committedBlob": "6c4fc024ef5487023654fa0a9374c88be5a4a87e",
+      "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+      "committedBlob": "491159cd384c0578d975e2161f73131c7a6ffd4b",
+      "afterSha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+      "committedBlob": "350954aa654f66e2eea42adfed42d0714aff7952",
+      "afterSha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+      "committedBlob": "6fb7dc6e80ee4b5fea3e33a2f0f6a93a5c405a26",
+      "afterSha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "committedBlob": "870d514a94d3b3040a4ad60dcb6a349fb926d605",
+      "afterSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+      "committedBlob": "38decc36978f464da348aaf34cb410b4220c67a7",
+      "afterSha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/docs/security/workload-binding-authority.md",
+      "committedBlob": "bd3e1954ae036b35a5bedf6b3d3d8cbc1066e680",
+      "afterSha256": "c48b2494bf93e8af030da481819b09238e42a246da554f35c75b4f833f7a9045",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+      "committedBlob": "f6cf13aa6ff9c1d46c83fabfed21573409c42872",
+      "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+      "committedBlob": "96664e3a21884a6492d097f4090c90792638312f",
+      "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+      "committedBlob": "a9507ecf2cc1d11299c2029bdaa8b1e2117d13de",
+      "afterSha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+      "committedBlob": "5494e8d07bb15e40746e38a9336cac450c0a009e",
+      "afterSha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+      "committedBlob": "4af747943340bce1055a8bc24cb4e44c4f303c2c",
+      "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+      "committedBlob": "07d44ef32fb69ac40dfa92d12da65c9ec0236950",
+      "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+      "committedBlob": "658cc7a7769d65c2c05053a3637ba0a0c0a0fdf7",
+      "afterSha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+      "committedBlob": "b0943ef74b894a88aef17f8bb9d9bbcc1c4feab9",
+      "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+      "committedBlob": "48b571a20de8f313f1dc1dd81075fbbb02aa4e60",
+      "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+      "committedBlob": "984d229400ba3123a24ae4ce71655a7bcdb0460f",
+      "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+      "committedBlob": "d3400992c052134c3e317f25c3446c1bfeb1cf29",
+      "afterSha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+      "committedBlob": "560aa097a14ae4e8c16839c348c7d3a49c5034ac",
+      "afterSha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "committedBlob": "30795810f498ca1477a7b41cfdbd88b79feca048",
+      "afterSha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore/Program.cs",
+      "committedBlob": "6c4fc024ef5487023654fa0a9374c88be5a4a87e",
+      "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+      "committedBlob": "491159cd384c0578d975e2161f73131c7a6ffd4b",
+      "afterSha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+      "committedBlob": "350954aa654f66e2eea42adfed42d0714aff7952",
+      "afterSha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+      "committedBlob": "6fb7dc6e80ee4b5fea3e33a2f0f6a93a5c405a26",
+      "afterSha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "committedBlob": "f39dce45747bcb5cbd626d0c848b5f1d34bb630c",
+      "afterSha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+      "committedBlob": "38decc36978f464da348aaf34cb410b4220c67a7",
+      "afterSha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+      "committedBlob": "2f27cc7fcc7e591a5acd36743584133c3f205e87",
+      "afterSha256": "fa99280a1b9f919793496ba3ba3bf9c3ad4674a65330b3f54129d9aed690507f",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+      "committedBlob": "7453a6b5f2c42df5f0c2dda4364968291e2ad8f4",
+      "afterSha256": "e1bb0e31c9ec5924ef2fe26ed56919b32d6f5daaa9c08a8de6211e00206c3f8d",
+      "entrySha256": null
+    },
+    {
+      "path": "docs/security/workload-binding-authority.md",
+      "committedBlob": "37c06cc1504c31f2fea5cdc1381efa46b231e761",
+      "afterSha256": "f8cab6a90a2d191f8176ebe06d280fdb6cbbe5e74b6714d4331751ccf1bf0660",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+      "committedBlob": "f6cf13aa6ff9c1d46c83fabfed21573409c42872",
+      "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+      "entrySha256": "e2da8228668062e633c6aaaa770d49ac0f4478e0b0977e6fdd1e7b2abe86086d"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+      "committedBlob": "96664e3a21884a6492d097f4090c90792638312f",
+      "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+      "entrySha256": "78aaea82d89469fd020d8b4037be9f05e70672cb52b189d347a5ba8201ff4093"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+      "committedBlob": "a9507ecf2cc1d11299c2029bdaa8b1e2117d13de",
+      "afterSha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+      "committedBlob": "5494e8d07bb15e40746e38a9336cac450c0a009e",
+      "afterSha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b",
+      "entrySha256": "47f439bde8a5f848f5bca9588dae21ac6454c5ecc6c60cb28293e5c6d452d312"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+      "committedBlob": "4af747943340bce1055a8bc24cb4e44c4f303c2c",
+      "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+      "entrySha256": "6c883a91fbdc652484e3b15430a89486e21bae8aaa54d1ed4277aefe0f06cc60"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+      "committedBlob": "07d44ef32fb69ac40dfa92d12da65c9ec0236950",
+      "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+      "entrySha256": "61efa06814289479a55795afc922f2fd15138fd41d05d75c63d005c793050553"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+      "committedBlob": "658cc7a7769d65c2c05053a3637ba0a0c0a0fdf7",
+      "afterSha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+      "committedBlob": "b0943ef74b894a88aef17f8bb9d9bbcc1c4feab9",
+      "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+      "committedBlob": "48b571a20de8f313f1dc1dd81075fbbb02aa4e60",
+      "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+      "committedBlob": "984d229400ba3123a24ae4ce71655a7bcdb0460f",
+      "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+      "committedBlob": "d3400992c052134c3e317f25c3446c1bfeb1cf29",
+      "afterSha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+      "committedBlob": "560aa097a14ae4e8c16839c348c7d3a49c5034ac",
+      "afterSha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6",
+      "entrySha256": null
+    },
+    {
+      "path": "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "committedBlob": "30795810f498ca1477a7b41cfdbd88b79feca048",
+      "afterSha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+      "entrySha256": "4dbd2cbc98f2efbe5a93c2ee137828e9c373db7f0d7dba4a84ea101ec6da9b84"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Program.cs",
+      "committedBlob": "6c4fc024ef5487023654fa0a9374c88be5a4a87e",
+      "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+      "entrySha256": "8ed01dad3b63aa0429f551d1ed51ef4510bfa73c885ae4a4971bd8eccdcde1c0"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+      "committedBlob": "491159cd384c0578d975e2161f73131c7a6ffd4b",
+      "afterSha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4",
+      "entrySha256": "7a4aa0c2e0a5cf4065b963cc9ed1dd61b9d3a63d15981d134f69cfebb14bf7a3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+      "committedBlob": "350954aa654f66e2eea42adfed42d0714aff7952",
+      "afterSha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a",
+      "entrySha256": null
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+      "committedBlob": "6fb7dc6e80ee4b5fea3e33a2f0f6a93a5c405a26",
+      "afterSha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34",
+      "entrySha256": null
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "committedBlob": "870d514a94d3b3040a4ad60dcb6a349fb926d605",
+      "afterSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+      "entrySha256": null
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+      "committedBlob": "38decc36978f464da348aaf34cb410b4220c67a7",
+      "afterSha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+      "entrySha256": "498f6fbeb980bdc45a22fd39c3a7b70ca668606c168ddd38764b6f1050b79fd8"
+    }
+  ],
+  "nativeAssetsRuntimeChanged": false,
+  "latestSourceQualified": false,
+  "scope": "Read-only Git blob verification; no source, commit, branch, index, remote or runtime mutation. Observed committed source arrivals do not alter or requalify the stable earlier runtime producer."
+}

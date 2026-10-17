@@ -1,0 +1,2 @@
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 195, Errors: 0, Failed: 0, Skipped: 1, Not Run: 0, Time: 1281.952s
+{"lane": "release-live-full", "testExitCode": 0, "wrapperFailureClass": null, "liveChildrenAfterNative": 0, "controls": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full-controls.json"}

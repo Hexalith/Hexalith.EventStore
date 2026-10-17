@@ -1,0 +1,2 @@
+# Retain exact bytes for hash-bound producer, native execution, and cleanup receipts.
+** -text -whitespace

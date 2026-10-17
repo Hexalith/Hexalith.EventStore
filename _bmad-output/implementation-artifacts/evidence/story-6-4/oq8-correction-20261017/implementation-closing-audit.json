@@ -1,0 +1,716 @@
+{
+  "recordedUtc": "2026-10-17T15:30:13.582949+00:00",
+  "authorizedScope": "One bounded OQ8 diagnosis and one conditional complete Release Live invocation; no retries",
+  "implementationChanges": [],
+  "evidenceChanges": [
+    "fresh capture and diagnostic wrappers",
+    "exact producer/native/asset/runtime/registry/cleanup evidence",
+    "packet-local .gitattributes",
+    "final append-only wrapper note"
+  ],
+  "decision": "No fixture correction demonstrated; unchanged fixture passes focused and complete native frames. Historical timeout cause remains unproven.",
+  "producer": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-build-baseline.json",
+    "bytes": 5210160,
+    "sha256": "7e10dec8d2687770993356a63c13c5e15939c7ce32709a5d28c421ec14547fb7"
+  },
+  "producerResult": {
+    "warningLines": 0,
+    "errorLines": 0,
+    "buildSummaries": [
+      "0 Warning(s)",
+      "0 Error(s)"
+    ],
+    "failedMethods": [],
+    "skippedMethods": []
+  },
+  "focused": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/oq8-baseline.json",
+    "bytes": 5205634,
+    "sha256": "a380cf232a7230902ec88787ac81fe8588b9e4e5dfa4fbae6746dd40db44b2ce"
+  },
+  "focusedSummary": {
+    "selected": 1,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 0,
+    "notRun": 0,
+    "passed": 1,
+    "seconds": 27.995
+  },
+  "complete": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full.json",
+    "bytes": 5235911,
+    "sha256": "7f222112c15aff991c30ec3609aa7bf394a7188ab05a2eac565f054a00456bff"
+  },
+  "completeSummary": {
+    "selected": 195,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 1,
+    "notRun": 0,
+    "passed": 194,
+    "seconds": 1281.952
+  },
+  "nativeXml": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full.xml",
+    "bytes": 328247,
+    "sha256": "82bd1f78b34b9b8d298974d46bb07c878d58df98c5934ebb523e74b365abc94d"
+  },
+  "exactOriginalCaseInventoryPreserved": true,
+  "originalOq8Outcome": {
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants": "Pass"
+  },
+  "originalReplicaOutcomes": {
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.SourceGuard_TwoRealReplicasResumeOriginalCommittedEventReceiptsWithoutRepeatingEffects": "Pass",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica": "Pass",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.DaprEventEvolutionLogicalReadbackLiveSidecarTests.TwoSidecarsAndRestartPreserveCommittedApplicationBytesAndMessageIdentity": "Pass"
+  },
+  "declaredSkip": [
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessWorkerTests.ApplyPersistedHistoryAsync"
+  ],
+  "completeNativeInvocationCount": 1,
+  "completeRetryCount": 0,
+  "numericalRecords": {
+    "total": 49,
+    "kinds": {
+      "ProjectionGuardActivationClosure": 1,
+      "ProjectionGuardNativeAttempts": 9,
+      "ProjectionGuardTypedFailure": 1,
+      "ProjectionGuardEmptyCost": 1,
+      "ProjectionSourceCost": 2,
+      "ProjectionReplayRecoveryAttempt": 12,
+      "ProjectionGuardCurrentMatrix": 15,
+      "ProjectionGuardCatalogColdWarm": 1,
+      "ProjectionGuardLiveCost": 7
+    },
+    "currentRowsChecked": 15,
+    "liveCostRowsChecked": 7,
+    "originalCurrentTailCountsReadsBytesVisitsCeilingsPass": true
+  },
+  "sourceCutoffs": {
+    "producerHead": "1353b83939de812671260f1d7a5910ee8fb60119",
+    "nativeEntryHead": "1353b83939de812671260f1d7a5910ee8fb60119",
+    "nativeExitHead": "ac059da7e13047600d65c592dad3204238fd9eb5",
+    "sourceChangesDuringNative": [
+      {
+        "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/README.md",
+        "beforeSha256": null,
+        "afterSha256": "7ac24a0c0e6c8446096eae83d477817f59f09f32c609ef3deed600d272d60111",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/current-rights.json",
+        "beforeSha256": null,
+        "afterSha256": "5f59192495975cdb260f15517713a4c7f73cde693a50886bafdbe59aad04ec0a",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verification.json",
+        "beforeSha256": null,
+        "afterSha256": "d9e8da45b4798c5e0c54425e0b126bfa6e6df8bc2d450b5ba18d3119543fc85d",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/README.md",
+        "beforeSha256": null,
+        "afterSha256": "13a3fe7fb63393127848f16a1c561c2379b5689c72ebd6b4e81504e32b959f72",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json",
+        "beforeSha256": null,
+        "afterSha256": "cc98b1cb35a0ca6dfb47a92393f16e05e14c903aff92f4114dc8beb6cf5cd681",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/docs/security/workload-binding-authority.md",
+        "beforeSha256": null,
+        "afterSha256": "c48b2494bf93e8af030da481819b09238e42a246da554f35c75b4f833f7a9045",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+        "beforeSha256": null,
+        "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+        "beforeSha256": null,
+        "afterSha256": "dad5e5e12120190f92b272f766ec8debfa52b22505137f9935728edfeb96a585",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+        "beforeSha256": null,
+        "afterSha256": "09cb070d8df3dfe8065cdecde59baeb90ca302d2ece3c657407b2bd7eaed5b17",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+        "beforeSha256": null,
+        "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+        "beforeSha256": null,
+        "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+        "beforeSha256": null,
+        "afterSha256": "18236d80cd194135f229804cf933201c17eadede4f4d3c4fef7ae5a13a3c77ae",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "1200e5938c3a9c19f41b5c647fd719916af6da21979be25112589708ccce7f20",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "4dbd2cbc98f2efbe5a93c2ee137828e9c373db7f0d7dba4a84ea101ec6da9b84",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/src/Hexalith.EventStore/Program.cs",
+        "beforeSha256": null,
+        "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "7a4aa0c2e0a5cf4065b963cc9ed1dd61b9d3a63d15981d134f69cfebb14bf7a3",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+        "beforeSha256": null,
+        "afterSha256": "3e2bcf033b668ff307e0b1c37ce923dd20cab857dffb41d98ab3bd0e449fc775",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "498f6fbeb980bdc45a22fd39c3a7b70ca668606c168ddd38764b6f1050b79fd8",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/docs/security/workload-binding-authority.md",
+        "beforeSha256": null,
+        "afterSha256": "f8cab6a90a2d191f8176ebe06d280fdb6cbbe5e74b6714d4331751ccf1bf0660",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+        "beforeSha256": null,
+        "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+        "beforeSha256": null,
+        "afterSha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+        "beforeSha256": null,
+        "afterSha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+        "beforeSha256": null,
+        "afterSha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+        "beforeSha256": null,
+        "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+        "beforeSha256": null,
+        "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+        "beforeSha256": null,
+        "afterSha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/src/Hexalith.EventStore/Program.cs",
+        "beforeSha256": null,
+        "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+        "beforeSha256": null,
+        "afterSha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+        "beforeSha256": null,
+        "afterSha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/docs/security/workload-binding-authority.md",
+        "beforeSha256": null,
+        "afterSha256": "c48b2494bf93e8af030da481819b09238e42a246da554f35c75b4f833f7a9045",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+        "beforeSha256": null,
+        "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+        "beforeSha256": null,
+        "afterSha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+        "beforeSha256": null,
+        "afterSha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+        "beforeSha256": null,
+        "afterSha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+        "beforeSha256": null,
+        "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+        "beforeSha256": null,
+        "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+        "beforeSha256": null,
+        "afterSha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/src/Hexalith.EventStore/Program.cs",
+        "beforeSha256": null,
+        "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+        "beforeSha256": null,
+        "afterSha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+        "beforeSha256": null,
+        "afterSha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+        "beforeSha256": null,
+        "afterSha256": "fa99280a1b9f919793496ba3ba3bf9c3ad4674a65330b3f54129d9aed690507f",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+        "beforeSha256": null,
+        "afterSha256": "e1bb0e31c9ec5924ef2fe26ed56919b32d6f5daaa9c08a8de6211e00206c3f8d",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "docs/security/workload-binding-authority.md",
+        "beforeSha256": null,
+        "afterSha256": "f8cab6a90a2d191f8176ebe06d280fdb6cbbe5e74b6714d4331751ccf1bf0660",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+        "beforeSha256": "e2da8228668062e633c6aaaa770d49ac0f4478e0b0977e6fdd1e7b2abe86086d",
+        "afterSha256": "d5f678108f436a7027d44d8ecb5d23ae204353b23324f5217c674c325031c272",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+        "beforeSha256": "78aaea82d89469fd020d8b4037be9f05e70672cb52b189d347a5ba8201ff4093",
+        "afterSha256": "3ec0bdd770539634d72f76207c2a796428bfd2ad61a506a48c7e0862433000eb",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.ResourceBindings.cs",
+        "beforeSha256": null,
+        "afterSha256": "640ff82b45256e5797bc24fce7002b71a38186b4505016596c4d06e239df3970",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+        "beforeSha256": "47f439bde8a5f848f5bca9588dae21ac6454c5ecc6c60cb28293e5c6d452d312",
+        "afterSha256": "6b9206c966d03dac17cee1aa71d78d895f36f8160c12aee1a23d2ba4126d987b",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+        "beforeSha256": "6c883a91fbdc652484e3b15430a89486e21bae8aaa54d1ed4277aefe0f06cc60",
+        "afterSha256": "f1a014638a20e2ef9c3bfbd7480b7165ea233a8d0b12fd68ac341e33ce824b21",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+        "beforeSha256": "61efa06814289479a55795afc922f2fd15138fd41d05d75c63d005c793050553",
+        "afterSha256": "6657d76484574922e569428848356063e0d2bee3ac3e8dd813e5fe1f45b03055",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityEndpointMetadata.cs",
+        "beforeSha256": null,
+        "afterSha256": "20d75d2f1e45d8d4b3e2f94a5038890b1e5e3f03f1281220fb177dc90468b7f4",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+        "beforeSha256": null,
+        "afterSha256": "a7ca59a57c15771f146fbe739771a0a6c23c1550c9d299e9e0bb4419e5de9d28",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityOptions.cs",
+        "beforeSha256": null,
+        "afterSha256": "a144b3c591121dd08796e6ff2c7bf114c9586f5dd8dcd8775abb585bdd317a65",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+        "beforeSha256": null,
+        "afterSha256": "43311da4e4df3d1ce9c8516a6decdc65f27490305a851f18068692c784240167",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+        "beforeSha256": null,
+        "afterSha256": "fb00370407126d940a3daa2c0519c173d3bdb0d579c1471233599c4c3f7bfcd0",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthorityExtensions.cs",
+        "beforeSha256": null,
+        "afterSha256": "cde7ce79a6379681e060f9c94ff7ed8f25f27f71f5356b75cc9518f1ec9bafc6",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+        "beforeSha256": "4dbd2cbc98f2efbe5a93c2ee137828e9c373db7f0d7dba4a84ea101ec6da9b84",
+        "afterSha256": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "src/Hexalith.EventStore/Program.cs",
+        "beforeSha256": "8ed01dad3b63aa0429f551d1ed51ef4510bfa73c885ae4a4971bd8eccdcde1c0",
+        "afterSha256": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/JwtWorkloadAssertionIssuerTests.cs",
+        "beforeSha256": "7a4aa0c2e0a5cf4065b963cc9ed1dd61b9d3a63d15981d134f69cfebb14bf7a3",
+        "afterSha256": "a78e83e2e7f54dc0b035b921bca3f65c58b051b7605400d196e890cd6d29d2e4",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticBindingAuthorityHandler.cs",
+        "beforeSha256": null,
+        "afterSha256": "705206e710f52dfc53233be87bbffaca80077036763ffb47d0246f36e870fd4a",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/SyntheticOversizedTokenStream.cs",
+        "beforeSha256": null,
+        "afterSha256": "9a724eca698b5f769d71fb3dc689508f09abc02adf5c032eddeaae07abd8cb34",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "beforeSha256": null,
+        "afterSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+        "matchesExternalHeadBlob": true
+      },
+      {
+        "path": "tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+        "beforeSha256": "498f6fbeb980bdc45a22fd39c3a7b70ca668606c168ddd38764b6f1050b79fd8",
+        "afterSha256": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+        "matchesExternalHeadBlob": true
+      }
+    ],
+    "changeCounts": {
+      "docs": 66,
+      "src": 14,
+      "tests": 5
+    },
+    "allActualAssetsRuntimeStable": true,
+    "latestSourceCandidateQualified": false,
+    "noAssistantSourceEdits": true,
+    "externalChangesPreserved": true
+  },
+  "preservation": {
+    "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+    "entryProtectedCount": 15707,
+    "unchanged": 15700,
+    "externalCommittedChangedPaths": [
+      "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationDefaults.cs",
+      "src/Hexalith.EventStore.ServiceDefaults/Authentication/EventStoreWorkloadAuthenticationExtensions.cs",
+      "src/Hexalith.EventStore.ServiceDefaults/Authentication/JwtWorkloadAssertionIssuer.cs",
+      "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAssertionIssuerOptions.cs",
+      "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthenticationOptions.cs",
+      "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "src/Hexalith.EventStore/Program.cs"
+    ],
+    "allOtherProtectedFilesUnchanged": true,
+    "originalWrapperBytesRetained": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/wrapper-entry.md",
+      "bytes": 98660,
+      "sha256": "fe8327745fee697d573a930648f1a425f63b38cf50a869196dcf50b998577ce7"
+    },
+    "localAttributes": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/.gitattributes",
+      "bytes": 107,
+      "sha256": "1d6bb60cd7c56e5d6c1383efee9040effe598f5731987efdfa38e636a0d12349"
+    }
+  },
+  "registryDiagnostics": [
+    {
+      "frame": "oq8-baseline",
+      "samples": 40,
+      "readSamples": 40,
+      "outcomes": {
+        "read": 40
+      },
+      "registrationDeadlineErrors": 0,
+      "diagnosticOnly": true,
+      "observer": "read-only SQLite connection; original state/actor proof remains owning fixture authority"
+    },
+    {
+      "frame": "release-live-full",
+      "samples": 2217,
+      "readSamples": 42,
+      "outcomes": {
+        "read": 42,
+        "OperationalError": 2175
+      },
+      "registrationDeadlineErrors": 0,
+      "diagnosticOnly": true,
+      "observer": "read-only SQLite connection; original state/actor proof remains owning fixture authority"
+    }
+  ],
+  "physicalCleanup": [
+    {
+      "frame": "oq8-baseline",
+      "controls": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/oq8-baseline-controls.json",
+        "bytes": 312758,
+        "sha256": "dca35c1178c23c0099fd2b2d766364563bc7ffb8419e914d53341f6ca900f474"
+      },
+      "fixtureCleanup": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/oq8-baseline-oq8-cleanup.json",
+        "bytes": 3122,
+        "sha256": "75ffd2187ad5cd0a71134611cd3ce0549891c1c6c6f1767f9be3c6ee39740945"
+      },
+      "recordedOwnedChildrenAbsent": true,
+      "recordedControlContainersVolumesListenersAbsent": true,
+      "fixtureScratchRemoved": true,
+      "postgresContainerPhysicallyAbsent": true,
+      "postgresVolumeIdentity": "not recorded; no per-volume absence claim"
+    },
+    {
+      "frame": "release-live-full",
+      "controls": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full-controls.json",
+        "bytes": 984415,
+        "sha256": "ec73a314d3b162066f9e4259d043322b20cb72ed73b322df72d1100d483550a0"
+      },
+      "fixtureCleanup": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full-oq8-cleanup.json",
+        "bytes": 3125,
+        "sha256": "5934956ec39d9bba3766af2a6ed56abd4dfd7452fedf7b24eada49bd512cb020"
+      },
+      "recordedOwnedChildrenAbsent": true,
+      "recordedControlContainersVolumesListenersAbsent": true,
+      "fixtureScratchRemoved": true,
+      "postgresContainerPhysicallyAbsent": true,
+      "postgresVolumeIdentity": "not recorded; no per-volume absence claim"
+    }
+  ],
+  "actualProfile": "Requested Release/package producer against existing effective restored graph. Actual consumed/shadow hashes retain inherited mixed provenance; no all-Release/all-package closure claim. Task-private SQLite resolver and HotReload=false with a read-only diagnostic registry observer; no unmodified production-profile qualification.",
+  "remaining": [
+    "historical OQ8 timeout cause unproven",
+    "latest source candidate after external Story 3.6 arrivals unqualified",
+    "formal P1R authenticated owner/category/negative-control requirements",
+    "Stories 9.1/9.2",
+    "authenticated exact-candidate CI",
+    "subject-bound owner assurance",
+    "AD-12/NFR8 transition"
+  ],
+  "prohibitedActionsPerformed": []
+}
