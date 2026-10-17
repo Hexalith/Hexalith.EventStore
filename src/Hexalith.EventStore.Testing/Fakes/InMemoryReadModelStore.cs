@@ -30,7 +30,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// protocol phase.
 /// </para>
 /// </remarks>
-public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser {
+public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser, IReadModelPendingBatchRecoveryStore {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
@@ -229,6 +229,15 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
             : new DelegateFaultInjector(BatchFaultHook);
         var protocol = new ReadModelBatchProtocol(accessor, BatchOptions, NullLogger.Instance);
         return await protocol.ExecuteAsync(batch, injector, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public Task<ReadModelPendingBatchRecoveryResult> RecoverPendingAsync(ReadModelBatchScope scope, string key,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelPendingBatchRecovery.RecoverAsync(new InMemoryBatchAccessor(this, scope.StoreName), BatchOptions,
+            NullLogger.Instance, scope, key, BatchFaultHook is null ? null : new DelegateFaultInjector(BatchFaultHook), cancellationToken);
     }
 
     /// <inheritdoc/>

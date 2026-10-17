@@ -34,6 +34,22 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// </summary>
 public sealed class EventStoreDomainServiceExtensionsTests {
     [Fact]
+    public void MetadataReportsRegisteredHandlerOnlyDomainWithoutGrantingOrphanProjectionCapabilities()
+    {
+        IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();
+        handler.Domain.Returns("folders"); handler.QueryType.Returns("OwnerRead");
+        IAsyncDomainProjectionHandler orphan = Substitute.For<IAsyncDomainProjectionHandler>();
+        orphan.Domain.Returns("folders"); orphan.ProjectionType.Returns("orphan");
+        var discovery = new DiscoveryResult([], []);
+        var metadata = AdminOperationalIndexMetadata.Create(discovery, ["folders"], [handler], [orphan], "folders", "v1", new());
+        var domain = metadata.Domains.ShouldHaveSingleItem();
+        domain.QueryTypes.ShouldBe(["OwnerRead"]); domain.CommandTypes.ShouldBeEmpty(); domain.EventTypes.ShouldBeEmpty();
+        domain.NamedProjectionTypes.ShouldBeNull(); domain.OrdinaryProjectionTypes.ShouldBeNull(); metadata.DispatchCapability.ShouldBeNull();
+        AdminOperationalIndexMetadata.Create(discovery, ["other"], [handler]).Domains.ShouldBeEmpty();
+        AdminOperationalIndexMetadata.Create(discovery, null, [handler]).Domains.ShouldHaveSingleItem().Domain.ShouldBe("folders");
+    }
+
+    [Fact]
     public void AddEventStoreDomainService_RegistersDurableSharedScratchSweep()
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();

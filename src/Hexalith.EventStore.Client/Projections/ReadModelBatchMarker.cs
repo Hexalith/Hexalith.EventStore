@@ -17,10 +17,11 @@ internal sealed class ReadModelBatchMarker {
         using JsonDocument document = JsonDocument.Parse(bytes);
         JsonElement root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object || HasDuplicateProperties(root)
-            || !root.EnumerateObject().Any(static property => property.Name.Equals("v", StringComparison.OrdinalIgnoreCase)))
+            || !root.EnumerateObject().Any(static property => property.Name.Equals("v", StringComparison.OrdinalIgnoreCase))
+            || !root.EnumerateObject().Any(static property => property.Name.Equals("st", StringComparison.OrdinalIgnoreCase)))
             return null;
         ReadModelBatchMarker? marker = root.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web);
-        return marker is { Version: 1 } && (marker.Status != ReadModelBatchMarkerStatus.Completed
+        return marker is { Version: 1 } && Enum.IsDefined(marker.Status) && (marker.Status != ReadModelBatchMarkerStatus.Completed
             || IsUtcTerminalTime(marker.TerminalTimeUtc)) ? marker : null;
     }
 
@@ -45,6 +46,11 @@ internal sealed class ReadModelBatchMarker {
                 if (HasDuplicateProperties(item)) return true;
         return false;
     }
+
+    /// <summary>Bounded terminal proof keeping the final existing envelope recoverable until manifest reclamation.</summary>
+    [JsonPropertyName("recoveryAnchor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReadModelBatchRecoveryAnchor? RecoveryAnchor { get; set; }
 
     /// <summary>The original fingerprint-bound manifest for explicitly opted-in owner recovery, absent on terminal receipts.</summary>
     [JsonPropertyName("manifest")]

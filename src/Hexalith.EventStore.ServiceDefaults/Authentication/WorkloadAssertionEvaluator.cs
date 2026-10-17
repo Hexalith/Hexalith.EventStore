@@ -96,7 +96,7 @@ public static class WorkloadAssertionEvaluator
             .GroupBy(static claim => claim.Type, StringComparer.Ordinal))
         {
             string[] values = [.. binding.Select(static claim => claim.Value).Distinct(StringComparer.Ordinal)];
-            if (values.Length != 1 || string.IsNullOrWhiteSpace(values[0]))
+            if (binding.Count() != 1 || values.Length != 1 || string.IsNullOrWhiteSpace(values[0]))
             {
                 return WorkloadAssertionEvaluation.Failure(WorkloadAuthenticationReasons.BindingAmbiguous);
             }

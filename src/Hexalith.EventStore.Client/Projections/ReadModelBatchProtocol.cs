@@ -12,7 +12,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// same-identity reconciliation after ambiguous dispatch, pre-commit compensation, and post-commit
 /// compaction, plus the shared read-visibility resolution used by <c>GetAsync</c>.
 /// </summary>
-internal sealed class ReadModelBatchProtocol {
+internal sealed partial class ReadModelBatchProtocol {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly IReadModelBatchStateAccessor _accessor;
@@ -222,6 +222,8 @@ internal sealed class ReadModelBatchProtocol {
         _batch = batch;
         _ownerSelection = ReadModelOwnerSelectionMetadata.FromBatch(batch);
         _ownerSelections = ReadModelOwnerSelectionMetadata.FromCoordinatedBatch(batch);
+        if (batch.RetainManifestForRecovery && (_ownerSelection is not null || _ownerSelections is not null))
+            throw new ArgumentException("Pending-key recovery cannot be combined with guarded owner selection.", nameof(batch));
         _injector = injector;
         byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
         if ((_ownerSelection is not null || _ownerSelections is not null) && manifest.Length > 1_048_576)
@@ -338,7 +340,8 @@ internal sealed class ReadModelBatchProtocol {
     }
 
     private void ValidateLimits(ReadModelBatch batch) {
-        if (batch.Operations.Count > _options.MaxOperations) {
+        if (batch.Operations.Count > _options.MaxOperations
+            || batch.RetainManifestForRecovery && batch.Operations.Count > ReadModelBatchOptions.DefaultMaxOperations) {
             throw new ArgumentException(
                 $"Read-model batch has {batch.Operations.Count} operations, exceeding the configured maximum of {_options.MaxOperations}.",
                 nameof(batch));
@@ -346,7 +349,8 @@ internal sealed class ReadModelBatchProtocol {
 
         foreach (ReadModelBatchOperation operation in batch.Operations) {
             int keyBytes = System.Text.Encoding.UTF8.GetByteCount(operation.Key);
-            if (keyBytes > _options.MaxKeyByteLength) {
+            if (keyBytes > _options.MaxKeyByteLength
+                || batch.RetainManifestForRecovery && keyBytes > ReadModelBatchOptions.DefaultMaxKeyByteLength) {
                 throw new ArgumentException(
                     $"Read-model batch logical key exceeds the configured maximum of {_options.MaxKeyByteLength} UTF-8 bytes.",
                     nameof(batch));
@@ -363,7 +367,8 @@ internal sealed class ReadModelBatchProtocol {
         }
 
         byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
-        if (manifest.Length > _options.MaxCanonicalManifestBytes) {
+        if (manifest.Length > _options.MaxCanonicalManifestBytes
+            || batch.RetainManifestForRecovery && manifest.Length > ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes) {
             throw new ArgumentException(
                 $"Read-model batch canonical manifest is {manifest.Length} bytes, exceeding the configured maximum of {_options.MaxCanonicalManifestBytes}.",
                 nameof(batch));
@@ -395,8 +400,13 @@ internal sealed class ReadModelBatchProtocol {
                         return ReadModelBatchResult.Indeterminate(_fingerprint, "compensation-race");
                     }
 
+                    if (_batch.RetainManifestForRecovery) return ReadModelBatchResult.OptimisticConflict(_fingerprint, "compensated");
                     (marker, markerEtag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
                     break;
+                case ReadModelBatchMarkerStatus.Aborted when _batch.RetainManifestForRecovery:
+                    return await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
+                        ? ReadModelBatchResult.OptimisticConflict(_fingerprint, "compensated")
+                        : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 default:
                     break;
             }
@@ -440,10 +450,10 @@ internal sealed class ReadModelBatchProtocol {
             Operations = BuildMarkerOperations(),
             OwnerSelection = _ownerSelection,
             OwnerSelections = _ownerSelections,
-            OriginalManifest = _ownerSelection is null && _ownerSelections is null ? null : ReadModelBatchFingerprint.BuildCanonicalManifest(_batch),
+            OriginalManifest = _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery ? null : ReadModelBatchFingerprint.BuildCanonicalManifest(_batch),
         };
         ReadOnlyMemory<byte> bytes = SerializeMarker(marker);
-        if ((_ownerSelection is not null || _ownerSelections is not null) && bytes.Length > 16_384)
+        if (marker.OriginalManifest is not null && bytes.Length > 16_384)
         {
             // The manifest is existing batch recovery material, with its own one-MiB ceiling.
             // Keep the control record bounded and reference only this scope's immutable bytes.
@@ -587,6 +597,7 @@ internal sealed class ReadModelBatchProtocol {
     }
 
     private async Task<bool> CompactAndCompleteAsync(CancellationToken cancellationToken) {
+        ReadModelBatchRecoveryAnchor? anchor = null;
         for (int ordinal = 0; ordinal < _batch.Operations.Count; ordinal++) {
             ReadModelBatchOperation operation = _batch.Operations[ordinal];
             RawStateEntry current = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
@@ -595,6 +606,11 @@ internal sealed class ReadModelBatchProtocol {
             }
 
             if (TryGetOwnEnvelope(current, ordinal, out ReadModelBatchEnvelope? envelope)) {
+                if (_batch.RetainManifestForRecovery && ordinal == _batch.Operations.Count - 1)
+                {
+                    anchor = CreateRecoveryAnchor(ordinal, envelope!);
+                    continue;
+                }
                 if (envelope!.IsDelete) {
                     _ = await _accessor
                         .TryDeleteAsync(operation.Key, current.ETag, cancellationToken)
@@ -620,6 +636,13 @@ internal sealed class ReadModelBatchProtocol {
                 // A guarded owner can have been replaced by a newer generation after this batch
                 // committed. Its original receipt is recoverable; it cannot reclaim newer live keys.
                 if (_ownerSelection is not null || _ownerSelections is not null) return false;
+                if (_batch.RetainManifestForRecovery)
+                {
+                    // Commit is the durable historical decision. An ordinary row may already be
+                    // superseded after compaction; never restore our older candidate over it.
+                    if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) return false;
+                    continue;
+                }
                 // The key holds neither our envelope nor the compacted value: a concurrent single-key
                 // writer overwrote it after the commit marker became durable. The committed marker is the
                 // durable visibility decision, so reclaim the key to the committed end-state once (a foreign
@@ -666,6 +689,7 @@ internal sealed class ReadModelBatchProtocol {
             Status = ReadModelBatchMarkerStatus.Completed,
             OwnerSelection = _ownerSelection,
             OwnerSelections = _ownerSelections,
+            RecoveryAnchor = anchor,
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
@@ -695,6 +719,7 @@ internal sealed class ReadModelBatchProtocol {
             }
         }
 
+        if (_batch.RetainManifestForRecovery && !await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)) return false;
         return await VerifyCompactedBatchAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -723,12 +748,13 @@ internal sealed class ReadModelBatchProtocol {
             }
         }
         else if (marker.Status == ReadModelBatchMarkerStatus.Aborted) {
-            return true;
+            return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (marker.Status != ReadModelBatchMarkerStatus.Aborting) {
             return false;
         }
 
+        ReadModelBatchRecoveryAnchor? anchor = null;
         for (int ordinal = installedCount - 1; ordinal >= 0; ordinal--) {
             ReadModelBatchOperation operation = _batch.Operations[ordinal];
             RawStateEntry current = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
@@ -740,6 +766,11 @@ internal sealed class ReadModelBatchProtocol {
                 continue;
             }
 
+            if (_batch.RetainManifestForRecovery && ordinal == 0)
+            {
+                anchor = CreateRecoveryAnchor(ordinal, envelope!);
+                continue;
+            }
             if (envelope!.PreviousBase64 is null) {
                 _ = await _accessor
                     .TryDeleteAsync(operation.Key, current.ETag, cancellationToken)
@@ -763,7 +794,7 @@ internal sealed class ReadModelBatchProtocol {
         }
 
         if (aborting.Status == ReadModelBatchMarkerStatus.Aborted) {
-            return true;
+            return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         }
 
         if (aborting.Status != ReadModelBatchMarkerStatus.Aborting) {
@@ -771,17 +802,25 @@ internal sealed class ReadModelBatchProtocol {
         }
 
         aborting.Status = ReadModelBatchMarkerStatus.Aborted;
+        if (_batch.RetainManifestForRecovery)
+        {
+            aborting.RecoveryAnchor = anchor;
+            aborting.OriginalManifest = null;
+            aborting.OriginalManifestKey = null;
+            aborting.Operations = null;
+        }
         bool aborted = await _accessor
             .TryWriteAsync(_markerKey, SerializeMarker(aborting), abortingEtag, cancellationToken)
             .ConfigureAwait(false);
         if (aborted) {
-            return true;
+            return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         }
 
         (aborting, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
         return aborting is not null
             && aborting.Status == ReadModelBatchMarkerStatus.Aborted
-            && string.Equals(aborting.Fingerprint, _fingerprint, StringComparison.Ordinal);
+            && string.Equals(aborting.Fingerprint, _fingerprint, StringComparison.Ordinal)
+            && (!_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false));
     }
 
     private async Task<ReadModelBatchResult> RunTransactionAsync(CancellationToken cancellationToken) {
@@ -993,7 +1032,9 @@ internal sealed class ReadModelBatchProtocol {
                         ? ReadModelBatchResult.OptimisticConflict(_fingerprint, reason)
                         : ReadModelBatchResult.Indeterminate(_fingerprint, "compensation-race");
                 case ReadModelBatchMarkerStatus.Aborted:
-                    return ReadModelBatchResult.OptimisticConflict(_fingerprint, reason);
+                    return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
+                        ? ReadModelBatchResult.OptimisticConflict(_fingerprint, reason)
+                        : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 default:
                     return ReadModelBatchResult.Incomplete(_fingerprint, reason);
             }
@@ -1082,7 +1123,8 @@ internal sealed class ReadModelBatchProtocol {
     private async Task<bool> VerifyCompactedBatchAsync(CancellationToken cancellationToken) {
         foreach (ReadModelBatchOperation operation in _batch.Operations) {
             RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
-            if (!IsCompacted(operation, entry)) {
+            if (!IsCompacted(operation, entry)
+                && (!_batch.RetainManifestForRecovery || _ownerSelection is not null || _ownerSelections is not null || entry.Exists && ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span))) {
                 return false;
             }
         }
@@ -1094,9 +1136,17 @@ internal sealed class ReadModelBatchProtocol {
         return complete && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<bool> CleanupOriginalManifestAsync(CancellationToken cancellationToken)
-        => _ownerSelection is null && _ownerSelections is null ? Task.FromResult(true)
-            : ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken);
+    private async Task<bool> CleanupOriginalManifestAsync(CancellationToken cancellationToken)
+    {
+        if (_batch.RetainManifestForRecovery)
+        {
+            (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (marker?.RecoveryAnchor is not null)
+                return await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken).ConfigureAwait(false);
+        }
+        return _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery
+            || await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Reclaims only the same terminal receipt's original immutable manifest; uncertainty retains owned retry work.</summary>
     internal static async Task<bool> ReclaimOriginalManifestAsync(IReadModelBatchStateAccessor accessor,
@@ -1130,7 +1180,9 @@ internal sealed class ReadModelBatchProtocol {
         if (candidate is null
             || !string.Equals(candidate.ScopeHash, _scopeHash, StringComparison.Ordinal)
             || !string.Equals(candidate.Fingerprint, _fingerprint, StringComparison.Ordinal)
-            || candidate.Ordinal != ordinal) {
+            || candidate.Ordinal != ordinal
+            || candidate.IsDelete != (_batch.Operations[ordinal].Kind == ReadModelBatchOperationKind.Delete)
+            || !candidate.CandidateBytes().Span.SequenceEqual(_batch.Operations[ordinal].CanonicalValue.Span)) {
             return false;
         }
 

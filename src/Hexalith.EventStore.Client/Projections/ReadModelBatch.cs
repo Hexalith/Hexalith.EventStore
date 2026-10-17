@@ -14,6 +14,10 @@ namespace Hexalith.EventStore.Client.Projections;
 /// of each operation is its index in <see cref="Operations"/> and participates in the fingerprint.
 /// </remarks>
 public sealed class ReadModelBatch {
+    /// <summary>Retains this immutable manifest until completion so its pending envelopes can be recovered by scope.
+    /// This opt-in cannot be combined with OwnerSelection or OwnerSelections; their existing guarded recovery remains separate.</summary>
+    public bool RetainManifestForRecovery { get; init; }
+
     /// <summary>Gets optional selection evidence explicitly carried by a fingerprint-bound model operation.</summary>
     public Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection? OwnerSelection { get; init; }
     /// <summary>Gets optional route selections contained in a coordinated full-replay manifest.</summary>

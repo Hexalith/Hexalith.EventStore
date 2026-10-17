@@ -105,6 +105,9 @@ public record SubmitQuery(
     /// <summary>Gets gateway-owned exact-operation identity evidence.</summary>
     public string? IdentityAdmissionProof { get; init; }
 
+    /// <summary>Authority captured by the gateway producer, never by a public request DTO.</summary>
+    public QueryCallerAuthority? CallerAuthority { get; init; }
+
     private readonly string[]? _scopes = Scopes?.ToArray();
     private readonly string[]? _audience = Audience?.ToArray();
 

@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -14,7 +13,6 @@ internal sealed class ReadModelBatchEnvelope {
     /// <summary>The discriminator property name used to detect an envelope in raw stored bytes.</summary>
     public const string DiscriminatorPropertyName = "$hxrmb";
 
-    private static readonly byte[] s_discriminatorToken = Encoding.UTF8.GetBytes("\"" + DiscriminatorPropertyName + "\"");
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     /// <summary>Gets or sets the envelope format version (also the detection discriminator).</summary>
@@ -45,10 +43,21 @@ internal sealed class ReadModelBatchEnvelope {
     [JsonPropertyName("cand")]
     public string? CandidateBase64 { get; set; }
 
-    /// <summary>Determines whether raw stored bytes are a batch envelope (cheap discriminator scan).</summary>
+    /// <summary>Detects an actual top-level batch discriminator; ordinary strings and nested metadata are preserved.</summary>
     /// <param name="raw">The raw stored bytes.</param>
-    /// <returns><see langword="true"/> when the bytes contain the envelope discriminator.</returns>
-    public static bool IsEnvelope(ReadOnlySpan<byte> raw) => raw.IndexOf(s_discriminatorToken) >= 0;
+    /// <returns><see langword="true"/> when the top-level discriminator exists or malformed envelope-like data requires refusal.</returns>
+    public static bool IsEnvelope(ReadOnlySpan<byte> raw)
+    {
+        var reader = new Utf8JsonReader(raw);
+        try
+        {
+            while (reader.Read())
+                if (reader.TokenType == JsonTokenType.PropertyName && reader.CurrentDepth == 1
+                    && reader.ValueTextEquals(DiscriminatorPropertyName)) return true;
+        }
+        catch (JsonException) { return true; } // malformed envelope-like bytes remain fail-closed
+        return false;
+    }
 
     /// <summary>Serializes this envelope to canonical UTF-8 bytes.</summary>
     /// <returns>The serialized envelope bytes.</returns>
@@ -59,10 +68,8 @@ internal sealed class ReadModelBatchEnvelope {
     /// <param name="raw">The raw stored bytes.</param>
     /// <returns>The envelope, or <see langword="null"/> when the bytes are not a valid envelope.</returns>
     /// <remarks>
-    /// The cheap <see cref="IsEnvelope"/> substring prescreen can match a legacy value that merely contains
-    /// the discriminator token (e.g. a string value equal to <c>$hxrmb</c>). This authoritative decode
-    /// therefore requires the discriminator to be an actual <em>top-level</em> JSON property; otherwise it
-    /// returns <see langword="null"/> so the raw legacy value is preserved and read back unchanged.
+    /// Decoding rejects missing/duplicate fields and malformed candidate or previous bytes.
+    /// Normal data containing the discriminator only as a value or nested property remains ordinary data.
     /// </remarks>
     public static ReadModelBatchEnvelope? FromBytes(ReadOnlyMemory<byte> raw) {
         try {
@@ -72,9 +79,25 @@ internal sealed class ReadModelBatchEnvelope {
                 return null;
             }
 
-            return JsonSerializer.Deserialize<ReadModelBatchEnvelope>(raw.Span, s_json);
+            string[] required = [DiscriminatorPropertyName, "scope", "fp", "ord", "del", "prev", "cand"];
+            JsonProperty[] properties = document.RootElement.EnumerateObject().ToArray();
+            if (properties.Length != required.Length || required.Any(name => properties.Count(property => property.Name == name) != 1)) return null;
+            ReadModelBatchEnvelope? envelope = JsonSerializer.Deserialize<ReadModelBatchEnvelope>(raw.Span, s_json);
+            if (envelope is not { EnvelopeVersion: 1 } || envelope.Ordinal < 0
+                || envelope.IsDelete != (envelope.CandidateBase64 is null)) return null;
+            if (envelope.PreviousBase64 is not null)
+            {
+                using JsonDocument previous = JsonDocument.Parse(envelope.PreviousBytes());
+                if (IsEnvelope(envelope.PreviousBytes().Span)) return null;
+            }
+            if (!envelope.IsDelete)
+            {
+                using JsonDocument candidate = JsonDocument.Parse(envelope.CandidateBytes());
+                if (IsEnvelope(envelope.CandidateBytes().Span)) return null;
+            }
+            return envelope;
         }
-        catch (JsonException) {
+        catch (Exception exception) when (exception is JsonException or FormatException) {
             return null;
         }
     }

@@ -25,7 +25,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.Controllers;
 
-public class QueriesControllerTests {
+public partial class QueriesControllerTests {
     /// <summary>
     /// Generates a self-routing ETag for the "orders" projection type (matches CreateTestRequest).
     /// </summary>
@@ -58,7 +58,8 @@ public class QueriesControllerTests {
         IETagService? eTagService = null,
         ClaimsPrincipal? principal = null,
         ITenantValidator? tenantValidator = null,
-        IRbacValidator? rbacValidator = null) {
+        IRbacValidator? rbacValidator = null,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null) {
         eTagService ??= Substitute.For<IETagService>();
         if (tenantValidator is null) {
             tenantValidator = Substitute.For<ITenantValidator>();
@@ -71,7 +72,7 @@ public class QueriesControllerTests {
             _ = rbacValidator.ValidateAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<string?>())
                 .Returns(RbacValidationResult.Allowed);
         }
-        var controller = new QueriesController(mediator, eTagService, tenantValidator, rbacValidator, NullLogger<QueriesController>.Instance);
+        var controller = new QueriesController(mediator, eTagService, tenantValidator, rbacValidator, NullLogger<QueriesController>.Instance, configuration: configuration);
         var httpContext = new DefaultHttpContext {
             User = principal ?? new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", "test-user")], "test")),

@@ -52,6 +52,8 @@ internal static class ReadModelBatchFingerprint {
             writer.WriteString("batch", batch.Scope.BatchId);
             writer.WriteEndObject();
 
+            if (batch.RetainManifestForRecovery) writer.WriteBoolean("recoverable", true);
+
             writer.WritePropertyName("ops");
             writer.WriteStartArray();
             for (int ordinal = 0; ordinal < batch.Operations.Count; ordinal++) {

@@ -35,4 +35,11 @@ public enum ReadModelBatchPhase {
 
     /// <summary>Inside durable reconciliation after an ambiguous dispatch.</summary>
     Reconcile,
+
+    /// <summary>After the opted-in terminal receipt, while the final own envelope is still discoverable.</summary>
+    RecoveryReceiptWritten,
+    /// <summary>After reclaiming the opted-in manifest, before compacting the final own envelope.</summary>
+    RecoveryManifestReclaimed,
+    /// <summary>After the final opted-in envelope is compacted/restored.</summary>
+    RecoveryAnchorCompacted,
 }

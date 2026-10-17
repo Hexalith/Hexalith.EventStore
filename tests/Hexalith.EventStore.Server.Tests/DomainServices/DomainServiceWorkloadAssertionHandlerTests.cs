@@ -25,7 +25,7 @@ namespace Hexalith.EventStore.Server.Tests.DomainServices;
 /// Story 5.5 (FR28, AD-18): every domain-service invocation leaving EventStore carries a fresh workload assertion for
 /// exactly the receiving application and operation, and never a caller-supplied assertion or human bearer.
 /// </summary>
-public sealed class DomainServiceWorkloadAssertionHandlerTests
+public sealed partial class DomainServiceWorkloadAssertionHandlerTests
 {
     /// <summary>The Dapr invocation URI resolves to the receiving application and the catalog operation.</summary>
     /// <param name="uri">The invocation URI.</param>

@@ -1,4 +1,6 @@
 using Dapr.Client;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+using System.Net;
 
 using Hexalith.EventStore.Contracts.Queries;
 using Hexalith.EventStore.Server.DomainServices;
@@ -41,27 +43,33 @@ public sealed class DaprDomainQueryInvoker(
                 registration.AppId,
                 QueryMethodName,
                 query);
+            if (query.CallerAuthority is not null) httpRequest.Options.Set(QueryCallerAuthorityBinding.RequestBindings, QueryCallerAuthorityBinding.Bind(query));
             HttpClient httpClient = httpClientFactory.CreateClient();
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            _ = httpResponse.EnsureSuccessStatusCode();
+            if (httpResponse.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden) return QueryResult.Failure("safe-denial");
+            if (!httpResponse.IsSuccessStatusCode && httpResponse.StatusCode != HttpStatusCode.BadRequest)
+                return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
             QueryResult? result = await httpResponse.Content
                 .ReadFromJsonAsync<QueryResult>(cancellationToken)
                 .ConfigureAwait(false);
-            return result ?? QueryResult.Failure($"Null /query response from domain service '{registration.AppId}'.");
+            if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
+                return QueryResult.Failure(result?.ErrorMessage is QueryAdapterFailureReason.InvalidEnvelope or QueryAdapterFailureReason.InvalidCursor
+                    ? result.ErrorMessage : QueryAdapterFailureReason.ActorException);
+            return result ?? QueryResult.Failure(QueryAdapterFailureReason.ActorResponseMismatch);
         }
         catch (OperationCanceledException) {
             throw;
         }
         catch (Exception ex) {
             logger.LogError(
-                ex,
-                "Domain query invocation failed: AppId={AppId}, Tenant={TenantId}, Domain={Domain}, QueryType={QueryType}, CorrelationId={CorrelationId}",
+                "Domain query invocation failed: ExceptionType={ExceptionType}, AppId={AppId}, Tenant={TenantId}, Domain={Domain}, QueryType={QueryType}, CorrelationId={CorrelationId}",
+                ex.GetType().Name,
                 registration.AppId,
                 query.TenantId,
                 query.Domain,
                 query.QueryType,
                 query.CorrelationId);
-            return QueryResult.Failure($"Domain query invocation failed for domain '{query.Domain}': {ex.InnerException?.Message ?? ex.Message}");
+            return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
         }
     }
 }
