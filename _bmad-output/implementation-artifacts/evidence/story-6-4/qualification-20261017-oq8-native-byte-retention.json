@@ -1,0 +1,9 @@
+{
+  "capturedAt": "2026-10-17T08:20:52.484608+00:00",
+  "source": "/tmp/story64-qualification-oq8-live-release-full/observations.json",
+  "retainedPath": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-oq8-observations.json",
+  "bytes": 8055,
+  "sha256": "3756553f54e9d483c6e9dffa583826188c332ce79b0fd5d4fb6dd7f92e00e84e",
+  "exactNativeBytesPreserved": true,
+  "nativeSanitizationContract": "Existing fixture EnsureSanitized runs before native JSON emission; no derived/reconstructed replacement."
+}

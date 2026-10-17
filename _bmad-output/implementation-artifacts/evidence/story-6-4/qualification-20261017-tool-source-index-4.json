@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-10-17T07:41:48.536236+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-bind-live.py",
+      "sha256": "10cfffec145780ab49a47336a90b86823c62593e68f753dc987fbdd93f76ba8a",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/10cfffec145780ab49a47336a90b86823c62593e68f753dc987fbdd93f76ba8a.py"
+    },
+    {
+      "source": "/tmp/story64-qualification-live.py",
+      "sha256": "d413097013c3d5e66a78833ce5ad19b2b6e4f5d990b365945458a2923c2a8b45",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/d413097013c3d5e66a78833ce5ad19b2b6e4f5d990b365945458a2923c2a8b45.py"
+    }
+  ]
+}

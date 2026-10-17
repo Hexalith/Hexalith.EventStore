@@ -1,0 +1,11 @@
+{
+  "capturedAt": "2026-10-17T07:42:10.509581+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-live.py",
+      "sha256": "271df7f080e68a978be3d20ddbededec42b4d144aad56aa02ce118d3c82186bb",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/271df7f080e68a978be3d20ddbededec42b4d144aad56aa02ce118d3c82186bb.py"
+    }
+  ],
+  "change": "Read-only per-full-Live host copy/base/deps/probing input identities; no native command/filter or policy change"
+}

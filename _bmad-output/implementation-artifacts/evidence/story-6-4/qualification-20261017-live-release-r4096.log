@@ -1,0 +1,2 @@
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 5, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 355.587s
+{"lane": "live-release-r4096", "testExitCode": 0, "infrastructureExitCodes": [0, 0], "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.native.log"}

@@ -1,0 +1,17 @@
+time="2026-10-17T10:18:49.628272822+02:00" level=info msg="Starting Dapr Placement Service -- version 1.18.2 -- commit d2dd3747145e38e4d85db4714e26d7569c9c37db" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2
+time="2026-10-17T10:18:49.628357367+02:00" level=info msg="Log level set to: info" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2
+time="2026-10-17T10:18:49.628667981+02:00" level=warning msg="mTLS is disabled. Skipping certificate request and tls validation" instance=DESKTOP-VIOG240 scope=dapr.runtime.security type=log ver=1.18.2
+time="2026-10-17T10:18:49.628988528+02:00" level=info msg="Placement service is starting..." instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:18:49.632199446+02:00" level=info msg="Healthz server is listening on [::]:46255" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2
+time="2026-10-17T10:18:49.632244695+02:00" level=info msg="metrics server started on 127.0.0.1:46015/" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2
+time="2026-10-17T10:18:49.632221279+02:00" level=info msg="Placement service started on port 57879" instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:18:49.632309421+02:00" level=info msg="Node id=story64-cont10-placement is waiting for leadership" instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:18:49.63232401+02:00" level=info msg="Running Placement gRPC server on 127.0.0.1:57879" instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:18:49.639988421+02:00" level=info msg="Node id=story64-cont10-placement has acquired leadership" instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:18:50.582716097+02:00" level=info msg="Received status report connection from new namespace=default id=eventstore-live-224b0514e28e4ca69240bf6215d0be13 host=172.21.201.86:42681" instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:24:45.586266309+02:00" level=warning msg="Error receiving from stream 127.0.0.1:36642: rpc error: code = Canceled desc = context canceled" instance=DESKTOP-VIOG240 scope=dapr.placement.server.loops.stream type=log ver=1.18.2
+time="2026-10-17T10:24:45.586431341+02:00" level=info msg="Closing connection to 127.0.0.1:36642: rpc error: code = Canceled desc = context canceled" instance=DESKTOP-VIOG240 scope=dapr.placement.server.loops.stream type=log ver=1.18.2
+time="2026-10-17T10:24:45.723805746+02:00" level=info msg="Received signal 'terminated'; beginning shutdown" instance=DESKTOP-VIOG240 scope=dapr.signals type=log ver=1.18.2
+time="2026-10-17T10:24:45.724066265+02:00" level=info msg="Healthz server is shutting down" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2
+time="2026-10-17T10:24:45.724221417+02:00" level=info msg="Placement GRPC server stopped" instance=DESKTOP-VIOG240 scope=dapr.placement.server type=log ver=1.18.2
+time="2026-10-17T10:24:45.724335058+02:00" level=info msg="Placement service shut down gracefully" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2

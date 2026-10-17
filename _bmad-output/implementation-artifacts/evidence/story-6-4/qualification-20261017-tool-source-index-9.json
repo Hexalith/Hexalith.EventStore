@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-10-17T07:58:54.747792+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-observe-processes.py",
+      "sha256": "caab4187e521b92a39bc483d99dff9c1cb3ca4fadf2311410e9a1df3cf1836f0",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/caab4187e521b92a39bc483d99dff9c1cb3ca4fadf2311410e9a1df3cf1836f0.py"
+    }
+  ]
+}

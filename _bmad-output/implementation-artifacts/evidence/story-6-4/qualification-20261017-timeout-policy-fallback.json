@@ -1,0 +1,16 @@
+{
+  "queuePid": 87702,
+  "limitsSeconds": {
+    "server-full": 1800,
+    "live": 2700,
+    "contracts-full": 1800,
+    "domain-full": 900,
+    "client-full": 600,
+    "build": 1200,
+    "restore": 600,
+    "pack": 1800,
+    "other": 1800
+  },
+  "graceSeconds": 30,
+  "policy": "No retry on timeout. Freeze queue, signal only native descendants whose PID/start-time still match, bounded drain then hard stop; retain failed/unproven timeout receipt; clean only scratch/cidfile ownership traced to those descendants. Healthy commands continue untouched."
+}

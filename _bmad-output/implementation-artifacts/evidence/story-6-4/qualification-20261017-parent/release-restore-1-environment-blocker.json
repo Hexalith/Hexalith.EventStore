@@ -1,0 +1,29 @@
+{
+  "classification": "BUILD_ENGINE_ENVIRONMENT_BLOCKER_CAUSE_UNPROVEN",
+  "command": [
+    "dotnet",
+    "restore",
+    "Hexalith.EventStore.slnx",
+    "-p:Configuration=Release",
+    "-p:UseHexalithProjectReferences=false",
+    "-p:UseNuGetDeps=true"
+  ],
+  "exitCode": 1,
+  "packet": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-1.json",
+    "sha256": "6c1649502f97d76547dca9025af91b4c731e659f6864caba2f03b4f0098a881e"
+  },
+  "nativeLog": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-1.log",
+    "bytes": 2587,
+    "sha256": "e6358021ce92c9abfcac7018267305f8de2d3fbaa23cbdb986195890a85ab4f2"
+  },
+  "sourceInputsStable": true,
+  "reportedError": "MSB4166 child nodes exited prematurely; NuGet.targets restore canceled. No product source error reported.",
+  "reportedDiagnosticDirectory": "/tmp/MSBuildTempjQzKO3/",
+  "diagnosticInspection": {
+    "command": "rg --files /tmp/MSBuildTempjQzKO3",
+    "result": "IO error: No such file or directory (os error2); no diagnostic cause established."
+  },
+  "nextAuthorizedNarrowAction": "One serialized -m:1 Release/package restore/build fallback under repository fallback ladder; no dependency declarations, audit policy or warnings weakened. Preserve exact failed command/result and all preliminary dependent outcomes."
+}

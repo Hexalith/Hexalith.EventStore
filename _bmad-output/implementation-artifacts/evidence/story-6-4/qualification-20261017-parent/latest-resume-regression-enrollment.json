@@ -1,0 +1,43 @@
+{
+  "auditedUtc": "2026-10-17T08:26:36.123855+00:00",
+  "scope": "Exact native type/method/display-name enrollment of latest45resume regression cases in fresh full Debug and Release cohorts; the Domain full Debug cohort remains failed overall.",
+  "rows": [
+    {
+      "historicalResumeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-trusted-projection-1.xml",
+        "bytes": 11136,
+        "sha256": "f44ef5870615b7db25d95a8f456d43f16ec74548da3d15b25cdb23dac1e85a79"
+      },
+      "nativeCases": 15,
+      "freshFullCohortMatches": {
+        "server-debug-full": {
+          "cases": 15,
+          "allPassed": true
+        },
+        "server-release-full": {
+          "cases": 15,
+          "allPassed": true
+        }
+      }
+    },
+    {
+      "historicalResumeXml": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/review-5-resume-legacy-projection-1.xml",
+        "bytes": 23848,
+        "sha256": "ab2155af0d3246514ed93e0a90c921f74ba9f309b585be75243eaea847d81db5"
+      },
+      "nativeCases": 30,
+      "freshFullCohortMatches": {
+        "server-debug-full": {
+          "cases": 30,
+          "allPassed": true
+        },
+        "server-release-full": {
+          "cases": 30,
+          "allPassed": true
+        }
+      }
+    }
+  ],
+  "totalResumeCases": 45
+}

@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-10-17T08:19:57.796841+00:00",
+  "correction": "The native fixture sorts complete relativePath:sha256 identity strings, then joins them with LF plus a trailing LF. The earlier task helper sorted bare filenames before adding colon/digest; apphost names that prefix other files change that order. This supplemental recomputation uses the already-retained exact pre-launch input maps; native packets/bindings/source remain unchanged, with no native rerun.",
+  "nativeImplementation": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs:1805",
+  "records": [
+    {
+      "gate": "live-debug-full",
+      "controlsPacket": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full-controls.json",
+        "sha256": "76808ec41aad4b5bcec1b4343dec2d49c41af9598f3d933088fdc17a1e58ada0"
+      },
+      "nativeEvidence": null,
+      "hosts": {
+        "eventstore": {
+          "originalFilenameSortedExpectedSha256": "33a0a1433ab6fefcef82c6da047587e5b6c427354f8687630e1fdc2c1f40abc2",
+          "correctCombinedIdentitySortedSha256": "1f37a26fcc34dedc238beece3d588569ba9d2473e63c28429b9330263a852eb3",
+          "nativeObservedSha256": null,
+          "matchesNativeObservedFullSet": null,
+          "fileCount": 757,
+          "allRelativePathsAscii": true
+        },
+        "sample": {
+          "originalFilenameSortedExpectedSha256": "24f2b450626e161c2bdb634dbbfa889ad9899bdedee7f9d9046d8336c3417abe",
+          "correctCombinedIdentitySortedSha256": "54a8ce26974005ca44760db75c2c3b18eea108652b66a3c7c6e25341570f7de0",
+          "nativeObservedSha256": null,
+          "matchesNativeObservedFullSet": null,
+          "fileCount": 157,
+          "allRelativePathsAscii": true
+        }
+      }
+    },
+    {
+      "gate": "live-release-full",
+      "controlsPacket": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-controls.json",
+        "sha256": "b6bc0c17cff49b558b00d45aed1d5c7d1efb8da195a0ada9c3bb78a4fd44f2c3"
+      },
+      "nativeEvidence": {
+        "path": "/tmp/story64-qualification-oq8-live-release-full/observations.json",
+        "sha256": "3756553f54e9d483c6e9dffa583826188c332ce79b0fd5d4fb6dd7f92e00e84e"
+      },
+      "hosts": {
+        "eventstore": {
+          "originalFilenameSortedExpectedSha256": "a708328cc8e0c95501da5152f7929b8f8f9f4893d38dbdeb3006c519d4097d52",
+          "correctCombinedIdentitySortedSha256": "5375d492634a14ac016d0348d63250311f2ef1dbd49da3bd239d0588f03b9601",
+          "nativeObservedSha256": "5375d492634a14ac016d0348d63250311f2ef1dbd49da3bd239d0588f03b9601",
+          "matchesNativeObservedFullSet": true,
+          "fileCount": 757,
+          "allRelativePathsAscii": true
+        },
+        "sample": {
+          "originalFilenameSortedExpectedSha256": "7f232c181cbc5803310a4f71148204d5af19d1377791a42ecb0117c5d52f7fd4",
+          "correctCombinedIdentitySortedSha256": "846c7c9b25225b30832c18c0724be2018901a03119bb940181d6a6e0e95943cd",
+          "nativeObservedSha256": "846c7c9b25225b30832c18c0724be2018901a03119bb940181d6a6e0e95943cd",
+          "matchesNativeObservedFullSet": true,
+          "fileCount": 157,
+          "allRelativePathsAscii": true
+        }
+      }
+    }
+  ]
+}

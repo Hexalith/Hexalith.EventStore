@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-10-17T07:48:37.755208+00:00",
+  "controlsPacket": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused-controls.json",
+    "sha256": "de50585f11329495819ec7df0d907a97098d7518db0a29f6aed1f9f901f3d2cc"
+  },
+  "records": [
+    {
+      "role": "placement",
+      "command": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+        "--id",
+        "story64-cont10-placement",
+        "--port",
+        "57879",
+        "--listen-address",
+        "127.0.0.1",
+        "--healthz-port",
+        "46255",
+        "--metrics-port",
+        "46015",
+        "--initial-cluster",
+        "story64-cont10-placement=127.0.0.1:35285"
+      ],
+      "source": "/tmp/story64-qualification-controls-fz28alpr/placement.log",
+      "retainedPath": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused-placement.log",
+      "sha256": "2bce58a7160a4de7ca1b412dd971999994920f37cc52b335ccd81c89ced2a559",
+      "versionLines": [
+        "time=\"2026-10-17T09:02:22.155771671+02:00\" level=info msg=\"Starting Dapr Placement Service -- version 1.18.2 -- commit d2dd3747145e38e4d85db4714e26d7569c9c37db\" instance=DESKTOP-VIOG240 scope=dapr.placement type=log ver=1.18.2"
+      ]
+    },
+    {
+      "role": "scheduler",
+      "command": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+        "--id",
+        "story64-cont10-scheduler",
+        "--port",
+        "41233",
+        "--listen-address",
+        "127.0.0.1",
+        "--healthz-port",
+        "48493",
+        "--metrics-port",
+        "43853",
+        "--etcd-client-port",
+        "50115",
+        "--etcd-initial-cluster",
+        "story64-cont10-scheduler=http://127.0.0.1:47887",
+        "--etcd-data-dir",
+        "/tmp/story64-qualification-controls-fz28alpr/etcd"
+      ],
+      "source": "/tmp/story64-qualification-controls-fz28alpr/scheduler.log",
+      "retainedPath": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused-scheduler.log",
+      "sha256": "ba5ab87923deaf218ac4b62c228473d4d272623b36c4e545fc6b4035fae59ef1",
+      "versionLines": [
+        "time=\"2026-10-17T09:02:22.202795683+02:00\" level=info msg=\"Starting Dapr Scheduler Service -- version 1.18.2 -- commit d2dd3747145e38e4d85db4714e26d7569c9c37db\" instance=DESKTOP-VIOG240 scope=dapr.scheduler type=log ver=1.18.2"
+      ]
+    }
+  ],
+  "versionProbeLimitation": "Placement/scheduler reject --version with exit2; existing native startup logs establish actual version. No new host was launched for metadata."
+}

@@ -1,0 +1,151 @@
+{
+  "auditedUtc": "2026-10-17T08:25:19.924092+00:00",
+  "controlsPacket": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-controls.json",
+    "bytes": 230826,
+    "sha256": "b6bc0c17cff49b558b00d45aed1d5c7d1efb8da195a0ada9c3bb78a4fd44f2c3"
+  },
+  "bindingPacket": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-producer-binding.json",
+    "bytes": 303009,
+    "sha256": "51a2da4c4ce07b676def4e05757d252781ef1b9627eb7819b399d192b12b39c1"
+  },
+  "nativeOQ8Observation": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-oq8-observations.json",
+    "bytes": 8055,
+    "sha256": "3756553f54e9d483c6e9dffa583826188c332ce79b0fd5d4fb6dd7f92e00e84e"
+  },
+  "originalNativeObservationReference": {
+    "path": "/tmp/story64-qualification-oq8-live-release-full/observations.json",
+    "sha256": "3756553f54e9d483c6e9dffa583826188c332ce79b0fd5d4fb6dd7f92e00e84e"
+  },
+  "nativeByteRetentionReceipt": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-oq8-native-byte-retention.json",
+    "bytes": 552,
+    "sha256": "7cb54ab796e0b599d79d27adec8385026312cf152cded00fe84a916203945587"
+  },
+  "nativeRuntimeAndProfile": {
+    "runtime": {
+      "dotnet": "10.0.12",
+      "dapr": "1.18.7",
+      "postgresImage": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "postgresImageIdentity": "sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
+    },
+    "profile": {
+      "name": "oq8-postgresql-v1",
+      "stateStoreType": "state.postgresql",
+      "stateComponentSha256": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb",
+      "resiliencySha256": "115bdb0d3d330c69920692a80654066937e6b2dd3bd18806c0b276e1de011645"
+    },
+    "executionConfiguration": {
+      "shippedReleaseEntryAssemblies": true,
+      "shadowCopiedBeforeLaunch": true,
+      "environmentName": "Testing",
+      "testOnlyHostingStartup": true,
+      "productionConfigurationUntouched": false,
+      "seams": [
+        "deterministic-time",
+        "idempotency-intent-adapter",
+        "boundary-counter"
+      ]
+    }
+  },
+  "fullShadowSetComparisons": [
+    {
+      "host": "eventstore",
+      "files": 757,
+      "protocol": "Ordinal sort of complete ASCII relativePath:sha256 identities, LF join, trailing LF, SHA-256 UTF-8",
+      "parentRecomputedSha256": "5375d492634a14ac016d0348d63250311f2ef1dbd49da3bd239d0588f03b9601",
+      "nativeObservedSha256": "5375d492634a14ac016d0348d63250311f2ef1dbd49da3bd239d0588f03b9601",
+      "match": true,
+      "originalFilenameSortedExpectedSha256Preserved": "a708328cc8e0c95501da5152f7929b8f8f9f4893d38dbdeb3006c519d4097d52"
+    },
+    {
+      "host": "sample",
+      "files": 157,
+      "protocol": "Ordinal sort of complete ASCII relativePath:sha256 identities, LF join, trailing LF, SHA-256 UTF-8",
+      "parentRecomputedSha256": "846c7c9b25225b30832c18c0724be2018901a03119bb940181d6a6e0e95943cd",
+      "nativeObservedSha256": "846c7c9b25225b30832c18c0724be2018901a03119bb940181d6a6e0e95943cd",
+      "match": true,
+      "originalFilenameSortedExpectedSha256Preserved": "7f232c181cbc5803310a4f71148204d5af19d1377791a42ecb0117c5d52f7fd4"
+    }
+  ],
+  "nativeOQ8PassedCases": [
+    {
+      "id": "6bf57652-03e7-4152-9c23-549f7a2e4f12",
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
+      "result": "Pass",
+      "time": "13.699",
+      "time-rtf": "00:00:13.6990000",
+      "start-rtf": "2026-10-17T07:56:39.7955812+00:00",
+      "finish-rtf": "2026-10-17T07:56:53.5043684+00:00",
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests",
+      "method": "ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants",
+      "source-file": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/IdempotencyAdmissionOq8PostgresqlTests.cs",
+      "source-line": "20"
+    }
+  ],
+  "correctionRecord": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-oq8-runtime-set-ordering-correction.json",
+    "bytes": 3314,
+    "sha256": "b458625d08f3bf4f122c0ed334752c58293dc4b217f9f94cf4588a2f68617388"
+  },
+  "fullLiveMethodSetsEqual": true,
+  "debugReleaseTheoryMultiplicityDifferences": [
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityFinalShapeClassifierTests",
+      "method": "Classify_ReturnsExpectedShape",
+      "DebugCases": 1,
+      "ReleaseCases": 14
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.AppendDurabilityRaceClassifierTests",
+      "method": "Classify_ReturnsExpectedOutcome",
+      "DebugCases": 1,
+      "ReleaseCases": 22
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.DaprStateErrorParserTests",
+      "method": "Parse_MalformedOrIncompleteBody_ReturnsDiagnostic",
+      "DebugCases": 1,
+      "ReleaseCases": 5
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.Story45MutationSwitchTests",
+      "method": "Armed_BlankValue_ReportsNoPerturbation",
+      "DebugCases": 1,
+      "ReleaseCases": 3
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+      "method": "ReplayRecovery_GenericHandlerReusesOneOriginalManifestAcrossThreeLostDurableResponses",
+      "DebugCases": 1,
+      "ReleaseCases": 4
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+      "method": "SourceGuard_CurrentMatrixUsesExactlyElevenMetadataReadsAndPreservesEveryOwningSurface",
+      "DebugCases": 1,
+      "ReleaseCases": 5
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+      "method": "SourceGuard_RealActorHandlerAndStores_ProveTailThenReadOnlyCurrent",
+      "DebugCases": 1,
+      "ReleaseCases": 7
+    },
+    {
+      "type": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests",
+      "method": "SourceProof_RealActorAtomicAppendAndBoundedPagesRetainExactStoredChainAcrossProxyRecreation",
+      "DebugCases": 1,
+      "ReleaseCases": 2
+    }
+  ],
+  "interpretation": "All native counts remain actual. Failed Debug fixture startup reports collapsed theory entries; Release materializes54 additional parameter cases across8 methods. This is a count observation and does not replace missing Debug case evidence. Native OQ8 success includes test seams and does not establish unmodified production qualification or an authenticated seal.",
+  "auditCommand": [
+    "python3",
+    "/tmp/story64_parent_oq8_audit.py"
+  ],
+  "auditScriptSha256": "7969160a4ba16b0b4633708c54e034c036d7f1cc96558da37fbc274e5e29df7f",
+  "auditScript": "from pathlib import Path\nimport json,hashlib,datetime,xml.etree.ElementTree as E,collections\nr=Path.cwd();b=r/'_bmad-output/implementation-artifacts/evidence/story-6-4';out=b/'qualification-20261017-parent'\ndef ident(p):return {'path':p.relative_to(r).as_posix() if p.is_relative_to(r) else str(p),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}\ncp=b/'qualification-20261017-live-release-full-controls.json';c=json.loads(cp.read_text());bp=b/'qualification-20261017-live-release-full-producer-binding.json';binding=json.loads(bp.read_text());np=b/'qualification-20261017-live-release-full-oq8-observations.json';native=json.loads(np.read_text());assert ident(np)['sha256']==binding['oq8NativeEvidence']['source']['sha256'];rows=[]\nfor host,x in c['oq8InputInventory']['hosts'].items():\n merged={**x['sourceFiles'],**x['missingBaseDllsCopiedFromTestOutput']};assert len(merged)==len(x['sourceFiles'])+len(x['missingBaseDllsCopiedFromTestOutput']);lines=[f'{k}:{v}' for k,v in merged.items()];assert all(s.isascii() for s in lines);actual=hashlib.sha256(('\\n'.join(sorted(lines))+'\\n').encode()).hexdigest();key='eventStoreRuntimeSetSha256' if host=='eventstore' else 'sampleRuntimeSetSha256';assert actual==native['artifacts'][key]\n rows.append({'host':host,'files':len(merged),'protocol':'Ordinal sort of complete ASCII relativePath:sha256 identities, LF join, trailing LF, SHA-256 UTF-8','parentRecomputedSha256':actual,'nativeObservedSha256':native['artifacts'][key],'match':True,'originalFilenameSortedExpectedSha256Preserved':x['expectedShadowRuntimeSetSha256']})\nxml=b/'qualification-20261017-live-release-full.xml';tests=list(E.parse(xml).iter('test'));oq8=[t for t in tests if 'ProductionMatrix' in t.attrib['method'] and 'Oq8' in t.attrib['type']];assert oq8 and all(t.attrib['result']=='Pass' for t in oq8)\nsets={m:collections.Counter((t.attrib['type'],t.attrib['method']) for t in E.parse(b/f'qualification-20261017-live-{m}-full.xml').iter('test')) for m in ['debug','release']};assert set(sets['debug'])==set(sets['release']);mult=[{'type':k[0],'method':k[1],'DebugCases':sets['debug'][k],'ReleaseCases':sets['release'][k]} for k in sorted(sets['debug']) if sets['debug'][k]!=sets['release'][k]]\nresult={'auditedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'controlsPacket':ident(cp),'bindingPacket':ident(bp),'nativeOQ8Observation':ident(np),'originalNativeObservationReference':binding['oq8NativeEvidence']['source'],'nativeByteRetentionReceipt':ident(b/'qualification-20261017-oq8-native-byte-retention.json'),'nativeRuntimeAndProfile':{'runtime':native['runtime'],'profile':native['profile'],'executionConfiguration':native['executionConfiguration']},'fullShadowSetComparisons':rows,'nativeOQ8PassedCases':[t.attrib for t in oq8],'correctionRecord':ident(b/'qualification-20261017-oq8-runtime-set-ordering-correction.json'),'fullLiveMethodSetsEqual':True,'debugReleaseTheoryMultiplicityDifferences':mult,'interpretation':'All native counts remain actual. Failed Debug fixture startup reports collapsed theory entries; Release materializes54 additional parameter cases across8 methods. This is a count observation and does not replace missing Debug case evidence. Native OQ8 success includes test seams and does not establish unmodified production qualification or an authenticated seal.','auditCommand':['python3','/tmp/story64_parent_oq8_audit.py'],'auditScriptSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'auditScript':Path(__file__).read_text()}\n(out/'oq8-native-shadow-and-cohort-audit.json').write_text(json.dumps(result,indent=2)+'\\n');print(json.dumps({'shadowSets':rows,'OQ8PassedCases':len(oq8),'methodSetsEqual':True,'theoryMultiplicityDifferences':len(mult)},indent=2))\n"
+}

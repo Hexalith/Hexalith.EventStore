@@ -1,0 +1,13 @@
+{
+  "sourceSnapshot": "qualification-20261017-live-debug-full",
+  "exitCode": 1,
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-showLiveOutput",
+    "-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full.xml",
+    "-noColor"
+  ],
+  "observations": []
+}

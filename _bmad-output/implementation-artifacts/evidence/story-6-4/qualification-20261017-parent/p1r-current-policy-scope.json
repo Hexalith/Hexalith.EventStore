@@ -1,0 +1,157 @@
+{
+  "sealedHistoricalEntries": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/tooling-before/tests/test_p1r_published_executor.py",
+      "sha256": "e7cb8298ada4b1cb159076411ae19158505b0118119bbf9c86579b53e3a71256",
+      "lineHashes": [
+        "f83d792143633f7793983b1f64aa87da3525eb180635a51f5a2a995a13b3597a"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/tooling-before/tests/test_p1r_published_qualification.py",
+      "sha256": "d607a04a79b4a24a8f84aea2f6e00d3c7e7f474ef51cedf235dcd8dc8ca0bc9d",
+      "lineHashes": [
+        "1524aab9822def7d5396ffe7fe461e8ffd75d6be1d8c8c98a4b26b96687f9c52"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/pre-canonical-refresh-reviewed-reconciliation.diff",
+      "sha256": "396b80abbf05cd56a86b065910919c69e5fb73d1cf63221860c216a66123915e",
+      "lineHashes": [
+        "e83be9bbd57c3b2f94ee9e576f717e12547fc32614250fa233e640c18ca9da0b",
+        "eab7e2ab144bb388112b69ce2c630bca8a7da721561b06465081899fb8ac1629"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/review-v1.diff",
+      "sha256": "1e42232b1cdeb7637b2cd628a0822ddd527bdfde12d263955f11934665231c22",
+      "lineHashes": [
+        "e83be9bbd57c3b2f94ee9e576f717e12547fc32614250fa233e640c18ca9da0b",
+        "c413772a6a4011640f87eeaa2f0ad181f2c3e52d1650d57aca9a261d12ba4947",
+        "e7e43ebc36b5e3fb7ac50a4b10bbbde4fe5e43d98fdc6bf11b7d87cae866379e"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/reviewed-reconciliation.diff",
+      "sha256": "006a4bfee5d3e3e9a0eeef8f4a2f23eadf81a567bf99ca9541f5e5517b84b603",
+      "lineHashes": [
+        "e83be9bbd57c3b2f94ee9e576f717e12547fc32614250fa233e640c18ca9da0b",
+        "eab7e2ab144bb388112b69ce2c630bca8a7da721561b06465081899fb8ac1629"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/release-analysis/bexec-preflight.txt",
+      "sha256": "f87b48e649092cc68de8f07977bae48c65f0570007f60de42887201988ee0062",
+      "lineHashes": [
+        "b97b4ce96a582dcb5ed66aec4f94f4f7a57fb647323aeec81f1f903583c1920a"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/release-analysis/canonical-ci-workflow.txt",
+      "sha256": "1388d7b2f4cf96d01da3f078c09c975768c89ac79e14ef649635b7c2f79a0ae7",
+      "lineHashes": [
+        "c5b6e30a9485fed934bb3e037506a78bb2dfa6c0098610d3ff88d859c64e0b58"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/release-analysis/canonical-p1r-workflow.txt",
+      "sha256": "d88063ae47f84b68d362ac8c985d0ed00809a48c387de28c5801418875a59885",
+      "lineHashes": [
+        "c5b6e30a9485fed934bb3e037506a78bb2dfa6c0098610d3ff88d859c64e0b58"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-successor-enrollment-20261014/release-analysis/canonical-release-workflow.txt",
+      "sha256": "91f7b28d0ae1e805492af3a937849bafee0f071809f4757024bf380cc6bac31b",
+      "lineHashes": [
+        "c5b6e30a9485fed934bb3e037506a78bb2dfa6c0098610d3ff88d859c64e0b58"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/independent-review.md",
+      "sha256": "e489cc6114a99ae99fc38512813bd08441df1ccb566d78744fa114f50b4f3152",
+      "lineHashes": [
+        "96fc74e6f25bfc03f70b220eb0332e9332bc731734490e7339279d71cea1965a"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/review-v1.diff",
+      "sha256": "616eb2598715ebb58a3f8c2a8f2f04e0abcc83f92ffee24ad6ee20ed6da7e6ec",
+      "lineHashes": [
+        "0734eac0889dd0867a981e9f11268fa64ddead733bfd613570f25bd826999306"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/review-v2.diff",
+      "sha256": "3868c28072efd3fc34213697beaec76ca6190d52a15ac65a6f66030eaac6e7c8",
+      "lineHashes": [
+        "c413772a6a4011640f87eeaa2f0ad181f2c3e52d1650d57aca9a261d12ba4947",
+        "e7e43ebc36b5e3fb7ac50a4b10bbbde4fe5e43d98fdc6bf11b7d87cae866379e"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/review-v3.diff",
+      "sha256": "8e7abfc544afc463dd853b3ae7882ad6eb3a76978dad5fe0d0060ad82024947d",
+      "lineHashes": [
+        "c413772a6a4011640f87eeaa2f0ad181f2c3e52d1650d57aca9a261d12ba4947",
+        "e7e43ebc36b5e3fb7ac50a4b10bbbde4fe5e43d98fdc6bf11b7d87cae866379e"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-tooling-hardening-20261016/review-v4.diff",
+      "sha256": "0141061615e01e4aba0ad1e117181474e7b6e8d9dcc7eca71ae489ed9f450f92",
+      "lineHashes": [
+        "c413772a6a4011640f87eeaa2f0ad181f2c3e52d1650d57aca9a261d12ba4947",
+        "e7e43ebc36b5e3fb7ac50a4b10bbbde4fe5e43d98fdc6bf11b7d87cae866379e"
+      ]
+    }
+  ],
+  "sealedHistoricalEntryCount": 14,
+  "sealedHistoricalLineHashCount": 21,
+  "embeddedExecutorSourceHashes": [
+    "0bab9ca3a7395ad160d432f8133eb8544f6d2442971bb72a3b4e49d137fc1b20",
+    "45a3b00081690058ce1f644c6152e6f6b7ab4277ff0b3d6368918f72aa986768",
+    "53d9ab6e4d673e937a01a3c45f14d2da52d019bcf4903f43cbc4e1fc771371b7",
+    "595d93550dd150bd592f857827ba2bf4fecfb15a0dc40e454fb7192c7afdec51",
+    "94311fbc6ad369a3c61d254fcc1ff224c5897b552862c0d506197808f37b7a55",
+    "9a0990a82566c2b281305572fd318ba036b9ab68bcaa7813b9d40ea2265ea699",
+    "af7b4a380334e7f438928d395232c36a97fc5c526507f9ae4d0208cd88d37a48",
+    "b6703a7ddd9af170139c8211bdeb7c97d429ed7efec42517b6faa799b2ead211",
+    "ccfe755af557cbbcccd6c33732253368edb1c70187e94c4fe55f4e561f58fc6c",
+    "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc",
+    "f47728d611db4fefaf38c68836d1520d1fca5fe9d2f9684fd72bd25709630174",
+    "f70c0a63db50dae1593f6bac1f8f96be56b3acb6874dded5c3df1f2213f6ff25"
+  ],
+  "policyFiles": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceIngestion.cs",
+      "bytes": 16579,
+      "sha256": "2640304b4e511a7ff9ee78e078b2f1c19c4bc7bdd0918026af03512d7c679b6d"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceRecognition.cs",
+      "bytes": 24784,
+      "sha256": "53a9c5f7b3421f7c4fff7308dff9627495fbdb5e57898db354450cd29827821c"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+      "bytes": 28338,
+      "sha256": "539c92a8246bbf22277dbb3d18bfc11942ef3a2d37ad87ecd1fec88ba666336e"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.HistoricalLines.cs",
+      "bytes": 8294,
+      "sha256": "cc08e79c8e933e8024203e7697e8537e5a02ca76ff8171c0d6ab7dbe7e0b40b3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs",
+      "bytes": 3354,
+      "sha256": "8462f8c7f5df0a0ab2d4c899ce43c911d4cb02747ecc4c45105dc41333421aad"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "bytes": 164286,
+      "sha256": "cb2304579704130d855fb746a2d5928fc8c2a8a535a7db178d9ea1a6ef5ee901"
+    }
+  ]
+}

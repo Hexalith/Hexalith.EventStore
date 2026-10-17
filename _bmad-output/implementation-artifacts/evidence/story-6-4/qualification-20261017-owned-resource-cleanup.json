@@ -1,0 +1,334 @@
+{
+  "capturedAt": "2026-10-17T08:25:53.188251+00:00",
+  "redis": {
+    "id": "ebb9e7a80207c463dc2b67f472ddc75fcd92586cc9af2d494090e6f199300f48",
+    "name": "story64-qualification-20261017-ce85c757",
+    "cleanup": {
+      "exitCode": 0,
+      "at": "2026-10-17T08:24:49.171825+00:00",
+      "inspectAbsent": true
+    },
+    "containerAbsent": true,
+    "anonymousVolumes": [
+      {
+        "name": "1342e2582ff1530628d3365eb334e00b085cbb4d0e966e6ca810bee105576e53",
+        "absent": true
+      }
+    ]
+  },
+  "regularControls": [
+    {
+      "controlsPacket": {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused-controls.json",
+        "sha256": "de50585f11329495819ec7df0d907a97098d7518db0a29f6aed1f9f901f3d2cc"
+      },
+      "work": "/tmp/story64-qualification-controls-fz28alpr",
+      "controlExitCodes": [
+        0,
+        0
+      ],
+      "portsClosed": {
+        "57879": true,
+        "41233": true
+      },
+      "pids": [
+        {
+          "pid": 52729,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        },
+        {
+          "pid": 52736,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        }
+      ],
+      "retainedLogs": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused-placement.log",
+          "sha256": "2bce58a7160a4de7ca1b412dd971999994920f37cc52b335ccd81c89ced2a559"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused-scheduler.log",
+          "sha256": "ba5ab87923deaf218ac4b62c228473d4d272623b36c4e545fc6b4035fae59ef1"
+        }
+      ],
+      "workRemoved": true
+    },
+    {
+      "controlsPacket": {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full-controls.json",
+        "sha256": "76808ec41aad4b5bcec1b4343dec2d49c41af9598f3d933088fdc17a1e58ada0"
+      },
+      "work": "/tmp/story64-qualification-controls-8r1dg81i",
+      "controlExitCodes": [
+        0,
+        0
+      ],
+      "portsClosed": {
+        "57879": true,
+        "41233": true
+      },
+      "pids": [
+        {
+          "pid": 80467,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        },
+        {
+          "pid": 80468,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        }
+      ],
+      "retainedLogs": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full-placement.log",
+          "sha256": "f3fde8ae6c809986b3800d6ec4ed2d98be510093cfaee796f44b974f2e3700f7"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full-scheduler.log",
+          "sha256": "a79d28ffee378647c2da3cc48e2c474bcf5a919a5f5a2aefd0a2e77fa6f31510"
+        }
+      ],
+      "workRemoved": true
+    },
+    {
+      "controlsPacket": {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-controls.json",
+        "sha256": "b6bc0c17cff49b558b00d45aed1d5c7d1efb8da195a0ada9c3bb78a4fd44f2c3"
+      },
+      "work": "/tmp/story64-qualification-controls-xqg_7g_j",
+      "controlExitCodes": [
+        0,
+        0
+      ],
+      "portsClosed": {
+        "57879": true,
+        "41233": true
+      },
+      "pids": [
+        {
+          "pid": 84610,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        },
+        {
+          "pid": 84611,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        }
+      ],
+      "retainedLogs": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-placement.log",
+          "sha256": "a4e1960004048db346ac1baa8d69165b65621a5dd4178d87f9eba6c888331524"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-scheduler.log",
+          "sha256": "4e38237438239bd61f0008a94c60c05936805a21da095066dec59cf08b41e990"
+        }
+      ],
+      "workRemoved": true
+    },
+    {
+      "controlsPacket": {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096-controls.json",
+        "sha256": "9810a4836440c72c381d45b84c0e8eace95671430a1dd9058ac81642260e1506"
+      },
+      "work": "/tmp/story64-qualification-controls-b74940qh",
+      "controlExitCodes": [
+        0,
+        0
+      ],
+      "portsClosed": {
+        "57879": true,
+        "41233": true
+      },
+      "pids": [
+        {
+          "pid": 73070,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        },
+        {
+          "pid": 73071,
+          "exists": false,
+          "sameOwnedBinaryStillRunning": false
+        }
+      ],
+      "retainedLogs": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096-placement.log",
+          "sha256": "4072a5fb60e3724308231f1b76f8f753f27e53fee7b3bc201504691c3aeb59a7"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096-scheduler.log",
+          "sha256": "dd332e12a2cb3cb175d84b22be81ba02aba44fb456bd8262b37ca306965fbeb2"
+        }
+      ],
+      "workRemoved": true
+    }
+  ],
+  "oq8": [
+    {
+      "gate": "live-debug-full",
+      "nativeEvidenceDirectory": "/tmp/story64-qualification-oq8-live-debug-full",
+      "cleanupSource": "/tmp/story64-qualification-oq8-live-debug-full-cleanup.json",
+      "nativeCleanupSha256": "54a1886433b82494b132475fd336ba5fa784d2427c8fe24ed54fbec8391cc05b",
+      "cleanup": {
+        "runtimeScratchRemoved": true,
+        "processesStopped": true,
+        "daprNamespace": null,
+        "sidecarNamespaceObservations": []
+      },
+      "ownedPostgres": {
+        "containerIdSha256": "0096e5f2ebcd1f2df83db12575f6b93253e5f5c40c1eb946f91e1fd7a635794e",
+        "containerAbsent": true
+      },
+      "retainedCleanup": {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full-oq8-cleanup.json",
+        "sha256": "1e0efe04d10a45def9ba33cb0e015e02f832e9d2da2239863552e4041e3fcfd3"
+      }
+    },
+    {
+      "gate": "live-release-full",
+      "nativeEvidenceDirectory": "/tmp/story64-qualification-oq8-live-release-full",
+      "cleanupSource": "/tmp/story64-qualification-oq8-live-release-full-cleanup.json",
+      "retainedNativeEvidence": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-oq8-observations.json",
+          "sha256": "3756553f54e9d483c6e9dffa583826188c332ce79b0fd5d4fb6dd7f92e00e84e"
+        }
+      ],
+      "nativeCleanupSha256": "bf75896deadbdff13edbaf3d1a98ffd5efc16bb8aa7d428a4bd7ac5b514da81e",
+      "cleanup": {
+        "runtimeScratchRemoved": true,
+        "processesStopped": true,
+        "daprNamespace": null,
+        "sidecarNamespaceObservations": [
+          {
+            "node": "sample",
+            "appId": "sample",
+            "processId": 85277,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-1",
+            "appId": "eventstore",
+            "processId": 85597,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-2",
+            "appId": "eventstore",
+            "processId": 85923,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-1",
+            "appId": "eventstore",
+            "processId": 87289,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-1",
+            "appId": "eventstore",
+            "processId": 87877,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-2",
+            "appId": "eventstore",
+            "processId": 88211,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-1",
+            "appId": "eventstore",
+            "processId": 88639,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          },
+          {
+            "node": "eventstore-2",
+            "appId": "eventstore",
+            "processId": 88965,
+            "daprNamespace": null,
+            "nameResolver": "mdns",
+            "discoveryRegistryIdentitySha256": null,
+            "discoveryConfigurationSha256": null,
+            "privateDiscoveryRegistryObserved": false
+          }
+        ]
+      },
+      "ownedPostgres": {
+        "containerIdSha256": "5398a84bf9b6450ab5651a795d2960d8521200065e9d67b2fb4c6da15b07d048",
+        "containerAbsent": true
+      },
+      "retainedCleanup": {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-oq8-cleanup.json",
+        "sha256": "29dbc08cbf76a464db8e4172fd748eda84b052ffd236d555ced66bc5172e776b"
+      }
+    }
+  ],
+  "sharedResourcePolicy": "Only exact task-owned resources were removed. Shared Redis/Dapr containers, historical template work and external processes were preserved.",
+  "provenNativeScratchChecks": [
+    {
+      "path": "/tmp/dapr-components-26db042f37ae480dbdef8197271d4fba",
+      "matchingNativePids": [],
+      "existedAfterQueue": false,
+      "manualRemoval": false,
+      "absent": true
+    },
+    {
+      "path": "/tmp/dapr-components-a925d00edd1341718ebb61dde276e1f3",
+      "matchingNativePids": [],
+      "existedAfterQueue": false,
+      "manualRemoval": false,
+      "absent": true
+    },
+    {
+      "path": "/tmp/dapr-components-ed6e20b2f24d408580f13f782b9ba377",
+      "matchingNativePids": [],
+      "existedAfterQueue": false,
+      "manualRemoval": false,
+      "absent": true
+    },
+    {
+      "path": "/tmp/eventstore-oq8-runtime-7ca0f5110aa04b1181cced6110ec60de",
+      "matchingNativePids": [],
+      "existedAfterQueue": false,
+      "manualRemoval": false,
+      "absent": true
+    }
+  ],
+  "allRecordedTaskResourcesReleased": true
+}

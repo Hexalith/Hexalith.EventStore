@@ -1,0 +1,43 @@
+{
+  "status": "NATIVE_PASS_NO_OWNER_DISPOSITION",
+  "packet": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+    "bytes": 5200347,
+    "sha256": "a7c25f5be1e81826132808117123eaeee3f635eb0d6170dfd5fdc25914a6f649"
+  },
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+    "-showLiveOutput",
+    "-noColor"
+  ],
+  "head": "77d9af18a54d92506e310fe5a45021a395e66f60",
+  "nativeXml": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+    "bytes": 4252417,
+    "sha256": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501"
+  },
+  "log": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.log",
+    "bytes": 696928,
+    "sha256": "15b3f19f7774da02dad4be24254b56649c6f7149246baa0fbfb1cbde518008e0"
+  },
+  "scannerCase": {
+    "id": "505f7543-f5e9-489b-b85b-9e4dc4076a14",
+    "name": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+    "result": "Pass",
+    "time": "724.444",
+    "time-rtf": "00:12:04.4440000",
+    "start-rtf": "2026-10-17T06:45:06.1618053+00:00",
+    "finish-rtf": "2026-10-17T06:57:10.5795450+00:00",
+    "type": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests",
+    "method": "TrackedReusableContent_DoesNotContainUsableSecrets",
+    "source-file": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+    "source-line": "41"
+  },
+  "preservedCurrentPolicyHashesMatchNativeInputs": true,
+  "sourceAssetsRuntimeStableDuringExecution": true,
+  "scope": "Exact fresh tracked scanner passed inside full Server Debug; no historical red result is changed, and no P1R owner decision is inferred."
+}

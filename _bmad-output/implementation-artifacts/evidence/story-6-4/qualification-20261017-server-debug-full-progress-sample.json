@@ -1,0 +1,55 @@
+{
+  "sampleSeconds": 10,
+  "clockTicksPerSecond": 100,
+  "before": {
+    "at": "2026-10-17T06:54:22.145828+00:00",
+    "processes": {
+      "44261": {
+        "pid": 44261,
+        "ppid": 35037,
+        "state": "S",
+        "utimeTicks": 71138,
+        "stimeTicks": 3690,
+        "startTicks": "8290519",
+        "threads": 56,
+        "rssPages": 424992,
+        "wchan": "futex_wait_queue",
+        "executable": "dotnet",
+        "voluntary_ctxt_switches": "22",
+        "nonvoluntary_ctxt_switches": "5"
+      }
+    },
+    "logBytes": 461438,
+    "logMtimeNs": 1792219442810417296,
+    "logSha256": "38194c41811beedde700bd7da57f093d9d89ff8150b2d643d432fe2b3e17014d"
+  },
+  "after": {
+    "at": "2026-10-17T06:54:32.177965+00:00",
+    "processes": {
+      "44261": {
+        "pid": 44261,
+        "ppid": 35037,
+        "state": "S",
+        "utimeTicks": 71955,
+        "stimeTicks": 3867,
+        "startTicks": "8290519",
+        "threads": 56,
+        "rssPages": 606210,
+        "wchan": "futex_wait_queue",
+        "executable": "dotnet",
+        "voluntary_ctxt_switches": "22",
+        "nonvoluntary_ctxt_switches": "5"
+      }
+    },
+    "logBytes": 461438,
+    "logMtimeNs": 1792219442810417296,
+    "logSha256": "38194c41811beedde700bd7da57f093d9d89ff8150b2d643d432fe2b3e17014d"
+  },
+  "deltas": {
+    "44261": {
+      "utimeTicks": 817,
+      "stimeTicks": 177,
+      "rssPages": 181218
+    }
+  }
+}

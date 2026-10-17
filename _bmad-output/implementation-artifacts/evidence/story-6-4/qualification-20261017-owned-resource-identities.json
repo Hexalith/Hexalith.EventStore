@@ -1,0 +1,78 @@
+{
+  "capturedAt": "2026-10-17T07:16:03.401919+00:00",
+  "redis": {
+    "id": "ebb9e7a80207c463dc2b67f472ddc75fcd92586cc9af2d494090e6f199300f48",
+    "name": "story64-qualification-20261017-ce85c757",
+    "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "label": "story64-qualification-20261017",
+    "mounts": [
+      {
+        "Type": "volume",
+        "Name": "1342e2582ff1530628d3365eb334e00b085cbb4d0e966e6ca810bee105576e53",
+        "Source": "/var/lib/docker/volumes/1342e2582ff1530628d3365eb334e00b085cbb4d0e966e6ca810bee105576e53/_data",
+        "Destination": "/data"
+      }
+    ],
+    "ports": {
+      "6379/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "54919"
+        }
+      ]
+    }
+  },
+  "controlConfiguration": {
+    "work": "/tmp/story-6-4-cont10-pinned-e4713jln",
+    "commands": [
+      [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+        "--id",
+        "story64-cont10-placement",
+        "--port",
+        "57879",
+        "--listen-address",
+        "127.0.0.1",
+        "--healthz-port",
+        "46255",
+        "--metrics-port",
+        "46015",
+        "--initial-cluster",
+        "story64-cont10-placement=127.0.0.1:35285"
+      ],
+      [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+        "--id",
+        "story64-cont10-scheduler",
+        "--port",
+        "41233",
+        "--listen-address",
+        "127.0.0.1",
+        "--healthz-port",
+        "48493",
+        "--metrics-port",
+        "43853",
+        "--etcd-client-port",
+        "50115",
+        "--etcd-initial-cluster",
+        "story64-cont10-scheduler=http://127.0.0.1:47887",
+        "--etcd-data-dir",
+        "/tmp/story-6-4-cont10-pinned-e4713jln/etcd"
+      ]
+    ],
+    "testCommand": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-method",
+      "*SourceGuard_TwoRealReplicas*",
+      "-showLiveOutput"
+    ],
+    "placementPort": 57879,
+    "schedulerPort": 41233,
+    "testExitCode": 0,
+    "infrastructureExitCodes": [
+      0,
+      0
+    ]
+  }
+}

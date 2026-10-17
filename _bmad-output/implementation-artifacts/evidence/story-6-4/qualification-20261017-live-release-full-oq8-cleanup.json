@@ -1,0 +1,103 @@
+{
+  "gate": "live-release-full",
+  "nativeEvidenceDirectory": "/tmp/story64-qualification-oq8-live-release-full",
+  "cleanupSource": "/tmp/story64-qualification-oq8-live-release-full-cleanup.json",
+  "retainedNativeEvidence": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-oq8-observations.json",
+      "sha256": "3756553f54e9d483c6e9dffa583826188c332ce79b0fd5d4fb6dd7f92e00e84e"
+    }
+  ],
+  "nativeCleanupSha256": "bf75896deadbdff13edbaf3d1a98ffd5efc16bb8aa7d428a4bd7ac5b514da81e",
+  "cleanup": {
+    "runtimeScratchRemoved": true,
+    "processesStopped": true,
+    "daprNamespace": null,
+    "sidecarNamespaceObservations": [
+      {
+        "node": "sample",
+        "appId": "sample",
+        "processId": 85277,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-1",
+        "appId": "eventstore",
+        "processId": 85597,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-2",
+        "appId": "eventstore",
+        "processId": 85923,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-1",
+        "appId": "eventstore",
+        "processId": 87289,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-1",
+        "appId": "eventstore",
+        "processId": 87877,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-2",
+        "appId": "eventstore",
+        "processId": 88211,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-1",
+        "appId": "eventstore",
+        "processId": 88639,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      },
+      {
+        "node": "eventstore-2",
+        "appId": "eventstore",
+        "processId": 88965,
+        "daprNamespace": null,
+        "nameResolver": "mdns",
+        "discoveryRegistryIdentitySha256": null,
+        "discoveryConfigurationSha256": null,
+        "privateDiscoveryRegistryObserved": false
+      }
+    ]
+  },
+  "ownedPostgres": {
+    "containerIdSha256": "5398a84bf9b6450ab5651a795d2960d8521200065e9d67b2fb4c6da15b07d048",
+    "containerAbsent": true
+  }
+}

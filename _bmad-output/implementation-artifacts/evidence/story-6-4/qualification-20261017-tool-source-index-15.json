@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-10-17T08:24:29.460620+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-audit.py",
+      "sha256": "ce139183c2c8b6ed702bc8e1be152513141b57c08d98d58b5475c0acc174ef72",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/ce139183c2c8b6ed702bc8e1be152513141b57c08d98d58b5475c0acc174ef72.py"
+    }
+  ]
+}

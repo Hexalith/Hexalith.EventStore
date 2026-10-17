@@ -1,0 +1,27 @@
+{
+  "nativeSummary": {
+    "selected": 5817,
+    "errors": 0,
+    "failed": 0,
+    "skipped": 25,
+    "notRun": 0,
+    "passed": 5792,
+    "seconds": 971.613
+  },
+  "exactHistoricalSkipSetMatched": true,
+  "scannerWitness": {
+    "id": "505f7543-f5e9-489b-b85b-9e4dc4076a14",
+    "name": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+    "result": "Pass",
+    "time": "724.444",
+    "time-rtf": "00:12:04.4440000",
+    "start-rtf": "2026-10-17T06:45:06.1618053+00:00",
+    "finish-rtf": "2026-10-17T06:57:10.5795450+00:00",
+    "type": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests",
+    "method": "TrackedReusableContent_DoesNotContainUsableSecrets",
+    "source-file": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+    "source-line": "41"
+  },
+  "sourceRuntimeAssetsStable": true,
+  "freshPassingScannerDoesNotSupplyOwnerDisposition": true
+}

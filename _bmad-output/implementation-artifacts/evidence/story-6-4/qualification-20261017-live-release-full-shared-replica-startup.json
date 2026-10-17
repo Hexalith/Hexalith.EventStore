@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-10-17T08:20:21.397437+00:00",
+  "sourceFailureAudit": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-failure-audit.json",
+    "sha256": "07c47544c6b9bd31955328eb6fa8b15c1de699b8c6a3acceacf1d7088f0ae57e"
+  },
+  "records": [
+    {
+      "test": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.SourceGuard_TwoRealReplicasResumeOriginalCommittedEventReceiptsWithoutRepeatingEffects",
+      "fatalLine": "time=\\\"2026-10-17T10:02:06.478900435+02:00\\\" level=fatal msg=\\\"Fatal error from runtime: failed to create watcher: failed to add target /tmp/dapr-components-26db042f37ae480dbdef8197271d4fba: no space left on device\\\" app_id=eventstore-live-1b607e0495674cceae3a420a4ec36fa5 instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.2",
+      "fatalLineSha256": "922b2eb61eb5c4e29b471ad581fadac35f762570d16198391194fa31e3f9e35b",
+      "appIds": [
+        "eventstore-live-1b607e0495674cceae3a420a4ec36fa5"
+      ],
+      "componentPaths": [
+        "/tmp/dapr-components-26db042f37ae480dbdef8197271d4fba"
+      ]
+    },
+    {
+      "test": "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica",
+      "fatalLine": "time=\\\"2026-10-17T10:02:06.478900435+02:00\\\" level=fatal msg=\\\"Fatal error from runtime: failed to create watcher: failed to add target /tmp/dapr-components-26db042f37ae480dbdef8197271d4fba: no space left on device\\\" app_id=eventstore-live-1b607e0495674cceae3a420a4ec36fa5 instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.2",
+      "fatalLineSha256": "922b2eb61eb5c4e29b471ad581fadac35f762570d16198391194fa31e3f9e35b",
+      "appIds": [
+        "eventstore-live-1b607e0495674cceae3a420a4ec36fa5"
+      ],
+      "componentPaths": [
+        "/tmp/dapr-components-26db042f37ae480dbdef8197271d4fba"
+      ]
+    },
+    {
+      "test": "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.DaprEventEvolutionLogicalReadbackLiveSidecarTests.TwoSidecarsAndRestartPreserveCommittedApplicationBytesAndMessageIdentity",
+      "fatalLine": "time=\\\"2026-10-17T10:02:06.478900435+02:00\\\" level=fatal msg=\\\"Fatal error from runtime: failed to create watcher: failed to add target /tmp/dapr-components-26db042f37ae480dbdef8197271d4fba: no space left on device\\\" app_id=eventstore-live-1b607e0495674cceae3a420a4ec36fa5 instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.2",
+      "fatalLineSha256": "922b2eb61eb5c4e29b471ad581fadac35f762570d16198391194fa31e3f9e35b",
+      "appIds": [
+        "eventstore-live-1b607e0495674cceae3a420a4ec36fa5"
+      ],
+      "componentPaths": [
+        "/tmp/dapr-components-26db042f37ae480dbdef8197271d4fba"
+      ]
+    }
+  ],
+  "sameExactFatalStartupLine": true,
+  "sameAppIdentity": true,
+  "sameComponentPath": true,
+  "interpretation": "Three distinct native test failures reference the same replica startup log identity/time; do not count these as three separately observed replica launches. Missing replica witness remains unproven."
+}

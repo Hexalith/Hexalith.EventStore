@@ -1,0 +1,16 @@
+{
+  "sourceSnapshot": "qualification-20261017-live-release-r4096",
+  "nativeExitCode": 0,
+  "vectors": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096-vectors.json",
+  "sha256": "e00b4ab7b62bc047bd7647f751a51ed31916c76903ee3dee61b8c92a6b6a2783",
+  "observations": {
+    "ProjectionGuardCurrentMatrix": 15
+  },
+  "currentRowsIndependentlyAudited": 15,
+  "nonemptyTailRowsIndependentlyAudited": 0,
+  "result": "pass",
+  "fullVectorWitnessInventoryComplete": true,
+  "missingWitnesses": [],
+  "nativeGateOutcomeSeparate": true,
+  "limits": "Cumulative counters independently evaluated; exact per-pass B/V assertions remain owned by executable fixtures."
+}

@@ -1,0 +1,12 @@
+{
+  "sourceSnapshot": "qualification-20261017-live-debug-full",
+  "exitCode": 1,
+  "command": [
+    "python3",
+    "/tmp/story64-qualification-live.py",
+    "live-debug-full",
+    "__FULL__",
+    "Debug"
+  ],
+  "observations": []
+}

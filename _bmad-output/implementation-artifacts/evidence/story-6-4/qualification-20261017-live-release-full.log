@@ -1,0 +1,6 @@
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionWatermarkProcessWorkerTests.ApplyPersistedHistoryAsync [SKIP]
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.SourceGuard_TwoRealReplicasResumeOriginalCommittedEventReceiptsWithoutRepeatingEffects [FAIL]
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionLiveSidecarTests.MultiHostAdmission_PrimaryHostRemovedBeforeExecution_ExecutesAndReplaysExactlyOnceOnReplica [FAIL]
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Events.DaprEventEvolutionLogicalReadbackLiveSidecarTests.TwoSidecarsAndRestartPreserveCommittedApplicationBytesAndMessageIdentity [FAIL]
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 192, Errors: 0, Failed: 3, Skipped: 1, Not Run: 0, Time: 1332.608s
+{"lane": "live-release-full", "testExitCode": 1, "infrastructureExitCodes": [0, 0], "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full.native.log"}

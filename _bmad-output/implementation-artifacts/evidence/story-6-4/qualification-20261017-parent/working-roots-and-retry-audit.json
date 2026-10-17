@@ -1,0 +1,971 @@
+{
+  "auditedUtc": "2026-10-17T08:25:19.965347+00:00",
+  "scope": "Independent parent extraction from completed native logs only; assertions distinguish retained roots, cumulative allocation and N8/N9 accounting. Native cohorts retain their own outcome.",
+  "frames": [
+    {
+      "gate": "server-debug-focused",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-focused.json",
+        "bytes": 5195631,
+        "sha256": "229bab2787caa99d4bce29c30a98b43832746f0376ef1b9663d76d73773365c3"
+      },
+      "nativeLog": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-focused.log",
+        "bytes": 148500,
+        "sha256": "eddb6973b3624672947e04d24afd8c52c8a6848dee602df14501fc44f02b3df5"
+      },
+      "observationCounts": {
+        "SourceMetadataWriterProfile": 3,
+        "ProjectionGuardMalformedDigestCumulativeAllocation": 2,
+        "ProjectionGuardWideCumulativeAllocation": 2,
+        "ProjectionGuardReceiptRetainedGraph": 4,
+        "ProjectionGuardActualDepthAllocation": 1,
+        "ProjectionGuardDepthAllocation": 2,
+        "ProjectionGuardReceiptFlood": 2,
+        "ProjectionCost": 50,
+        "ProjectionTransitionCapCost": 6,
+        "ProjectionReplayContext": 1
+      },
+      "workingRootAndAllocationRows": [
+        {
+          "kind": "ProjectionGuardMalformedDigestCumulativeAllocation",
+          "observed": {
+            "quotedHead": false,
+            "digestCount": 160000,
+            "bodyBytes": 800079,
+            "cumulativeAllocatedBytes": 2896,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative early-rejection allocation; native assertion owns its regression bound."
+        },
+        {
+          "kind": "ProjectionGuardMalformedDigestCumulativeAllocation",
+          "observed": {
+            "quotedHead": true,
+            "digestCount": 160000,
+            "bodyBytes": 800081,
+            "cumulativeAllocatedBytes": 2896,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative early-rejection allocation; native assertion owns its regression bound."
+        },
+        {
+          "kind": "ProjectionGuardWideCumulativeAllocation",
+          "observed": {
+            "beforeHeader": false,
+            "unknownProperties": 50000,
+            "bodyBytes": 855799,
+            "cumulativeAllocatedBytes": 2147080,
+            "regressionBound": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardWideCumulativeAllocation",
+          "observed": {
+            "beforeHeader": true,
+            "unknownProperties": 50000,
+            "bodyBytes": 856129,
+            "cumulativeAllocatedBytes": 545616,
+            "regressionBound": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 1,
+            "customProfile": false,
+            "retainedTypedProofBytes": 322688,
+            "proofWorkingByteLimit": 3267584,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 256,
+            "customProfile": false,
+            "retainedTypedProofBytes": 418544,
+            "proofWorkingByteLimit": 3789824,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 4096,
+            "customProfile": false,
+            "retainedTypedProofBytes": 1862384,
+            "proofWorkingByteLimit": 11654144,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 256,
+            "customProfile": true,
+            "retainedTypedProofBytes": 418544,
+            "proofWorkingByteLimit": 3789824,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardActualDepthAllocation",
+          "observed": {
+            "depth": 50000,
+            "bodyBytes": 856245,
+            "allocatedBytes": 122704,
+            "owningAllocatedBytes": 867864,
+            "proofWorkingByteLimit": 3789824
+          },
+          "interpretation": "Measured cumulative allocations, not peak-live/retained proof."
+        },
+        {
+          "kind": "ProjectionGuardDepthAllocation",
+          "observed": {
+            "maxDepth": 1000000,
+            "nestedUnknownDepth": 0,
+            "bodyBytes": 1738,
+            "allocatedBytes": 1032,
+            "regressionBound": 121152
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardDepthAllocation",
+          "observed": {
+            "maxDepth": 1000000,
+            "nestedUnknownDepth": 96,
+            "bodyBytes": 1941,
+            "allocatedBytes": 1096,
+            "regressionBound": 127648
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardReceiptFlood",
+          "observed": {
+            "customProfile": false,
+            "receiptObjects": 100000,
+            "bodyBytes": 300100,
+            "cumulativeAllocatedBytes": 2944,
+            "retainedExceptionBytes": 760,
+            "retainedTypedReceiptGraphBytes": 0,
+            "proofWorkingByteLimit": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Early rejection and retained exception; cumulative allocations do not establish peak live."
+        },
+        {
+          "kind": "ProjectionGuardReceiptFlood",
+          "observed": {
+            "customProfile": true,
+            "receiptObjects": 100000,
+            "bodyBytes": 300112,
+            "cumulativeAllocatedBytes": 2944,
+            "retainedExceptionBytes": 760,
+            "retainedTypedReceiptGraphBytes": 0,
+            "proofWorkingByteLimit": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Early rejection and retained exception; cumulative allocations do not establish peak live."
+        }
+      ],
+      "actualRetryWindows": []
+    },
+    {
+      "gate": "server-debug-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+        "bytes": 5200347,
+        "sha256": "a7c25f5be1e81826132808117123eaeee3f635eb0d6170dfd5fdc25914a6f649"
+      },
+      "nativeLog": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.log",
+        "bytes": 696928,
+        "sha256": "15b3f19f7774da02dad4be24254b56649c6f7149246baa0fbfb1cbde518008e0"
+      },
+      "observationCounts": {
+        "SourceMetadataWriterProfile": 3,
+        "ProjectionRetryCost": 5,
+        "ProjectionSchedulerMutationCost": 4,
+        "ProjectionActualGuardRetryCosts": 1,
+        "ProjectionSchedulerCost": 2,
+        "ProjectionProofWorkingRoots": 4,
+        "ProjectionProofReadbackWorkingRoots": 4,
+        "ProjectionGuardMalformedDigestCumulativeAllocation": 2,
+        "ProjectionGuardWideCumulativeAllocation": 2,
+        "ProjectionGuardReceiptRetainedGraph": 4,
+        "ProjectionGuardActualDepthAllocation": 1,
+        "ProjectionGuardDepthAllocation": 2,
+        "ProjectionGuardReceiptFlood": 2,
+        "ProjectionSourceDecodeWorkingRoots": 2,
+        "ProjectionEventWorkingRoots": 1,
+        "ProjectionCost": 50,
+        "ProjectionTransitionCapCost": 6,
+        "ProjectionReplayContext": 1
+      },
+      "workingRootAndAllocationRows": [
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 256,
+            "serialized": 556505,
+            "retainedRootBytes": 2031776,
+            "validationRootBytes": 3182320,
+            "serializerRootBytes": 2096440,
+            "transportRootBytes": 3637680,
+            "sendArrayBytes": 1048576,
+            "ceiling": 3789824,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 256,
+            "readbackRootBytes": 3452456,
+            "ceiling": 3789824,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 256,
+            "serialized": 558305,
+            "retainedRootBytes": 2037800,
+            "validationRootBytes": 3348344,
+            "serializerRootBytes": 2102480,
+            "transportRootBytes": 3645504,
+            "sendArrayBytes": 1048576,
+            "ceiling": 3789824,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 256,
+            "readbackRootBytes": 3464440,
+            "ceiling": 3789824,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 4096,
+            "serialized": 1332185,
+            "retainedRootBytes": 4282016,
+            "validationRootBytes": 5432560,
+            "serializerRootBytes": 5372832,
+            "transportRootBytes": 7712176,
+            "sendArrayBytes": 2097152,
+            "ceiling": 11654144,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 4096,
+            "readbackRootBytes": 7922216,
+            "ceiling": 11654144,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 4096,
+            "serialized": 1372385,
+            "retainedRootBytes": 4387880,
+            "validationRootBytes": 5698424,
+            "serializerRootBytes": 5478656,
+            "transportRootBytes": 7858240,
+            "sendArrayBytes": 2097152,
+            "ceiling": 11654144,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 4096,
+            "readbackRootBytes": 8133880,
+            "ceiling": 11654144,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionGuardMalformedDigestCumulativeAllocation",
+          "observed": {
+            "quotedHead": false,
+            "digestCount": 160000,
+            "bodyBytes": 800079,
+            "cumulativeAllocatedBytes": 2344,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative early-rejection allocation; native assertion owns its regression bound."
+        },
+        {
+          "kind": "ProjectionGuardMalformedDigestCumulativeAllocation",
+          "observed": {
+            "quotedHead": true,
+            "digestCount": 160000,
+            "bodyBytes": 800081,
+            "cumulativeAllocatedBytes": 2344,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative early-rejection allocation; native assertion owns its regression bound."
+        },
+        {
+          "kind": "ProjectionGuardWideCumulativeAllocation",
+          "observed": {
+            "beforeHeader": false,
+            "unknownProperties": 50000,
+            "bodyBytes": 856694,
+            "cumulativeAllocatedBytes": 2154000,
+            "regressionBound": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardWideCumulativeAllocation",
+          "observed": {
+            "beforeHeader": true,
+            "unknownProperties": 50000,
+            "bodyBytes": 855414,
+            "cumulativeAllocatedBytes": 545616,
+            "regressionBound": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 1,
+            "customProfile": false,
+            "retainedTypedProofBytes": 322688,
+            "proofWorkingByteLimit": 3267584,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 256,
+            "customProfile": false,
+            "retainedTypedProofBytes": 418544,
+            "proofWorkingByteLimit": 3789824,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 4096,
+            "customProfile": false,
+            "retainedTypedProofBytes": 1862384,
+            "proofWorkingByteLimit": 11654144,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 256,
+            "customProfile": true,
+            "retainedTypedProofBytes": 418544,
+            "proofWorkingByteLimit": 3789824,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardActualDepthAllocation",
+          "observed": {
+            "depth": 50000,
+            "bodyBytes": 856735,
+            "allocatedBytes": 122704,
+            "owningAllocatedBytes": 851784,
+            "proofWorkingByteLimit": 3789824
+          },
+          "interpretation": "Measured cumulative allocations, not peak-live/retained proof."
+        },
+        {
+          "kind": "ProjectionGuardDepthAllocation",
+          "observed": {
+            "maxDepth": 1000000,
+            "nestedUnknownDepth": 0,
+            "bodyBytes": 1738,
+            "allocatedBytes": 1032,
+            "regressionBound": 121152
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardDepthAllocation",
+          "observed": {
+            "maxDepth": 1000000,
+            "nestedUnknownDepth": 96,
+            "bodyBytes": 1951,
+            "allocatedBytes": 1096,
+            "regressionBound": 127968
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardReceiptFlood",
+          "observed": {
+            "customProfile": false,
+            "receiptObjects": 100000,
+            "bodyBytes": 300100,
+            "cumulativeAllocatedBytes": 2392,
+            "retainedExceptionBytes": 504,
+            "retainedTypedReceiptGraphBytes": 0,
+            "proofWorkingByteLimit": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Early rejection and retained exception; cumulative allocations do not establish peak live."
+        },
+        {
+          "kind": "ProjectionGuardReceiptFlood",
+          "observed": {
+            "customProfile": true,
+            "receiptObjects": 100000,
+            "bodyBytes": 300112,
+            "cumulativeAllocatedBytes": 2392,
+            "retainedExceptionBytes": 504,
+            "retainedTypedReceiptGraphBytes": 0,
+            "proofWorkingByteLimit": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Early rejection and retained exception; cumulative allocations do not establish peak live."
+        },
+        {
+          "kind": "ProjectionSourceDecodeWorkingRoots",
+          "observed": {
+            "head": 48,
+            "checkpoint": 1,
+            "routes": 2,
+            "mixedClear": false,
+            "actorBodyBytes": 53988,
+            "stateCharacters": 1522,
+            "statePoolBytes": 8192,
+            "actorDecodeRootBytes": 49538800,
+            "stateDecodeRootBytes": 49361328,
+            "providerRootBytes": 53250344,
+            "nativeDecoderBufferBytes": 1602232,
+            "ceiling": 69206016,
+            "coverage": "installed default DataContract serializer actual HTTP/copy arrays plus conservative full decoded range; concrete json.Length*3 pool capacity with UTF16 source and decoded envelope; retained shared prefix in every phase"
+          },
+          "bound": 69206016,
+          "interpretation": "Concrete stated owning managed roots by phase, preserving native coverage limits."
+        },
+        {
+          "kind": "ProjectionSourceDecodeWorkingRoots",
+          "observed": {
+            "head": 48,
+            "checkpoint": 1,
+            "routes": 2,
+            "mixedClear": true,
+            "actorBodyBytes": 1102069,
+            "stateCharacters": 1399006,
+            "statePoolBytes": 8388608,
+            "actorDecodeRootBytes": 52681728,
+            "stateDecodeRootBytes": 61583432,
+            "providerRootBytes": 55345192,
+            "nativeDecoderBufferBytes": 1602232,
+            "ceiling": 69206016,
+            "coverage": "installed default DataContract serializer actual HTTP/copy arrays plus conservative full decoded range; concrete json.Length*3 pool capacity with UTF16 source and decoded envelope; retained shared prefix in every phase"
+          },
+          "bound": 69206016,
+          "interpretation": "Concrete stated owning managed roots by phase, preserving native coverage limits."
+        },
+        {
+          "kind": "ProjectionEventWorkingRoots",
+          "observed": {
+            "head": 48,
+            "checkpoint": 1,
+            "routes": 2,
+            "pageSize": 256,
+            "protectedPayloadBytes": 1048576,
+            "sourcePages": 2,
+            "wireBytes": 65725947,
+            "prefixBytes": 49297552,
+            "providerRootBytes": 53113824,
+            "sourceRootBytes": 49348296,
+            "writerRootBytes": 49302432,
+            "sendArrayBytes": 4444,
+            "ceiling": 69206016,
+            "coverage": "unique managed retained prefix plus actual owning range, provider decrypt/plaintext/MemoryStream arrays and bounded wire writer send array by phase"
+          },
+          "bound": 69206016,
+          "interpretation": "Concrete stated owning managed roots by phase, preserving native coverage limits."
+        }
+      ],
+      "actualRetryWindows": [
+        {
+          "activations": 9,
+          "saturatedAttempt": 8,
+          "separatePerActivationBoundsPassed": true,
+          "firstEightAndFirstNineExactlySumNativeMeasurements": true,
+          "firstEightSourceRanges": 16,
+          "firstNineSourceRanges": 18,
+          "interpretation": "Native controlled ambiguous-proof retry fixture, no extrapolation to lifetime success."
+        }
+      ]
+    },
+    {
+      "gate": "server-release-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.json",
+        "bytes": 5228238,
+        "sha256": "457ec8cf6ed5c3136e5d92b60589b10604723027d9dfa6512fa2eb0abf33e375"
+      },
+      "nativeLog": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.log",
+        "bytes": 729146,
+        "sha256": "6e66f111cddd1b73e6d50a246318f131d43aab393cfb1aa004fafc3c8dc11579"
+      },
+      "observationCounts": {
+        "ProjectionEventWorkingRoots": 1,
+        "ProjectionSourceDecodeWorkingRoots": 2,
+        "ProjectionCost": 50,
+        "ProjectionReplayContext": 1,
+        "ProjectionTransitionCapCost": 6,
+        "SourceMetadataWriterProfile": 3,
+        "ProjectionSchedulerCost": 2,
+        "ProjectionRetryCost": 5,
+        "ProjectionSchedulerMutationCost": 4,
+        "ProjectionActualGuardRetryCosts": 1,
+        "ProjectionProofWorkingRoots": 4,
+        "ProjectionProofReadbackWorkingRoots": 4,
+        "ProjectionGuardMalformedDigestCumulativeAllocation": 2,
+        "ProjectionGuardReceiptRetainedGraph": 4,
+        "ProjectionGuardActualDepthAllocation": 1,
+        "ProjectionGuardWideCumulativeAllocation": 2,
+        "ProjectionGuardReceiptFlood": 2,
+        "ProjectionGuardDepthAllocation": 2
+      },
+      "workingRootAndAllocationRows": [
+        {
+          "kind": "ProjectionEventWorkingRoots",
+          "observed": {
+            "head": 48,
+            "checkpoint": 1,
+            "routes": 2,
+            "pageSize": 256,
+            "protectedPayloadBytes": 1048576,
+            "sourcePages": 2,
+            "wireBytes": 65725947,
+            "prefixBytes": 49297552,
+            "providerRootBytes": 53113824,
+            "sourceRootBytes": 49348296,
+            "writerRootBytes": 49302432,
+            "sendArrayBytes": 4444,
+            "ceiling": 69206016,
+            "coverage": "unique managed retained prefix plus actual owning range, provider decrypt/plaintext/MemoryStream arrays and bounded wire writer send array by phase"
+          },
+          "bound": 69206016,
+          "interpretation": "Concrete stated owning managed roots by phase, preserving native coverage limits."
+        },
+        {
+          "kind": "ProjectionSourceDecodeWorkingRoots",
+          "observed": {
+            "head": 48,
+            "checkpoint": 1,
+            "routes": 2,
+            "mixedClear": false,
+            "actorBodyBytes": 53988,
+            "stateCharacters": 1522,
+            "statePoolBytes": 8192,
+            "actorDecodeRootBytes": 49538800,
+            "stateDecodeRootBytes": 49361328,
+            "providerRootBytes": 53250328,
+            "nativeDecoderBufferBytes": 1602232,
+            "ceiling": 69206016,
+            "coverage": "installed default DataContract serializer actual HTTP/copy arrays plus conservative full decoded range; concrete json.Length*3 pool capacity with UTF16 source and decoded envelope; retained shared prefix in every phase"
+          },
+          "bound": 69206016,
+          "interpretation": "Concrete stated owning managed roots by phase, preserving native coverage limits."
+        },
+        {
+          "kind": "ProjectionSourceDecodeWorkingRoots",
+          "observed": {
+            "head": 48,
+            "checkpoint": 1,
+            "routes": 2,
+            "mixedClear": true,
+            "actorBodyBytes": 1102069,
+            "stateCharacters": 1399006,
+            "statePoolBytes": 8388608,
+            "actorDecodeRootBytes": 52681728,
+            "stateDecodeRootBytes": 61583432,
+            "providerRootBytes": 55345176,
+            "nativeDecoderBufferBytes": 1602232,
+            "ceiling": 69206016,
+            "coverage": "installed default DataContract serializer actual HTTP/copy arrays plus conservative full decoded range; concrete json.Length*3 pool capacity with UTF16 source and decoded envelope; retained shared prefix in every phase"
+          },
+          "bound": 69206016,
+          "interpretation": "Concrete stated owning managed roots by phase, preserving native coverage limits."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 256,
+            "serialized": 556505,
+            "retainedRootBytes": 2031776,
+            "validationRootBytes": 3182320,
+            "serializerRootBytes": 2096440,
+            "transportRootBytes": 3637680,
+            "sendArrayBytes": 1048576,
+            "ceiling": 3789824,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 256,
+            "readbackRootBytes": 3452456,
+            "ceiling": 3789824,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 256,
+            "serialized": 558305,
+            "retainedRootBytes": 2037800,
+            "validationRootBytes": 3348344,
+            "serializerRootBytes": 2102480,
+            "transportRootBytes": 3645504,
+            "sendArrayBytes": 1048576,
+            "ceiling": 3789824,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 256,
+            "readbackRootBytes": 3464440,
+            "ceiling": 3789824,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 3789824,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 4096,
+            "serialized": 1332185,
+            "retainedRootBytes": 4282016,
+            "validationRootBytes": 5432560,
+            "serializerRootBytes": 5372832,
+            "transportRootBytes": 7712176,
+            "sendArrayBytes": 2097152,
+            "ceiling": 11654144,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 26,
+            "receiptLimit": 4096,
+            "readbackRootBytes": 7922216,
+            "ceiling": 11654144,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 4096,
+            "serialized": 1372385,
+            "retainedRootBytes": 4387880,
+            "validationRootBytes": 5698424,
+            "serializerRootBytes": 5478656,
+            "transportRootBytes": 7858240,
+            "sendArrayBytes": 2097152,
+            "ceiling": 11654144,
+            "coverage": "schema2 pending/current/completed proof roots, actual validation set, active serializer and installed Dapr ByteString/gRPC send array by phase; event/provider phases remain separate"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionProofReadbackWorkingRoots",
+          "observed": {
+            "head": 10000,
+            "checkpoint": 0,
+            "idLength": 36,
+            "receiptLimit": 4096,
+            "readbackRootBytes": 8133880,
+            "ceiling": 11654144,
+            "coverage": "retained admission/pending and old completed frame plus separate completed readback/validation set and exact carrier/protobuf ByteString"
+          },
+          "bound": 11654144,
+          "interpretation": "Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim."
+        },
+        {
+          "kind": "ProjectionGuardMalformedDigestCumulativeAllocation",
+          "observed": {
+            "quotedHead": false,
+            "digestCount": 160000,
+            "bodyBytes": 800079,
+            "cumulativeAllocatedBytes": 2016,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative early-rejection allocation; native assertion owns its regression bound."
+        },
+        {
+          "kind": "ProjectionGuardMalformedDigestCumulativeAllocation",
+          "observed": {
+            "quotedHead": true,
+            "digestCount": 160000,
+            "bodyBytes": 800081,
+            "cumulativeAllocatedBytes": 2016,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative early-rejection allocation; native assertion owns its regression bound."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 1,
+            "customProfile": false,
+            "retainedTypedProofBytes": 322688,
+            "proofWorkingByteLimit": 3267584,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 256,
+            "customProfile": false,
+            "retainedTypedProofBytes": 418544,
+            "proofWorkingByteLimit": 3789824,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 4096,
+            "customProfile": false,
+            "retainedTypedProofBytes": 1862384,
+            "proofWorkingByteLimit": 11654144,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardReceiptRetainedGraph",
+          "observed": {
+            "retention": 256,
+            "customProfile": true,
+            "retainedTypedProofBytes": 418544,
+            "proofWorkingByteLimit": 3789824,
+            "cumulativeAllocationsMeasured": false
+          },
+          "interpretation": "Retained typed graph; not cumulative allocation."
+        },
+        {
+          "kind": "ProjectionGuardActualDepthAllocation",
+          "observed": {
+            "depth": 50000,
+            "bodyBytes": 855690,
+            "allocatedBytes": 122704,
+            "owningAllocatedBytes": 865592,
+            "proofWorkingByteLimit": 3789824
+          },
+          "interpretation": "Measured cumulative allocations, not peak-live/retained proof."
+        },
+        {
+          "kind": "ProjectionGuardWideCumulativeAllocation",
+          "observed": {
+            "beforeHeader": false,
+            "unknownProperties": 50000,
+            "bodyBytes": 855943,
+            "cumulativeAllocatedBytes": 2146592,
+            "regressionBound": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardWideCumulativeAllocation",
+          "observed": {
+            "beforeHeader": true,
+            "unknownProperties": 50000,
+            "bodyBytes": 856324,
+            "cumulativeAllocatedBytes": 545216,
+            "regressionBound": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardReceiptFlood",
+          "observed": {
+            "customProfile": false,
+            "receiptObjects": 100000,
+            "bodyBytes": 300100,
+            "cumulativeAllocatedBytes": 2064,
+            "retainedExceptionBytes": 504,
+            "retainedTypedReceiptGraphBytes": 0,
+            "proofWorkingByteLimit": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Early rejection and retained exception; cumulative allocations do not establish peak live."
+        },
+        {
+          "kind": "ProjectionGuardReceiptFlood",
+          "observed": {
+            "customProfile": true,
+            "receiptObjects": 100000,
+            "bodyBytes": 300112,
+            "cumulativeAllocatedBytes": 2064,
+            "retainedExceptionBytes": 504,
+            "retainedTypedReceiptGraphBytes": 0,
+            "proofWorkingByteLimit": 3789824,
+            "peakLiveBytesMeasured": false
+          },
+          "interpretation": "Early rejection and retained exception; cumulative allocations do not establish peak live."
+        },
+        {
+          "kind": "ProjectionGuardDepthAllocation",
+          "observed": {
+            "maxDepth": 1000000,
+            "nestedUnknownDepth": 0,
+            "bodyBytes": 1758,
+            "allocatedBytes": 1032,
+            "regressionBound": 121792
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        },
+        {
+          "kind": "ProjectionGuardDepthAllocation",
+          "observed": {
+            "maxDepth": 1000000,
+            "nestedUnknownDepth": 96,
+            "bodyBytes": 1941,
+            "allocatedBytes": 1096,
+            "regressionBound": 127648
+          },
+          "interpretation": "Cumulative-allocation regression assertion only."
+        }
+      ],
+      "actualRetryWindows": [
+        {
+          "activations": 9,
+          "saturatedAttempt": 8,
+          "separatePerActivationBoundsPassed": true,
+          "firstEightAndFirstNineExactlySumNativeMeasurements": true,
+          "firstEightSourceRanges": 16,
+          "firstNineSourceRanges": 18,
+          "interpretation": "Native controlled ambiguous-proof retry fixture, no extrapolation to lifetime success."
+        }
+      ]
+    }
+  ],
+  "auditCommand": [
+    "python3",
+    "/tmp/story64_parent_working_roots_audit.py"
+  ],
+  "auditScriptSha256": "b7860cfdef17b89ee75b508c6f6cee2e226f3b27481c3e46a4fe985908507a3b",
+  "auditScript": "from pathlib import Path\nimport json,re,hashlib,datetime,collections\nroot=Path.cwd();base=root/'_bmad-output/implementation-artifacts/evidence/story-6-4';out=base/'qualification-20261017-parent'\ndef ident(p):\n b=p.read_bytes();return {'path':p.relative_to(root).as_posix(),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\nindex=json.loads((base/'qualification-20261017-gates.json').read_text());frames=[]\nfor e in index['gates']:\n if e['name'] not in ['server-debug-focused','server-debug-full','server-release-full']:continue\n p=base/e['packet'];d=json.loads(p.read_text());lp=root/d['log']['path'];assert ident(lp)==d['log']\n rows=[];retry=[];counts=collections.Counter()\n for line in lp.read_text(errors='replace').splitlines():\n  m=re.search(r'\\[OUTPUT\\] (\\w+) (\\{.*\\})$',line)\n  if not m:continue\n  try:v=json.loads(m[2])\n  except json.JSONDecodeError:continue\n  kind=m[1];counts[kind]+=1\n  if kind in ['ProjectionProofWorkingRoots','ProjectionProofReadbackWorkingRoots']:\n   ceiling=4*(16384+80*v['head']+512*min(v['head'],v['receiptLimit']));assert v['ceiling']==ceiling\n   keys=['retainedRootBytes','validationRootBytes','serializerRootBytes','transportRootBytes'] if kind=='ProjectionProofWorkingRoots' else ['readbackRootBytes']\n   assert all(v[k]<=ceiling for k in keys)\n   if 'serialized' in v:assert v['serialized']<=min(4194304,ceiling//4)\n   rows.append({'kind':kind,'observed':v,'bound':ceiling,'interpretation':'Separate measured retained phases; no sum of mutually exclusive phases or generic peak-live claim.'})\n  elif kind in ['ProjectionSourceDecodeWorkingRoots','ProjectionEventWorkingRoots']:\n   assert v['ceiling']==69206016\n   keys=['actorDecodeRootBytes','stateDecodeRootBytes','providerRootBytes'] if kind=='ProjectionSourceDecodeWorkingRoots' else ['providerRootBytes','sourceRootBytes','writerRootBytes']\n   assert all(v[k]<=69206016 for k in keys);rows.append({'kind':kind,'observed':v,'bound':69206016,'interpretation':'Concrete stated owning managed roots by phase, preserving native coverage limits.'})\n  elif kind=='ProjectionGuardReceiptRetainedGraph':\n   assert v['retainedTypedProofBytes']<=v['proofWorkingByteLimit'];assert v['cumulativeAllocationsMeasured'] is False\n   rows.append({'kind':kind,'observed':v,'interpretation':'Retained typed graph; not cumulative allocation.'})\n  elif kind=='ProjectionGuardReceiptFlood':\n   assert v['retainedTypedReceiptGraphBytes']==0 and v['retainedExceptionBytes']<=v['proofWorkingByteLimit'];assert v['peakLiveBytesMeasured'] is False\n   rows.append({'kind':kind,'observed':v,'interpretation':'Early rejection and retained exception; cumulative allocations do not establish peak live.'})\n  elif kind in ['ProjectionGuardWideCumulativeAllocation','ProjectionGuardDepthAllocation']:\n   assert v.get('cumulativeAllocatedBytes',v.get('allocatedBytes'))<=v['regressionBound']\n   rows.append({'kind':kind,'observed':v,'interpretation':'Cumulative-allocation regression assertion only.'})\n  elif kind=='ProjectionGuardActualDepthAllocation':\n   assert v['allocatedBytes']<=v['proofWorkingByteLimit'] and v['owningAllocatedBytes']<=v['proofWorkingByteLimit']\n   rows.append({'kind':kind,'observed':v,'interpretation':'Measured cumulative allocations, not peak-live/retained proof.'})\n  elif kind=='ProjectionGuardMalformedDigestCumulativeAllocation':\n   assert v['peakLiveBytesMeasured'] is False;rows.append({'kind':kind,'observed':v,'interpretation':'Cumulative early-rejection allocation; native assertion owns its regression bound.'})\n  elif kind=='ProjectionActualGuardRetryCosts':\n   assert v['activations']==9 and v['saturatedAttempt']==8 and len(v['measurements'])==9\n   ms=v['measurements'];assert set(ms[0])==set(v['firstEight'])==set(v['firstNine'])\n   assert all(sum(x[k] for x in ms[:8])==v['firstEight'][k] and sum(x[k] for x in ms)==v['firstNine'][k] for k in ms[0])\n   n=v['head']-v['checkpoint'];q=(n+v['pageSize']-1)//v['pageSize']\n   for cost in ms:\n    assert cost['SourceInspections']<=3 and cost['SourceRanges']<=3*q and cost['SourceReturnedEvents']<=3*n\n    assert cost['Activations']==1 and cost['RetryActivations']==1\n    assert all(cost[k]==0 for k in ['HandlerAttempts','BatchExecutions','ModelMutations'])\n   retry.append({'activations':9,'saturatedAttempt':8,'separatePerActivationBoundsPassed':True,'firstEightAndFirstNineExactlySumNativeMeasurements':True,'firstEightSourceRanges':v['firstEight']['SourceRanges'],'firstNineSourceRanges':v['firstNine']['SourceRanges'],'interpretation':'Native controlled ambiguous-proof retry fixture, no extrapolation to lifetime success.'})\n frames.append({'gate':d['name'],'packet':ident(p),'nativeLog':ident(lp),'observationCounts':dict(counts),'workingRootAndAllocationRows':rows,'actualRetryWindows':retry})\nresult={'auditedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'scope':'Independent parent extraction from completed native logs only; assertions distinguish retained roots, cumulative allocation and N8/N9 accounting. Native cohorts retain their own outcome.','frames':frames,'auditCommand':['python3','/tmp/story64_parent_working_roots_audit.py'],'auditScriptSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'auditScript':Path(__file__).read_text()}\n(out/'working-roots-and-retry-audit.json').write_text(json.dumps(result,indent=2)+'\\n')\nprint(json.dumps([{'gate':f['gate'],'memoryRows':len(f['workingRootAndAllocationRows']),'actualRetryWindows':len(f['actualRetryWindows'])} for f in frames],indent=2))\n"
+}

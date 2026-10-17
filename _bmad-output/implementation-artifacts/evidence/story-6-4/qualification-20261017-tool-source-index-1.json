@@ -1,0 +1,65 @@
+{
+  "capturedAt": "2026-10-17T07:21:59.232764+00:00",
+  "sources": [
+    {
+      "role": "first focused Live runner, reconstructed by reversing only the later guard insertion; exact executed packet hash verified",
+      "sha256": "fb2ab11c86f68a280c89a4194142180c4fcf7e91a0f65d2e2ca0088e88cf12d1",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/fb2ab11c86f68a280c89a4194142180c4fcf7e91a0f65d2e2ca0088e88cf12d1.py",
+      "bytes": 7194
+    },
+    {
+      "role": "/tmp/story64-qualification-capture.py",
+      "sha256": "c925cefb220a34878ff12767e3e57a278f42062c0912d23bd6a76f06f4ab072d",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/c925cefb220a34878ff12767e3e57a278f42062c0912d23bd6a76f06f4ab072d.py",
+      "bytes": 7518
+    },
+    {
+      "role": "/tmp/story64-qualification-live.py",
+      "sha256": "d413097013c3d5e66a78833ce5ad19b2b6e4f5d990b365945458a2923c2a8b45",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/d413097013c3d5e66a78833ce5ad19b2b6e4f5d990b365945458a2923c2a8b45.py",
+      "bytes": 9515
+    },
+    {
+      "role": "/tmp/story64-qualification-queue.py",
+      "sha256": "febb4a7f80ff1152021cfd470871027c8965ee4da9aa9887a7d942abbb27fedb",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/febb4a7f80ff1152021cfd470871027c8965ee4da9aa9887a7d942abbb27fedb.py",
+      "bytes": 11238
+    },
+    {
+      "role": "/tmp/story64-qualification-watchdog.py",
+      "sha256": "d9a2c940a14e45954162a59f9050d1e86873c0af42a2d7d8cceb014cefa8a9bb",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/d9a2c940a14e45954162a59f9050d1e86873c0af42a2d7d8cceb014cefa8a9bb.py",
+      "bytes": 4984
+    },
+    {
+      "role": "/tmp/story64-qualification-archive-assets.py",
+      "sha256": "2fe698dde01ecde584929d528eb71ed92e070cdb5a50317edeecf95a8eb05d7f",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/2fe698dde01ecde584929d528eb71ed92e070cdb5a50317edeecf95a8eb05d7f.py",
+      "bytes": 1576
+    },
+    {
+      "role": "/tmp/story64-qualification-audit-server.py",
+      "sha256": "2d0130534ff53f9928886266582ef41b5a11e8666758739bc310490f20f61a43",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/2d0130534ff53f9928886266582ef41b5a11e8666758739bc310490f20f61a43.py",
+      "bytes": 5213
+    },
+    {
+      "role": "/tmp/story64-qualification-audit-live.py",
+      "sha256": "990a4843c33ea882e17a3360f7ff6312ada26b3c7d6a7b20b309e44000e0f0b1",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/990a4843c33ea882e17a3360f7ff6312ada26b3c7d6a7b20b309e44000e0f0b1.py",
+      "bytes": 3814
+    },
+    {
+      "role": "/tmp/story64-qualification-bind-live.py",
+      "sha256": "4dd3ecba38bb84121a26a1ba0316f17744c6c65ffdfd720ef336bcda73cee1d1",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/4dd3ecba38bb84121a26a1ba0316f17744c6c65ffdfd720ef336bcda73cee1d1.py",
+      "bytes": 4038
+    },
+    {
+      "role": "/tmp/story64-qualification-pause-boundary.py",
+      "sha256": "b180082cfa75b9c4dad6c9fcbfeba6d9153ecb272ac74358afe279b89f6d0bd9",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/b180082cfa75b9c4dad6c9fcbfeba6d9153ecb272ac74358afe279b89f6d0bd9.py",
+      "bytes": 827
+    }
+  ]
+}

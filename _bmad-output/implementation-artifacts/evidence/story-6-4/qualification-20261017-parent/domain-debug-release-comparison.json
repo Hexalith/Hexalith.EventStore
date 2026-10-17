@@ -1,0 +1,80 @@
+{
+  "capturedUtc": "2026-10-17T07:49:59.600380+00:00",
+  "cohorts": [
+    {
+      "gate": "domain-debug-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.json",
+        "bytes": 5199339,
+        "sha256": "38a5cc2bc805a5d8a44019f3aabb06c71edf45e617c22d21ea46ed76c8e88bd3"
+      },
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "head": "77d9af18a54d92506e310fe5a45021a395e66f60",
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 977,
+        "seconds": 122.15
+      },
+      "method": "AdapterSlotExhaustionDoesNotBlockAuditedDisposition",
+      "result": "Fail",
+      "failure": "Hexalith.EventStore.DomainService.ProcessReadAdmissionException : Process read worker admission is exhausted.",
+      "sourceInputsChanged": 0,
+      "sourceInputHashes": {
+        "src/Hexalith.EventStore.DomainService/ProcessReadDeadline.cs": "51434307ddcc0241e3f19e8e3194947910a487a6f2df2885b5a1658cfd7655fb",
+        "tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs": "6d943fdbe3b7f5a82bbf16ef0369f25bcf88be40228f91b44342a00b7b7bd5c3"
+      }
+    },
+    {
+      "gate": "domainservice-release-full",
+      "packet": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.json",
+        "bytes": 5226023,
+        "sha256": "0686d00061e64904f08f1631cb85447b74bae5c17d9bd5f21262f92adcb2beb2"
+      },
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "head": "77d9af18a54d92506e310fe5a45021a395e66f60",
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 978,
+        "seconds": 133.588
+      },
+      "method": "AdapterSlotExhaustionDoesNotBlockAuditedDisposition",
+      "result": "Pass",
+      "failure": null,
+      "sourceInputsChanged": 0,
+      "sourceInputHashes": {
+        "src/Hexalith.EventStore.DomainService/ProcessReadDeadline.cs": "51434307ddcc0241e3f19e8e3194947910a487a6f2df2885b5a1658cfd7655fb",
+        "tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs": "6d943fdbe3b7f5a82bbf16ef0369f25bcf88be40228f91b44342a00b7b7bd5c3"
+      }
+    }
+  ],
+  "sameHelperAndFixtureSourceHashes": true,
+  "interpretation": "Release passes and Debug fails in their distinct native runtime/configuration frames. This does not erase the Debug failure, prove the cause of admission exhaustion, prove Debug body assertions all passed, or authorize an external process-feature repair/retry.",
+  "owningDebugBlocker": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/unrelated-domain-debug-blocker.json",
+    "bytes": 2746,
+    "sha256": "24965dbf91df1056a7c0dc10cd81789dcc7b9e4f864655b2d6ff6f5855bae5f2"
+  }
+}

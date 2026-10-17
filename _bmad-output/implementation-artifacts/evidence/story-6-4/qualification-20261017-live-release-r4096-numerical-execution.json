@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-17T08:25:53.036939+00:00",
+  "command": [
+    "python3",
+    "/tmp/story64-qualification-audit-live-observed.py",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096-vectors.json",
+    "4096"
+  ],
+  "exitCode": 0,
+  "helperSha256": "92dd68cfa70bd381915b08d7be30bfa7a7a329615627c6efece0250fa0882f49",
+  "resultSha256": "8a525d371e30c856e91424c3ffed948045c7953cfbbbe89f460cf9907dbe6887"
+}

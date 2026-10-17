@@ -1,0 +1,20 @@
+{
+  "test": {
+    "id": "0f415ad3-629d-467d-be18-fcd73e5d948d",
+    "name": "Hexalith.EventStore.DomainService.Tests.Processes.ProcessReadDeadlineTests.AdapterSlotExhaustionDoesNotBlockAuditedDisposition",
+    "result": "Fail",
+    "time": "0.16",
+    "time-rtf": "00:00:00.1600000",
+    "start-rtf": "2026-10-17T07:01:40.4145170+00:00",
+    "finish-rtf": "2026-10-17T07:01:40.5781248+00:00",
+    "type": "Hexalith.EventStore.DomainService.Tests.Processes.ProcessReadDeadlineTests",
+    "method": "AdapterSlotExhaustionDoesNotBlockAuditedDisposition",
+    "source-file": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs",
+    "source-line": "145"
+  },
+  "failureType": {
+    "exception-type": "Hexalith.EventStore.DomainService.ProcessReadAdmissionException"
+  },
+  "message": "Hexalith.EventStore.DomainService.ProcessReadAdmissionException : Process read worker admission is exhausted.",
+  "stack": "   at Hexalith.EventStore.DomainService.ProcessReadDeadline.RunAsync[T](SemaphoreSlim slots, Func`2 operation, TimeSpan timeout, CancellationToken cancellationToken, Action completed) in /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/ProcessReadDeadline.cs:line 34\n   at Hexalith.EventStore.DomainService.ProcessReadDeadline.RunAsync[T](Func`2 operation, TimeSpan timeout, CancellationToken cancellationToken) in /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.DomainService/ProcessReadDeadline.cs:line 12\n   at Hexalith.EventStore.DomainService.Tests.Processes.ProcessReadDeadlineTests.AdapterSlotExhaustionDoesNotBlockAuditedDisposition() in /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.DomainService.Tests/Processes/ProcessReadDeadlineTests.cs:line 178\n--- End of stack trace from previous location ---"
+}

@@ -1,0 +1,328 @@
+{
+  "status": "pass",
+  "scope": "Independent parent check of the completed first focused frame only; no whole-pass acceptance.",
+  "packet": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-focused.json",
+    "sha256": "229bab2787caa99d4bce29c30a98b43832746f0376ef1b9663d76d73773365c3"
+  },
+  "nativeCases": 642,
+  "passed": 642,
+  "failed": 0,
+  "skipped": 0,
+  "producer": "server-debug-build",
+  "actualHead": "77d9af18a54d92506e310fe5a45021a395e66f60",
+  "sourceInputs": 9643,
+  "assets": 184,
+  "runtime": 5180,
+  "allCapturedInputsAndRuntimeStableDuringExecution": true,
+  "producerRuntimeBindingExact": true,
+  "numericChecks": [
+    {
+      "mode": "tail",
+      "head": 10000,
+      "completed": 9999,
+      "pageSize": 1,
+      "routes": 3,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 10000,
+      "completed": 9999,
+      "pageSize": 256,
+      "routes": 3,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 1,
+      "pageSize": 1,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 1,
+      "pageSize": 1,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 1,
+      "pageSize": 16,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 1,
+      "pageSize": 16,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 1,
+      "pageSize": 256,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 1,
+      "pageSize": 256,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 256,
+      "pageSize": 1,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 256,
+      "pageSize": 1,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 256,
+      "pageSize": 16,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 256,
+      "pageSize": 16,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 256,
+      "pageSize": 256,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 256,
+      "pageSize": 256,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 257,
+      "pageSize": 1,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 257,
+      "pageSize": 1,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 257,
+      "pageSize": 16,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 257,
+      "pageSize": 16,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 257,
+      "pageSize": 256,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 257,
+      "pageSize": 256,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 9999,
+      "pageSize": 1,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 9999,
+      "pageSize": 1,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 9999,
+      "pageSize": 16,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 9999,
+      "pageSize": 16,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 9999,
+      "pageSize": 256,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 9999,
+      "pageSize": 256,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 10000,
+      "pageSize": 1,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 10000,
+      "pageSize": 1,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 10000,
+      "pageSize": 16,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 10000,
+      "pageSize": 16,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 10000,
+      "pageSize": 256,
+      "receiptLimit": 256,
+      "result": "pass"
+    },
+    {
+      "mode": "current",
+      "head": 10000,
+      "pageSize": 256,
+      "receiptLimit": 4096,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 10000,
+      "completed": 9999,
+      "pageSize": 1,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 10000,
+      "completed": 9999,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 9771,
+      "completed": 9000,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 9771,
+      "completed": 9000,
+      "pageSize": 1,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 257,
+      "completed": 1,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 258,
+      "completed": 1,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 513,
+      "completed": 1,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "tail",
+      "head": 514,
+      "completed": 1,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "immediate_tail",
+      "head": 9771,
+      "completed": 9000,
+      "pageSize": 1,
+      "routes": 1,
+      "result": "pass"
+    },
+    {
+      "mode": "worker_tail",
+      "head": 9771,
+      "completed": 9000,
+      "pageSize": 256,
+      "routes": 1,
+      "result": "pass"
+    }
+  ],
+  "otherModes": "Existing owning assertions remain authoritative; no unimplemented inference about byte-limited, rejection, memory or fallback modes."
+}

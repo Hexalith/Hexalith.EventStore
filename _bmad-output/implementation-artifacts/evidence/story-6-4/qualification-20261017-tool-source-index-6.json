@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-10-17T07:42:55.160670+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-bind-live-v2.py",
+      "sha256": "3bf4778c34ab6d360b2b65377ba17fe9c62e0d3567bd9cb128c84ec360e3acb9",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/3bf4778c34ab6d360b2b65377ba17fe9c62e0d3567bd9cb128c84ec360e3acb9.py"
+    }
+  ]
+}

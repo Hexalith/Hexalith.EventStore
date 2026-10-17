@@ -1,0 +1,143 @@
+{
+  "capturedAt": "2026-10-17T07:48:19.959921+00:00",
+  "scope": "Read-only version/identity probes during the finite pass; no restore/build/test/host launch or shared setting change. The installed OQ8 runtime is separately verified by each native OQ8 evidence receipt.",
+  "commands": [
+    {
+      "command": [
+        "dotnet",
+        "--version"
+      ],
+      "startedAt": "2026-10-17T07:48:17.237153+00:00",
+      "endedAt": "2026-10-17T07:48:17.373627+00:00",
+      "exitCode": 0,
+      "output": "10.0.401\n"
+    },
+    {
+      "command": [
+        "dotnet",
+        "--info"
+      ],
+      "startedAt": "2026-10-17T07:48:17.373767+00:00",
+      "endedAt": "2026-10-17T07:48:17.601863+00:00",
+      "exitCode": 0,
+      "output": ".NET SDK:\n Version:           10.0.401\n Commit:            e34a38d2ae\n Workload version:  10.0.400-manifests.63b36e85\n MSBuild version:   18.9.11+e34a38d2a\n\nRuntime Environment:\n OS Name:     ubuntu\n OS Version:  26.04\n OS Platform: Linux\n RID:         linux-x64\n Base Path:   /home/administrator/.dotnet/sdk/10.0.401/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.12\n  Architecture: x64\n  Commit:       95017c711e\n\n.NET SDKs installed:\n  10.0.302 [/home/administrator/.dotnet/sdk]\n  10.0.400 [/home/administrator/.dotnet/sdk]\n  10.0.401 [/home/administrator/.dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/administrator/.cache/dotnet_bundle_extract]\n  DOTNET_ROOT                              [/home/administrator/.dotnet]\n\nglobal.json file:\n  /home/administrator/projects/hexalith/eventstore/global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n"
+    },
+    {
+      "command": [
+        "dotnet",
+        "--list-runtimes"
+      ],
+      "startedAt": "2026-10-17T07:48:17.601953+00:00",
+      "endedAt": "2026-10-17T07:48:17.603741+00:00",
+      "exitCode": 0,
+      "output": "Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.AspNetCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.AspNetCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\nMicrosoft.NETCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\nMicrosoft.NETCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n"
+    },
+    {
+      "command": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+        "--version"
+      ],
+      "startedAt": "2026-10-17T07:48:17.603809+00:00",
+      "endedAt": "2026-10-17T07:48:17.792302+00:00",
+      "exitCode": 0,
+      "output": "1.18.2\n",
+      "binarySha256": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6"
+    },
+    {
+      "command": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+        "--version"
+      ],
+      "startedAt": "2026-10-17T07:48:18.347254+00:00",
+      "endedAt": "2026-10-17T07:48:18.418103+00:00",
+      "exitCode": 2,
+      "output": "unknown flag: --version\nUsage of placement:\n      --disseminate-coalesce-window duration   if >0, after a dissemination round completes, defer the next round by this window so additional host \n                                               registers/disconnects arriving inside the window collapse into a single round. \n                                               Keeps cold-start of dissemination responsive (the first event fires immediately) while reducing per-event \n                                               drain+halt overhead during bulk scale events. Default 0 disables coalescing. Recommended 100-250ms for \n                                               clusters with frequent rapid churn (eg. >50 replica scale-ups).\n      --disseminate-timeout duration           sets the period of time in which a dissemination is considered failed if not completed. \n                                               Any daprds which have not responded within this time will be considered non-responsive and kicked. \n                                               Higher values will increase the grace period to complete dissemination in case of network issues, \n                                               but reduce the chance of skipping daprds which are slow to respond. (default 8s)\n      --enable-metrics                         Enable prometheus metric (default true)\n      --healthz-listen-address string          The listening address for the healthz server\n      --healthz-port int                       sets the HTTP port for the healthz server (default 8080)\n      --id string                              Placement server ID (default \"dapr-placement-0\")\n      --initial-cluster strings                raft cluster peers (default [dapr-placement-0=127.0.0.1:8201])\n      --inmem-store-enabled                    Enable in-memory log and snapshot store unless --raft-logstore-path is set (default true)\n      --keepalive-time duration                sets the interval at which the placement service sends keepalive pings to daprd \n                                               on the gRPC stream to check if the connection is still alive. \n                                               Lower values will lead to shorter actor rebalancing time in case of pod loss/restart, \n                                               but higher network traffic during normal operation. \n                                               Accepts values between 1 and 10 seconds (default 2s)\n      --keepalive-timeout duration             sets the timeout period for daprd to respond to the placement service's keepalive pings \n                                               before the placement service closes the connection. \n                                               Lower values will lead to shorter actor rebalancing time in case of pod loss/restart, \n                                               but higher network traffic during normal operation. \n                                               Accepts values between 1 and 10 seconds (default 3s)\n      --listen-address string                  The listening address for the placement service\n      --log-as-json                            print log as JSON (default false)\n      --log-file string                        Path to a file where logs will be written\n      --log-level string                       Options are debug, info, warn, error, or fatal (default info) (default \"info\")\n      --metadata-enabled                       Expose the placement tables on the healthz server\n      --metrics-listen-address string          The address for the metrics server (default \"0.0.0.0\")\n      --metrics-port string                    The port for the metrics server (default \"9090\")\n      --mode string                            Runtime mode for Placement (default \"standalone\")\n      --port int                               sets the gRPC port for the placement service (default 50005)\n      --raft-logstore-path string              raft log store path.\n      --replicationFactor int                  sets the replication factor for actor distribution on virtual nodes (default 100)\n      --sentry-address string                  Address of the Sentry service (default \"dapr-sentry.default.svc:443\")\n      --tls-enabled                            Should TLS be enabled for the placement gRPC server\n      --trust-anchors-file string              Filepath to the trust anchors for the Dapr control plane (default \"/var/run/secrets/dapr.io/tls/ca.crt\")\n      --trust-domain string                    Trust domain for the Dapr control plane (default \"localhost\")\nunknown flag: --version\n",
+      "binarySha256": "40dc8f8b525fc06aa914f930c87c52db33b02523ad1e2c0bcef2f4e1b5351d77"
+    },
+    {
+      "command": [
+        "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+        "--version"
+      ],
+      "startedAt": "2026-10-17T07:48:18.527446+00:00",
+      "endedAt": "2026-10-17T07:48:18.617919+00:00",
+      "exitCode": 2,
+      "output": "unknown flag: --version\nUsage of scheduler:\n      --enable-metrics                                                Enable prometheus metric (default true)\n      --etcd-backend-batch-interval string                            Maximum time before committing the backend transaction. (default \"100ms\")\n      --etcd-backend-batch-limit int                                  Maximum operations before committing the backend transaction. (default 10000)\n      --etcd-client-endpoints strings                                 Comma-separated list of etcd client endpoints to connect to. Only used when --etcd-embed is false.\n      --etcd-client-listen-address string                             Listen address for etcd client communication (default \"localhost\")\n      --etcd-client-password string                                   Password for etcd client authentication. Only used when --etcd-embed is false.\n      --etcd-client-port uint                                         Port for etcd client communication (default 2379)\n      --etcd-client-username string                                   Username for etcd client authentication. Only used when --etcd-embed is false.\n      --etcd-compaction-mode string                                   Compaction mode for etcd. Can be 'periodic' or 'revision' (default \"revision\")\n      --etcd-compaction-retention string                              Compaction retention for etcd. Can express time or number of revisions, depending on the value of 'etcd-compaction-mode' (default \"1000000\")\n      --etcd-data-dir string                                          Directory to store scheduler etcd data (default \"./data\")\n      --etcd-embed                                                    When enabled, the Etcd database will be embedded in the scheduler server. If false, the scheduler will connect to an external Etcd cluster using the --etcd-client-endpoints flag. (default true)\n      --etcd-experimental-bootstrap-defrag-threshold-megabytes uint   Minimum number of megabytes needed to be freed for etcd to consider running defrag during bootstrap. Needs to be set to non-zero value to take effect. (default 100)\n      --etcd-initial-cluster strings                                  Initial etcd cluster peers (default [dapr-scheduler-server-0=http://localhost:2380])\n      --etcd-initial-election-tick-advance                            Whether to fast-forward initial election ticks on boot for faster election. When it is true, then local member fast-forwards election ticks to speed up \u201cinitial\u201d leader election trigger. This benefits the case of larger election ticks. Disabling this would slow down initial bootstrap process for cross datacenter deployments. Make your own tradeoffs by configuring this flag at the cost of slow initial bootstrap.\n      --etcd-max-snapshots uint                                       Maximum number of snapshot files to retain (0 is unlimited). (default 10)\n      --etcd-max-txn-ops uint                                         Maximum number of operations permitted in a single etcd transaction. Workflow fan-out can batch many puts/deletes into one txn, so this is raised well above etcd's default of 128. (default 10000)\n      --etcd-max-wals uint                                            Maximum number of write-ahead logs to retain (0 is unlimited). (default 10)\n      --etcd-metrics string                                           Level of detail for exported metrics, specify \u2019extensive\u2019 to include histogram metrics. (default \"basic\")\n      --etcd-snapshot-count uint                                      Number of committed transactions to trigger a snapshot to disk. (default 100000)\n      --etcd-space-quota string                                       Space quota for etcd (default \"9.2E\")\n      --healthz-listen-address string                                 The listening address for the healthz server\n      --healthz-port int                                              The port for the healthz server to listen on (default 8080)\n      --id string                                                     Scheduler server ID (default \"dapr-scheduler-server-0\")\n      --listen-address string                                         The address for the Scheduler to listen on\n      --log-as-json                                                   print log as JSON (default false)\n      --log-file string                                               Path to a file where logs will be written\n      --log-level string                                              Options are debug, info, warn, error, or fatal (default info) (default \"info\")\n      --metrics-listen-address string                                 The address for the metrics server (default \"0.0.0.0\")\n      --metrics-port string                                           The port for the metrics server (default \"9090\")\n      --mode string                                                   Runtime mode for Dapr Scheduler (default \"standalone\")\n      --override-broadcast-host-port string                           Override the address (host:port) which is broadcast by this scheduler host that daprd instances will use to connect to this scheduler. This option should only be set by the CLI when in standalone mode, or in exotic environments whereby the routable scheduler address (host:port) is different from its own understood routable address, i.e. in a layered or natted network.\n      --port int                                                      The port for the scheduler server to listen on (default 50006)\n      --sentry-address string                                         Address of the Sentry service (default \"dapr-sentry.default.svc:443\")\n      --tls-enabled                                                   Should TLS be enabled for the scheduler gRPC server\n      --trust-anchors-file string                                     Filepath to the trust anchors for the Dapr control plane (default \"/var/run/secrets/dapr.io/tls/ca.crt\")\n      --trust-domain string                                           Trust domain for the Dapr control plane (default \"localhost\")\n      --workers uint32                                                Workers is the number of workers that handle job events. The higher the number the more go routines will be spawned, each working over a partition of the total job space. The higher the number, the higher the number of jobs which can be concurrently delivered to runtimes. Increasing this number increases the number of go routines for this instance. This number should be tuned to the bottleneck of job execution, i.e., CPU, I/O, memory, etc. (default 2048)\nunknown flag: --version\n",
+      "binarySha256": "da84c39646cce5a30f076e9d283e67064ae6f62677f02a78014da14eda02e56a"
+    },
+    {
+      "command": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--version"
+      ],
+      "startedAt": "2026-10-17T07:48:18.746605+00:00",
+      "endedAt": "2026-10-17T07:48:18.812008+00:00",
+      "exitCode": 0,
+      "output": "1.18.7\n",
+      "binarySha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "ebb9e7a80207c463dc2b67f472ddc75fcd92586cc9af2d494090e6f199300f48",
+        "redis-server",
+        "--version"
+      ],
+      "startedAt": "2026-10-17T07:48:19.687840+00:00",
+      "endedAt": "2026-10-17T07:48:19.805357+00:00",
+      "exitCode": 0,
+      "output": "Redis server v=6.2.21 sha=00000000:0 malloc=jemalloc-5.1.0 bits=64 build=bfa2c172d6556ada\n"
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+        "--format",
+        "{{json .RepoDigests}}"
+      ],
+      "startedAt": "2026-10-17T07:48:19.805469+00:00",
+      "endedAt": "2026-10-17T07:48:19.890027+00:00",
+      "exitCode": 0,
+      "output": "[\"redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\"]\n"
+    },
+    {
+      "command": [
+        "docker",
+        "ps",
+        "--format",
+        "{{.ID}} {{.Names}} {{.Image}}"
+      ],
+      "startedAt": "2026-10-17T07:48:19.890134+00:00",
+      "endedAt": "2026-10-17T07:48:19.959723+00:00",
+      "exitCode": 0,
+      "output": "ebb9e7a80207 story64-qualification-20261017-ce85c757 c35b83ce044b\n0719fe8c59bd dapr_placement daprio/dapr:1.18.7\n8a7dea8bcfe1 dapr_scheduler daprio/dapr:1.18.7\n8d0788f8322f dapr_redis redis:6\ncb7c12622c18 dapr_zipkin openzipkin/zipkin\n"
+    }
+  ],
+  "ownedRedis": {
+    "name": "story64-qualification-20261017-ce85c757",
+    "image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+    "port": "54919",
+    "versionFromSetup": "Redis server v=6.2.21 sha=00000000:0 malloc=jemalloc-5.1.0 bits=64 build=bfa2c172d6556ada",
+    "settings": {
+      "appendonly": [
+        "no"
+      ],
+      "save": [
+        "3600 1 300 100 60 10000"
+      ],
+      "maxmemory": [
+        "0"
+      ],
+      "maxmemory-policy": [
+        "noeviction"
+      ]
+    }
+  },
+  "oq8TrackedComponentSha256": {
+    "deploy/dapr/statestore-postgresql.yaml": "e8024498786765a32b0ea299778248ade35c855f77ede16ee4775162a971d0eb",
+    "deploy/dapr/resiliency.yaml": "115bdb0d3d330c69920692a80654066937e6b2dd3bd18806c0b276e1de011645"
+  }
+}

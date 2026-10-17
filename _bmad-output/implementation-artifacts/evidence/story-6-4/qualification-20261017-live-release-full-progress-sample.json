@@ -1,0 +1,89 @@
+{
+  "scope": "Read-only5s CPU/state/log progress sample during quiet native work; not a diagnostic test or a hang/root-cause proof. Bounded lane deadline remains controlling.",
+  "samples": [
+    {
+      "at": "2026-10-17T08:01:48.811964+00:00",
+      "logBytes": 118824,
+      "processes": [
+        {
+          "pid": 84610,
+          "startTicks": "8741203",
+          "executable": "placement",
+          "state": "S",
+          "utime": 275,
+          "stime": 172,
+          "threads": 14
+        },
+        {
+          "pid": 84611,
+          "startTicks": "8741203",
+          "executable": "scheduler",
+          "state": "S",
+          "utime": 130,
+          "stime": 76,
+          "threads": 16
+        },
+        {
+          "pid": 84695,
+          "startTicks": "8741218",
+          "executable": "dotnet",
+          "state": "S",
+          "utime": 14036,
+          "stime": 7848,
+          "threads": 23
+        },
+        {
+          "pid": 94291,
+          "startTicks": "8745534",
+          "executable": "daprd",
+          "state": "S",
+          "utime": 8072,
+          "stime": 7668,
+          "threads": 19
+        }
+      ]
+    },
+    {
+      "at": "2026-10-17T08:01:53.812592+00:00",
+      "logBytes": 118824,
+      "processes": [
+        {
+          "pid": 84610,
+          "startTicks": "8741203",
+          "executable": "placement",
+          "state": "S",
+          "utime": 281,
+          "stime": 173,
+          "threads": 14
+        },
+        {
+          "pid": 84611,
+          "startTicks": "8741203",
+          "executable": "scheduler",
+          "state": "S",
+          "utime": 132,
+          "stime": 77,
+          "threads": 16
+        },
+        {
+          "pid": 84695,
+          "startTicks": "8741218",
+          "executable": "dotnet",
+          "state": "S",
+          "utime": 14268,
+          "stime": 7972,
+          "threads": 22
+        },
+        {
+          "pid": 94291,
+          "startTicks": "8745534",
+          "executable": "daprd",
+          "state": "S",
+          "utime": 8211,
+          "stime": 7800,
+          "threads": 19
+        }
+      ]
+    }
+  ]
+}

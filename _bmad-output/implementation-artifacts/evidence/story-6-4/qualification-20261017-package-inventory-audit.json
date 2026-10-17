@@ -1,0 +1,9 @@
+{
+  "inventorySha256": "75e815c4a2dbdb2ee8823dcae040f0990f81c76ee340d28a164debf63783f8c3",
+  "exactManifestPackages": 14,
+  "effectiveVersion": "999.0.0-ci-test",
+  "internalExactPins": 22,
+  "embeddedDllCount": 32,
+  "allArchiveHashesIntact": true,
+  "sourcePolicyOrDependencyDeclarationChange": false
+}

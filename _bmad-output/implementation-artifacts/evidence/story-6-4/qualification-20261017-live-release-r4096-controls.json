@@ -1,0 +1,153 @@
+{
+  "work": "/tmp/story64-qualification-controls-b74940qh",
+  "commands": [
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement",
+      "--id",
+      "story64-cont10-placement",
+      "--port",
+      "57879",
+      "--listen-address",
+      "127.0.0.1",
+      "--healthz-port",
+      "46255",
+      "--metrics-port",
+      "46015",
+      "--initial-cluster",
+      "story64-cont10-placement=127.0.0.1:35285"
+    ],
+    [
+      "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler",
+      "--id",
+      "story64-cont10-scheduler",
+      "--port",
+      "41233",
+      "--listen-address",
+      "127.0.0.1",
+      "--healthz-port",
+      "48493",
+      "--metrics-port",
+      "43853",
+      "--etcd-client-port",
+      "50115",
+      "--etcd-initial-cluster",
+      "story64-cont10-scheduler=http://127.0.0.1:47887",
+      "--etcd-data-dir",
+      "/tmp/story64-qualification-controls-b74940qh/etcd"
+    ]
+  ],
+  "testCommand": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-method",
+    "*NamedProjectionDispatchLiveSidecarTests.SourceGuard_CurrentMatrixUsesExactlyElevenMetadataReadsAndPreservesEveryOwningSurface",
+    "-showLiveOutput",
+    "-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.xml",
+    "-noColor"
+  ],
+  "placementPort": 57879,
+  "schedulerPort": 41233,
+  "testExitCode": 0,
+  "environment": {
+    "EVENTSTORE_TEST_DAPRD_PATH": "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd",
+    "EVENTSTORE_TEST_PLACEMENT_PORT": "57879",
+    "EVENTSTORE_TEST_SCHEDULER_PORT": "41233",
+    "EVENTSTORE_TEST_DELIVERY_RECEIPT_LIMIT": "4096",
+    "EVENTSTORE_TEST_REDIS_PORT": "54919"
+  },
+  "assets": [
+    {
+      "assembly": "Hexalith.EventStore.Admin.Abstractions.dll",
+      "bytes": 233984,
+      "sha256": "8b02fbd16b45f9f1c33726f2771f871af819b9cd6570ae89f6086131db113be5"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Client.dll",
+      "bytes": 921088,
+      "sha256": "1085437f9167e321f3fc3d76d0851449d8932948ab3b5a6af0749f211c0b2db7"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Contracts.dll",
+      "bytes": 675840,
+      "sha256": "02260539f95f9828c0eb88cae1edcadf767c86067920318481acf887324645f3"
+    },
+    {
+      "assembly": "Hexalith.EventStore.DomainService.dll",
+      "bytes": 995840,
+      "sha256": "7a1f3a3029adf7e59cbf8c7145996547935807040643dc3412fe82a82999bd56"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Gateway.dll",
+      "bytes": 876544,
+      "sha256": "fad79b51ae228856502ad57544916cd1001f5c98d5fefedcdfe65756d5a67380"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Sample.Contracts.dll",
+      "bytes": 11264,
+      "sha256": "6a2be829882419dc36aaecca5208055cdb0f5fbb82bc8353aea2a0e17fbe4480"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Sample.dll",
+      "bytes": 22528,
+      "sha256": "d44dd4d0453888fd17d76bbc4e8888b6de7df75c3e061e215374f8cd598e67fc"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "bytes": 960512,
+      "sha256": "edd1672caec6df0dc021e9fe62a541fadc62e47623332c819da848ddcd062661"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Server.dll",
+      "bytes": 2916864,
+      "sha256": "9369d2405d182cab0bca9587ffe9192726491a8af447dbf0f46c23eaa8e0ecf7"
+    },
+    {
+      "assembly": "Hexalith.EventStore.ServiceDefaults.dll",
+      "bytes": 115712,
+      "sha256": "a220328f266e30d09bc6fb88d4653f385772bccddf1afc7965f090c69abf8699"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Testing.Integration.dll",
+      "bytes": 142336,
+      "sha256": "e6d03db9537ec86e3c8718acf98d620a3c87186d9e8922f800d2e51ab0cce7df"
+    },
+    {
+      "assembly": "Hexalith.EventStore.Testing.dll",
+      "bytes": 118272,
+      "sha256": "f73bace389188ef7f57a8d0355685adfb41ef7dc6296cf36b999158a0bb5460b"
+    },
+    {
+      "assembly": "Hexalith.EventStore.dll",
+      "bytes": 12288,
+      "sha256": "ab0dac509257c82ff64928f6d15981e067c95884f07bb54551a964608d3a5768"
+    }
+  ],
+  "infrastructureExitCodes": [
+    0,
+    0
+  ],
+  "ownedControlPids": [
+    73070,
+    73071
+  ],
+  "nativeLog": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.native.log",
+  "nativeLogSha256": "e5bd79f284b3740bb4682d06546ac1d7be417aee728dc4e16669a69f0476fc83",
+  "binarySha256": {
+    "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/placement": "40dc8f8b525fc06aa914f930c87c52db33b02523ad1e2c0bcef2f4e1b5351d77",
+    "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/scheduler": "da84c39646cce5a30f076e9d283e67064ae6f62677f02a78014da14eda02e56a",
+    "/tmp/story-6-4-dapr-1.18.2-wpll4ztg/daprd": "e730688f06b9b7cea0d616a7dde8fc0124cb6cc8d6dae149192422c7ea67f4e6"
+  },
+  "coherentReleaseProducer": {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-3.json",
+    "sha256": "b0b2759f56d1d3525938cb1085981e3bace98cf00d3e367652fa54ada84a978c",
+    "consumedReleaseOutputsExactlyMatch": true
+  },
+  "runnerSha256": "271df7f080e68a978be3d20ddbededec42b4d144aad56aa02ce118d3c82186bb",
+  "controlConfigurationSha256": "5e83c6704596294cb276d104bc978c183d6dac91001d612ae093fde0f8ab6d5e",
+  "nativeXmlSha256": "607007dc88a7eb1cfb9da0842eef1aec6d9e3b04b0776879d0caa9b543705ecd",
+  "nativeVectors": {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096-native-vectors.json",
+    "sha256": "ee29c05fc700bc7e879017abc2f93e4f1dff7aeb0b4ed6ee4488d1c92425bb84"
+  }
+}

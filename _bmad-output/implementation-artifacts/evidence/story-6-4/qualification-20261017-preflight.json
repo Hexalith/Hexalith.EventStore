@@ -1,0 +1,30 @@
+{
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+  "approvedBy": "J\u00e9r\u00f4me Piquot (jpiquot)",
+  "approvalRoles": [
+    "Epic 6 owner",
+    "architecture owner",
+    "Test owner"
+  ],
+  "approvalDate": "2026-10-15",
+  "formalAcceptanceClaimed": false,
+  "codeChangesRequiredAtEntry": false,
+  "guidanceLoaded": [
+    "AGENTS.md",
+    "references/Hexalith.AI.Tools/hexalith-llm-instructions.md",
+    "references/Hexalith.AI.Tools/hexalith-git-instructions.md",
+    ".editorconfig",
+    ".gitattributes",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "Directory.Packages.props",
+    "global.json",
+    "nuget.config",
+    "tests/Directory.Build.props"
+  ],
+  "contextFilesLoaded": [
+    "_bmad-output/implementation-artifacts/spec-projection-cost-sequence-guard.md",
+    "_bmad-output/project-context.md",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/implementation-checkpoint.md"
+  ]
+}

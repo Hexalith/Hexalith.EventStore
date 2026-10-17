@@ -1,0 +1,6 @@
+{
+  "recordedAt": "2026-10-17T06:59:26.892234+00:00",
+  "beforeFirstLiveInvocation": true,
+  "runnerSha256": "fb2ab11c86f68a280c89a4194142180c4fcf7e91a0f65d2e2ca0088e88cf12d1",
+  "reason": "Prevent full-native observation vectors replacing a previously bound filtered outer vector. Outer runner emits only summary/skip/fail; native log/XML/vector identities bind in controls packet. Complete outer-named vector is created only once afterwards. No native rerun."
+}

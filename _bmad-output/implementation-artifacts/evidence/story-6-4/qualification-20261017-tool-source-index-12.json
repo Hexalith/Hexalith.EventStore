@@ -1,0 +1,16 @@
+{
+  "capturedAt": "2026-10-17T08:17:08.475585+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-audit-live.py",
+      "sha256": "990a4843c33ea882e17a3360f7ff6312ada26b3c7d6a7b20b309e44000e0f0b1",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/990a4843c33ea882e17a3360f7ff6312ada26b3c7d6a7b20b309e44000e0f0b1.py"
+    },
+    {
+      "source": "/tmp/story64-qualification-audit-live-observed.py",
+      "sha256": "92dd68cfa70bd381915b08d7be30bfa7a7a329615627c6efece0250fa0882f49",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/92dd68cfa70bd381915b08d7be30bfa7a7a329615627c6efece0250fa0882f49.py"
+    }
+  ],
+  "purpose": "Preserve exact observed passing rows and explicitly missing replica witness, without weakening native gate or inventing a zero observation."
+}

@@ -1,0 +1,10 @@
+{
+  "aliases": {
+    "domain-debug-build": "domainservice-debug-build",
+    "live-debug-build": "server.livesidecar-debug-build",
+    "domain-release-full": "domainservice-release-full"
+  },
+  "comparisonRule": "Audit planned gates by exact native commands/assembly identity, using these bookkeeping name aliases. No native run is required for a label correction.",
+  "focusedLiveProducerClarification": "The queue producer label mentions coherent Release hosts generically. The focused four-class Live selection uses the fresh Debug Live test assembly/in-process fixture; OQ8 external Release hosts are not selected. Full Live gets the separately recorded release-build-3 hosts. Actual command/args, both-mode runtime snapshots and native control identities govern.",
+  "unchangedPlanPreserved": true
+}

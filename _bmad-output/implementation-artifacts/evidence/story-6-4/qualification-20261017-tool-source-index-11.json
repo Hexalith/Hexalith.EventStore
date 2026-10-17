@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-10-17T08:07:09.291921+00:00",
+  "records": [
+    {
+      "source": "/tmp/story64-qualification-close-resources.py",
+      "sha256": "7f7f48b3183591304183329e3d7561ad2aff3b87315b8a9ed1b1cf1406b63044",
+      "archive": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/7f7f48b3183591304183329e3d7561ad2aff3b87315b8a9ed1b1cf1406b63044.py"
+    }
+  ]
+}

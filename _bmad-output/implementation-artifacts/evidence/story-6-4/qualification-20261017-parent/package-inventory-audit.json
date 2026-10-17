@@ -1,0 +1,187 @@
+{
+  "capturedUtc": "2026-10-17T08:25:30.940377+00:00",
+  "scope": "Final independent rehash after package-backed Debug/Release Contracts fixtures completed; immutable archives are distinct from later build outputs and no package publication is claimed.",
+  "inventory": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-package-inventory.json",
+    "sha256": "75e815c4a2dbdb2ee8823dcae040f0990f81c76ee340d28a164debf63783f8c3"
+  },
+  "packages": [
+    {
+      "id": "Hexalith.EventStore.Admin.Abstractions",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Admin.Abstractions.999.0.0-ci-test.nupkg",
+      "sha256": "1a6a63aeebe6c6d384cf2edf12414b671fbcdaed242f32867c7541564120a57a",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Admin.Cli",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Admin.Cli.999.0.0-ci-test.nupkg",
+      "sha256": "43079d573544b4497afa1251f03db20168acec4477a5b5136c7709aa6d6f8130",
+      "embeddedDllsVerified": 19
+    },
+    {
+      "id": "Hexalith.EventStore.Admin.Server",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Admin.Server.999.0.0-ci-test.nupkg",
+      "sha256": "fee0bb8d95051b439629bbaea4316cb231ed482176dc29fc14b26b6319424851",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Aspire",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Aspire.999.0.0-ci-test.nupkg",
+      "sha256": "13cde2af55df66f2a686978aabf22f09893e263118d5cd513bd01dd65db78b0b",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Client",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Client.999.0.0-ci-test.nupkg",
+      "sha256": "47d3dda0c507c695de40f6ae8d00cf0702024957898f980d8fdd554aa4fbdeaa",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Contracts",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Contracts.999.0.0-ci-test.nupkg",
+      "sha256": "e2853d2cd3dddcf3bead1274f21b265e2cadd302d0eb96f95866fb237aa87cbc",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.DomainService",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.DomainService.999.0.0-ci-test.nupkg",
+      "sha256": "6f3c06920661728922271a6e4e6a3a5013b10630f61b7988505cb67edb83b327",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Gateway",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Gateway.999.0.0-ci-test.nupkg",
+      "sha256": "f16008248838c2521b96b10effc8bbfa780cf5a9233786e9d08ef306fafaac35",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.RestApi.Generators",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.RestApi.Generators.999.0.0-ci-test.nupkg",
+      "sha256": "83c00b36f7f005b1f6f533a96c09a65a62e4e6ce237049cc9873ab5f31af3d84",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Server",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Server.999.0.0-ci-test.nupkg",
+      "sha256": "b26635a91e3b0a5f4552375fb2e8ea319ff3f04a3f4e187351e4388a06169096",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.ServiceDefaults",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.ServiceDefaults.999.0.0-ci-test.nupkg",
+      "sha256": "e5c632ae94c6201279cf2cf192cd874d10d76205f623bb7ab502cb6990cded82",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.SignalR",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.SignalR.999.0.0-ci-test.nupkg",
+      "sha256": "1c3c5e8531f0907e5616646052f9e7d6dc66ef41ee5c9dc44188a580260c3d35",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Testing",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Testing.999.0.0-ci-test.nupkg",
+      "sha256": "c9c3ab269d45503296ffddccfd5812bdf07595450a9397b97343766aecfbfd08",
+      "embeddedDllsVerified": 1
+    },
+    {
+      "id": "Hexalith.EventStore.Testing.Integration",
+      "version": "999.0.0-ci-test",
+      "path": "/tmp/story64-qualification-serialized-packages-6o286g8m/Hexalith.EventStore.Testing.Integration.999.0.0-ci-test.nupkg",
+      "sha256": "f39bc05ca318a87d117fa94adb654bb4f57c8e0639976ff406ea65d37153bc28",
+      "embeddedDllsVerified": 1
+    }
+  ],
+  "archivesVerified": 14,
+  "embeddedDllsVerified": 32,
+  "result": "pass",
+  "durableRetainedByteReceipt": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-retained-package-bytes.json",
+    "sha256": "75d435839652cf3bd057c98c567a6d02002ac2493b015edc1c69be668f806434"
+  },
+  "durableArchiveCopiesVerified": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Admin.Abstractions.999.0.0-ci-test.nupkg",
+      "bytes": 117282,
+      "sha256": "1a6a63aeebe6c6d384cf2edf12414b671fbcdaed242f32867c7541564120a57a"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Admin.Cli.999.0.0-ci-test.nupkg",
+      "bytes": 874692,
+      "sha256": "43079d573544b4497afa1251f03db20168acec4477a5b5136c7709aa6d6f8130"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Admin.Server.999.0.0-ci-test.nupkg",
+      "bytes": 180300,
+      "sha256": "fee0bb8d95051b439629bbaea4316cb231ed482176dc29fc14b26b6319424851"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Aspire.999.0.0-ci-test.nupkg",
+      "bytes": 32501,
+      "sha256": "13cde2af55df66f2a686978aabf22f09893e263118d5cd513bd01dd65db78b0b"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Client.999.0.0-ci-test.nupkg",
+      "bytes": 405426,
+      "sha256": "47d3dda0c507c695de40f6ae8d00cf0702024957898f980d8fdd554aa4fbdeaa"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Contracts.999.0.0-ci-test.nupkg",
+      "bytes": 326226,
+      "sha256": "e2853d2cd3dddcf3bead1274f21b265e2cadd302d0eb96f95866fb237aa87cbc"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.DomainService.999.0.0-ci-test.nupkg",
+      "bytes": 343488,
+      "sha256": "6f3c06920661728922271a6e4e6a3a5013b10630f61b7988505cb67edb83b327"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Gateway.999.0.0-ci-test.nupkg",
+      "bytes": 256802,
+      "sha256": "f16008248838c2521b96b10effc8bbfa780cf5a9233786e9d08ef306fafaac35"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.RestApi.Generators.999.0.0-ci-test.nupkg",
+      "bytes": 37027,
+      "sha256": "83c00b36f7f005b1f6f533a96c09a65a62e4e6ce237049cc9873ab5f31af3d84"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Server.999.0.0-ci-test.nupkg",
+      "bytes": 905930,
+      "sha256": "b26635a91e3b0a5f4552375fb2e8ea319ff3f04a3f4e187351e4388a06169096"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.ServiceDefaults.999.0.0-ci-test.nupkg",
+      "bytes": 54099,
+      "sha256": "e5c632ae94c6201279cf2cf192cd874d10d76205f623bb7ab502cb6990cded82"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.SignalR.999.0.0-ci-test.nupkg",
+      "bytes": 21185,
+      "sha256": "1c3c5e8531f0907e5616646052f9e7d6dc66ef41ee5c9dc44188a580260c3d35"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Testing.999.0.0-ci-test.nupkg",
+      "bytes": 57208,
+      "sha256": "c9c3ab269d45503296ffddccfd5812bdf07595450a9397b97343766aecfbfd08"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages/Hexalith.EventStore.Testing.Integration.999.0.0-ci-test.nupkg",
+      "bytes": 64281,
+      "sha256": "f39bc05ca318a87d117fa94adb654bb4f57c8e0639976ff406ea65d37153bc28"
+    }
+  ]
+}

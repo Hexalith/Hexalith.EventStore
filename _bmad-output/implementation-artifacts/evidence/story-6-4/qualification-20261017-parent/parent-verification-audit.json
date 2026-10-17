@@ -1,0 +1,444 @@
+{
+  "capturedUtc": "2026-10-17T08:31:53.753674+00:00",
+  "story": "6.4",
+  "storyStatus": "in-progress",
+  "sprintStatus": "in-progress",
+  "implementationTasksChecked": 41,
+  "nativeExecutionFrames": 28,
+  "finiteQueueEnded": true,
+  "fullCandidateAcceptancePassed": false,
+  "formalAcceptanceClaimed": false,
+  "currentRequiredFullCohorts": [
+    {
+      "gate": "server-debug-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 5817,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 25,
+        "notRun": 0,
+        "passed": 5792,
+        "seconds": 971.613
+      }
+    },
+    {
+      "gate": "domain-debug-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 1,
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 1,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 977,
+        "seconds": 122.15
+      }
+    },
+    {
+      "gate": "client-debug-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 1597,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 1597,
+        "seconds": 6.273
+      }
+    },
+    {
+      "gate": "contracts-debug-full-with-fresh-packages",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full-with-fresh-packages.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 2351,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 2351,
+        "seconds": 422.919
+      }
+    },
+    {
+      "gate": "live-debug-full",
+      "command": [
+        "python3",
+        "/tmp/story64-qualification-live.py",
+        "live-debug-full",
+        "__FULL__",
+        "Debug"
+      ],
+      "exitCode": 1,
+      "summary": {
+        "selected": 138,
+        "errors": 1,
+        "failed": 90,
+        "skipped": 1,
+        "notRun": 0,
+        "passed": 47,
+        "seconds": 8.46
+      }
+    },
+    {
+      "gate": "server-release-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 5817,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 25,
+        "notRun": 0,
+        "passed": 5792,
+        "seconds": 527.239
+      }
+    },
+    {
+      "gate": "domainservice-release-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.DomainService.Tests/bin/Release/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 978,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 978,
+        "seconds": 133.588
+      }
+    },
+    {
+      "gate": "client-release-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-release-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 1597,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 1597,
+        "seconds": 6.187
+      }
+    },
+    {
+      "gate": "contracts-release-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-release-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 0,
+      "summary": {
+        "selected": 2351,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 2351,
+        "seconds": 368.046
+      }
+    },
+    {
+      "gate": "live-release-full",
+      "command": [
+        "python3",
+        "/tmp/story64-qualification-live.py",
+        "live-release-full",
+        "__FULL__",
+        "Release"
+      ],
+      "exitCode": 1,
+      "summary": {
+        "selected": 192,
+        "errors": 0,
+        "failed": 3,
+        "skipped": 1,
+        "notRun": 0,
+        "passed": 188,
+        "seconds": 1332.608
+      }
+    }
+  ],
+  "currentRequiredFailedCohorts": [
+    "domain-debug-full",
+    "live-debug-full",
+    "live-release-full"
+  ],
+  "retainedOtherNonzeroNativeAttempts": [
+    {
+      "gate": "release-restore-1",
+      "command": [
+        "dotnet",
+        "restore",
+        "Hexalith.EventStore.slnx",
+        "-p:Configuration=Release",
+        "-p:UseHexalithProjectReferences=false",
+        "-p:UseNuGetDeps=true"
+      ],
+      "exitCode": 1,
+      "summary": null
+    },
+    {
+      "gate": "contracts-debug-full",
+      "command": [
+        "dotnet",
+        "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+        "-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full.xml",
+        "-showLiveOutput",
+        "-noColor"
+      ],
+      "exitCode": 1,
+      "summary": {
+        "selected": 2351,
+        "errors": 0,
+        "failed": 3,
+        "skipped": 0,
+        "notRun": 0,
+        "passed": 2348,
+        "seconds": 554.041
+      }
+    }
+  ],
+  "entryHead": "b99a03dfc29021af16511ee664820e05126b73f8",
+  "actualNativeHead": "77d9af18a54d92506e310fe5a45021a395e66f60",
+  "baselineCommitPreserved": "e17e7294f540ebba42fe25192998689f0ecd89c1",
+  "normativeSha256": "78e453a7af3daca5191731c2a6aff5e631db73d6d91993ca1686b6ebd70b8711",
+  "indexObservation": {
+    "rawIndexSha256DuringAllNativeFrames": "7bd4b3d935d7b6950e6f31cc309825dee8a70e8037543b23c7678ec99a4f2be7",
+    "finalRawIndexSha256": "d82f2d4c756e39eb849c88418c9d384014422a8ce710e55e9be631b5cb975543",
+    "rawBytesIdentical": false,
+    "finalCachedDiffAgainstHead": {
+      "command": [
+        "git",
+        "--no-optional-locks",
+        "diff",
+        "--cached",
+        "--name-status",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "interpretation": "Raw index bytes changed after all native frames. The final cached content diff against unchanged HEAD is empty. Raw byte equality is not required to establish that final content is unstaged; metadata refresh is possible but no exact cause is asserted.",
+    "correctionRecord": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-index-check-correction.json",
+      "bytes": 8784,
+      "sha256": "28ff3d222170874cfa77a93e2336dd7bbb4b7f5498119305f45cebbc95d28611"
+    }
+  },
+  "sourceConfigTestChangesThisPass": false,
+  "all9643SourceInputsUnchangedAcross28Frames": true,
+  "childClosingIndex": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-index.json",
+    "bytes": 133427,
+    "sha256": "43d1f2cf7e3313af709b61592b0317c8b45b445fc64717e8c61677c6a30cee3d"
+  },
+  "parentChecksAndDecisions": {
+    "source-and-task-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/source-and-task-audit.json",
+      "bytes": 68707,
+      "sha256": "945640e289778f6f92af3fc8b1822014c90a5df3b8403989a3ea4b50ad45f579"
+    },
+    "native-and-matrix-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/native-and-matrix-audit.json",
+      "bytes": 113913,
+      "sha256": "04b330992e1fc6ca4fcd588d2d1266cb8c50191b259f03ee736e46d48f2b0c6d"
+    },
+    "live-binding-and-budget-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/live-binding-and-budget-audit.json",
+      "bytes": 34497,
+      "sha256": "bcb08b4986a0db903b8e1765c14f988b703a8c21ab9531296742288abfdff91b"
+    },
+    "working-roots-and-retry-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/working-roots-and-retry-audit.json",
+      "bytes": 45272,
+      "sha256": "dfab062de664ee2afafee2113b3ae8be79b2d877189aa476a97690259001cfad"
+    },
+    "oq8-native-shadow-and-cohort-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/oq8-native-shadow-and-cohort-audit.json",
+      "bytes": 10968,
+      "sha256": "b83c0842e7326f6fbeb20790c5d16e81dbd30b7ee76a4e6345203479e147d107"
+    },
+    "package-inventory-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/package-inventory-audit.json",
+      "bytes": 9497,
+      "sha256": "ef31c3b17c371f19e71853ddfb21b04c2cde67e44144516f0b466281f81a4e16"
+    },
+    "latest-resume-regression-enrollment.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/latest-resume-regression-enrollment.json",
+      "bytes": 1354,
+      "sha256": "fd840e0393230eeb78415a7153043c5f0723a7ea7c3f0b800975713d2a3b3031"
+    },
+    "owned-resource-cleanup-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/owned-resource-cleanup-audit.json",
+      "bytes": 10880,
+      "sha256": "7ee882de3ac5a5e98c0069c16313ccdc38b998642ab1a66377fa437ae414874e"
+    },
+    "child-immutable-index-audit.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/child-immutable-index-audit.json",
+      "bytes": 354,
+      "sha256": "5d73a36b6402968efc98d7c55b9182a07e583bad52c0f0e5d994ed0dd9b352d2"
+    },
+    "preservation-after.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/preservation-after.json",
+      "bytes": 4052,
+      "sha256": "3d0d08cff054470831178887144866942e4dc367b6dedbfa775a5c160989a383"
+    },
+    "p1r-owner-decision-scope.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-owner-decision-scope.json",
+      "bytes": 95711,
+      "sha256": "59dc0f17416f980a5c2b071f659d959fb88c5fee8c744fb4d55430d837953efe"
+    },
+    "p1r-owner-decision.md": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-owner-decision.md",
+      "bytes": 5888,
+      "sha256": "a8159396d794cb43ed84dab63bea10452a20ea0f80b7edf6a0f5ba714ed06d4f"
+    },
+    "authenticated-assurance-requirements.md": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/authenticated-assurance-requirements.md",
+      "bytes": 3996,
+      "sha256": "f812cfd70a647c121f0db60a6f0bbbd0460f89d973cc599603548095364a062c"
+    },
+    "authenticated-assurance-requirements.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/authenticated-assurance-requirements.json",
+      "bytes": 5393,
+      "sha256": "74eb8df7b33862c87b38ab3c27e8c4d2689a3834f297de1fe7d3676627f9383d"
+    },
+    "qualification-handoff.md": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/qualification-handoff.md",
+      "bytes": 11367,
+      "sha256": "ed8c7cc51b065d6d3d694d4ff649ff093b7a617be2b1649f5c51089f49aec057"
+    },
+    "unrelated-domain-debug-blocker.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/unrelated-domain-debug-blocker.json",
+      "bytes": 2746,
+      "sha256": "24965dbf91df1056a7c0dc10cd81789dcc7b9e4f864655b2d6ff6f5855bae5f2"
+    },
+    "domain-debug-release-comparison.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/domain-debug-release-comparison.json",
+      "bytes": 3671,
+      "sha256": "659583f81a40283d5f2bcc40b0ff60eb4de10b9aff782ea9efd42419d0d60e64"
+    },
+    "live-debug-full-blocker.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/live-debug-full-blocker.json",
+      "bytes": 3911,
+      "sha256": "c46e6bef6168f3b87f3e546eb618143413a5b1a667886f25f549a2da524a659d"
+    },
+    "release-mixed-configuration-observation.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/release-mixed-configuration-observation.json",
+      "bytes": 5836,
+      "sha256": "6eeb5d33f48f6891cd573408f614873aa31f3aff9d1d567789683214d033d496"
+    },
+    "release-restore-1-environment-blocker.json": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/release-restore-1-environment-blocker.json",
+      "bytes": 1402,
+      "sha256": "cef18958398246bd0aa58eb4c33fd3bfac8a0440f25f92b0127ea71c5b1fe306"
+    }
+  },
+  "artifactValidation": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/artifact-validation.json",
+    "bytes": 1816,
+    "sha256": "d89e4a6216d0755c7543ed4fba565a59975030d60eac300c0f4bcc9a9df75daa"
+  },
+  "wrapper": {
+    "path": "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md",
+    "bytes": 91276,
+    "sha256": "e8ce448b1ff7f004b6e8f8809b4fd93b3b435251f9a2b0b0cd146ba8b23db2e8"
+  },
+  "sprintRecord": {
+    "path": "_bmad-output/implementation-artifacts/sprint-status.yaml",
+    "bytes": 39250,
+    "sha256": "60aa37a76234030098a46d5447c372b48b9352d35f2e29dbc4d8bf94e5889815"
+  },
+  "pendingP1ROwnerDisposition": {
+    "approved": false,
+    "scopeSha256": "59dc0f17416f980a5c2b071f659d959fb88c5fee8c744fb4d55430d837953efe",
+    "files": 77,
+    "historicalLocations": 98
+  },
+  "authenticatedCIAndOwnerAssurance": {
+    "requiredSealRetrievedOrProvided": false,
+    "ownerAttestationCreated": false,
+    "eligibleTimestampInvented": false,
+    "requirements": {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/authenticated-assurance-requirements.md",
+      "bytes": 3996,
+      "sha256": "f812cfd70a647c121f0db60a6f0bbbd0460f89d973cc599603548095364a062c"
+    }
+  },
+  "operationsNotPerformedByThisPass": [
+    "stage",
+    "commit",
+    "push",
+    "publish",
+    "deploy",
+    "operational maintenance cutover"
+  ],
+  "auditCommand": [
+    "python3",
+    "/tmp/story64_parent_finalize.py"
+  ],
+  "auditScriptSha256": "0ed7e5534c9041e0608d27685796792bd6c5e213f81c01c06d3e1b5bc9711409",
+  "auditScript": "from pathlib import Path\nimport json,hashlib,re,datetime,subprocess\nr=Path.cwd();b=r/'_bmad-output/implementation-artifacts/evidence/story-6-4';o=b/'qualification-20261017-parent';wrapper=r/'_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md';final=o/'parent-verification-audit.json';validation=o/'artifact-validation.json'\ndef sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()\ndef ident(p):return {'path':p.relative_to(r).as_posix(),'bytes':p.stat().st_size,'sha256':sha(p)}\ndef run(argv):\n p=subprocess.run(argv,text=True,capture_output=True);return {'command':argv,'exitCode':p.returncode,'stdout':p.stdout,'stderr':p.stderr}\nrequired=['source-and-task-audit.json','native-and-matrix-audit.json','live-binding-and-budget-audit.json','working-roots-and-retry-audit.json','oq8-native-shadow-and-cohort-audit.json','package-inventory-audit.json','latest-resume-regression-enrollment.json','owned-resource-cleanup-audit.json','child-immutable-index-audit.json','preservation-after.json','p1r-owner-decision-scope.json','p1r-owner-decision.md','authenticated-assurance-requirements.md','authenticated-assurance-requirements.json','qualification-handoff.md','unrelated-domain-debug-blocker.json','domain-debug-release-comparison.json','live-debug-full-blocker.json','release-mixed-configuration-observation.json','release-restore-1-environment-blocker.json']\nrefs={n:ident(o/n) for n in required};pres=json.loads((o/'preservation-after.json').read_text());assert pres['status']=='pass' and pres['preExistingWrapperLinesPreservedInOrder'];src=json.loads((o/'source-and-task-audit.json').read_text());assert not src['currentFileHashDriftFromFirstProducer'] and src['incrementalTrackedSourceConfigDocsDiff']['bytes']==0 and src['implementationTasks']['checked']==41\nnative=json.loads((o/'native-and-matrix-audit.json').read_text());assert not native['issues'] and native['finiteQueueEnded'] and native['allPlannedSlotsHaveRecordedInvocationOrBoundedReplacement'];assert all(any(x['results'].get('Pass',0)>0 for x in hits) for hits in native['matrixWitnesses'].values())\nassert json.loads((o/'owned-resource-cleanup-audit.json').read_text())['allRecordedOwnedResourceChecksPassed']\nassert len(json.loads((o/'live-binding-and-budget-audit.json').read_text())['liveFrames'])==4\nscope=o/'p1r-owner-decision-scope.json';assert sha(scope)=='59dc0f17416f980a5c2b071f659d959fb88c5fee8c744fb4d55430d837953efe'\nindex=json.loads((b/'qualification-20261017-gates.json').read_text());fullNames=['server-debug-full','domain-debug-full','client-debug-full','contracts-debug-full-with-fresh-packages','live-debug-full','server-release-full','domainservice-release-full','client-release-full','contracts-release-full','live-release-full'];frames={x['name']:json.loads((b/x['packet']).read_text()) for x in index['gates']};assert len(frames)==28 and index['finishedAt'];full=[{'gate':n,'command':frames[n]['command'],'exitCode':frames[n]['exitCode'],'summary':frames[n]['summary']} for n in fullNames];failed=[x['gate'] for x in full if x['exitCode']];assert set(failed)=={'domain-debug-full','live-debug-full','live-release-full'}\nfirst=frames['server-debug-build']['before'];currentHead=run(['git','rev-parse','HEAD']);assert currentHead['exitCode']==0 and currentHead['stdout'].strip()=='77d9af18a54d92506e310fe5a45021a395e66f60';gitIndex=run(['git','rev-parse','--git-path','index']);assert gitIndex['exitCode']==0;ip=Path(gitIndex['stdout'].strip());ip=ip if ip.is_absolute() else r/ip;cached=run(['git','--no-optional-locks','diff','--cached','--name-status','HEAD']);assert cached['exitCode']==0 and not cached['stdout']\nw=wrapper.read_text();assert \"status: 'in-progress'\" in w and \"baseline_commit: 'e17e7294f540ebba42fe25192998689f0ecd89c1'\" in w;sprint=r/'_bmad-output/implementation-artifacts/sprint-status.yaml';assert re.search(r'^\\s*6-4-projection-cost-and-sequence-guard-implementation:\\s*in-progress\\s*$',sprint.read_text(),re.M)\nmds=sorted([p for q in b.glob('qualification-20261017-*') for p in ([q] if q.is_file() else q.rglob('*')) if p.is_file() and p.suffix=='.md']);mds.append(wrapper);missing=[];linkcount=0;deferred=[];mdrefs=[]\nfor p in mds:\n data=p.read_bytes();assert data.endswith(b'\\n') and b'\\r' not in data and not data.startswith(b'\\xef\\xbb\\xbf');assert all(l==l.rstrip(b' \\t') for l in data.splitlines());mdrefs.append(ident(p))\n for target in re.findall(r'\\[[^\\]]*\\]\\(([^)]+)\\)',data.decode()):\n  target=target.strip().strip('<>');target=target.split('#',1)[0]\n  if not target or re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*:',target):continue\n  path=(p.parent/target).resolve();linkcount+=1\n  if path==final:deferred.append(path)\n  elif not path.exists():missing.append({'document':str(p.relative_to(r)),'target':target})\nassert not missing,missing\njs=[]\nfor q in b.glob('qualification-20261017-*'):\n for p in ([q] if q.is_file() else q.rglob('*')):\n  if p.is_file() and p.suffix=='.json' and p not in [final,validation]:json.loads(p.read_text());js.append(p)\ndiff=run(['git','diff','--check']);assert diff['exitCode']==0\nv={'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'auditCommand':['python3','/tmp/story64_parent_finalize.py'],'jsonFilesParsedBeforeFinalSerialization':len(js),'markdownFilesChecked':len(mds),'markdownFileIdentities':mdrefs,'localMarkdownTargetsChecked':linkcount,'missingTargets':missing,'finalAuditTargetResolvedAfterSerialization':True,'markdownLFNoBOMNoTrailingWhitespace':True,'gitDiffCheck':diff,'nativeEvidenceBytesWereNotNormalized':True};validation.write_text(json.dumps(v,indent=2)+'\\n')\nchild=b/'qualification-20261017-closing-index.json';assert sha(child)=='43d1f2cf7e3313af709b61592b0317c8b45b445fc64717e8c61677c6a30cee3d'\nresult={'capturedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'story':'6.4','storyStatus':'in-progress','sprintStatus':'in-progress','implementationTasksChecked':41,'nativeExecutionFrames':28,'finiteQueueEnded':True,'fullCandidateAcceptancePassed':False,'formalAcceptanceClaimed':False,'currentRequiredFullCohorts':full,'currentRequiredFailedCohorts':failed,'retainedOtherNonzeroNativeAttempts':[{'gate':n,'command':d['command'],'exitCode':d['exitCode'],'summary':d.get('summary')} for n,d in frames.items() if d['exitCode'] and n not in fullNames],'entryHead':'b99a03dfc29021af16511ee664820e05126b73f8','actualNativeHead':currentHead['stdout'].strip(),'baselineCommitPreserved':'e17e7294f540ebba42fe25192998689f0ecd89c1','normativeSha256':pres['normativeSha256'],'indexObservation':{'rawIndexSha256DuringAllNativeFrames':first['graph']['trackedIndexSha256'],'finalRawIndexSha256':sha(ip),'rawBytesIdentical':sha(ip)==first['graph']['trackedIndexSha256'],'finalCachedDiffAgainstHead':cached,'interpretation':'Raw index bytes changed after all native frames. The final cached content diff against unchanged HEAD is empty. Raw byte equality is not required to establish that final content is unstaged; metadata refresh is possible but no exact cause is asserted.','correctionRecord':ident(o/'final-audit-index-check-correction.json')},'sourceConfigTestChangesThisPass':False,'all9643SourceInputsUnchangedAcross28Frames':True,'childClosingIndex':ident(child),'parentChecksAndDecisions':refs,'artifactValidation':ident(validation),'wrapper':ident(wrapper),'sprintRecord':ident(sprint),'pendingP1ROwnerDisposition':{'approved':False,'scopeSha256':sha(scope),'files':77,'historicalLocations':98},'authenticatedCIAndOwnerAssurance':{'requiredSealRetrievedOrProvided':False,'ownerAttestationCreated':False,'eligibleTimestampInvented':False,'requirements':refs['authenticated-assurance-requirements.md']},'operationsNotPerformedByThisPass':['stage','commit','push','publish','deploy','operational maintenance cutover'],'auditCommand':['python3','/tmp/story64_parent_finalize.py'],'auditScriptSha256':sha(Path(__file__)),'auditScript':Path(__file__).read_text()};final.write_text(json.dumps(result,indent=2)+'\\n')\nassert all(p.is_file() for p in deferred);json.loads(final.read_text());json.loads(validation.read_text())\nprint(json.dumps({'fullCandidateAcceptancePassed':False,'failedRequiredCohorts':failed,'status':'in-progress','nativeFrames':28,'allParentChecksPassed':True,'jsonParsed':len(js),'markdownFiles':len(mds),'links':linkcount,'diffCheckExitCode':diff['exitCode'],'parentVerificationAudit':ident(final)},indent=2))\n"
+}

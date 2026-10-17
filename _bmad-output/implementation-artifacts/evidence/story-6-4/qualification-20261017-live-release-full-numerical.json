@@ -1,0 +1,33 @@
+{
+  "sourceSnapshot": "qualification-20261017-live-release-full",
+  "nativeExitCode": 1,
+  "vectors": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-vectors.json",
+  "sha256": "64ac5d6a9f7af6a690a8f89847775add46690ba79aa5d5aad421aaec4b2afd9b",
+  "observations": {
+    "ProjectionGuardActivationClosure": 1,
+    "ProjectionGuardNativeAttempts": 8,
+    "ProjectionGuardTypedFailure": 1,
+    "ProjectionGuardEmptyCost": 1,
+    "ProjectionSourceCost": 2,
+    "ProjectionReplayRecoveryAttempt": 12,
+    "ProjectionGuardCurrentMatrix": 15,
+    "ProjectionGuardCatalogColdWarm": 1,
+    "ProjectionGuardLiveCost": 7
+  },
+  "currentRowsIndependentlyAudited": 15,
+  "nonemptyTailRowsIndependentlyAudited": 6,
+  "result": "pass-for-observed-current-and-tail-rows",
+  "fullVectorWitnessInventoryComplete": false,
+  "missingWitnesses": [
+    {
+      "kind": "ProjectionGuardNativeAttempts",
+      "mode": "two_replica_original_receipt_recovery",
+      "status": "unproven; replica fixture watcher startup failed",
+      "nativeTest": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.NamedProjectionDispatchLiveSidecarTests.SourceGuard_TwoRealReplicasResumeOriginalCommittedEventReceiptsWithoutRepeatingEffects",
+      "nativeXml": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full.xml",
+      "nativeXmlSha256": "784159656d0bde299f9d7c4066be91362279860852c0e80667432007c90e3e91"
+    }
+  ],
+  "nativeGateOutcomeSeparate": true,
+  "limits": "Cumulative counters independently evaluated; exact per-pass B/V assertions remain owned by executable fixtures."
+}

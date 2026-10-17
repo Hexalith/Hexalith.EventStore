@@ -1,0 +1,258 @@
+{
+  "auditedUtc": "2026-10-17T08:27:26.853094+00:00",
+  "agentCleanupReceipt": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-owned-resource-cleanup.json",
+    "bytes": 12350,
+    "sha256": "0576d855e28fa7074604fd275f655db15887fc78baf97802f9f2e89b589790f1"
+  },
+  "nativeProcessObserver": {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-native-process-observations.json",
+    "bytes": 11536,
+    "sha256": "ff8be2a688967669b373c818b51d09e1fb3ed892f47ba3ca5f0bf33b074b9651"
+  },
+  "observedProcessIdentityChecks": [
+    {
+      "pid": 84610,
+      "recordedStartTicks": "8741203",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 84611,
+      "recordedStartTicks": "8741203",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 84695,
+      "recordedStartTicks": "8741218",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 94291,
+      "recordedStartTicks": "8745534",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 68717,
+      "recordedStartTicks": "8774085",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 68953,
+      "recordedStartTicks": "8774147",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 65178,
+      "recordedStartTicks": "8872887",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 66473,
+      "recordedStartTicks": "8873224",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 70177,
+      "recordedStartTicks": "8874135",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 73070,
+      "recordedStartTicks": "8874965",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 73071,
+      "recordedStartTicks": "8874965",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 73162,
+      "recordedStartTicks": "8874980",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    },
+    {
+      "pid": 73547,
+      "recordedStartTicks": "8875054",
+      "currentStartTicks": null,
+      "sameOwnedProcessRunning": false
+    }
+  ],
+  "earlierControlPidChecks": [
+    {
+      "pid": 52729,
+      "procEntryExists": false
+    },
+    {
+      "pid": 52736,
+      "procEntryExists": false
+    },
+    {
+      "pid": 73070,
+      "procEntryExists": false
+    },
+    {
+      "pid": 73071,
+      "procEntryExists": false
+    },
+    {
+      "pid": 80467,
+      "procEntryExists": false
+    },
+    {
+      "pid": 80468,
+      "procEntryExists": false
+    },
+    {
+      "pid": 84610,
+      "procEntryExists": false
+    },
+    {
+      "pid": 84611,
+      "procEntryExists": false
+    }
+  ],
+  "nativeOQ8SidecarPidChecks": [
+    {
+      "pid": 85277,
+      "procEntryExists": false
+    },
+    {
+      "pid": 85597,
+      "procEntryExists": false
+    },
+    {
+      "pid": 85923,
+      "procEntryExists": false
+    },
+    {
+      "pid": 87289,
+      "procEntryExists": false
+    },
+    {
+      "pid": 87877,
+      "procEntryExists": false
+    },
+    {
+      "pid": 88211,
+      "procEntryExists": false
+    },
+    {
+      "pid": 88639,
+      "procEntryExists": false
+    },
+    {
+      "pid": 88965,
+      "procEntryExists": false
+    }
+  ],
+  "provenScratchAbsence": [
+    {
+      "path": "/tmp/dapr-components-26db042f37ae480dbdef8197271d4fba",
+      "exists": false
+    },
+    {
+      "path": "/tmp/dapr-components-a925d00edd1341718ebb61dde276e1f3",
+      "exists": false
+    },
+    {
+      "path": "/tmp/dapr-components-ed6e20b2f24d408580f13f782b9ba377",
+      "exists": false
+    },
+    {
+      "path": "/tmp/eventstore-oq8-runtime-7ca0f5110aa04b1181cced6110ec60de",
+      "exists": false
+    },
+    {
+      "path": "/tmp/story64-qualification-controls-8r1dg81i",
+      "exists": false
+    },
+    {
+      "path": "/tmp/story64-qualification-controls-b74940qh",
+      "exists": false
+    },
+    {
+      "path": "/tmp/story64-qualification-controls-fz28alpr",
+      "exists": false
+    },
+    {
+      "path": "/tmp/story64-qualification-controls-xqg_7g_j",
+      "exists": false
+    }
+  ],
+  "knownControlAndRedisPorts": [
+    {
+      "port": 41233,
+      "acceptsConnection": false
+    },
+    {
+      "port": 54919,
+      "acceptsConnection": false
+    },
+    {
+      "port": 57879,
+      "acceptsConnection": false
+    }
+  ],
+  "exactOwnedRedisInspect": {
+    "command": [
+      "docker",
+      "container",
+      "inspect",
+      "ebb9e7a80207c463dc2b67f472ddc75fcd92586cc9af2d494090e6f199300f48"
+    ],
+    "exitCode": 1,
+    "stdout": "[]\n",
+    "stderr": "Error response from daemon: No such container: ebb9e7a80207c463dc2b67f472ddc75fcd92586cc9af2d494090e6f199300f48\n"
+  },
+  "exactOwnedVolumeInspects": [
+    {
+      "command": [
+        "docker",
+        "volume",
+        "inspect",
+        "1342e2582ff1530628d3365eb334e00b085cbb4d0e966e6ca810bee105576e53"
+      ],
+      "exitCode": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: get 1342e2582ff1530628d3365eb334e00b085cbb4d0e966e6ca810bee105576e53: no such volume\n"
+    }
+  ],
+  "postgresContainerHashChecks": [
+    {
+      "containerIdSha256": "0096e5f2ebcd1f2df83db12575f6b93253e5f5c40c1eb946f91e1fd7a635794e",
+      "presentInAllCurrentContainers": false
+    },
+    {
+      "containerIdSha256": "5398a84bf9b6450ab5651a795d2960d8521200065e9d67b2fb4c6da15b07d048",
+      "presentInAllCurrentContainers": false
+    }
+  ],
+  "allContainerIdReadCommand": [
+    "docker",
+    "ps",
+    "-aq",
+    "--no-trunc"
+  ],
+  "allContainerIdReadExitCode": 0,
+  "readOnlyScope": "Only absence checks were performed; no process, container, volume, directory or shared setting was mutated by this audit. Early fast Debug child argv remains unavailable, so its known scratch/container/native cleanup receipt bounds that part of the evidence.",
+  "allRecordedOwnedResourceChecksPassed": true,
+  "auditCommand": [
+    "python3",
+    "/tmp/story64_parent_cleanup_audit.py"
+  ],
+  "auditScriptSha256": "1416ea03ae6f7bfdb60b5be325ffc136286c9c27cf4765fbd26dc08779628fbc",
+  "auditScript": "from pathlib import Path\nimport json,hashlib,datetime,subprocess,socket,re\nr=Path.cwd();b=r/'_bmad-output/implementation-artifacts/evidence/story-6-4';o=b/'qualification-20261017-parent'\ndef ident(p):return {'path':p.relative_to(r).as_posix(),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}\ndef run(argv):\n p=subprocess.run(argv,text=True,capture_output=True);return {'command':argv,'exitCode':p.returncode,'stdout':p.stdout,'stderr':p.stderr}\np=b/'qualification-20261017-owned-resource-cleanup.json';c=json.loads(p.read_text());obsP=b/'qualification-20261017-native-process-observations.json';obs=json.loads(obsP.read_text());procs=[]\nfor x in obs['processes']:\n sp=Path(f\"/proc/{x['pid']}/stat\");ticks=sp.read_text().rsplit(') ',1)[1].split()[19] if sp.exists() else None\n procs.append({'pid':x['pid'],'recordedStartTicks':str(x['startTicks']),'currentStartTicks':ticks,'sameOwnedProcessRunning':ticks==str(x['startTicks'])})\nassert all(not x['sameOwnedProcessRunning'] for x in procs)\ncontrolPids=sorted({x['pid'] for g in c['regularControls'] for x in g['pids']});controlChecks=[{'pid':pid,'procEntryExists':Path(f'/proc/{pid}').exists()} for pid in controlPids];assert not any(x['procEntryExists'] for x in controlChecks)\noqPids=sorted({x['processId'] for g in c['oq8'] for x in g['cleanup'].get('sidecarNamespaceObservations',[])});oqChecks=[{'pid':pid,'procEntryExists':Path(f'/proc/{pid}').exists()} for pid in oqPids];assert not any(x['procEntryExists'] for x in oqChecks)\npaths={x['work'] for x in c['regularControls']}|{x['path'] for x in c['provenNativeScratchChecks']}\nfor x in obs['processes']:\n for arg in x['argv']:\n  for prefix in re.findall(r'/tmp/(?:eventstore-oq8-runtime|dapr-components)-[^/\\s]+',arg):paths.add(prefix)\nscratch=[{'path':x,'exists':Path(x).exists()} for x in sorted(paths)];assert all(not x['exists'] for x in scratch)\nports=sorted({int(k) for g in c['regularControls'] for k in g['portsClosed']}|{54919});pc=[]\nfor port in ports:\n with socket.socket() as sock:\n  sock.settimeout(.2);open_=sock.connect_ex(('127.0.0.1',port))==0\n pc.append({'port':port,'acceptsConnection':open_})\nassert not any(x['acceptsConnection'] for x in pc)\nredis=run(['docker','container','inspect',c['redis']['id']]);assert redis['exitCode']!=0 and 'No such' in redis['stderr'];vols=[]\nfor x in c['redis']['anonymousVolumes']:\n v=run(['docker','volume','inspect',x['name']]);assert v['exitCode']!=0 and 'no such' in v['stderr'].lower();vols.append(v)\ncontainers=run(['docker','ps','-aq','--no-trunc']);assert containers['exitCode']==0;ids=containers['stdout'].split();present={hashlib.sha256(x.encode()).hexdigest() for x in ids};postgres=[{'containerIdSha256':x['ownedPostgres']['containerIdSha256'],'presentInAllCurrentContainers':x['ownedPostgres']['containerIdSha256'] in present} for x in c['oq8']];assert all(not x['presentInAllCurrentContainers'] for x in postgres)\nfor g in c['regularControls']:\n for ref in [g['controlsPacket'],*g['retainedLogs']]:assert hashlib.sha256(Path(ref['path']).read_bytes()).hexdigest()==ref['sha256']\nres={'auditedUtc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'agentCleanupReceipt':ident(p),'nativeProcessObserver':ident(obsP),'observedProcessIdentityChecks':procs,'earlierControlPidChecks':controlChecks,'nativeOQ8SidecarPidChecks':oqChecks,'provenScratchAbsence':scratch,'knownControlAndRedisPorts':pc,'exactOwnedRedisInspect':redis,'exactOwnedVolumeInspects':vols,'postgresContainerHashChecks':postgres,'allContainerIdReadCommand':containers['command'],'allContainerIdReadExitCode':containers['exitCode'],'readOnlyScope':'Only absence checks were performed; no process, container, volume, directory or shared setting was mutated by this audit. Early fast Debug child argv remains unavailable, so its known scratch/container/native cleanup receipt bounds that part of the evidence.','allRecordedOwnedResourceChecksPassed':True,'auditCommand':['python3','/tmp/story64_parent_cleanup_audit.py'],'auditScriptSha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'auditScript':Path(__file__).read_text()}\n(o/'owned-resource-cleanup-audit.json').write_text(json.dumps(res,indent=2)+'\\n');print(json.dumps({'observedProcessIdentities':len(procs),'earlyControlPids':len(controlChecks),'nativeOQ8SidecarPids':len(oqChecks),'scratchPathsAbsent':len(scratch),'ownedPostgresContainersAbsent':len(postgres),'allChecksPassed':True},indent=2))\n"
+}

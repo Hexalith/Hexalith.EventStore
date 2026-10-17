@@ -1,0 +1,10 @@
+{
+  "at": "2026-10-17T07:28:19.185811+00:00",
+  "sources": [
+    {
+      "role": "/tmp/story64-qualification-watchdog2.py",
+      "sha256": "c381c12852db0bc3e715d66338537dbab933570af76937c53d8eecf308acb719",
+      "retainedSource": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-tools/c381c12852db0bc3e715d66338537dbab933570af76937c53d8eecf308acb719.py"
+    }
+  ]
+}

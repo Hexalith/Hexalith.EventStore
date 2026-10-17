@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-17T08:19:12.481811+00:00",
+  "command": [
+    "python3",
+    "/tmp/story64-qualification-audit-live-observed.py",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full-vectors.json",
+    "256",
+    "--missing-replica-witness"
+  ],
+  "exitCode": 0,
+  "helperSha256": "92dd68cfa70bd381915b08d7be30bfa7a7a329615627c6efece0250fa0882f49",
+  "resultSha256": "0688f58f57e2eec18a7916fe425de478f1106caed3328ab24f38631f44661539"
+}

@@ -1,0 +1,257 @@
+{
+  "capturedAt": "2026-10-17T07:42:21.007350+00:00",
+  "scope": "Read-only supplemental observations of successful serialized Release producers. Root Debug bytes sampled now; producer after-snapshots bind exact Release-directory copy bytes. This is an existing mixed-configuration concern, independent of native pass/fail. No all-Release dependency purity claim, fresh compilation claim, or graph repair.",
+  "records": [
+    {
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-serialized-fallback.json",
+        "sha256": "bbc26fb8002e8265ea4a3107251d3b254a30310bcde53c20cd9e09b3f96f36d6",
+        "command": [
+          "dotnet",
+          "build",
+          "Hexalith.EventStore.slnx",
+          "-c",
+          "Release",
+          "--no-restore",
+          "-p:UseHexalithProjectReferences=false",
+          "-p:UseNuGetDeps=true",
+          "-m:1"
+        ],
+        "exitCode": 0
+      },
+      "log": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-serialized-fallback.log",
+        "sha256": "3f868abe40866174bedaa13fbbe25b48f81e3a583f22d7dabcbc99ceb8ba33aa"
+      },
+      "observedDebugOutputs": [
+        {
+          "project": "Hexalith.EventStore.Gateway",
+          "logLine": "  Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+          "currentDebugOutput": {
+            "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+            "sha256": "40385f2fb662698f53f17606722aa45251155621037064b011c20a722707d86a"
+          },
+          "releaseDirectoryCopies": [
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "0f7b81712bbe5ac1cd089f9febc2d723781fb18d56bffe41aa25e848f79f1c98",
+              "matchesSampledDebugBytes": false,
+              "classification": "base runtime copy"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-arm64/Hexalith.EventStore.Gateway.dll",
+              "sha256": "ec65bb8661cde231ae8da4dd2d9a4fff7b48f8c96fbca227f228cdca22ad3ca5",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-arm64/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "ec65bb8661cde231ae8da4dd2d9a4fff7b48f8c96fbca227f228cdca22ad3ca5",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-x64/Hexalith.EventStore.Gateway.dll",
+              "sha256": "9e8b3cb274b158a8e0226d301f4d74adcb34b4d96adec9d198f2401ec056f4ea",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-x64/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "9e8b3cb274b158a8e0226d301f4d74adcb34b4d96adec9d198f2401ec056f4ea",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-x64/Hexalith.EventStore.Gateway.dll",
+              "sha256": "eb049994764443640b55f0612c3a5de7f7bb9498f640bf756cb466ac06a78394",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-x64/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "eb049994764443640b55f0612c3a5de7f7bb9498f640bf756cb466ac06a78394",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "eb049994764443640b55f0612c3a5de7f7bb9498f640bf756cb466ac06a78394",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "0f7b81712bbe5ac1cd089f9febc2d723781fb18d56bffe41aa25e848f79f1c98",
+              "matchesSampledDebugBytes": false,
+              "classification": "base runtime copy"
+            },
+            {
+              "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "0f7b81712bbe5ac1cd089f9febc2d723781fb18d56bffe41aa25e848f79f1c98",
+              "matchesSampledDebugBytes": false,
+              "classification": "base runtime copy"
+            },
+            {
+              "path": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "0f7b81712bbe5ac1cd089f9febc2d723781fb18d56bffe41aa25e848f79f1c98",
+              "matchesSampledDebugBytes": false,
+              "classification": "base runtime copy"
+            }
+          ]
+        },
+        {
+          "project": "Hexalith.EventStore.TestSubscriber",
+          "logLine": "  Hexalith.EventStore.TestSubscriber -> /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll",
+          "currentDebugOutput": {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll",
+            "sha256": "353bb7a1a3e089e6a00e5ad28d4791e6731885b6dd8e981b6c1ae05765b656fb"
+          },
+          "releaseDirectoryCopies": []
+        },
+        {
+          "project": "Hexalith.EventStore.Client.TestContracts",
+          "logLine": "  Hexalith.EventStore.Client.TestContracts -> /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.TestContracts/bin/Debug/net10.0/Hexalith.EventStore.Client.TestContracts.dll",
+          "currentDebugOutput": {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.TestContracts/bin/Debug/net10.0/Hexalith.EventStore.Client.TestContracts.dll",
+            "sha256": "ae2ada81ad55a436152162a75c59267a08ef18406272623b451e293b0e32e198"
+          },
+          "releaseDirectoryCopies": [
+            {
+              "path": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.TestContracts.dll",
+              "sha256": "ae2ada81ad55a436152162a75c59267a08ef18406272623b451e293b0e32e198",
+              "matchesSampledDebugBytes": true,
+              "classification": "base runtime copy"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "producer": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-2.json",
+        "sha256": "6faffd220b88995e58cd0692658ef7062e8aa522e5d3c6ab12a6d697711a986c",
+        "command": [
+          "dotnet",
+          "build",
+          "Hexalith.EventStore.slnx",
+          "-c",
+          "Release",
+          "--no-restore",
+          "-p:UseHexalithProjectReferences=false",
+          "-p:UseNuGetDeps=true",
+          "-m:1"
+        ],
+        "exitCode": 0
+      },
+      "log": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-2.log",
+        "sha256": "be9271e7210e3a0e7a9e4afaf61aa9b80d026341091bf9a7e0f1b6d09cbd5e08"
+      },
+      "observedDebugOutputs": [
+        {
+          "project": "Hexalith.EventStore.Gateway",
+          "logLine": "  Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+          "currentDebugOutput": {
+            "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+            "sha256": "40385f2fb662698f53f17606722aa45251155621037064b011c20a722707d86a"
+          },
+          "releaseDirectoryCopies": [
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "40385f2fb662698f53f17606722aa45251155621037064b011c20a722707d86a",
+              "matchesSampledDebugBytes": true,
+              "classification": "base runtime copy"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-arm64/Hexalith.EventStore.Gateway.dll",
+              "sha256": "ec65bb8661cde231ae8da4dd2d9a4fff7b48f8c96fbca227f228cdca22ad3ca5",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-arm64/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "ec65bb8661cde231ae8da4dd2d9a4fff7b48f8c96fbca227f228cdca22ad3ca5",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-x64/Hexalith.EventStore.Gateway.dll",
+              "sha256": "9e8b3cb274b158a8e0226d301f4d74adcb34b4d96adec9d198f2401ec056f4ea",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-musl-x64/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "9e8b3cb274b158a8e0226d301f4d74adcb34b4d96adec9d198f2401ec056f4ea",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-x64/Hexalith.EventStore.Gateway.dll",
+              "sha256": "f83ad8421c98c5e91ac0d5da9a2ca9a9cf2594e093ff7cb41a475fd2031ed606",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/linux-x64/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "f83ad8421c98c5e91ac0d5da9a2ca9a9cf2594e093ff7cb41a475fd2031ed606",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "src/Hexalith.EventStore/bin/Release/net10.0/publish/Hexalith.EventStore.Gateway.dll",
+              "sha256": "f83ad8421c98c5e91ac0d5da9a2ca9a9cf2594e093ff7cb41a475fd2031ed606",
+              "matchesSampledDebugBytes": false,
+              "classification": "nested captured inventory; may be inherited and not loaded"
+            },
+            {
+              "path": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "40385f2fb662698f53f17606722aa45251155621037064b011c20a722707d86a",
+              "matchesSampledDebugBytes": true,
+              "classification": "base runtime copy"
+            },
+            {
+              "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "40385f2fb662698f53f17606722aa45251155621037064b011c20a722707d86a",
+              "matchesSampledDebugBytes": true,
+              "classification": "base runtime copy"
+            },
+            {
+              "path": "tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Gateway.dll",
+              "sha256": "40385f2fb662698f53f17606722aa45251155621037064b011c20a722707d86a",
+              "matchesSampledDebugBytes": true,
+              "classification": "base runtime copy"
+            }
+          ]
+        },
+        {
+          "project": "Hexalith.EventStore.TestSubscriber",
+          "logLine": "  Hexalith.EventStore.TestSubscriber -> /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll",
+          "currentDebugOutput": {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll",
+            "sha256": "353bb7a1a3e089e6a00e5ad28d4791e6731885b6dd8e981b6c1ae05765b656fb"
+          },
+          "releaseDirectoryCopies": []
+        },
+        {
+          "project": "Hexalith.EventStore.Client.TestContracts",
+          "logLine": "  Hexalith.EventStore.Client.TestContracts -> /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.TestContracts/bin/Debug/net10.0/Hexalith.EventStore.Client.TestContracts.dll",
+          "currentDebugOutput": {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.TestContracts/bin/Debug/net10.0/Hexalith.EventStore.Client.TestContracts.dll",
+            "sha256": "ae2ada81ad55a436152162a75c59267a08ef18406272623b451e293b0e32e198"
+          },
+          "releaseDirectoryCopies": [
+            {
+              "path": "tests/Hexalith.EventStore.Client.Tests/bin/Release/net10.0/Hexalith.EventStore.Client.TestContracts.dll",
+              "sha256": "ae2ada81ad55a436152162a75c59267a08ef18406272623b451e293b0e32e198",
+              "matchesSampledDebugBytes": true,
+              "classification": "base runtime copy"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "parentIndependentObservation": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/release-mixed-configuration-observation.json"
+}
