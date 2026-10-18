@@ -1,0 +1,560 @@
+{
+  "scope": "All five retired artifacts plus every direct/indirect immutable reference; read-only Git Windows checkout-filter controls.",
+  "newExactAttributeRules": [
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/entry-and-scope-check.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-build.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-release-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-identity.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-index.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-build.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full-with-fresh-packages.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-release-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-focused.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-debug-build.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-finite-qualification-audit.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages-serialized-fallback.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/native-and-matrix-audit.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-fresh-native-scanner-context.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/parent-verification-audit.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/source-and-task-audit.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-2.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-3.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-serialized-fallback.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-1.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-2.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-3.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-serialized-fallback.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-vectors.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-vectors.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server.livesidecar-debug-build.json",
+    "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json",
+    "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+    "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-gates-before-fallback.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-gates.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-index-check-correction.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-packet-schema-correction.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/latest-resume-regression-enrollment.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/working-roots-and-retry-audit.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-all-observations.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-numerical.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-outcome-audit.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-progress-sample.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.log",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-full-comparison.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-all-observations.json",
+    "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.log",
+    "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verification.json"
+  ],
+  "verifiedArtifactCount": 83,
+  "observations": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+      "expectedSha256": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501",
+      "checkoutSha256": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+      "expectedSha256": "ec25a4ad7cd82f1ce095fe7045dbf0636006d275f5817ff422146c39d1a5a2f6",
+      "checkoutSha256": "ec25a4ad7cd82f1ce095fe7045dbf0636006d275f5817ff422146c39d1a5a2f6",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "expectedSha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+      "checkoutSha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "expectedSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+      "checkoutSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "expectedSha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+      "checkoutSha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/entry.json",
+      "expectedSha256": "6f3d4a3542213b865590db74c29db5b546391523454c977da7c8a48397c45395",
+      "checkoutSha256": "6f3d4a3542213b865590db74c29db5b546391523454c977da7c8a48397c45395",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/implementation-closing-audit.json",
+      "expectedSha256": "33319c4245700326cb71f6068f4f99273149f18d4414895967c4f0bee3662c31",
+      "checkoutSha256": "33319c4245700326cb71f6068f4f99273149f18d4414895967c4f0bee3662c31",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-arrival-preservation-audit.json",
+      "expectedSha256": "ff09a807c16e911799c8e553f1fd204e28a46fe0e34fce955f3a73ae57e2fe2e",
+      "checkoutSha256": "ff09a807c16e911799c8e553f1fd204e28a46fe0e34fce955f3a73ae57e2fe2e",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-external-arrival-audit.json",
+      "expectedSha256": "58cc6136a644defa2b519d172cb5b2331c26c61c9f39ea28d9eb929c7845f290",
+      "checkoutSha256": "58cc6136a644defa2b519d172cb5b2331c26c61c9f39ea28d9eb929c7845f290",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-native-frame-audit.json",
+      "expectedSha256": "4c6eac51696a3f1c9cbd110c4ec7b783f145e94b370bd879aac2d2296b3bde99",
+      "checkoutSha256": "4c6eac51696a3f1c9cbd110c4ec7b783f145e94b370bd879aac2d2296b3bde99",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full.json",
+      "expectedSha256": "7f222112c15aff991c30ec3609aa7bf394a7188ab05a2eac565f054a00456bff",
+      "checkoutSha256": "7f222112c15aff991c30ec3609aa7bf394a7188ab05a2eac565f054a00456bff",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/entry-and-scope-check.json",
+      "expectedSha256": "57381cc9f1f50cbf9b27f702cbc373b9ce9c06d61093c8a3cda3b0ac230d445d",
+      "checkoutSha256": "57381cc9f1f50cbf9b27f702cbc373b9ce9c06d61093c8a3cda3b0ac230d445d",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-build.json",
+      "expectedSha256": "2b0135fa65ad96cae88d2869d55acd7d8247640496382ee2a29d4f4a3f7fc940",
+      "checkoutSha256": "2b0135fa65ad96cae88d2869d55acd7d8247640496382ee2a29d4f4a3f7fc940",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-full.json",
+      "expectedSha256": "1e2bc4a2ac69358985ccd9348fcb653fa74efb02430aed5b6be1233141b4281c",
+      "checkoutSha256": "1e2bc4a2ac69358985ccd9348fcb653fa74efb02430aed5b6be1233141b4281c",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-release-full.json",
+      "expectedSha256": "bb710c835b0334f2506777949bdd899edce3574979d1eee4316e54e0d516e5e6",
+      "checkoutSha256": "bb710c835b0334f2506777949bdd899edce3574979d1eee4316e54e0d516e5e6",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-identity.json",
+      "expectedSha256": "47b6453f68a537bfa6385e488cf5d375669cc61a0b13a547f13d2150a65aef0b",
+      "checkoutSha256": "47b6453f68a537bfa6385e488cf5d375669cc61a0b13a547f13d2150a65aef0b",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-index.json",
+      "expectedSha256": "43d1f2cf7e3313af709b61592b0317c8b45b445fc64717e8c61677c6a30cee3d",
+      "checkoutSha256": "43d1f2cf7e3313af709b61592b0317c8b45b445fc64717e8c61677c6a30cee3d",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-build.json",
+      "expectedSha256": "20bb65d8396a164a101a805ffa9e5816b5afde54f52ab43a5975d94f185d1cb3",
+      "checkoutSha256": "20bb65d8396a164a101a805ffa9e5816b5afde54f52ab43a5975d94f185d1cb3",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full-with-fresh-packages.json",
+      "expectedSha256": "0f48f690310c314e82c290b970c8b2813c98858be64a9815859c689fecbb3e81",
+      "checkoutSha256": "0f48f690310c314e82c290b970c8b2813c98858be64a9815859c689fecbb3e81",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full.json",
+      "expectedSha256": "79c566a6c58fde4494d36fef10595bdfbb9800f704d36d1c73703129b5cf23a8",
+      "checkoutSha256": "79c566a6c58fde4494d36fef10595bdfbb9800f704d36d1c73703129b5cf23a8",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-release-full.json",
+      "expectedSha256": "77bf050b8b0df023e9c3320e4e19144e97907eed92fb6eae19dcb75456ce5018",
+      "checkoutSha256": "77bf050b8b0df023e9c3320e4e19144e97907eed92fb6eae19dcb75456ce5018",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-focused.json",
+      "expectedSha256": "e34d5e20828de12f6e0f4ebce0a1930de3886bd7632d6f9c59895df8e593aeb8",
+      "checkoutSha256": "e34d5e20828de12f6e0f4ebce0a1930de3886bd7632d6f9c59895df8e593aeb8",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.json",
+      "expectedSha256": "38a5cc2bc805a5d8a44019f3aabb06c71edf45e617c22d21ea46ed76c8e88bd3",
+      "checkoutSha256": "38a5cc2bc805a5d8a44019f3aabb06c71edf45e617c22d21ea46ed76c8e88bd3",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-debug-build.json",
+      "expectedSha256": "85a7493c04d8f9fc59b083809f8cb5809e4719a5231b42074c987e2f9bb0f19b",
+      "checkoutSha256": "85a7493c04d8f9fc59b083809f8cb5809e4719a5231b42074c987e2f9bb0f19b",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.json",
+      "expectedSha256": "0686d00061e64904f08f1631cb85447b74bae5c17d9bd5f21262f92adcb2beb2",
+      "checkoutSha256": "0686d00061e64904f08f1631cb85447b74bae5c17d9bd5f21262f92adcb2beb2",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-finite-qualification-audit.json",
+      "expectedSha256": "ea8e8f68e6c3f8c2db5b33cd8dbf35d286a1e599bcf2192b825cd9498dd1fcd8",
+      "checkoutSha256": "ea8e8f68e6c3f8c2db5b33cd8dbf35d286a1e599bcf2192b825cd9498dd1fcd8",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused.json",
+      "expectedSha256": "1b0a40b7e09d95ef15653ddadec6d5dc3d8e043b635869d69c80801c201bed4b",
+      "checkoutSha256": "1b0a40b7e09d95ef15653ddadec6d5dc3d8e043b635869d69c80801c201bed4b",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full.json",
+      "expectedSha256": "3d0fa777defb0a6d6bf06eec0cd1780549bb6be3ef263f00576805582919adc9",
+      "checkoutSha256": "3d0fa777defb0a6d6bf06eec0cd1780549bb6be3ef263f00576805582919adc9",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full.json",
+      "expectedSha256": "8ae86f108f66641c446e6cf829ba21660ba84c248c86a663e5f0c34519a0d75d",
+      "checkoutSha256": "8ae86f108f66641c446e6cf829ba21660ba84c248c86a663e5f0c34519a0d75d",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.json",
+      "expectedSha256": "29cdfdcd3c7cf65ed9c7997f073b5c9a2ba498499db0af3ce8d536d2f0f8679c",
+      "checkoutSha256": "29cdfdcd3c7cf65ed9c7997f073b5c9a2ba498499db0af3ce8d536d2f0f8679c",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages-serialized-fallback.json",
+      "expectedSha256": "8beafeebba0b5206882c5e295807f30dccd63cc1d57ecff1f873306a40d2b292",
+      "checkoutSha256": "8beafeebba0b5206882c5e295807f30dccd63cc1d57ecff1f873306a40d2b292",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/native-and-matrix-audit.json",
+      "expectedSha256": "04b330992e1fc6ca4fcd588d2d1266cb8c50191b259f03ee736e46d48f2b0c6d",
+      "checkoutSha256": "04b330992e1fc6ca4fcd588d2d1266cb8c50191b259f03ee736e46d48f2b0c6d",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-fresh-native-scanner-context.json",
+      "expectedSha256": "953ca796ccb9cefb0b853602515e715d1036cf0d5fc04fcc15fef42d13c12aba",
+      "checkoutSha256": "953ca796ccb9cefb0b853602515e715d1036cf0d5fc04fcc15fef42d13c12aba",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/parent-verification-audit.json",
+      "expectedSha256": "42ece6c1db42ce745450aedb3a35391dd03e7626a09f62856a66e6854d039526",
+      "checkoutSha256": "42ece6c1db42ce745450aedb3a35391dd03e7626a09f62856a66e6854d039526",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/source-and-task-audit.json",
+      "expectedSha256": "945640e289778f6f92af3fc8b1822014c90a5df3b8403989a3ea4b50ad45f579",
+      "checkoutSha256": "945640e289778f6f92af3fc8b1822014c90a5df3b8403989a3ea4b50ad45f579",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-2.json",
+      "expectedSha256": "6faffd220b88995e58cd0692658ef7062e8aa522e5d3c6ab12a6d697711a986c",
+      "checkoutSha256": "6faffd220b88995e58cd0692658ef7062e8aa522e5d3c6ab12a6d697711a986c",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-3.json",
+      "expectedSha256": "b0b2759f56d1d3525938cb1085981e3bace98cf00d3e367652fa54ada84a978c",
+      "checkoutSha256": "b0b2759f56d1d3525938cb1085981e3bace98cf00d3e367652fa54ada84a978c",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-serialized-fallback.json",
+      "expectedSha256": "bbc26fb8002e8265ea4a3107251d3b254a30310bcde53c20cd9e09b3f96f36d6",
+      "checkoutSha256": "bbc26fb8002e8265ea4a3107251d3b254a30310bcde53c20cd9e09b3f96f36d6",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-1.json",
+      "expectedSha256": "6c1649502f97d76547dca9025af91b4c731e659f6864caba2f03b4f0098a881e",
+      "checkoutSha256": "6c1649502f97d76547dca9025af91b4c731e659f6864caba2f03b4f0098a881e",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-2.json",
+      "expectedSha256": "5a946e2cad337c79ccb033eb70646bc1968b9ec12a43aa2547865ff5c1ef9365",
+      "checkoutSha256": "5a946e2cad337c79ccb033eb70646bc1968b9ec12a43aa2547865ff5c1ef9365",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-3.json",
+      "expectedSha256": "ffa1b649f0c67ecf0f832130a1b1b62baa6212db3bdd5563866c200c76843ff5",
+      "checkoutSha256": "ffa1b649f0c67ecf0f832130a1b1b62baa6212db3bdd5563866c200c76843ff5",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-serialized-fallback.json",
+      "expectedSha256": "b020e4b597a12c85b73a0ab2705361be73362763c9599eaf61901a61cccdbad5",
+      "checkoutSha256": "b020e4b597a12c85b73a0ab2705361be73362763c9599eaf61901a61cccdbad5",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-vectors.json",
+      "expectedSha256": "d7d8eedd7bca0edb6e542acb06c8bf1a0172640bffbcea6cc0486700fc81ea93",
+      "checkoutSha256": "d7d8eedd7bca0edb6e542acb06c8bf1a0172640bffbcea6cc0486700fc81ea93",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+      "expectedSha256": "a7c25f5be1e81826132808117123eaeee3f635eb0d6170dfd5fdc25914a6f649",
+      "checkoutSha256": "a7c25f5be1e81826132808117123eaeee3f635eb0d6170dfd5fdc25914a6f649",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-vectors.json",
+      "expectedSha256": "6de9d20d7a205e78afc5f3bdf7d4bb05abf087778675f85f7e7da59f2c280cc8",
+      "checkoutSha256": "6de9d20d7a205e78afc5f3bdf7d4bb05abf087778675f85f7e7da59f2c280cc8",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.json",
+      "expectedSha256": "457ec8cf6ed5c3136e5d92b60589b10604723027d9dfa6512fa2eb0abf33e375",
+      "checkoutSha256": "457ec8cf6ed5c3136e5d92b60589b10604723027d9dfa6512fa2eb0abf33e375",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server.livesidecar-debug-build.json",
+      "expectedSha256": "0b20b13e024263839509c6ed4bab8b97a711a9d78e1ee8638180ed64d5706389",
+      "checkoutSha256": "0b20b13e024263839509c6ed4bab8b97a711a9d78e1ee8638180ed64d5706389",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/entry.json",
+      "expectedSha256": "480be82ba8826c82846b0dde98bba067a4841b0084484110ac39e894e35c3615",
+      "checkoutSha256": "480be82ba8826c82846b0dde98bba067a4841b0084484110ac39e894e35c3615",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json",
+      "expectedSha256": "cc98b1cb35a0ca6dfb47a92393f16e05e14c903aff92f4114dc8beb6cf5cd681",
+      "checkoutSha256": "cc98b1cb35a0ca6dfb47a92393f16e05e14c903aff92f4114dc8beb6cf5cd681",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+      "expectedSha256": "fa99280a1b9f919793496ba3ba3bf9c3ad4674a65330b3f54129d9aed690507f",
+      "checkoutSha256": "fa99280a1b9f919793496ba3ba3bf9c3ad4674a65330b3f54129d9aed690507f",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+      "expectedSha256": "e1bb0e31c9ec5924ef2fe26ed56919b32d6f5daaa9c08a8de6211e00206c3f8d",
+      "checkoutSha256": "e1bb0e31c9ec5924ef2fe26ed56919b32d6f5daaa9c08a8de6211e00206c3f8d",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/diagnosis.json",
+      "expectedSha256": "f956507a9b339c81b2bcc2ac4f28c105e6180ca56ccd143fbc6b5c632e096953",
+      "checkoutSha256": "f956507a9b339c81b2bcc2ac4f28c105e6180ca56ccd143fbc6b5c632e096953",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/preservation-final.json",
+      "expectedSha256": "60516f2c377010f681897fa12deddb0f14f2287b53c4940fd9dbfc2409a21177",
+      "checkoutSha256": "60516f2c377010f681897fa12deddb0f14f2287b53c4940fd9dbfc2409a21177",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/wrapper-entry.md",
+      "expectedSha256": "fe8327745fee697d573a930648f1a425f63b38cf50a869196dcf50b998577ce7",
+      "checkoutSha256": "fe8327745fee697d573a930648f1a425f63b38cf50a869196dcf50b998577ce7",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/README.md",
+      "expectedSha256": "348f53f72618098a936771e10d2f666b957646ffb02207f5b1602c3cbed34e24",
+      "checkoutSha256": "348f53f72618098a936771e10d2f666b957646ffb02207f5b1602c3cbed34e24",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/wrapper-before.md",
+      "expectedSha256": "e8ce448b1ff7f004b6e8f8809b4fd93b3b435251f9a2b0b0cd146ba8b23db2e8",
+      "checkoutSha256": "e8ce448b1ff7f004b6e8f8809b4fd93b3b435251f9a2b0b0cd146ba8b23db2e8",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-coverage.md",
+      "expectedSha256": "616f788263565085c397dca764fb28397f5b4af35059bb5c9690af21d5136097",
+      "checkoutSha256": "616f788263565085c397dca764fb28397f5b4af35059bb5c9690af21d5136097",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-gates-before-fallback.json",
+      "expectedSha256": "c2d7954f8b9049855a73a73ec2fd4dcda5d01fc92b633c78a99eff23176443ad",
+      "checkoutSha256": "c2d7954f8b9049855a73a73ec2fd4dcda5d01fc92b633c78a99eff23176443ad",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-gates.json",
+      "expectedSha256": "10232708d599a91e23dde7cdec41e0cdfa8eb452a66f5a1c1d5dc6142e8d8230",
+      "checkoutSha256": "10232708d599a91e23dde7cdec41e0cdfa8eb452a66f5a1c1d5dc6142e8d8230",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-index-check-correction.json",
+      "expectedSha256": "28ff3d222170874cfa77a93e2336dd7bbb4b7f5498119305f45cebbc95d28611",
+      "checkoutSha256": "28ff3d222170874cfa77a93e2336dd7bbb4b7f5498119305f45cebbc95d28611",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-packet-schema-correction.json",
+      "expectedSha256": "639c99e721f457db0f4e0398b06cf84b4d30305442bc3a2f73dd1df9830300c3",
+      "checkoutSha256": "639c99e721f457db0f4e0398b06cf84b4d30305442bc3a2f73dd1df9830300c3",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/latest-resume-regression-enrollment.json",
+      "expectedSha256": "fd840e0393230eeb78415a7153043c5f0723a7ea7c3f0b800975713d2a3b3031",
+      "checkoutSha256": "fd840e0393230eeb78415a7153043c5f0723a7ea7c3f0b800975713d2a3b3031",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-owner-decision.md",
+      "expectedSha256": "a8159396d794cb43ed84dab63bea10452a20ea0f80b7edf6a0f5ba714ed06d4f",
+      "checkoutSha256": "a8159396d794cb43ed84dab63bea10452a20ea0f80b7edf6a0f5ba714ed06d4f",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/qualification-handoff.md",
+      "expectedSha256": "ed8c7cc51b065d6d3d694d4ff649ff093b7a617be2b1649f5c51089f49aec057",
+      "checkoutSha256": "ed8c7cc51b065d6d3d694d4ff649ff093b7a617be2b1649f5c51089f49aec057",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/working-roots-and-retry-audit.json",
+      "expectedSha256": "dfab062de664ee2afafee2113b3ae8be79b2d877189aa476a97690259001cfad",
+      "checkoutSha256": "dfab062de664ee2afafee2113b3ae8be79b2d877189aa476a97690259001cfad",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-all-observations.json",
+      "expectedSha256": "68687354bc1ef3c4a395e119e8fabedc5fec75dca6ff1b02130c3ca1f810d893",
+      "checkoutSha256": "68687354bc1ef3c4a395e119e8fabedc5fec75dca6ff1b02130c3ca1f810d893",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-numerical.json",
+      "expectedSha256": "e64e2852a85584dacf3e3ca8f97da26dbf06d53a1212674a4b4e4fb8639baf33",
+      "checkoutSha256": "e64e2852a85584dacf3e3ca8f97da26dbf06d53a1212674a4b4e4fb8639baf33",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-outcome-audit.json",
+      "expectedSha256": "a267367f47a22fca99a697398b0c0a629fb7959f6066f90a1365c15e74962d13",
+      "checkoutSha256": "a267367f47a22fca99a697398b0c0a629fb7959f6066f90a1365c15e74962d13",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-progress-sample.json",
+      "expectedSha256": "054e32e85a38f72319e8f6501f00dbbf91e5c5429f7dada7935e75f04e440f78",
+      "checkoutSha256": "054e32e85a38f72319e8f6501f00dbbf91e5c5429f7dada7935e75f04e440f78",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.log",
+      "expectedSha256": "15b3f19f7774da02dad4be24254b56649c6f7149246baa0fbfb1cbde518008e0",
+      "checkoutSha256": "15b3f19f7774da02dad4be24254b56649c6f7149246baa0fbfb1cbde518008e0",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-full-comparison.json",
+      "expectedSha256": "34bbb835a44a0a716437829eed126505acbbfffbaaa5dbd9506dd2d4542bc425",
+      "checkoutSha256": "34bbb835a44a0a716437829eed126505acbbfffbaaa5dbd9506dd2d4542bc425",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-all-observations.json",
+      "expectedSha256": "0e8d96595134e462727029d42792413ba858e60e9b10cf778e20c4cff5eb170c",
+      "checkoutSha256": "0e8d96595134e462727029d42792413ba858e60e9b10cf778e20c4cff5eb170c",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.log",
+      "expectedSha256": "6e66f111cddd1b73e6d50a246318f131d43aab393cfb1aa004fafc3c8dc11579",
+      "checkoutSha256": "6e66f111cddd1b73e6d50a246318f131d43aab393cfb1aa004fafc3c8dc11579",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-final-handoff.md",
+      "expectedSha256": "ff835f638bace2874fb614568d6c866808b9a443838f64ac0d1cd88a08b8761a",
+      "checkoutSha256": "ff835f638bace2874fb614568d6c866808b9a443838f64ac0d1cd88a08b8761a",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/wrapper-entry.md",
+      "expectedSha256": "7b5700d23f0911aa830cca4b9998d1397adb1ddfcbf21c5e8750f0752389fd88",
+      "checkoutSha256": "7b5700d23f0911aa830cca4b9998d1397adb1ddfcbf21c5e8750f0752389fd88",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/README.md",
+      "expectedSha256": "7ac24a0c0e6c8446096eae83d477817f59f09f32c609ef3deed600d272d60111",
+      "checkoutSha256": "7ac24a0c0e6c8446096eae83d477817f59f09f32c609ef3deed600d272d60111",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verification.json",
+      "expectedSha256": "d9e8da45b4798c5e0c54425e0b126bfa6e6df8bc2d450b5ba18d3119543fc85d",
+      "checkoutSha256": "d9e8da45b4798c5e0c54425e0b126bfa6e6df8bc2d450b5ba18d3119543fc85d",
+      "match": true
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/README.md",
+      "expectedSha256": "13a3fe7fb63393127848f16a1c561c2379b5689c72ebd6b4e81504e32b959f72",
+      "checkoutSha256": "13a3fe7fb63393127848f16a1c561c2379b5689c72ebd6b4e81504e32b959f72",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/final-results.json",
+      "expectedSha256": "0dc235e97d251bf66b6a8d7c2307efac702f0cc65bf03e707953952052c00f1d",
+      "checkoutSha256": "0dc235e97d251bf66b6a8d7c2307efac702f0cc65bf03e707953952052c00f1d",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/residual-metadata-diagnosis.log",
+      "expectedSha256": "6007a5c6d68889883b59a25dcb49fa1e1e55d4222555b37f7575bebd119fe80c",
+      "checkoutSha256": "6007a5c6d68889883b59a25dcb49fa1e1e55d4222555b37f7575bebd119fe80c",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/violations-after.json",
+      "expectedSha256": "8089b3ca94ca4aa85fecbb69bc7027f9d576af75aa77e8d00e1953b3b4e0d95a",
+      "checkoutSha256": "8089b3ca94ca4aa85fecbb69bc7027f9d576af75aa77e8d00e1953b3b4e0d95a",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/violations-before.json",
+      "expectedSha256": "2742e56ed663349f06ecfb14de5af685326676200a01b97d368478113e449a4a",
+      "checkoutSha256": "2742e56ed663349f06ecfb14de5af685326676200a01b97d368478113e449a4a",
+      "match": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/xunit-existing-probe-mapping.json",
+      "expectedSha256": "e18482ec1aaecefebf692d917cb4ea0914e2812822c830f67dd8e8e3eafa2520",
+      "checkoutSha256": "e18482ec1aaecefebf692d917cb4ea0914e2812822c830f67dd8e8e3eafa2520",
+      "match": true
+    }
+  ]
+}

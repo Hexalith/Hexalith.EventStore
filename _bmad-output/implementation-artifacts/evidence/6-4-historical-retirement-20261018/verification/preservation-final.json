@@ -1,0 +1,18 @@
+{
+  "baselineOwnerHead": "37bdc90a72b9f0ea547852e903334cc8cc541641",
+  "trackedFilesChecked": 22924,
+  "missingTrackedFiles": [],
+  "changedTrackedFiles": [
+    ".gitattributes",
+    "_bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json",
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md",
+    "docs/architecture/evidence-secret-scanning.md",
+    "docs/security/workload-binding-authority.md",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.XunitEvidence.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs"
+  ],
+  "allOtherTrackedOriginalBytesUnchanged": true,
+  "priorRegistryEntriesUnchanged": 4,
+  "newApprovedRetirements": 5
+}

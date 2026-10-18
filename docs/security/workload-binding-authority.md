@@ -131,6 +131,14 @@ after the broader installation/history coverage is established separately.
 
 ## Validation and evidence
 
+On 2026-10-18 the user selected option **1**, approving retirement of exactly
+three preserved `WorkloadBindingAuthorityTests.cs` snapshots and two historical
+Server reports. The [authority overlay](../../_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/authority-overlay.json)
+withdraws present qualification authority from the dependent preparation and
+review results (187/187 and the two 83-case runs). Their original source bytes,
+receipts and dated outcomes remain preserved. Those runs do not establish
+current-source validation, replacement evidence or deployed acceptance.
+
 Production-mode tests use a temporary self-signed synthetic certificate and an
 in-memory HTTP transport. They exercise the actual broker, outbound client,
 cryptographic validation and mapped endpoint boundaries. They are local software

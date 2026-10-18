@@ -1744,8 +1744,15 @@ public sealed partial class SecretsProtectionTests
             retired.GetProperty("reason").GetString().ShouldNotBeNullOrWhiteSpace();
             string expectedHash = retired.GetProperty("sha256").GetString()!;
             expectedHash.ShouldMatch("^[0-9a-f]{64}$");
-            ApprovedRetirementHashes.TryGetValue(path, out string? approvedHash).ShouldBeTrue(
+            bool establishedApproval = ApprovedRetirementHashes.TryGetValue(path, out string? approvedHash);
+            bool story64Approval = ApprovedStory64RetirementHashes.TryGetValue(path, out string? story64Hash);
+            (establishedApproval || story64Approval).ShouldBeTrue(
                 "Retirement requires an existing verified approval; a registry entry alone is not approval.");
+            if (story64Approval)
+            {
+                VerifyStory64RetirementApproval(root, document.RootElement, retired);
+                approvedHash = story64Hash;
+            }
             expectedHash.ShouldBe(approvedHash, "A registry edit cannot re-pin approved retired content.");
             string actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path))))
                 .ToLowerInvariant();
@@ -1770,7 +1777,8 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsGovernedRetirementPath(string path)
         => GovernedEvidenceCapturePathPattern().IsMatch(path)
-            || OwnerApprovedProofPacketPathPattern().IsMatch(path);
+            || OwnerApprovedProofPacketPathPattern().IsMatch(path)
+            || ApprovedStory64RetirementHashes.ContainsKey(path);
 
     private static bool HasKnownBinarySignature(ReadOnlySpan<byte> bytes)
     {

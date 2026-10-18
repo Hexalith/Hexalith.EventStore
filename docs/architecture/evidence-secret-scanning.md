@@ -233,3 +233,36 @@ preserved Story 3.6 source copies and two unapproved URI-bearing displays in
 Story 6.4 Server XML reports. The repair grants no disposition for them. The
 existing replacement/retirement contract above still applies; local focused
 test passes do not establish a green tracked-content gate or Story 6.4 readiness.
+
+
+## Approved exact-file retirement — 2026-10-18
+
+The interactive repository owner selected option **1** after reviewing the
+finite five-file proposal. The [recorded decision](../../_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/retirement-decision.json)
+binds the unchanged proposal, verbatim user selection and
+[authority overlay](../../_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/authority-overlay.json).
+No personal owner name, separate role acceptance or production approval is inferred.
+
+This new decision authorizes only the five exact path/SHA-256 tuples in that
+record: two immutable Server XML reports and three immutable authority-test
+source snapshots. Their bytes remain intact. The overlay withdraws dependent
+present qualification authority through additive tombstones; historical indexes,
+receipts, outcomes and source hashes are not rewritten. It supplies no replacement
+full-suite/source-review evidence, CI seal, P1R acceptance or Story 6.4 completion.
+The earlier seven-finding observation above remains historical diagnostic truth.
+
+`ApprovedStory64RetirementHashes` enrolls these five exact paths without widening
+any directory pattern. Each registry entry also requires the independently pinned
+owner-decision digest and exact binding record. The reader validates the decision,
+proposal, user selection, authority overlay and preserved artifact bytes before
+retiring a file. Missing or changed dependencies, re-pinning, duplicate entries,
+authoritative status and adjacent paths fail closed. Removing registry enrollment
+restores ordinary credential detection. The two established Story 5.3 approvals
+and the two unusable inherited OTLP entries retain their previous scope.
+
+Canonical-ingestion controls exercise all five tuples and adverse decisions.
+The original URI/literal probes are still detected when their preserved bytes
+are scanned directly; no new fixture identity, detector relaxation or broad
+language/path allowance is introduced. Fresh measured local results are recorded
+separately from this owner decision; hosted CI and release qualification remain
+separate gates.

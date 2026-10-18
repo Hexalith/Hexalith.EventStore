@@ -1,0 +1,88 @@
+{
+  "schema": "hexalith.eventstore.approved-retirement-verification.v1",
+  "recordedUtc": "2026-10-18T10:09:55.991545+00:00",
+  "rootStory": "Hexalith.Projects/6.4",
+  "ownerRepository": "Hexalith.EventStore",
+  "scope": "Approved five-file retirement and local guard validation only; not complete Server suite, hosted CI/P1R package qualification, G-4, production acceptance or Story 6.4 implementation.",
+  "status": "local-prerequisite-complete",
+  "approvedRetirements": 5,
+  "preservedOverlayArtifacts": 83,
+  "directReferences": 46,
+  "indirectReferences": 32,
+  "resolvedReviewFindings": 10,
+  "deferredReviewFindings": 0,
+  "strictTrackedContentGate": {
+    "nativeSource": {
+      "rawPath": "/tmp/story64-retirement-20261018/full-secret-guard-reviewed.xml",
+      "sha256": "870d04d7c80aab29c6757c4496a0aff2c5643eb4a563a08dae115c7ffd16f27a",
+      "counters": {
+        "total": "940",
+        "passed": "938",
+        "failed": "2",
+        "errors": "0",
+        "skipped": "0",
+        "not-run": "0",
+        "time": "779.785",
+        "start-rtf": "2026-10-18T09:49:03.8230382+00:00",
+        "finish-rtf": "2026-10-18T10:02:03.5735034+00:00"
+      }
+    },
+    "test": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+    "result": "Pass",
+    "seconds": "706.842",
+    "scope": "The complete repository tracked-content scan passed within the full class run. That class also exposed two malformed random test fixtures; they were corrected without detector/retirement policy changes."
+  },
+  "completeClassAttempt": {
+    "native": {
+      "rawPath": "/tmp/story64-retirement-20261018/full-secret-guard-reviewed.xml",
+      "sha256": "870d04d7c80aab29c6757c4496a0aff2c5643eb4a563a08dae115c7ffd16f27a",
+      "counters": {
+        "total": "940",
+        "passed": "938",
+        "failed": "2",
+        "errors": "0",
+        "skipped": "0",
+        "not-run": "0",
+        "time": "779.785",
+        "start-rtf": "2026-10-18T09:49:03.8230382+00:00",
+        "finish-rtf": "2026-10-18T10:02:03.5735034+00:00"
+      }
+    },
+    "status": "failed-two-malformed-fixtures",
+    "failedTests": [
+      "Story64Retirement_NeighboringPathsRemainScanned",
+      "CSharpJsonStringRead_RequiresRuntimeSourceWithoutLiteralOperands"
+    ],
+    "correction": "C# negative fixtures now emit quoted runtime-generated literals. Bare generated identifiers were valid nonliteral expressions, making both tests probabilistic."
+  },
+  "finalRemainingClass": {
+    "rawPath": "/tmp/story64-retirement-20261018/remaining-guard-final.xml",
+    "sha256": "02406b5eee9a2fa7e9499446847df96add7a17b36a73c171d917c320e952fa21",
+    "counters": {
+      "total": "940",
+      "passed": "940",
+      "failed": "0",
+      "errors": "0",
+      "skipped": "0",
+      "not-run": "0",
+      "time": "73.175",
+      "start-rtf": "2026-10-18T10:05:45.3937505+00:00",
+      "finish-rtf": "2026-10-18T10:06:58.5655761+00:00"
+    }
+  },
+  "verificationMeaning": "All other guard cases pass on corrected fixtures; the already-passing strict scan was not repeated. Final changed sources/configuration and new delivery metadata are additionally validated through the same canonical scanner. The initial interrupted run and all failed attempts remain explicitly retained.",
+  "rawNativeReports": "Native XML remains at the recorded /tmp paths with byte hashes; counts are parsed from actual runner output. No TRX or G-4 passing evidence is fabricated.",
+  "sourceOnlyFixtureCorrections": [
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Story64Retirement.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.XunitEvidence.cs"
+  ],
+  "windowsCheckoutControlsPassed": 83,
+  "existingTrackedBytesPreserved": 22916,
+  "fourPriorRegistryRecordsUnchanged": true,
+  "packagePinsAndAcceptanceRecords": "unchanged",
+  "projectsStory64": "blocked",
+  "p1rUsability": false,
+  "hostedCI": "not run",
+  "publication": "not performed",
+  "commitPush": "not performed"
+}

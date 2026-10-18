@@ -1,0 +1,14 @@
+[
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+    "expected": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501",
+    "windowsCheckoutHash": "bad76cc85fa60c01ed7e1856e136202df0378d148a077dbd2ad8338adb951321",
+    "match": false
+  },
+  {
+    "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+    "expected": "ec25a4ad7cd82f1ce095fe7045dbf0636006d275f5817ff422146c39d1a5a2f6",
+    "windowsCheckoutHash": "da587d40d91fa88e66fbf340a96ae032b27466304b3e26c43dea69f6470443fd",
+    "match": false
+  }
+]

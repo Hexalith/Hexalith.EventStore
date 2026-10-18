@@ -1,0 +1,471 @@
+{
+  "schema": "hexalith.projects.story64.prerequisite-planning.v1",
+  "recordedUtc": "2026-10-18T09:14:18.251712+00:00",
+  "scope": "Local read-only prerequisite observations and an unapproved finite retirement proposal; not qualification, acceptance, retirement execution, or release authority.",
+  "projectsSource": "3d3b3fab63afe63090e6314e2c2b6e66bcd0ec31",
+  "eventstoreSource": "37bdc90a72b9f0ea547852e903334cc8cc541641",
+  "rootGitlinks": "160000 commit b7a9c9ec9f57e098b408d3b940929ef4b160985b\treferences/Hexalith.Builds\n160000 commit 676c0d86067f4a648f487533b293385ec542ec5b\treferences/Hexalith.Conversations\n160000 commit 37bdc90a72b9f0ea547852e903334cc8cc541641\treferences/Hexalith.EventStore\n160000 commit 01f9ad73f25786c8e24fddedddd71ce619c3d8b6\treferences/Hexalith.Folders",
+  "remoteStateRechecked": false,
+  "commands": [
+    {
+      "command": [
+        "python3",
+        "tools/planning/validate_production_authority.py",
+        "--story-id",
+        "6.4"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects",
+      "exitCode": 0,
+      "stdout": "PASS: Story 6.4 is within production authority\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "dotnet",
+        "tool",
+        "run",
+        "hexalith-module",
+        "test",
+        "--profile",
+        "reads",
+        "--filter",
+        "Story=6.4"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/projects",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "Cannot find a tool in the manifest file that has a command named 'hexalith-module'.\n"
+    }
+  ],
+  "missingRunnerFiles": [
+    ".config/dotnet-tools.json",
+    "module/hexalith-projects.module.json"
+  ],
+  "retainedSecretScan": {
+    "record": "references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/final-results.json",
+    "recordSha256": "0dc235e97d251bf66b6a8d7c2307efac702f0cc65bf03e707953952052c00f1d",
+    "scope": "Focused canonical rescan of all 670 previously failing files plus focused test suites. The strict tracked gate remains blocked; no green final unfiltered CI/gate is claimed.",
+    "recordedUtc": "2026-10-18T08:52:58.950059+00:00",
+    "baselineSource": "794369b30c2f3615a7f1d70a5beb1935f6470b36",
+    "remainingFindings": 7,
+    "remainingFiles": 5,
+    "currentReviewedSourceHashesMatchRetained": true,
+    "freshSecretScanRun": false
+  },
+  "retirementProposal": {
+    "status": "pending-owner-decision",
+    "approval": null,
+    "governingDocuments": [
+      "docs/architecture/evidence-secret-scanning.md",
+      "_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md"
+    ],
+    "ownerRepository": "references/Hexalith.EventStore",
+    "candidates": [
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+        "sha256": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501",
+        "bytes": 4252417,
+        "retainedFindingLines": [
+          96
+        ],
+        "proposedDisposition": {
+          "status": "retired",
+          "authoritative": false,
+          "preserveOriginalBytes": true,
+          "reason": "Historical report contains an unapproved URI-bearing test display."
+        }
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+        "sha256": "ec25a4ad7cd82f1ce095fe7045dbf0636006d275f5817ff422146c39d1a5a2f6",
+        "bytes": 4253367,
+        "retainedFindingLines": [
+          98
+        ],
+        "proposedDisposition": {
+          "status": "retired",
+          "authoritative": false,
+          "preserveOriginalBytes": true,
+          "reason": "Historical report contains an unapproved URI-bearing test display."
+        }
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "sha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+        "bytes": 20080,
+        "retainedFindingLines": [
+          117
+        ],
+        "proposedDisposition": {
+          "status": "retired",
+          "authoritative": false,
+          "preserveOriginalBytes": true,
+          "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values."
+        }
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "sha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+        "bytes": 30148,
+        "retainedFindingLines": [
+          119,
+          271
+        ],
+        "proposedDisposition": {
+          "status": "retired",
+          "authoritative": false,
+          "preserveOriginalBytes": true,
+          "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values."
+        }
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+        "sha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+        "bytes": 29292,
+        "retainedFindingLines": [
+          118,
+          270
+        ],
+        "proposedDisposition": {
+          "status": "retired",
+          "authoritative": false,
+          "preserveOriginalBytes": true,
+          "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values."
+        }
+      }
+    ],
+    "proposedWorkAfterExplicitApproval": [
+      "Record named, dated owning-spec approval and provenance-safe tombstones for exactly these path/SHA-256 tuples; withdraw their authority without substituting focused passes for original full-suite proof.",
+      "Classify the recorded inbound references and explicitly withdraw every dependent authoritative claim through additive lineage/tombstone records; preserve historical indexes and receipts unchanged. Do not present the earlier full-suite or source-review results as fresh accepted proof.",
+      "Enroll only these exact paths and approved hashes in the existing retirement validation and registry. Preserve the two established approvals, historical bytes, seals and all surrounding detection; do not broaden a directory pattern.",
+      "Add real-ingestion controls for changed or missing bytes, registry re-pinning, absent approval, duplicate or malformed decisions and adjacent unapproved paths. Preserve direct-scanner detection of the original forbidden fixtures.",
+      "Run focused controls and the owning strict tracked-content gate, record every actual outcome, and obtain fresh exact-source CI/P1R preparation evidence separately."
+    ],
+    "proposedChangePaths": [
+      "docs/architecture/evidence-secret-scanning.md",
+      "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceIngestion.cs",
+      "_bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json",
+      "_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/"
+    ],
+    "excludedAuthority": [
+      "Story 6.4 implementation",
+      "package pin changes",
+      "package publication",
+      "P1R acceptance",
+      "other owner gates",
+      "commits or pushes"
+    ],
+    "alternative": "Keep strict blocking, or separately approve replacement evidence with complete regenerated lineage/digests/approvals; current focused results cannot replace the two historical full-suite reports.",
+    "observedInboundReferences": [
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/entry.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/implementation-closing-audit.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-arrival-preservation-audit.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-external-arrival-audit.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-native-frame-audit.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/entry-and-scope-check.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-build.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-release-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-identity.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-index.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-build.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full-with-fresh-packages.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-release-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-focused.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-debug-build.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-finite-qualification-audit.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages-serialized-fallback.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/native-and-matrix-audit.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-fresh-native-scanner-context.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/parent-verification-audit.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/source-and-task-audit.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-2.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-3.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-serialized-fallback.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-1.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-2.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-3.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-serialized-fallback.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-vectors.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-vectors.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server.livesidecar-debug-build.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml"
+        ]
+      },
+      {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/entry.json",
+        "referencesCandidates": [
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+          "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml"
+        ]
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      },
+      {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+        "referencesCandidates": [
+          "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs"
+        ]
+      }
+    ],
+    "lineageDispositionBoundary": "Preserve historical source/report/index/receipt bytes and existing hashes. Add owner-approved tombstones or an authority overlay identifying every dependent claim that can no longer rely on these five files. Existing focused results do not replace full-suite claims; unaffected evidence remains separate."
+  },
+  "story64": "blocked",
+  "p1rUsability": false,
+  "runtimeOrDependencyChanges": false
+}

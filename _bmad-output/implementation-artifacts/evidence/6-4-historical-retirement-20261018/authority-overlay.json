@@ -1,0 +1,3486 @@
+{
+  "schema": "hexalith.eventstore.historical-retirement-authority-overlay.v1",
+  "recordedUtc": "2026-10-18T09:32:30.918094+00:00",
+  "owningRepository": "Hexalith.EventStore",
+  "observedSourceCommit": "37bdc90a72b9f0ea547852e903334cc8cc541641",
+  "disposition": "present-qualification-authority-withdrawn; historical-bytes-preserved",
+  "approval": {
+    "actor": "interactive user in this session",
+    "recordedDate": "2026-10-18",
+    "instruction": "1",
+    "selectedOption": "Approve governed retirement of those five preserved artifacts",
+    "personalNameAsserted": false,
+    "scope": "Exactly the five proposal path/SHA-256 tuples and additive withdrawal of dependent authority. No Story 6.4 implementation, package changes/publication, P1R acceptance, other owner gates, commits or pushes."
+  },
+  "approvedProposal": {
+    "owningRepository": "Hexalith.Projects",
+    "path": "_bmad-output/implementation-artifacts/evidence/6-4-resume-20261018/prerequisite-preflight-and-retirement-proposal.json",
+    "bytes": 27443,
+    "sha256": "5b86cc00c890ab288a4709221d89a914e4d4ab95610e872c8ffb1c469f2e1a75"
+  },
+  "governingDocuments": [
+    "docs/architecture/evidence-secret-scanning.md",
+    "_bmad-output/implementation-artifacts/spec-5-3-production-authentication-guards-and-secret-stripping.md"
+  ],
+  "retiredArtifacts": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+      "bytes": 4252417,
+      "sha256": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501",
+      "status": "retired",
+      "authoritative": false,
+      "preserveOriginalBytes": true,
+      "reason": "Historical report contains an unapproved URI-bearing test display."
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+      "bytes": 4253367,
+      "sha256": "ec25a4ad7cd82f1ce095fe7045dbf0636006d275f5817ff422146c39d1a5a2f6",
+      "status": "retired",
+      "authoritative": false,
+      "preserveOriginalBytes": true,
+      "reason": "Historical report contains an unapproved URI-bearing test display."
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "bytes": 20080,
+      "sha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+      "status": "retired",
+      "authoritative": false,
+      "preserveOriginalBytes": true,
+      "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values."
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "bytes": 30148,
+      "sha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+      "status": "retired",
+      "authoritative": false,
+      "preserveOriginalBytes": true,
+      "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values."
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "bytes": 29292,
+      "sha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+      "status": "retired",
+      "authoritative": false,
+      "preserveOriginalBytes": true,
+      "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values."
+    }
+  ],
+  "serverFullSuiteClaims": [
+    {
+      "receipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+        "bytes": 5200347,
+        "sha256": "a7c25f5be1e81826132808117123eaeee3f635eb0d6170dfd5fdc25914a6f649"
+      },
+      "retiredNativeReport": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+      "sourceHeadBefore": "77d9af18a54d92506e310fe5a45021a395e66f60",
+      "sourceHeadAfter": "77d9af18a54d92506e310fe5a45021a395e66f60",
+      "startedAt": "2026-10-17T06:41:25.434916+00:00",
+      "endedAt": "2026-10-17T06:57:37.488847+00:00",
+      "historicalSummary": {
+        "selected": 5817,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 25,
+        "notRun": 0,
+        "passed": 5792,
+        "seconds": 971.613
+      },
+      "historicalExitCode": 0,
+      "presentQualificationAuthority": false,
+      "dependentClaimsWithdrawn": [
+        "full Server suite pass",
+        "current-policy scanner pass",
+        "exact 25-method skip set",
+        "native selector and matrix witnesses",
+        "45-case regression enrollment",
+        "derived full-frame numerical qualification"
+      ],
+      "replacementEvidence": null
+    },
+    {
+      "receipt": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.json",
+        "bytes": 5228238,
+        "sha256": "457ec8cf6ed5c3136e5d92b60589b10604723027d9dfa6512fa2eb0abf33e375"
+      },
+      "retiredNativeReport": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+      "sourceHeadBefore": "77d9af18a54d92506e310fe5a45021a395e66f60",
+      "sourceHeadAfter": "77d9af18a54d92506e310fe5a45021a395e66f60",
+      "startedAt": "2026-10-17T07:38:03.135259+00:00",
+      "endedAt": "2026-10-17T07:46:51.106244+00:00",
+      "historicalSummary": {
+        "selected": 5817,
+        "errors": 0,
+        "failed": 0,
+        "skipped": 25,
+        "notRun": 0,
+        "passed": 5792,
+        "seconds": 527.239
+      },
+      "historicalExitCode": 0,
+      "presentQualificationAuthority": false,
+      "dependentClaimsWithdrawn": [
+        "full Server suite pass",
+        "current-policy scanner pass",
+        "exact 25-method skip set",
+        "native selector and matrix witnesses",
+        "45-case regression enrollment",
+        "derived full-frame numerical qualification"
+      ],
+      "replacementEvidence": null
+    }
+  ],
+  "sourceReviewClaims": [
+    {
+      "receipt": {
+        "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verification.json",
+        "bytes": 4015,
+        "sha256": "d9e8da45b4798c5e0c54425e0b126bfa6e6df8bc2d450b5ba18d3119543fc85d"
+      },
+      "recordedAt": "2026-10-17T14:36:51.023468+00:00",
+      "retiredSourceSnapshot": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "sourceSha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+      "historicalClaim": {
+        "passed": 187,
+        "failed": 0,
+        "skipped": 0
+      },
+      "presentQualificationAuthority": false,
+      "replacementEvidence": null,
+      "sourceBindingPointer": "/sources/13"
+    },
+    {
+      "receipt": {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+        "bytes": 5363,
+        "sha256": "e1bb0e31c9ec5924ef2fe26ed56919b32d6f5daaa9c08a8de6211e00206c3f8d"
+      },
+      "recordedAt": "2026-10-17T14:52:23.987348+00:00",
+      "retiredSourceSnapshot": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "sourceSha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+      "historicalClaim": {
+        "passed": 83,
+        "failed": 0,
+        "skipped": 0
+      },
+      "presentQualificationAuthority": false,
+      "replacementEvidence": null,
+      "sourceBindingPointer": "/sources/18"
+    },
+    {
+      "receipt": {
+        "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+        "bytes": 5429,
+        "sha256": "fa99280a1b9f919793496ba3ba3bf9c3ad4674a65330b3f54129d9aed690507f"
+      },
+      "recordedAt": "2026-10-17T14:54:24.359908+00:00",
+      "retiredSourceSnapshot": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "sourceSha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+      "historicalClaim": {
+        "passed": 83,
+        "failed": 0,
+        "skipped": 0
+      },
+      "presentQualificationAuthority": false,
+      "replacementEvidence": null,
+      "sourceBindingPointer": "/sources/18"
+    }
+  ],
+  "directReferenceCount": 46,
+  "directReferenceClassifications": {
+    "preservation-or-source-change-provenance": 8,
+    "working-tree-status-provenance": 26,
+    "immutable-inventory": 1,
+    "server-full-suite-derived-result": 8,
+    "source-preservation-lineage": 1,
+    "source-review-result": 2
+  },
+  "directReferences": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/entry.json",
+      "bytes": 4366367,
+      "sha256": "6f3d4a3542213b865590db74c29db5b546391523454c977da7c8a48397c45395",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/protected/12460/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/protected/12460/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/protected/12466/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/protected/12466/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/protected/12460/path",
+          "/protected/12460/sha256",
+          "/protected/12466/path",
+          "/protected/12466/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/implementation-closing-audit.json",
+      "bytes": 38376,
+      "sha256": "33319c4245700326cb71f6068f4f99273149f18d4414895967c4f0bee3662c31",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/21/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/21/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/41/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/41/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/61/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/61/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/sourceCutoffs/sourceChangesDuringNative/83/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/sourceCutoffs/sourceChangesDuringNative/21/path",
+          "/sourceCutoffs/sourceChangesDuringNative/21/afterSha256",
+          "/sourceCutoffs/sourceChangesDuringNative/41/path",
+          "/sourceCutoffs/sourceChangesDuringNative/41/afterSha256",
+          "/sourceCutoffs/sourceChangesDuringNative/61/path",
+          "/sourceCutoffs/sourceChangesDuringNative/61/afterSha256",
+          "/sourceCutoffs/sourceChangesDuringNative/83/afterSha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-arrival-preservation-audit.json",
+      "bytes": 50223,
+      "sha256": "ff09a807c16e911799c8e553f1fd204e28a46fe0e34fce955f3a73ae57e2fe2e",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/externalCommitPaths/26",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/externalCommitPaths/46",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/externalCommitPaths/66",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/nativeSourceInputChangesDuringFull/21",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/nativeSourceInputChangesDuringFull/41",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/nativeSourceInputChangesDuringFull/61",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/frames/2/sourceInputChanges/21",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/frames/2/sourceInputChanges/41",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/frames/2/sourceInputChanges/61",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/externalCommitPaths/26",
+          "/externalCommitPaths/46",
+          "/externalCommitPaths/66",
+          "/nativeSourceInputChangesDuringFull/21",
+          "/nativeSourceInputChangesDuringFull/41",
+          "/nativeSourceInputChangesDuringFull/61",
+          "/frames/2/sourceInputChanges/21",
+          "/frames/2/sourceInputChanges/41",
+          "/frames/2/sourceInputChanges/61"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-external-arrival-audit.json",
+      "bytes": 31482,
+      "sha256": "58cc6136a644defa2b519d172cb5b2331c26c61c9f39ea28d9eb929c7845f290",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/changes/21/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/changes/21/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/changes/41/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/changes/41/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/changes/61/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/changes/61/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/changes/83/afterSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/changes/21/path",
+          "/changes/21/afterSha256",
+          "/changes/41/path",
+          "/changes/41/afterSha256",
+          "/changes/61/path",
+          "/changes/61/afterSha256",
+          "/changes/83/afterSha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/parent-native-frame-audit.json",
+      "bytes": 24692,
+      "sha256": "4c6eac51696a3f1c9cbd110c4ec7b783f145e94b370bd879aac2d2296b3bde99",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/frames/1/sourceInputChangesDuringFrame/21",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/frames/1/sourceInputChangesDuringFrame/41",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/frames/1/sourceInputChangesDuringFrame/61",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/frames/1/sourceInputChangesDuringFrame/21",
+          "/frames/1/sourceInputChangesDuringFrame/41",
+          "/frames/1/sourceInputChangesDuringFrame/61"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/release-live-full.json",
+      "bytes": 5235911,
+      "sha256": "7f222112c15aff991c30ec3609aa7bf394a7188ab05a2eac565f054a00456bff",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1pre-review-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "object-key",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1pre-review-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-final-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "object-key",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-final-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "object-key",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/after/sourceInputs/tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/sourceInputsChanges/21",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/sourceInputsChanges/41",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/sourceInputsChanges/61",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1pre-review-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1pre-review-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-final-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-final-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/after/sourceInputs/docs~1evidence~1story-3-6~120261017t144520z-production-authority-review~1reviewed-sources~1tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/after/sourceInputs/tests~1Hexalith.EventStore.Server.Tests~1Authentication~1WorkloadBindingAuthorityTests.cs",
+          "/sourceInputsChanges/21",
+          "/sourceInputsChanges/41",
+          "/sourceInputsChanges/61"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/entry-and-scope-check.json",
+      "bytes": 293315,
+      "sha256": "57381cc9f1f50cbf9b27f702cbc373b9ce9c06d61093c8a3cda3b0ac230d445d",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/preExistingStory64Evidence/590/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/preExistingStory64Evidence/590/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/preExistingStory64Evidence/596/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/preExistingStory64Evidence/596/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/preExistingStory64Evidence/590/path",
+          "/preExistingStory64Evidence/590/sha256",
+          "/preExistingStory64Evidence/596/path",
+          "/preExistingStory64Evidence/596/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-build.json",
+      "bytes": 5201960,
+      "sha256": "2b0135fa65ad96cae88d2869d55acd7d8247640496382ee2a29d4f4a3f7fc940",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-debug-full.json",
+      "bytes": 5200233,
+      "sha256": "1e2bc4a2ac69358985ccd9348fcb653fa74efb02430aed5b6be1233141b4281c",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-client-release-full.json",
+      "bytes": 5227338,
+      "sha256": "bb710c835b0334f2506777949bdd899edce3574979d1eee4316e54e0d516e5e6",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-identity.json",
+      "bytes": 2597426,
+      "sha256": "47b6453f68a537bfa6385e488cf5d375669cc61a0b13a547f13d2150a65aef0b",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-closing-index.json",
+      "bytes": 133427,
+      "sha256": "43d1f2cf7e3313af709b61592b0317c8b45b445fc64717e8c61677c6a30cee3d",
+      "classification": "immutable-inventory",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/files/433/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/files/433/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/files/439/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/files/439/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Retain files[433] and files[439] with original hashes and all index bytes. Inventory membership proves preservation only and grants no authoritative use of either retired report.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/files/433/path",
+          "/files/433/sha256",
+          "/files/439/path",
+          "/files/439/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-build.json",
+      "bytes": 5201629,
+      "sha256": "20bb65d8396a164a101a805ffa9e5816b5afde54f52ab43a5975d94f185d1cb3",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full-with-fresh-packages.json",
+      "bytes": 5225534,
+      "sha256": "0f48f690310c314e82c290b970c8b2813c98858be64a9815859c689fecbb3e81",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-debug-full.json",
+      "bytes": 5219651,
+      "sha256": "79c566a6c58fde4494d36fef10595bdfbb9800f704d36d1c73703129b5cf23a8",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-contracts-release-full.json",
+      "bytes": 5232020,
+      "sha256": "77bf050b8b0df023e9c3320e4e19144e97907eed92fb6eae19dcb75456ce5018",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-focused.json",
+      "bytes": 5198511,
+      "sha256": "e34d5e20828de12f6e0f4ebce0a1930de3886bd7632d6f9c59895df8e593aeb8",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domain-debug-full.json",
+      "bytes": 5199339,
+      "sha256": "38a5cc2bc805a5d8a44019f3aabb06c71edf45e617c22d21ea46ed76c8e88bd3",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-debug-build.json",
+      "bytes": 5197724,
+      "sha256": "85a7493c04d8f9fc59b083809f8cb5809e4719a5231b42074c987e2f9bb0f19b",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-domainservice-release-full.json",
+      "bytes": 5226023,
+      "sha256": "0686d00061e64904f08f1631cb85447b74bae5c17d9bd5f21262f92adcb2beb2",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-finite-qualification-audit.json",
+      "bytes": 424915,
+      "sha256": "ea8e8f68e6c3f8c2db5b33cd8dbf35d286a1e599bcf2192b825cd9498dd1fcd8",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/frames/2/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/frames/19/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/frames/2/command/3",
+          "/frames/19/command/3"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-focused.json",
+      "bytes": 5202974,
+      "sha256": "1b0a40b7e09d95ef15653ddadec6d5dc3d8e043b635869d69c80801c201bed4b",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-debug-full.json",
+      "bytes": 5245407,
+      "sha256": "3d0fa777defb0a6d6bf06eec0cd1780549bb6be3ef263f00576805582919adc9",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-full.json",
+      "bytes": 5234287,
+      "sha256": "8ae86f108f66641c446e6cf829ba21660ba84c248c86a663e5f0c34519a0d75d",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-live-release-r4096.json",
+      "bytes": 5237813,
+      "sha256": "29cdfdcd3c7cf65ed9c7997f073b5c9a2ba498499db0af3ce8d536d2f0f8679c",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-packages-serialized-fallback.json",
+      "bytes": 5220296,
+      "sha256": "8beafeebba0b5206882c5e295807f30dccd63cc1d57ecff1f873306a40d2b292",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/native-and-matrix-audit.json",
+      "bytes": 113913,
+      "sha256": "04b330992e1fc6ca4fcd588d2d1266cb8c50191b259f03ee736e46d48f2b0c6d",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/frames/2/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/frames/2/nativeXml/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/frames/2/nativeXml/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/frames/19/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/frames/19/nativeXml/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/frames/19/nativeXml/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/frames/2/command/3",
+          "/frames/2/nativeXml/path",
+          "/frames/2/nativeXml/sha256",
+          "/frames/19/command/3",
+          "/frames/19/nativeXml/path",
+          "/frames/19/nativeXml/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-fresh-native-scanner-context.json",
+      "bytes": 2137,
+      "sha256": "953ca796ccb9cefb0b853602515e715d1036cf0d5fc04fcc15fef42d13c12aba",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/nativeXml/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/nativeXml/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/command/3",
+          "/nativeXml/path",
+          "/nativeXml/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/parent-verification-audit.json",
+      "bytes": 25167,
+      "sha256": "42ece6c1db42ce745450aedb3a35391dd03e7626a09f62856a66e6854d039526",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/currentRequiredFullCohorts/0/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/currentRequiredFullCohorts/5/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/currentRequiredFullCohorts/0/command/3",
+          "/currentRequiredFullCohorts/5/command/3"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/source-and-task-audit.json",
+      "bytes": 68707,
+      "sha256": "945640e289778f6f92af3fc8b1822014c90a5df3b8403989a3ea4b50ad45f579",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/gitReadOnlyObservations/0/stdout",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/gitReadOnlyObservations/0/stdout"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-2.json",
+      "bytes": 5224583,
+      "sha256": "6faffd220b88995e58cd0692658ef7062e8aa522e5d3c6ab12a6d697711a986c",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-3.json",
+      "bytes": 5231303,
+      "sha256": "b0b2759f56d1d3525938cb1085981e3bace98cf00d3e367652fa54ada84a978c",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-build-serialized-fallback.json",
+      "bytes": 5241425,
+      "sha256": "bbc26fb8002e8265ea4a3107251d3b254a30310bcde53c20cd9e09b3f96f36d6",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-1.json",
+      "bytes": 5203161,
+      "sha256": "6c1649502f97d76547dca9025af91b4c731e659f6864caba2f03b4f0098a881e",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-2.json",
+      "bytes": 5222029,
+      "sha256": "5a946e2cad337c79ccb033eb70646bc1968b9ec12a43aa2547865ff5c1ef9365",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-3.json",
+      "bytes": 5228279,
+      "sha256": "ffa1b649f0c67ecf0f832130a1b1b62baa6212db3bdd5563866c200c76843ff5",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-release-restore-serialized-fallback.json",
+      "bytes": 5210242,
+      "sha256": "b020e4b597a12c85b73a0ab2705361be73362763c9599eaf61901a61cccdbad5",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-vectors.json",
+      "bytes": 227383,
+      "sha256": "d7d8eedd7bca0edb6e542acb06c8bf1a0172640bffbcea6cc0486700fc81ea93",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/command/3"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.json",
+      "bytes": 5200347,
+      "sha256": "a7c25f5be1e81826132808117123eaeee3f635eb0d6170dfd5fdc25914a6f649",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/nativeXml/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/nativeXml/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/command/3",
+          "/after/graph/status",
+          "/nativeXml/path",
+          "/nativeXml/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-vectors.json",
+      "bytes": 227389,
+      "sha256": "6de9d20d7a205e78afc5f3bdf7d4bb05abf087778675f85f7e7da59f2c280cc8",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/command/3"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.json",
+      "bytes": 5228238,
+      "sha256": "457ec8cf6ed5c3136e5d92b60589b10604723027d9dfa6512fa2eb0abf33e375",
+      "classification": "server-full-suite-derived-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/command/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0,
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/nativeXml/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/nativeXml/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of Server Debug/Release full-suite outcomes, extracted scanner/skip-set/matrix/enrollment claims and dependent assertions. Preserve dated observations and unrelated frame results; no focused pass replaces a retired full-suite report.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/command/3",
+          "/before/graph/status",
+          "/after/graph/status",
+          "/nativeXml/path",
+          "/nativeXml/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server.livesidecar-debug-build.json",
+      "bytes": 5209908,
+      "sha256": "0b20b13e024263839509c6ed4bab8b97a711a9d78e1ee8638180ed64d5706389",
+      "classification": "working-tree-status-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/before/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/after/graph/status",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep recorded working-tree/stdout observations. A retired path appearing in status is not an evidence dependency of the surrounding test result and does not withdraw that independent result.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/before/graph/status",
+          "/after/graph/status"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/entry.json",
+      "bytes": 2794321,
+      "sha256": "480be82ba8826c82846b0dde98bba067a4841b0084484110ac39e894e35c3615",
+      "classification": "preservation-or-source-change-provenance",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-debug-full.xml",
+          "targetKind": "object-key",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-debug-full.xml",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-release-full.xml",
+          "targetKind": "object-key",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-release-full.xml",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep protected inventories, external-arrival/change lists and execution chronology. Referenced retired artifacts confer no present qualification authority; independently bound nondependent results are unaffected.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-debug-full.xml",
+          "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-debug-full.xml",
+          "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-release-full.xml",
+          "/preservedFiles/_bmad-output~1implementation-artifacts~1evidence~1story-6-4~1qualification-20261017-server-release-full.xml"
+        ]
+      }
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json",
+      "bytes": 6196,
+      "sha256": "cc98b1cb35a0ca6dfb47a92393f16e05e14c903aff92f4114dc8beb6cf5cd681",
+      "classification": "source-preservation-lineage",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/files/15/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/files/15/previousReceiptSha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        }
+      ],
+      "authorityDisposition": "Keep the byte/hash correspondence and previous-receipt relation as historical provenance. The retired test snapshot cannot establish present source-review authority.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/files/15/sha256",
+          "/files/15/previousReceiptSha256"
+        ]
+      }
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json",
+      "bytes": 5429,
+      "sha256": "fa99280a1b9f919793496ba3ba3bf9c3ad4674a65330b3f54129d9aed690507f",
+      "classification": "source-review-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/sources/18/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of the reviewed-source build/test result insofar as it relies on retired sources[18]. Preserve the dated command, exit status, source hashes and 83-case result; other source rows are not retired.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/sources/18/sha256"
+        ]
+      }
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json",
+      "bytes": 5363,
+      "sha256": "e1bb0e31c9ec5924ef2fe26ed56919b32d6f5daaa9c08a8de6211e00206c3f8d",
+      "classification": "source-review-result",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/sources/18/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "authorityDisposition": "Withdraw present qualification authority of the reviewed-source build/test result insofar as it relies on retired sources[18]. Preserve the dated command, exit status, source hashes and 83-case result; other source rows are not retired.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/sources/18/sha256"
+        ]
+      }
+    }
+  ],
+  "indirectReferenceCount": 32,
+  "indirectReferences": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/diagnosis.json",
+      "bytes": 204189,
+      "sha256": "f956507a9b339c81b2bcc2ac4f28c105e6180ca56ccd143fbc6b5c632e096953",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve diagnosis/findings and hash-preservation observations. They do not grant qualification authority to the five retired files and are not relabeled as a passing gate.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/unclassified/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/4",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/5",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/6",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/8",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/10",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/11",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/13",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/unclassified/14",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/files/458/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/files/458/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/files/459/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/files/459/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/files/661/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/files/661/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/files/663/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/files/663/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/files/665/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/files/665/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/files/668/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/nonJsonPaths/3",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/nonJsonPaths/4",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/nonJsonPaths/6",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/nonJsonPaths/8",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/nonJsonPaths/10",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/unclassified/3",
+          "/unclassified/4",
+          "/unclassified/5",
+          "/unclassified/6",
+          "/unclassified/8",
+          "/unclassified/10",
+          "/unclassified/11",
+          "/unclassified/13",
+          "/unclassified/14",
+          "/files/458/path",
+          "/files/458/sha256",
+          "/files/459/path",
+          "/files/459/sha256",
+          "/files/661/path",
+          "/files/661/sha256",
+          "/files/663/path",
+          "/files/663/sha256",
+          "/files/665/path",
+          "/files/665/sha256",
+          "/files/668/sha256",
+          "/nonJsonPaths/3",
+          "/nonJsonPaths/4",
+          "/nonJsonPaths/6",
+          "/nonJsonPaths/8",
+          "/nonJsonPaths/10"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/preservation-final.json",
+      "bytes": 182316,
+      "sha256": "60516f2c377010f681897fa12deddb0f14f2287b53c4940fd9dbfc2409a21177",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve diagnosis/findings and hash-preservation observations. They do not grant qualification authority to the five retired files and are not relabeled as a passing gate.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/historicalFiles/458/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/458/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/459/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/459/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/661/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/661/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/663/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/663/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/665/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/historicalFiles/665/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/historicalFiles/458/path",
+          "/historicalFiles/458/sha256",
+          "/historicalFiles/459/path",
+          "/historicalFiles/459/sha256",
+          "/historicalFiles/661/path",
+          "/historicalFiles/661/sha256",
+          "/historicalFiles/663/path",
+          "/historicalFiles/663/sha256",
+          "/historicalFiles/665/path",
+          "/historicalFiles/665/sha256"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/oq8-correction-20261017/wrapper-entry.md",
+      "bytes": 98660,
+      "sha256": "fe8327745fee697d573a930648f1a425f63b38cf50a869196dcf50b998577ce7",
+      "classification": "archived-wrapper-or-handoff",
+      "authorityDisposition": "Preserve the historical wrapper/handoff verbatim. Any copied 20261017 Server full-suite/scanner qualification claims are subject to this overlay and cannot confer present authority. Later independent runtime results keep their own scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/README.md",
+      "bytes": 2336,
+      "sha256": "348f53f72618098a936771e10d2f666b957646ffb02207f5b1602c3cbed34e24",
+      "classification": "prior-approval-provenance",
+      "authorityDisposition": "Keep the separate prior 77-file/98-location approval and preserved packet facts. That approval did not authorize these five retirements and does not restore their full-suite qualification authority.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/p1r-user-approval-20261017/wrapper-before.md",
+      "bytes": 91276,
+      "sha256": "e8ce448b1ff7f004b6e8f8809b4fd93b3b435251f9a2b0b0cd146ba8b23db2e8",
+      "classification": "archived-wrapper-or-handoff",
+      "authorityDisposition": "Preserve the historical wrapper/handoff verbatim. Any copied 20261017 Server full-suite/scanner qualification claims are subject to this overlay and cannot confer present authority. Later independent runtime results keep their own scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-coverage.md",
+      "bytes": 13080,
+      "sha256": "616f788263565085c397dca764fb28397f5b4af35059bb5c9690af21d5136097",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-gates-before-fallback.json",
+      "bytes": 6343,
+      "sha256": "c2d7954f8b9049855a73a73ec2fd4dcda5d01fc92b633c78a99eff23176443ad",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-gates.json",
+      "bytes": 68719,
+      "sha256": "10232708d599a91e23dde7cdec41e0cdfa8eb452a66f5a1c1d5dc6142e8d8230",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-index-check-correction.json",
+      "bytes": 8784,
+      "sha256": "28ff3d222170874cfa77a93e2336dd7bbb4b7f5498119305f45cebbc95d28611",
+      "classification": "historical-helper-and-failure-provenance",
+      "authorityDisposition": "Preserve historical helper source, failed assertions and correction chronology. Embedded full-suite assertions are not current accepted proof; no helper is rerun or approved by this overlay.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/final-audit-packet-schema-correction.json",
+      "bytes": 9105,
+      "sha256": "639c99e721f457db0f4e0398b06cf84b4d30305442bc3a2f73dd1df9830300c3",
+      "classification": "historical-helper-and-failure-provenance",
+      "authorityDisposition": "Preserve historical helper source, failed assertions and correction chronology. Embedded full-suite assertions are not current accepted proof; no helper is rerun or approved by this overlay.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/latest-resume-regression-enrollment.json",
+      "bytes": 1354,
+      "sha256": "fd840e0393230eeb78415a7153043c5f0723a7ea7c3f0b800975713d2a3b3031",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/p1r-owner-decision.md",
+      "bytes": 5888,
+      "sha256": "a8159396d794cb43ed84dab63bea10452a20ea0f80b7edf6a0f5ba714ed06d4f",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/qualification-handoff.md",
+      "bytes": 11367,
+      "sha256": "ed8c7cc51b065d6d3d694d4ff649ff093b7a617be2b1649f5c51089f49aec057",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-parent/working-roots-and-retry-audit.json",
+      "bytes": 45272,
+      "sha256": "dfab062de664ee2afafee2113b3ae8be79b2d877189aa476a97690259001cfad",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-all-observations.json",
+      "bytes": 298252,
+      "sha256": "68687354bc1ef3c4a395e119e8fabedc5fec75dca6ff1b02130c3ca1f810d893",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-numerical.json",
+      "bytes": 1117,
+      "sha256": "e64e2852a85584dacf3e3ca8f97da26dbf06d53a1212674a4b4e4fb8639baf33",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-outcome-audit.json",
+      "bytes": 1017,
+      "sha256": "a267367f47a22fca99a697398b0c0a629fb7959f6066f90a1365c15e74962d13",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full-progress-sample.json",
+      "bytes": 1416,
+      "sha256": "054e32e85a38f72319e8f6501f00dbbf91e5c5429f7dada7935e75f04e440f78",
+      "classification": "process-progress-observation",
+      "authorityDisposition": "Preserve observed process/log progress. It proves neither full-suite success nor present qualification.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.log",
+      "bytes": 696928,
+      "sha256": "15b3f19f7774da02dad4be24254b56649c6f7149246baa0fbfb1cbde518008e0",
+      "classification": "native-log-observation",
+      "authorityDisposition": "Preserve original native log bytes and dated outcomes as historical observations. A retained log is not a replacement authorized full-suite report and does not reestablish current qualification.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-full-comparison.json",
+      "bytes": 1511,
+      "sha256": "34bbb835a44a0a716437829eed126505acbbfffbaaa5dbd9506dd2d4542bc425",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full-all-observations.json",
+      "bytes": 298178,
+      "sha256": "0e8d96595134e462727029d42792413ba858e60e9b10cf778e20c4cff5eb170c",
+      "classification": "server-full-suite-derived-summary-or-extraction",
+      "authorityDisposition": "Withdraw present qualification authority of any Debug/Release Server full-suite, scanner-pass, exact-skip-set, 45-case regression enrollment, matrix or numerical claim relying on the retired frames. Preserve dated values and extraction/producer/inventory facts. Nondependent frame results retain their own original scope.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.log",
+      "bytes": 729146,
+      "sha256": "6e66f111cddd1b73e6d50a246318f131d43aab393cfb1aa004fafc3c8dc11579",
+      "classification": "native-log-observation",
+      "authorityDisposition": "Preserve original native log bytes and dated outcomes as historical observations. A retained log is not a replacement authorized full-suite report and does not reestablish current qualification.",
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/parent-final-handoff.md",
+      "bytes": 7558,
+      "sha256": "ff835f638bace2874fb614568d6c866808b9a443838f64ac0d1cd88a08b8761a",
+      "classification": "archived-wrapper-or-handoff",
+      "authorityDisposition": "Preserve the historical wrapper/handoff verbatim. Any copied 20261017 Server full-suite/scanner qualification claims are subject to this overlay and cannot confer present authority. Later independent runtime results keep their own scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/wrapper-entry.md",
+      "bytes": 92776,
+      "sha256": "7b5700d23f0911aa830cca4b9998d1397adb1ddfcbf21c5e8750f0752389fd88",
+      "classification": "archived-wrapper-or-handoff",
+      "authorityDisposition": "Preserve the historical wrapper/handoff verbatim. Any copied 20261017 Server full-suite/scanner qualification claims are subject to this overlay and cannot confer present authority. Later independent runtime results keep their own scope.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/README.md",
+      "bytes": 3042,
+      "sha256": "7ac24a0c0e6c8446096eae83d477817f59f09f32c609ef3deed600d272d60111",
+      "classification": "same-retired-source-digest",
+      "authorityDisposition": "The 187/187 preparation result binds the same retired pre-review test bytes (4ca5ee9b...). Preserve the dated result and bounded native-rights observations; withdraw its use as current-source or reviewed-source qualification.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verification.json",
+      "bytes": 4015,
+      "sha256": "d9e8da45b4798c5e0c54425e0b126bfa6e6df8bc2d450b5ba18d3119543fc85d",
+      "classification": "same-retired-source-digest",
+      "authorityDisposition": "The 187/187 preparation result binds the same retired pre-review test bytes (4ca5ee9b...). Preserve the dated result and bounded native-rights observations; withdraw its use as current-source or reviewed-source qualification.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/sources/13/sha256",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/sources/13/sha256"
+        ]
+      }
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/README.md",
+      "bytes": 3170,
+      "sha256": "13a3fe7fb63393127848f16a1c561c2379b5689c72ebd6b4e81504e32b959f72",
+      "classification": "source-review-result-summary",
+      "authorityDisposition": "Both 83-case review runs are preserved dated results. Their associated retired test snapshots no longer support present qualification or acceptance; the packet already leaves deployment/Story 3.6 gates closed.",
+      "affectedClaims": {
+        "disposition": "dependent-present-qualification-withdrawn",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/final-results.json",
+      "bytes": 6281,
+      "sha256": "0dc235e97d251bf66b6a8d7c2307efac702f0cc65bf03e707953952052c00f1d",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve dated diagnostics, path/line findings and byte-preservation observations without granting present authority to retired reports; this is not replacement qualification.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/remaining/0/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/0/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/0/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/1/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/1/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/1/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/2/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/2/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/2/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/3/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/3/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/3/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/3/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/4/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/4/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/4/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/remaining/4/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/remaining/0/path",
+          "/remaining/0/path",
+          "/remaining/0/violations/0",
+          "/remaining/1/path",
+          "/remaining/1/path",
+          "/remaining/1/violations/0",
+          "/remaining/2/path",
+          "/remaining/2/path",
+          "/remaining/2/violations/0",
+          "/remaining/3/path",
+          "/remaining/3/path",
+          "/remaining/3/violations/0",
+          "/remaining/3/violations/1",
+          "/remaining/4/path",
+          "/remaining/4/path",
+          "/remaining/4/violations/0",
+          "/remaining/4/violations/1"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/residual-metadata-diagnosis.log",
+      "bytes": 6549,
+      "sha256": "6007a5c6d68889883b59a25dcb49fa1e1e55d4222555b37f7575bebd119fe80c",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve dated diagnostics, path/line findings and byte-preservation observations without granting present authority to retired reports; this is not replacement qualification.",
+      "referenceBindings": [],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": []
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/violations-after.json",
+      "bytes": 2155,
+      "sha256": "8089b3ca94ca4aa85fecbb69bc7027f9d576af75aa77e8d00e1953b3b4e0d95a",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve dated diagnostics, path/line findings and byte-preservation observations without granting present authority to retired reports; this is not replacement qualification.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/0/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/0/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/0/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/1/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/1/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/1/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/2/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/2/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/2/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/3/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/3/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/3/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/3/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/4/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/4/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/4/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/4/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/0/path",
+          "/0/path",
+          "/0/violations/0",
+          "/1/path",
+          "/1/path",
+          "/1/violations/0",
+          "/2/path",
+          "/2/path",
+          "/2/violations/0",
+          "/3/path",
+          "/3/path",
+          "/3/violations/0",
+          "/3/violations/1",
+          "/4/path",
+          "/4/path",
+          "/4/violations/0",
+          "/4/violations/1"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/violations-before.json",
+      "bytes": 629714,
+      "sha256": "2742e56ed663349f06ecfb14de5af685326676200a01b97d368478113e449a4a",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve dated diagnostics, path/line findings and byte-preservation observations without granting present authority to retired reports; this is not replacement qualification.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/458/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/458/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/458/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/458/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/459/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/459/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/459/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/459/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/661/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/661/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/661/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            2
+          ]
+        },
+        {
+          "jsonPointer": "/663/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/663/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/663/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/663/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            3
+          ]
+        },
+        {
+          "jsonPointer": "/665/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/665/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/665/violations/0",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        },
+        {
+          "jsonPointer": "/665/violations/1",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            4
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/458/path",
+          "/458/path",
+          "/458/violations/0",
+          "/458/violations/1",
+          "/459/path",
+          "/459/path",
+          "/459/violations/0",
+          "/459/violations/1",
+          "/661/path",
+          "/661/path",
+          "/661/violations/0",
+          "/663/path",
+          "/663/path",
+          "/663/violations/0",
+          "/663/violations/1",
+          "/665/path",
+          "/665/path",
+          "/665/violations/0",
+          "/665/violations/1"
+        ]
+      }
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-prerequisite-secrets-protection-20261018/xunit-existing-probe-mapping.json",
+      "bytes": 12229,
+      "sha256": "e18482ec1aaecefebf692d917cb4ea0914e2812822c830f67dd8e8e3eafa2520",
+      "classification": "retained-finding-or-preservation-observation",
+      "authorityDisposition": "Preserve dated diagnostics, path/line findings and byte-preservation observations without granting present authority to retired reports; this is not replacement qualification.",
+      "referenceBindings": [
+        {
+          "jsonPointer": "/occurrences/6/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/6/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/7/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/7/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/8/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/8/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/9/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/9/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/10/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/10/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/11/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/11/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/12/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/12/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/13/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/13/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/14/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/14/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/15/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/15/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/16/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/16/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/17/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/17/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/18/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/18/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/19/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/19/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/20/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/20/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/21/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/occurrences/21/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/unmatched/0/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/unmatched/0/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            0
+          ]
+        },
+        {
+          "jsonPointer": "/unmatched/1/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        },
+        {
+          "jsonPointer": "/unmatched/1/path",
+          "targetKind": "value",
+          "retiredArtifacts": [
+            1
+          ]
+        }
+      ],
+      "affectedClaims": {
+        "disposition": "provenance-only-preserved",
+        "presentQualificationAuthority": false,
+        "unaffectedClaimsRemainInOriginalScope": true,
+        "referenceLocations": [
+          "/occurrences/6/path",
+          "/occurrences/6/path",
+          "/occurrences/7/path",
+          "/occurrences/7/path",
+          "/occurrences/8/path",
+          "/occurrences/8/path",
+          "/occurrences/9/path",
+          "/occurrences/9/path",
+          "/occurrences/10/path",
+          "/occurrences/10/path",
+          "/occurrences/11/path",
+          "/occurrences/11/path",
+          "/occurrences/12/path",
+          "/occurrences/12/path",
+          "/occurrences/13/path",
+          "/occurrences/13/path",
+          "/occurrences/14/path",
+          "/occurrences/14/path",
+          "/occurrences/15/path",
+          "/occurrences/15/path",
+          "/occurrences/16/path",
+          "/occurrences/16/path",
+          "/occurrences/17/path",
+          "/occurrences/17/path",
+          "/occurrences/18/path",
+          "/occurrences/18/path",
+          "/occurrences/19/path",
+          "/occurrences/19/path",
+          "/occurrences/20/path",
+          "/occurrences/20/path",
+          "/occurrences/21/path",
+          "/occurrences/21/path",
+          "/unmatched/0/path",
+          "/unmatched/0/path",
+          "/unmatched/1/path",
+          "/unmatched/1/path"
+        ]
+      }
+    }
+  ],
+  "maintainedDocumentNotices": [
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md",
+      "section": "Historical evidence authority withdrawal \u2014 2026-10-18",
+      "effect": "Current additive notice governs prior full-suite/scanner/matrix qualification descriptions; frozen normative bytes and historical paragraphs are preserved."
+    },
+    {
+      "path": "docs/security/workload-binding-authority.md",
+      "section": "Validation and evidence",
+      "effect": "Current additive notice withdraws present source-qualification authority of the dated 187/83-case preparation/review claims."
+    }
+  ],
+  "interpretationRules": [
+    "Retirement withdraws authority; it does not falsify or edit recorded commands, dated observations, outcomes, source hashes or inventory correspondence.",
+    "All five original files and all historical source/report/index/receipt/approval bytes remain unchanged. Existing indexes are preserved and read together with this overlay.",
+    "The 26 status/stdout-only references and preservation/change inventories do not by themselves create an evidence dependency. Their surrounding independent results remain within their original scope.",
+    "Withdraw every present-qualification claim that depends on one of these retired artifacts, including through a listed derived receipt, copied wrapper, summary, source hash or extraction. This rule supplies no path-based scanning exemption.",
+    "The exact five path/SHA-256 tuples are the entire newly approved retirement scope. No directory pattern, adjacent artifact, registry re-pin or changed content is approved.",
+    "Unaffected source rows, independent tests, bounded native-rights observations, package bytes, cleanup and process observations retain their own recorded scope; none supplies replacement full-suite/source-review proof.",
+    "No fresh suite, scanner gate, exact-source CI seal, P1R preparation/acceptance, four-role owner assurance, Story 3.6 acceptance or Story 6.4 completion is asserted by this overlay.",
+    "Future present qualification requires separately produced and appropriately approved exact-source evidence. Focused passes and historical logs do not replace the retired full-suite reports."
+  ],
+  "freshQualificationRun": false,
+  "replacementEvidence": null,
+  "referenceLocatorContract": {
+    "syntax": "RFC 6901 JSON Pointer",
+    "targetKind": [
+      "value",
+      "object-key"
+    ],
+    "objectKeyMeaning": "The decoded final pointer segment is the referenced member name; the pointer resolves its existing value.",
+    "textualReferences": "Rows without JSON bindings are document-scoped historical observations or summaries; affectedClaims applies only to dependent authority, with independent claims preserving scope."
+  }
+}

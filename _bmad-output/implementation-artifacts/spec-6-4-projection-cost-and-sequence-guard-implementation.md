@@ -39,6 +39,18 @@ context:
 
 </frozen-after-approval>
 
+## Historical evidence authority withdrawal — 2026-10-18
+
+The user approved the bounded five-file retirement proposal by selecting option
+**1**. The [authority overlay](evidence/6-4-historical-retirement-20261018/authority-overlay.json)
+withdraws present qualification authority from the two retained 2026-10-17 full
+Server reports and their dependent suite, scanner, skip-set and matrix claims.
+The historical 5,817 selected / 5,792 passed / 25 skipped results and all original
+reports, receipts and indexes remain unchanged as dated observations. Their
+later descriptions below do not supply current accepted proof. No replacement
+full-suite result, CI seal, P1R acceptance or Story 6.4 completion follows from
+this retirement; unaffected evidence retains its own scope.
+
 ## Authorized Dependency Exception
 
 On 2026-10-16, the user replied **“I authorize”** to the prepared five-pin update. This explicitly authorizes a narrow exception to the dependency boundary above, solely in root `Directory.Packages.props`:

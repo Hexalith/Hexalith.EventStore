@@ -1,0 +1,11 @@
+{
+  "recordedUtc": "2026-10-18T09:27:53.404332+00:00",
+  "source": "user message immediately following the five-file retirement proposal",
+  "userMessage": "1",
+  "selectedOption": "Approve governed retirement of those five preserved artifacts",
+  "actor": "requesting user (explicit owner decision in this session; no separate personal name asserted)",
+  "proposalPath": "_bmad-output/implementation-artifacts/evidence/6-4-resume-20261018/prerequisite-preflight-and-retirement-proposal.json",
+  "proposalSha256": "5b86cc00c890ab288a4709221d89a914e4d4ab95610e872c8ffb1c469f2e1a75",
+  "candidateCount": 5,
+  "scope": "Only the exact five proposed paths/SHA-256 pairs, additive authority withdrawal and validator enrollment; no Story 6.4 implementation, release, pin change, commit, push or acceptance approval."
+}

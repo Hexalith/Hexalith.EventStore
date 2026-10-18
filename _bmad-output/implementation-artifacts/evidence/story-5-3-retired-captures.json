@@ -36,6 +36,51 @@
             "replacementSha256": "792c94c27f7e4d85d00ff5dc57050548aa81d063ba3ae13076bc809895a8ea3f",
             "authorizationRecord": "_bmad-output/implementation-artifacts/evidence/story-6-6/otlp-capture-remediation-2026-10-09/disposition.json",
             "jsonPointer": "/resources/24/environment/OTEL_EXPORTER_OTLP_HEADERS"
+        },
+        {
+            "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+            "sha256": "0df8c78dc9689629c6804de235d8a423674eb1847c5143efc61250efa9961501",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "Historical report contains an unapproved URI-bearing test display.",
+            "authorizationRecord": "_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/retirement-decision.json",
+            "authorizationSha256": "e63af04857d0b4d72e5234f17e9014aae971efcab7c7ee83bbcc45bd56679d7d"
+        },
+        {
+            "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+            "sha256": "ec25a4ad7cd82f1ce095fe7045dbf0636006d275f5817ff422146c39d1a5a2f6",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "Historical report contains an unapproved URI-bearing test display.",
+            "authorizationRecord": "_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/retirement-decision.json",
+            "authorizationSha256": "e63af04857d0b4d72e5234f17e9014aae971efcab7c7ee83bbcc45bd56679d7d"
+        },
+        {
+            "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+            "sha256": "4ca5ee9bdecde7f111221902179dea749019df0e0455deb99edfb089d338286f",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values.",
+            "authorizationRecord": "_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/retirement-decision.json",
+            "authorizationSha256": "e63af04857d0b4d72e5234f17e9014aae971efcab7c7ee83bbcc45bd56679d7d"
+        },
+        {
+            "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+            "sha256": "b9aac41d52cda59e20dc4988941d90ed0b533cd736b489869da8e89bcc9d42e6",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values.",
+            "authorizationRecord": "_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/retirement-decision.json",
+            "authorizationSha256": "e63af04857d0b4d72e5234f17e9014aae971efcab7c7ee83bbcc45bd56679d7d"
+        },
+        {
+            "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+            "sha256": "f02dae33ff36576bdc9c08e07081010cdd8fa44045c56ac020713e3458929f88",
+            "status": "retired",
+            "authoritative": false,
+            "reason": "Historical source snapshot contains forbidden literal authentication fixtures; maintained source now generates runtime values.",
+            "authorizationRecord": "_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/retirement-decision.json",
+            "authorizationSha256": "e63af04857d0b4d72e5234f17e9014aae971efcab7c7ee83bbcc45bd56679d7d"
         }
     ]
 }

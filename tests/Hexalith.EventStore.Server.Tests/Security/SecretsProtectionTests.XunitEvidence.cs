@@ -81,27 +81,27 @@ public sealed partial class SecretsProtectionTests
             }
         });
 
-    /// <summary>Unapproved URI display names remain findings in the original immutable reports.</summary>
+    /// <summary>Retirement preserves original URI findings; it does not widen fixture recognition.</summary>
     [Theory]
-    [InlineData("debug")]
-    [InlineData("release")]
-    public void XunitUnapprovedAuthorityDisplay_RemainsBlocking(string configuration)
+    [InlineData("debug", 96)]
+    [InlineData("release", 98)]
+    public void XunitUnapprovedAuthorityDisplay_RemainsDetectableInPreservedBytes(string configuration, int expectedLine)
     {
         string path = "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-"
             + configuration + "-full.xml";
-        ScanTrackedFile(path).ShouldNotBeEmpty();
+        FindViolations(path, DecodeTrackedText(path, File.ReadAllBytes(Path.Combine(RepoRoot, path)))!).ShouldBe([path + ":" + expectedLine]);
     }
 
-    /// <summary>Historical literal probes have no new approval and must retain their existing findings.</summary>
+    /// <summary>Retired literal probes remain detectable when scanning the preserved bytes directly.</summary>
     [Theory]
     [InlineData("pre-review-sources", 1)]
     [InlineData("reviewed-sources", 2)]
     [InlineData("reviewed-final-sources", 2)]
-    public void HistoricalAuthorityLiteralProbes_RemainBlocking(string directory, int expected)
+    public void HistoricalAuthorityLiteralProbes_RemainDetectableInPreservedBytes(string directory, int expected)
     {
         string path = "docs/evidence/story-3-6/20261017t144520z-production-authority-review/" + directory
             + "/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs";
-        ScanTrackedFile(path).Count().ShouldBe(expected);
+        FindViolations(path, DecodeTrackedText(path, File.ReadAllBytes(Path.Combine(RepoRoot, path)))!).Count().ShouldBe(expected);
     }
 
     /// <summary>XML line coordinates and numeric entities must never redirect masking onto another attribute.</summary>
@@ -144,7 +144,7 @@ public sealed partial class SecretsProtectionTests
         {
             FindViolations(path, Assignment("to" + "ken", changed)).ShouldNotBeEmpty();
         }
-        FindViolations(path, Assignment("to" + "ken", expression) + "\n" + Assignment("pass" + "word", RandomSecret()))
+        FindViolations(path, Assignment("to" + "ken", expression) + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\""))
             .ShouldBe([path + ":2"]);
     }
 

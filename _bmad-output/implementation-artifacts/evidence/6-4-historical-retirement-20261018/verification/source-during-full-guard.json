@@ -1,0 +1,15 @@
+{
+  "recordedUtc": "2026-10-18T09:36:05.337737+00:00",
+  "scope": "Current implementation/approval source identities during the running full guard; not a commit or hosted CI identity.",
+  "sha256": {
+    "_bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json": "ef3dcb48f287d0f1dd72b3947a2d9823684595c7c7effce610944d12b5573b13",
+    "_bmad-output/implementation-artifacts/spec-6-4-projection-cost-and-sequence-guard-implementation.md": "365b36824baf26b2afc6989ea1fc28fbe9b9b2f69b75c64949f6a9f087b5e75c",
+    "docs/architecture/evidence-secret-scanning.md": "08a790b9fc995be6dd6dae155a39e5e0f5767cc396acc070b39aeb0d2af0f1c0",
+    "docs/security/workload-binding-authority.md": "45432214af974c066d676751349a1c25f5f2ae603c49db14644cdf8ec22e5df5",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs": "5301e922d191b4b983bad1e70c9c3d00c63b0077ecf2056b9ad957191f0b06b6",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.XunitEvidence.cs": "a590bd82c3cdc40324f97cba9c0f456682d315c16c87e22a3d0dd2a0a66af611",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs": "e9ad9ad8a9aa63a9d00100d2a947cefbf00feb99489daa127919ea987bb494cd",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Story64Retirement.cs": "58bcdbb58d4c2cdc55e03e2c46c416dc3d426521107a60caaad011756e7fccad"
+  },
+  "testAssemblySha256": "a413eca846baba87f206aefb0192588066e627f561884e86e37493cbfbca3b40"
+}

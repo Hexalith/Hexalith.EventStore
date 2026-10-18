@@ -1,0 +1,12 @@
+{
+  "owningRepository": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "baselineStart": "UseHexalithProjectReferences=true aspire start --non-interactive --isolated --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json",
+  "baselineDescribe": "aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json",
+  "baselineStop": "aspire stop --non-interactive --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+  "build": "dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug --no-restore -p:UseHexalithProjectReferences=true -m:1",
+  "redFiveControls": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method *Story64Retirement_RequiresExactOriginalAndRegistry -noColor -xml /tmp/story64-retirement-20261018/red-retirement.xml",
+  "completeClassBeforeFixtureCorrection": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests -noColor -result-xml /tmp/story64-retirement-20261018/full-secret-guard-reviewed.xml",
+  "remainingClassAfterFixtureCorrection": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests -method- *TrackedReusableContent_DoesNotContainUsableSecrets -noColor -result-xml /tmp/story64-retirement-20261018/remaining-guard-final.xml",
+  "windowsCheckoutControl": "git -c core.autocrlf=true -c core.eol=crlf cat-file --filters --path=<exact artifact path> HEAD:<exact artifact path>",
+  "canonicalSourceSupplement": "dotnet /tmp/story64-retirement-20261018/harness/out/ScanInventory.dll /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore /tmp/story64-retirement-20261018/final-delivery-paths.txt /tmp/story64-retirement-20261018/final-source-supplement-scan.json /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll"
+}

@@ -1,0 +1,9 @@
+{
+  "appHost": "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+  "startExitCode": 0,
+  "describeExitCode": 0,
+  "stopExitCode": 0,
+  "resourceCount": 30,
+  "allRunningAndHealthy": true,
+  "scope": "Only this exact isolated owned AppHost was started/stopped; no secret values or dashboard tokens retained."
+}
