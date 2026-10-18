@@ -1,0 +1,254 @@
+{
+  "files": [
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/global.json",
+      "sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/evidence.json",
+      "sha256": "89356714f944d9c4f164b25cc36a743b9f8ca37faf7dde65642cd050256f94a0"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/Host.csproj",
+      "sha256": "afeb1b31ab660ec2c7bba45e90dbc4a29cd169b13fd17996d8c064f0a413bdf7"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj",
+      "sha256": "62c4b47d2806e58cf3fb5d74afd2b8e44d921d3d2d2d48a7cd98a537955d956f"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+      "sha256": "a1dce85420fd2a7e7f4154a32e7276d519639ff25fe368de33876aa4c75445e4"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj",
+      "sha256": "6ae249d8b25d97f6b1620f965730f317e1e67537ce478fa791725a94cb0b859a"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj",
+      "sha256": "a33f6eff943d309ae17d4278d0b2e7dafd2fab2c14c1134c01821ac622cd99db"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj",
+      "sha256": "d8f73dbcde5ff87051a418a3e2335bcbd7393f6c145bacf934f93a9841915373"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+      "sha256": "9016f62711665a16f65946bec0a96876951cf2be3006bd9bbf0c30dd0adbf415"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/obj/project.assets.json",
+      "sha256": "3fd7ddfc203c83482f5cc9ab9713c5f0ff253841ce7fca178ad9b40c8bd980f0"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/host/packages.lock.json",
+      "sha256": "20ba42dfbc37aed3696c12a0c32874dac14012f891ddbe6e1bb1de78cb656082"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/loaded/Host.json",
+      "sha256": "7dd64072babcb1c3476ec7b097f0611246fc45685d655d178b5b4174d5899867"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/Domain.csproj",
+      "sha256": "4f73ad75948dac648d8bd5c551e7a2f7a21e7bebb5a7956301b3b6afa7c02913"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj",
+      "sha256": "62c4b47d2806e58cf3fb5d74afd2b8e44d921d3d2d2d48a7cd98a537955d956f"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+      "sha256": "a1dce85420fd2a7e7f4154a32e7276d519639ff25fe368de33876aa4c75445e4"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj",
+      "sha256": "6ae249d8b25d97f6b1620f965730f317e1e67537ce478fa791725a94cb0b859a"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj",
+      "sha256": "a33f6eff943d309ae17d4278d0b2e7dafd2fab2c14c1134c01821ac622cd99db"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj",
+      "sha256": "d8f73dbcde5ff87051a418a3e2335bcbd7393f6c145bacf934f93a9841915373"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+      "sha256": "9016f62711665a16f65946bec0a96876951cf2be3006bd9bbf0c30dd0adbf415"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/obj/project.assets.json",
+      "sha256": "277dc038840ceb1f17988e51be74eaba597202013adfed5d668762670a9e610e"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/domain/packages.lock.json",
+      "sha256": "20ba42dfbc37aed3696c12a0c32874dac14012f891ddbe6e1bb1de78cb656082"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/loaded/Domain.json",
+      "sha256": "7194ce02ee8e04758c013dd6336908b08e7b4fc559ffe018d5034d5a77fb7f39"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/Probe.csproj",
+      "sha256": "1a20f9509e2b4ac00e979694815ebe7057d6a963c788d84a252abe855cf6b2b6"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj",
+      "sha256": "62c4b47d2806e58cf3fb5d74afd2b8e44d921d3d2d2d48a7cd98a537955d956f"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj",
+      "sha256": "a1dce85420fd2a7e7f4154a32e7276d519639ff25fe368de33876aa4c75445e4"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj",
+      "sha256": "6ae249d8b25d97f6b1620f965730f317e1e67537ce478fa791725a94cb0b859a"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj",
+      "sha256": "a33f6eff943d309ae17d4278d0b2e7dafd2fab2c14c1134c01821ac622cd99db"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj",
+      "sha256": "d8f73dbcde5ff87051a418a3e2335bcbd7393f6c145bacf934f93a9841915373"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj",
+      "sha256": "9016f62711665a16f65946bec0a96876951cf2be3006bd9bbf0c30dd0adbf415"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719"
+    },
+    {
+      "path": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/obj/project.assets.json",
+      "sha256": "d5593a1123c4be44f3943cc1b31a88abdf7b211d7619f3532f4cf7792d6eb456"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/packages.lock.json",
+      "sha256": "8894bef645ab81dfc084b67877d79279d1b3e93d32460f2ce05dffb31491f71c"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/loaded/Probe.json",
+      "sha256": "43fcfde248a71de54501b2869b919eba0575deeef2acda97a6f13f7e4546318f"
+    }
+  ],
+  "source_binding_sha256": "2076a03b415978a82298a184a27f19f39da0a57183bdb9551ce10f38a8c9236a",
+  "source_root": "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28"
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "original_log": "/tmp/p1r-31251-executor-tests-2.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-executor-tests-2.log",
+    "sha256": "05911a0ffc4cae4ca0b44ba11f9972c906eef93a4728f5aacf188f5a20514a15",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-executor-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-executor-tests.log",
+    "sha256": "7d8d58fd27b8da3881ac849760806f969bd03f9a056c3c2cdba3b8715d3f81b8",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-focused-root-import-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-focused-root-import-tests.log",
+    "sha256": "b88aae4ca76bd9e351e744ccc356f8c86369aca2fda1e6652d60262f77ce39d8",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-isolation-tests-2.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-isolation-tests-2.log",
+    "sha256": "09041979c4a2e764ba2629d4339bf717a628d15e92e908229da5b74aee740fbb",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-isolation-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-isolation-tests.log",
+    "sha256": "438653305b014cd417b77ac90ab806938d841039ebe684592d6be29dc62d4fd8",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-qualification-tests-2.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-qualification-tests-2.log",
+    "sha256": "ef538041bf3707c999b245b0b3fad294c1126a6b159a4f9f205a4ef30627c62f",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-qualification-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-qualification-tests.log",
+    "sha256": "6ae82329172f2b7d08e94cdbd2850084ff0fe3d7bef94c38b64187e1934a5fea",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-source-graph-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-source-graph-tests.log",
+    "sha256": "9ca6bba9001ba3065c07f09daa4d9fabc6c33b47ac1ff7e01e59a2727d263dea",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-executor-tests-2.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-executor-tests-2.log",
+    "sha256": "43e50559a5ca61765040ad6f9d917e4d58b9846522bf80444d3c0c7bca24c6f9",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-executor-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-executor-tests.log",
+    "sha256": "19d59523ea46c74168a679ed1e816d5a54e45e13691c7dd86776ac3a7eec3ba0",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-hardening-optimized-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-hardening-optimized-tests.log",
+    "sha256": "a182981918338c3b76d1b18abbe378dcb674952849ae0dee332e93f69b14b777",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-hardening-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-hardening-tests.log",
+    "sha256": "34bbfc376f8961512deac24a67473e2faeaa346095886f5779970e907a0b3574",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-preparation-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-preparation-tests.log",
+    "sha256": "290b6913d874f4b09a9686a9bccbe07eab29812a7d448536bb2864d7a3f1681e",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-qualification-tests-final.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-qualification-tests-final.log",
+    "sha256": "819c3d03da11f117a39319d82b3fb8867b9a04cf2157cee60d479d423bc165e9",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  },
+  {
+    "original_log": "/tmp/p1r-31251-verifier-registration-tests.log",
+    "copy": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification/earlier-attempts/p1r-31251-verifier-registration-tests.log",
+    "sha256": "9fac4a9e9463e0669058fbf8fb5d6b5b2ac68c40199ee7306053fee7559e85dd",
+    "kind": "earlier verification diagnostic; final command records are in verification/*.json"
+  }
+]

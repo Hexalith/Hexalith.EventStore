@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation.py"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+  "started_utc": "2026-10-18T17:28:05.729306+00:00",
+  "finished_utc": "2026-10-18T17:28:07.380921+00:00",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": ".................................\n----------------------------------------------------------------------\nRan 33 tests in 1.584s\n\nOK\n"
+}
