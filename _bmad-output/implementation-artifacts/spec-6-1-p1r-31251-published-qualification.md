@@ -2,7 +2,9 @@
 title: '6.1-P1R published EventStore 3.125.1 qualification'
 type: 'feature'
 created: '2026-10-18'
-status: 'draft'
+status: 'in-progress'
+approved: '2026-10-18'
+approval_decision: 'approve-and-continue'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'd55c6f7c11e9bce6f17d490a84c83f1561979d63'
@@ -62,6 +64,11 @@ context:
 - Given pending owner decisions, when reporting results, then technical evidence and acceptance remain distinct and P1R usability stays false.
 
 ## Implementation Notes
+
+- User approved and continued on 2026-10-18. The working tree is now clean at
+  `ce1eba0c459f4a00b2e555668e2e548af81f34f5`; intervening user commits and
+  submodule updates are preserved. The original planning baseline stays recorded
+  above and is not authority to revert those changes.
 
 ## Spec Change Log
 

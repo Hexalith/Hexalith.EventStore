@@ -80,6 +80,10 @@ PACKET_KEYS = ("schema", "invocation", "started_utc", "finished_utc", "source_bi
 ROW_KEYS = ("id", "execution", "compatibility", "scope", "assertions", "receipts", "reason")
 INPUT_KEYS = ("schema", "fixture", "authority", "candidate", "rollback", "operational_profile",
               "assertion_instrumentation", "selected_additions")
+FOLDED_SNAPSHOT_VERSIONS = ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
+ISOLATION_VERSIONS = ("3.122.1", "3.125.0", "3.125.1")
+SELECTED_SOURCE_COMMIT = "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+SELECTED_TAG_BUILDS = "4629ff2d3bd66376b29a553663c241d3a7b87853"
 COMPARISON_VERSIONS = ("3.70.1", "3.110.0")
 SUCCESSOR_PACKAGE_IDS = tuple("Hexalith.EventStore." + name for name in
                               ("Client", "Contracts", "DomainService", "Server", "ServiceDefaults"))
@@ -150,6 +154,78 @@ def is_successor_selection(selection):
     version = selection["candidate"]["version"]
     return re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is not None and (
         tuple(int(part) for part in version.split(".")) > (3, 120, 0))
+
+
+def source_consumer_binding(root, binding):
+    """Reconstruct Debug project graphs, locks and loaded physical source assemblies."""
+    root = Path(root)
+    source = binding["candidate_source"]
+    source_root = Path(source["repository"])
+    manifest = parse_json(regular(root / "evidence.json"))
+    require(manifest.get("role") == "source" and manifest.get("configuration") == "Debug"
+            and [row.get("name") for row in manifest.get("projects", [])] == ["Host", "Domain", "Probe"],
+            "distinct Debug source consumer inventory missing")
+    files = [{"path": str(root / "evidence.json"), "sha256": digest(regular(root / "evidence.json"))}]
+    for project in manifest["projects"]:
+        assets = parse_json(regular(root / relative(project["assets"])))
+        restore = assets.get("project", {}).get("restore", {})
+        references = {Path(path) for framework in restore.get("frameworks", {}).values()
+                      for path in framework.get("projectReferences", {})}
+        expected = {source_root / "src" / name / (name + ".csproj") for name in SUCCESSOR_PACKAGE_IDS}
+        require(references == expected, "Debug source project references differ from selected tagged root")
+        for name, library in assets.get("libraries", {}).items():
+            if library.get("type") == "project":
+                path = (root / relative(project["assets"])).parent / library["path"]
+                require(path.resolve().is_relative_to(source_root), "Debug source graph escapes selected source closure")
+        loaded = parse_json(regular(root / relative(project["loaded"])))
+        require({row["name"] for row in loaded.get("assemblies", [])} == set(SUCCESSOR_PACKAGE_IDS),
+                "Debug source loaded package inventory differs")
+        for row in loaded["assemblies"]:
+            path = Path(row["path"])
+            require(path == root / project["output"] / (row["name"] + ".dll")
+                    and digest(regular(path)) == row["sha256"], "Debug source loaded physical assembly differs")
+            files.append({"path": str(path), "sha256": row["sha256"]})
+        for name in ("assets", "lock", "loaded"):
+            path = root / relative(project[name])
+            files.append({"path": str(path), "sha256": digest(regular(path))})
+    return {"source_root": str(source_root), "source_binding_sha256": digest(preparation.canonical(source)), "files": files}
+
+
+def validate_source_consumer(evidence, binding):
+    """Refuse relabelled or rehashed current-source comparison evidence."""
+    reference = evidence.get("source_consumer")
+    require(isinstance(reference, dict) and set(reference) == {"path", "sha256", "content"},
+            "selected tagged Debug source consumer proof missing")
+    path = Path(reference["path"])
+    data = regular(path)
+    require(path.is_absolute() and path.name == "source-evidence.json"
+            and reference["content"].encode() == data and digest(data) == reference["sha256"]
+            and parse_json(data) == source_consumer_binding(path.parent, binding),
+            "selected tagged Debug source consumer proof substituted")
+
+
+def validate_candidate_source(binding, selection):
+    """Independently bind production source to the selected tag, never verifier HEAD."""
+    candidate = selection["candidate"]
+    source = binding.get("candidate_source")
+    require(source is not None or candidate["version"] != "3.125.1", "selected candidate source closure missing")
+    if source is None:
+        return
+    preparation.require_clean_source(source)
+    root = Path(source["repository"])
+    preparation.self_contained_checkout(Path(binding["repository"]))
+    preparation.self_contained_checkout(root)
+    head = preparation.git(root, "rev-parse", "HEAD").decode().strip()
+    tag = preparation.git(root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+    tree = preparation.git(root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    require(head == tag == source["main"]["head"] == candidate["tag_commit"]
+            and len(tree) == 4 and tree[:2] == ["160000", "commit"]
+            and tree[2] == candidate.get("tag_builds_commit"),
+            "candidate tag, exact source, or tag Builds identity substituted")
+    if candidate["version"] == "3.125.1":
+        require(head == SELECTED_SOURCE_COMMIT and tree[2] == SELECTED_TAG_BUILDS
+                and candidate["feed"] == "https://api.nuget.org/v3/index.json",
+                "selected 3.125.1 published source substituted")
 
 
 # Owner inputs and decisions -------------------------------------------------------------------------------------
@@ -1238,12 +1314,24 @@ def validate_final_isolation(receipt, context):
     runner = wrapper.get("runner_proof", {})
     sdk, daemon = wrapper.get("sdk"), wrapper.get("daemon")
     destinations = {item.get("Destination") for item in runner.get("Mounts", [])}
+    source = context["source_binding"].get("candidate_source")
+    source_root = Path(source["repository"]) if source is not None else None
+    if source is not None:
+        require(wrapper.get("source_root") == str(source_root)
+                and isolation.command_source_root(command) == source_root,
+                "final isolation selected tagged source root substituted")
+        validate_candidate_source(context["source_binding"], context["inputs"]["value"])
+    verifier_mounts = [Path(item["Destination"]) for item in runner.get("Mounts", [])
+                       if item.get("Type") == "bind" and Path(context["source_binding"]["repository"]).is_relative_to(Path(item["Destination"]))]
+    expected_mount_count = 2 + int(source_root is not None and not any(source_root.is_relative_to(path) for path in verifier_mounts))
     require(owned.get(sdk, {}).get("role") == "sdk" and owned[sdk].get("image") == isolation.SDK_IMAGE
             and owned.get(daemon, {}).get("role") == "daemon" and owned[daemon].get("image") == isolation.DAEMON_IMAGE
             and runner.get("Id") == sdk and runner.get("Labels", {}).get(isolation.LABEL) == wrapper["invocation"]
             and runner.get("NetworkMode") == runner.get("PidMode") == "container:"+str(daemon)
             and runner.get("Ports") == {} and runner.get("Privileged") is False
-            and len(destinations) == 2 and "/var/lib/docker" in destinations
+            and len(destinations) == expected_mount_count and "/var/lib/docker" in destinations
+            and (source_root is None or any(source_root.is_relative_to(Path(destination)) for destination in destinations
+                                           if destination != "/var/lib/docker"))
             and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
                     for destination in destinations if destination != "/var/lib/docker"),
             "final isolation runner ownership, mounts or namespace binding differs")
@@ -1309,7 +1397,7 @@ def validate_final_isolation(receipt, context):
 
 def finalize_isolation_receipts(output, isolation_output, selection):
     """Attach new successful wrapper evidence after teardown, retaining old receipt schemas."""
-    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0", "3.125.1"):
+    if selection["candidate"]["version"] not in ISOLATION_VERSIONS:
         return
     output, isolation_output = Path(output), Path(isolation_output)
     reference = {}
@@ -1321,6 +1409,9 @@ def finalize_isolation_receipts(output, isolation_output, selection):
     private = parse_json(reference["private"]["content"].encode())
     context = {"source_binding":private.get("source_binding"),
                "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
+    if "candidate_source" in context["source_binding"]:
+        preparation.check_current_source(context["source_binding"], check_python=False)
+    validate_candidate_source(context.get("source_binding", {}), selection)
     pending = []
     for name in execution["receipts"]:
         path = Path(name)
@@ -1343,12 +1434,14 @@ def finalize_isolation_receipts(output, isolation_output, selection):
 
 def bind_lane(receipt, outcome, context):
     selection = context["inputs"]["value"] if context["inputs"] else None
+    if selection is not None and context["inputs"]["scope"] == "owner-selected":
+        validate_candidate_source(context.get("source_binding", {}), selection)
     if receipt["lane"] in ADDITIONS:
         require(selection is not None and receipt["lane"] in selection["selected_additions"], R_NOT_SELECTED)
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "published or operational evidence lacks owner-selected inputs")
-    if selection["candidate"]["version"] in ("3.122.1", "3.125.0", "3.125.1") and (outcome["scope"] == "operational"
+    if selection["candidate"]["version"] in ISOLATION_VERSIONS and (outcome["scope"] == "operational"
             or any(case.get("configurations") for case in receipt.get("execution_evidence", {}).get("cases", []))):
         validate_final_isolation(receipt,context)
     instrumentation = selection["assertion_instrumentation"]
@@ -1360,6 +1453,8 @@ def bind_lane(receipt, outcome, context):
                 and isinstance(evidence.get("cases"), list)
                 and [case.get("id") for case in evidence["cases"]] == [case["id"] for case in receipt["cases"]],
                 "measured executor lacks retained per-case command evidence")
+        if receipt["lane"] == "checkout" and "candidate_source" in context["source_binding"]:
+            validate_source_consumer(evidence, context["source_binding"])
         require(evidence.get("executor_source") == context.get("source_binding"),
                 "executor checkout differs from the independently bound source closure")
         expected_source_bytes = json.dumps(context["source_binding"], indent=2, sort_keys=True, allow_nan=False).encode() + b"\n"
@@ -1427,12 +1522,14 @@ def bind_lane(receipt, outcome, context):
 
 def bind_recovery(receipt, outcome, lane, context):
     selection = context["inputs"]["value"] if context["inputs"] else None
+    if selection is not None and context["inputs"]["scope"] == "owner-selected":
+        validate_candidate_source(context.get("source_binding", {}), selection)
     if lane == "rollback-restore":
         require(selection is not None and selection["rollback"] is not None, R_NO_ROLLBACK)
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "operational evidence lacks owner-selected inputs")
-    if selection["candidate"]["version"] in ("3.122.1", "3.125.0", "3.125.1"):
+    if selection["candidate"]["version"] in ISOLATION_VERSIONS:
         validate_final_isolation(receipt,context)
     runtime.require_operational_profile(selection)
     require(receipt["profile"] == selection["operational_profile"], "operational evidence lacks the selected profile")
@@ -1455,7 +1552,7 @@ def receipt_outcome(receipt, context):
         return ("scenarios" if receipt["lane"] in SCENARIOS else "additions"), receipt["lane"], outcome
     if schema in (runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
         selection = (context.get("inputs") or {}).get("value", {})
-        require(selection.get("candidate", {}).get("version") in ("3.122.1", "3.125.0", "3.125.1")
+        require(selection.get("candidate", {}).get("version") in ISOLATION_VERSIONS
                 and isinstance(receipt["execution_evidence"],dict)
                 and set(receipt["execution_evidence"]) == {"isolation"}, "recovery isolation extension differs from contract")
     if schema == runtime.RESTORE_SCHEMA:
@@ -1503,7 +1600,7 @@ def public(record):
 
 
 def create_packet(directory, inputs=None, decisions=None, candidate_evidence=None, rollback_evidence=None, receipts=(),
-                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None):
+                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None, source_root=None):
     """Create a new sealed packet; refusals and interruptions are retained rather than defaulted."""
     directory = Path(directory).absolute()
     require(not directory.exists() and not directory.is_symlink(), "output path already exists")
@@ -1522,7 +1619,8 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
         dependent = (candidate_evidence, rollback_evidence, decisions, support_boundary, *receipts, *comparison_evidence)
         require(inputs is not None or all(value is None for value in dependent),
                 "dependent execution refused: " + R_INPUTS)
-        binding = preparation.source_binding(root)
+        binding = (preparation.source_binding(root, source_root) if source_root is not None
+                   else preparation.source_binding(root))
         write_json(directory / "source-binding.json", binding)
         packet["source_binding_sha256"] = digest(regular(directory / "source-binding.json"))
         if inputs is not None:
@@ -1530,6 +1628,8 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
             inputs_record = bound_document(directory, value, data, scope, "inputs.json")
             packet["inputs"] = public(inputs_record)
             packet["lanes"] = lanes = initial_lanes(value)
+            if scope == "owner-selected":
+                validate_candidate_source(binding, value)
             if scope == "tooling-synthetic" or not is_successor_selection(value):
                 require(support_boundary is None, "sealed 3.119.0 boundary cannot be replaced")
             else:
@@ -1649,6 +1749,8 @@ def validate_packet(directory):
     require(packet["refusals"] == refusals(inputs, decisions), "refusals differ from bound inputs")
     selection = inputs["value"] if inputs is not None else None
     support_value = None
+    if inputs is not None and inputs["scope"] == "owner-selected":
+        validate_candidate_source(binding, selection)
     if selection is not None and inputs["scope"] == "owner-selected" and is_successor_selection(selection):
         record = packet.get("support_boundary")
         members(record, ("path", "sha256"), "successor support boundary binding missing")

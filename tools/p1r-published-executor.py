@@ -19,9 +19,11 @@ def main(arguments=None):
     observe.add_argument("--out", type=Path, required=True)
     observe.add_argument("--planning-observations", type=Path, required=True)
     observe.add_argument("--selection-reference", required=True)
+    observe.add_argument("--source-root", type=Path, help="exact tagged production source checkout")
     execute = commands.add_parser("run", help="run all canonical families and selected additions")
     execute.add_argument("--out", type=Path, required=True)
     execute.add_argument("--inputs", type=Path, required=True)
+    execute.add_argument("--source-root", type=Path, help="exact tagged production source checkout")
     inventory = commands.add_parser("inventory", help="read an exactly owned state fixture; no runtime application access")
     inventory.add_argument("--container", required=True)
     inventory.add_argument("--invocation", required=True)
@@ -35,19 +37,24 @@ def main(arguments=None):
             return 0
         # Resolve every path while still in the caller's original working directory.
         args.out = args.out.absolute()
+        if args.source_root is not None:
+            args.source_root = args.source_root.absolute()
         if args.command == "run":
             args.inputs = args.inputs.absolute()
             inputs, data, scope = qualification.load_document(args.inputs, qualification.validate_inputs)
             qualification.require(scope == "owner-selected", "synthetic selections cannot execute published qualification")
-            validate_execution_inputs(inputs)
+            validate_execution_inputs(inputs, args.source_root) if args.source_root is not None else validate_execution_inputs(inputs)
         else:
             args.planning_observations = args.planning_observations.absolute()
         if not os.environ.get("HEXALITH_P1R_ISOLATION"):
             from p1r_isolation import IsolatedRunner
-            isolation = IsolatedRunner(args.out.with_name(args.out.name + "-isolation"))
+            isolation = (IsolatedRunner(args.out.with_name(args.out.name + "-isolation"), source_root=args.source_root)
+                         if args.source_root is not None else IsolatedRunner(args.out.with_name(args.out.name + "-isolation")))
             forwarded = [args.command, "--out", str(args.out)]
             forwarded += (["--inputs", str(args.inputs)] if args.command == "run" else
                           ["--planning-observations", str(args.planning_observations), "--selection-reference", args.selection_reference])
+            if args.source_root is not None:
+                forwarded += ["--source-root", str(args.source_root)]
             code = isolation.run(["python3", str(Path(__file__).resolve()), *forwarded])
             responses = []
             for line in isolation.result.get("command_stdout", "").splitlines():
@@ -65,11 +72,12 @@ def main(arguments=None):
         from p1r_isolation import private_proof, OUTER_MARKER
         private_proof(os.environ.get(OUTER_MARKER))
         if args.command == "observe":
-            worker = Executor(args.out)
+            worker = Executor(args.out, source_root=args.source_root) if args.source_root is not None else Executor(args.out)
             worker.observe_inputs(json.loads(args.planning_observations.read_bytes()), args.selection_reference)
             worker.cleanup()
         else:
-            worker = Executor(args.out, inputs)
+            worker = (Executor(args.out, inputs, source_root=args.source_root) if args.source_root is not None
+                      else Executor(args.out, inputs))
             worker.inputs_sha256 = qualification.digest(data)
             worker.result["inputs_sha256"] = worker.inputs_sha256
             worker.save()

@@ -179,7 +179,7 @@ def reserve_port():
     raise InvalidPacket("invocation loopback port unavailable")
 
 
-def validate_execution_inputs(inputs):
+def validate_execution_inputs(inputs, source_root=None):
     """Refuse a substituted approved tuple before any consumer or operational resource starts."""
     require(qualification.validate_inputs(inputs) == "owner-selected", "synthetic inputs cannot execute published operations")
     candidate, profile = inputs["candidate"], inputs["operational_profile"]
@@ -195,9 +195,13 @@ def validate_execution_inputs(inputs):
         return
     require(qualification.is_successor_selection(inputs) and candidate["tag_builds_commit"],
             "unrepaired or unbound successor selection")
-    tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
-    source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
-    tag_builds = preparation.git(ROOT, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    selected_root = ROOT if source_root is None else Path(source_root)
+    if source_root is not None or candidate["version"] == "3.125.1":
+        binding = preparation.source_binding(ROOT, selected_root)
+        qualification.validate_candidate_source(binding, inputs)
+    tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+    source_commit = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
+    tag_builds = preparation.git(selected_root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
     require(tag_commit == source_commit == candidate["tag_commit"]
             and len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
             and tag_builds[2] == candidate["tag_builds_commit"],
@@ -261,13 +265,15 @@ class Executor:
     def versions(self, value):
         self._versions = value
 
-    def __init__(self, output, inputs=None):
+    def __init__(self, output, inputs=None, source_root=None):
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "output exists or is substituted")
         self.output.mkdir(parents=True)
         self.invocation = uuid.uuid4().hex
         self.scratch = Path(tempfile.mkdtemp(prefix="p1r-published-" + self.invocation + "-"))
         self.inputs = inputs
+        self.source_root = Path(source_root).absolute() if source_root is not None else ROOT
+        self.explicit_source_root = source_root is not None
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
         self.inputs_sha256 = digest(canonical(inputs)) if inputs else None
@@ -296,7 +302,8 @@ class Executor:
                        "inputs_sha256": self.inputs_sha256, "receipts": [], "errors": [], "p1r_usable": False}
         self.save()
         try:
-            self.source_binding = preparation.source_binding()
+            self.source_binding = (preparation.source_binding(ROOT, self.source_root) if self.explicit_source_root
+                                   else preparation.source_binding())
             write_json(self.output / "executor-source.json", self.source_binding)
             self.result["executor_source_sha256"] = digest(regular(self.output / "executor-source.json"))
             self.shared_before = self.shared()
@@ -305,6 +312,16 @@ class Executor:
             self.errors.append("initialization: " + (str(error) if isinstance(error, InvalidPacket) else type(error).__name__))
             self.cleanup()
             raise
+
+    def check_sources(self):
+        """Recheck both roles after waits and before retaining dependent measurements."""
+        binding = getattr(self, "source_binding", None)
+        if binding is None:
+            return
+        preparation.check_current_source(binding)
+        selected = getattr(self, "inputs", None) or ({"candidate": self.selected_candidate} if hasattr(self, "selected_candidate") else None)
+        if selected is not None:
+            qualification.validate_candidate_source(binding, selected)
 
     def save(self):
         write_json(self.output / "commands.json", self.commands)
@@ -500,15 +517,23 @@ class Executor:
         while time.monotonic() < deadline:
             require(item["process"].poll() is None, "owned application exited during startup")
             try:
-                return self.http("GET", url, timeout=1)
+                observed = self.http("GET", url, timeout=1)
             except (OSError, urllib.error.URLError, InvalidPacket):
                 time.sleep(.15)
+                continue
+            self.check_sources()
+            return observed
         raise TimeoutError("owned endpoint startup timeout")
 
     def build_consumers(self, version, source=False):
+        self.check_sources()
         role = "source" if source else "candidate" if version == self.candidate else "comparison-" + version
         root = self.output / "consumers" / role
         shutil.copytree(CONSUMERS, root)
+        if getattr(self, "explicit_source_root", False):
+            # The private SDK is selected by the tagged source, independently of
+            # newer verifier SDK pins. Preserve both original pins in their roots.
+            shutil.copyfile(self.source_root / "global.json", root / "global.json")
         packages = root / "packages"
         environment = dict(os.environ, CI="true", NUGET_PACKAGES=str(packages), DOTNET_NOLOGO="true",
                            DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE="false", DOTNET_USE_POLLING_FILE_WATCHER="1")
@@ -516,7 +541,7 @@ class Executor:
         props = ["-p:EventStoreVersion=" + version, "-p:NuGetAudit=false"]
         if source:
             environment.pop("CI", None)
-            props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(ROOT)]
+            props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(getattr(self, "source_root", ROOT))]
         manifest = {"schema": qualification.EVIDENCE_SCHEMA, "role": role, "fixture": None,
                     "packages_root": "packages", "configuration": configuration, "projects": []}
         serving_binaries = {}
@@ -559,6 +584,9 @@ class Executor:
                                          "lock": project.lower() + "/packages.lock.json", "loaded": loaded, "output": output})
             self.identities.setdefault(version if not source else "source", []).extend(identity["assemblies"])
         write_json(root / "evidence.json", manifest)
+        if source and "candidate_source" in getattr(self, "source_binding", {}):
+            write_json(root / "source-evidence.json", qualification.source_consumer_binding(root, self.source_binding))
+        self.check_sources()
         self.evidence[role] = root
         return root
 
@@ -589,6 +617,9 @@ class Executor:
     def observe_inputs(self, planning, reference):
         """Observe the already approved six selections; verify downloads rather than reuse preflight passes."""
         candidate = planning["candidate_proposed"]
+        self.selected_candidate = candidate
+        selected_root = getattr(self, "source_root", ROOT)
+        self.check_sources()
         self.candidate = candidate["version"]
         self.versions = ("3.110.0", "3.70.1", self.candidate)
         if self.candidate == CANDIDATE:
@@ -604,23 +635,23 @@ class Executor:
                             for package in candidate["packages"])
                     and "tag_builds_commit" in candidate,
                     "successor observation lacks exact source-bound packages or tag Builds identity")
-            tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
-            source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
+            tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+            source_commit = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
             require(tag_commit == source_commit == candidate["tag_commit"],
                     "successor observation source or tag substituted")
             expected_tag_builds = candidate["tag_builds_commit"]
-        tag_builds = preparation.git(ROOT, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
+        tag_builds = preparation.git(selected_root, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
         require(len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
                 and tag_builds[2] == expected_tag_builds, "candidate tag Builds provenance substituted")
         selections = {}
         for version in self.versions:
             root = self.build_consumers(version)
-            tag_commit = preparation.git(ROOT, "rev-parse", "v" + version + "^{commit}").decode().strip()
+            tag_commit = preparation.git(selected_root, "rev-parse", "v" + version + "^{commit}").decode().strip()
             if version == self.candidate:
                 builds = {key: candidate["builds"][key] for key in ("version", "commit")}
                 require(tag_commit == candidate["tag_commit"], "candidate tag substituted")
             else:
-                tree = preparation.git(ROOT, "ls-tree", "v" + version, "references/Hexalith.Builds").decode().split()
+                tree = preparation.git(selected_root, "ls-tree", "v" + version, "references/Hexalith.Builds").decode().split()
                 require(len(tree) == 4 and tree[:2] == ["160000", "commit"], "comparison Builds provenance missing")
                 commit = tree[2]
                 builds_root = (Path(self.source_binding["workspace_builds"]["path"]) if "workspace_builds" in self.source_binding
@@ -662,6 +693,7 @@ class Executor:
                   "assertion_instrumentation": {"mechanism": MECHANISM, "accepted_by": "test-owner", "reference": reference},
                   "selected_additions": list(qualification.ADDITIONS)}
         qualification.validate_inputs(inputs)
+        self.check_sources()
         self.inputs = inputs
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
@@ -894,7 +926,7 @@ class Executor:
         genuine = interval == 10 and qualification.is_successor_selection(
             {"candidate": {"version": self.candidate if version == "source" else version}})
         if genuine:
-            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
+            require(self.candidate in qualification.FOLDED_SNAPSHOT_VERSIONS
                     and version in (self.candidate, "source"), "successor snapshot fixture is not explicitly enabled")
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
@@ -1088,7 +1120,9 @@ class Executor:
             expected = "refusal"
         observed, outcome, disposition = {}, "error", "compatible"
         try:
+            self.check_sources()
             observed, outcome, disposition = action(checks)
+            self.check_sources()
         except (Exception, KeyboardInterrupt) as error:
             checks.check("execution-completed", False)
             observed = {"error": type(error).__name__, "reason": str(error)}
@@ -1124,7 +1158,7 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
-        if self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1") and getattr(self, "last_snapshot_creation", None) is not None:
+        if self.candidate in qualification.FOLDED_SNAPSHOT_VERSIONS and getattr(self, "last_snapshot_creation", None) is not None:
             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
             data = regular(path)
             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}
@@ -1154,6 +1188,10 @@ class Executor:
                               "executor_source": self.source_binding, "cases": evidence,
                               "predicate_sources": [self.witness_sources[path] for path in sorted({
                                   witness["source"] for case in evidence for witness in case["check_witnesses"] if witness["kind"] == "predicate"})]}
+        if name == "checkout" and "candidate_source" in self.source_binding and "source" in self.evidence:
+            source_manifest = self.evidence["source"] / "source-evidence.json"
+            execution_evidence["source_consumer"] = {"path": str(source_manifest), "sha256": digest(regular(source_manifest)),
+                                                      "content": regular(source_manifest).decode()}
         counter = {key: sum(case["assertions"][key] for case in cases) for key in ("attempted", "passed", "failed")}
         passed = (counter["attempted"] > 0 and counter["failed"] == 0
                   and all(case["expected"] == case["outcome"] and (case["outcome"] != "refusal" or
@@ -1626,7 +1664,7 @@ class Executor:
         return {"before": before, "after": after, "owned_processes": identities}, "effect", "compatible"
 
     def execute(self):
-        validate_execution_inputs(self.inputs)
+        validate_execution_inputs(self.inputs, self.source_root) if self.explicit_source_root else validate_execution_inputs(self.inputs)
         if self.candidate == CANDIDATE:
             policy = qualification.load_support_table(self.inputs)
             self.support_rules = {(lane, rule["id"]): rule["treatment"] for lane, entry in policy["lanes"].items()
@@ -1639,7 +1677,7 @@ class Executor:
             self.verify_selected_candidate_archives()
             self.topology()
             for lane in qualification.SCENARIOS:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 if lane == "provenance":
                     action, operational = self.provenance_case, False
                 elif lane in ("legacy-metadata", "metadata-read"):
@@ -1666,12 +1704,12 @@ class Executor:
                     action, operational = lambda identifier, checks, lane=lane: self.live_case(lane, identifier, checks), True
                 self.lane(lane, action, operational)
             if "reminder-recovery" in self.inputs["selected_additions"]:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 self.lane("reminder-recovery", self.reminder_case, True)
             if "logical-event-evolution" in self.inputs["selected_additions"]:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 self.lane("logical-event-evolution", self.evolution_case, True)
-            preparation.check_current_source(self.source_binding)
+            self.check_sources()
         finally:
             cleanup = self.cleanup()
             if self.pending_restore is not None:
@@ -1775,6 +1813,10 @@ class Executor:
             self.receipts.append(str(path))
         else:
             self.result["consumer_cleanup"] = str(path)
+        try:
+            self.check_sources()
+        except (Exception, KeyboardInterrupt) as error:
+            self.errors.append("final source check: " + str(error))
         self.result["finished_utc"] = stamp()
         self.save()
         return receipt

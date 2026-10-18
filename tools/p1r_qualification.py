@@ -213,7 +213,7 @@ def retained_inputs(root):
     return [{"path": name, "sha256": digest(regular(root / name))} for name in sorted(names)]
 
 
-def source_binding(root=ROOT):
+def source_binding(root=ROOT, source_root=None):
     root = Path(root).absolute()
     main = repository_binding(root)
     declared = declared_dependencies(root)
@@ -261,11 +261,51 @@ def source_binding(root=ROOT):
                        "version": list(sys.version_info[:3])}}
     if workspace_builds is not None:
         result["workspace_builds"] = workspace_builds
+    if source_root is not None:
+        source_root = Path(source_root).absolute()
+        self_contained_checkout(root)
+        self_contained_checkout(source_root)
+        result["candidate_source"] = source_binding(source_root)
+        require_clean_source(result["candidate_source"])
     return result
 
 
-def check_current_source(binding):
-    require(binding == source_binding(Path(binding["repository"])), "source/configuration inputs changed")
+def self_contained_checkout(root):
+    """Reject linked worktrees, external Git metadata and borrowed object stores."""
+    root = Path(root)
+    require(root == root.resolve() and (root / ".git").is_dir()
+            and not (root / ".git").is_symlink(), "self-contained ordinary Git checkout required")
+    for path in (root, *(root / name for name in declared_dependencies(root) if (root / name / ".git").exists())):
+        git_dir = Path(git(path, "rev-parse", "--absolute-git-dir").decode().strip())
+        common = Path(git(path, "rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip())
+        require(git_dir == git_dir.resolve() == common and git_dir.is_relative_to(root)
+                and not (common / "objects/info/alternates").exists()
+                and not (common / "objects").is_symlink(), "shared Git metadata or object alternates refused")
+
+
+def require_clean_source(binding):
+    """Candidate production/build inputs must retain their committed tagged bytes."""
+    require("workspace_builds" not in binding, "candidate Builds must be self-contained")
+    for observed in (binding["main"], *(row["binding"] for row in binding["dependencies"] if row["initialized"])):
+        require(observed["diff_sha256"] == digest(b"") and all(
+            row["git_blob"] is not None and row["git_blob"] == row["index_blob"] for row in observed["files"]),
+            "dirty candidate production or build source refused")
+    for row in binding["dependencies"]:
+        require(not row["initialized"] or row["binding"]["head"] == binding["main"]["gitlinks"].get(row["path"]),
+                "candidate dependency differs from tagged gitlink")
+    builds = next((row for row in binding["dependencies"] if row["path"] == "references/Hexalith.Builds"), None)
+    require(builds is not None and builds["initialized"], "candidate Builds closure missing")
+
+
+def check_current_source(binding, check_python=True):
+    source = binding.get("candidate_source")
+    observed = (source_binding(Path(binding["repository"]), Path(source["repository"])) if source is not None
+                else source_binding(Path(binding["repository"])))
+    if not check_python:
+        observed["python"] = binding["python"]
+        if source is not None:
+            observed["candidate_source"]["python"] = source["python"]
+    require(binding == observed, "source/configuration inputs changed")
 
 
 def checks_counter(checks):

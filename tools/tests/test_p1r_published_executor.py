@@ -929,7 +929,7 @@ class MeasurementTests(unittest.TestCase):
         for candidate,version in (("3.125.0","3.122.0"),("3.125.0","3.122.2"),
                                   ("3.125.0","3.125.2"),("3.125.2","3.125.2"),
                                   ("3.125.2","source"),("3.126.0","3.126.0"),("3.126.0","source"),
-                                  ("3.125.0","3.125.1"),("3.125.1","3.125.0"),
+                                  ("3.125.1","3.126.0"),("3.125.1","3.125.0"),
                                   ("3.125.0","3.121.0")):
             worker, checks = self.snapshotSeedWorker(None,candidate=candidate)
             with self.subTest(candidate=candidate,version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
@@ -942,7 +942,7 @@ class MeasurementTests(unittest.TestCase):
             worker.start_nodes.assert_not_called()
 
     def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
-        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),
+        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),("3.125.1","3.125.1"),
                                  ("3.125.1","3.125.1"),("3.125.1","source"),("3.125.0","source"),
                                  ("3.122.2","3.122.2"),("3.125.2","3.125.2"),
                                  ("3.126.0","source"),("3.125.0",None)):
@@ -2195,6 +2195,95 @@ class BoundaryAdmissionTests(unittest.TestCase):
         checks = executor.Measurements()
         worker.boundary_case("query-wire", "3.119.0-3.70.1-json-dual", checks)
         self.assertEqual(checks.counter["failed"], 1)
+
+
+class PublishedPatchSourceTests(unittest.TestCase):
+    """Real selection, wait and snapshot callers; Git observations are tooling fixtures."""
+
+    def fixture(self):
+        source_root = Path('/selected/tagged-source')
+        clean = {'head': qualification.SELECTED_SOURCE_COMMIT, 'diff_sha256': preparation.digest(b''),
+                 'files': [{'path': 'src/Production.cs', 'git_blob': 'a'*40,
+                            'index_blob': 'a'*40, 'sha256': 'b'*64}],
+                 'gitlinks': {'references/Hexalith.Builds': qualification.SELECTED_TAG_BUILDS}}
+        builds = dict(copy.deepcopy(clean), head=qualification.SELECTED_TAG_BUILDS)
+        source = {'repository': str(source_root), 'main': clean,
+                  'dependencies': [{'path':'references/Hexalith.Builds','initialized':True,'binding':builds}]}
+        binding = {'repository':str(preparation.ROOT), 'main':{'head':'f'*40}, 'candidate_source':source}
+        candidate = {'version':'3.125.1','tag':'v3.125.1','tag_commit':qualification.SELECTED_SOURCE_COMMIT,
+            'tag_builds_commit':qualification.SELECTED_TAG_BUILDS,
+            'builds':{'version':'4.33.1','commit':'c'*40},'feed':'https://api.nuget.org/v3/index.json'}
+        inputs = {'candidate':candidate,'rollback':None,'comparisons':[{'version':v} for v in qualification.COMPARISON_VERSIONS],
+            'assertion_instrumentation':{'mechanism':executor.MECHANISM},'selected_additions':list(qualification.ADDITIONS),
+            'operational_profile':{'runtime':'dapr','runtime_version':'1.18.2','backend':'state.postgresql','backend_image':executor.POSTGRES}}
+        def git(root,*arguments):
+            if Path(root) != source_root:
+                return b'f'*40
+            if arguments[0] == 'ls-tree':
+                return ('160000 commit '+qualification.SELECTED_TAG_BUILDS+'\treferences/Hexalith.Builds\n').encode()
+            return qualification.SELECTED_SOURCE_COMMIT.encode()
+        return source_root,binding,inputs,git
+
+    def testNewerVerifierCanSelectOnlyExactCleanTaggedProductionAndBuildClosure(self):
+        source_root,binding,inputs,git = self.fixture()
+        for mutation in (None,'head','builds','dirty','missing-builds','tag','feed'):
+            changed = copy.deepcopy(binding)
+            selected = copy.deepcopy(inputs)
+            if mutation == 'head': changed['candidate_source']['main']['head'] = '0'*40
+            if mutation == 'builds': changed['candidate_source']['dependencies'][0]['binding']['head'] = '0'*40
+            if mutation == 'dirty': changed['candidate_source']['main']['diff_sha256'] = preparation.digest(b'dirty source')
+            if mutation == 'missing-builds': changed['candidate_source']['dependencies'] = []
+            if mutation == 'tag': selected['candidate']['tag_commit'] = '0'*40
+            if mutation == 'feed': selected['candidate']['feed'] = 'https://substituted.invalid/v3/index.json'
+            with self.subTest(mutation=mutation), mock.patch.object(qualification,'validate_inputs',return_value='owner-selected'), \
+                    mock.patch.object(preparation,'source_binding',return_value=changed) as bind, \
+                    mock.patch.object(preparation,'self_contained_checkout'), mock.patch.object(preparation,'git',side_effect=git):
+                if mutation is None:
+                    executor.validate_execution_inputs(selected,source_root)
+                    bind.assert_called_once_with(executor.ROOT,source_root)
+                else:
+                    with self.assertRaises(preparation.InvalidPacket):
+                        executor.validate_execution_inputs(selected,source_root)
+
+    def testMissingCandidateClosureCannotBeRehashedIntoAnImport(self):
+        _,binding,inputs,_ = self.fixture()
+        del binding['candidate_source']
+        for binder in (qualification.bind_lane,qualification.bind_recovery):
+            context = {'source_binding':binding,'inputs':{'value':inputs,'scope':'owner-selected'}}
+            with self.subTest(binder=binder.__name__), self.assertRaisesRegex(preparation.InvalidPacket,'source closure missing'):
+                if binder == qualification.bind_lane:
+                    binder({'lane':'checkout'},{'scope':'operational'},context)
+                else:
+                    binder({}, {'scope':'operational'}, 'candidate-restore', context)
+
+    def testReadyWaitRechecksSourceAfterReturningAndRefusesDrift(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.http = mock.Mock(return_value={'ready':True})
+        worker.source_binding = {'repository':'/selected/verifier','candidate_source':{'repository':'/selected/source'}}
+        worker.inputs = None
+        item = {'process':mock.Mock()}
+        item['process'].poll.return_value = None
+        with mock.patch.object(preparation,'check_current_source',side_effect=preparation.InvalidPacket('post-wait drift')) as check:
+            with self.assertRaisesRegex(preparation.InvalidPacket,'post-wait drift'):
+                worker.wait('http://127.0.0.1:12345/ready',item)
+        worker.http.assert_called_once()
+        check.assert_called_once_with(worker.source_binding)
+
+    def testSelectedPatchRequiresEveryGenuineSnapshotWitness(self):
+        helper = QualifiedSnapshotWitnessTests()
+        helper.candidate_version = '3.125.1'
+        helper.setUp()
+        self.addCleanup(helper.doCleanups)
+        for lane in ('post-upgrade-restore','snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
+            for writer in (('3.125.1',) if lane == 'post-upgrade-restore' else ('3.125.1','source')):
+                with self.subTest(lane=lane,writer=writer):
+                    fixture = helper.fixture(writer_version=writer,lane=lane)
+                    helper.validate(fixture,lane)
+                    del fixture[1]['snapshot_fixture_source']
+                    with self.assertRaises(preparation.InvalidPacket):
+                        helper.validate(fixture,lane)
+        self.assertIn('3.125.1',qualification.ISOLATION_VERSIONS)
+        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.126.0','snapshot-tail','source-to-3.110.0'))
 
 
 if __name__ == "__main__":

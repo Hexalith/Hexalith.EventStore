@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "aspire",
+    "start",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--isolated",
+    "--launch-profile",
+    "http",
+    "--format",
+    "Json",
+    "--non-interactive"
+  ],
+  "environment": {
+    "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true"
+  },
+  "started_unix": 1792343202.0516791,
+  "finished_unix": 1792343219.8831089,
+  "exit_code": 0,
+  "output_sha256": "df19609c4e38bb04f419517d8c12203a81c8175c872341b3733c549c10b89361",
+  "output": "{\n  \"appHostPath\": \"/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj\",\n  \"appHostPid\": 30105,\n  \"cliPid\": 26136,\n  \"dashboardUrl\": \"http://localhost:34555/login?t=[REDACTED]\",\n  \"logFile\": \"/home/administrator/.aspire/logs/cli_20261018T170642553_detach-child_b6433407a9c446aa991684b8262391be.log\"\n}\n\nStarting Aspire AppHost in the background...\n"
+}

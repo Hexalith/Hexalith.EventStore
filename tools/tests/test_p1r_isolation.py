@@ -51,6 +51,42 @@ class PrivateEndpointTests(unittest.TestCase):
             self.assertRegex(image, "^" + isolation.IMAGE_PATTERN + "$")
 
 
+class SeparateSourceMountTests(unittest.TestCase):
+    def testExactSourceArgumentAndMountAreIndependentOfVerifierRoot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            verifier,source = base/'verifier',base/'source'
+            verifier.mkdir();source.mkdir()
+            inputs = verifier/'inputs.json';inputs.write_text('{}')
+            command = ['python3',str(verifier/'tools/p1r-published-executor.py'),'run','--out',str(verifier/'run'),
+                       '--inputs',str(inputs),'--source-root',str(source)]
+            self.assertEqual(isolation.command_source_root(command),source)
+            self.assertEqual(isolation.executor_input(command,verifier),{'path':str(inputs),'sha256':preparation.digest(b'{}')})
+            with mock.patch.object(preparation,'declared_dependencies',return_value=['references/Hexalith.Builds']):
+                args = isolation.sdk_arguments(verifier,verifier,'a'*32,'daemon','volume',source)
+            self.assertIn('type=bind,src='+str(source)+',dst='+str(source),args)
+            self.assertIn('type=bind,src='+str(verifier)+',dst='+str(verifier),args)
+            for changed in (command+['--source-root',str(verifier)],command[:-1]+[str(source/'..')],
+                            command[:7]+['--inputs',str(inputs)]):
+                with self.subTest(command=changed), self.assertRaises(preparation.InvalidPacket):
+                    isolation.executor_input(changed,verifier)
+
+    def testOrdinaryCheckoutBoundaryRefusesLinkedAndBorrowedMetadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'.git/objects/info').mkdir(parents=True)
+            with mock.patch.object(preparation,'declared_dependencies',return_value=[]), \
+                    mock.patch.object(preparation,'git',return_value=str(root/'.git').encode()):
+                preparation.self_contained_checkout(root)
+                (root/'.git/objects/info/alternates').write_text('/shared/objects')
+                with self.assertRaisesRegex(preparation.InvalidPacket,'alternates'):
+                    preparation.self_contained_checkout(root)
+            shutil.rmtree(root/'.git')
+            (root/'.git').write_text('gitdir: /shared/worktrees/candidate')
+            with self.assertRaisesRegex(preparation.InvalidPacket,'ordinary Git'):
+                preparation.self_contained_checkout(root)
+
+
 class ControllerTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
