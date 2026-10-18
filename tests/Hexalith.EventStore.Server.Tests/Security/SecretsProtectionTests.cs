@@ -1087,6 +1087,7 @@ public sealed partial class SecretsProtectionTests
         content = MaskSealedPublishedExecutorSource(relativePath, content);
         content = MaskKnownSyntheticBindingTestNames(relativePath, content);
         content = MaskKnownSyntheticTrxTestNames(relativePath, content);
+        content = MaskKnownSyntheticXunitTestNames(content);
         var violationLines = new SortedSet<int>();
         (HashSet<int> nullValues, HashSet<int> dependencyNames) = GetJsonNonSecretMetadata(content);
         void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
@@ -2095,6 +2096,34 @@ public sealed partial class SecretsProtectionTests
         JsonProperty property)
     {
         // Recognize NuGet package identities only at their schema positions, never arbitrary credential fields.
+        bool knownPackage = property.Name is "Microsoft.IdentityModel.Tokens"
+            or "Microsoft.IdentityModel.JsonWebTokens"
+            or "System.IdentityModel.Tokens.Jwt"
+            or "Azure.Security.KeyVault.Secrets"
+            or "Microsoft.Extensions.Configuration.UserSecrets"
+            or "Microsoft.AspNetCore.Authentication.BearerToken";
+        if (knownPackage
+            && ancestors.Count == 5
+            && ancestors[1].Name == "project"
+            && ancestors[2].Name == "frameworks"
+            && ancestors[3].Name is not null
+            && ancestors[4].Name == "centralPackageVersions"
+            && property.Value.ValueKind == JsonValueKind.String
+            && IsNuGetVersion(property.Value.GetString())
+            && ancestors[0].Element.TryGetProperty("version", out JsonElement assetVersion)
+            && assetVersion.ValueKind == JsonValueKind.Number
+            && assetVersion.TryGetInt32(out int version)
+            && version is 3 or 4
+            && ancestors[0].Element.TryGetProperty("targets", out JsonElement assetTargets)
+            && assetTargets.ValueKind == JsonValueKind.Object
+            && assetTargets.TryGetProperty(ancestors[3].Name, out JsonElement frameworkTarget)
+            && frameworkTarget.ValueKind == JsonValueKind.Object
+            && ancestors[0].Element.TryGetProperty("libraries", out JsonElement assetLibraries)
+            && assetLibraries.ValueKind == JsonValueKind.Object)
+        {
+            return true;
+        }
+
         if (property.Name is "Microsoft.AspNetCore.Authentication.BearerToken"
                 or "Microsoft.Extensions.Configuration.UserSecrets"
             && ancestors.Count == 5
@@ -2107,10 +2136,7 @@ public sealed partial class SecretsProtectionTests
             return true;
         }
 
-        if (property.Name is not ("Microsoft.IdentityModel.Tokens"
-                or "Microsoft.IdentityModel.JsonWebTokens"
-                or "System.IdentityModel.Tokens.Jwt")
-            || ancestors.Count < 3)
+        if (!knownPackage || ancestors.Count < 3)
         {
             return false;
         }
@@ -2153,6 +2179,11 @@ public sealed partial class SecretsProtectionTests
             return false;
         }
 
+        if (IsFrameworkReferenceDependency(ancestors, property, libraries))
+        {
+            return true;
+        }
+
         return libraries.EnumerateObject().Any(library =>
             library.Name.StartsWith(property.Name + "/", StringComparison.Ordinal)
             && IsNuGetVersion(library.Name[(property.Name.Length + 1)..])
@@ -2162,6 +2193,45 @@ public sealed partial class SecretsProtectionTests
             && type.GetString() == "package"
             && library.Value.TryGetProperty("sha512", out JsonElement hash)
             && IsNuGetContentHash(hash));
+    }
+
+    private static bool IsFrameworkReferenceDependency(
+        List<(string? Name, JsonElement Element)> ancestors,
+        JsonProperty property,
+        JsonElement libraries)
+    {
+        // Framework reference assemblies have no package hash. Require the matching compile-only
+        // target and runtime target identity rather than accepting an empty package digest.
+        if (property.Name is not ("Microsoft.AspNetCore.Authentication.BearerToken"
+                or "Microsoft.Extensions.Configuration.UserSecrets")
+            || !ancestors[^5].Element.TryGetProperty("runtimeTarget", out JsonElement runtime)
+            || runtime.ValueKind != JsonValueKind.Object
+            || !runtime.TryGetProperty("name", out JsonElement runtimeName)
+            || runtimeName.ValueKind != JsonValueKind.String
+            || runtimeName.GetString() != ancestors[^3].Name)
+        {
+            return false;
+        }
+
+        string identity = property.Name + "/" + property.Value.GetString();
+        return libraries.TryGetProperty(identity, out JsonElement library)
+            && library.ValueKind == JsonValueKind.Object
+            && library.TryGetProperty("type", out JsonElement type)
+            && type.ValueKind == JsonValueKind.String
+            && type.GetString() == "referenceassembly"
+            && library.TryGetProperty("serviceable", out JsonElement serviceable)
+            && serviceable.ValueKind == JsonValueKind.False
+            && library.TryGetProperty("sha512", out JsonElement hash)
+            && hash.ValueKind == JsonValueKind.String
+            && hash.GetString() == string.Empty
+            && ancestors[^3].Element.TryGetProperty(identity, out JsonElement target)
+            && target.ValueKind == JsonValueKind.Object
+            && target.TryGetProperty("compileOnly", out JsonElement compileOnly)
+            && compileOnly.ValueKind == JsonValueKind.True
+            && target.TryGetProperty("compile", out JsonElement compile)
+            && compile.ValueKind == JsonValueKind.Object
+            && compile.TryGetProperty(property.Name + ".dll", out JsonElement assembly)
+            && assembly.ValueKind == JsonValueKind.Object;
     }
 
     private static bool IsLockDocument(JsonElement element)
@@ -2959,7 +3029,8 @@ public sealed partial class SecretsProtectionTests
             return true;
         }
 
-        if (CSharpRuntimeTransformPattern().IsMatch(value))
+        if (CSharpRuntimeTransformPattern().IsMatch(value)
+            || CSharpJsonStringReadPattern().IsMatch(value))
         {
             return true;
         }
@@ -3686,6 +3757,9 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\r\n]+\]|\??\.[A-Za-z_][A-Za-z0-9_]*)+\.(?:Trim|ToString)\s*\(\s*\)$", RegexOptions.CultureInvariant)]
     private static partial Regex CSharpRuntimeTransformPattern();
+
+    [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\.GetString\s*\(\s*\)!?$", RegexOptions.CultureInvariant)]
+    private static partial Regex CSharpJsonStringReadPattern();
 
     [GeneratedRegex(@"(?:@?\""(?:\""\""|[^\""\r\n])*\""|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b)", RegexOptions.CultureInvariant)]
     private static partial Regex CSharpLiteralPattern();

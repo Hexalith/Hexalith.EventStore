@@ -1,0 +1,19 @@
+{
+  "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "commands": {
+    "baseline_build": "dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -m:1",
+    "baseline_inventory_build": "dotnet build /tmp/story64-secrets-794369b/harness/ScanInventory.csproj -o tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0 -v:q",
+    "baseline_inventory": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/ScanInventory.dll /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore /tmp/story64-secrets-794369b/tracked-paths-before.txt /tmp/story64-secrets-794369b/violations-before.json",
+    "red_regressions": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method '*NuGetEvidenceMetadata*' -noColor -xml /tmp/story64-secrets-794369b/regressions-before.xml",
+    "build_after": "dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj -c Debug --no-restore -p:UseHexalithProjectReferences=true -m:1",
+    "full_secrets_suite": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests -noColor -xml /tmp/story64-secrets-794369b/secrets-suite-after.xml",
+    "final_server": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests -class Hexalith.EventStore.Server.Tests.Authentication.WorkloadBindingAuthorityTests -class Hexalith.EventStore.Server.Tests.DomainServices.DomainServiceWorkloadAssertionHandlerTests -method- '*TrackedReusableContent_DoesNotContainUsableSecrets' -noColor -xml /tmp/story64-secrets-794369b/final-affected-server.xml",
+    "final_domainservice": "dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class Hexalith.EventStore.DomainService.Tests.QueryAuthorityCorrectionTests -noColor -xml /tmp/story64-secrets-794369b/final-affected-domainservice.xml",
+    "final_historical_controls": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method '*HistoricalAuthorityLiteralProbes_RemainBlocking' -noColor -xml /tmp/story64-secrets-794369b/final-historical-controls.xml",
+    "focused_canonical_rescan": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/ScanInventory.dll /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore /tmp/story64-secrets-794369b/baseline-failing-paths.txt /tmp/story64-secrets-794369b/violations-after.json",
+    "xml_coordinate_control": "pwsh -NoProfile -NonInteractive -File /tmp/story64-secrets-794369b/reproduce-xunit-mixed-newline.ps1",
+    "final_domainservice_build": "dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug --no-restore -p:UseHexalithProjectReferences=true -m:1",
+    "whitespace": "git diff --check",
+    "production_authority": "python3 tools/planning/validate_production_authority.py --story-id 6.4 (Projects workspace)"
+  }
+}

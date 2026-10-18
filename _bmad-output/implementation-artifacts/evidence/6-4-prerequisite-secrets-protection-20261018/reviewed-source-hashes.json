@@ -1,0 +1,6 @@
+{
+  "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs": "40d5ed719bbb109a8f9e2638dd78ab4b47fb3941b9dea5b218f8655d8c5bbedf",
+  "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs": "e3cadbc1e30002811ca9fd1b7e4a6e80736e6ea38a0f7ccf06485c29a85a7df5",
+  "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.NuGetEvidence.cs": "50e9e743dc3fad7912d6d3958e297bea7dc90e781b672f0046d3de005ef38048",
+  "docs/architecture/evidence-secret-scanning.md": "a916ecdad2fdc2fa04e479eb1eace43ed0c16ce5110e41ef27f5965a61f683a3"
+}

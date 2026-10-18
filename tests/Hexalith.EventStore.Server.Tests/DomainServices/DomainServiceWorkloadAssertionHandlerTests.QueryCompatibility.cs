@@ -37,7 +37,7 @@ public sealed partial class DomainServiceWorkloadAssertionHandlerTests
             ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
             ["Authentication:JwtBearer:AllowedAlgorithms:0"] = "RS256",
             ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
-            ["Authentication:WorkloadIssuer:ClientId"] = "eventstore", ["Authentication:WorkloadIssuer:ClientSecret"] = "test-client-secret",
+            ["Authentication:WorkloadIssuer:ClientId"] = "eventstore", ["Authentication:WorkloadIssuer:ClientSecret"] = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
             ["Authentication:WorkloadIssuer:TokenEndpoint"] = ScopedWorkloadTokenEndpoint.Authority + "/protocol/openid-connect/token",
             ["Authentication:QueryAuthority:RequiredQueries:projects:0"] = "BoundRead",
         };

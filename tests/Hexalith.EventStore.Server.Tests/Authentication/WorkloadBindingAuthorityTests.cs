@@ -116,7 +116,7 @@ public sealed class WorkloadBindingAuthorityTests : IDisposable
             case "expired": _options.Grants[0].ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1); break;
             case "not-started": _options.Grants[0].NotBefore = DateTimeOffset.UtcNow.AddHours(1); break;
             case "duplicate": _options.Grants = [_options.Grants[0], _options.Grants[0]]; break;
-            case "bad-secret": secret = new string('x', 64); break;
+            case "bad-secret": secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)); break;
             case "bad-tenant": details.Bindings[EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = "unapproved"; break;
             case "bad-domain": details.Bindings[EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = "party"; break;
             case "bad-operation": details = details with { Operation = "gateway:command" }; break;
@@ -268,7 +268,7 @@ public sealed class WorkloadBindingAuthorityTests : IDisposable
         { Authority = _options.Issuer, Issuer = _options.Issuer, Audience = "eventstore", AllowedAlgorithms = ["RS256"] });
         IOptionsMonitor<WorkloadAssertionIssuerOptions> issuers = Substitute.For<IOptionsMonitor<WorkloadAssertionIssuerOptions>>();
         issuers.CurrentValue.Returns(new WorkloadAssertionIssuerOptions
-        { Workload = "timesheets", ClientId = "synthetic-client", ClientSecret = correctSecret ? _secret : new string('x', 64), EnableResourceBindingRequests = true });
+        { Workload = "timesheets", ClientId = "synthetic-client", ClientSecret = correctSecret ? _secret : Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), EnableResourceBindingRequests = true });
         IHostEnvironment environment = Substitute.For<IHostEnvironment>(); environment.EnvironmentName.Returns(Environments.Production);
         using var issuer = new JwtWorkloadAssertionIssuer(contracts, issuers, environment, factory, WorkloadSecurityClock.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<JwtWorkloadAssertionIssuer>.Instance);

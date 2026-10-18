@@ -47,7 +47,7 @@ public sealed partial class QueryAuthorityCorrectionTests
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Authentication:WorkloadIssuer:Workload"] = configured ? "projects" : null,
-            ["Authentication:BoundStreamRead:PrivateKey"] = configured ? "unused-before-null-issuer" : null,
+            ["Authentication:BoundStreamRead:PrivateKey"] = configured ? Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)) : null,
         }).Build();
         using DaprClient dapr = new DaprClientBuilder().Build();
         IWorkloadAssertionIssuer issuer = Substitute.For<IWorkloadAssertionIssuer>();

@@ -1,0 +1,33 @@
+{
+  "observedUtc": "2026-10-18T08:31:14.506632+00:00",
+  "eventstoreSource": "794369b30c2f3615a7f1d70a5beb1935f6470b36",
+  "projectsSource": "3a08ccb813251fa21fdd6b28d0516ad15ea438e4",
+  "artifact": {
+    "id": 12129836952,
+    "name": "blocking-test-results",
+    "sha256": "8a47fa2683a3fce8b52b4d7bfa3bff053ee3733a5922ee578ecd0913fe6e7bc9",
+    "path": "/tmp/story64-secrets-794369b/blocking-test-results.zip"
+  },
+  "p1rLog": {
+    "path": "/tmp/story64-secrets-794369b/p1r-preparation.log",
+    "sha256": "b23c1c1e780b97814c37299db1aa5510b2d92ca4526ac9c4758f991e9414c531"
+  },
+  "p1rTestSummaries": [
+    "preparation-controls\tVerify bounded P1R preparation and process controls\t2026-10-18T07:43:05.2741020Z Ran 37 tests in 87.734s",
+    "preparation-controls\tVerify P1R published qualification harness contracts\t2026-10-18T07:43:52.1809325Z Ran 62 tests in 46.718s",
+    "preparation-controls\tVerify P1R published executor regressions\t2026-10-18T07:44:58.8074690Z Ran 128 tests in 66.476s",
+    "preparation-controls\tVerify real Host and Domain snapshot registration\t2026-10-18T07:46:48.7521357Z Ran 2 tests in 100.986s",
+    "preparation-controls\tVerify P1R private isolation controls\t2026-10-18T07:46:50.1581189Z Ran 31 tests in 1.300s",
+    "preparation-controls\tVerify P1R complete isolation lifecycle controls\t2026-10-18T07:47:26.9284470Z Ran 24 tests in 36.644s",
+    "preparation-controls\tVerify P1R isolation refusals under optimized Python\t2026-10-18T07:48:04.3096304Z Ran 24 tests in 36.466s",
+    "preparation-controls\tVerify one-use publication authority and same-run source controls\t2026-10-18T07:48:05.6074194Z Ran 4 tests in 0.320s"
+  ],
+  "ciReferencedWorkflows": [
+    {
+      "path": "Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main",
+      "sha": "9d9e82a091c212f17f751d65aca2b9cd3d3ecde5",
+      "ref": "refs/heads/main"
+    }
+  ],
+  "scope": "Local diagnostic and scanner verification only. P1R usability remains false; Story 6.4 remains blocked. No package publication, pins or acceptance updates."
+}

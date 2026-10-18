@@ -238,6 +238,8 @@ public sealed partial class SecretsProtectionTests
     [InlineData("SecretsProtectionTests.EvidenceIngestion.cs")]
     [InlineData("SecretsProtectionTests.EvidenceRecognition.cs")]
     [InlineData("SecretsProtectionTests.EvidenceSemanticIngestion.cs")]
+    [InlineData("SecretsProtectionTests.NuGetEvidence.cs")]
+    [InlineData("SecretsProtectionTests.XunitEvidence.cs")]
     public void EvidenceSemanticIngestion_AcceptsOwningScannerAndTestSource(string name)
         => WithEvidenceRepository(root =>
         {

@@ -1,0 +1,127 @@
+{
+  "recordedUtc": "2026-10-18T08:52:58.950059+00:00",
+  "eventstoreSource": "794369b30c2f3615a7f1d70a5beb1935f6470b36",
+  "baselineViolations": 2812,
+  "baselineFiles": 670,
+  "resolvedViolations": 2805,
+  "remainingViolations": 7,
+  "remainingFiles": 5,
+  "remaining": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml",
+      "violations": [
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-debug-full.xml:96"
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml",
+      "violations": [
+        "_bmad-output/implementation-artifacts/evidence/story-6-4/qualification-20261017-server-release-full.xml:98"
+      ]
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "violations": [
+        "docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs:117"
+      ]
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "violations": [
+        "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs:119",
+        "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-final-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs:271"
+      ]
+    },
+    {
+      "path": "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "violations": [
+        "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs:118",
+        "docs/evidence/story-3-6/20261017t144520z-production-authority-review/reviewed-sources/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs:270"
+      ]
+    }
+  ],
+  "verification": [
+    {
+      "artifact": "final-affected-server.xml",
+      "rawPath": "/tmp/story64-secrets-794369b/final-affected-server.xml",
+      "sha256": "cd6448fef375c6644fbffaa648366286af45fabcc92a19c1aaf3d16c45c5b072",
+      "counters": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "12e9ce59-9353-47b7-9a95-b3e7f630f72d",
+        "name": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "run-date": "2026-10-18",
+        "run-time": "08:50:35",
+        "start-rtf": "2026-10-18T08:50:35.0863659+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-18T08:51:55.9779556+00:00",
+        "not-run": "0",
+        "passed": "960",
+        "skipped": "0",
+        "time": "80.896",
+        "time-rtf": "00:01:20.8960000",
+        "total": "960"
+      }
+    },
+    {
+      "artifact": "final-affected-domainservice.xml",
+      "rawPath": "/tmp/story64-secrets-794369b/final-affected-domainservice.xml",
+      "sha256": "11ea6ddbb10a415eba798fec388e6f7f82b464173672964fbbd00926dd9536f8",
+      "counters": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, parallel (collections, 14 threads)]",
+        "id": "939e7d2a-2187-48bb-8f76-a86e531fb14d",
+        "name": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+        "run-date": "2026-10-18",
+        "run-time": "08:51:19",
+        "start-rtf": "2026-10-18T08:51:19.9155540+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-18T08:51:20.2852753+00:00",
+        "not-run": "0",
+        "passed": "8",
+        "skipped": "0",
+        "time": "0.372",
+        "time-rtf": "00:00:00.3720000",
+        "total": "8"
+      }
+    },
+    {
+      "artifact": "final-historical-controls.xml",
+      "rawPath": "/tmp/story64-secrets-794369b/final-historical-controls.xml",
+      "sha256": "711c77418ef46508264da4a636877b63b5a6a260f7e81be7d19e8c1d199dff3b",
+      "counters": {
+        "environment": "64-bit (x64) .NET 10.0.12 [collection-per-class, non-parallel]",
+        "id": "9b427801-77c5-4754-a52e-eedbf9ab55a3",
+        "name": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "run-date": "2026-10-18",
+        "run-time": "08:52:31",
+        "start-rtf": "2026-10-18T08:52:31.9942626+00:00",
+        "test-framework": "xUnit.net v3 4.0.2+0c7aa4991f",
+        "target-framework": ".NETCoreApp,Version=v10.0",
+        "errors": "0",
+        "failed": "0",
+        "finish-rtf": "2026-10-18T08:52:32.1634941+00:00",
+        "not-run": "0",
+        "passed": "3",
+        "skipped": "0",
+        "time": "0.170",
+        "time-rtf": "00:00:00.1700000",
+        "total": "3"
+      }
+    }
+  ],
+  "finalBuilds": {
+    "server": "build-delivery-final.log",
+    "domainservice": "build-domainservice-final.log",
+    "warnings": 0,
+    "errors": 0
+  },
+  "scope": "Focused canonical rescan of all 670 previously failing files plus focused test suites. The strict tracked gate remains blocked; no green final unfiltered CI/gate is claimed.",
+  "story64": "blocked",
+  "packagePinsAndAcceptanceRecords": "unchanged",
+  "publication": "not performed"
+}

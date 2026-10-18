@@ -190,3 +190,46 @@ unknown annotations, including quoted semicolons, therefore cannot establish
 proof. Direct equals-assignment checks remain active. File-ingestion controls
 cover self, owning-class, TestCase and other used rejection/redaction/inspection
 symbols under this boundary.
+
+## NuGet asset metadata recognition — 2026-10-18
+
+The Story 6.4 prerequisite repair recognizes six exact NuGet identities at
+validated dependency metadata positions: the existing three IdentityModel
+identities, Azure.Security.KeyVault.Secrets,
+Microsoft.Extensions.Configuration.UserSecrets and
+Microsoft.AspNetCore.Authentication.BearerToken. Central package versions require
+the root NuGet assets version (3 or 4), object-valued targets and libraries, a matching target framework, and
+the exact `project/frameworks/<framework>/centralPackageVersions` position with
+an ordinary NuGet version. Existing package dependency recognition retains its
+library, version and SHA512 checks. No general package-name or version placeholder
+exception is added.
+
+The two named framework reference assemblies require their exact name/version
+library, `referenceassembly` type, `serviceable=false`, empty package hash, matching
+runtime target and matching compile-only DLL target. This is a separate structural
+proof; an empty hash never satisfies the package-hash branch. Every surrounding
+field still reaches all credential detectors. Malformed JSON, misplaced metadata,
+changed values, unknown names, missing linkage and adjacent credentials remain
+findings. Tests exercise canonical file ingestion across the existing decoder
+lanes and renamed copies of original assets. Historical evidence bytes, retirement
+records, sealed hashes, path handling and CI wiring remain unchanged.
+
+The same repair recognizes literal-free C# `GetString()` reads, including a
+postfix null-forgiving operator, while preserving operand/fallback detection.
+Maintained negative fixtures now generate their input at runtime. Historical
+copies retain their original bytes and their findings.
+
+xUnit XML display names use only the existing nine approved negative-fixture
+identities, after decoding the reporter's escaped quotes. Recognition is limited
+to the `name` attribute at `assemblies/assembly/collection/test`; every other
+attribute and output remains scanned. XML CR, LF and CRLF coordinates and the
+located raw attribute's decoded value must agree before any masking. Numeric
+entity and mixed-newline controls protect adjacent credentials. Malformed XML,
+DTDs and unknown fixture identities grant no recognition. No approved-name hash
+was added.
+
+Seven historical findings remain blocking: five literal assignments in the
+preserved Story 3.6 source copies and two unapproved URI-bearing displays in
+Story 6.4 Server XML reports. The repair grants no disposition for them. The
+existing replacement/retirement contract above still applies; local focused
+test passes do not establish a green tracked-content gate or Story 6.4 readiness.

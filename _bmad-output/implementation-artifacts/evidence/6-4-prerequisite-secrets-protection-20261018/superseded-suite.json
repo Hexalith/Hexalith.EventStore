@@ -1,0 +1,4 @@
+{
+  "pid": 5847,
+  "reason": "Superseded by reviewed source and corrected regression expectations. Existing noncredential Jwt package name does not trigger a credential-name detector; do not change detector semantics for a new test expectation."
+}
