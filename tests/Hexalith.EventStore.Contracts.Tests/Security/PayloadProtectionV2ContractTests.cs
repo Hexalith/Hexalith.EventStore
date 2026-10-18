@@ -52,6 +52,14 @@ public class PayloadProtectionV2ContractTests {
             RequireMethod(serviceType, nameof(IEventPayloadProtectionService.CompletePayloadProtectionAsync),
                 typeof(PayloadProtectionCompletionContext), typeof(PayloadProtectionPersistenceOutcome),
                 typeof(CancellationToken)),
+            RequireMethod(serviceType, nameof(IEventPayloadProtectionService.PrepareEventForDistributionAsync),
+                typeof(AggregateIdentity), typeof(string), typeof(byte[]), typeof(string),
+                typeof(EventStorePayloadProtectionMetadata), typeof(PayloadProtectionOccurrenceContext),
+                typeof(CancellationToken)),
+            RequireMethod(serviceType, nameof(IEventPayloadProtectionService.TryReplayEventPayloadAsync),
+                typeof(AggregateIdentity), typeof(string), typeof(byte[]), typeof(string),
+                typeof(EventStorePayloadProtectionMetadata), typeof(PayloadProtectionOccurrenceContext),
+                typeof(CancellationToken)),
         ];
 
         MethodInfo[] discoveredAdditions = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -60,7 +68,7 @@ public class PayloadProtectionV2ContractTests {
                 || method.GetParameters().Any(static parameter => parameter.ParameterType == typeof(PayloadProtectionOccurrenceContext)))
             .ToArray();
 
-        discoveredAdditions.Length.ShouldBe(6);
+        discoveredAdditions.Length.ShouldBe(8);
         discoveredAdditions.ShouldAllBe(method => additions.Contains(method));
         additions.ShouldAllBe(static method => !method.IsAbstract && method.IsVirtual);
         additions.Select(static method => method.ReturnType).ShouldBe([
@@ -70,6 +78,8 @@ public class PayloadProtectionV2ContractTests {
             typeof(Task<SnapshotUnprotectionOutcome>),
             typeof(Task),
             typeof(Task),
+            typeof(Task<PayloadDistributionResult>),
+            typeof(Task<PayloadReplayResult>),
         ]);
         additions.Select(static method => method.GetParameters().Select(static parameter => parameter.Name).ToArray()).ShouldBe([
             ["identity", "eventPayload", "eventTypeName", "payloadBytes", "serializationFormat", "occurrenceContext", "cancellationToken"],
@@ -78,6 +88,8 @@ public class PayloadProtectionV2ContractTests {
             ["identity", "state", "metadata", "stateTypeInfo", "occurrenceContext", "cancellationToken"],
             ["completionContext", "cancellationToken"],
             ["completionContext", "persistenceOutcome", "cancellationToken"],
+            ["identity", "eventTypeName", "payloadBytes", "serializationFormat", "metadata", "occurrenceContext", "cancellationToken"],
+            ["identity", "eventTypeName", "payloadBytes", "serializationFormat", "metadata", "occurrenceContext", "cancellationToken"],
         ]);
         foreach (MethodInfo method in additions) {
             ParameterInfo[] parameters = method.GetParameters();
@@ -89,6 +101,8 @@ public class PayloadProtectionV2ContractTests {
         var nullability = new NullabilityInfoContext();
         nullability.Create(additions[2].GetParameters()[4]).ReadState.ShouldBe(NullabilityState.Nullable);
         nullability.Create(additions[3].GetParameters()[2]).ReadState.ShouldBe(NullabilityState.Nullable);
+        nullability.Create(additions[6].GetParameters()[4]).ReadState.ShouldBe(NullabilityState.Nullable);
+        nullability.Create(additions[7].GetParameters()[4]).ReadState.ShouldBe(NullabilityState.Nullable);
     }
 
     [Fact]
