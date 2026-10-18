@@ -1,0 +1,68 @@
+{
+  "scope": "Pre-edit required Aspire baseline only; no qualification operations or nested submodule initialization.",
+  "commands": [
+    {
+      "argv": [
+        "aspire",
+        "run",
+        "--non-interactive",
+        "--detach",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--format",
+        "Json"
+      ],
+      "exit_code": 2,
+      "build": "Build succeeded. 0 Warning(s). 0 Error(s). Time Elapsed 00:00:28.54",
+      "apphost_exit_code": 134,
+      "error": "System.InvalidOperationException: Plain local Aspire run requires both Hexalith.Tenants host projects before any resources can start.",
+      "missing_projects": [
+        "references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj",
+        "references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj"
+      ],
+      "source": "src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs:56",
+      "cli_log": "/home/administrator/.aspire/logs/cli_20261018T150706_58441d30.log",
+      "started_utc": null,
+      "finished_utc": null,
+      "outer_command_timestamps": "Unrecorded in original tool receipt; native log bounds do not establish exact outer invocation start/end."
+    },
+    {
+      "argv": [
+        "aspire",
+        "describe",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--format",
+        "Json",
+        "--non-interactive"
+      ],
+      "exit_code": 0,
+      "output": "No AppHost is currently running for 'src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj'. Use 'aspire run' to start it first.",
+      "started_utc": null,
+      "finished_utc": null,
+      "outer_command_timestamps": "Unrecorded in original tool receipt; native log bounds do not establish exact outer invocation start/end."
+    }
+  ],
+  "disposition": "Retain environment blocker separately from focused tooling verification; do not initialize nested dependencies or weaken AppHost preflight.",
+  "native_logs": [
+    {
+      "source": "/home/administrator/.aspire/logs/cli_20261018T150706_58441d30.log",
+      "path": "native/cli_20261018T150706_58441d30.log",
+      "bytes": 24313,
+      "sha256": "82bb529b749d30ed4a92e78559f220ffb0c3ff6fbf0ddfe83e076c15203decf3",
+      "first_native_timestamp": "2026-10-18 15:07:06.799",
+      "last_native_timestamp": "2026-10-18 15:07:38.320",
+      "timestamp_zone": "Not specified in native timestamp text; no UTC conversion inferred."
+    },
+    {
+      "source": "/home/administrator/.aspire/logs/cli_20261018T150707358_detach-child_e265d4eca04c4ecb847e66de4e457c34.log",
+      "path": "native/cli_20261018T150707358_detach-child_e265d4eca04c4ecb847e66de4e457c34.log",
+      "bytes": 32146,
+      "sha256": "b6d9fef347427a4e9c938b4f8ad449c129ba8c26ca3f6d3004039c0b1eec5094",
+      "first_native_timestamp": "2026-10-18 15:07:07.444",
+      "last_native_timestamp": "2026-10-18 15:07:38.108",
+      "timestamp_zone": "Not specified in native timestamp text; no UTC conversion inferred."
+    }
+  ],
+  "native_timing_scope": "First/last stamped native log records and native build elapsed time only. Original outer run/describe command timestamps were not recorded."
+}

@@ -230,3 +230,35 @@ Debug/project-reference checks cannot satisfy it.
 Rollback remains null. Drain and freeze incompatible ingress, then recover
 forward until a separately qualified capable rollback is selected. Publication,
 consumer pins, P1R acceptance, production/story gates and Story 6.4 remain open.
+
+
+## Exact 3.125.1 enrollment, 2026-10-18
+
+The finite qualification fixture additionally enrolls published 3.125.1 in the
+same capability, logical-evolution and folded-snapshot compiler paths, genuine
+seed requirements, retained fixture source, strict physical-writer witnesses and
+final isolation/cleanup attachment and import checks. Existing 3.125.0,
+historical and Debug/source paths retain their contracts. A selected 3.125.1
+restore writer must be exactly 3.125.1; either cross-version substitution with
+3.125.0 refuses before provider I/O or writer start. Unenrolled 3.125.2 and
+3.126.0 receive no successor compiler paths and genuine seeds refuse before
+fixture reset.
+
+The focused executor, qualification, registration and isolation suites verify
+these tooling boundaries. Registration evaluates Host, Domain and Probe for
+both enrolled versions and both unenrolled controls, and separately executes
+the real source Host/Domain programs at HostBuilt with missing-enrollment
+negative controls. The 3.125.1 witness class executes the existing strict
+snapshot, physical binary, provider, private isolation, timing, cleanup and
+recovery import corpus. These checks execute no published P1R qualification.
+Exact commands, results and preservation proof are retained in
+`../../_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/`.
+
+The released v3.125.1 source is
+`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`; this edited checkout cannot inherit
+its immutable binding. `validate_execution_inputs` and `observe_inputs` still
+require selected tag, selected source and tooling HEAD equality. Operational
+qualification is blocked until owners approve a separate tooling/source
+binding strategy, select the exact published tuple and prove restored graph
+agreement. Finite enrollment changes no production snapshot policy, pins,
+rollback=null, AD-17 drain/freeze/forward recovery, acceptance or Story 6.4 hold.

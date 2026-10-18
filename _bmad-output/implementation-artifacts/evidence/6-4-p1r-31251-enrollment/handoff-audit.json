@@ -1,0 +1,83 @@
+{
+  "handoff": "/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification-handoff.md",
+  "sha256": "a94bbe06bf28811529e1195db69ceac0601c9bc362c6c2b662109e0a94986d34",
+  "coordinates": {
+    "Hexalith.EventStore.Contracts": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.Client": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.Server": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.ServiceDefaults": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.DomainService": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    }
+  },
+  "gates": {
+    "owner_selection_pending": true,
+    "graph_pending": true,
+    "binding_strategy_pending": true,
+    "rollback_null_preserved": true,
+    "AD17_recovery_preserved": true,
+    "no_executable_qualification_command": true,
+    "draft_status": true,
+    "package_build_checkout_observed": true,
+    "actual_archive_graph_unmeasured": true,
+    "authoritative_contract_and_inventory_linked": true,
+    "historical_boundary_does_not_qualify_candidate": true
+  },
+  "local_links": [
+    {
+      "target": "spec-6-1-p1r-31250-published-qualification-handoff.md",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/release-source-identities.json",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/story-6-4-live-publication.json",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/release-source-supplement.json",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/package-provenance.json",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/nuget-signature-verification.json",
+      "exists": true
+    },
+    {
+      "target": "../../references/Hexalith.EventStore/_bmad-output/specs/spec-6-1-p1r-remediation/qualification-contract.md",
+      "exists": true
+    },
+    {
+      "target": "../../references/Hexalith.EventStore/tools/p1r_published_qualification.py",
+      "exists": true
+    },
+    {
+      "target": "../../references/Hexalith.EventStore/tools/p1r_support_boundary.json",
+      "exists": true
+    }
+  ],
+  "publication_source_retained_sha256": "1255f4a228ecf600dca372c2aad217bbf762da651ce6cdf37c5fa5ed3bfdbded"
+}

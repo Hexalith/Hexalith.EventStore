@@ -35,11 +35,11 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-3.110.0'))
             for writer in ('3.110.0','3.70.1','3.122.2',
-                           *(version for version in ('3.121.0','3.122.1','3.125.0') if version != self.candidate_version)):
+                           *(version for version in ('3.121.0','3.122.1','3.125.0','3.125.1') if version != self.candidate_version)):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
         self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
-        for version in ('3.119.0','3.122.0','3.122.2','3.125.1'):
+        for version in ('3.119.0','3.122.0','3.122.2','3.125.2','3.126.0'):
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'snapshot-tail','source-to-3.110.0'))
 
@@ -229,7 +229,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                     'sha256':value} for entry in verified.values() for value in entry['dlls']]},
             'cases':[row],'execution_evidence':executed,'output_sha256':executor.digest(executor.canonical(executed)),
             'assertions':row['assertions'],'execution':'passed','compatibility':'compatible'}
-        if self.candidate_version in ('3.122.1','3.125.0'):
+        if self.candidate_version in ('3.122.1','3.125.0','3.125.1'):
             receipt = self.attach_isolation(receipt,context)
         return receipt,context
 
@@ -295,7 +295,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
     def testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory(self):
         fixture = self.fixture()
         for version in ('source','3.122.2',
-                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0') if candidate != self.candidate_version]):
+                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0','3.125.1') if candidate != self.candidate_version]):
             changed = copy.deepcopy(fixture)
             config = changed[1]['configurations'][0]
             config['version'] = version
@@ -742,7 +742,10 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
                 qualification.receipt_outcome(receipt,context)
 
     def testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract(self):
-        from tools.tests.test_p1r_published_qualification import restore_receipt
+        try:
+            from test_p1r_published_qualification import restore_receipt
+        except ImportError:
+            from tools.tests.test_p1r_published_qualification import restore_receipt
         receipt,context = self.import_fixture(scope='operational')
         root = Path(self.temporary.name)
         restore = restore_receipt(scope='operational')
@@ -796,6 +799,10 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
                     attempt[key] = ['e'*64 if identity == old_id else identity for identity in attempt[key]]
             with self.subTest(schema=original['schema']),self.assertRaisesRegex(preparation.InvalidPacket,'cleanup containers differ'):
                 qualification.receipt_outcome(changed,context)
+
+
+class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
+    candidate_version = '3.125.1'
 
 
 class IndependentRecoverySelectionTests(unittest.TestCase):
@@ -894,10 +901,11 @@ class MeasurementTests(unittest.TestCase):
         worker.postgres_write.assert_not_called()
 
     def testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends(self):
-        for version in ("3.121.0", "3.122.1", "3.125.0", "source"):
-            with self.subTest(version=version):
+        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")]
+        for candidate, version in writers + [("3.125.0", "source"), ("3.125.1", "source")]:
+            with self.subTest(candidate=candidate, version=version):
                 worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}},
-                    candidate=version if version != "source" else "3.125.0")
+                    candidate=candidate)
                 worker.seed(version, 10, checks)
                 self.assertEqual([call.args[0] for call in worker.probe.call_args_list], [version] * 4)
                 self.assertEqual([call.args[1][0] for call in worker.probe.call_args_list], ["seed", "manual-snapshot", "seed", "seed"])
@@ -907,18 +915,21 @@ class MeasurementTests(unittest.TestCase):
                 self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
 
     def testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis(self):
-        for version in ("3.121.0", "3.122.1", "3.125.0", "source"):
+        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")]
+        for candidate, version in writers + [("3.125.0", "source"), ("3.125.1", "source")]:
             for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
                              {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
-                with self.subTest(version=version,snapshot=snapshot):
-                    worker, checks = self.snapshotSeedWorker(snapshot,candidate=version if version != "source" else "3.125.0")
+                with self.subTest(candidate=candidate,version=version,snapshot=snapshot):
+                    worker, checks = self.snapshotSeedWorker(snapshot,candidate=candidate)
                     worker.seed(version, 10, checks)
                     self.assertGreater(checks.counter["failed"], 0)
                     worker.mutate.assert_not_called()
 
     def testUnenrolledSuccessorSeedRefusesBeforeManualSnapshotOrDiagnosticSynthesis(self):
         for candidate,version in (("3.125.0","3.122.0"),("3.125.0","3.122.2"),
-                                  ("3.125.0","3.125.1"),("3.126.0","source"),
+                                  ("3.125.0","3.125.2"),("3.125.2","3.125.2"),
+                                  ("3.125.2","source"),("3.126.0","3.126.0"),("3.126.0","source"),
+                                  ("3.125.0","3.125.1"),("3.125.1","3.125.0"),
                                   ("3.125.0","3.121.0")):
             worker, checks = self.snapshotSeedWorker(None,candidate=candidate)
             with self.subTest(candidate=candidate,version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
@@ -932,7 +943,9 @@ class MeasurementTests(unittest.TestCase):
 
     def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
         for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),
-                                 ("3.125.0","source"),("3.122.2","3.122.2"),("3.125.0",None)):
+                                 ("3.125.1","3.125.1"),("3.125.1","source"),("3.125.0","source"),
+                                 ("3.122.2","3.122.2"),("3.125.2","3.125.2"),
+                                 ("3.126.0","source"),("3.125.0",None)):
             with self.subTest(candidate=candidate,writer=writer):
                 worker = executor.Executor.__new__(executor.Executor)
                 worker.commands, worker.configurations, worker.errors = [], [], []
@@ -942,7 +955,7 @@ class MeasurementTests(unittest.TestCase):
                     worker.commands.append({"id":1})
                     return {"seed_snapshot":worker.last_snapshot_creation},"effect","compatible"
                 _,evidence = worker.case("snapshot-tail",(writer or candidate)+"-to-3.110.0",action,False)
-                if candidate == "3.122.2" or writer is None:
+                if candidate in ("3.122.2","3.125.2","3.126.0") or writer is None:
                     self.assertNotIn("snapshot_fixture_source",evidence)
                 else:
                     path = preparation.ROOT/"tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
@@ -983,51 +996,53 @@ class MeasurementTests(unittest.TestCase):
         return worker, executor.Measurements()
 
     def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
-        with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
-            worker = CleanupTests.worker(self, scratch)
-            worker.candidate = "3.125.0"
-            worker.redis = "source-id"
-            worker.postgres_password = "<TEST_PASSWORD>"
-            worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
+        for candidate in ("3.125.0", "3.125.1"):
+            with self.subTest(candidate=candidate):
+                with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
+                    worker = CleanupTests.worker(self, scratch)
+                    worker.candidate = candidate
+                    worker.redis = "source-id"
+                    worker.postgres_password = "<TEST_PASSWORD>"
+                    worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
 
-            def run(argv, **kwargs):
-                output = b""
-                if argv[:2] == ["docker", "inspect"]:
-                    name = argv[-1]
-                    output = (json.dumps({"Id": "restored-id", "Name": "/" + name,
-                        "Config": {"Labels": {"hexalith.p1r.invocation": worker.invocation}}}) + "\n").encode()
-                elif argv[:2] == ["docker", "cp"] and ":/tmp/" in str(argv[2]):
-                    Path(argv[3]).write_bytes(b"synthetic-backup")
-                worker.record(argv, worker.scratch, executor.stamp(), 0, output)
-                return output
+                    def run(argv, **kwargs):
+                        output = b""
+                        if argv[:2] == ["docker", "inspect"]:
+                            name = argv[-1]
+                            output = (json.dumps({"Id": "restored-id", "Name": "/" + name,
+                                "Config": {"Labels": {"hexalith.p1r.invocation": worker.invocation}}}) + "\n").encode()
+                        elif argv[:2] == ["docker", "cp"] and ":/tmp/" in str(argv[2]):
+                            Path(argv[3]).write_bytes(b"synthetic-backup")
+                        worker.record(argv, worker.scratch, executor.stamp(), 0, output)
+                        return output
 
-            def inventory(*args):
-                run(["synthetic-inventory"])
-                return []
+                    def inventory(*args):
+                        run(["synthetic-inventory"])
+                        return []
 
-            def actor(*args):
-                run(["synthetic-actor"])
-                return {"accepted": True, "event_count": 1}
+                    def actor(*args):
+                        run(["synthetic-actor"])
+                        return {"accepted": True, "event_count": 1}
 
-            worker.run = run
-            worker.inventory = inventory
-            worker.actor = mock.Mock(side_effect=actor)
-            worker.seed, worker.mutate, worker.stop_nodes = mock.Mock(), mock.Mock(), mock.Mock()
-            worker.start_nodes = mock.Mock(side_effect=lambda *args, **kwargs: [
-                {"pid": 1, "start_ticks": 1, "pgid": 1, "session": 1}])
+                    worker.run = run
+                    worker.inventory = inventory
+                    worker.actor = mock.Mock(side_effect=actor)
+                    worker.seed, worker.mutate, worker.stop_nodes = mock.Mock(), mock.Mock(), mock.Mock()
+                    worker.start_nodes = mock.Mock(side_effect=lambda *args, **kwargs: [
+                        {"pid": 1, "start_ticks": 1, "pgid": 1, "session": 1}])
 
-            worker.restore_case("synthetic-restore", executor.Measurements())
-            worker.seed.assert_called_once_with("3.125.0", 10, mock.ANY)
-            self.assertEqual([call.args[0] for call in worker.start_nodes.call_args_list], ["3.125.0", "3.125.0"])
-            self.assertTrue(all(call.args[0] == "3.125.0" for call in worker.actor.call_args_list))
-            commands = {row["step"]: row for row in worker.pending_restore["commands"]}
-            self.assertEqual(commands["backup"]["argv"][:4], ["docker", "exec", "source-id", "pg_dump"])
-            self.assertEqual(commands["create-database"]["argv"], ["docker", "start", "restored-id"])
-            self.assertEqual(commands["backup"]["output_sha256"], executor.digest(b"synthetic-backup"))
-            for step in ("backup", "create-database"):
-                recorded = next(row for row in worker.commands if row["argv"] == commands[step]["argv"])
-                for field in ("cwd", "started_utc", "finished_utc", "exit_code"):
-                    self.assertEqual(commands[step][field], recorded[field])
+                    worker.restore_case("synthetic-restore", executor.Measurements())
+                    worker.seed.assert_called_once_with(candidate, 10, mock.ANY)
+                    self.assertEqual([call.args[0] for call in worker.start_nodes.call_args_list], [candidate, candidate])
+                    self.assertTrue(all(call.args[0] == candidate for call in worker.actor.call_args_list))
+                    commands = {row["step"]: row for row in worker.pending_restore["commands"]}
+                    self.assertEqual(commands["backup"]["argv"][:4], ["docker", "exec", "source-id", "pg_dump"])
+                    self.assertEqual(commands["create-database"]["argv"], ["docker", "start", "restored-id"])
+                    self.assertEqual(commands["backup"]["output_sha256"], executor.digest(b"synthetic-backup"))
+                    for step in ("backup", "create-database"):
+                        recorded = next(row for row in worker.commands if row["argv"] == commands[step]["argv"])
+                        for field in ("cwd", "started_utc", "finished_utc", "exit_code"):
+                            self.assertEqual(commands[step][field], recorded[field])
 
     def testPrivateProbeBinaryAndExactInputDigestAreCapturedByCommands(self):
         with tempfile.TemporaryDirectory() as scratch:
@@ -1326,6 +1341,33 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(worker.versions, ("3.110.0", "3.70.1", "3.121.0"))
         worker.build_consumers.assert_called_once_with("3.110.0")
         self.assertEqual(git.call_count, 3)
+
+    def test31251EditedToolingHeadCannotInheritReleasedSourceBinding(self):
+        candidate = {"version": "3.125.1", "tag": "v3.125.1", "tag_commit": "a" * 40,
+                     "tag_builds_commit": "b" * 40, "builds": {"version": "4.31.0", "commit": "c" * 40},
+                     "feed": "https://fixture.invalid/v3/index.json",
+                     "packages": [{"id": identifier, "archive_sha256": "e" * 64,
+                                   "content_hash": base64.b64encode(b"fixture-hash" * 5 + b"xxxx").decode(),
+                                   "repository_commit": "a" * 40}
+                                  for identifier in executor.PACKAGE_IDS]}
+        inputs = {"candidate": candidate, "rollback": None,
+                  "assertion_instrumentation": {"mechanism": executor.MECHANISM},
+                  "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS],
+                  "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.2",
+                                          "backend": "state.postgresql", "backend_image": executor.POSTGRES},
+                  "selected_additions": list(qualification.ADDITIONS)}
+        observations = [b"a" * 40, b"d" * 40,
+                        b"160000 commit " + b"b" * 40 + b"\treferences/Hexalith.Builds\n"]
+        with mock.patch.object(qualification, "validate_inputs", return_value="owner-selected"), \
+             mock.patch.object(preparation, "git", side_effect=observations):
+            with self.assertRaisesRegex(preparation.InvalidPacket, "exact source"):
+                executor.validate_execution_inputs(inputs)
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.build_consumers = mock.Mock()
+        with mock.patch.object(preparation, "git", side_effect=observations):
+            with self.assertRaisesRegex(preparation.InvalidPacket, "source or tag substituted"):
+                worker.observe_inputs({"candidate_proposed": candidate}, "selected-successor")
+        worker.build_consumers.assert_not_called()
 
     def testSuccessorExecutionPlanRerunsCandidateAndFencesOldRoutes(self):
         selection = {"candidate": {"version": "3.121.0"},

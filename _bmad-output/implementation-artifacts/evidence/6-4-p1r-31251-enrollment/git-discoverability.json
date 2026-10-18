@@ -1,0 +1,27 @@
+{
+  "scope": "Primary audit after review fixes; includes retained historical manifests.",
+  "observed_utc": "2026-10-18T15:40:45.966220+00:00",
+  "command": [
+    "git",
+    "check-ignore",
+    "--quiet",
+    "--no-index",
+    "--",
+    "MEMBER"
+  ],
+  "expected_exit_code": 1,
+  "packets": [
+    {
+      "repository": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "packet": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment",
+      "members_checked": 48,
+      "all_git_discoverable": true
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/projects",
+      "packet": "/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment-20261018",
+      "members_checked": 39,
+      "all_git_discoverable": true
+    }
+  ]
+}

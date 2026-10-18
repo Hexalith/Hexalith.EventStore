@@ -1,0 +1,72 @@
+{
+  "scope": "Synthetic tooling regression corpus; no published operational qualification.",
+  "31251_inherited_strict_tests": [
+    "testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof",
+    "testChronologicalSeedCompletionCannotBeSubstituted",
+    "testEveryLimitAndDerivedReservationIsBoundToSharedFixtureSource",
+    "testEveryRequiredCaseExecutesActualStrictValidatorWithSelectedPhysicalWriter",
+    "testFailedActualTailAndCoordinatesRemainRecordedFailures",
+    "testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes",
+    "testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract",
+    "testFullSuccessorAdmissionPassesIntactAndRejectsDeletedProof",
+    "testInventoryExecutableSubstitutionIsRejectedAfterRehashing",
+    "testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory",
+    "testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands",
+    "testProviderBindsExactBase64SnapshotBytesIncludingCSharpPropertyOrder",
+    "testProviderMustReadExactStateQueryFromOwnedDatabaseSuccessfully",
+    "testProviderMutationInsideGenuineSeedWindowIsRejectedButLaterDiagnosticsRemainAllowed",
+    "testRequirementUsesSelectedCaseAndWriterRatherThanOptionalProof",
+    "testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope",
+    "testServingBinariesMustPhysicallyExistAndMatchRetainedDigest",
+    "testShellMediatedProviderMutationInsideSeedIsRejected",
+    "testSnapshotIdentityProtectionAndCreationTimeAreBoundToProviderEnvelope",
+    "testSourceSeedWitnessSubstitutionsRemainRejectedAfterRehashing",
+    "testTailCountAndDistinctOrderedInventoriesCannotBeSubstituted",
+    "testUnverifiedProbePathsDigestsFailedExitsAndTailEndpointsAreRejected"
+  ],
+  "strict_test_count": 22,
+  "seed_positive_candidate_writer_pairs": [
+    [
+      "3.125.0",
+      "3.125.0"
+    ],
+    [
+      "3.125.0",
+      "source"
+    ],
+    [
+      "3.125.1",
+      "3.125.1"
+    ],
+    [
+      "3.125.1",
+      "source"
+    ]
+  ],
+  "cross_version_seed_refusals_before_io": [
+    [
+      "3.125.0",
+      "3.125.1"
+    ],
+    [
+      "3.125.1",
+      "3.125.0"
+    ]
+  ],
+  "unknown_candidate_controls": [
+    "3.125.2",
+    "3.126.0"
+  ],
+  "projects_evaluated": [
+    "host",
+    "domain",
+    "probe"
+  ],
+  "real_HostBuilt_source_registration_controls": [
+    "host enrolled",
+    "host missing enrollment",
+    "domain enrolled",
+    "domain missing enrollment"
+  ],
+  "qualification_test_file_change": "Not needed: inherited testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof and isolation/recovery corpus exercise all four changed 3.125.1 qualification boundaries."
+}

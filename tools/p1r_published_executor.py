@@ -894,7 +894,7 @@ class Executor:
         genuine = interval == 10 and qualification.is_successor_selection(
             {"candidate": {"version": self.candidate if version == "source" else version}})
         if genuine:
-            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0")
+            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
                     and version in (self.candidate, "source"), "successor snapshot fixture is not explicitly enabled")
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
@@ -1124,7 +1124,7 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
-        if self.candidate in ("3.121.0", "3.122.1", "3.125.0") and getattr(self, "last_snapshot_creation", None) is not None:
+        if self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1") and getattr(self, "last_snapshot_creation", None) is not None:
             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
             data = regular(path)
             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}

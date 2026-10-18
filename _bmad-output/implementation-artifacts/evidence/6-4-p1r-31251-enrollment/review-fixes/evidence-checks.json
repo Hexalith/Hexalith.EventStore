@@ -1,0 +1,86 @@
+{
+  "observed_at": "2026-10-18T15:36:32.967205+00:00",
+  "historical_preservation": [
+    {
+      "repository": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "evidence": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment",
+      "historical_raw_preserved": [
+        ".gitattributes",
+        "commands-results.json",
+        "coverage.json",
+        "final/commands-results.json",
+        "final/test_p1r_isolation.log",
+        "final/test_p1r_isolation_hardening.log",
+        "final/test_p1r_published_executor.log",
+        "final/test_p1r_published_qualification.log",
+        "final/test_p1r_snapshot_registration.log",
+        "initial-attempt-disposition.json",
+        "preservation-before.json",
+        "prior-scratch-relocation.json",
+        "test_p1r_isolation.log",
+        "test_p1r_isolation_hardening.log",
+        "test_p1r_published_executor.log",
+        "test_p1r_published_qualification.log",
+        "test_p1r_snapshot_registration.log"
+      ],
+      "prior_derived_bytes_preserved_under_review_0": [
+        "README.md",
+        "aspire-baseline.json",
+        "changed-file-identities.json",
+        "diff-check.json",
+        "enrollment.diff",
+        "handoff-audit.json",
+        "preservation-result.json",
+        "projects-handoff.diff",
+        "verification-summary.json"
+      ],
+      "all_original_hashes_preserved": true
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/projects",
+      "evidence": "/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment-20261018",
+      "historical_raw_preserved": [
+        ".gitattributes",
+        "collection-errors.json",
+        "container-evidence-summary.json",
+        "http-get-receipts.json",
+        "nuget-signature-verification.json",
+        "nuspec-difference-analysis.json",
+        "owner-file-identities-before.json",
+        "package-provenance.json",
+        "planning-verification.json",
+        "project-evaluation-before.json",
+        "qualification-applicability-notes.json",
+        "qualification-tools-comparison.json",
+        "release-artifact-members/3.125.1/eventstore/child-linux-amd64.config.raw",
+        "release-artifact-members/3.125.1/eventstore/child-linux-amd64.manifest.raw",
+        "release-artifact-members/3.125.1/eventstore/child-linux-arm64.config.raw",
+        "release-artifact-members/3.125.1/eventstore/child-linux-arm64.manifest.raw",
+        "release-artifact-members/3.125.1/eventstore/index.raw",
+        "release-artifact-members/3.125.1/eventstore/oci-validation.json",
+        "release-artifact-members/3.125.1/eventstore/smoke-linux-amd64.log",
+        "release-artifact-members/3.125.1/eventstore/smoke-linux-arm64.log",
+        "release-artifact-members/3.125.1/eventstore/smoke-preflight.log",
+        "release-artifact-members/3.125.1/eventstore/smoke-results.json",
+        "release-artifact-members/3.125.1/eventstore/smoke-sha256.txt",
+        "release-artifact-members/3.125.1/preflight/publication-identity.json",
+        "release-artifact-members/3.125.1/preflight/publication-preflight.container.json",
+        "release-artifact-members/3.125.1/preflight/publication-preflight.publish.json",
+        "release-artifact-members/3.125.1/preflight/publication-preflight.verify.json",
+        "release-artifact-receipt.json",
+        "release-source-identities.json",
+        "scope-decision.json",
+        "summary.json",
+        "tooling-baseline-tests.json",
+        "workspace-before.json"
+      ],
+      "prior_derived_bytes_preserved_under_review_0": [
+        "README.md"
+      ],
+      "all_original_hashes_preserved": true
+    }
+  ],
+  "native_log_copies_exact": true,
+  "publication_source_sha256": "1255f4a228ecf600dca372c2aad217bbf762da651ce6cdf37c5fa5ed3bfdbded",
+  "scope": "Read-only evidence checks; no published qualification."
+}

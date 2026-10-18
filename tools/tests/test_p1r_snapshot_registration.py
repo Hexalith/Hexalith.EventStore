@@ -28,13 +28,15 @@ class FixtureSnapshotRegistrationTests(unittest.TestCase):
             'probe': set(),
         }
         all_fixture_sources = set().union(*expected_sources.values())
-        for version, enrolled in (('3.125.0', True), ('3.126.0', False)):
+        for version, enrolled in (('3.125.0', True), ('3.125.1', True),
+                                  ('3.125.2', False), ('3.126.0', False)):
             for role in ('host', 'domain', 'probe'):
                 with self.subTest(version=version, role=role):
                     project = FIXTURES / role / (role.title() + '.csproj')
                     command = ['dotnet', 'msbuild', str(project),
                                '-p:UseCurrentSource=false', '-p:EventStoreVersion=' + version,
                                '-getProperty:DefineConstants', '-getItem:Compile',
+                               '-getItem:Content',
                                '-getItem:PackageReference', '-getItem:ProjectReference']
                     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -47,6 +49,18 @@ class FixtureSnapshotRegistrationTests(unittest.TestCase):
                     compiled = {item['Identity'] for item in evaluated['Items']['Compile']}
                     self.assertEqual(compiled & all_fixture_sources,
                                      expected_sources[role] if enrolled else set())
+                    manifest_content = {
+                        item['Identity']: item.get('CopyToOutputDirectory')
+                        for item in evaluated['Items']['Content']
+                        if Path(item['Identity']).name == 'fixture-evolution-manifest.json'
+                    }
+                    expected_content = {
+                        'host': {'../domain/fixture-evolution-manifest.json': 'PreserveNewest'}
+                                if enrolled else {},
+                        'domain': {'fixture-evolution-manifest.json': 'PreserveNewest'},
+                        'probe': {},
+                    }
+                    self.assertEqual(manifest_content, expected_content[role])
                     self.assertEqual({item['Identity'] for item in evaluated['Items']['PackageReference']},
                                      expected_packages)
                     self.assertFalse(evaluated['Items']['ProjectReference'])

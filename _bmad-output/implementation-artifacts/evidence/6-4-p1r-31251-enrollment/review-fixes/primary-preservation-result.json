@@ -1,0 +1,106 @@
+{
+  "scope": "Post-verification read-only preservation; no package qualification.",
+  "procedure_sha256": "90243261c1c7a20e8ef6f5bec122f87de7bb832860f7f6ff6687eddd61995ba0",
+  "baseline_sha256": "7949d8dfbae4584fc871417f671dc0a66f7e8a3c2a6cabc73c7d030e09d1a7b5",
+  "selection": {
+    "rule": "git ls-files -z regular files, excluding only the exact listed owner paths; workspace excludes none.",
+    "owner_exclusions": [
+      "tools/p1r-published-consumers/Directory.Build.props",
+      "tools/p1r-published-consumers/host/Host.csproj",
+      "tools/p1r-published-consumers/domain/Domain.csproj",
+      "tools/p1r_published_executor.py",
+      "tools/p1r_check_witnesses.py",
+      "tools/p1r_published_qualification.py",
+      "tools/tests/test_p1r_published_executor.py",
+      "tools/tests/test_p1r_snapshot_registration.py",
+      "tools/tests/test_p1r_published_qualification.py",
+      "tools/p1r-published-consumers/README.md"
+    ],
+    "workspace_exclusions": [],
+    "comparison": "Each original selected path is rehashed by SHA-256; current selected membership is also compared."
+  },
+  "normalization": {
+    "paths": [
+      "tools/p1r-published-consumers/Directory.Build.props",
+      "tools/p1r-published-consumers/host/Host.csproj",
+      "tools/p1r-published-consumers/domain/Domain.csproj",
+      "tools/p1r_published_executor.py",
+      "tools/p1r_check_witnesses.py",
+      "tools/p1r_published_qualification.py"
+    ],
+    "rule": "Remove only exact , \"3.125.1\", ,'3.125.1', or MSBuild or/and EventStoreVersion 3.125.1 comparison tokens; compare full remaining text with the original owner commit.",
+    "baseline_commit": "47e234ccb535a71e7dd4a039fd0e2281083083ae"
+  },
+  "EventStore": {
+    "protected_paths": 22982,
+    "changed": [],
+    "missing": [],
+    "selection_added": [],
+    "selection_removed": [],
+    "head": "47e234ccb535a71e7dd4a039fd0e2281083083ae",
+    "head_unchanged": true,
+    "branch_unchanged": true,
+    "history_unchanged": true,
+    "gitlinks_unchanged": true
+  },
+  "Projects": {
+    "protected_paths": 5919,
+    "changed": [],
+    "missing": [],
+    "selection_added": [],
+    "selection_removed": [],
+    "head": "25f9fdab6106f5bcbf06aaabe8ca351f543bb52e",
+    "head_unchanged": true,
+    "branch_unchanged": true,
+    "history_unchanged": true,
+    "gitlinks_unchanged": true
+  },
+  "admission_preservation": {
+    "tools/p1r-published-consumers/Directory.Build.props": {
+      "only_exact_31251_membership_added": true
+    },
+    "tools/p1r-published-consumers/host/Host.csproj": {
+      "only_exact_31251_membership_added": true
+    },
+    "tools/p1r-published-consumers/domain/Domain.csproj": {
+      "only_exact_31251_membership_added": true
+    },
+    "tools/p1r_published_executor.py": {
+      "only_exact_31251_membership_added": true
+    },
+    "tools/p1r_check_witnesses.py": {
+      "only_exact_31251_membership_added": true
+    },
+    "tools/p1r_published_qualification.py": {
+      "only_exact_31251_membership_added": true
+    }
+  },
+  "historical_readme_prefix_unchanged": true,
+  "immutable_guards": {
+    "validate_execution_inputs": {
+      "unchanged": true,
+      "sha256": "ff15095b1260c8c32898cd6b8eb6f8ecc4bd1ad70f2c0c3c5e9dbfd8c092829f"
+    },
+    "observe_inputs": {
+      "unchanged": true,
+      "sha256": "d24ecf99bde08f1c9ab610967398648f0da51af80e2604bfb20ecb0132235ffb"
+    }
+  },
+  "verification_receipts": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/final/commands-results.json",
+      "sha256": "b02469af3769c8a45a8a7031a7fb5ab824595800d19953a9930edad52eaaf100",
+      "all_passed": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/review-fixes/commands-results.json",
+      "sha256": "7be1eb83a144fbc093c7d7ee6c6bc6eaa70dd9e33b200eb376ea11913b2597e9",
+      "all_passed": true
+    }
+  ],
+  "latest_verification_finished_utc": "2026-10-18T15:32:51.738331+00:00",
+  "started_utc": "2026-10-18T15:38:36.265331+00:00",
+  "observed_at": "2026-10-18T15:38:39.138188+00:00",
+  "after_verification": true,
+  "passed": true
+}

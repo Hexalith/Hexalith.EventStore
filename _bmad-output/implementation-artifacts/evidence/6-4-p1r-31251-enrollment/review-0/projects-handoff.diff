@@ -1,0 +1,134 @@
+diff --git a/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification-handoff.md b/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification-handoff.md
+new file mode 100644
+index 0000000..bf73ddb
+--- /dev/null
++++ b/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification-handoff.md
+@@ -0,0 +1,128 @@
++---
++title: '6.1-P1R draft published 3.125.1 qualification handoff for Story 6.4'
++type: 'chore'
++created: '2026-10-18'
++status: 'draft'
++route: 'dispatch'
++candidate_version_planning_target: '3.125.1'
++candidate_source_observed: '55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b'
++candidate_tag_builds_observed: '4629ff2d3bd66376b29a553663c241d3a7b87853'
++candidate_package_builds_verified: null
++candidate_ci_workflow_builds_observed: '13a3316ad0b93e25bf273efca00be36154b327c2'
++candidate_release_execution_builds_observed: '22a578b576a515d2af214fe81859447fffc97981'
++execution_gate: 'blocked-pending-owner-selection-graph-agreement-and-tooling-source-binding'
++context:
++  - '_bmad-output/implementation-artifacts/spec-6-4-prerequisite-p1r-31251-enrollment.md'
++  - '_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment-20261018/README.md'
++---
++
++## Intent and execution hold
++
++The user selected published **3.125.1** as the planning target for the finite
++fixture-enrollment prerequisite. This draft records observed publication
++coordinates and prepares a later qualification work package. It selects no
++execution tuple and authorizes no package qualification. Story 6.4 remains on
++its prerequisites-first hold. The historical
++[3.125.0 handoff](spec-6-1-p1r-31250-published-qualification-handoff.md) is preserved.
++
++**Execution is blocked.** Named owners must separately approve the exact tuple,
++restored/locked/loaded graph agreement must be measured, and a separately
++approved tooling/source binding strategy must resolve the immutable guard.
++The enrollment changes are local tooling repairs; they cannot inherit the
++released source's immutable proof. No executable qualification command is
++provided while these gates remain unresolved.
++
++## Observed immutable publication coordinates
++
++The retained [source/release receipt](evidence/6-4-p1r-31251-enrollment-20261018/release-source-identities.json)
++observes [v3.125.1](https://github.com/Hexalith/Hexalith.EventStore/releases/tag/v3.125.1)
++at source/tag commit `55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`, published
++2026-10-18T13:50:25Z. Release workflow-dispatch
++[39132511672](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/39132511672)
++succeeded on that exact source. Its exact-source push checks also succeeded:
++Commitlint [39129737112](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/39129737112),
++P1R preparation [39129736886](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/39129736886)
++and CI [39129737103](https://github.com/Hexalith/Hexalith.EventStore/actions/runs/39129737103).
++These are retained publication observations, not P1R acceptance.
++
++| Builds role | Observed coordinate and limit |
++| --- | --- |
++| EventStore tag construction gitlink | `4629ff2d3bd66376b29a553663c241d3a7b87853` |
++| Actual package construction | Not independently bound by the retained receipt; obtain the exact package-build provenance before owner selection. Do not substitute the tag gitlink or a workflow SHA. |
++| Successful CI reusable workflow | `13a3316ad0b93e25bf273efca00be36154b327c2` for `domain-ci.yml`; its checkout/build graph still needs separate construction attribution. |
++| Release workflow/action execution | `22a578b576a515d2af214fe81859447fffc97981`, as measured by retained publication preflights |
++| Later qualification execution | Unselected; record its Builds identity separately after binding approval. |
++
++The [package inventory](evidence/6-4-p1r-31251-enrollment-20261018/package-provenance.json)
++retains fourteen official NuGet registration/catalog/nuspec observations and the
++five P1R signed archive identities below. Each embedded repository commit is
++`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`. Version is 3.125.1 for every row;
++download URLs and signature identities are in that inventory.
++
++| Package | Signed archive SHA-256 | Full signed ZIP/catalog SHA-512, base64 |
++| --- | --- | --- |
++| Hexalith.EventStore.Contracts | `b386677aa8d37d74c2d22905c7422220dd7ca9b809379f2023a597d0ab64e802` | `kkFlzM6YAHauiqSpxu7uwnCV8nHTQoJoUc8Vy9TVQyVdUIBBn1xU2up5IduVL//OycGyhsAuYp7QFtcr2jZLag==` |
++| Hexalith.EventStore.Client | `27bbd41df6a8b59e5fa71bd3d3c4ee30583c1b77b7999b53f0b7af530e97189c` | `/tcXiXKUemf+7SbKVn75koL1tzfAO8RpIRP0IY7PXT6BMZ11QbHvEXzNOyzTVueZ366VyvUKtlb5BK4Lu3a1zQ==` |
++| Hexalith.EventStore.Server | `38e0698d5037955d10d2968c80defbd1845f3a217d6ee0ae68a800f9cada7da8` | `EZTJ4xht+XBq5a2NJTH45TUdeyFmUwVUDKYzJxu1KGa75gzCmFRTKs66ptyA9Kjn5udPiQ3nTVJSGg/bv3X53Q==` |
++| Hexalith.EventStore.ServiceDefaults | `71ce53d42bea7203cf463e431ba82c15e1e3a19fd1e73123f7d3894510642838` | `7/ZdMBmx8rjqL6FkDZkQbNK8kO3nadMUYjb6nL+VnjHNrk7NLPtlsXdTYnCuvGNH6Va8kV+q6+kp8oN7QAIBpA==` |
++| Hexalith.EventStore.DomainService | `a05d9afae5d242e86f40a2dbd89b5c965b2715cfe395d3d99f0e8a68665b847e` | `fqKxeoFIExgOnp4PGdSRPoUTP8cgbq73G+wEHvUKQw+VkYkjJ2lVFKtJ2nJXG7bUGRKzGjkRw9qJt011GEDy0w==` |
++
++The [signature receipt](evidence/6-4-p1r-31251-enrollment-20261018/nuget-signature-verification.json)
++records successful NuGet.org repository-signature verification for these five
++archives. Full signed ZIP/catalog hashes above differ from the signed-content
++hashes reported by `dotnet nuget verify`; both are retained. Eventual restore
++`.nupkg.metadata`, lock and assets `contentHash` agreement remains **unmeasured**.
++No hash kind may be substituted for another. The other nine archives/signatures
++remain unverified. Release artifact OCI manifests, preflights and passing smoke
++observations are retained, but independent live registry/layer verification and
++publication-completeness disposition remain entry gates.
++
++## Required entry decisions
++
++- [ ] Bind actual package construction provenance, tag Builds, successful CI
++  execution and release-execution Builds independently. Review the complete
++  fourteen-package/container publication and resolve any partial-publication
++  condition before selection.
++- [ ] Named owners select the actual 3.125.1/source/tag, five archive SHA-256 and
++  correctly interpreted NuGet content hashes, every Builds coordinate,
++  `rollback=null`, Dapr 1.18.2 and PostgreSQL
++  `postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`,
++  comparisons 3.70.1/3.110.0, `p1r-executed-checks-v1`, Reminder recovery and
++  logical-event evolution additions. The planning choice supplies none of this
++  exact-tuple authority.
++- [ ] Approve a separately scoped immutable tooling/source binding strategy.
++  The unchanged `validate_execution_inputs` and `observe_inputs` guards require
++  selected tag == selected source == tooling HEAD. Local HEAD
++  `47e234ccb535a71e7dd4a039fd0e2281083083ae` and its enrollment edits differ
++  from the released source; the release lacks this enrollment. Never bypass
++  equality, relabel edited tools as released, or assume a tooling commit selects
++  a runtime. Any strategy requiring a different publication must re-scope the
++  candidate and obtain owner approval.
++- [ ] Prove fresh isolated Release/package restores, lock/assets/metadata hash
++  agreement, package-only graphs and physical loaded assembly identities for
++  all selected roles; bind the distinct Debug/source comparison to the approved
++  exact source. Do not treat project evaluation or source HostBuilt checks as
++  published graph proof.
++
++## Later qualification work, gated above
++
++After every entry gate is satisfied and the exact work package is approved,
++retain new candidate-specific publication and run evidence. Execute all 17
++canonical scenarios and both additions under the unchanged finite P1R contract;
++retain historical 3.70.1/3.110.0 directions and previous failures. Create the
++genuine manual snapshot after nine committed Counter events, append three real
++events, preserve original event/snapshot hashes, restore floor five/head twelve
++into a fresh owned database, append thirteen, restart and measure Tenant
++isolation from persisted state. Exercise typed denials, authority/recovery,
++source/package equivalence, cancellation, repeated owned cleanup and exact
++shared-resource preservation. Missing or substituted snapshot, physical writer,
++provider, isolation or cleanup proof stays nonpassing.
++
++Independently rederive every case and support-boundary disposition before strict
++packet preparation/validation. Four-role acceptance, same-baseline conformance
++and Solution Architect disposition remain pending. Retain `rollback=null` and
++AD-17 drain/freeze/forward recovery: drain and freeze incompatible ingress, then
++recover forward until a separately qualified capable rollback is selected.
++
++This draft advances no dependency pin, gitlink, runtime snapshot policy,
++acceptance, Stack, sprint/readiness state, P1R usability or Story 6.4 code.
