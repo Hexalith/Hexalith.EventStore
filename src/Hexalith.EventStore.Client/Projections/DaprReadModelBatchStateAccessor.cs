@@ -44,20 +44,27 @@ internal sealed class DaprReadModelBatchStateAccessor(DaprClient daprClient, str
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MutationBytes, value.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelBytes, value.Length);
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
-        return await daprClient
-            .TrySaveByteStateAsync(
-                storeName,
-                key,
-                value,
-                expectedETag,
-                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                metadata: timeToLive is null
-                    ? null!
-                    : new Dictionary<string, string>(StringComparer.Ordinal) {
-                        ["ttlInSeconds"] = ToTtlSeconds(timeToLive.Value),
-                    },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        try {
+            return await daprClient
+                .TrySaveByteStateAsync(
+                    storeName,
+                    key,
+                    value,
+                    expectedETag,
+                    new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                    metadata: timeToLive is null
+                        ? null!
+                        : new Dictionary<string, string>(StringComparer.Ordinal) {
+                            ["ttlInSeconds"] = ToTtlSeconds(timeToLive.Value),
+                        },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Dapr.DaprException) when (expectedETag.Length == 0 && !cancellationToken.IsCancellationRequested) {
+            if (await DaprReadModelCreateConflict.ExistsAsync(daprClient, storeName, key, cancellationToken).ConfigureAwait(false))
+                return false;
+            throw;
+        }
     }
 
     /// <inheritdoc/>
