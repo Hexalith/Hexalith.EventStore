@@ -3,7 +3,7 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Private candidate custody/current authorization adapter. Defaults are absent; no key value crosses the domain boundary.</summary>
-internal interface IInteractionOccurrenceKeyProvider
+public interface IInteractionOccurrenceKeyProvider
 {
     /// <summary>Resolves retained tenant DigestKey under the exact authenticated occurrence; ownership transfers to the caller.</summary>
     Task<InteractionOccurrenceOwnedKey?> ResolveDigestAsync(InteractionOccurrenceIdentity identity, string version, CancellationToken cancellationToken);

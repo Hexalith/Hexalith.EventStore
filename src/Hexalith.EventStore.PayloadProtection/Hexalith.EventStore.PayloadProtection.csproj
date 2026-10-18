@@ -15,4 +15,10 @@
     <ProjectReference Include="..\Hexalith.EventStore.Contracts\Hexalith.EventStore.Contracts.csproj" />
   </ItemGroup>
 
+  <Target Name="BindProtectionEngineSourceRevision" BeforeTargets="GenerateAssemblyInfo" DependsOnTargets="InitializeSourceControlInformation">
+    <ItemGroup>
+      <AssemblyMetadata Include="SourceRevisionId" Value="$(SourceRevisionId)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

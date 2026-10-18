@@ -27,7 +27,7 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         ArgumentException.ThrowIfNullOrWhiteSpace(serializationFormat);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (HasProtectedMarker(serializationFormat))
+        if (HasProtectedMarker(serializationFormat) || HasReservedContent(payloadBytes, serializationFormat))
         {
             throw new InvalidOperationException("Protected serialization format requires a protection provider.");
         }
@@ -82,7 +82,8 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
 
         EventStorePayloadProtectionMetadata effectiveMetadata = metadata ?? EventStorePayloadProtectionMetadata.Unprotected();
         UnreadableProtectedDataReason? failure = MetadataFailure(effectiveMetadata);
-        if (failure is null && HasProtectedMarker(serializationFormat))
+        if (failure is null && (HasProtectedMarker(serializationFormat)
+            || HasReservedContent(payloadBytes, serializationFormat)))
         {
             failure = UnreadableProtectedDataReason.BytesMetadataMismatch;
         }
@@ -99,7 +100,8 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
-
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsProtectedSnapshot(state)) { throw new InvalidOperationException("Protected content requires a protection provider."); }
         return Task.FromResult(state);
     }
 
@@ -117,7 +119,8 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
         CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
-
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsProtectedSnapshot(state)) { throw new InvalidOperationException("Protected content requires a protection provider."); }
         return Task.FromResult(new SnapshotProtectionResult(state, EventStorePayloadProtectionMetadata.Unprotected()));
     }
 
@@ -161,31 +164,61 @@ public sealed class NoOpEventPayloadProtectionService : IEventPayloadProtectionS
 
     private static bool IsProtectedSnapshot(object state) {
         switch (state) {
-            case ProtectedSnapshotPayloadV2:
+            case ProtectedSnapshotPayloadV2 or ProtectedContent:
                 return true;
             case JsonElement { ValueKind: JsonValueKind.Object } json:
-                return json.EnumerateObject().Any(property =>
+                return HasReservedContent(json) || json.EnumerateObject().Any(property =>
                     string.Equals(property.Name, "format", StringComparison.OrdinalIgnoreCase)
                     && IsProtectedFormatValue(property.Value));
             case System.Collections.IDictionary dictionary:
                 foreach (System.Collections.DictionaryEntry entry in dictionary) {
+                    if (entry.Key is string contentKey && IsReservedContentName(contentKey)) { return true; }
                     if (entry.Key is string key && string.Equals(key, "format", StringComparison.OrdinalIgnoreCase)
                         && IsProtectedFormatValue(entry.Value)) { return true; }
                 }
                 return false;
             case IReadOnlyDictionary<string, object?> dictionary:
-                return dictionary.Any(entry => string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
+                return dictionary.Any(entry => IsReservedContentName(entry.Key) || string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
                     && IsProtectedFormatValue(entry.Value));
             case IReadOnlyDictionary<string, string> dictionary:
-                return dictionary.Any(entry => string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
+                return dictionary.Any(entry => IsReservedContentName(entry.Key) || string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
                     && IsProtectedFormatValue(entry.Value));
             case IReadOnlyDictionary<string, JsonElement> dictionary:
-                return dictionary.Any(entry => string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
+                return dictionary.Any(entry => IsReservedContentName(entry.Key) || string.Equals(entry.Key, "format", StringComparison.OrdinalIgnoreCase)
                     && IsProtectedFormatValue(entry.Value));
             default:
-                return false;
+                return state.GetType().GetProperties().Any(static property => IsReservedContentName(property.Name));
         }
     }
+
+    private static bool HasReservedContent(byte[] payload, string format)
+    {
+        // Legacy opaque/binary V1 payloads never carried a JSON field envelope. Inspect object/array
+        // carriers without changing that compatibility route; malformed JSON carriers still deny.
+        int start = 0;
+        while (start < payload.Length && payload[start] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n') { start++; }
+        if (start == payload.Length || payload[start] is not ((byte)'{' or (byte)'[')) { return false; }
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(payload);
+            return HasReservedContent(document.RootElement);
+        }
+        catch (JsonException) when (!format.Equals("json", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+    }
+
+    private static bool HasReservedContent(JsonElement value)
+        => value.ValueKind switch
+        {
+            JsonValueKind.Object => value.EnumerateObject().Any(static property =>
+                IsReservedContentName(property.Name) || HasReservedContent(property.Value)),
+            JsonValueKind.Array => value.EnumerateArray().Any(static item => HasReservedContent(item)),
+            _ => false,
+        };
+
+    private static bool IsReservedContentName(string name) => name.Equals("ProtectedContent", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsProtectedFormatValue(object? value)
         => value is string format ? HasProtectedMarker(format)

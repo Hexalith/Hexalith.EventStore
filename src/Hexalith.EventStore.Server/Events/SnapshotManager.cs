@@ -25,6 +25,15 @@ public partial class SnapshotManager(
     ISnapshotPolicyResolver? snapshotPolicyResolver = null) : ISnapshotManager {
     private const int MaximumFoldedStateBytes = 1024 * 1024;
     private const int MaximumProtectedEnvelopeBytes = MaximumFoldedStateBytes + 4096;
+    private const string FoldedSnapshotTypeId = "hx-snapshot-v1:folded-state";
+
+    /// <summary>Stages an exact occurrence while returning its call-scoped completion to the actor's atomic commit.</summary>
+    internal Task<bool> StageSnapshotAsync(AggregateIdentity identity, long sequenceNumber, object state,
+        IActorStateManager stateManager, JsonSerializerOptions serializerOptions, FoldedSnapshotCaptureLimits limits,
+        string? correlationId, CancellationToken cancellationToken, bool throwOnFailure,
+        ICollection<PayloadProtectionCompletionContext> completions)
+        => CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions, limits,
+            correlationId, cancellationToken, throwOnFailure, completions);
 
     /// <inheritdoc/>
     public async Task<bool> ShouldCreateSnapshotAsync(
@@ -96,7 +105,8 @@ public partial class SnapshotManager(
         FoldedSnapshotCaptureLimits limits,
         string replacementReasonClass,
         string? correlationId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ICollection<PayloadProtectionCompletionContext>? completions = null)
     {
         if (replacementReasonClass is not ("SnapshotEnvelopeVersionUnknown" or
             "SnapshotProviderOpaque" or "SnapshotUnreadableProtected" or
@@ -107,7 +117,7 @@ public partial class SnapshotManager(
             throw new ArgumentOutOfRangeException(nameof(replacementReasonClass));
         }
         bool staged = await CreateSnapshotCoreAsync(identity, sequenceNumber, state, stateManager, serializerOptions,
-            limits, correlationId, cancellationToken, throwOnFailure: false).ConfigureAwait(false);
+            limits, correlationId, cancellationToken, throwOnFailure: false, completions).ConfigureAwait(false);
         if (staged)
         {
             Log.ReplacementStaged(logger, correlationId, identity.TenantId, identity.Domain,
@@ -125,7 +135,8 @@ public partial class SnapshotManager(
         FoldedSnapshotCaptureLimits? limits,
         string? correlationId,
         CancellationToken cancellationToken,
-        bool throwOnFailure) {
+        bool throwOnFailure,
+        ICollection<PayloadProtectionCompletionContext>? completions = null) {
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(stateManager);
@@ -162,9 +173,16 @@ public partial class SnapshotManager(
                     ? "SnapshotStateShapeCollision" : "SnapshotStateInvalid");
             }
 
-            SnapshotProtectionResult protectionResult = await payloadProtectionService
-                .ProtectSnapshotAsync(identity, folded, cancellationToken)
-                .ConfigureAwait(false);
+            SnapshotProtectionWriteResult writeResult = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                ? await payloadProtectionService
+                .ProtectSnapshotAsync(identity, folded, SnapshotStateJsonContext.Default.JsonElement,
+                    new PayloadProtectionOccurrenceContext(checked((ulong)sequenceNumber),
+                        PayloadProtectionPayloadKind.Snapshot, FoldedSnapshotTypeId), cancellationToken)
+                .ConfigureAwait(false)
+                : new(await payloadProtectionService.ProtectSnapshotAsync(identity, folded, cancellationToken).ConfigureAwait(false), null);
+            SnapshotProtectionResult protectionResult = writeResult.ProtectionResult;
+            if (writeResult.CompletionContext is not null && completions is null)
+            { throw new InvalidOperationException("SnapshotCompletionOwnerRequired"); }
             if (protectionResult is null || protectionResult.State is null) {
                 throw new InvalidOperationException("SnapshotStateInvalid");
             }
@@ -214,6 +232,7 @@ public partial class SnapshotManager(
             await stateManager
                 .SetStateAsync(identity.SnapshotKey, snapshot, cancellationToken)
                 .ConfigureAwait(false);
+            if (writeResult.CompletionContext is not null) { completions!.Add(writeResult.CompletionContext); }
 
             logger.LogInformation(
                 "Snapshot staged: CorrelationId={CorrelationId}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, SequenceNumber={SequenceNumber}",
@@ -412,8 +431,12 @@ public partial class SnapshotManager(
         SnapshotUnprotectionOutcome outcome;
         try
         {
-            outcome = await payloadProtectionService.TryUnprotectSnapshotAsync(
-                identity, snapshot.State, metadata, cancellationToken).ConfigureAwait(false);
+            outcome = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                ? await payloadProtectionService.TryUnprotectSnapshotAsync(
+                identity, snapshot.State, metadata, SnapshotStateJsonContext.Default.JsonElement,
+                new PayloadProtectionOccurrenceContext(checked((ulong)sequence), PayloadProtectionPayloadKind.Snapshot,
+                    FoldedSnapshotTypeId), cancellationToken).ConfigureAwait(false)
+                : await payloadProtectionService.TryUnprotectSnapshotAsync(identity, snapshot.State, metadata, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch

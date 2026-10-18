@@ -17,16 +17,19 @@ internal sealed class DaprLogicalEventReader
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly IActorStateManager _stateManager;
     private readonly IEventPayloadProtectionService _protection;
+    private readonly bool _trustedDomainReplay;
     private readonly EventLogicalViewResolver _resolver;
     private readonly int _maximumReadablePageBytes;
 
     /// <summary>Creates the shared actor-state logical reader without provider-specific access.</summary>
     internal DaprLogicalEventReader(IActorStateManager stateManager,
         IEventPayloadProtectionService protection, EventLogicalViewResolver resolver,
-        int maximumReadablePageBytes = 64 * 1024 * 1024)
+        int maximumReadablePageBytes = 64 * 1024 * 1024,
+        bool trustedDomainReplay = false)
     {
         _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
         _protection = protection ?? throw new ArgumentNullException(nameof(protection));
+        _trustedDomainReplay = trustedDomainReplay;
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         if (maximumReadablePageBytes is < 1 or > 64 * 1024 * 1024)
         {
@@ -159,12 +162,27 @@ internal sealed class DaprLogicalEventReader
                 protectionInput = protectedCopy;
             }
 
+            bool engineRepresentation = _protection is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                && SealedPayloadDistributionGuard.IsEngineEnvelope(source, metadata);
+            if (engineRepresentation)
+            {
+                if (source.ApplicationPayloadDigest is null) { throw new InvalidOperationException("LogicalDigestMismatch"); }
+                EventLogicalDigest.RequireMatching(source, source.SerializationFormat, source.Payload);
+            }
             PayloadUnprotectionOutcome outcome;
             try
             {
-                outcome = await _protection.TryUnprotectEventPayloadAsync(
+                outcome = _protection is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                    ? _trustedDomainReplay
+                        ? (await _protection.TryReplayEventPayloadAsync(identity, source.EventTypeName, protectionInput,
+                            source.SerializationFormat, metadata, new PayloadProtectionOccurrenceContext(checked((ulong)sequenceNumber),
+                                PayloadProtectionPayloadKind.Event, source.EventTypeName), cancellationToken).ConfigureAwait(false)).Outcome
+                        : await _protection.TryUnprotectEventPayloadAsync(
                     identity, source.EventTypeName, protectionInput, source.SerializationFormat,
-                    metadata, cancellationToken).ConfigureAwait(false);
+                    metadata, new PayloadProtectionOccurrenceContext(checked((ulong)sequenceNumber),
+                        PayloadProtectionPayloadKind.Event, source.EventTypeName), cancellationToken).ConfigureAwait(false)
+                    : await _protection.TryUnprotectEventPayloadAsync(identity, source.EventTypeName, protectionInput,
+                        source.SerializationFormat, metadata, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -198,7 +216,7 @@ internal sealed class DaprLogicalEventReader
             readableReservation?.ShrinkTo(ReferenceEquals(outcome.PayloadBytes, protectedCopy)
                 || ReferenceEquals(outcome.PayloadBytes, source.Payload) ? 0 : outcome.PayloadBytes.Length);
 
-            EventLogicalDigest.RequireMatching(source, outcome.SerializationFormat, outcome.PayloadBytes);
+            if (!engineRepresentation) { EventLogicalDigest.RequireMatching(source, outcome.SerializationFormat, outcome.PayloadBytes); }
             _resolver.RequireReadableSource(source.Domain, source.EventTypeName, source.MetadataVersion,
                 source.EventContractType, source.PayloadVersion, outcome.SerializationFormat,
                 source.AggregateType, cancellationToken);

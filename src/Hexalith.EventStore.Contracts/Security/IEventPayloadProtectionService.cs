@@ -10,6 +10,38 @@ namespace Hexalith.EventStore.Contracts.Security;
 /// and unprotecting them before publication or replay.
 /// </summary>
 public interface IEventPayloadProtectionService {
+    /// <summary>Prepares an exact persisted occurrence for broker/read-model distribution. Sealed providers must authenticate retained ciphertext and keep its metadata and bytes sealed.</summary>
+    /// <param name="identity">The addressed source aggregate.</param>
+    /// <param name="eventTypeName">The persisted event type.</param>
+    /// <param name="payloadBytes">The exact stored bytes.</param>
+    /// <param name="serializationFormat">The persisted format.</param>
+    /// <param name="metadata">The persisted protection metadata.</param>
+    /// <param name="occurrenceContext">The authenticated stored occurrence.</param>
+    /// <param name="cancellationToken">Caller cancellation.</param>
+    /// <returns>Authenticated sealed bytes or the legacy read outcome.</returns>
+    async Task<PayloadDistributionResult> PrepareEventForDistributionAsync(
+        AggregateIdentity identity, string eventTypeName, byte[] payloadBytes, string serializationFormat,
+        EventStorePayloadProtectionMetadata? metadata, PayloadProtectionOccurrenceContext occurrenceContext,
+        CancellationToken cancellationToken = default)
+        => new(await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat,
+            metadata, occurrenceContext, cancellationToken).ConfigureAwait(false));
+
+    /// <summary>Reads an exact occurrence for trusted domain replay. Only positive irreversible-erasure proof permits typed field substitution; external reads remain unreadable.</summary>
+    /// <param name="identity">The addressed source aggregate.</param>
+    /// <param name="eventTypeName">The persisted event type.</param>
+    /// <param name="payloadBytes">The exact stored bytes.</param>
+    /// <param name="serializationFormat">The persisted format.</param>
+    /// <param name="metadata">The persisted protection metadata.</param>
+    /// <param name="occurrenceContext">The authenticated stored occurrence.</param>
+    /// <param name="cancellationToken">Caller cancellation.</param>
+    /// <returns>Authenticated replay bytes or a bounded failure.</returns>
+    async Task<PayloadReplayResult> TryReplayEventPayloadAsync(
+        AggregateIdentity identity, string eventTypeName, byte[] payloadBytes, string serializationFormat,
+        EventStorePayloadProtectionMetadata? metadata, PayloadProtectionOccurrenceContext occurrenceContext,
+        CancellationToken cancellationToken = default)
+        => new(await TryUnprotectEventPayloadAsync(identity, eventTypeName, payloadBytes, serializationFormat,
+            metadata, occurrenceContext, cancellationToken).ConfigureAwait(false));
+
     /// <summary>
     /// Applies optional protection to an event payload before it is persisted.
     /// </summary>

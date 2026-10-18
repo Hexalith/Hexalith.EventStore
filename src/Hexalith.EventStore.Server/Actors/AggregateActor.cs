@@ -724,6 +724,7 @@ public partial class AggregateActor(
             }
 
             await EnsureStateCacheBarrierAsync(command.CorrelationId, processActivity).ConfigureAwait(false);
+            await RecoverPayloadProtectionCompletionsAsync(command.AggregateIdentity).ConfigureAwait(false);
 
             // Once trusted-effect erasure starts, its cursor closes the partition to ordinary
             // commands too; otherwise a resumed erasure would orphan new events. A deletion fence
@@ -1582,6 +1583,7 @@ public partial class AggregateActor(
                                 domainServiceVersion: domainServiceVersion,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
+                        List<PayloadProtectionCompletionContext> batchProtectionCompletions = [.. persistResult.ProtectionCompletions];
                         if (sourceFence is not null)
                         {
                             await sourceFence.CompleteWriteAsync(command.AggregateIdentity, sourceIntentId!,
@@ -1646,8 +1648,16 @@ public partial class AggregateActor(
                                         command.AggregateIdentity, persistResult.NewSequenceNumber,
                                         foldedState, StateManager, ActorStateJsonSerializerOptions,
                                         snapshotQualification.Limits, replacementReasonClass,
-                                        command.CorrelationId, cancellationToken).ConfigureAwait(false);
+                                        command.CorrelationId, cancellationToken, batchProtectionCompletions).ConfigureAwait(false);
                                     if (staged) { committedReplacementReasonClass = replacementReasonClass; }
+                                }
+                                else if (snapshotManager is SnapshotManager occurrenceSnapshotManager)
+                                {
+                                    await occurrenceSnapshotManager.StageSnapshotAsync(command.AggregateIdentity,
+                                        persistResult.NewSequenceNumber, foldedState, StateManager,
+                                        ActorStateJsonSerializerOptions, snapshotQualification.Limits,
+                                        command.CorrelationId, cancellationToken, false, batchProtectionCompletions)
+                                        .ConfigureAwait(false);
                                 }
                                 else
                                 {
@@ -1707,6 +1717,8 @@ public partial class AggregateActor(
                         await StateManager.SetStateAsync(
                             EventBatchCommitWitnessKey,
                             eventBatchAttemptToken).ConfigureAwait(false);
+                        await StagePayloadProtectionCompletionsAsync(command.AggregateIdentity,
+                            batchProtectionCompletions, cancellationToken).ConfigureAwait(false);
 
                         if (effectAdmission is not null)
                         {
@@ -1722,6 +1734,11 @@ public partial class AggregateActor(
                         bool eventBatchSaveAttempted = false;
                         try {
                             await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+                            foreach (PayloadProtectionCompletionContext completion in batchProtectionCompletions)
+                            {
+                                await payloadProtectionService.AcquirePayloadProtectionCompletionLeaseAsync(completion,
+                                    cancellationToken).ConfigureAwait(false);
+                            }
                             cancellationToken.ThrowIfCancellationRequested();
                             eventBatchSaveAttempted = true;
                             await StateManager.SaveStateAsync().ConfigureAwait(false);
@@ -1748,6 +1765,10 @@ public partial class AggregateActor(
                                 cancellationToken).ConfigureAwait(false);
                             if (ex is OperationCanceledException)
                             {
+                                if (eventBatchCommitted)
+                                {
+                                    await RecoverPayloadProtectionCompletionsAsync(command.AggregateIdentity).ConfigureAwait(false);
+                                }
                                 throw;
                             }
 
@@ -1825,6 +1846,8 @@ public partial class AggregateActor(
                             }
                         }
 
+                        await RecoverPayloadProtectionCompletionsAsync(command.AggregateIdentity).ConfigureAwait(false);
+
                         if (committedReplacementReasonClass is not null)
                         {
                             Log.SnapshotReplacementCommitted(logger,
@@ -1842,7 +1865,8 @@ public partial class AggregateActor(
                         _ = (processActivity?.SetStatus(ActivityStatusCode.Error, "ActorStateRemediationFailed"));
                         throw;
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException) {
+                    catch (Exception ex) when (ex is not OperationCanceledException and not ConcurrencyConflictException
+                        and not PayloadProtectionRecoveryException) {
                         ProtectedDataDiagnosticRedactor.RecordActivityException(activity, ex, "event-persist");
                         // Event persistence infrastructure failure -- dead-letter routing
                         try
@@ -2528,6 +2552,7 @@ public partial class AggregateActor(
         SnapshotRecord? attemptedSnapshot = null;
         FoldedSnapshotCaptureLimits? attemptedLimits = null;
         bool snapshotSaveAttempted = false;
+        List<PayloadProtectionCompletionContext> snapshotProtectionCompletions = [];
 
         try {
             await EnsureStateCacheBarrierAsync(correlationId, activity: null).ConfigureAwait(false);
@@ -2536,6 +2561,7 @@ public partial class AggregateActor(
 
             // Manual completion must inspect persisted state, including the AlreadyCurrent path.
             await StateManager.ClearCacheAsync(cancellationToken).ConfigureAwait(false);
+            await RecoverPayloadProtectionCompletionsAsync(identity).ConfigureAwait(false);
             ConditionalValue<AggregateMetadata> durableMetadata = await StateManager
                 .TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, cancellationToken).ConfigureAwait(false);
             if (!durableMetadata.HasValue) {
@@ -2691,16 +2717,18 @@ public partial class AggregateActor(
             }
 
             attemptedLimits = qualification.Limits;
-            await snapshotManager.CreateSnapshotAsync(
-                identity,
-                metadata.CurrentSequence,
-                snapshotState,
-                StateManager,
-                ActorStateJsonSerializerOptions,
-                qualification.Limits,
-                correlationId,
-                cancellationToken,
-                throwOnFailure: true).ConfigureAwait(false);
+            if (snapshotManager is SnapshotManager occurrenceSnapshotManager)
+            {
+                await occurrenceSnapshotManager.StageSnapshotAsync(identity, metadata.CurrentSequence, snapshotState,
+                    StateManager, ActorStateJsonSerializerOptions, qualification.Limits, correlationId,
+                    cancellationToken, true, snapshotProtectionCompletions).ConfigureAwait(false);
+            }
+            else
+            {
+                await snapshotManager.CreateSnapshotAsync(identity, metadata.CurrentSequence, snapshotState, StateManager,
+                    ActorStateJsonSerializerOptions, qualification.Limits, correlationId, cancellationToken,
+                    throwOnFailure: true).ConfigureAwait(false);
+            }
             ConditionalValue<SnapshotRecord> stagedSnapshot = await StateManager
                 .TryGetStateAsync<SnapshotRecord>(identity.SnapshotKey)
                 .ConfigureAwait(false);
@@ -2708,6 +2736,13 @@ public partial class AggregateActor(
                 ? stagedSnapshot.Value
                 : throw new InvalidOperationException("Manual snapshot manager did not stage a snapshot record.");
             cancellationToken.ThrowIfCancellationRequested();
+            await StagePayloadProtectionCompletionsAsync(identity, snapshotProtectionCompletions,
+                cancellationToken).ConfigureAwait(false);
+            foreach (PayloadProtectionCompletionContext completion in snapshotProtectionCompletions)
+            {
+                await payloadProtectionService.AcquirePayloadProtectionCompletionLeaseAsync(completion,
+                    cancellationToken).ConfigureAwait(false);
+            }
             snapshotSaveAttempted = true;
             await StateManager.SaveStateAsync().ConfigureAwait(false);
             await StateManager.ClearCacheAsync(CancellationToken.None).ConfigureAwait(false);
@@ -2717,6 +2752,7 @@ public partial class AggregateActor(
             {
                 throw new InvalidOperationException("SnapshotReadbackMismatch");
             }
+            await RecoverPayloadProtectionCompletionsAsync(identity).ConfigureAwait(false);
 
             return new ManualSnapshotResult(
                 ManualSnapshotOutcome.Created,
@@ -2749,6 +2785,7 @@ public partial class AggregateActor(
                         .ConfigureAwait(false);
                     if (observed.HasValue && SnapshotRecordsMatch(observed.Value, attemptedSnapshot, attemptedLimits))
                     {
+                        await RecoverPayloadProtectionCompletionsAsync(identity).ConfigureAwait(false);
                         return new ManualSnapshotResult(
                             ManualSnapshotOutcome.Created,
                             currentSequence,
@@ -4637,6 +4674,7 @@ public partial class AggregateActor(
         PipelineState? eventsPublishedState = null;
 
         if (eventCount > 0) {
+            await RecoverPayloadProtectionCompletionsAsync(command.AggregateIdentity).ConfigureAwait(false);
             EventPublishResult publishResult = await eventPublisher
                 .PublishEventsAsync(
                     command.AggregateIdentity,
@@ -4712,6 +4750,7 @@ public partial class AggregateActor(
         AggregateIdentity identity,
         long startSequence,
         long endSequence) {
+        await RecoverPayloadProtectionCompletionsAsync(identity).ConfigureAwait(false);
         if (startSequence < 1) {
             throw new InvalidOperationException(
                 $"Invalid drain event range for {identity.ActorId}: startSequence={startSequence}, endSequence={endSequence}.");
@@ -5071,17 +5110,32 @@ public partial class AggregateActor(
                     sequenceNumber: envelope.SequenceNumber);
             }
 
+            bool engineRepresentation = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                && SealedPayloadDistributionGuard.IsEngineEnvelope(envelope, storedMetadata);
+            if (engineRepresentation)
+            {
+                if (envelope.ApplicationPayloadDigest is null) { throw new InvalidOperationException("LogicalDigestMismatch"); }
+                EventLogicalDigest.RequireMatching(envelope, envelope.SerializationFormat, envelope.Payload);
+            }
             PayloadUnprotectionOutcome outcome;
+            bool hasErasedContent = false;
             try {
-                outcome = await payloadProtectionService
-                    .TryUnprotectEventPayloadAsync(
+                PayloadReplayResult replay = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                    ? await payloadProtectionService
+                    .TryReplayEventPayloadAsync(
                         identity,
                         envelope.EventTypeName,
                         envelope.Payload,
                         envelope.SerializationFormat,
                         storedMetadata,
+                        new PayloadProtectionOccurrenceContext(checked((ulong)envelope.SequenceNumber),
+                            PayloadProtectionPayloadKind.Event, envelope.EventTypeName),
                         cancellationToken)
-                    .ConfigureAwait(false);
+                    .ConfigureAwait(false)
+                    : new(await payloadProtectionService.TryUnprotectEventPayloadAsync(identity, envelope.EventTypeName,
+                        envelope.Payload, envelope.SerializationFormat, storedMetadata, cancellationToken).ConfigureAwait(false));
+                outcome = replay.Outcome;
+                hasErasedContent = replay.HasErasedContent;
             }
             catch (OperationCanceledException) {
                 throw;
@@ -5109,7 +5163,11 @@ public partial class AggregateActor(
             // The actor's legacy replay route is still active for V1 events. Check
             // the application-owned logical digest before forwarding plaintext to
             // a domain service; older V1 rows without the additive field remain valid.
-            EventLogicalDigest.RequireMatching(envelope, outcome.SerializationFormat!, outcome.PayloadBytes!);
+            if (hasErasedContent && !engineRepresentation) { throw new InvalidOperationException("ErasedReplayMismatch"); }
+            if (!engineRepresentation)
+            {
+                EventLogicalDigest.RequireMatching(envelope, outcome.SerializationFormat!, outcome.PayloadBytes!);
+            }
 
             readable.Add(envelope with {
                 Payload = outcome.PayloadBytes!,
@@ -5154,7 +5212,7 @@ public partial class AggregateActor(
         return DaprProductionLogicalEventReader.FromCallerPin(
             StateManager,
             payloadProtectionService,
-            keyedServices.GetKeyedService<EventEvolutionManifestCandidate>(domain));
+            keyedServices.GetKeyedService<EventEvolutionManifestCandidate>(domain), trustedDomainReplay: true);
     }
 
     private async Task<string> ResolveAggregateTypeAsync(CommandEnvelope command, CancellationToken cancellationToken) {

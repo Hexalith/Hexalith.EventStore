@@ -39,4 +39,16 @@
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Ship the unchanged normative core and hook in Server; the standalone codec/golden-test
+         project intentionally remains nonpackable and must never become a NuGet dependency. -->
+    <Compile Include="..\Hexalith.EventStore.PayloadProtection\*.cs" Link="Security\PayloadProtection\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="BindProtectionEngineSourceRevision" BeforeTargets="GenerateAssemblyInfo" DependsOnTargets="InitializeSourceControlInformation">
+    <ItemGroup>
+      <AssemblyMetadata Include="SourceRevisionId" Value="$(SourceRevisionId)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

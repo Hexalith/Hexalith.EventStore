@@ -28,7 +28,8 @@ internal sealed class DaprProductionLogicalEventReader
         IEventPayloadProtectionService protection,
         EventDomainRegistry registry,
         EventUpcastChainExecutor executor,
-        string pinnedFingerprint)
+        string pinnedFingerprint,
+        bool trustedDomainReplay = false)
     {
         ArgumentNullException.ThrowIfNull(stateManager);
         ArgumentNullException.ThrowIfNull(protection);
@@ -48,7 +49,8 @@ internal sealed class DaprProductionLogicalEventReader
         _stateManager = stateManager;
         _pinnedFingerprint = pinnedFingerprint;
         _capabilityLoss = registry.CapabilityLoss;
-        _pages = new DaprLogicalEventReader(stateManager, protection, new EventLogicalViewResolver(registry, executor));
+        _pages = new DaprLogicalEventReader(stateManager, protection, new EventLogicalViewResolver(registry, executor),
+            trustedDomainReplay: trustedDomainReplay);
     }
 
     /// <summary>Builds a reader from a caller-supplied manifest pin. A missing pin stays on the typed path.</summary>
@@ -60,7 +62,8 @@ internal sealed class DaprProductionLogicalEventReader
     internal static DaprProductionLogicalEventReader? FromCallerPin(
         IActorStateManager stateManager,
         IEventPayloadProtectionService protection,
-        EventEvolutionManifestCandidate? candidate)
+        EventEvolutionManifestCandidate? candidate,
+        bool trustedDomainReplay = false)
     {
         if (candidate is null)
         {
@@ -76,7 +79,8 @@ internal sealed class DaprProductionLogicalEventReader
             protection,
             candidate.Registry,
             executor,
-            candidate.PinnedFingerprint);
+            candidate.PinnedFingerprint,
+            trustedDomainReplay);
     }
 
     /// <summary>Gets the caller pin that admitted this reader.</summary>

@@ -122,15 +122,25 @@ public partial class EventPublisher(
                 // propagate through `OperationCanceledException`.
                 PayloadUnprotectionOutcome unprotectOutcome;
                 try {
-                    unprotectOutcome = await payloadProtectionService
-                        .TryUnprotectEventPayloadAsync(
+                    PayloadDistributionResult distribution = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                        ? await payloadProtectionService
+                        .PrepareEventForDistributionAsync(
                             identity,
                             eventEnvelope.EventTypeName,
                             eventEnvelope.Payload,
                             eventEnvelope.SerializationFormat,
                             storedMetadata,
+                            new PayloadProtectionOccurrenceContext(checked((ulong)eventEnvelope.SequenceNumber),
+                                PayloadProtectionPayloadKind.Event, eventEnvelope.EventTypeName),
                             cancellationToken)
-                        .ConfigureAwait(false);
+                        .ConfigureAwait(false)
+                        : new(await payloadProtectionService.TryUnprotectEventPayloadAsync(identity, eventEnvelope.EventTypeName,
+                            eventEnvelope.Payload, eventEnvelope.SerializationFormat, storedMetadata, cancellationToken).ConfigureAwait(false));
+                    if (distribution.IsSealed)
+                    {
+                        SealedPayloadDistributionGuard.RequireSealed(payloadProtectionService, eventEnvelope, storedMetadata, distribution);
+                    }
+                    unprotectOutcome = distribution.Outcome;
                 }
                 catch (OperationCanceledException) {
                     throw;

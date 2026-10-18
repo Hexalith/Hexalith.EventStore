@@ -44,6 +44,9 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Verify owner qualification policy and recovery offline
+        run: python3 -m unittest discover -s tools/tests -p 'test_ext_protection_1.py' -v
+
       - name: Restore PayloadProtection tests
         run: >-
           dotnet restore tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj

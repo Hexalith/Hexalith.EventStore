@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Contracts.Security;
+
 namespace Hexalith.EventStore.Server.Events;
 
 /// <summary>
@@ -8,4 +10,8 @@ namespace Hexalith.EventStore.Server.Events;
 /// <param name="PersistedEnvelopes">The persisted event envelopes with all 11 metadata fields populated.</param>
 public record EventPersistResult(
     long NewSequenceNumber,
-    IReadOnlyList<EventEnvelope> PersistedEnvelopes);
+    IReadOnlyList<EventEnvelope> PersistedEnvelopes)
+{
+    /// <summary>Gets call-scoped original writer contexts; never persisted in event payloads or metadata.</summary>
+    public IReadOnlyList<PayloadProtectionCompletionContext> ProtectionCompletions { get; init; } = [];
+}

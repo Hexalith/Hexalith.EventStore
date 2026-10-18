@@ -1,0 +1,141 @@
+# EXT-PROTECTION-1 owner acceptance packet
+
+**Disposition: incomplete delivery; do not accept as Committed.** The partial implementation contains occurrence-aware interaction field protection, safe actor completion wiring, sealed distribution, default-provider refusal, typed erased aggregate replay, and an owner-verifier harness. It does not contain the complete production artifact required by the Agents register. The missing custody/authority implementations are source delivery gaps, not merely missing environment variables. No Live verification ran; no Agents consumer was enabled; no register/status was changed.
+
+Publication note: after source validation, the user authorized committing and pushing these partial changes. Git publication does not change the dependency's `Uncommitted` status or close the gaps below. The retained source-attempt evidence predates that publication.
+
+## Proposed record and canonical target
+
+| Field | Value |
+| --- | --- |
+| Owner | EventStore Maintainer |
+| Repository | `Hexalith.EventStore` — `https://github.com/Hexalith/Hexalith.EventStore.git` |
+| TargetVersionOrCommit | No delivery target proposed: the full required production artifact is incomplete. The retained source snapshot records HEAD `216b790628574d39802adcc8f4fea0d4034ef9f0`, reachable from `origin/main`; it does **not** contain these working-tree changes and must **not** be accepted as their target. Original inspection baseline was `9b062d0d4f506bf45b7fdcd8e54189599a36ff9b`. Concurrent work advanced main through `37bdc90a72b9f0ea547852e903334cc8cc541641` (secret-scan fixes) and then the recorded HEAD (Client receipt conflicts). Both updates were preserved; this work performed no fetch, checkout update, commit or push. |
+| Proposed future TargetIntegrationDate | `2026-11-02` — proposal only; no date has been accepted or encoded into the verifier |
+| RequiredEvidenceLevel | Levels 4 and 5; owner component qualification supplies Level 4, consuming gates and RQ-1 later supply Level 5 |
+| Proposed status | `Uncommitted` |
+
+No immutable full delivery target, accepted profile or trust binding is being invented. A Committed proposal must wait until every source gap below is closed, the implementation and complete pass-capable verifier are committed together at a target reachable from `origin/main`, and the owner accepts that target and its installed input hashes. Existing candidate tests cannot establish physical destruction or Level 4 evidence.
+
+Authorities read: repository `AGENTS.md`; the root-declared AI.Tools baseline and Git/state instructions; the full EXT-PROTECTION-1 RequiredArtifact, compatibility contract and v21/v23 extensions; Owner Qualification Cohorts/OQ-5.4-1; and the 2026-10-18 Story 5.4 dependency reconciliation. Exact source authority hashes and baseline commands are retained in the evidence directory's `baseline.json`.
+
+## Source and test map
+
+Paths are relative to the repository root. Source prefixes `Contracts/` and `Server/` expand to `src/Hexalith.EventStore.Contracts/` and `src/Hexalith.EventStore.Server/`; test-only `Security/` prefixes expand to `tests/Hexalith.EventStore.Server.Tests/Security/`. `H` means `src/Hexalith.EventStore.PayloadProtection/InteractionPayloadProtectionService.cs`; `HT` means `tests/Hexalith.EventStore.Server.Tests/Security/InteractionPayloadProtectionServiceTests.cs`; `O` means `src/Hexalith.EventStore.Server/Security/DeletionConsumptionActor.cs`; `AT` means `tests/Hexalith.EventStore.Server.Tests/Security/InteractionProtectionActorRecoveryTests.cs`. “Component” means synthetic infrastructure evidence; it does not establish production provider qualification. Plan cases refer to `tools/ext-protection-1/plan.json` and have **not** run Live. Existing guard implementation is `Server/Security/GovernanceScopeGuardOwner.cs` with `GovernanceScopeGuardReducer.cs`; its tests are `Security/GovernanceScopeGuardTests.cs`.
+
+| Register requirement | Source and tests | Result / remaining gap |
+| --- | --- | --- |
+| Production engine behind existing hooks; no-op unacceptable for content-bearing workflows | H; `Server/Configuration/InteractionPayloadProtectionServiceCollectionExtensions.cs`; `Server/Events/NoOpEventPayloadProtectionService.cs`; HT; `Security/PayloadProtectionHookTests.cs` | Component: explicit opt-in replaces no-op; reserved content refuses without engine. Production custody/bindings absent (G1/G2). |
+| Field-level ProtectedContent, other fields remain plaintext | `Contracts/Security/ProtectedContent.cs`; H `/ProtectedContent/Value`; unchanged core/JSON transform; HT `FieldProtectionRequiresWriterCommitAndExactRetryKeepsOriginalCiphertext` | Component passes. Installed serializer/domain contracts still require qualification. |
+| One custodied key per AgentInteraction; explicit directory creation-outbox TargetProtectionKeyAlias selects same root | `ProtectionTarget`, `InteractionOccurrenceIdentity`, `InteractionProtectionBinding`; H; HT `DirectoryOutboxUsesExplicitInteractionTargetAndCrossTenantTargetCannotReserve`; P01/P02 | Explicit full target routing works with synthetic keys. Actual same-root physical custody across source and target is G1. |
+| Per-tenant EXT-SECRETS-1 KEK; WrapDek/UnwrapDek/PinDek/UnpinDek/DestroyDek | Public infrastructure key/binding interfaces; Platform internal `CustodyKeyWrapCore` and public lifecycle candidate contracts | **G1:** no public production WrapDek/UnwrapDek implementation, concrete lifecycle provider or EventStore adapter exists. No physical proof. |
+| Atomic DestroyDekManifest, deterministic sorted target/manifest binding, all-or-none, ordered irreversible receipts | O; `IAtomicDeletionManifestProvider`; `DeletionConsumptionIdentity`; shared `DeletionBatchCapabilityIdentity`; `DeletionConsumptionActorTests`; P05/P07/P09 | Synthetic state machine checks pass. **G1/G3:** no production atomic physical backend or all-copy semantics. |
+| Non-expiring revocable capability, signing-key version retained through delayed dispatch/terminal retry/restore; no renewal | Closed `DeletionBatchCapabilityV1`; O original retention; actor tests; P16/P17/P18 | Wire has no expiry field. Actual signing trust retention and compromise authority are G2/G3. |
+| Single consumption; exact duplicate/retry/lost-result lookup byte-identical; changed digest/target conflict | O request capture, reservation recovery, immutable target vector; actor tests; P06/P07/P25 | Component evidence only. Provider response-loss and installed exact lookup unproven (G1/G3). |
+| Hold pin rejects per-key and manifest destruction until authorized unpin | `IAtomicDeletionManifestProvider` contract; Platform lifecycle candidate | **G1/G3:** physical pin/unpin provider and fence authorization are absent. P04 is a planned fixture, not evidence. |
+| Envelopes stay sealed on broker/read models | H distribution authentication; `EventPublisher`, `ProjectionEventWireBuilder`, `SealedPayloadDistributionGuard`; affected publisher/hook tests | Wired actual engine route; legacy provider behavior preserved. Independent real persisted/broker observation remains G5. |
+| Unreadable PayloadUnprotectionOutcome after erasure; typed Erased without breaking trusted replay | `Erased`, `PayloadReplayResult`; H tombstone-gated replay; `AggregateActor.EnsureEventsReadableForDomainAsync`; internal trusted `DaprLogicalEventReader` route; HT erased test; AT `ProductionActorFoldsErasedWhileExternalProductionReaderRemainsUnreadable` | Actual-engine actor fold and distinct external unreadability are exercised with synthetic custody. **G1/G4/G5:** installed tombstone authority and same-root source+target production replay remain unqualified. |
+| Snapshots/replay caches inherit interaction DEK | H snapshot operations; `SnapshotManager`; HT `SnapshotAndCachedCopiesShareTheRootAndBecomeUnreadableWithoutIt`; P10/P11 | Whole single-root snapshot works with synthetic keys. **G4:** mixed-root directory snapshot binding and all cache/backup inventory not implemented/qualified. |
+| Exact writer occurrence, durable original ciphertext; crash/unknown completion | `InteractionOccurrenceProtector`, registry actor; `EventPersister`, `EventPersistResult`; `Server/Actors/AggregateActor.PayloadProtection.cs`, `PayloadProtectionCompletionJournal.cs`; AT commit/lost-result/resume/manual-snapshot cases; HT unknown-persistence test | Content-free originals commit in the same atomic actor batch, then recover by independent exact writer proof under one bounded budget before resume/publication. Failed preparation attempts only independently proven NeverWritten completion; uncertainty retains the original. Idle recovery scheduling and real writer/anchor deployment remain G2/G4. No staging result is commit proof. |
+| Five minimum owner proofs: absence, equality, erase+Erased, pin/unpin, exact engine identity | H `GetIdentity` from loaded binary/source revision; HT; verifier P01–P05 | First/second/typed replay/identity have component tests. Actual irreversible erase and hold pins remain G1/G3; no Live five-proof attainment. |
+| Source outbox and target event replay, same exact root | HT directory/erased tests separately; P02/P03 | **G1/G4/G5:** same-root source+target production end-to-end fixture not delivered. |
+| Complete tenant/interaction/alias index; exact AlreadyDestroyedByBatch original receipts | O `FindDestroyed`, `RetainCoveredAsync`, full target identities; actor tests; P12/P15 | Synthetic defense-in-depth passes. Installed identity/receipt authentication remains G2/G3. |
+| First uncovered complete containment target has monotonic singleton ordinal and guard-issued capability; no accepted-batch reuse | `GovernanceScopeGuard` protocol/state; existing guard tests; P13 | Guard component protocol exists. Physical/provider+signing+ProtectionFence integration remains G2/G3/G5. |
+| Later same-target resources receive coverage links only; concurrent distinct targets distinct ordinals; exact duplicates reuse results | Guard target coverage protocol; O full-target index; guard/actor tests; P13–P15 | Component coverage exists. Full signed real-owner containment scenario not delivered (G2/G5). |
+| v21 complete capability JWS against committed issuer/audience/tenant/key anchors | `IDeletionConsumptionAuthority.VerifyDispatchAsync` interface; canonical capability identity | **G2:** no concrete production ES256/online authority. Harness role signatures are transport signatures, not deletion-capability verification. P17/P18 cannot fill this source gap. |
+| v21 fresh linearizable exact guard lookup: batch/manifest, sole unrevoked attestation, exact committed dispatch | O calls authority immediately before reserve; guard conditional protocol | **G2:** interface obligations are not an implementation. Missing/stale/revoked/substituted/lookup-outage real cases remain unproven. |
+| v21 pre-dispatch restrictive hold/compromise blocks; later hold cannot cancel dispatched possibly begun batch | Guard dispatch protocol, O owner reservation; existing guard tests; P19–P22 | Component protocol only. Installed Product disposition/authority remains G2; no Product choice fabricated. |
+| v21 compromise/re-attestation requires same batch, sole active replacement, successor dispatch | O activation/blocked-replacement reconciliation; actor tests; P29–P36 | Same-owner candidate logic passes; actual signing/revocation/mirror/guard authority is G2/G3. |
+| v23 BlockDeletionBatchConsumption vs ReserveAndConsume at same owner; irreversible reservation instant | O serialized actor state; `DeletionConsumptionActorTests`; P23–P28 | 145 selected guard/owner/registry component checks pass. Qualified non-reentrant actor deployment and physical provider remain G1–G3. |
+| v23 pending/unknown block no effect; authenticated block/reserved/consumed/revoked exact lookup | O independent anchoring/operation admission/recovery; actor tests; P35/P40 | Component fail-closed/retention checks pass; authenticated production outcomes and registrar are G2/G3. |
+| v23 reserved recovery completes original all-or-none batch without new authority | O recovery by original reservation/provider lookup; actor tests; P25/P28 | Component passes; no real physical provider recovery proof (G1/G3). |
+| v23 only exact compromise block may reopen; admission block never reopens | O activation checks; actor tests; P29/P37 | Component passes. Full installed authority and mirrored original receipt chain remain G2. |
+| v23 replacement activation compares expected tenant-key block-set revision and preserves winning new-key compromise; no global block clearing | O activation/comparison/blocked replacement; actor tests; P30–P34 | Candidate state machine passes; real before/at/after compromise delivery, dispatch and activation schedules remain G2/G5. |
+| v23 registration before/at/after reserve; second compromise at every replacement boundary; delivery/mirror loss; no false replacement; exact activation lookup | Actor tests; plan P26–P38 | Source/state-machine components only. Installed full matrix and independent persisted observation not supplied (G2/G5/G6). |
+| Negative payload/manifest/tenant/key/attestation/dispatch/revision substitution | HT substituted payload/cross-tenant tests; actor and guard tests; P07/P08/P12/P17/P18/P38 | Synthetic coverage; concrete provider/authority negative fixtures absent (G1/G2/G5). |
+| Backup/restore cannot revive content, keys, consumed/revoked/block/activation state | Independent-anchor interfaces; actor rollback tests; HT snapshot root removal; P11/P41 | **G1/G2/G3:** no physical backup treatment or installed nonrollback authority. Removing a synthetic key is not irreversible erase evidence. |
+| Owner Live command exact clean accepted target, reference-only pinned inputs, no fixed date/unconditional refusal | `tools/ext_protection_1.py`; 22 offline policy/recovery tests; protocol document; `.github/workflows/payload-protection.yml` | Harness has input-dependent success path and Source mode. **G5/G6:** role transports, full real schema assertions, complete owner fixtures and trust anchors absent; not yet accepted owner qualification artifact. |
+| Independent persisted-state observer, unique retained attempts and original recovery journals | Role separation/signatures; fsynced original requests; exact lookup; offline tests | Harness mechanics implemented. **G5/G6:** no independently operated observer/enrollment/transport installations; several summaries need raw-chain reconstruction. |
+| OQ-5.4-1 phase 0, exact hashes, one accepted target-set attempt, no Agents runtime paths | Register preflight and separate enrollment role protocol; verifier checks disabled consumers | No cohort or Live run occurred. One-attempt enforcement requires independently installed enrollment authority (G5). |
+
+## Blocking gaps
+
+- **G1 — Custody/physical provider:** complete and deliver the actual EXT-SECRETS-1 custody adapter and per-key lifecycle; production all-copy atomic manifest destruction with hold pins, immutable ordered receipts and exact original lookup. Platform currently exposes only internal wrapping code and candidate lifecycle interfaces. No provider technology/installation was supplied; the user confirmed they do not know which installation exists.
+- **G2 — Authority/trust:** implement actual published-trust ES256 deletion-capability validation, exact current online guard/dispatch/attestation validation, private authenticated compromise registrar and independent nonrollback transition authorities. An always-true callback or self-issued anchor is not acceptable.
+- **G3 — Physical durability/restore:** qualify transaction atomicity, provider partial failure, every copy/TTL/backup/restore path, terminal receipts and revocation retention against the actual chosen provider.
+- **G4 — Recovery/replay:** qualify actor-journal recovery with actual writer/anchor authorities and operational scheduling, supply mixed-root directory snapshot policy/bindings, and prove same-root source+target replay against the real installed engine. Local source now includes durable completion recovery and a distinct trusted production reader route; these are not physical/operational qualification.
+- **G5 — Installed owner fixture:** supply actual independently installed executor/observer/enrollment programs and complete low-level driver fixtures against the accepted source, provider and authority. No mock, Agents receiver or consuming runtime path may substitute.
+- **G6 — Verifier completeness:** the shipped harness is a protocol implementation with 41 planned cases; complete real provider-schema/raw receipt-chain reconstruction and deletion JWS assertions before it is accepted as the register's complete executable verifier. Do not mistake case names, transport signatures or signed summary flags for proof of every register clause.
+- **G7 — Complete canonical target:** publication records this partial implementation only. No exact full delivery commit can be proposed until G1–G6 are closed and the complete implementation and verifier exist together at a target reachable from `origin/main`.
+
+## Exact candidate Live command and reference bindings
+
+From the Agents root:
+
+```bash
+python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts
+```
+
+This is the implemented harness command, **not a request to run it or an acceptable Committed command today**. It has no hard-coded integration date or unconditional refusal. Its success branch requires accepted exact source/profile/plan/anchor bindings, separately installed real role programs and all assertions passing. The protocol and remaining limitations are in [the verifier protocol](ext-protection-1-verifier-protocol.md).
+
+| Installed input / binding | Current state |
+| --- | --- |
+| Profile at the exact absolute command path | Not installed; no profile hash accepted |
+| Custodian per-tenant KEK/DigestKey references, current versions, lifecycle policy and full copy inventory | Not installed/qualified; private values must remain outside this packet |
+| Physical atomic provider/store identity and contract version | Not selected/implemented/installed |
+| Deletion capability issuer/audience/per-tenant key-family-version public-anchor references and revocation/trust-profile revisions | Not installed; no hashes invented |
+| Independent current guard/anchoring/registrar/writer-proof references | Not installed |
+| Executor, persisted-state observer and enrollment executable/inventory references | Not installed; their code and ACL scope must be reviewed and hash-bound independently |
+| Three distinct public P-256 role anchors and `env:` credential references | Not installed; no private keys or credential values requested or generated for Live |
+| Engine binary path/SHA-256 and independently verified compiled target revision | No accepted installed binary |
+| Exact plan SHA-256 | `c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c` |
+| Read-only Agents register SHA-256 | `5bf35ac2857664c0589966a10944cd66278af85242c7c1f08e31ae29aa40e8a2` |
+| Read-only 2026-10-18 reconciliation SHA-256 | `7ea22dad7792770f8377cef64ab6f3c7b610ad06e776b71dd3b9aa12739ca5ae` |
+| Source/register/reconciliation hash bindings and validation logs | Retained in the source evidence directory below |
+
+No acceptance-safe installed profile can be produced by filling unknown anchors with nulls or synthetic keys. The profile schema is reference-only and fails closed on any missing or changed file, credential reference, role separation or hash. Accepting an installation later must bind its actual bytes and all authority versions; it must not reuse a refusal packet's missing values.
+
+## Validation and retained evidence
+
+Evidence directory: `/home/administrator/hexalith-protection-evidence/ext-protection-1/source-20261018T084014Z-fba1f8c8c91e44cebafbe26128fa52f2/`. The [final validation manifest](/home/administrator/hexalith-protection-evidence/ext-protection-1/source-20261018T084014Z-fba1f8c8c91e44cebafbe26128fa52f2/validation-manifest-post-review.json) retains exact commands, results and log hashes, referencing earlier attempts. The [source hash inventory](/home/administrator/hexalith-protection-evidence/ext-protection-1/source-20261018T084014Z-fba1f8c8c91e44cebafbe26128fa52f2/source-files-post-review-2.json) binds the reviewable working-tree artifact; it supplies no committed-target claim. Concurrent unrelated history changes mean these working-tree checks cannot serve as an exact clean-target qualification run.
+
+All builds use local Debug assets and Hexalith project references. Test assemblies are invoked directly for xUnit v3 class filtering. Results are source/component evidence only.
+
+| Command | Result / log |
+| --- | --- |
+| `aspire start --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive` | Exit 0; started local baseline. |
+| `aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json --non-interactive` | Exit 0; application resources Waiting on security. No protection qualification. |
+| `aspire stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive` | Exit 0; stopped baseline before source builds. |
+| `dotnet build tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1` | Exit 0; 0 warnings/errors; `payload-tests-build-final.log`. |
+| `dotnet tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll -noColor` | **635 passed**, 0 failed/skipped; `payload-tests-run-final.log`. |
+| `dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1` | Exit 0; 0 warnings/errors; `review-fix-build-final-3.log`. |
+| Affected Server selection shown below | **394 passed**, 0 failed/skipped; `affected-source-post-review.log`. Includes the actual-engine service, persistence, actor recovery, legacy hooks, readers through actor replay, publisher, snapshot and infrastructure-failure paths. |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.InteractionProtectionActorRecoveryTests -class Hexalith.EventStore.PayloadProtection.Tests.InteractionPayloadProtectionServiceTests -class Hexalith.EventStore.Server.Tests.Security.InteractionProtectionPersistenceTests -noColor` | **29 passed**, 0 failed/skipped; `review-fix-targeted-final-2.log`; included in the 394-case selection. |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class 'Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionActorTests' -class 'Hexalith.EventStore.Server.Tests.Security.InteractionOccurrenceRegistryActorTests' -class 'Hexalith.EventStore.Server.Tests.Security.GovernanceScopeGuardTests'` | **145 passed**, 0 failed/skipped; `guard-components.log`. |
+| `python3 -m unittest discover -s tools/tests -p test_ext_protection_1.py -v` | **22 passed**; offline only; `verifier-offline-tests-review-final-22.log`. |
+| `python3 tools/verify-ext-protection-1.py --mode Source` | Exit 0; 41 planned cases, exact plan hash above, `liveExecuted:false`; `verifier-source-final.log`. |
+| `dotnet build tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj -c Debug -m:1 -p:UseHexalithProjectReferences=true` | Exit 0; 0 warnings/errors; `integration-build-post-review.log`. |
+| `dotnet tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -class 'Hexalith.EventStore.IntegrationTests.EventStore.ReplayIntegrationTests'` | **15 passed**, 0 failed/skipped; `replay-integration-post-review.log`. This exercises existing EventStore HTTP/replay integration, not physical erase or the Agents seam. |
+| `git diff --check` | Exit 0. |
+
+Exact affected Server command, from the EventStore root:
+
+```bash
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll \
+  -class Hexalith.EventStore.PayloadProtection.Tests.InteractionPayloadProtectionServiceTests \
+  -class Hexalith.EventStore.Server.Tests.Security.InteractionProtectionPersistenceTests \
+  -class Hexalith.EventStore.Server.Tests.Security.InteractionProtectionActorRecoveryTests \
+  -class Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests \
+  -class Hexalith.EventStore.Server.Tests.Security.UnreadableProtectedDataBehaviorTests \
+  -class Hexalith.EventStore.Server.Tests.Events.EventPersisterTests \
+  -class Hexalith.EventStore.Server.Tests.Events.SnapshotManagerTests \
+  -class Hexalith.EventStore.Server.Tests.Events.EventPublisherTests \
+  -class Hexalith.EventStore.Server.Tests.Actors.AggregateActorManualSnapshotTests \
+  -class Hexalith.EventStore.Server.Tests.Actors.AggregateActorInfrastructureFailureTests -noColor
+```
+
+The two direct logical-reader classes also passed 86 cases (`logical-reader-components.log`). After the trusted-route correction they passed again within `review-fix-targeted-final.log`: that combined selection had 114 passes and one manual-snapshot fixture failure. The fixture's noncanonical MessageId was corrected; the same lost-acknowledgement assertion now passes in the final 29- and 394-case selections. The failed combined attempt is retained and is not reported as an entirely passing run.
+
+During development, a broad `Security.*` Server test selection was stopped after about 90 seconds because it included unrelated SecretsProtection evidence tests. It is retained as `server-security-run-1.log` and is **not** counted as passed. Earlier iterations exposed missing source revision reporting and legacy mock/default-interface compatibility failures; these were fixed. No test expectation was weakened to hide a failure.
+
+The full production integration/Level 4 gate is blocked by G1–G6, not by a claim that a successful synthetic source test constitutes irreversible destruction. The owner Live command was not invoked, even to record refusal. No dependency is Available and no OQ-5.4-1 phase was run.

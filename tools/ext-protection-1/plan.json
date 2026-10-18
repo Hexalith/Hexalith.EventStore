@@ -1,0 +1,568 @@
+{
+  "schema": "ext-protection-1-plan/v1",
+  "cases": [
+    {
+      "id": "P01",
+      "name": "seal-directory-outbox",
+      "steps": [
+        "SealDirectoryOutbox",
+        "UnsealDirectoryOutbox"
+      ],
+      "checks": [
+        "sealed",
+        "roundtrip"
+      ]
+    },
+    {
+      "id": "P02",
+      "name": "seal-target-same-root",
+      "steps": [
+        "SealDirectoryOutbox",
+        "SealTargetEvent",
+        "UnsealTargetEvent"
+      ],
+      "checks": [
+        "sealed",
+        "roundtrip",
+        "same-root"
+      ]
+    },
+    {
+      "id": "P03",
+      "name": "erase-source-and-target",
+      "steps": [
+        "SealDirectoryOutbox",
+        "SealTargetEvent",
+        "DestroyDekManifest",
+        "ReplayAll"
+      ],
+      "checks": [
+        "erased",
+        "receipts"
+      ]
+    },
+    {
+      "id": "P04",
+      "name": "hold-pin",
+      "steps": [
+        "SealTargetEvent",
+        "PinDek",
+        "RejectPerKeyDestroy",
+        "RejectManifestDestroy",
+        "AuthorizeUnpinDek",
+        "UnpinDek",
+        "DestroyDekManifest",
+        "ReplayAll"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "pin"
+      ]
+    },
+    {
+      "id": "P05",
+      "name": "multi-key-atomic",
+      "steps": [
+        "SealAllTargets",
+        "DestroyDekManifest",
+        "ReplayAll"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "atomic"
+      ]
+    },
+    {
+      "id": "P06",
+      "name": "retry-and-lost-result",
+      "steps": [
+        "SealAllTargets",
+        "DestroyWithLostAcknowledgement",
+        "LookupOriginalDestruction",
+        "RetryExactManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "exact-results"
+      ]
+    },
+    {
+      "id": "P07",
+      "name": "changed-manifest",
+      "steps": [
+        "SealAllTargets",
+        "RejectChangedManifest"
+      ],
+      "checks": [
+        "active",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P08",
+      "name": "changed-payload",
+      "steps": [
+        "SealTargetEvent",
+        "RejectChangedPayload"
+      ],
+      "checks": [
+        "sealed",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P09",
+      "name": "partial-provider-failure",
+      "steps": [
+        "SealAllTargets",
+        "InjectPartialProviderFailure",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "atomic",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P10",
+      "name": "snapshot-cache",
+      "steps": [
+        "SealDirectoryOutbox",
+        "SealTargetEvent",
+        "SealSnapshotAndCache",
+        "DestroyDekManifest",
+        "ReplayAll"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "copies"
+      ]
+    },
+    {
+      "id": "P11",
+      "name": "backup-restore",
+      "steps": [
+        "SealAllTargets",
+        "CreateBackup",
+        "DestroyDekManifest",
+        "RestoreBackup",
+        "ReplayAll"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "copies",
+        "restore"
+      ]
+    },
+    {
+      "id": "P12",
+      "name": "cross-tenant-alias",
+      "steps": [
+        "SealAllTargets",
+        "RejectCrossTenantAlias",
+        "RejectCrossTenantManifest"
+      ],
+      "checks": [
+        "active",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P13",
+      "name": "containment-identity",
+      "steps": [
+        "SealAllTargets",
+        "IssueContainmentSingletons",
+        "DestroyDekManifest",
+        "LookupOriginalDestruction"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "containment"
+      ]
+    },
+    {
+      "id": "P14",
+      "name": "same-alias-before-consume",
+      "steps": [
+        "SealAllTargets",
+        "LinkSameTargetResource",
+        "DestroyDekManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "coverage"
+      ]
+    },
+    {
+      "id": "P15",
+      "name": "same-alias-after-consume",
+      "steps": [
+        "SealAllTargets",
+        "DestroyDekManifest",
+        "LinkSameTargetResource",
+        "LookupAlreadyDestroyed"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "coverage",
+        "already-destroyed"
+      ]
+    },
+    {
+      "id": "P16",
+      "name": "capability-nonexpiry",
+      "steps": [
+        "SealAllTargets",
+        "DelayAndRestoreDispatch",
+        "DestroyDekManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "capability"
+      ]
+    },
+    {
+      "id": "P17",
+      "name": "signature-substitution",
+      "steps": [
+        "SealAllTargets",
+        "RejectCanonicalHeaderPayloadSubstitutions"
+      ],
+      "checks": [
+        "active",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P18",
+      "name": "stale-revoked-dispatch",
+      "steps": [
+        "SealAllTargets",
+        "RejectStaleRevokedDispatch"
+      ],
+      "checks": [
+        "active",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P19",
+      "name": "guard-unavailable",
+      "steps": [
+        "SealAllTargets",
+        "DisableGuardLookup",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P20",
+      "name": "hold-before-dispatch",
+      "steps": [
+        "SealAllTargets",
+        "HoldBeforeDispatch",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "no-effect",
+        "hold-order"
+      ]
+    },
+    {
+      "id": "P21",
+      "name": "hold-at-dispatch",
+      "steps": [
+        "SealAllTargets",
+        "RaceHoldDispatch"
+      ],
+      "checks": [
+        "race",
+        "hold-order"
+      ]
+    },
+    {
+      "id": "P22",
+      "name": "hold-after-dispatch",
+      "steps": [
+        "SealAllTargets",
+        "HoldAfterDispatch",
+        "DestroyDekManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "hold-order"
+      ]
+    },
+    {
+      "id": "P23",
+      "name": "integrity-before-reserve",
+      "steps": [
+        "SealAllTargets",
+        "BlockAdmissionBeforeReserve",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "blocked"
+      ]
+    },
+    {
+      "id": "P24",
+      "name": "integrity-at-reserve",
+      "steps": [
+        "SealAllTargets",
+        "RaceAdmissionReserve"
+      ],
+      "checks": [
+        "race"
+      ]
+    },
+    {
+      "id": "P25",
+      "name": "integrity-after-reserve",
+      "steps": [
+        "SealAllTargets",
+        "ReserveBeforeAdmissionBlock",
+        "LookupOriginalDestruction"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "reserved-recovery"
+      ]
+    },
+    {
+      "id": "P26",
+      "name": "compromise-before-register",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseBeforeRegistration",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "blocked"
+      ]
+    },
+    {
+      "id": "P27",
+      "name": "compromise-at-reserve",
+      "steps": [
+        "SealAllTargets",
+        "RaceCompromiseReserve"
+      ],
+      "checks": [
+        "race"
+      ]
+    },
+    {
+      "id": "P28",
+      "name": "compromise-after-reserve",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseAfterReserve",
+        "LookupOriginalDestruction"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "reserved-recovery"
+      ]
+    },
+    {
+      "id": "P29",
+      "name": "reattest-success",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseAndReattest",
+        "ActivateReattestedDeletionBatch",
+        "DestroyDekManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "reattested"
+      ]
+    },
+    {
+      "id": "P30",
+      "name": "replacement-compromised-before-replace",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseReplacementBeforeReplace",
+        "RejectActivation"
+      ],
+      "checks": [
+        "active",
+        "replacement-blocked"
+      ]
+    },
+    {
+      "id": "P31",
+      "name": "replacement-compromised-before-dispatch",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseReplacementBeforeDispatch",
+        "RejectActivation"
+      ],
+      "checks": [
+        "active",
+        "replacement-blocked"
+      ]
+    },
+    {
+      "id": "P32",
+      "name": "replacement-compromised-before-activation",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseReplacementBeforeActivation",
+        "RejectActivation"
+      ],
+      "checks": [
+        "active",
+        "replacement-blocked"
+      ]
+    },
+    {
+      "id": "P33",
+      "name": "replacement-compromised-at-activation",
+      "steps": [
+        "SealAllTargets",
+        "RaceReplacementActivation"
+      ],
+      "checks": [
+        "active",
+        "replacement-blocked"
+      ]
+    },
+    {
+      "id": "P34",
+      "name": "replacement-compromised-after-activation",
+      "steps": [
+        "SealAllTargets",
+        "CompromiseReplacementAfterActivation",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "blocked"
+      ]
+    },
+    {
+      "id": "P35",
+      "name": "block-delivery-and-mirror-loss",
+      "steps": [
+        "SealAllTargets",
+        "LoseBlockDeliveryAndMirror",
+        "LookupOriginalBlock",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "blocked",
+        "exact-results"
+      ]
+    },
+    {
+      "id": "P36",
+      "name": "activation-result-loss",
+      "steps": [
+        "SealAllTargets",
+        "LoseActivationResult",
+        "LookupOriginalActivation",
+        "DestroyDekManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "reattested",
+        "exact-results"
+      ]
+    },
+    {
+      "id": "P37",
+      "name": "admission-block-never-reopens",
+      "steps": [
+        "SealAllTargets",
+        "BlockAdmissionBeforeReserve",
+        "RejectReattestation",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "blocked"
+      ]
+    },
+    {
+      "id": "P38",
+      "name": "identity-revision-substitution",
+      "steps": [
+        "SealAllTargets",
+        "RejectTenantKeyAttestationDispatchRevisionSubstitutions"
+      ],
+      "checks": [
+        "active",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P39",
+      "name": "two-stale-signing-attempts",
+      "steps": [
+        "SealAllTargets",
+        "TwoStaleSigningAttempts",
+        "DestroyDekManifest"
+      ],
+      "checks": [
+        "erased",
+        "receipts",
+        "signing-attempts"
+      ]
+    },
+    {
+      "id": "P40",
+      "name": "pending-unknown-block",
+      "steps": [
+        "SealAllTargets",
+        "MakeBlockOutcomeUnknown",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "blocked",
+        "no-effect"
+      ]
+    },
+    {
+      "id": "P41",
+      "name": "restored-writer-and-anchors",
+      "steps": [
+        "SealAllTargets",
+        "RestoreStaleWriterAndOwnerState",
+        "RejectStaleWriter",
+        "RejectManifestDestroy"
+      ],
+      "checks": [
+        "active",
+        "no-effect",
+        "restore"
+      ]
+    }
+  ]
+}

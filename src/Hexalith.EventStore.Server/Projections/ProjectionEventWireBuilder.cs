@@ -62,15 +62,25 @@ internal static class ProjectionEventWireBuilder {
                 ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.WireUnprotectionAttempts);
                 PayloadUnprotectionOutcome outcome;
                 try {
-                    outcome = await payloadProtectionService
-                        .TryUnprotectEventPayloadAsync(
+                    PayloadDistributionResult distribution = payloadProtectionService is Hexalith.EventStore.PayloadProtection.InteractionPayloadProtectionService
+                        ? await payloadProtectionService
+                        .PrepareEventForDistributionAsync(
                             identity,
                             envelope.EventTypeName,
                             envelope.Payload,
                             envelope.SerializationFormat,
                             storedMetadata,
+                            new PayloadProtectionOccurrenceContext(checked((ulong)envelope.SequenceNumber),
+                                PayloadProtectionPayloadKind.Event, envelope.EventTypeName),
                             cancellationToken)
-                        .ConfigureAwait(false);
+                        .ConfigureAwait(false)
+                        : new(await payloadProtectionService.TryUnprotectEventPayloadAsync(identity, envelope.EventTypeName,
+                            envelope.Payload, envelope.SerializationFormat, storedMetadata, cancellationToken).ConfigureAwait(false));
+                    if (distribution.IsSealed)
+                    {
+                        SealedPayloadDistributionGuard.RequireSealed(payloadProtectionService, envelope, storedMetadata, distribution);
+                    }
+                    outcome = distribution.Outcome;
                 }
                 catch (OperationCanceledException) {
                     throw;

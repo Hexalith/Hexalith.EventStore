@@ -9,6 +9,7 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.PayloadProtection;
 
 using Microsoft.Extensions.Logging;
 
@@ -153,6 +154,7 @@ public partial class EventPersister(
             string ApplicationFormat,
             byte[] ApplicationPayloadHash)>(domainResult.Events.Count);
         var envelopes = new List<EventEnvelope>(domainResult.Events.Count);
+        var protectionCompletions = new List<PayloadProtectionCompletionContext>();
 
         try {
 
@@ -168,22 +170,39 @@ public partial class EventPersister(
                 byte[] applicationPayloadHash = EventLogicalDigest.HashPayload(payloadBytes);
 
                 try {
-                    PayloadProtectionResult protectionResult = await payloadProtectionService
+                    PayloadProtectionWriteResult writeResult = payloadProtectionService is InteractionPayloadProtectionService
+                        ? await payloadProtectionService
                         .ProtectEventPayloadAsync(
                             identity,
                             eventPayload,
                             eventTypeName,
                             payloadBytes,
                             serializationFormat,
+                            new PayloadProtectionOccurrenceContext(checked((ulong)(currentSequence + 1 + preparedEvents.Count)),
+                                PayloadProtectionPayloadKind.Event, eventTypeName),
                             cancellationToken)
-                        .ConfigureAwait(false);
+                        .ConfigureAwait(false)
+                        : new(await payloadProtectionService.ProtectEventPayloadAsync(identity, eventPayload, eventTypeName,
+                            payloadBytes, serializationFormat, cancellationToken).ConfigureAwait(false), null);
+                    PayloadProtectionResult protectionResult = writeResult.ProtectionResult;
+                    if (writeResult.CompletionContext is not null) { protectionCompletions.Add(writeResult.CompletionContext); }
+                    string digestFormat = serializationFormat;
+                    if (payloadProtectionService is InteractionPayloadProtectionService
+                        && protectionResult.SerializationFormat == "json+pdenc-v2")
+                    {
+                        // The v2 stored application representation remains sealed in distribution and after erasure.
+                        // Its digest authenticates that representation and all addressed lineage before any unseal.
+                        System.Security.Cryptography.CryptographicOperations.ZeroMemory(applicationPayloadHash);
+                        applicationPayloadHash = EventLogicalDigest.HashPayload(protectionResult.PayloadBytes);
+                        digestFormat = protectionResult.SerializationFormat;
+                    }
 
                     IDictionary<string, string> extensions = EventStorePayloadProtectionMetadataCarrier.Write(
                         extensions: (IDictionary<string, string>?)null,
                         metadata: protectionResult.Metadata);
 
                     preparedEvents.Add((eventTypeName, protectionResult, extensions, eventContractType, payloadVersion,
-                        metadataVersion, serializationFormat, applicationPayloadHash));
+                        metadataVersion, digestFormat, applicationPayloadHash));
                 }
                 catch {
                     System.Security.Cryptography.CryptographicOperations.ZeroMemory(applicationPayloadHash);
@@ -263,7 +282,29 @@ public partial class EventPersister(
 
             Log.EventsPersisted(logger, command.CorrelationId, causationId, identity.TenantId, identity.AggregateId, domainResult.Events.Count, newSequence);
 
-            return new EventPersistResult(newSequence, envelopes);
+            return new EventPersistResult(newSequence, envelopes) { ProtectionCompletions = protectionCompletions };
+        }
+        catch
+        {
+            if (payloadProtectionService is InteractionPayloadProtectionService && protectionCompletions.Count > 0)
+            {
+                using var recovery = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                foreach (PayloadProtectionCompletionContext original in protectionCompletions)
+                {
+                    try
+                    {
+                        // This asks the independent registry authority to prove never-written and
+                        // close that original writer. A local preparation exception is not proof.
+                        // Refusal/unknown retains the original binding and sealed owner record for
+                        // exact RecoverOriginalCommittedOccurrenceAsync or byte-identical retry.
+                        await payloadProtectionService.CompletePayloadProtectionAsync(original,
+                            PayloadProtectionPersistenceOutcome.NotPersisted, recovery.Token)
+                            .WaitAsync(recovery.Token).ConfigureAwait(false);
+                    }
+                    catch (Exception) { if (recovery.IsCancellationRequested) { break; } }
+                }
+            }
+            throw;
         }
         finally {
             foreach (var prepared in preparedEvents) {

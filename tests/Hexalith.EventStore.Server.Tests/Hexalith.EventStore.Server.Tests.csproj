@@ -35,6 +35,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="../Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs" Link="Projections/RecordingDaprClient.cs" />
+    <Compile Include="../Hexalith.EventStore.PayloadProtection.Tests/InteractionOccurrenceProtectorFixture.cs" Link="Security/InteractionOccurrenceProtectorFixture.cs" />
+    <Compile Include="../Hexalith.EventStore.PayloadProtection.Tests/InteractionOccurrenceTestKeys.cs" Link="Security/InteractionOccurrenceTestKeys.cs" />
   </ItemGroup>
 
 </Project>
