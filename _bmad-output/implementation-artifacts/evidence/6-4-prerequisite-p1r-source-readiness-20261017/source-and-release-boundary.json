@@ -1,0 +1,78 @@
+{
+  "schema": "hexalith.eventstore.p1r-source-readiness.v1",
+  "observed_at_utc": "2026-10-17T19:29:26.861855+00:00",
+  "source_revision": "bb986902d3c1b2f3b1c209fe8eb0ffa0292153d9",
+  "published_3_124_0_tag_revision": "0737c0befce5338e294a789092a0e223e8264a04",
+  "source_commits_after_3_124_0": [
+    "bb986902d3c1b2f3b1c209fe8eb0ffa0292153d9 build: merge feat/story-6-1-supported-project-reads into main via /pushall",
+    "191b7128f1a86d47407f5f5a68aae67c1918ce44 docs(story-6.4): record OQ8 qualification evidence",
+    "db23b193549f4554a6fdbf54b6a8f2e13b815510 feat(queries): add verified caller authority and recoverable batches",
+    "ac059da7e13047600d65c592dad3204238fd9eb5 build: sync local changes via /pushall",
+    "1353b83939de812671260f1d7a5910ee8fb60119 test(story-6.4): correct runtime qualification fixtures",
+    "7842a1fb81aa329ecac6271d885b959b40522767 fix: story 6.4",
+    "77d9af18a54d92506e310fe5a45021a395e66f60 build: sync local changes via /pushall",
+    "b99a03dfc29021af16511ee664820e05126b73f8 fix: story 6.4",
+    "9dbb3aaf0254a607e5b6489e0de2a8aee0f82edb build: sync local changes via /pushall"
+  ],
+  "changed_production_files_after_3_124_0": 67,
+  "workspace_builds_revision": "b7a9c9ec9f57e098b408d3b940929ef4b160985b",
+  "proposed_version": "3.125.0",
+  "proposed_tag_present": false,
+  "published_package_index_observations": [
+    {
+      "package": "Hexalith.EventStore.Client",
+      "index_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.client/index.json",
+      "index_sha256": "ee9869d2165f157d7f9ed7835176bbfcf931c497315f088564f28dbd1071c196",
+      "proposed_3_125_0_present": false,
+      "latest_observed": "3.124.0"
+    },
+    {
+      "package": "Hexalith.EventStore.Contracts",
+      "index_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.contracts/index.json",
+      "index_sha256": "ee9869d2165f157d7f9ed7835176bbfcf931c497315f088564f28dbd1071c196",
+      "proposed_3_125_0_present": false,
+      "latest_observed": "3.124.0"
+    },
+    {
+      "package": "Hexalith.EventStore.DomainService",
+      "index_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.domainservice/index.json",
+      "index_sha256": "74011db7027ff8a5e6f72aae8766c7d2eb3bbeb54d02a7ae38817f3cadd6e855",
+      "proposed_3_125_0_present": false,
+      "latest_observed": "3.124.0"
+    },
+    {
+      "package": "Hexalith.EventStore.Server",
+      "index_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.server/index.json",
+      "index_sha256": "ee9869d2165f157d7f9ed7835176bbfcf931c497315f088564f28dbd1071c196",
+      "proposed_3_125_0_present": false,
+      "latest_observed": "3.124.0"
+    },
+    {
+      "package": "Hexalith.EventStore.ServiceDefaults",
+      "index_url": "https://api.nuget.org/v3-flatcontainer/hexalith.eventstore.servicedefaults/index.json",
+      "index_sha256": "74011db7027ff8a5e6f72aae8766c7d2eb3bbeb54d02a7ae38817f3cadd6e855",
+      "proposed_3_125_0_present": false,
+      "latest_observed": "3.124.0"
+    }
+  ],
+  "sha256": {
+    "tools/p1r-published-consumers/Directory.Build.props": "181b5f4e323fe08047cf9f5373db46da59978521817127daab2385a26aca2551",
+    "tools/p1r-published-consumers/host/Host.csproj": "6c1f522d4901760c6f98dbcb148cf356f8de3e18674cbadb5e867f7c5fd32a3a",
+    "tools/p1r-published-consumers/domain/Domain.csproj": "22c8e9e4ba29fc91c898ec3b6c081d575b74a9ba88982dd138bebc92a2192787",
+    "tools/p1r-published-consumers/README.md": "cb1d84a3b0f127b4916096a1a5a810e0dc65d125d2b2a484fdc0ab22ae87fd6a",
+    "tools/p1r-published-consumers/FixtureSnapshotQualification.cs": "b8e1e4e85a22688cb04ed321244d15c9a359689786c522844a7999b4fc588fd2",
+    "tools/p1r_published_executor.py": "2435ce0c5110e165e945b1cb6ce1f30e099cbe438b897fd02492c26b7093265b",
+    "tools/p1r_check_witnesses.py": "b837cd0b239f030a31f884c4ba101bd0e4221d4bc3885a63e3942b0435af7bbe",
+    "tools/p1r_published_qualification.py": "128d4ad3414574258010f0c0b71980f213101d864ea5c26cf342f779ee47fdc1",
+    "tools/p1r_isolation.py": "7e3164f8e9c711b2e943d52a718c4314035ab7003b5cd7edce5f7cfe55a887d8",
+    "tools/tests/test_p1r_published_executor.py": "456d891bd25e15973a785aa47bf4d1e9557d685420879d4502941b18364c9392",
+    "tools/tests/test_p1r_snapshot_registration.py": "2d76c9f9153e031f9025240fedd9a379d3c5fccc375c5cb601ea8212b397291e"
+  },
+  "protected_changes": {
+    "eventstore_production_tests_pins_unchanged": true,
+    "workspace_gitmodules_sprint_unchanged": true
+  },
+  "qualification_status": "not selected or qualified",
+  "rollback": null,
+  "hashes_refreshed_at_utc": "2026-10-17T19:44:37.370551+00:00"
+}

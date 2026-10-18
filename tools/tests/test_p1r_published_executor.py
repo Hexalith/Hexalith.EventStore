@@ -35,11 +35,11 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-3.110.0'))
             for writer in ('3.110.0','3.70.1','3.122.2',
-                           '3.121.0' if self.candidate_version == '3.122.1' else '3.122.1'):
+                           *(version for version in ('3.121.0','3.122.1','3.125.0') if version != self.candidate_version)):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
         self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
-        for version in ('3.119.0','3.122.0','3.122.2'):
+        for version in ('3.119.0','3.122.0','3.122.2','3.125.1'):
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'snapshot-tail','source-to-3.110.0'))
 
@@ -229,7 +229,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                     'sha256':value} for entry in verified.values() for value in entry['dlls']]},
             'cases':[row],'execution_evidence':executed,'output_sha256':executor.digest(executor.canonical(executed)),
             'assertions':row['assertions'],'execution':'passed','compatibility':'compatible'}
-        if self.candidate_version == '3.122.1':
+        if self.candidate_version in ('3.122.1','3.125.0'):
             receipt = self.attach_isolation(receipt,context)
         return receipt,context
 
@@ -294,7 +294,8 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
 
     def testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory(self):
         fixture = self.fixture()
-        for version in ('source','3.122.2','3.121.0' if self.candidate_version == '3.122.1' else '3.122.1'):
+        for version in ('source','3.122.2',
+                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0') if candidate != self.candidate_version]):
             changed = copy.deepcopy(fixture)
             config = changed[1]['configurations'][0]
             config['version'] = version
@@ -620,6 +621,22 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
         return fixture
 
 
+class CurrentSourceReadinessSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
+    candidate_version = '3.125.0'
+
+    def testOperationalImportRejectsMissingFinalIsolation(self):
+        receipt,context = self.import_fixture(scope='operational')
+        self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+        changed = copy.deepcopy(receipt)
+        del changed['execution_evidence']['isolation']
+        changed['output_sha256'] = executor.digest(executor.canonical(changed['execution_evidence']))
+        with self.assertRaises(preparation.InvalidPacket):
+            qualification.receipt_outcome(changed,context)
+
+    def testRecoveryRetainsExactContributingCleanup(self):
+        ProposedQualifiedSnapshotWitnessTests.testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract(self)
+
+
 class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
     candidate_version = '3.122.1'
 
@@ -877,10 +894,10 @@ class MeasurementTests(unittest.TestCase):
         worker.postgres_write.assert_not_called()
 
     def testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends(self):
-        for version in ("3.121.0", "3.122.1", "source"):
+        for version in ("3.121.0", "3.122.1", "3.125.0", "source"):
             with self.subTest(version=version):
                 worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}},
-                    candidate="3.121.0" if version == "3.121.0" else "3.122.1")
+                    candidate=version if version != "source" else "3.125.0")
                 worker.seed(version, 10, checks)
                 self.assertEqual([call.args[0] for call in worker.probe.call_args_list], [version] * 4)
                 self.assertEqual([call.args[1][0] for call in worker.probe.call_args_list], ["seed", "manual-snapshot", "seed", "seed"])
@@ -890,26 +907,32 @@ class MeasurementTests(unittest.TestCase):
                 self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
 
     def testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis(self):
-        for version in ("3.121.0", "3.122.1", "source"):
+        for version in ("3.121.0", "3.122.1", "3.125.0", "source"):
             for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
                              {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
                 with self.subTest(version=version,snapshot=snapshot):
-                    worker, checks = self.snapshotSeedWorker(snapshot,candidate="3.122.1")
+                    worker, checks = self.snapshotSeedWorker(snapshot,candidate=version if version != "source" else "3.125.0")
                     worker.seed(version, 10, checks)
                     self.assertGreater(checks.counter["failed"], 0)
                     worker.mutate.assert_not_called()
 
     def testUnenrolledSuccessorSeedRefusesBeforeManualSnapshotOrDiagnosticSynthesis(self):
-        for version in ("3.122.0", "3.122.2"):
-            worker, checks = self.snapshotSeedWorker(None,candidate="3.122.1")
-            with self.subTest(version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
+        for candidate,version in (("3.125.0","3.122.0"),("3.125.0","3.122.2"),
+                                  ("3.125.0","3.125.1"),("3.126.0","source"),
+                                  ("3.125.0","3.121.0")):
+            worker, checks = self.snapshotSeedWorker(None,candidate=candidate)
+            with self.subTest(candidate=candidate,version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
                 worker.seed(version,10,checks)
             worker.probe.assert_not_called()
             worker.mutate.assert_not_called()
             worker.raw_state.assert_not_called()
+            worker.stop_nodes.assert_not_called()
+            worker.postgres_query.assert_not_called()
+            worker.start_nodes.assert_not_called()
 
     def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
-        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.122.1","source"),("3.122.2","3.122.2"),("3.122.1",None)):
+        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),
+                                 ("3.125.0","source"),("3.122.2","3.122.2"),("3.125.0",None)):
             with self.subTest(candidate=candidate,writer=writer):
                 worker = executor.Executor.__new__(executor.Executor)
                 worker.commands, worker.configurations, worker.errors = [], [], []
@@ -962,6 +985,7 @@ class MeasurementTests(unittest.TestCase):
     def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
         with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
             worker = CleanupTests.worker(self, scratch)
+            worker.candidate = "3.125.0"
             worker.redis = "source-id"
             worker.postgres_password = "<TEST_PASSWORD>"
             worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
@@ -987,12 +1011,15 @@ class MeasurementTests(unittest.TestCase):
 
             worker.run = run
             worker.inventory = inventory
-            worker.actor = actor
-            worker.seed = worker.mutate = worker.stop_nodes = mock.Mock()
+            worker.actor = mock.Mock(side_effect=actor)
+            worker.seed, worker.mutate, worker.stop_nodes = mock.Mock(), mock.Mock(), mock.Mock()
             worker.start_nodes = mock.Mock(side_effect=lambda *args, **kwargs: [
                 {"pid": 1, "start_ticks": 1, "pgid": 1, "session": 1}])
 
             worker.restore_case("synthetic-restore", executor.Measurements())
+            worker.seed.assert_called_once_with("3.125.0", 10, mock.ANY)
+            self.assertEqual([call.args[0] for call in worker.start_nodes.call_args_list], ["3.125.0", "3.125.0"])
+            self.assertTrue(all(call.args[0] == "3.125.0" for call in worker.actor.call_args_list))
             commands = {row["step"]: row for row in worker.pending_restore["commands"]}
             self.assertEqual(commands["backup"]["argv"][:4], ["docker", "exec", "source-id", "pg_dump"])
             self.assertEqual(commands["create-database"]["argv"], ["docker", "start", "restored-id"])

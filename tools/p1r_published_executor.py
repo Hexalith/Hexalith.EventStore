@@ -891,14 +891,16 @@ class Executor:
         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
 
     def seed(self, version, interval, checks, write_alias=None):
+        genuine = interval == 10 and qualification.is_successor_selection(
+            {"candidate": {"version": self.candidate if version == "source" else version}})
+        if genuine:
+            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0")
+                    and version in (self.candidate, "source"), "successor snapshot fixture is not explicitly enabled")
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
         self.start_nodes(version, interval=interval, write_alias=write_alias)
-        genuine = interval == 10 and qualification.is_successor_selection(
-            {"candidate": {"version": self.candidate if version == "source" else version}})
         self.last_snapshot_creation = None
         if genuine:
-            require(version in ("3.121.0", "3.122.1", "source"), "successor snapshot fixture is not explicitly enabled")
             registration = self.http("GET", f"http://127.0.0.1:{self.domain_port}/ready")["snapshot_qualification"]
             checks.check("snapshot-fixture-enrolled", registration.get("registered") is True and registration.get("test_only") is True)
             checks.check("snapshot-state-roundtrip-parity", registration.get("state_roundtrip") is True
@@ -1122,7 +1124,7 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
-        if self.candidate in ("3.121.0", "3.122.1") and getattr(self, "last_snapshot_creation", None) is not None:
+        if self.candidate in ("3.121.0", "3.122.1", "3.125.0") and getattr(self, "last_snapshot_creation", None) is not None:
             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
             data = regular(path)
             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}

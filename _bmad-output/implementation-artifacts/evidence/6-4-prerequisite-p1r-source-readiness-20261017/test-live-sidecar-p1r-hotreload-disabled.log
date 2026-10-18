@@ -1,0 +1,430 @@
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:34511
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:c590ceb935b945e49324ff50e059c569. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:c590ceb935b945e49324ff50e059c569. New ETag prefix: d2FybXVw
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8, CausationId=01M55NARVV4Y5QTEKCXXG86SK8, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=18.508
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: null for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8, CausationId=01M55NARVV4Y5QTEKCXXG86SK8, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=1, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8, CausationId=01M55NARVV4Y5QTEKCXXG86SK8, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=76.9963
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8, CausationId=01M55NARVV4Y5QTEKCXXG86SK8, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=78.1291
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8, CausationId=01M55NARVV4Y5QTEKCXXG86SK8, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=99.2801
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NARVV4Y5QTEKCXXG86SK8, CausationId=01M55NARVV4Y5QTEKCXXG86SK8, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=103.7851, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M, CausationId=01M55NAS1C2B8JY1BET9BQ5P9M, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=5.0152
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M, CausationId=01M55NAS1C2B8JY1BET9BQ5P9M, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=2, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M, CausationId=01M55NAS1C2B8JY1BET9BQ5P9M, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=22.9917
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M, CausationId=01M55NAS1C2B8JY1BET9BQ5P9M, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=23.1066
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M, CausationId=01M55NAS1C2B8JY1BET9BQ5P9M, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=26.3005
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS1C2B8JY1BET9BQ5P9M, CausationId=01M55NAS1C2B8JY1BET9BQ5P9M, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=27.4551, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX, CausationId=01M55NAS2BWP813V2MKJE6KXJX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.9536
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS2BWP813V2MKJE6KXJX, CausationId=01M55NAS2BWP813V2MKJE6KXJX, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=3, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX, CausationId=01M55NAS2BWP813V2MKJE6KXJX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=11.7153
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX, CausationId=01M55NAS2BWP813V2MKJE6KXJX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=11.8728
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS2BWP813V2MKJE6KXJX, CausationId=01M55NAS2BWP813V2MKJE6KXJX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=14.9872
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS2BWP813V2MKJE6KXJX, CausationId=01M55NAS2BWP813V2MKJE6KXJX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=15.9464, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A, CausationId=01M55NAS2ZYF5169XDP64G6Z8A, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=10.9554
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A, CausationId=01M55NAS2ZYF5169XDP64G6Z8A, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=4, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A, CausationId=01M55NAS2ZYF5169XDP64G6Z8A, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=21.9564
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A, CausationId=01M55NAS2ZYF5169XDP64G6Z8A, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=22.0372
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A, CausationId=01M55NAS2ZYF5169XDP64G6Z8A, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=24.7851
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS2ZYF5169XDP64G6Z8A, CausationId=01M55NAS2ZYF5169XDP64G6Z8A, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=25.8866, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK, CausationId=01M55NAS3W8J9XEX9JHGG960GK, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=4.0009
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS3W8J9XEX9JHGG960GK, CausationId=01M55NAS3W8J9XEX9JHGG960GK, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=5, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK, CausationId=01M55NAS3W8J9XEX9JHGG960GK, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=15.2109
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK, CausationId=01M55NAS3W8J9XEX9JHGG960GK, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=15.3211
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS3W8J9XEX9JHGG960GK, CausationId=01M55NAS3W8J9XEX9JHGG960GK, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=17.7119
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS3W8J9XEX9JHGG960GK, CausationId=01M55NAS3W8J9XEX9JHGG960GK, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=18.3559, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR, CausationId=01M55NAS4M99MYVV1P37ACPBPR, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=4.2479
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS4M99MYVV1P37ACPBPR, CausationId=01M55NAS4M99MYVV1P37ACPBPR, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=6, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR, CausationId=01M55NAS4M99MYVV1P37ACPBPR, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=20.0717
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR, CausationId=01M55NAS4M99MYVV1P37ACPBPR, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=20.149
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS4M99MYVV1P37ACPBPR, CausationId=01M55NAS4M99MYVV1P37ACPBPR, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=23.2183
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS4M99MYVV1P37ACPBPR, CausationId=01M55NAS4M99MYVV1P37ACPBPR, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=24.0984, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM, CausationId=01M55NAS5FYC3G0X573BAQHKKM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.9227
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS5FYC3G0X573BAQHKKM, CausationId=01M55NAS5FYC3G0X573BAQHKKM, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=7, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM, CausationId=01M55NAS5FYC3G0X573BAQHKKM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=14.4227
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM, CausationId=01M55NAS5FYC3G0X573BAQHKKM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=14.477
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS5FYC3G0X573BAQHKKM, CausationId=01M55NAS5FYC3G0X573BAQHKKM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=16.9727
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS5FYC3G0X573BAQHKKM, CausationId=01M55NAS5FYC3G0X573BAQHKKM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=17.9992, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS653TMTS6XE4D24X1DM, CausationId=01M55NAS653TMTS6XE4D24X1DM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=4.5887
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS653TMTS6XE4D24X1DM
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS653TMTS6XE4D24X1DM
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS653TMTS6XE4D24X1DM
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS653TMTS6XE4D24X1DM, CausationId=01M55NAS653TMTS6XE4D24X1DM, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=8, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS653TMTS6XE4D24X1DM, CausationId=01M55NAS653TMTS6XE4D24X1DM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=16.9456
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS653TMTS6XE4D24X1DM, CausationId=01M55NAS653TMTS6XE4D24X1DM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=17.0078
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS653TMTS6XE4D24X1DM, CausationId=01M55NAS653TMTS6XE4D24X1DM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=19.7469
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS653TMTS6XE4D24X1DM, CausationId=01M55NAS653TMTS6XE4D24X1DM, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=20.6051, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA, CausationId=01M55NAS6W5T070MJEWSD0NDAA, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.5838
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS6W5T070MJEWSD0NDAA, CausationId=01M55NAS6W5T070MJEWSD0NDAA, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=9, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA, CausationId=01M55NAS6W5T070MJEWSD0NDAA, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=15.7512
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA, CausationId=01M55NAS6W5T070MJEWSD0NDAA, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=15.9512
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS6W5T070MJEWSD0NDAA, CausationId=01M55NAS6W5T070MJEWSD0NDAA, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=19.0008
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS6W5T070MJEWSD0NDAA, CausationId=01M55NAS6W5T070MJEWSD0NDAA, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=20.0662, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS7MTYGHWR2BN92NW009, CausationId=01M55NAS7MTYGHWR2BN92NW009, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=5.232
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS7MTYGHWR2BN92NW009
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS7MTYGHWR2BN92NW009
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS7MTYGHWR2BN92NW009
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS7MTYGHWR2BN92NW009, CausationId=01M55NAS7MTYGHWR2BN92NW009, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=10, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS7MTYGHWR2BN92NW009, CausationId=01M55NAS7MTYGHWR2BN92NW009, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=18.6934
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS7MTYGHWR2BN92NW009, CausationId=01M55NAS7MTYGHWR2BN92NW009, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=18.7434
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS7MTYGHWR2BN92NW009, CausationId=01M55NAS7MTYGHWR2BN92NW009, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=21.0431
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS7MTYGHWR2BN92NW009, CausationId=01M55NAS7MTYGHWR2BN92NW009, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=22.1535, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX, CausationId=01M55NAS8D6Z7A6WQE8DNKF1CX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.4816
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX, CausationId=01M55NAS8D6Z7A6WQE8DNKF1CX, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=11, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX, CausationId=01M55NAS8D6Z7A6WQE8DNKF1CX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=22.6148
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX, CausationId=01M55NAS8D6Z7A6WQE8DNKF1CX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=22.6846
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX, CausationId=01M55NAS8D6Z7A6WQE8DNKF1CX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=25.3448
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS8D6Z7A6WQE8DNKF1CX, CausationId=01M55NAS8D6Z7A6WQE8DNKF1CX, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=26.198, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6, CausationId=01M55NAS9AFG25Y90P6N36HWP6, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.5965
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAS9AFG25Y90P6N36HWP6, CausationId=01M55NAS9AFG25Y90P6N36HWP6, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=12, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6, CausationId=01M55NAS9AFG25Y90P6N36HWP6, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=17.4841
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6, CausationId=01M55NAS9AFG25Y90P6N36HWP6, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=17.557
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAS9AFG25Y90P6N36HWP6, CausationId=01M55NAS9AFG25Y90P6N36HWP6, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=20.4239
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAS9AFG25Y90P6N36HWP6, CausationId=01M55NAS9AFG25Y90P6N36HWP6, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=21.3352, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5, CausationId=01M55NASA3CKNJY5PCB9RJXCA5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.5131
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: null for ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-b, Domain=counter, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5, CausationId=01M55NASA3CKNJY5PCB9RJXCA5, TenantId=tenant-b, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=1, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5, CausationId=01M55NASA3CKNJY5PCB9RJXCA5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=10.7384
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5, CausationId=01M55NASA3CKNJY5PCB9RJXCA5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=10.8405
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5, CausationId=01M55NASA3CKNJY5PCB9RJXCA5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=12.9353
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NASA3CKNJY5PCB9RJXCA5, CausationId=01M55NASA3CKNJY5PCB9RJXCA5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=18.8885, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NASAYQTQCXT7E663GVK9R, CausationId=01M55NASAYQTQCXT7E663GVK9R, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=3.6479
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NASAYQTQCXT7E663GVK9R
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NASAYQTQCXT7E663GVK9R
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-b, Domain=counter, CorrelationId=01M55NASAYQTQCXT7E663GVK9R
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NASAYQTQCXT7E663GVK9R, CausationId=01M55NASAYQTQCXT7E663GVK9R, TenantId=tenant-b, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=2, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NASAYQTQCXT7E663GVK9R, CausationId=01M55NASAYQTQCXT7E663GVK9R, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=11.7313
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NASAYQTQCXT7E663GVK9R, CausationId=01M55NASAYQTQCXT7E663GVK9R, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=11.7834
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NASAYQTQCXT7E663GVK9R, CausationId=01M55NASAYQTQCXT7E663GVK9R, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=14.6501
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NASAYQTQCXT7E663GVK9R, CausationId=01M55NASAYQTQCXT7E663GVK9R, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=15.4857, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5, CausationId=01M55NASBH2N2GHHD4Z9T0JEW5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=4.1052
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-b, Domain=counter, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5, CausationId=01M55NASBH2N2GHHD4Z9T0JEW5, TenantId=tenant-b, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=3, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5, CausationId=01M55NASBH2N2GHHD4Z9T0JEW5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=13.8425
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5, CausationId=01M55NASBH2N2GHHD4Z9T0JEW5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=14.0049
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-b:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5, CausationId=01M55NASBH2N2GHHD4Z9T0JEW5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=17.533
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NASBH2N2GHHD4Z9T0JEW5, CausationId=01M55NASBH2N2GHHD4Z9T0JEW5, TenantId=tenant-b, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=18.6382, Stage=CommandCompleted
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:34511
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:eb8aae24b45c46efa93dddf92773bf80. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:eb8aae24b45c46efa93dddf92773bf80. New ETag prefix: d2FybXVw
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y, CausationId=01M55NAWM1QCC5CGDDGMZRTC4Y, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=4.0581
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y, CausationId=01M55NAWM1QCC5CGDDGMZRTC4Y, TenantId=tenant-a, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, EventCount=1, NewSequence=13, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsStored, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y, CausationId=01M55NAWM1QCC5CGDDGMZRTC4Y, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=44.8676
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=EventsPublished, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y, CausationId=01M55NAWM1QCC5CGDDGMZRTC4Y, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=44.9828
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y, CausationId=01M55NAWM1QCC5CGDDGMZRTC4Y, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=47.3853
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAWM1QCC5CGDDGMZRTC4Y, CausationId=01M55NAWM1QCC5CGDDGMZRTC4Y, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=48.4242, Stage=CommandCompleted
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:34511
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:abd55f43e3544f3eab86ec3a59ad7a4a. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:abd55f43e3544f3eab86ec3a59ad7a4a. New ETag prefix: d2FybXVw
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Processing, CorrelationId=01M55NAZTSMJBJ9YMZ68XN7DDF, CausationId=01M55NAZTSMJBJ9YMZ68XN7DDF, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=4.572
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: DomainServiceCurrentState for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAZTSMJBJ9YMZ68XN7DDF
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: NoOp for ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, CorrelationId=01M55NAZTSMJBJ9YMZ68XN7DDF
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=01M55NAZTSMJBJ9YMZ68XN7DDF
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-ccee0fca0a49407b817e85df93db4698, Stage=Completed, CorrelationId=01M55NAZTSMJBJ9YMZ68XN7DDF, CausationId=01M55NAZTSMJBJ9YMZ68XN7DDF, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, DurationMs=12.4577
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=01M55NAZTSMJBJ9YMZ68XN7DDF, CausationId=01M55NAZTSMJBJ9YMZ68XN7DDF, TenantId=tenant-a, Domain=counter, AggregateId=p1r-ccee0fca0a49407b817e85df93db4698, CommandType=IncrementCounter, Status=Completed, DurationMs=13.2117, Stage=CommandCompleted
+info: Hexalith.EventStore.Server.Actors.IdempotencyAdmissionActor[5050]
+      Idempotency key reserved. Stage=IdempotencyReserved
+warn: Hexalith.EventStore.Server.Actors.IdempotencyAdmissionActor[5057]
+      Idempotency recovery state recorded. State=Recoverable, Stage=IdempotencyRecovery
+fail: Hexalith.EventStore.Server.Commands.CommandRouter[1101]
+      Actor invocation failed: CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=ActorInvocationFailed
+      Dapr.Actors.ActorMethodInvocationException: Remote Actor Method Exception,  DETAILS: Exception: InvalidOperationException, Method Name: MoveNext, Line Number: 178, Exception uuid: eab1c142-e1f9-41c2-aac8-2ee536133392
+       ---> Dapr.Actors.ActorInvokeException: The idempotency execution authority is no longer current.
+         --- End of inner exception stack trace ---
+         at Dapr.Actors.DaprHttpInteractor.InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken)
+         at Dapr.Actors.Communication.Client.ActorRemotingClient.InvokeAsync(IActorRequestMessage remotingRequestMessage, CancellationToken cancellationToken)
+         at Dapr.Actors.Client.ActorProxy.InvokeMethodAsync(Int32 interfaceId, Int32 methodId, String methodName, IActorRequestMessageBody requestMsgBodyValue, CancellationToken cancellationToken)
+         at Dapr.Actors.Client.ActorProxy.ContinueWithResult[TRetval](Int32 interfaceId, Int32 methodId, Task`1 task)
+         at Hexalith.EventStore.Server.Commands.CommandRouter.RouteFencedCommandAsync(SubmitCommand command, IdempotencyExecutionContext executionContext, CancellationToken cancellationToken) in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/CommandRouter.cs:line 119
+fail: Hexalith.EventStore.Server.Commands.CommandRouter[1101]
+      Actor invocation failed: CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=ActorInvocationFailed
+      Dapr.Actors.ActorMethodInvocationException: Remote Actor Method Exception,  DETAILS: Exception: InvalidOperationException, Method Name: MoveNext, Line Number: 200, Exception uuid: cc8ef2e4-3864-469c-a545-b8137bd7625e
+       ---> Dapr.Actors.ActorInvokeException: The idempotency execution fence is missing, stale, or invalid.
+         --- End of inner exception stack trace ---
+         at Dapr.Actors.DaprHttpInteractor.InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken)
+         at Dapr.Actors.Communication.Client.ActorRemotingClient.InvokeAsync(IActorRequestMessage remotingRequestMessage, CancellationToken cancellationToken)
+         at Dapr.Actors.Client.ActorProxy.InvokeMethodAsync(Int32 interfaceId, Int32 methodId, String methodName, IActorRequestMessageBody requestMsgBodyValue, CancellationToken cancellationToken)
+         at Dapr.Actors.Client.ActorProxy.ContinueWithResult[TRetval](Int32 interfaceId, Int32 methodId, Task`1 task)
+         at Hexalith.EventStore.Server.Commands.CommandRouter.RouteFencedCommandAsync(SubmitCommand command, IdempotencyExecutionContext executionContext, CancellationToken cancellationToken) in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/CommandRouter.cs:line 119
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=Processing, CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, DurationMs=4.0386
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      State rehydrated: null for ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CorrelationId=p1r-correlation
+info: Hexalith.EventStore.Server.Actors.AggregateActor[0]
+      Domain service result: Success for ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CorrelationId=p1r-correlation
+info: Hexalith.EventStore.Server.Actors.AggregateActor[3003]
+      Domain service version not specified in command extensions, defaulting to v1: Tenant=tenant-a, Domain=counter, CorrelationId=p1r-correlation
+info: Hexalith.EventStore.Server.Events.EventPersister[3001]
+      Events persisted: CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, EventCount=1, NewSequence=1, Stage=EventsPersisted
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=EventsStored, CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, DurationMs=16.0645
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=EventsPublished, CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, DurationMs=17.9801
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2001]
+      Stage transition: ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=Completed, CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, DurationMs=22.0516
+info: Hexalith.EventStore.Server.Actors.AggregateActor[2004]
+      Command completed summary: CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, Status=Completed, DurationMs=22.9057, Stage=CommandCompleted
+fail: Hexalith.EventStore.Server.Commands.CommandRouter[1101]
+      Actor invocation failed: CorrelationId=p1r-correlation, CausationId=p1r-message, TenantId=tenant-a, Domain=counter, AggregateId=p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, CommandType=IncrementCounter, ActorId=tenant-a:counter:p1r-fence-be03c559b32b4fcb9de11cb741a3cc8a, Stage=ActorInvocationFailed
+      Dapr.Actors.ActorMethodInvocationException: Remote Actor Method Exception,  DETAILS: Exception: InvalidOperationException, Method Name: MoveNext, Line Number: 178, Exception uuid: 93af6c45-675d-42d9-a084-df90d9b92cc3
+       ---> Dapr.Actors.ActorInvokeException: The idempotency execution authority is no longer current.
+         --- End of inner exception stack trace ---
+         at Dapr.Actors.DaprHttpInteractor.InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken)
+         at Dapr.Actors.Communication.Client.ActorRemotingClient.InvokeAsync(IActorRequestMessage remotingRequestMessage, CancellationToken cancellationToken)
+         at Dapr.Actors.Client.ActorProxy.InvokeMethodAsync(Int32 interfaceId, Int32 methodId, String methodName, IActorRequestMessageBody requestMsgBodyValue, CancellationToken cancellationToken)
+         at Dapr.Actors.Client.ActorProxy.ContinueWithResult[TRetval](Int32 interfaceId, Int32 methodId, Task`1 task)
+         at Hexalith.EventStore.Server.Commands.CommandRouter.RouteFencedCommandAsync(SubmitCommand command, IdempotencyExecutionContext executionContext, CancellationToken cancellationToken) in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Commands/CommandRouter.cs:line 119
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '10fbc9230c4a0fdb0df86e5488e88125e809fdc2c43afbd5e9e7d8739e2300e1')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 2, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 11.351s

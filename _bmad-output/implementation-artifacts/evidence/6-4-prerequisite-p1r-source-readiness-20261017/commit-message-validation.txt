@@ -1,0 +1,4 @@
+Candidate: build(p1r): enroll proposed 3.125.0 source tooling
+Validator: owning EventStore repository's @commitlint/cli@21.1.0
+Command: ./node_modules/.bin/commitlint --edit /tmp/hexalith-eventstore-p1r-commit-message.txt
+Result: exit 0, no diagnostic output

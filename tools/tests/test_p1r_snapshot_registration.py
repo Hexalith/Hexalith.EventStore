@@ -15,6 +15,42 @@ FIXTURES = ROOT / 'tools/p1r-published-consumers'
 
 
 class FixtureSnapshotRegistrationTests(unittest.TestCase):
+    def testProposedAndUnenrolledPackageProjectEvaluations(self):
+        expected_packages = {
+            'Hexalith.EventStore.Client', 'Hexalith.EventStore.Contracts',
+            'Hexalith.EventStore.DomainService', 'Hexalith.EventStore.Server',
+            'Hexalith.EventStore.ServiceDefaults',
+        }
+        expected_sources = {
+            'host': {'../domain/FixtureEvolutionManifest.cs', '../FixtureSnapshotQualification.cs'},
+            'domain': {'FixtureEvolutionManifest.cs', 'CounterSnapshotParity.cs',
+                       '../FixtureSnapshotQualification.cs'},
+            'probe': set(),
+        }
+        all_fixture_sources = set().union(*expected_sources.values())
+        for version, enrolled in (('3.125.0', True), ('3.126.0', False)):
+            for role in ('host', 'domain', 'probe'):
+                with self.subTest(version=version, role=role):
+                    project = FIXTURES / role / (role.title() + '.csproj')
+                    command = ['dotnet', 'msbuild', str(project),
+                               '-p:UseCurrentSource=false', '-p:EventStoreVersion=' + version,
+                               '-getProperty:DefineConstants', '-getItem:Compile',
+                               '-getItem:PackageReference', '-getItem:ProjectReference']
+                    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    evaluated = json.loads(result.stdout)
+                    flags = set(evaluated['Properties']['DefineConstants'].split(';'))
+                    self.assertEqual(flags & {'P1R_CAPABILITIES', 'P1R_CANDIDATE',
+                                              'P1R_FOLDED_SNAPSHOT', 'P1R_SOURCE'},
+                                     {'P1R_CAPABILITIES', 'P1R_CANDIDATE', 'P1R_FOLDED_SNAPSHOT'}
+                                     if enrolled else set())
+                    compiled = {item['Identity'] for item in evaluated['Items']['Compile']}
+                    self.assertEqual(compiled & all_fixture_sources,
+                                     expected_sources[role] if enrolled else set())
+                    self.assertEqual({item['Identity'] for item in evaluated['Items']['PackageReference']},
+                                     expected_packages)
+                    self.assertFalse(evaluated['Items']['ProjectReference'])
+
     def testRealHostAndDomainRegistrationAndMissingEnrollmentNegativeControls(self):
         with tempfile.TemporaryDirectory(prefix='p1r-registration-') as directory:
             artifacts = Path(directory)

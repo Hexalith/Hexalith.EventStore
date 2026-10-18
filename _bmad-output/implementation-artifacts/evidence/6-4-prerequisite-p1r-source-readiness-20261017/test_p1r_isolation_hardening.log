@@ -1,0 +1,31 @@
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='docker-hash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 136, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    self.assert_imports(receipt,context)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 40, in assert_imports
+    self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1454, in receipt_outcome
+    bind_lane(receipt, outcome, context)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1400, in bind_lane
+    check_witnesses.validate_case(row, case, context["source_binding"], receipt["lane"], evidence.get("predicate_sources"),
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                  candidate_version=selection["candidate"]["version"])
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_check_witnesses.py", line 472, in validate_case
+    require(record.get('kind') == 'predicate' and sources.get(record.get('source')) == record.get('source_sha256'),
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            'check witness source differs from executor closure')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 62, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: check witness source differs from executor closure
+
+----------------------------------------------------------------------
+Ran 24 tests in 29.380s
+
+FAILED (errors=1)

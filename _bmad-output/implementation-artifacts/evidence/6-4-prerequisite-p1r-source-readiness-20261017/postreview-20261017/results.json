@@ -1,0 +1,285 @@
+[
+  {
+    "name": "test_p1r_published_executor",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_executor.py",
+      "-q"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 53.724,
+    "log": "test_p1r_published_executor.log"
+  },
+  {
+    "name": "test_p1r_published_qualification",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_qualification.py",
+      "-q"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 10.085,
+    "log": "test_p1r_published_qualification.log"
+  },
+  {
+    "name": "test_p1r_isolation",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation.py",
+      "-q"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 1.437,
+    "log": "test_p1r_isolation.log"
+  },
+  {
+    "name": "test_p1r_isolation_hardening",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation_hardening.py",
+      "-q"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 24.442,
+    "log": "test_p1r_isolation_hardening.log"
+  },
+  {
+    "name": "test_p1r_snapshot_registration",
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_snapshot_registration.py",
+      "-q"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 25.401,
+    "log": "test_p1r_snapshot_registration.log"
+  },
+  {
+    "name": "build-contracts",
+    "argv": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-m:1",
+      "-p:NuGetAudit=false"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 8.147,
+    "log": "build-contracts.log"
+  },
+  {
+    "name": "build-client",
+    "argv": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-m:1",
+      "-p:NuGetAudit=false"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 4.749,
+    "log": "build-client.log"
+  },
+  {
+    "name": "build-domainservice",
+    "argv": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-m:1",
+      "-p:NuGetAudit=false"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 2.564,
+    "log": "build-domainservice.log"
+  },
+  {
+    "name": "build-server",
+    "argv": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-m:1",
+      "-p:NuGetAudit=false"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 10.392,
+    "log": "build-server.log"
+  },
+  {
+    "name": "build-server.livesidecar",
+    "argv": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-m:1",
+      "-p:NuGetAudit=false"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 9.03,
+    "log": "build-server.livesidecar.log"
+  },
+  {
+    "name": "test-contracts-querycallerauthoritytests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Contracts.Tests.Queries.QueryCallerAuthorityTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 0.345,
+    "log": "test-contracts-querycallerauthoritytests.log"
+  },
+  {
+    "name": "test-client-daprreadmodelbatchtests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Client.Tests.Projections.DaprReadModelBatchTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 0.664,
+    "log": "test-client-daprreadmodelbatchtests.log"
+  },
+  {
+    "name": "test-domainservice-foldedsnapshotcapturetests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.DomainService.Tests.FoldedSnapshotCaptureTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 0.503,
+    "log": "test-domainservice-foldedsnapshotcapturetests.log"
+  },
+  {
+    "name": "test-domainservice-foldedsnapshotqualificationregistrytests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.DomainService.Tests.FoldedSnapshotQualificationRegistryTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 0.331,
+    "log": "test-domainservice-foldedsnapshotqualificationregistrytests.log"
+  },
+  {
+    "name": "test-server-foldedsnapshotreadtests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.Tests.Events.FoldedSnapshotReadTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 0.647,
+    "log": "test-server-foldedsnapshotreadtests.log"
+  },
+  {
+    "name": "test-server-foldedsnapshotparitytests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.Tests.Events.FoldedSnapshotParityTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {},
+    "exit_code": 0,
+    "elapsed_seconds": 0.717,
+    "log": "test-server-foldedsnapshotparitytests.log"
+  },
+  {
+    "name": "test-server.livesidecar-p1rremediationpersistencetests",
+    "argv": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Events.P1RRemediationPersistenceTests",
+      "-noColor",
+      "-noLogo"
+    ],
+    "environment_overrides": {
+      "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+      "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false"
+    },
+    "exit_code": 0,
+    "elapsed_seconds": 11.314,
+    "log": "test-server.livesidecar-p1rremediationpersistencetests.log"
+  }
+]

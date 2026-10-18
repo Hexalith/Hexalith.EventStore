@@ -1309,7 +1309,7 @@ def validate_final_isolation(receipt, context):
 
 def finalize_isolation_receipts(output, isolation_output, selection):
     """Attach new successful wrapper evidence after teardown, retaining old receipt schemas."""
-    if selection["candidate"]["version"] != "3.122.1":
+    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0"):
         return
     output, isolation_output = Path(output), Path(isolation_output)
     reference = {}
@@ -1348,7 +1348,7 @@ def bind_lane(receipt, outcome, context):
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "published or operational evidence lacks owner-selected inputs")
-    if selection["candidate"]["version"] == "3.122.1" and (outcome["scope"] == "operational"
+    if selection["candidate"]["version"] in ("3.122.1", "3.125.0") and (outcome["scope"] == "operational"
             or any(case.get("configurations") for case in receipt.get("execution_evidence", {}).get("cases", []))):
         validate_final_isolation(receipt,context)
     instrumentation = selection["assertion_instrumentation"]
@@ -1432,7 +1432,7 @@ def bind_recovery(receipt, outcome, lane, context):
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "operational evidence lacks owner-selected inputs")
-    if selection["candidate"]["version"] == "3.122.1":
+    if selection["candidate"]["version"] in ("3.122.1", "3.125.0"):
         validate_final_isolation(receipt,context)
     runtime.require_operational_profile(selection)
     require(receipt["profile"] == selection["operational_profile"], "operational evidence lacks the selected profile")
@@ -1455,7 +1455,7 @@ def receipt_outcome(receipt, context):
         return ("scenarios" if receipt["lane"] in SCENARIOS else "additions"), receipt["lane"], outcome
     if schema in (runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
         selection = (context.get("inputs") or {}).get("value", {})
-        require(selection.get("candidate", {}).get("version") == "3.122.1"
+        require(selection.get("candidate", {}).get("version") in ("3.122.1", "3.125.0")
                 and isinstance(receipt["execution_evidence"],dict)
                 and set(receipt["execution_evidence"]) == {"isolation"}, "recovery isolation extension differs from contract")
     if schema == runtime.RESTORE_SCHEMA:

@@ -19,13 +19,13 @@ Container discovery requests only IDs, image IDs, names, running/start state
 and the invocation ownership label; environment and credential fields are
 never read into retained command output.
 
-The explicitly enrolled 3.121.0 and proposed 3.122.1 consumers register the pinned qualification-only
+The explicitly enrolled 3.121.0, proposed 3.122.1 and proposed 3.125.0 consumers register the pinned qualification-only
 logical evolution manifest and bounded V1 serializer. Live Domain readiness,
 legacy alias hydration, unknown metadata refusal and unchanged application-envelope
 readback measure the addition. Historical comparisons retain their own bounded
 fixtures. The fixture does not create an authoritative gateway pin or readiness decision.
 
-The 3.121.0, proposed 3.122.1 and distinct Debug/source consumers enroll the same finite Counter
+The 3.121.0, proposed 3.122.1, proposed 3.125.0 and distinct Debug/source consumers enroll the same finite Counter
 folded-snapshot limits on both hosts. The domain measures detached state
 round-trip, canonical increment bytes and Apply parity before enrollment. The
 Counter has no automatic snapshot processor. Snapshot fixtures commit nine real
@@ -36,6 +36,9 @@ comparison fixtures retain their original stopped-writer snapshot diagnostic;
 they cannot establish genuine successor snapshot creation. Enrollment is a finite
 tooling allowlist; later versions receive no successor compiler definitions or
 snapshot fixture sources, and an unenrolled successor's genuine seed refuses.
+The refusal occurs before fixture state reset or writer start. The selected
+candidate's restore writer must use that exact candidate version. The 3.125.0
+operational importer also requires the final private isolation and cleanup journal.
 The strict witness checks bind each required case to its selected candidate or
 source writer, including the selected version for post-upgrade restore. They
 require retained shared fixture source, physical consumer binaries, owned launches
@@ -154,7 +157,7 @@ Docker TLS settings and client configuration never enter retained proof. Private
 daemon start and readiness probes share one 30-second monotonic deadline; each
 readiness probe has at most two seconds, and late successful probes still fail.
 
-Proposed 3.122.1 receipt import requires the complete controller journal. It binds
+Proposed 3.122.1 and 3.125.0 receipt import requires the complete controller journal. It binds
 all three pinned image OS/architecture/digest/image-ID measurements to literal
 role creation and inspection, the Python/Docker copy chain, the prelaunch SDK
 toolchain measurement and actual `_inner` launch. Every command has a distinct
@@ -204,7 +207,26 @@ with the pinned commit analyzer proposes 3.123.0 from reachable v3.122.0 plus th
 fix. Published v3.123.0 points to `f78916d9534a72ba1515d97cfd51408e6eb809f1`,
 outside that main ancestry. Publication therefore needs an owner decision about
 release history before finite enrollment can be reconciled to an available
-proposal; the existing finite 3.122.1 tooling declaration remains unchanged.
+proposal; that historical analysis did not select a package.
 No version is reserved or selected. Source CI, genuine same-run one-use authority,
 protected production approval, published qualification and existing acceptance
 gates remain required. The source handoff is the normal PR and its CI results.
+
+## Current-source successor readiness, 2026-10-17
+
+The finite tooling fixture now also selects the capability, logical-evolution
+and folded-snapshot paths in project evaluation for proposed 3.125.0. This is
+a readiness enrollment
+for the current EventStore authority/recovery source, not a published package
+selection. The 3.124.0 published family lacks those current-source changes.
+No 3.125.0 archives, tag, registry signature, lock graph, loaded Release package
+identities or source/tag equality have been verified here. A future published
+attempt must select the exact tagged source and Builds revision, verify all five
+signed archives, use isolated Release package graphs, and run the full strict
+qualification matrix and private resource cleanup. The pinned Dapr 1.18.2
+PostgreSQL profile remains the required published comparison; source-only
+Debug/project-reference checks cannot satisfy it.
+
+Rollback remains null. Drain and freeze incompatible ingress, then recover
+forward until a separately qualified capable rollback is selected. Publication,
+consumer pins, P1R acceptance, production/story gates and Story 6.4 remain open.

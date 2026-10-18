@@ -6,8 +6,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <DefineConstants Condition="'$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_SOURCE</DefineConstants>
-    <DefineConstants Condition="'$(EventStoreVersion)' == '3.110.0' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CAPABILITIES</DefineConstants>
-    <DefineConstants Condition="'$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CANDIDATE</DefineConstants>
-    <DefineConstants Condition="'$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_FOLDED_SNAPSHOT</DefineConstants>
+    <DefineConstants Condition="'$(EventStoreVersion)' == '3.110.0' or '$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(EventStoreVersion)' == '3.125.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CAPABILITIES</DefineConstants>
+    <DefineConstants Condition="'$(EventStoreVersion)' == '3.119.0' or '$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(EventStoreVersion)' == '3.125.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_CANDIDATE</DefineConstants>
+    <DefineConstants Condition="'$(EventStoreVersion)' == '3.121.0' or '$(EventStoreVersion)' == '3.122.1' or '$(EventStoreVersion)' == '3.125.0' or '$(UseCurrentSource)' == 'true'">$(DefineConstants);P1R_FOLDED_SNAPSHOT</DefineConstants>
   </PropertyGroup>
 </Project>
