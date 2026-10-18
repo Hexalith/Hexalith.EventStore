@@ -1,0 +1,111 @@
+{
+  "schema": "ext-protection-1-offline-vectors/v1",
+  "vectors": [
+    {
+      "id": "ascii",
+      "capability": {
+        "Issuer": "offline-issuer",
+        "Audience": "offline-protection",
+        "TenantId": "tenant-a",
+        "DeletionRequestId": "request-€<>&é\u000f\b\t\n\f\r\\\"",
+        "DestructionSealId": "stable-seal",
+        "BatchKind": "AcceptedSet",
+        "BatchOrdinal": 0,
+        "BatchId": "batch-original",
+        "ManifestDigest": "C8E48DBC3C5E7DF4AE378EA3AA192288F221E108488683E3A042356202C8FF23",
+        "GuardStreamId": "guard:tenant-a",
+        "IntendedIssuedGuardRevision": 23,
+        "AttestationOrdinal": 1,
+        "SigningAttemptOrdinal": 1,
+        "CapabilityKeyVersion": "retained-v1"
+      },
+      "targets": [
+        {
+          "TenantId": "tenant-a",
+          "AgentInteractionId": "interaction-1",
+          "TargetProtectionKeyAlias": "qualification"
+        },
+        {
+          "TenantId": "tenant-a",
+          "AgentInteractionId": "interaction-2",
+          "TargetProtectionKeyAlias": "qualification"
+        }
+      ],
+      "expected": {
+        "canonicalBase64": "eyJBdHRlc3RhdGlvbk9yZGluYWwiOjEsIkF1ZGllbmNlIjoib2ZmbGluZS1wcm90ZWN0aW9uIiwiQmF0Y2hJZCI6ImJhdGNoLW9yaWdpbmFsIiwiQmF0Y2hLaW5kIjoiQWNjZXB0ZWRTZXQiLCJCYXRjaE9yZGluYWwiOjAsIkNhcGFiaWxpdHlLZXlWZXJzaW9uIjoicmV0YWluZWQtdjEiLCJEZWxldGlvblJlcXVlc3RJZCI6InJlcXVlc3Qt4oKsPD4mw6lcdTAwMGZcYlx0XG5cZlxyXFxcIiIsIkRlc3RydWN0aW9uU2VhbElkIjoic3RhYmxlLXNlYWwiLCJHdWFyZFN0cmVhbUlkIjoiZ3VhcmQ6dGVuYW50LWEiLCJJbnRlbmRlZElzc3VlZEd1YXJkUmV2aXNpb24iOjIzLCJJc3N1ZXIiOiJvZmZsaW5lLWlzc3VlciIsIk1hbmlmZXN0RGlnZXN0IjoiQzhFNDhEQkMzQzVFN0RGNEFFMzc4RUEzQUExOTIyODhGMjIxRTEwODQ4ODY4M0UzQTA0MjM1NjIwMkM4RkYyMyIsIlNpZ25pbmdBdHRlbXB0T3JkaW5hbCI6MSwiVGVuYW50SWQiOiJ0ZW5hbnQtYSJ9",
+        "signingRequestId": "6BC505EFC6FD4D381A61A89965B53AF669DB9979004A46991D4B0D173052D07C",
+        "nativeTargetsBase64": "W1sidGVuYW50LWEiLCJpbnRlcmFjdGlvbi0xIiwicXVhbGlmaWNhdGlvbiJdLFsidGVuYW50LWEiLCJpbnRlcmFjdGlvbi0yIiwicXVhbGlmaWNhdGlvbiJdXQ==",
+        "manifestDigest": "C8E48DBC3C5E7DF4AE378EA3AA192288F221E108488683E3A042356202C8FF23"
+      }
+    },
+    {
+      "id": "unicode-html-controls",
+      "capability": {
+        "Issuer": "offline-issuer",
+        "Audience": "offline-protection",
+        "TenantId": "tenant-é",
+        "DeletionRequestId": "request-€<>&é\u000f\b\t\n\f\r\\\"",
+        "DestructionSealId": "stable-seal",
+        "BatchKind": "AcceptedSet",
+        "BatchOrdinal": 0,
+        "BatchId": "batch-original",
+        "ManifestDigest": "B23EDAE3BF1DC5017B578267339F7157B3CA3CF8A29AF1589E73409DEBEB4A74",
+        "GuardStreamId": "guard:tenant-é",
+        "IntendedIssuedGuardRevision": 23,
+        "AttestationOrdinal": 2,
+        "SigningAttemptOrdinal": 3,
+        "CapabilityKeyVersion": "retained-v1"
+      },
+      "targets": [
+        {
+          "TenantId": "tenant-é",
+          "AgentInteractionId": "i-😀",
+          "TargetProtectionKeyAlias": "alias €<>&/é\u000f\b\t\n\f\r\\\"'+`雪  "
+        },
+        {
+          "TenantId": "tenant-é",
+          "AgentInteractionId": "i-",
+          "TargetProtectionKeyAlias": "alias €<>&/é\u000f\b\t\n\f\r\\\"'+`雪  "
+        }
+      ],
+      "expected": {
+        "canonicalBase64": "eyJBdHRlc3RhdGlvbk9yZGluYWwiOjIsIkF1ZGllbmNlIjoib2ZmbGluZS1wcm90ZWN0aW9uIiwiQmF0Y2hJZCI6ImJhdGNoLW9yaWdpbmFsIiwiQmF0Y2hLaW5kIjoiQWNjZXB0ZWRTZXQiLCJCYXRjaE9yZGluYWwiOjAsIkNhcGFiaWxpdHlLZXlWZXJzaW9uIjoicmV0YWluZWQtdjEiLCJEZWxldGlvblJlcXVlc3RJZCI6InJlcXVlc3Qt4oKsPD4mw6lcdTAwMGZcYlx0XG5cZlxyXFxcIiIsIkRlc3RydWN0aW9uU2VhbElkIjoic3RhYmxlLXNlYWwiLCJHdWFyZFN0cmVhbUlkIjoiZ3VhcmQ6dGVuYW50LcOpIiwiSW50ZW5kZWRJc3N1ZWRHdWFyZFJldmlzaW9uIjoyMywiSXNzdWVyIjoib2ZmbGluZS1pc3N1ZXIiLCJNYW5pZmVzdERpZ2VzdCI6IkIyM0VEQUUzQkYxREM1MDE3QjU3ODI2NzMzOUY3MTU3QjNDQTNDRjhBMjlBRjE1ODlFNzM0MDlERUJFQjRBNzQiLCJTaWduaW5nQXR0ZW1wdE9yZGluYWwiOjMsIlRlbmFudElkIjoidGVuYW50LcOpIn0=",
+        "signingRequestId": "39CB403E28F1AD3FAA9499F16BAF855C1B6D0817273CD61C3699B310E73B8C6B",
+        "nativeTargetsBase64": "W1sidGVuYW50LVx1MDBFOSIsImktXHVEODNEXHVERTAwIiwiYWxpYXMgXHUyMEFDXHUwMDNDXHUwMDNFXHUwMDI2L1x1MDBFOVx1MDAwRlxiXHRcblxmXHJcXFx1MDAyMlx1MDAyN1x1MDAyQlx1MDA2MFx1OTZFQVx1MjAyOFx1MjAyOVx1MDA3RiJdLFsidGVuYW50LVx1MDBFOSIsImktXHVFMDAwIiwiYWxpYXMgXHUyMEFDXHUwMDNDXHUwMDNFXHUwMDI2L1x1MDBFOVx1MDAwRlxiXHRcblxmXHJcXFx1MDAyMlx1MDAyN1x1MDAyQlx1MDA2MFx1OTZFQVx1MjAyOFx1MjAyOVx1MDA3RiJdXQ==",
+        "manifestDigest": "B23EDAE3BF1DC5017B578267339F7157B3CA3CF8A29AF1589E73409DEBEB4A74"
+      }
+    },
+    {
+      "id": "maximum-exact-integers",
+      "capability": {
+        "Issuer": "offline-issuer",
+        "Audience": "offline-protection",
+        "TenantId": "tenant-a",
+        "DeletionRequestId": "request-€<>&é\u000f\b\t\n\f\r\\\"",
+        "DestructionSealId": "stable-seal",
+        "BatchKind": "AcceptedSet",
+        "BatchOrdinal": 0,
+        "BatchId": "batch-original",
+        "ManifestDigest": "314FB607B58C44FCD5E739AAAC53AD5D47EA3CE3F1192296F2197DDEBC9D813F",
+        "GuardStreamId": "guard:tenant-a",
+        "IntendedIssuedGuardRevision": 9007199254740988,
+        "AttestationOrdinal": 9007199254740991,
+        "SigningAttemptOrdinal": 9007199254740991,
+        "CapabilityKeyVersion": "retained-v1"
+      },
+      "targets": [
+        {
+          "TenantId": "tenant-a",
+          "AgentInteractionId": "interaction-1",
+          "TargetProtectionKeyAlias": "alias"
+        }
+      ],
+      "expected": {
+        "canonicalBase64": "eyJBdHRlc3RhdGlvbk9yZGluYWwiOjkwMDcxOTkyNTQ3NDA5OTEsIkF1ZGllbmNlIjoib2ZmbGluZS1wcm90ZWN0aW9uIiwiQmF0Y2hJZCI6ImJhdGNoLW9yaWdpbmFsIiwiQmF0Y2hLaW5kIjoiQWNjZXB0ZWRTZXQiLCJCYXRjaE9yZGluYWwiOjAsIkNhcGFiaWxpdHlLZXlWZXJzaW9uIjoicmV0YWluZWQtdjEiLCJEZWxldGlvblJlcXVlc3RJZCI6InJlcXVlc3Qt4oKsPD4mw6lcdTAwMGZcYlx0XG5cZlxyXFxcIiIsIkRlc3RydWN0aW9uU2VhbElkIjoic3RhYmxlLXNlYWwiLCJHdWFyZFN0cmVhbUlkIjoiZ3VhcmQ6dGVuYW50LWEiLCJJbnRlbmRlZElzc3VlZEd1YXJkUmV2aXNpb24iOjkwMDcxOTkyNTQ3NDA5ODgsIklzc3VlciI6Im9mZmxpbmUtaXNzdWVyIiwiTWFuaWZlc3REaWdlc3QiOiIzMTRGQjYwN0I1OEM0NEZDRDVFNzM5QUFBQzUzQUQ1RDQ3RUEzQ0UzRjExOTIyOTZGMjE5N0RERUJDOUQ4MTNGIiwiU2lnbmluZ0F0dGVtcHRPcmRpbmFsIjo5MDA3MTk5MjU0NzQwOTkxLCJUZW5hbnRJZCI6InRlbmFudC1hIn0=",
+        "signingRequestId": "E762552FE7F2383078CA485576E0916F28A089FCC2DF358DEDE68905A48B789C",
+        "nativeTargetsBase64": "W1sidGVuYW50LWEiLCJpbnRlcmFjdGlvbi0xIiwiYWxpYXMiXV0=",
+        "manifestDigest": "314FB607B58C44FCD5E739AAAC53AD5D47EA3CE3F1192296F2197DDEBC9D813F"
+      }
+    }
+  ]
+}

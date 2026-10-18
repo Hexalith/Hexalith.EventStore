@@ -220,5 +220,303 @@ class ExtProtectionPolicyTests(unittest.TestCase):
                 v.verify_statement({**statement, 'operationId': 'substituted'}, signature, public, directory)
 
 
+class CapabilityOriginalEvidenceTests(unittest.TestCase):
+    """Real offline signatures and original contract-shaped persisted evidence."""
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='ext-protection-offline-test-')
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
+        self.private, self.public = self.key('capability')
+        self.roles = {}
+        for name in v.ROLE_NAMES:
+            _, public = self.key(name)
+            executable = self.directory / (name + '.sh')
+            executable.write_text('#!/bin/sh\nexit 77\n')
+            executable.chmod(0o700)
+            manifest = self.directory / (name + '.inventory.json')
+            manifest.write_bytes(v.canonical({'files': [{'path': str(executable), 'sha256': v.digest(executable.read_bytes())}]}))
+            self.roles[name] = {'executable': str(executable), 'executableSha256': v.digest(executable.read_bytes()),
+                                'publicAnchorFile': str(public), 'publicAnchorSha256': v.digest(public.read_bytes()),
+                                'credentialReference': 'env:OFFLINE_' + name.upper(), 'identity': name,
+                                'installationManifest': str(manifest), 'installationManifestSha256': v.digest(manifest.read_bytes())}
+        self.trust = [{'issuer': 'offline-issuer', 'audience': 'offline-protection', 'tenantId': 'tenant-é',
+                       'keyFamily': 'DeletionBatchCapabilitySigningKey', 'keyVersion': 'retained-v1',
+                       'publicAnchorId': 'public-anchor-1', 'publicAnchorVersion': 'anchor-v1',
+                       'publicAnchorFile': str(self.public), 'publicAnchorSha256': v.digest(self.public.read_bytes()),
+                       'trustProfileRevision': 7}]
+        self.targets = [{'TenantId': 'tenant-é', 'AgentInteractionId': interaction,
+                         'TargetProtectionKeyAlias': 'alias<&>+`\"\'😀\n'} for interaction in ('interaction-1', 'interaction-雪')]
+        capability = {'Issuer': 'offline-issuer', 'Audience': 'offline-protection', 'TenantId': 'tenant-é',
+                      'DeletionRequestId': 'deletion-\"\\\n雪', 'DestructionSealId': 'stable-seal', 'BatchKind': 'AcceptedSet',
+                      'BatchOrdinal': 0, 'BatchId': 'batch-original', 'ManifestDigest': v.digest(v.target_manifest_bytes(self.targets)).upper(),
+                      'GuardStreamId': 'tenant-é:guard', 'IntendedIssuedGuardRevision': 23, 'AttestationOrdinal': 1,
+                      'SigningAttemptOrdinal': 3, 'CapabilityKeyVersion': 'retained-v1'}
+        self.request = {'Capability': capability, 'DetachedJws': self.sign(capability), 'CommittedIssuedGuardRevision': 24,
+                        'DispatchReceiptId': 'dispatch-original', 'DispatchGuardRevision': 27, 'Targets': self.targets}
+        signing_id = v.digest(v.capability_bytes(capability)).upper()
+        jws_digest = v.digest(self.request['DetachedJws'].encode()).upper()
+        batch = {'BatchId': capability['BatchId'], 'Kind': 'AcceptedSet', 'Ordinal': 0, 'Targets': self.targets,
+                 'ManifestDigest': capability['ManifestDigest'], 'AttestationOrdinal': 1, 'CapabilityKeyVersion': 'retained-v1',
+                 'AttestationDigest': jws_digest, 'IssueReceiptId': 'issue-original', 'DispatchReceiptId': 'dispatch-original',
+                 'ProtectionOutcome': 'Consumed', 'ProtectionReceiptId': 'reservation-original',
+                 'TargetReceiptIds': ['target-original-1', 'target-original-2'], 'BlockSetRevision': 0, 'CoveredResourceIds': [],
+                 'Capability': capability, 'DetachedJws': self.request['DetachedJws'], 'SigningRequestId': signing_id,
+                 'IssuedGuardRevision': 24, 'DispatchGuardRevision': 27}
+        receipts = []
+        for name, revision in (('issue', 24), ('dispatch', 27)):
+            receipts.append({'OperationId': name + '-operation', 'IntentDigest': 'D' * 64, 'Status': 'Committed',
+                             'GuardHighWater': revision, 'AcceptedAtAdmissionFenceOrdinal': 1, 'ReferenceId': capability['BatchId'],
+                             'ReceiptId': name + '-original', 'AdmissionAttributionsJson': '[]', 'AcceptedWriteResourceId': '',
+                             'AcceptedWriteFacts': None, 'AcceptedTargetMutationDigest': '', 'Capability': capability,
+                             'SigningRequestId': signing_id, 'DetachedJwsDigest': jws_digest})
+        vector = [{'Target': target, 'OriginalBatchId': capability['BatchId'], 'ReceiptId': 'target-original-' + str(i)}
+                  for i, target in enumerate(self.targets, 1)]
+        owner = {'TenantId': capability['TenantId'], 'BatchId': capability['BatchId'], 'Status': 3, 'OwnerRevision': 9,
+                 'KeyBlockSetRevision': 0, 'ReceiptId': 'reservation-original', 'BlockReason': None,
+                 'BlockedKeyVersion': None, 'RevocationRevision': None, 'TargetReceipts': vector}
+        provider = {'TenantId': capability['TenantId'], 'BatchId': capability['BatchId'], 'State': 1,
+                    'ReservationReceiptId': 'reservation-original', 'TargetReceipts': vector}
+        self.observation = v.strict_json(v.canonical({'engineSourceRevision': 'a' * 40, 'engineBinarySha256': 'b' * 64,
+                                         'agentsRuntimeEnabled': False, 'roots': [{'target': target, 'state': 'Destroyed'} for target in self.targets],
+                                         'records': [], 'replays': [], 'consumptionRequests': [self.request], 'guardBatches': [batch],
+                                         'guardReceipts': receipts, 'ownerResults': [owner], 'providerResults': [provider],
+                                         'ownerRetryResults': [owner], 'ownerLookupResults': [owner], 'providerLookupResults': [provider]}))
+
+    def key(self, name):
+        private, public = (self.directory / (name + suffix) for suffix in ('.private.pem', '.public.pem'))
+        subprocess.run(['openssl', 'ecparam', '-name', 'prime256v1', '-genkey', '-noout', '-out', str(private)], check=True, capture_output=True)
+        subprocess.run(['openssl', 'pkey', '-in', str(private), '-pubout', '-out', str(public)], check=True, capture_output=True)
+        return private, public
+
+    def signature(self, raw, private=None):
+        signed = self.directory / 'signature.der'
+        subprocess.run(['openssl', 'dgst', '-sha256', '-sign', str(private or self.private), '-out', str(signed)], input=raw, check=True, capture_output=True)
+        der, offset, parts = signed.read_bytes(), 2, []
+        for _ in range(2):
+            size = der[offset + 1]
+            parts.append(der[offset + 2:offset + 2 + size].lstrip(b'\0').rjust(32, b'\0'))
+            offset += size + 2
+        return b''.join(parts)
+
+    def sign(self, capability, header=None):
+        entry = self.trust[0]
+        header = header or {'alg': 'ES256', 'anchorVersion': entry['publicAnchorVersion'], 'keyVersion': entry['keyVersion'],
+                            'kid': entry['publicAnchorId'], 'typ': 'DeletionBatchCapabilityV1'}
+        encoded = v.base64url(v.canonical(header))
+        signature = self.signature((encoded + '.' + v.base64url(v.capability_bytes(capability))).encode())
+        return encoded + '..' + v.base64url(signature)
+
+    def evaluate(self, observation=None):
+        v.evaluate(observation or self.observation, {'steps': [], 'checks': ['erased', 'receipts', 'capability', 'exact-results']},
+                   self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+
+    def test_nontrivial_separately_signed_request_and_native_originals_pass(self):
+        self.evaluate()
+        self.assertNotEqual(self.request['CommittedIssuedGuardRevision'], self.request['Capability']['IntendedIssuedGuardRevision'])
+
+    def test_retained_old_version_is_verifiable_without_expiry_or_renewal(self):
+        _, public = self.key('current-capability')
+        self.trust.append({**self.trust[0], 'keyVersion': 'current-v2', 'publicAnchorId': 'public-anchor-2',
+                           'publicAnchorFile': str(public), 'publicAnchorSha256': v.digest(public.read_bytes()), 'trustProfileRevision': 8})
+        self.evaluate()
+
+    def test_signed_payload_identity_and_signature_substitutions_are_rejected(self):
+        for field in ('Issuer', 'Audience', 'TenantId', 'CapabilityKeyVersion', 'DeletionRequestId', 'BatchId', 'ManifestDigest', 'GuardStreamId'):
+            with self.subTest(field=field):
+                request = copy.deepcopy(self.request)
+                request['Capability'][field] += '-substituted'
+                with self.assertRaises((v.Failed, v.Blocked)):
+                    v.validate_consumption_request(request, self.trust, self.roles)
+        request = copy.deepcopy(self.request)
+        request['DetachedJws'] = request['DetachedJws'][:-4] + 'AAAA'
+        with self.assertRaisesRegex(v.Failed, 'SIGNATURE_INVALID'):
+            v.validate_consumption_request(request, self.trust, self.roles)
+
+    def test_header_anchor_version_key_and_unknown_field_substitutions_are_rejected_even_when_signed(self):
+        original = v.strict_json(v.decode_base64url(self.request['DetachedJws'].split('.')[0]))
+        for field, value in (('alg', 'HS256'), ('typ', 'other'), ('kid', 'other-anchor'), ('anchorVersion', 'v99'),
+                             ('keyVersion', 'v99'), ('unknown', 'field')):
+            with self.subTest(field=field):
+                request = {**self.request, 'DetachedJws': self.sign(self.request['Capability'], {**original, field: value})}
+                with self.assertRaisesRegex(v.Failed, 'HEADER_SUBSTITUTION'):
+                    v.validate_consumption_request(request, self.trust, self.roles)
+
+    def test_changed_trusted_anchor_identity_or_public_key_cannot_verify_original_signature(self):
+        _, public = self.key('substituted-capability')
+        for changes in ({'publicAnchorId': 'other'}, {'publicAnchorVersion': 'other'},
+                        {'publicAnchorFile': str(public), 'publicAnchorSha256': v.digest(public.read_bytes())},
+                        {'issuer': 'other'}, {'audience': 'other'}, {'tenantId': 'other'}, {'keyVersion': 'other'}):
+            with self.subTest(changes=changes):
+                with self.assertRaises(v.Failed):
+                    v.validate_consumption_request(self.request, [{**self.trust[0], **changes}], self.roles)
+
+    def test_noncanonical_header_and_signature_over_noncanonical_payload_are_rejected(self):
+        header = v.strict_json(v.decode_base64url(self.request['DetachedJws'].split('.')[0]))
+        encoded = v.base64url(json.dumps(header, ensure_ascii=False).encode())
+        raw = self.signature((encoded + '.' + v.base64url(v.capability_bytes(self.request['Capability']))).encode())
+        with self.assertRaisesRegex(v.Failed, 'HEADER_SUBSTITUTION'):
+            v.validate_consumption_request({**self.request, 'DetachedJws': encoded + '..' + v.base64url(raw)}, self.trust, self.roles)
+        encoded = self.request['DetachedJws'].split('.')[0]
+        raw = self.signature((encoded + '.' + v.base64url(json.dumps(self.request['Capability'], ensure_ascii=False).encode())).encode())
+        with self.assertRaisesRegex(v.Failed, 'SIGNATURE_INVALID'):
+            v.validate_consumption_request({**self.request, 'DetachedJws': encoded + '..' + v.base64url(raw)}, self.trust, self.roles)
+
+    def test_bool_fraction_overflow_unknown_fields_and_invalid_unicode_are_rejected(self):
+        for field in v.CAPABILITY_NUMBERS:
+            for value in (True, 1.25, 2 ** 53, -1):
+                with self.subTest(field=field, value=value):
+                    payload = {**self.request['Capability'], field: value}
+                    with self.assertRaisesRegex(v.Failed, 'ORDINAL_INVALID'):
+                        v.capability_bytes(payload)
+        for payload in ({**self.request['Capability'], 'ExpiresAt': 'tomorrow'},
+                        {**self.request['Capability'], 'Issuer': '\ud800'}):
+            with self.assertRaises(v.Failed):
+                v.capability_bytes(payload)
+        for field in ('CommittedIssuedGuardRevision', 'DispatchGuardRevision'):
+            with self.assertRaisesRegex(v.Failed, 'ORDINAL_INVALID'):
+                v.validate_consumption_request({**self.request, field: True}, self.trust, self.roles)
+
+    def test_duplicate_members_padded_noncanonical_base64url_and_attached_payload_reject(self):
+        header, _, signature = self.request['DetachedJws'].split('.')
+        # The low four bits of the final ES256 base64url character must be zero.
+        alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+        alternate = signature[:-1] + alphabet[alphabet.index(signature[-1]) + 1]
+        duplicate = v.base64url(b'{"alg":"ES256","alg":"ES256"}')
+        for jws in (header + '=..' + signature, header + '..' + signature + '=', header + '..' + alternate,
+                    duplicate + '..' + signature, header + '.payload.' + signature):
+            with self.subTest(jws=jws[:20]):
+                with self.assertRaises((v.Failed, v.Blocked)):
+                    v.validate_consumption_request({**self.request, 'DetachedJws': jws}, self.trust, self.roles)
+        with self.assertRaisesRegex(v.Blocked, 'DUPLICATE_JSON_MEMBER'):
+            v.strict_json(b'{"Capability":{"BatchOrdinal":0,"BatchOrdinal":1}}')
+
+    def test_target_sort_complete_identity_and_native_digest_reject_mutations(self):
+        for targets in (list(reversed(self.targets)), [self.targets[0], self.targets[0]],
+                        [{**self.targets[0], 'TenantId': 'other'}, self.targets[1]], self.targets[:1]):
+            with self.subTest(targets=targets):
+                with self.assertRaises(v.Failed):
+                    v.validate_consumption_request({**self.request, 'Targets': targets}, self.trust, self.roles)
+        payload = {**self.request['Capability'], 'ManifestDigest': v.digest(v.canonical([list(v.target_key(t)) for t in self.targets])).upper()}
+        with self.assertRaisesRegex(v.Failed, 'NATIVE_MANIFEST'):
+            v.validate_consumption_request({**self.request, 'Capability': payload}, self.trust, self.roles)
+
+    def test_missing_ambiguous_or_changed_issue_dispatch_and_batch_records_reject(self):
+        mutations = [lambda o: o['guardReceipts'].pop(0), lambda o: o['guardReceipts'].pop(1),
+                     lambda o: o['guardReceipts'].append(copy.deepcopy(o['guardReceipts'][0])),
+                     lambda o: o['guardBatches'].append(copy.deepcopy(o['guardBatches'][0]))]
+        for index in (0, 1):
+            for field, value in (('ReceiptId', 'other'), ('ReferenceId', 'other-batch'), ('GuardHighWater', 100),
+                                 ('SigningRequestId', '0' * 64), ('DetachedJwsDigest', '0' * 64), ('Capability', None)):
+                mutations.append(lambda o, i=index, f=field, x=value: o['guardReceipts'][i].__setitem__(f, x))
+        for field, value in (('IssueReceiptId', 'missing'), ('DispatchReceiptId', 'missing'), ('IssuedGuardRevision', 23),
+                             ('DispatchGuardRevision', 26), ('SigningRequestId', 'other'), ('Targets', self.targets[:1]),
+                             ('AttestationDigest', '0' * 64), ('CapabilityKeyVersion', 'other')):
+            mutations.append(lambda o, f=field, x=value: o['guardBatches'][0].__setitem__(f, x))
+        for index, mutate in enumerate(mutations):
+            with self.subTest(index=index):
+                observed = copy.deepcopy(self.observation)
+                mutate(observed)
+                with self.assertRaises((v.Failed, v.Blocked)):
+                    self.evaluate(observed)
+
+    def test_native_owner_provider_retry_lookup_receipt_contradictions_reject(self):
+        for field in ('ownerResults', 'providerResults', 'ownerRetryResults', 'ownerLookupResults', 'providerLookupResults'):
+            for receipt_field, value in (('ReceiptId', 'different-original'), ('OriginalBatchId', 'other-batch'),
+                                         ('Target', {**self.targets[0], 'AgentInteractionId': 'substituted'})):
+                with self.subTest(field=field, receipt_field=receipt_field):
+                    observed = copy.deepcopy(self.observation)
+                    observed[field][0]['TargetReceipts'][0][receipt_field] = value
+                    with self.assertRaises(v.Failed):
+                        self.evaluate(observed)
+            observed = copy.deepcopy(self.observation)
+            observed[field] = []
+            with self.assertRaises(v.Failed):
+                self.evaluate(observed)
+        for field, value in (('TenantId', 'other'), ('BatchId', 'other'), ('ReservationReceiptId', 'other'), ('State', 0)):
+            observed = copy.deepcopy(self.observation)
+            observed['providerResults'][0][field] = value
+            with self.assertRaises(v.Failed):
+                self.evaluate(observed)
+
+    def test_irreversible_flags_and_summary_capabilities_cannot_replace_native_originals(self):
+        observed = copy.deepcopy(self.observation)
+        observed.pop('consumptionRequests')
+        observed['capabilities'] = [self.request['Capability']]
+        observed['targetReceipts'] = [{'target': t, 'receiptId': str(i), 'irreversible': True} for i, t in enumerate(self.targets)]
+        observed['guardDispatch'] = {'soleActiveAttestation': True, 'lookupConsistency': 'Linearizable'}
+        with self.assertRaisesRegex(v.Failed, 'CONSUMPTION_REQUESTS_MISSING'):
+            self.evaluate(observed)
+        observed = copy.deepcopy(self.observation)
+        observed['providerResults'][0]['TargetReceipts'][0]['irreversible'] = True
+        with self.assertRaisesRegex(v.Failed, 'TARGET_RECEIPT_SCHEMA_INVALID'):
+            self.evaluate(observed)
+
+    def test_trust_anchor_missing_drift_wrong_curve_transport_substitution_and_ambiguity_block(self):
+        bad_sets = [[{**self.trust[0], 'publicAnchorFile': str(self.directory / 'absent.pem')}], self.trust * 2,
+                    [{**self.trust[0], 'keyFamily': 'OtherKeyFamily'}]]
+        transport = self.roles['observer']
+        bad_sets.append([{**self.trust[0], 'publicAnchorFile': transport['publicAnchorFile'], 'publicAnchorSha256': transport['publicAnchorSha256']}])
+        # Public-only SEC2 P-384 generator point; no non-P256 key pair is generated.
+        point = bytes.fromhex('04AA87CA22BE8B05378EB1C71EF320AD746E1D3B628BA79B9859F741E082542A385502F25DBF55296C3A545E3872760AB7'
+                              '3617DE4A96262C6F5D9E98BF9292DC29F8F41DBD289A147CE9DA3113B5F0B8C00A60B1CE1D7E819D7A431D7C90EA0E5F')
+        public_der = bytes.fromhex('3076301006072A8648CE3D020106052B81040022036200') + point
+        wrong = self.directory / 'wrong-curve-public.pem'
+        wrong.write_bytes(b'-----BEGIN PUBLIC KEY-----\n' + base64.encodebytes(public_der) + b'-----END PUBLIC KEY-----\n')
+        bad_sets.append([{**self.trust[0], 'publicAnchorFile': str(wrong), 'publicAnchorSha256': v.digest(wrong.read_bytes())}])
+        for trust in bad_sets:
+            with self.assertRaises(v.Blocked):
+                v.validate_capability_trust(trust, self.roles)
+        self.public.write_bytes(b'changed-public-anchor')
+        with self.assertRaisesRegex(v.Blocked, 'MISSING_OR_CHANGED'):
+            v.validate_capability_trust(self.trust, self.roles)
+
+    def test_capability_public_key_cannot_be_reused_across_tenant_key_families(self):
+        with self.assertRaisesRegex(v.Blocked, 'CAPABILITY_CROSS_TENANT_KEY_REUSE'):
+            v.validate_capability_trust([*self.trust, {**self.trust[0], 'tenantId': 'other-tenant'}], self.roles)
+
+    def test_all_anchor_pins_are_rechecked_before_a_later_role_call(self):
+        engine = self.directory / 'engine.dll'
+        engine.write_bytes(b'offline-binary')
+        config = self.roles['executor']
+        request = {'operationId': 'offline-original-call', 'action': 'InspectInstallation', 'bindingDigest': 'binding'}
+        statement = {'role': 'executor', 'identity': config['identity'], 'bindingDigest': 'binding',
+                     'operationId': request['operationId'], 'requestSha256': v.digest(request), 'response': {'status': 'OfflineOnly'}}
+        envelope = {'statement': statement, 'signature': base64.b64encode(self.signature(v.canonical(statement), self.directory / 'executor.private.pem')).decode()}
+        executable = Path(config['executable'])
+        executable.write_text("#!/bin/sh\ncat <<'OFFLINE_JSON'\n" + json.dumps(envelope) + '\nOFFLINE_JSON\n')
+        config['executableSha256'] = v.digest(executable.read_bytes())
+        manifest = Path(config['installationManifest'])
+        manifest.write_bytes(v.canonical({'files': [{'path': str(executable), 'sha256': config['executableSha256']}]}))
+        config['installationManifestSha256'] = v.digest(manifest.read_bytes())
+        role = v.Role('executor', config, 'binding', self.directory,
+                      {'path': str(engine), 'sha256': v.digest(engine.read_bytes())}, self.trust, self.roles)
+        with patch.dict(v.os.environ, {'OFFLINE_EXECUTOR': 'offline-value'}):
+            self.assertEqual(envelope, role.request(request))
+        for path in (self.public, Path(self.roles['observer']['publicAnchorFile'])):
+            original = path.read_bytes()
+            path.write_bytes(original + b'\nchanged')
+            with self.assertRaisesRegex(v.Blocked, 'MISSING_OR_CHANGED'):
+                role.request({'operationId': 'later-call'})
+            path.write_bytes(original)
+
+    def test_profile_v2_hash_binds_separate_capability_trust_and_rejects_v1(self):
+        engine = self.directory / 'engine.dll'
+        engine.write_bytes(b'offline-binary')
+        profile = {'schema': 'ext-protection-1-profile/v2', 'targetCommit': 'a' * 40, 'planSha256': 'b' * 64,
+                   'tenantReferences': {'primary': 'tenant-é', 'other': 'other'}, 'roles': self.roles,
+                   'engineBinary': {'path': str(engine), 'sha256': v.digest(engine.read_bytes())}, 'capabilityTrust': self.trust}
+        path = self.directory / 'profile.json'
+        with patch.dict(v.os.environ, {'OFFLINE_' + name.upper(): 'offline-value' for name in v.ROLE_NAMES}):
+            for schema in ('ext-protection-1-profile/v2', 'ext-protection-1-profile/v1'):
+                profile['schema'] = schema
+                path.write_bytes(v.canonical(profile))
+                record = {'profileSha256': v.digest(path.read_bytes()), 'TargetVersionOrCommit': 'a' * 40}
+                if schema.endswith('/v2'):
+                    self.assertEqual(profile, v.validate_profile(path, record, 'b' * 64))
+                else:
+                    with self.assertRaisesRegex(v.Blocked, 'PROFILE_BINDING_MISMATCH'):
+                        v.validate_profile(path, record, 'b' * 64)
+
+
 if __name__ == '__main__':
     unittest.main()

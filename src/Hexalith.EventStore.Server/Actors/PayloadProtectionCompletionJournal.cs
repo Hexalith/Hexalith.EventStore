@@ -9,4 +9,7 @@ internal sealed record PayloadProtectionCompletionJournal(PayloadProtectionCompl
 {
     /// <summary>Gets the actor-local coordination key, never an event payload or metadata field.</summary>
     internal const string StateName = "payload_protection_completion_v1";
+
+    /// <summary>Gets the stable durable reminder for original completion recovery without another command.</summary>
+    internal const string ReminderName = "payload-protection-completion-v1";
 }

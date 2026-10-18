@@ -72,7 +72,8 @@ internal static class AggregateActorTestHelper {
         IServiceProvider? serviceProvider = null,
         string actorId = "test-tenant:test-domain:agg-001",
         ISnapshotManager? snapshotManager = null,
-        bool configureTrustedInvokerSubstitute = false) {
+        bool configureTrustedInvokerSubstitute = false,
+        ActorTimerManager? timerManager = null) {
         bool configureSubstituteStateManager = stateManager is null;
         bool configureDefaultInvoker = invoker is null;
         bool configureDefaultPublisher = eventPublisher is null;
@@ -99,7 +100,7 @@ internal static class AggregateActorTestHelper {
         ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
         eventPublisher ??= Substitute.For<IEventPublisher>();
         var host = ActorHost.CreateForTest<AggregateActor>(
-            new ActorTestOptions { ActorId = new ActorId(actorId) });
+            new ActorTestOptions { ActorId = new ActorId(actorId), TimerManager = timerManager ?? Substitute.For<ActorTimerManager>() });
         if (deadLetterPublisher is null)
         {
             deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();

@@ -17,21 +17,72 @@ public partial class AggregateActor
         { throw new InvalidOperationException("ProtectionCompletionJournalMismatch"); }
         await StateManager.SetStateAsync(PayloadProtectionCompletionJournal.StateName,
             new PayloadProtectionCompletionJournal([.. originals]), cancellationToken).ConfigureAwait(false);
+        // Arm before the source commit. A crash after commit then needs no new command;
+        // a crash before commit leaves a harmless reminder that finds no journal.
+        await ArmPayloadProtectionCompletionReminderAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task RecoverPayloadProtectionCompletionsAsync(AggregateIdentity identity)
+    private async Task ArmPayloadProtectionCompletionReminderAsync(CancellationToken cancellationToken)
+    {
+        if (payloadProtectionService is not InteractionPayloadProtectionService) { return; }
+        _ = await RegisterReminderAsync(PayloadProtectionCompletionJournal.ReminderName, null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)).WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RearmPayloadProtectionCompletionReminderAsync()
+    {
+        if (payloadProtectionService is not InteractionPayloadProtectionService) { return; }
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), IdempotencyTimeProvider);
+        var found = await StateManager.TryGetStateAsync<PayloadProtectionCompletionJournal>(
+            PayloadProtectionCompletionJournal.StateName, timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
+        if (found.HasValue && found.Value is { Completed: false })
+        {
+            await ArmPayloadProtectionCompletionReminderAsync(timeout.Token).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RecoverPayloadProtectionCompletionReminderAsync()
+    {
+        if (payloadProtectionService is not InteractionPayloadProtectionService)
+        { throw new InvalidOperationException("ProtectionCompletionEngineUnavailable"); }
+        // Every read, independent writer proof and completion commit shares one budget.
+        // A failed/unknown save leaves the reminder armed and forces a fresh durable read.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), IdempotencyTimeProvider);
+        CancellationToken token = timeout.Token;
+        try
+        {
+            await EnsureStateCacheBarrierAsync(correlationId: null, activity: null).WaitAsync(token).ConfigureAwait(false);
+            var found = await StateManager.TryGetStateAsync<PayloadProtectionCompletionJournal>(
+                PayloadProtectionCompletionJournal.StateName, token).WaitAsync(token).ConfigureAwait(false);
+            if (found.HasValue && found.Value is not { Completed: true })
+            {
+                await RecoverPayloadProtectionCompletionsAsync(GetAggregateIdentityFromActorId(), token).ConfigureAwait(false);
+                await StateManager.SaveStateAsync(token).WaitAsync(token).ConfigureAwait(false);
+            }
+            await UnregisterReminderAsync(PayloadProtectionCompletionJournal.ReminderName).WaitAsync(token).ConfigureAwait(false);
+        }
+        catch
+        {
+            _stateCacheUnsafe = true;
+            throw;
+        }
+    }
+
+    private async Task RecoverPayloadProtectionCompletionsAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
     {
         if (payloadProtectionService is not InteractionPayloadProtectionService) { return; }
         // Confirmed original recovery is independent of the abandoned command's cancellation,
         // while every read and owner call shares this one bounded recovery budget.
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), IdempotencyTimeProvider);
-        CancellationToken token = timeout.Token;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
+        CancellationToken token = linked.Token;
         try
         {
             ConditionalValue<PayloadProtectionCompletionJournal> found = await StateManager
                 .TryGetStateAsync<PayloadProtectionCompletionJournal>(PayloadProtectionCompletionJournal.StateName, token)
                 .WaitAsync(token).ConfigureAwait(false);
-            if (!found.HasValue || found.Value.Completed) { return; }
+            if (!found.HasValue || found.Value is { Completed: true }) { return; }
+            if (found.Value is null) { throw new InvalidOperationException("ProtectionCompletionJournalMismatch"); }
             PayloadProtectionCompletionJournal journal = found.Value;
             if (journal.Originals is not { Length: > 0 and <= 4096 })
             { throw new InvalidOperationException("ProtectionCompletionJournalMismatch"); }

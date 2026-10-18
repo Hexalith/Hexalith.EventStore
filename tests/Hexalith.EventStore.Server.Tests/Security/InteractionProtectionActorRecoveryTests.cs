@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Reflection;
 
+using Dapr.Actors.Runtime;
 using Dapr.Client;
 
 using Hexalith.EventStore.Client.Events;
@@ -17,6 +19,7 @@ using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
 using Hexalith.EventStore.Server.Tests.Actors;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,6 +35,132 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>Actual engine/actor coordination tests with independently inspected in-memory committed source state.</summary>
 public sealed class InteractionProtectionActorRecoveryTests
 {
+    [Fact]
+    public async Task RegisteredReminderCompletesIdleOriginalWithoutAnotherCommandOrEncryption()
+    {
+        var fixture = Fixture();
+        var state = new FaultInjectingActorStateManager();
+        var scheduler = new RegisteredReminderHarness();
+        bool available = false;
+        ConfigureWriterProof(fixture, state, () => available);
+        ActorTestContext actor = Actor(fixture, state, scheduler: scheduler.Manager);
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => actor.Actor.ProcessCommandAsync(Command(fixture, "idle")));
+        scheduler.RegisteredNames.ShouldContain(PayloadProtectionCompletionJournal.ReminderName);
+        var original = state.CommittedState[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>();
+        byte[] ciphertext = fixture.Occurrences.Record!.Sealed!.PayloadBytes.ToArray();
+        available = true;
+
+        await scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(5));
+
+        scheduler.DeliveryCount.ShouldBe(1);
+        scheduler.RegisteredNames.ShouldNotContain(PayloadProtectionCompletionJournal.ReminderName);
+        var completed = state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>();
+        completed.Completed.ShouldBeTrue();
+        completed.Originals.ShouldBe(original.Originals);
+        fixture.Occurrences.Record.WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
+        fixture.Occurrences.Record.Sealed!.PayloadBytes.ShouldBe(ciphertext);
+        fixture.Occurrences.Keys.Leases.ShouldBe(1);
+        actor.Invoker.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(IDomainServiceInvoker.InvokeAsync)).ShouldBe(1);
+        await actor.EventPublisher.DidNotReceiveWithAnyArgs().PublishEventsAsync(default!, default!, default!, default, default);
+        await actor.Actor.ReceiveReminderAsync(PayloadProtectionCompletionJournal.ReminderName, [], TimeSpan.Zero, TimeSpan.Zero);
+        state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBe(completed);
+        fixture.Occurrences.Keys.Leases.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task UnavailableWriterProofRetainsIdleReminderAndExactPendingOriginal()
+    {
+        var fixture = Fixture();
+        var state = new FaultInjectingActorStateManager();
+        var scheduler = new RegisteredReminderHarness();
+        bool available = false;
+        ConfigureWriterProof(fixture, state, () => available);
+        ActorTestContext actor = Actor(fixture, state, scheduler: scheduler.Manager);
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => actor.Actor.ProcessCommandAsync(Command(fixture, "outage")));
+        var original = state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>();
+
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(5)));
+        state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBe(original);
+        scheduler.RegisteredNames.ShouldContain(PayloadProtectionCompletionJournal.ReminderName);
+        fixture.Occurrences.Record!.WriterState.ShouldBe(InteractionOccurrenceWriterState.SealedPending);
+        available = true;
+        await scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(30));
+        state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>().Completed.ShouldBeTrue();
+        scheduler.RegisteredNames.ShouldBeEmpty();
+        fixture.Occurrences.Keys.Leases.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IdleCompletionSaveFailureRecoversByDurableReadWithoutDroppingReminder(bool committed)
+    {
+        var fixture = Fixture();
+        var state = new FaultInjectingActorStateManager();
+        var scheduler = new RegisteredReminderHarness();
+        bool available = false;
+        ConfigureWriterProof(fixture, state, () => available);
+        ActorTestContext actor = Actor(fixture, state, scheduler: scheduler.Manager);
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => actor.Actor.ProcessCommandAsync(Command(fixture, "save-loss")));
+        int nextSave = state.Trace.Count(operation => operation == "SaveState") + 1;
+        if (committed) { state.FaultAfterCall("SaveState", nextSave, new IOException("lost completion acknowledgement")); }
+        else { state.FaultOnCall("SaveState", nextSave, new IOException("completion save unavailable")); }
+        available = true;
+
+        await Should.ThrowAsync<IOException>(() => scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(5)));
+        state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>().Completed.ShouldBe(committed);
+        scheduler.RegisteredNames.ShouldContain(PayloadProtectionCompletionJournal.ReminderName);
+        await scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(30));
+        state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>().Completed.ShouldBeTrue();
+        scheduler.RegisteredNames.ShouldBeEmpty();
+        fixture.Occurrences.Keys.Leases.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ActivationRearmsExistingPendingJournalWithoutCompletingOrReservingAnOccurrence()
+    {
+        var fixture = Fixture();
+        var state = new FaultInjectingActorStateManager();
+        ConfigureWriterProof(fixture, state, static () => false);
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => Actor(fixture, state).Actor.ProcessCommandAsync(Command(fixture, "reactivation")));
+        // Model an idle actor whose only recovery work is the original protection
+        // journal. A publication index would independently run command recovery.
+        var idleState = new FaultInjectingActorStateManager();
+        await idleState.SeedCommittedStateAsync(state.CreateCommittedView()
+            .Where(entry => entry.Key == PayloadProtectionCompletionJournal.StateName
+                || entry.Key.StartsWith(fixture.Binding.Identity.Owner.EventStreamKeyPrefix, StringComparison.Ordinal))
+            .ToDictionary(entry => entry.Key, entry => entry.Value));
+        var scheduler = new RegisteredReminderHarness();
+        ActorTestContext restarted = Actor(fixture, idleState, scheduler: scheduler.Manager);
+        fixture.Occurrences.Registry.ClearReceivedCalls();
+        var activate = typeof(AggregateActor).GetMethod("OnActivateAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        await (Task)activate.Invoke(restarted.Actor, null)!;
+
+        scheduler.RegisteredNames.ShouldContain(PayloadProtectionCompletionJournal.ReminderName);
+        fixture.Occurrences.Registry.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+            .Where(name => name != nameof(IInteractionOccurrenceRegistry.LookupAsync)).ShouldBeEmpty();
+        idleState.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>().Completed.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SchedulerFailurePreventsProtectedSourceCommit()
+    {
+        var fixture = Fixture();
+        var state = new FaultInjectingActorStateManager();
+        var scheduler = new RegisteredReminderHarness { FailRegistration = true };
+        ConfigureWriterProof(fixture, state, static () => true);
+        ActorTestContext actor = Actor(fixture, state, scheduler: scheduler.Manager);
+
+        (await actor.Actor.ProcessCommandAsync(Command(fixture, "scheduler-outage"))).Accepted.ShouldBeFalse();
+
+        state.CreateCommittedView().Keys.ShouldNotContain($"{fixture.Binding.Identity.Owner.EventStreamKeyPrefix}1");
+        state.CreateCommittedView().Keys.ShouldNotContain(PayloadProtectionCompletionJournal.StateName);
+        scheduler.RegisteredNames.ShouldBeEmpty();
+        fixture.Occurrences.Record!.WriterState.ShouldBe(InteractionOccurrenceWriterState.SealedPending);
+        await actor.EventPublisher.DidNotReceiveWithAnyArgs().PublishEventsAsync(default!, default!, default!, default, default);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -219,10 +348,10 @@ public sealed class InteractionProtectionActorRecoveryTests
         => new(id, fixture.Binding.Identity.Owner.TenantId, "d", "interaction-a", "Create", [1], id, null, "actor", null);
 
     private static ActorTestContext Actor(InteractionPayloadProtectionHookFixture fixture, FaultInjectingActorStateManager state,
-        IServiceProvider? services = null)
+        IServiceProvider? services = null, ActorTimerManager? scheduler = null)
     {
         ActorTestContext actor = CreateActor(payloadProtectionService: fixture.Service, stateManager: state,
-            actorId: fixture.Binding.Identity.Owner.ActorId, serviceProvider: services);
+            actorId: fixture.Binding.Identity.Owner.ActorId, serviceProvider: services, timerManager: scheduler);
         actor.AggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>()).Returns("r");
         var payload = new SerializedDomainEventPayload("Legacy.Event", InteractionPayloadProtectionHookFixture.Payload(), "json", null, null, null);
         actor.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(DomainResult.Success([payload]));

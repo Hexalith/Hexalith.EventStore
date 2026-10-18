@@ -45,7 +45,10 @@ jobs:
           global-json-file: global.json
 
       - name: Verify owner qualification policy and recovery offline
-        run: python3 -m unittest discover -s tools/tests -p 'test_ext_protection_1.py' -v
+        env:
+          EXT_PROTECTION_INTEROP_CONFIGURATION: Release
+          EXT_PROTECTION_INTEROP_PROJECT_REFERENCES: "false"
+        run: python3 -m unittest discover -s tools/tests -p 'test_ext_protection_1*.py' -v
 
       - name: Restore PayloadProtection tests
         run: >-

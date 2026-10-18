@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import secrets
 import subprocess
+import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +24,9 @@ PLAN_FILE = ROOT / 'tools/ext-protection-1/plan.json'
 ROLE_NAMES = ('executor', 'observer', 'enrollment')
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 CAPABILITY_FIELDS = set('Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId IntendedIssuedGuardRevision AttestationOrdinal SigningAttemptOrdinal CapabilityKeyVersion'.split())
+CAPABILITY_NUMBERS = {'BatchOrdinal', 'IntendedIssuedGuardRevision', 'AttestationOrdinal', 'SigningAttemptOrdinal'}
+TRUST_FIELDS = set('issuer audience tenantId keyFamily keyVersion publicAnchorId publicAnchorVersion publicAnchorFile publicAnchorSha256 trustProfileRevision'.split())
+MAX_EXACT_INTEGER = 9007199254740991
 
 
 class Blocked(Exception):
@@ -41,7 +45,7 @@ def digest(value):
     return hashlib.sha256(value if isinstance(value, bytes) else canonical(value)).hexdigest()
 
 
-def read_json(path):
+def strict_json(raw):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -49,8 +53,12 @@ def read_json(path):
                 raise Blocked('DUPLICATE_JSON_MEMBER')
             result[key] = value
         return result
-    return json.loads(Path(path).read_bytes(), object_pairs_hook=pairs,
+    return json.loads(raw, object_pairs_hook=pairs,
                       parse_constant=lambda _: (_ for _ in ()).throw(Blocked('NONFINITE_JSON')))
+
+
+def read_json(path):
+    return strict_json(Path(path).read_bytes())
 
 
 def require(condition, code):
@@ -132,8 +140,8 @@ def validate_profile(path, record, plan_sha):
     if digest(raw) != record['profileSha256']:
         raise Blocked('PROFILE_HASH_MISMATCH')
     profile = read_json(path)
-    if set(profile) != {'schema', 'targetCommit', 'planSha256', 'tenantReferences', 'roles', 'engineBinary'} \
-            or profile['schema'] != 'ext-protection-1-profile/v1' \
+    if set(profile) != {'schema', 'targetCommit', 'planSha256', 'tenantReferences', 'roles', 'engineBinary', 'capabilityTrust'} \
+            or profile['schema'] != 'ext-protection-1-profile/v2' \
             or profile['targetCommit'] != record['TargetVersionOrCommit'] or profile['planSha256'] != plan_sha:
         raise Blocked('PROFILE_BINDING_MISMATCH')
     tenants = profile['tenantReferences']
@@ -169,11 +177,264 @@ def validate_profile(path, record, plan_sha):
         anchors.append(anchor_identity(anchor))
     if any(len(set(values)) != 3 for values in (identities, credentials, anchors)):
         raise Blocked('ROLE_SEPARATION_MISSING')
+    validate_capability_trust(profile['capabilityTrust'], profile['roles'])
+    if any(entry['tenantId'] not in tenants.values() for entry in profile['capabilityTrust']):
+        raise Blocked('CAPABILITY_TRUST_TENANT_MISMATCH')
     binary = profile['engineBinary']
     if set(binary) != {'path', 'sha256'}:
         raise Blocked('ENGINE_BINARY_REFERENCE_MISSING')
     pinned_file(binary['path'], binary['sha256'])
     return profile
+
+
+def identity_text(value, code='IDENTITY_INVALID', byte_bound=False):
+    require(isinstance(value, str) and bool(value.strip()), code)
+    try:
+        require(len(value.encode('utf-16-be')) <= 4096, code)
+        raw = value.encode('utf-8')
+        require(not byte_bound or len(raw) <= 2048, code)
+    except UnicodeError:
+        raise Failed(code) from None
+    return value
+
+
+def ordinal(value, minimum=1, maximum=MAX_EXACT_INTEGER):
+    require(type(value) is int and minimum <= value <= maximum, 'ORDINAL_INVALID')
+    return value
+
+
+def validate_capability_trust(entries, roles):
+    """Recheck every accepted public pin, including all transport anchors, at every call."""
+    if not isinstance(entries, list) or not entries or len(entries) > 1000:
+        raise Blocked('CAPABILITY_TRUST_MISSING')
+    transports = {anchor_identity(pinned_file(r['publicAnchorFile'], r['publicAnchorSha256'])) for r in roles.values()}
+    identities, tenant_keys = set(), {}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != TRUST_FIELDS:
+            raise Blocked('CAPABILITY_TRUST_SCHEMA_MISMATCH')
+        try:
+            for name in TRUST_FIELDS - {'trustProfileRevision'}:
+                identity_text(entry[name], 'CAPABILITY_TRUST_IDENTITY_INVALID')
+            ordinal(entry['trustProfileRevision'])
+        except Failed as exc:
+            raise Blocked(str(exc)) from None
+        identity = tuple(entry[k] for k in ('issuer', 'audience', 'tenantId', 'keyFamily', 'keyVersion'))
+        if entry['keyFamily'] != 'DeletionBatchCapabilitySigningKey' or identity in identities:
+            raise Blocked('CAPABILITY_TRUST_AMBIGUOUS_OR_WRONG_FAMILY')
+        identities.add(identity)
+        anchor = pinned_file(entry['publicAnchorFile'], entry['publicAnchorSha256'])
+        fingerprint = anchor_identity(anchor)
+        if fingerprint in transports:
+            raise Blocked('CAPABILITY_TRANSPORT_KEY_SUBSTITUTION')
+        if fingerprint in tenant_keys and tenant_keys[fingerprint] != entry['tenantId']:
+            raise Blocked('CAPABILITY_CROSS_TENANT_KEY_REUSE')
+        tenant_keys[fingerprint] = entry['tenantId']
+
+
+def capability_bytes(capability):
+    require(isinstance(capability, dict) and set(capability) == CAPABILITY_FIELDS,
+            'CAPABILITY_EXPIRY_RENEWAL_OR_FIELD_SUBSTITUTION')
+    for name, value in capability.items():
+        if name in CAPABILITY_NUMBERS:
+            ordinal(value, 0 if name == 'BatchOrdinal' else 1)
+        else:
+            identity_text(value, 'CAPABILITY_IDENTITY_INVALID', byte_bound=True)
+    return canonical(capability)
+
+
+def base64url(raw):
+    return base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
+
+
+def decode_base64url(value):
+    require(isinstance(value, str) and bool(re.fullmatch(r'[A-Za-z0-9_-]+', value)), 'JWS_BASE64URL_INVALID')
+    try:
+        raw = base64.b64decode(value + '=' * (-len(value) % 4), altchars=b'-_', validate=True)
+    except ValueError:
+        raise Failed('JWS_BASE64URL_INVALID') from None
+    require(base64url(raw) == value, 'JWS_BASE64URL_NONCANONICAL')
+    return raw
+
+
+def native_json_string(value):
+    """Default System.Text.Json/JavaScriptEncoder string bytes, not RFC8785 bytes."""
+    identity_text(value, 'TARGET_IDENTITY_INVALID', byte_bound=True)
+    result = ['"']
+    short = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\f': '\\f', '\r': '\\r', '\\': '\\\\'}
+    for char in value:
+        number = ord(char)
+        if char in short:
+            result.append(short[char])
+        elif number < 0x20 or number > 0x7e or char in '"&\'<>+`':
+            encoded = char.encode('utf-16-be')
+            result.extend('\\u' + format(int.from_bytes(encoded[i:i + 2], 'big'), '04X') for i in range(0, len(encoded), 2))
+        else:
+            result.append(char)
+    return ''.join(result) + '"'
+
+
+def target_manifest_bytes(targets):
+    return ('[' + ','.join('[' + ','.join(native_json_string(value) for value in target_key(target)) + ']'
+                           for target in targets) + ']').encode('ascii')
+
+
+def validate_consumption_request(request, trust, roles):
+    require(isinstance(request, dict) and set(request) == set('Capability DetachedJws CommittedIssuedGuardRevision DispatchReceiptId DispatchGuardRevision Targets'.split()),
+            'CONSUMPTION_REQUEST_SCHEMA_INVALID')
+    payload = request['Capability']
+    payload_bytes = capability_bytes(payload)
+    ordinal(request['CommittedIssuedGuardRevision'])
+    ordinal(request['DispatchGuardRevision'])
+    require(request['DispatchGuardRevision'] > request['CommittedIssuedGuardRevision'] == payload['IntendedIssuedGuardRevision'] + 1,
+            'ISSUE_DISPATCH_REVISION_MISMATCH')
+    identity_text(request['DispatchReceiptId'])
+    targets = request['Targets']
+    require(isinstance(targets, list) and 1 <= len(targets) <= 1000, 'TARGET_INVENTORY_INVALID')
+    keys = [target_key(target) for target in targets]
+    require(all(key[0] == payload['TenantId'] for key in keys), 'CAPABILITY_TENANT_SUBSTITUTION')
+    order = [(key[1].encode('utf-16-be'), key[2].encode('utf-16-be')) for key in keys]
+    require(order == sorted(set(order)), 'TARGET_ORDER_OR_DUPLICATE_INVALID')
+    require(payload['ManifestDigest'] == digest(target_manifest_bytes(targets)).upper(), 'NATIVE_MANIFEST_DIGEST_MISMATCH')
+    validate_capability_trust(trust, roles)
+    matches = [entry for entry in trust if (entry['issuer'], entry['audience'], entry['tenantId'], entry['keyVersion']) ==
+               (payload['Issuer'], payload['Audience'], payload['TenantId'], payload['CapabilityKeyVersion'])]
+    require(len(matches) == 1, 'CAPABILITY_TRUST_NOT_EXACT')
+    entry = matches[0]
+    header = {'alg': 'ES256', 'anchorVersion': entry['publicAnchorVersion'], 'keyVersion': entry['keyVersion'],
+              'kid': entry['publicAnchorId'], 'typ': 'DeletionBatchCapabilityV1'}
+    jws = request['DetachedJws']
+    require(isinstance(jws, str) and len(jws) <= 16384 and len(jws.split('.')) == 3, 'DETACHED_JWS_INVALID')
+    encoded, middle, signature = jws.split('.')
+    # Parsing is duplicate-safe, and byte equality rejects reordered, extra or noncanonical headers.
+    require(not middle and strict_json(decode_base64url(encoded)) == header and encoded == base64url(canonical(header)), 'CAPABILITY_HEADER_SUBSTITUTION')
+    raw = decode_base64url(signature)
+    require(len(raw) == 64, 'ES256_SIGNATURE_INVALID')
+    with tempfile.TemporaryDirectory(prefix='ext-protection-capability-') as temporary:
+        signature_path = Path(temporary) / 'signature.der'
+        signature_path.write_bytes(p1363_der(raw))
+        result = subprocess.run(['openssl', 'dgst', '-sha256', '-verify', entry['publicAnchorFile'], '-signature', str(signature_path)],
+                                input=(encoded + '.' + base64url(payload_bytes)).encode('ascii'), capture_output=True, timeout=10)
+    require(result.returncode == 0, 'CAPABILITY_SIGNATURE_INVALID')
+    validate_capability_trust(trust, roles)
+    return digest(payload_bytes).upper(), digest(jws.encode('utf-8')).upper()
+
+
+def native_record(value, fields, code):
+    require(isinstance(value, dict) and set(value) == set(fields.split()), code)
+    return value
+
+
+def original_evidence(observation, targets, trust, roles, consumed=False):
+    """Correlate original contract records; transport signatures do not prove currentness."""
+    requests = observation.get('consumptionRequests')
+    require(isinstance(requests, list) and 1 <= len(requests) <= 1000, 'CONSUMPTION_REQUESTS_MISSING')
+    batches = observation.get('guardBatches')
+    receipts = observation.get('guardReceipts')
+    require(isinstance(batches, list) and len(batches) == len(requests) and isinstance(receipts, list), 'GUARD_ORIGINALS_MISSING')
+    batch_map, receipt_map = {}, {}
+    for batch in batches:
+        native_record(batch, 'BatchId Kind Ordinal Targets ManifestDigest AttestationOrdinal CapabilityKeyVersion AttestationDigest IssueReceiptId DispatchReceiptId ProtectionOutcome ProtectionReceiptId TargetReceiptIds BlockSetRevision CoveredResourceIds Capability DetachedJws SigningRequestId IssuedGuardRevision DispatchGuardRevision', 'GUARD_BATCH_SCHEMA_INVALID')
+        identity_text(batch['BatchId'])
+        require(batch['BatchId'] not in batch_map, 'GUARD_BATCH_AMBIGUOUS')
+        batch_map[batch['BatchId']] = batch
+    for receipt in receipts:
+        native_record(receipt, 'OperationId IntentDigest Status GuardHighWater AcceptedAtAdmissionFenceOrdinal ReferenceId ReceiptId AdmissionAttributionsJson AcceptedWriteResourceId AcceptedWriteFacts AcceptedTargetMutationDigest Capability SigningRequestId DetachedJwsDigest', 'GUARD_RECEIPT_SCHEMA_INVALID')
+        identity_text(receipt['ReceiptId'])
+        identity_text(receipt['OperationId'])
+        ordinal(receipt['GuardHighWater'])
+        require(receipt['ReceiptId'] not in receipt_map, 'GUARD_RECEIPT_AMBIGUOUS')
+        receipt_map[receipt['ReceiptId']] = receipt
+    request_map, covered = {}, []
+    for request in requests:
+        signing_id, signature_digest = validate_consumption_request(request, trust, roles)
+        capability = request['Capability']
+        batch_id = capability['BatchId']
+        require(batch_id not in request_map and batch_id in batch_map, 'REQUEST_BATCH_AMBIGUOUS_OR_MISSING')
+        request_map[batch_id] = request
+        covered.extend(target_key(target) for target in request['Targets'])
+        batch = batch_map[batch_id]
+        require(batch['Capability'] == capability and batch['DetachedJws'] == request['DetachedJws']
+                and batch['SigningRequestId'] == signing_id and batch['AttestationDigest'] == signature_digest
+                and batch['Targets'] == request['Targets'] and batch['ManifestDigest'] == capability['ManifestDigest']
+                and batch['Kind'] == capability['BatchKind'] and type(batch['Ordinal']) is int and batch['Ordinal'] == capability['BatchOrdinal']
+                and type(batch['AttestationOrdinal']) is int and batch['AttestationOrdinal'] == capability['AttestationOrdinal']
+                and batch['CapabilityKeyVersion'] == capability['CapabilityKeyVersion'], 'GUARD_BATCH_IDENTITY_MISMATCH')
+        ordinal(batch['IssuedGuardRevision'])
+        ordinal(batch['DispatchGuardRevision'])
+        require(batch['IssuedGuardRevision'] == request['CommittedIssuedGuardRevision']
+                and batch['DispatchGuardRevision'] == request['DispatchGuardRevision']
+                and batch['DispatchReceiptId'] == request['DispatchReceiptId']
+                and batch['IssueReceiptId'] != batch['DispatchReceiptId'], 'GUARD_REVISION_OR_RECEIPT_MISMATCH')
+        require((batch['Kind'] == 'AcceptedSet' and batch['Ordinal'] == 0)
+                or (batch['Kind'] == 'Containment' and batch['Ordinal'] > 0 and len(batch['Targets']) == 1), 'BATCH_KIND_OR_ORDINAL_INVALID')
+        originals = []
+        for key, revision in (('IssueReceiptId', batch['IssuedGuardRevision']), ('DispatchReceiptId', batch['DispatchGuardRevision'])):
+            require(batch[key] in receipt_map, 'GUARD_ORIGINAL_RECEIPT_MISSING')
+            receipt = receipt_map[batch[key]]
+            require(receipt['Status'] == 'Committed' and receipt['ReferenceId'] == batch_id
+                    and receipt['GuardHighWater'] == revision and receipt['Capability'] == capability
+                    and receipt['SigningRequestId'] == signing_id and receipt['DetachedJwsDigest'] == signature_digest,
+                    'GUARD_ORIGINAL_RECEIPT_MISMATCH')
+            originals.append(receipt)
+        require(originals[0]['OperationId'] != originals[1]['OperationId'], 'ISSUE_DISPATCH_OPERATION_REUSED')
+    require(len(covered) == len(set(covered)) and set(covered) == set(map(target_key, targets)), 'CONSUMPTION_TARGET_INVENTORY_MISMATCH')
+    if not consumed:
+        return request_map, []
+    owner_fields = 'TenantId BatchId Status OwnerRevision KeyBlockSetRevision ReceiptId BlockReason BlockedKeyVersion RevocationRevision TargetReceipts'
+    provider_fields = 'TenantId BatchId ReservationReceiptId State TargetReceipts'
+    owners, providers, all_receipts = {}, {}, []
+    for field, mapping, fields, state_field, state in (
+            ('ownerResults', owners, owner_fields, 'Status', 3),
+            ('providerResults', providers, provider_fields, 'State', 1)):
+        values = observation.get(field)
+        require(isinstance(values, list) and len(values) == len(requests), 'TERMINAL_ORIGINALS_MISSING')
+        for value in values:
+            native_record(value, fields, 'TERMINAL_RESULT_SCHEMA_INVALID')
+            batch_id = value['BatchId']
+            require(batch_id in request_map and batch_id not in mapping, 'TERMINAL_BATCH_AMBIGUOUS_OR_SUBSTITUTED')
+            request = request_map[batch_id]
+            require(value['TenantId'] == request['Capability']['TenantId'] and type(value[state_field]) is int
+                    and value[state_field] == state, 'TERMINAL_RESULT_NOT_CONSUMED')
+            vector = value['TargetReceipts']
+            require(isinstance(vector, list) and len(vector) == len(request['Targets']), 'ORDERED_RECEIPT_VECTOR_MISMATCH')
+            ids = []
+            for receipt, target in zip(vector, request['Targets']):
+                native_record(receipt, 'Target OriginalBatchId ReceiptId', 'TARGET_RECEIPT_SCHEMA_INVALID')
+                identity_text(receipt['ReceiptId'])
+                require(receipt['Target'] == target and receipt['OriginalBatchId'] == batch_id, 'ORIGINAL_TARGET_RECEIPT_SUBSTITUTED')
+                ids.append(receipt['ReceiptId'])
+            require(len(set(ids)) == len(ids), 'TARGET_RECEIPT_ID_REUSED')
+            if field == 'ownerResults':
+                ordinal(value['OwnerRevision'])
+                ordinal(value['KeyBlockSetRevision'], 0)
+                identity_text(value['ReceiptId'])
+                require(value['BlockReason'] is None and value['BlockedKeyVersion'] is None and value['RevocationRevision'] is None,
+                        'CONSUMED_RESULT_HAS_BLOCK')
+            else:
+                identity_text(value['ReservationReceiptId'])
+            mapping[batch_id] = value
+    for batch_id, owner in owners.items():
+        provider = providers[batch_id]
+        require(provider['ReservationReceiptId'] == owner['ReceiptId'] and provider['TargetReceipts'] == owner['TargetReceipts'],
+                'PROVIDER_OWNER_ORIGINAL_VECTOR_MISMATCH')
+        batch = batch_map[batch_id]
+        if batch['ProtectionOutcome'] in ('Consumed', 'AlreadyDestroyed'):
+            require(batch['ProtectionReceiptId'] == owner['ReceiptId']
+                    and batch['TargetReceiptIds'] == [receipt['ReceiptId'] for receipt in owner['TargetReceipts']], 'GUARD_TERMINAL_VECTOR_MISMATCH')
+        else:
+            require(batch['ProtectionOutcome'] in ('Unconsumed', 'ReplacementAwaitingActivation'), 'GUARD_BATCH_BLOCKED_OR_UNKNOWN')
+        all_receipts.extend(owner['TargetReceipts'])
+    # These are exact native originals returned by the indicated terminal APIs, not labels.
+    for field, originals in (('ownerRetryResults', owners), ('ownerLookupResults', owners), ('providerLookupResults', providers)):
+        values = observation.get(field)
+        require(isinstance(values, list) and len(values) >= len(requests), 'TERMINAL_RETRY_LOOKUP_MISSING')
+        seen = set()
+        for value in values:
+            require(isinstance(value, dict) and value.get('BatchId') in originals
+                    and canonical(value) == canonical(originals[value['BatchId']]), 'TERMINAL_RETRY_LOOKUP_DIVERGED')
+            seen.add(value['BatchId'])
+        require(seen == set(request_map), 'TERMINAL_RETRY_LOOKUP_INCOMPLETE')
+    return request_map, sorted(all_receipts, key=lambda receipt: tuple(value.encode('utf-16-be') for value in target_key(receipt['Target'])))
 
 
 def p1363_der(signature):
@@ -220,20 +481,22 @@ def revalidate_installation(config, engine):
 
 class Role:
     """Pinned JSON-stdin transport. Roles provide facts, never verifier verdicts."""
-    def __init__(self, name, config, binding, directory, engine):
+    def __init__(self, name, config, binding, directory, engine, capability_trust, role_configs):
         self.name, self.config, self.binding, self.directory = name, config, binding, Path(directory)
         self.engine = engine
+        self.capability_trust, self.role_configs = capability_trust, role_configs
 
     def request(self, request):
         pinned_file(self.config['executable'], self.config['executableSha256'])
         pinned_file(self.config['publicAnchorFile'], self.config['publicAnchorSha256'])
         revalidate_installation(self.config, self.engine)
+        validate_capability_trust(self.capability_trust, self.role_configs)
         result = subprocess.run([self.config['executable']], input=canonical(request), capture_output=True, timeout=60,
                                 env=isolated_environment(self.config['credentialReference']))
         if result.returncode or len(result.stdout) > 16 * 1024 * 1024:
             raise Blocked('ROLE_RESULT_UNCERTAIN')
         try:
-            envelope = json.loads(result.stdout)
+            envelope = strict_json(result.stdout)
             if set(envelope) != {'statement', 'signature'}:
                 raise ValueError()
             statement = envelope['statement']
@@ -296,18 +559,23 @@ def mutate(role, request, directory, registrar=None):
 
 
 def target_key(target):
-    if set(target) != {'TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias'} or any(not isinstance(v, str) or not v.strip() for v in target.values()):
+    if not isinstance(target, dict) or set(target) != {'TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias'}:
         raise Failed('TARGET_IDENTITY_INVALID')
+    for value in target.values():
+        identity_text(value, 'TARGET_IDENTITY_INVALID', byte_bound=True)
     return tuple(target[k] for k in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias'))
 
 
-def evaluate(observation, case, targets, canary, commit, binary_sha):
+def evaluate(observation, case, targets, canary, commit, binary_sha, capability_trust=None, role_configs=None):
     """Assert raw persisted state and ordered receipts; no aggregate pass booleans."""
     require(observation['engineSourceRevision'] == commit and observation['engineBinarySha256'] == binary_sha, 'ENGINE_IDENTITY_MISMATCH')
     require(observation['agentsRuntimeEnabled'] is False, 'AGENTS_RUNTIME_FORBIDDEN')
     roots = observation['roots']
     require(sorted(target_key(r['target']) for r in roots) == sorted(map(target_key, targets)), 'ROOT_INVENTORY_MISMATCH')
     checks = set(case['checks'])
+    native_receipts = []
+    if 'capability' in checks or 'receipts' in checks or observation.get('consumptionRequests') is not None:
+        _, native_receipts = original_evidence(observation, targets, capability_trust, role_configs or {}, 'receipts' in checks)
     states = [r['state'] for r in roots]
     require(all(s in ('Active', 'Pinned', 'Destroyed') for s in states), 'ROOT_STATE_UNKNOWN')
     for record in observation['records']:
@@ -352,15 +620,11 @@ def evaluate(observation, case, targets, canary, commit, binary_sha):
         for target in targets:
             refs = [r['rootReference'] for r in observation['records'] if r['target'] == target]
             require(len(set(refs)) == 1 and bool(refs), 'INTERACTION_ROOT_DIVERGED')
-    if 'receipts' in checks:
-        receipts = observation['targetReceipts']
-        require([r['target'] for r in receipts] == targets, 'ORDERED_RECEIPT_VECTOR_MISMATCH')
-        require(len({r['receiptId'] for r in receipts}) == len(targets) and all(r['irreversible'] is True for r in receipts), 'IRREVERSIBLE_RECEIPTS_MISSING')
     if 'no-effect' in checks:
         require(observation['effectRevisionAfterRejectedOperation'] == observation['effectRevisionBeforeRejectedOperation'], 'REJECTED_OPERATION_HAD_EFFECT')
     if 'pin' in checks:
         require([r['status'] for r in observation['pinOutcomes']] == ['Pinned', 'HoldPinned', 'HoldPinned', 'Authorized', 'Unpinned'], 'HOLD_PIN_PROOF_INVALID')
-    if 'exact-results' in checks:
+    if 'exact-results' in checks and 'receipts' not in checks:
         results = observation['exactResults']
         require(len(results) >= 2 and all(canonical(r) == canonical(results[0]) for r in results), 'EXACT_RESULT_DIVERGED')
     if 'copies' in checks or 'restore' in checks:
@@ -383,14 +647,6 @@ def evaluate(observation, case, targets, canary, commit, binary_sha):
         require(all(s == 'Destroyed' for s in states) if winners[0]['to'] == 'ConsumptionReserved' else all(s != 'Destroyed' for s in states), 'RACE_STATE_CONTRADICTION')
     if 'reserved-recovery' in checks:
         require(len({r['reservationReceiptId'] for r in observation['reservationRecoveries']}) == 1, 'RECOVERY_REAUTHORIZED_BATCH')
-    if 'capability' in checks or 'receipts' in checks:
-        for capability in observation['capabilities']:
-            require(set(capability) == CAPABILITY_FIELDS, 'CAPABILITY_EXPIRY_RENEWAL_OR_FIELD_SUBSTITUTION')
-            require(capability['TenantId'] == targets[0]['TenantId'], 'CAPABILITY_TENANT_SUBSTITUTION')
-        require(bool(observation['capabilities']), 'CAPABILITY_PROOF_MISSING')
-        guard = observation['guardDispatch']
-        require(guard['soleActiveAttestation'] is True and guard['lookupConsistency'] == 'Linearizable' and guard['dispatchReceiptId'] \
-                and guard['issuedGuardRevision'] <= guard['dispatchGuardRevision'] <= guard['observedGuardRevision'], 'ONLINE_DISPATCH_PROOF_MISSING')
     if 'hold-order' in checks:
         require(bool(observation['holdOrders']), 'HOLD_ORDER_PROOF_MISSING')
         for hold in observation['holdOrders']:
@@ -414,8 +670,15 @@ def evaluate(observation, case, targets, canary, commit, binary_sha):
         if 'containment' in checks:
             require(len({g['ordinals'][0] for g in groups}) == len(groups) and all(g['singletonManifest'] and not g['reusesAcceptedSetBatch'] for g in groups), 'CONTAINMENT_ORDINAL_OR_MANIFEST_REUSED')
     if 'already-destroyed' in checks:
-        require(observation['coverageOutcome']['status'] == 'AlreadyDestroyedByBatch' \
-                and observation['coverageOutcome']['targetReceipts'] == observation['targetReceipts'], 'ORIGINAL_COVERAGE_RECEIPT_LOST')
+        value = native_record(observation['coverageOutcome'], 'TenantId BatchId Status OwnerRevision KeyBlockSetRevision ReceiptId BlockReason BlockedKeyVersion RevocationRevision TargetReceipts', 'COVERAGE_RESULT_SCHEMA_INVALID')
+        ordinal(value['OwnerRevision'])
+        ordinal(value['KeyBlockSetRevision'], 0)
+        identity_text(value['ReceiptId'])
+        require(type(value['Status']) is int and value['Status'] == 4 and value['TenantId'] == targets[0]['TenantId']
+                and value['TargetReceipts'] == native_receipts and value['BatchId']
+                and all(receipt['OriginalBatchId'] != value['BatchId'] for receipt in native_receipts)
+                and value['BlockReason'] is None and value['BlockedKeyVersion'] is None and value['RevocationRevision'] is None,
+                'ORIGINAL_COVERAGE_RECEIPT_LOST')
     if 'reattested' in checks:
         value = observation['reattestation']
         require(value['sameBatch'] is True and value['sameManifest'] is True and value['oldAttestationRevoked'] is True \
@@ -446,7 +709,7 @@ def execute(profile, record, plan, attempt, recover=None):
     binding = digest({'target': profile['targetCommit'], 'profile': record['profileSha256'], 'plan': profile['planSha256'],
                       'anchors': {name: profile['roles'][name]['publicAnchorSha256'] for name in ROLE_NAMES}})
     durable(attempt / 'binding.json', {'bindingDigest': binding, 'profileSha256': record['profileSha256'], 'targetCommit': profile['targetCommit'], 'recoveryOf': str(recover) if recover else None})
-    roles = {name: Role(name, profile['roles'][name], binding, attempt, profile['engineBinary']) for name in ROLE_NAMES}
+    roles = {name: Role(name, profile['roles'][name], binding, attempt, profile['engineBinary'], profile['capabilityTrust'], profile['roles']) for name in ROLE_NAMES}
     journal = attempt / 'original-operations'
     journal.mkdir()
     if recover:
@@ -524,7 +787,7 @@ def execute(profile, record, plan, attempt, recover=None):
             require(roundtrips > 0, 'ROUNDTRIP_PROOF_MISSING')
         observed = roles['observer'].request({'operationId': uuid.uuid4().hex, 'action': 'ObservePersistedState', 'bindingDigest': binding, 'expectedOperations': expected_operations, **base})
         require(response(observed)['operationOutcomes'] == expected_operations, 'OBSERVED_OPERATION_IDENTITY_MISMATCH')
-        evaluate(response(observed), case, targets, canary, profile['targetCommit'], profile['engineBinary']['sha256'])
+        evaluate(response(observed), case, targets, canary, profile['targetCommit'], profile['engineBinary']['sha256'], profile['capabilityTrust'], profile['roles'])
         durable(attempt / (case['id'] + '-persisted-observation.json'), observed)
         durable(attempt / (case['id'] + '-assertions.json'), {'case': case['id'], 'checks': case['checks'], 'status': 'PASS'})
 

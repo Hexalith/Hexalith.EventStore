@@ -165,6 +165,18 @@ public partial class AggregateActor(
         {
             logger.LogWarning(exception, "Terminal advisory activation repair degraded: ActorId={ActorId}", Host.Id.GetId());
         }
+
+        try
+        {
+            if (!_stateCacheUnsafe)
+            {
+                await RearmPayloadProtectionCompletionReminderAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception)
+        {
+            ReportRecoveryRetention(null, "protection_completion_schedule");
+        }
     }
 
     /// <inheritdoc/>
@@ -3078,6 +3090,12 @@ public partial class AggregateActor(
     /// <inheritdoc/>
     public async Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) {
         ArgumentNullException.ThrowIfNull(reminderName);
+
+        if (reminderName == PayloadProtectionCompletionJournal.ReminderName)
+        {
+            await RecoverPayloadProtectionCompletionReminderAsync().ConfigureAwait(false);
+            return;
+        }
 
         if (reminderName.StartsWith(TerminalAdvisoryIntent.ReminderPrefix, StringComparison.Ordinal))
         {

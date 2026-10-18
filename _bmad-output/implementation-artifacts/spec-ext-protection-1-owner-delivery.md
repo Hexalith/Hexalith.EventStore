@@ -60,6 +60,8 @@ Acceptance: Given installed qualified inputs, Live can pass the full contract. G
 
 ## Implementation Notes
 
+2026-10-18 continuation from `c0c08d450dff89faaeea2bb88dd570a589ce203d`: authoritative Platform native discovery and installed HMAC mappings establish the provider technology but explicitly no lifecycle/all-copy qualification. G1 needs the concrete provider decision now recorded in Platform's `docs/implementation/ext-secrets-1-dek-provider-decision-2026-10-18.md`; do not substitute HMAC or fabricate a remote DEK service. Independent verifier capability/native-receipt work is tracked in `spec-ext-protection-1-capability-evidence.md`. Independent G4 work adds pre-commit durable reminder enrollment, activation rearming and bounded idle original-completion recovery; tests must prove persisted originals, outage retention, scheduler refusal, completion-save uncertainty and no re-encryption. These are source corrections, not physical qualification. Original baseline/frozen intent remain preserved.
+
 Initial tree clean on main. No Agents files may change. Source changes alone do not establish Live evidence or dependency availability. If an independently owned prerequisite is actually missing, document its exact missing API and remaining implementation gap rather than inventing authority or concealing it behind a remote executor.
 
 ## Spec Change Log
