@@ -74,6 +74,20 @@ Beyond commands, the platform includes a query pipeline with ETag-based cache va
 
 Prerequisites: [.NET SDK](https://dotnet.microsoft.com/download), [Docker Desktop](https://www.docker.com/products/docker-desktop/), [DAPR CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 
+## Run and Debug in the Platform Workspace
+
+EventStore runs and debugs as a module from the [Hexalith.Platform](https://github.com/Hexalith/Hexalith.Platform) workspace, where this repository is the `references/Hexalith.EventStore` submodule. From the Platform root, with the pinned module tool, Aspire CLI `13.6.1` exactly, Docker, and `HEXALITH_DAPR_HOME` pointing at an isolated Dapr home (CLI `1.18.0` at `tools/dapr`, runtime `1.18.2` in `.dapr/bin`):
+
+```bash
+dotnet tool restore
+dotnet tool run hexalith-module -- debug --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
+dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
+```
+
+`debug` builds `references/Hexalith.EventStore` in Debug, starts only the `eventstore` gateway with its Dapr sidecar, the Dapr control plane and Redis, waits for `/ready`, and reports the `dotnet run` launcher process id. Attach your debugger to the launcher's child process (`ps --ppid <launcher-pid> -o pid,args`). See [CONTRIBUTING.md](CONTRIBUTING.md#run-and-debug-in-the-platform-workspace) and the Platform README for the full prerequisites.
+
+This repository's own `src/Hexalith.EventStore.AppHost` serves only this repository's own tests. A run of it is never evidence that EventStore runs in the Platform composition.
+
 ## Architecture
 
 ```mermaid

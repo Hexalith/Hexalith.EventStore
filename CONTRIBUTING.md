@@ -116,6 +116,48 @@ dotnet test tests/Hexalith.EventStore.Testing.Tests
 
 The solution file is `Hexalith.EventStore.slnx`.
 
+### Run and Debug in the Platform Workspace
+
+Run and debug EventStore as a module from the
+[Hexalith.Platform](https://github.com/Hexalith/Hexalith.Platform) workspace, where this repository is the
+direct submodule `references/Hexalith.EventStore`. Prerequisites:
+
+- The Platform-pinned `hexalith-module` tool, restored with `dotnet tool restore` in the Platform root.
+- Aspire CLI `13.6.1` exactly; the tool refuses any other version with `HXR015`.
+- A running Docker engine.
+- `HEXALITH_DAPR_HOME` set to an absolute, isolated Dapr home: Dapr CLI `1.18.0` at `tools/dapr` and runtime
+  `1.18.2` at `.dapr/bin/{daprd,placement,scheduler}`. The Platform README shows how to prepare one from the
+  official release assets.
+- The checkout's `HEAD` equal to the gitlink staged in the Platform repository. After a local commit here, run
+  `git add references/Hexalith.EventStore` in the Platform root before starting a run.
+
+From the Platform root:
+
+```bash
+export HEXALITH_DAPR_HOME="$HOME/.hexalith/dapr/1.18.2"
+dotnet tool run hexalith-module -- debug --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
+```
+
+Pass the owner manifest under `references/`, never the Platform's copy in
+`src/Hexalith.Platform.Composition/Declarations/`. `debug` builds this checkout in Debug, starts only the
+`eventstore` gateway with its Dapr sidecar, the Dapr control plane and Redis, waits for the declared `/ready`
+endpoint, and reports the process id of the `dotnet run` launcher. The gateway is the launcher's child process:
+
+```bash
+ps --ppid <launcher-pid> -o pid,args
+```
+
+Attach to the child running `src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore`, for example with
+VS Code ("Attach to a .NET process"). Breakpoints in this checkout's sources bind. When you finish, stop only
+that run with:
+
+```bash
+dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
+```
+
+`src/Hexalith.EventStore.AppHost` serves only this repository's own tests. A run of it is never evidence that
+EventStore runs in the Platform composition.
+
 ## Documentation Contributions
 
 ### Where Documentation Lives
