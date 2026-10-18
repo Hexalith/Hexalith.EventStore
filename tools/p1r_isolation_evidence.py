@@ -44,20 +44,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
     invocation, volume = wrapper['invocation'], wrapper['owned_volume']
     require(volume == 'p1r-isolation-'+invocation, 'outer volume identity substituted')
     mounts = wrapper['runner_proof']['Mounts']
-    workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind' and repository.is_relative_to(Path(row['Destination']))))
-    source = context['source_binding'].get('candidate_source')
-    source_root = Path(source['repository']) if source is not None else None
-    bind_roots = {workspace} | ({source_root} if source_root is not None and not source_root.is_relative_to(workspace) else set())
-    if source is not None:
-        require(wrapper.get('source_root') == str(source_root)
-                and isolation.command_source_root(wrapper['inner_command']) == source_root,
-                'isolation selected tagged source root differs')
-        controller = wrapper.get('controller_source_binding', {})
-        def without_python(binding):
-            return {key:(without_python(value) if key == 'candidate_source' else value)
-                    for key,value in binding.items() if key != 'python'}
-        require(without_python(controller) == without_python(context['source_binding']),
-                'controller and private source closures differ')
+    workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind'))
     outer_socket = Path(wrapper['outer_host'].removeprefix('unix://'))
     require(canonical_engine_directory(str(workspace)) and not outer_socket.is_relative_to(workspace)
             and not outer_socket.resolve().is_relative_to(workspace), 'isolation workspace exposes the outer Docker socket')
@@ -66,6 +53,15 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
             'isolation workspace containment differs')
     command = wrapper['inner_command']
     selected = isolation.executor_input(command, repository)
+    preparation.validate_selected_source(context['inputs']['value'], context['source_binding'])
+    runtime = context['source_binding'].get('runtime_source')
+    paths = isolation.source_arguments(command)
+    require(paths == ((Path(runtime['repository']), Path(runtime['builds']['path'])) if runtime else ()),
+            'isolation runtime source paths differ from selected binding')
+    require(all(path.is_relative_to(workspace) for path in paths),
+            'runtime source paths are outside the isolated workspace')
+    if runtime:
+        preparation.check_current_source(context['source_binding'])
     require(command[4] == str(run_root) and selected == wrapper.get('selected_input')
             and selected['sha256'] == context['inputs']['sha256']
             and json.loads(regular(Path(selected['path']))) == context['inputs']['value'],
@@ -180,7 +176,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
         observed_mounts = settings['Mounts']
         require(isinstance(observed_mounts,list), 'observed role mounts missing')
         expected_destinations = {'daemon':{'/var/lib/docker'},'python-tools':set(),
-                                 'sdk':{'/var/lib/docker',*(str(path) for path in bind_roots)}}[role]
+                                 'sdk':{'/var/lib/docker',str(workspace)}}[role]
         require(len(observed_mounts) == len(expected_destinations)
                 and {mount.get('Destination') for mount in observed_mounts} == expected_destinations,
                 'observed role mounts contradict creation')
@@ -188,7 +184,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
             require(mount.get('RW') is True
                     and (mount['Destination'] == '/var/lib/docker' and mount.get('Type') == 'volume'
                          and mount.get('Name') == volume
-                         or Path(mount['Destination']) in bind_roots and mount.get('Type') == 'bind'
+                         or mount['Destination'] == str(workspace) and mount.get('Type') == 'bind'
                          and canonical_engine_directory(mount.get('Source'))), 'observed role mount identity or access differs')
         require(identity not in static_inspections or static_inspections[identity] == settings,
                 'observed static role configuration changed between inspections')
@@ -239,16 +235,15 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
     created('python-tools',isolation.PYTHON_IMAGE,['--network','none','--entrypoint','/bin/true'],[])
     take(['cp',python+':/usr/local',scratch/'python'])
     take(['cp',daemon+':/usr/local/bin/docker',scratch/'docker'])
-    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume,source_root),['infinity'])
+    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume,paths),['infinity'])
     take(['cp',scratch/'python',sdk+':/opt/python'])
     take(['cp',scratch/'docker',sdk+':/usr/local/bin/docker'])
     take(['start',sdk])
     require(inspected(sdk) == wrapper['runner_proof'], 'runner inspection differs from literal output')
     require(parsed(take(['exec',sdk,'python3',repository/'tools/p1r-isolated-runner.py','_proof','--outer-id',wrapper['outer_daemon_id']])) == measured,
             'literal SDK toolchain proof substituted')
-    source_arguments = ['--source-root', str(source_root)] if source_root is not None else []
     launched = take(['exec',sdk,'python3',repository/'tools/p1r-isolated-runner.py','_inner','--out',Path(wrapper_path).parent,
-                     '--outer-id',wrapper['outer_daemon_id'],*source_arguments,'--',*command])
+                     '--outer-id',wrapper['outer_daemon_id'],'--',*command])
     require(times(launched)[0] <= times(private)[0] <= times(private)[1] <= times(launched)[1]
             and launched['output'] == wrapper.get('command_stdout'), 'actual SDK launch or private interval substituted')
     require(times(private)[0] <= times(private['cleanup'][0])[0]

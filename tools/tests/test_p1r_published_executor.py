@@ -1,6 +1,9 @@
 """Executor tooling controls; no fixture in this suite grants operational qualification."""
 import base64
 import copy
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import signal
@@ -20,6 +23,259 @@ import p1r_published_executor as executor
 import p1r_published_qualification as qualification
 import p1r_qualification as preparation
 import p1r_qualification_runtime as runtime
+from p1r_isolation_fixture import separate_inputs, separate_source_fixture
+
+
+class SeparateRootExecutorTests(unittest.TestCase):
+    def testSuccessfulObservationEmitsToolingPinsAndAdmitsTheSelectedReleaseRoots(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            selected = separate_inputs(f)
+            for version in qualification.COMPARISON_VERSIONS:
+                f.git(f.tooling,'tag','v'+version)
+            f.git(f.builds,'tag','v4.30.1')
+            def archive_bytes(identifier,version): return (identifier+':'+version).encode()
+            for package in selected['candidate']['packages']:
+                package['archive_sha256'] = preparation.digest(archive_bytes(package['id'],'3.125.1'))
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.output,worker.commands,worker.result = f.root/'observation',[],{}
+            worker.output.mkdir()
+            worker.source_root,worker.source_builds_root = f.source,f.source_builds
+            worker.source_binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            worker.save = mock.Mock()
+            def build(version):
+                root = worker.output/version
+                for identifier in executor.PACKAGE_IDS:
+                    base = root/'packages'/identifier.lower()/version
+                    base.mkdir(parents=True)
+                    (base/(identifier.lower()+'.'+version+'.nupkg')).write_bytes(archive_bytes(identifier,version))
+                    preparation.write_json(base/'.nupkg.metadata',{'contentHash':base64.b64encode(b'x'*64).decode()})
+                return root
+            def inspect(path,data):
+                identifier = next(name for name in executor.PACKAGE_IDS if name.lower() == path.parent.parent.name)
+                version = path.parent.name
+                return ({'valid':True,'id':identifier,'version':version,'repository_commit':
+                         f.release if version == '3.125.1' else f.pins['commit']},
+                        {'signature':True,'synthetic_marker':False},{})
+            worker.build_consumers = mock.Mock(side_effect=build)
+            worker.run = lambda *args,**kwargs:worker.commands.append({'output':qualification.REPOSITORY_SIGNATURE})
+            with mock.patch.object(executor,'ROOT',f.tooling), mock.patch.object(qualification,'inspect_archive',side_effect=inspect):
+                worker.observe_inputs({'candidate_proposed':selected['candidate'],'tooling':f.pins},'temporary fixture only')
+                emitted = preparation.read_json(worker.output/'owner-inputs.json')
+                self.assertEqual(emitted['tooling'],f.pins)
+                self.assertEqual(emitted['candidate'],selected['candidate'])
+                self.assertIsNone(emitted['rollback'])
+                executor.validate_execution_inputs(emitted,f.source,f.source_builds)
+                self.assertEqual(worker.result['inputs_sha256'],preparation.digest((worker.output/'owner-inputs.json').read_bytes()))
+
+    def cli(self):
+        spec = importlib.util.spec_from_file_location('binding_executor_cli', preparation.ROOT/'tools/p1r-published-executor.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def testBothCliEntryPathsValidateAndForwardSeparateRoots(self):
+        cli = self.cli()
+        for entry in ('run','observe'):
+            for private in (False,True):
+                with self.subTest(entry=entry,private=private), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    inputs = separate_inputs(f)
+                    planning = {'candidate_proposed':inputs['candidate'],'tooling':f.pins}
+                    selected = f.root/'selected.json'
+                    preparation.write_json(selected,inputs if entry == 'run' else planning)
+                    args = [entry,'--out',str(f.root/'output')]
+                    args += ['--inputs',str(selected)] if entry == 'run' else ['--planning-observations',str(selected),'--selection-reference','fixture']
+                    suffix = ['--source-root',str(f.source),'--source-builds-root',str(f.source_builds)]
+                    import p1r_isolation as isolation
+                    with mock.patch.object(executor,'ROOT',f.tooling), \
+                            mock.patch.object(cli,'Executor') as worker, \
+                            mock.patch.object(isolation,'IsolatedRunner') as outer, \
+                            mock.patch.object(isolation,'private_proof'), \
+                            mock.patch.dict(os.environ,{'HEXALITH_P1R_ISOLATION':'fixture'} if private else {},clear=True), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        worker.return_value.errors = []
+                        outer.return_value.run.return_value = 0
+                        outer.return_value.result = {'command_stdout':'','errors':[],'passed':True}
+                        self.assertEqual(cli.main(args+suffix),0)
+                        if private:
+                            worker.assert_called_once()
+                            (worker.return_value.execute if entry == 'run' else worker.return_value.observe_inputs).assert_called_once()
+                        else:
+                            outer.assert_called_once()
+                            self.assertEqual(outer.return_value.run.call_args.args[0][-4:],suffix)
+                            worker.assert_not_called()
+
+    def testBothCliEntryPathsRefuseBeforeAnyOperationalBoundary(self):
+        cli = self.cli()
+        import p1r_isolation as isolation
+        for entry in ('run','observe'):
+            for defect in ('tooling-pin','tooling-dirty','source-dirty','tooling-builds','source-builds','tag','missing-source','unknown-successor'):
+                with self.subTest(entry=entry,defect=defect), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    inputs = separate_inputs(f)
+                    source, builds = f.source, f.source_builds
+                    if defect == 'tooling-pin': inputs['tooling']['commit'] = 'a'*40
+                    elif defect == 'tooling-dirty': (f.tooling/'src/Runtime.cs').write_text('// changed\n')
+                    elif defect == 'source-dirty': (f.source/'src/Runtime.cs').write_text('// changed\n')
+                    elif defect == 'tooling-builds': inputs['tooling']['builds_commit'] = f.release_builds
+                    elif defect == 'source-builds': builds = f.builds
+                    elif defect == 'tag': f.git(f.source,'tag','-d','v3.125.1')
+                    elif defect == 'unknown-successor': inputs['candidate'].update(version='3.125.2',tag='v3.125.2')
+                    selected = f.root/'selected.json'
+                    preparation.write_json(selected,inputs if entry == 'run' else {'candidate_proposed':inputs['candidate'],'tooling':inputs['tooling']})
+                    args = [entry,'--out',str(f.root/'output')]
+                    args += ['--inputs',str(selected)] if entry == 'run' else ['--planning-observations',str(selected),'--selection-reference','fixture']
+                    if defect != 'missing-source': args += ['--source-root',str(source),'--source-builds-root',str(builds)]
+                    with mock.patch.object(executor,'ROOT',f.tooling), mock.patch.object(cli,'Executor') as worker, \
+                            mock.patch.object(isolation,'IsolatedRunner') as outer, contextlib.redirect_stderr(io.StringIO()):
+                        self.assertEqual(cli.main(args),2)
+                        worker.assert_not_called()
+                        outer.assert_not_called()
+                    self.assertFalse((f.root/'output').exists())
+
+    def testObservationAndExecutionKeepBothIdentitiesAtConsumerBoundary(self):
+        for entry in ('run','observe'):
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                inputs = separate_inputs(f)
+                binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.source_binding, worker.source_root, worker.source_builds_root = binding,f.source,f.source_builds
+                worker.inputs, worker.candidate = inputs,'3.125.1'
+                worker.build_consumers = mock.Mock(side_effect=RuntimeError('consumer boundary reached'))
+                worker.cleanup = mock.Mock()
+                worker.save = mock.Mock()
+                worker.pending_restore = None
+                worker.versions = ('3.110.0','3.70.1','3.125.1')
+                with mock.patch.object(executor,'ROOT',f.tooling), mock.patch.object(executor,'provisional_successor_execution_policy',return_value={}):
+                    if entry == 'observe':
+                        with self.assertRaisesRegex(RuntimeError,'consumer boundary reached'):
+                            worker.observe_inputs({'candidate_proposed':inputs['candidate'],'tooling':f.pins},'fixture')
+                    else:
+                        with self.assertRaisesRegex(RuntimeError,'consumer boundary reached'): worker.execute()
+                        worker.cleanup.assert_called_once()
+                self.assertEqual(worker.source_binding,binding)
+
+    def testSourceConsumersUseVerifiedReferencesCatalogAndVersionBeforeRestore(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.source_binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            worker.source_root, worker.source_builds_root = f.source,f.source_builds
+            worker.output, worker.candidate, worker.commands = f.root/'execution','3.125.1',[]
+            references = [f.source/'src'/identifier/(identifier+'.csproj') for identifier in executor.PACKAGE_IDS]
+            def run(argv, **kwargs):
+                if argv[1] == 'restore': raise RuntimeError('restore boundary reached')
+                project = Path(argv[2])
+                if '-preprocess' in argv:
+                    data = '\n'+str(f.source_builds/'Props/Directory.Packages.props')+'\n'
+                    data += '/usr/share/dotnet/sdk/10.0.401/Current/Microsoft.Common.props\n'
+                    data += str(kwargs['cwd']/'packages/restored/1.0/build/restored.targets')+'\n'
+                else:
+                    data = json.dumps({'Properties':{'MSBuildProjectFullPath':str(project),
+                        'EventStoreVersion':'3.125.1','HexalithEventStoreVersion':'3.125.1','Version':'3.125.1'},
+                        'Items':{'ProjectReference':[{'FullPath':str(path)} for path in references]
+                                 if not project.is_relative_to(f.source) else []}})
+                worker.commands.append({'argv':list(map(str,argv)),'exit_code':0,'output':data,
+                                        'output_sha256':preparation.digest(data.encode())})
+                return data.encode()
+            worker.run = mock.Mock(side_effect=run)
+            with self.assertRaisesRegex(RuntimeError,'restore boundary reached'):
+                worker.build_consumers('3.125.1',source=True)
+            self.assertEqual(len(worker.source_evaluations),8)
+            consumer_root = worker.output/'consumers/source'
+            qualification.validate_source_evaluations({'source_evaluations':worker.source_evaluations},worker.source_binding,consumer_root)
+            smaller_domain = copy.deepcopy(worker.source_evaluations)
+            value = json.loads(smaller_domain[1]['evaluation']['output'])
+            value['Items']['ProjectReference'] = [row for row in value['Items']['ProjectReference']
+                if Path(row['FullPath']).stem in ('Hexalith.EventStore.Contracts','Hexalith.EventStore.DomainService')]
+            smaller_domain[1]['evaluation']['output'] = json.dumps(value)
+            smaller_domain[1]['evaluation']['output_sha256'] = preparation.digest(smaller_domain[1]['evaluation']['output'].encode())
+            qualification.validate_source_evaluations({'source_evaluations':smaller_domain},worker.source_binding,consumer_root)
+            properties = worker.run.call_args.args[0]
+            self.assertIn('-p:EventStoreSourceRoot='+str(f.source),properties)
+            self.assertIn('-p:Hexalith1BuildPackageProps='+str(f.source_builds/'Props/Directory.Packages.props'),properties)
+            self.assertNotIn('-p:EventStoreSourceRoot='+str(f.tooling),properties)
+            for mutation in ('reference','catalog','source-catalog','version','arguments','omit','all-references',
+                             'consumer-root','slash-property','response-file','extra-target','external-target'):
+                changed = copy.deepcopy(worker.source_evaluations)
+                if mutation == 'omit': changed.pop()
+                elif mutation == 'all-references':
+                    changed = changed[:3]
+                    for item in changed:
+                        value = json.loads(item['evaluation']['output'])
+                        value['Items']['ProjectReference'] = []
+                        item['evaluation']['output'] = json.dumps(value)
+                        item['evaluation']['output_sha256'] = preparation.digest(item['evaluation']['output'].encode())
+                elif mutation == 'consumer-root':
+                    for item in changed[:3]:
+                        old = item['project']
+                        item['project'] = old.replace(str(consumer_root),str(f.root/'other/consumers/source'))
+                        for command in ('imports','evaluation'):
+                            item[command]['argv'][2] = item['project']
+                        value = json.loads(item['evaluation']['output'])
+                        value['Properties']['MSBuildProjectFullPath'] = item['project']
+                        item['evaluation']['output'] = json.dumps(value)
+                        item['evaluation']['output_sha256'] = preparation.digest(item['evaluation']['output'].encode())
+                elif mutation in ('slash-property','response-file','extra-target'):
+                    changed[0]['evaluation']['argv'].append({'slash-property':'/p:UseCurrentSource=false',
+                        'response-file':'@overrides.rsp','extra-target':'-target:Build'}[mutation])
+                elif mutation == 'external-target':
+                    changed[0]['imports']['output'] += '/tmp/unrelated.targets\n'
+                    changed[0]['imports']['output_sha256'] = preparation.digest(changed[0]['imports']['output'].encode())
+                elif mutation in ('catalog','source-catalog'):
+                    changed[0]['imports']['output'] += str((f.builds/'Props' if mutation == 'catalog' else f.source/'obj')/'Directory.Packages.props')+'\n'
+                    changed[0]['imports']['output_sha256'] = preparation.digest(changed[0]['imports']['output'].encode())
+                elif mutation == 'arguments':
+                    command = changed[0]['evaluation']['argv']
+                    index = next(i for i,arg in enumerate(command) if arg.startswith('-p:EventStoreSourceRoot='))
+                    command[index] = '-p:EventStoreSourceRoot='+str(f.tooling)
+                else:
+                    value = json.loads(changed[0]['evaluation']['output'])
+                    if mutation == 'reference': value['Items']['ProjectReference'][0]['FullPath'] = str(f.tooling/'src/wrong.csproj')
+                    else: value['Properties']['HexalithEventStoreVersion'] = '3.124.0'
+                    changed[0]['evaluation']['output'] = json.dumps(value)
+                    changed[0]['evaluation']['output_sha256'] = preparation.digest(changed[0]['evaluation']['output'].encode())
+                with self.subTest(mutation=mutation), self.assertRaises(preparation.InvalidPacket):
+                    qualification.validate_source_evaluations({'source_evaluations':changed},worker.source_binding,consumer_root)
+            # The published restore receives neither source references nor catalog overrides.
+            worker.run.reset_mock()
+            with self.assertRaisesRegex(RuntimeError,'restore boundary reached'): worker.build_consumers('3.125.1')
+            props = worker.run.call_args.args[0]
+            self.assertFalse(any('SourceRoot=' in str(value) or 'BuildPackage' in str(value) or 'UseCurrentSource=' in str(value) for value in props))
+
+    def testPostRestoreImportsAreReevaluatedBeforeAnyDebugBuild(self):
+        for substituted in (False,True):
+            with self.subTest(substituted=substituted), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.source_binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+                worker.source_root,worker.source_builds_root = f.source,f.source_builds
+                worker.output,worker.candidate,worker.commands = f.root/'execution','3.125.1',[]
+                restored, built = [],[]
+                source_projects = [f.source/'src'/name/(name+'.csproj') for name in executor.PACKAGE_IDS]
+                def run(argv, **kwargs):
+                    if argv[1] == 'build':
+                        built.append(argv)
+                        raise RuntimeError('Debug build boundary reached')
+                    if argv[1] == 'restore':
+                        restored.append(argv)
+                        data = 'restored'
+                    elif '-preprocess' in argv:
+                        imported = [f.source_builds/'Props/Directory.Packages.props']
+                        if restored:
+                            imported.append(Path('/tmp/restore-injected.targets') if substituted else kwargs['cwd']/'host/obj/generated.targets')
+                        data = '\n'+'\n'.join(map(str,imported))+'\n'
+                    else:
+                        project = Path(argv[2])
+                        data = json.dumps({'Properties':{'MSBuildProjectFullPath':str(project),'EventStoreVersion':'3.125.1',
+                            'HexalithEventStoreVersion':'3.125.1','Version':'3.125.1'},'Items':{'ProjectReference':
+                            [{'FullPath':str(path)} for path in source_projects] if not project.is_relative_to(f.source) else []}})
+                    worker.commands.append({'argv':list(map(str,argv)),'exit_code':0,'output':data,'output_sha256':preparation.digest(data.encode())})
+                    return data.encode()
+                worker.run = run
+                with self.assertRaisesRegex(preparation.InvalidPacket if substituted else RuntimeError,
+                                            'external source import' if substituted else 'Debug build boundary reached'):
+                    worker.build_consumers('3.125.1',source=True)
+                self.assertEqual(len(restored),3)
+                self.assertEqual(len(built),0 if substituted else 1)
+                if not substituted:
+                    self.assertTrue(all('generated.targets' in item['imports']['output'] for item in worker.source_evaluations))
 
 
 class QualifiedSnapshotWitnessTests(unittest.TestCase):
@@ -1212,8 +1468,14 @@ class MeasurementTests(unittest.TestCase):
              mock.patch.object(executor.time, "sleep"):
             root = Path(temporary)
             (root / "configurations").mkdir()
+            tooling,release = root/'tooling',root/'release'
+            template = (executor.ROOT/'deploy/dapr/statestore-postgresql.yaml').read_text()
+            for path,marker in ((tooling,'tooling'),(release,'release')):
+                (path/'deploy/dapr').mkdir(parents=True)
+                (path/'deploy/dapr/statestore-postgresql.yaml').write_text(template+'\n# '+marker+' template\n')
             worker = executor.Executor.__new__(executor.Executor)
             worker.output = worker.scratch = root
+            worker.source_root = release
             worker.inputs = {"operational_profile": {"runtime_version": "1.18.2"}}
             worker.redis, worker.redis_port, worker.pubsub_port = "owned", 15432, 16379
             worker.postgres_password = "<TEST_PASSWORD>"
@@ -1226,14 +1488,22 @@ class MeasurementTests(unittest.TestCase):
             worker.stop_nodes = mock.Mock()
             worker.wait = mock.Mock()
             worker.launch = lambda argv, environment: environments.append(environment) or {"ownership": mock.Mock(root={})}
-            worker.start_nodes(executor.CANDIDATE)
+            with mock.patch.object(executor,'ROOT',tooling):
+                worker.start_nodes(executor.CANDIDATE)
             self.assertEqual(len(environments), 4)
             self.assertTrue(all("POSTGRES_CONNECTION_STRING" not in value for value in environments))
             self.assertIn("password=<TEST_PASSWORD>", (root / "resources/state.yaml").read_text())
+            self.assertIn('# release template',(root/'resources/state.yaml').read_text())
+            self.assertNotIn('# tooling template',(root/'resources/state.yaml').read_text())
             self.assertNotIn("<TEST_PASSWORD>", json.dumps(worker.configurations))
             self.assertIsNotNone(worker.configurations[0]["source_workload_authority"])
             qualification.validate_postgresql_component(
-                next(file for file in worker.configurations[0]["files"] if file["name"] == "state.yaml"))
+                next(file for file in worker.configurations[0]["files"] if file["name"] == "state.yaml"),release)
+            wrong = dict(next(file for file in worker.configurations[0]['files'] if file['name'] == 'state.yaml'),
+                         content=(tooling/'deploy/dapr/statestore-postgresql.yaml').read_text())
+            wrong['sha256'] = preparation.digest(wrong['content'].encode())
+            with self.assertRaisesRegex(preparation.InvalidPacket,'component template'):
+                qualification.validate_postgresql_component(wrong,release)
 
     def testDockerDiscoverySelectsOnlyPreservationAndOwnershipFields(self):
         argv = executor.safe_inspect_argv("synthetic-id")

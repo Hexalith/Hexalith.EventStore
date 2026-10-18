@@ -116,12 +116,12 @@ def private_proof(outer_id):
             "glibc": os.confstr("CS_GNU_LIBC_VERSION")}
 
 
-def inner(output, outer_id, command, source_root=None):
+def inner(output, outer_id, command):
     with signal_handling():
-        return _inner(output, outer_id, command, source_root)
+        return _inner(output, outer_id, command)
 
 
-def _inner(output, outer_id, command, source_root=None):
+def _inner(output, outer_id, command):
     """Retain command failures and repeated exact-process cleanup in the private namespace."""
     output = Path(output)
     result = {"schema": SCHEMA, "scope": "isolated-command-verification", "invocation": os.environ.get(MARKER),
@@ -144,8 +144,7 @@ def _inner(output, outer_id, command, source_root=None):
                 raise
         preparation.git = diagnosed_git
         try:
-            result["source_binding"] = (preparation.source_binding(ROOT, source_root) if source_root is not None
-                                        else preparation.source_binding())
+            result["source_binding"] = command_source_binding(command)
         finally:
             preparation.git = original_git
         write_json(output / "private-execution.json", result)
@@ -225,14 +224,57 @@ def command_source_root(command):
     return root
 
 
+def source_arguments(command):
+    """Read only the bounded optional source-root suffix shared by both executor entry paths."""
+    command = list(map(str, command))
+    if "--source-builds-root" not in command:
+        return ()
+    require(len(command) >= 4 and command[-4] == "--source-root" and command[-2] == "--source-builds-root"
+            and command.count("--source-root") == command.count("--source-builds-root") == 1,
+            "published executor source arguments substituted")
+    paths = tuple(Path(command[index]) for index in (-3, -1))
+    require(all(path.is_absolute() and path == path.resolve() for path in paths), "published executor source paths substituted")
+    return paths
+
+
+def command_source_binding(command):
+    """Repeat selected-input admission inside isolation before any child starts."""
+    command = list(map(str, command))
+    if len(command) >= 3 and command[1] == str(ROOT / "tools/p1r-published-executor.py") and command[2] in ("run", "observe"):
+        import p1r_published_executor as executor
+        paths = source_arguments(command)
+        option = "--inputs" if command[2] == "run" else "--planning-observations"
+        require(command.count(option) == 1, "executor selected inputs missing or substituted")
+        selected = preparation.read_json(Path(command[command.index(option) + 1]))
+        if "tooling" not in selected:
+            require(not paths, "source paths require selected tooling pins")
+            return preparation.source_binding()
+        if command[2] == "run":
+            executor.validate_execution_inputs(selected, *paths)
+        else:
+            executor.validate_observation_inputs(selected, *paths)
+        if "tooling" in selected:
+            require(bool(paths), "runtime source paths missing")
+            return preparation.source_binding(ROOT, selected["tooling"], *paths)
+    return preparation.source_binding()
+
+
 def executor_input(command, repository):
     """Bind the complete published executor grammar and exact physical input bytes."""
     command = list(map(str, command))
     source = command_source_root(command)
-    require(len(command) == (9 if source is not None else 7) and command[:3] == ["python3", str(Path(repository)/"tools/p1r-published-executor.py"), "run"]
-            and command[3] == "--out" and command[5] == "--inputs", "published executor arguments substituted")
+    paths = source_arguments(command)
+    observe = len(command) > 2 and command[2] == "observe"
+    expected_len = (9 if observe else 7) + (4 if paths else 2 if source is not None else 0)
+    require(len(command) == expected_len
+            and command[:2] == ["python3", str(Path(repository)/"tools/p1r-published-executor.py")]
+            and command[2] in ("run", "observe") and command[3] == "--out"
+            and command[5] == ("--planning-observations" if observe else "--inputs")
+            and (not observe or (command[7] == "--selection-reference" and bool(command[8]))),
+            "published executor arguments substituted")
     output, path = Path(command[4]), Path(command[6])
-    require(source is None or command[7:] == ["--source-root", str(source)], "published executor source arguments substituted")
+    if source is not None and not paths:
+        require(command[7:] == ["--source-root", str(source)], "published executor source arguments substituted")
     require(output.is_absolute() and output == output.resolve() and path.is_absolute(), "published executor paths substituted")
     return {"path":str(path), "sha256":digest(regular(path))}
 
@@ -279,22 +321,30 @@ def validate_workspace(workspace, repository, outer_host):
     return workspace
 
 
-def sdk_arguments(workspace, repository, invocation, daemon, volume, source_root=None):
+def sdk_arguments(workspace, repository, invocation, daemon, volume, source_paths=()):
     """Construct the single permitted SDK container profile."""
-    git_paths = [Path(workspace), *(Path(workspace)/name for name in preparation.declared_dependencies(Path(workspace)))]
+    if isinstance(source_paths, (str, Path)):
+        source_paths = (Path(source_paths),)
+    git_paths = [Path(workspace)]
+    if (Path(workspace) / ".gitmodules").is_file():
+        git_paths += [Path(workspace) / name for name in preparation.declared_dependencies(Path(workspace))]
     source_mount = []
-    if source_root is not None:
-        source_root = Path(source_root)
-        git_paths += [source_root, *(source_root / name for name in preparation.declared_dependencies(source_root))]
-        if not source_root.is_relative_to(Path(workspace)):
-            source_mount = ["--mount", "type=bind,src=" + str(source_root) + ",dst=" + str(source_root)]
+    for path in source_paths:
+        p = Path(path)
+        if p not in git_paths:
+            git_paths.append(p)
+        if (p / ".gitmodules").is_file():
+            git_paths += [p / name for name in preparation.declared_dependencies(p) if (p / name) not in git_paths]
+        if not p.is_relative_to(Path(workspace)):
+            source_mount += ["--mount", "type=bind,src=" + str(p) + ",dst=" + str(p)]
     git_paths = list(dict.fromkeys(git_paths))
     git_options = ["--env", "GIT_CONFIG_COUNT=" + str(len(git_paths))]
     for index, path in enumerate(git_paths):
         git_options += ["--env", f"GIT_CONFIG_KEY_{index}=safe.directory", "--env", f"GIT_CONFIG_VALUE_{index}={path}"]
     return ["--network", "container:"+daemon, "--pid", "container:"+daemon, "--cap-add", "SYS_PTRACE",
             "--mount", "type=volume,src="+volume+",dst=/var/lib/docker",
-            "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace), *source_mount,
+            "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace),
+            *source_mount,
             "--workdir", str(repository), "--env", MARKER+"="+invocation,
             "--env", "DOCKER_HOST="+SOCKET, "--env", "DOCKER_CONFIG="+CLIENT_CONFIG, *git_options,
             "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -304,15 +354,14 @@ def sdk_arguments(workspace, repository, invocation, daemon, volume, source_root
 class IsolatedRunner:
     """Own only exact outer container/volume identities carrying this invocation label."""
 
-    def __init__(self, output, workspace=None, outer_host=None, source_root=None):
+    def __init__(self, output, workspace=None, outer_host=None):
         with signal_handling():
-            self.initialize(output, workspace, outer_host, source_root)
+            self.initialize(output, workspace, outer_host)
 
-    def initialize(self, output, workspace=None, outer_host=None, source_root=None):
+    def initialize(self, output, workspace=None, outer_host=None):
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
         self.invocation = uuid.uuid4().hex
-        self.source_root = Path(source_root).absolute() if source_root is not None else None
         self.scratch = None
         self.environment = {key: value for key, value in os.environ.items()
                             if not key.startswith("DOCKER_") and key not in ("CONTAINER_HOST", "CONTAINER_CONNECTION")}
@@ -335,11 +384,6 @@ class IsolatedRunner:
                     "only a local Unix Docker endpoint is supported")
             selected_workspace = workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT
             self.workspace = validate_workspace(selected_workspace, ROOT, self.outer_host)
-            if self.source_root is not None:
-                validate_workspace(self.source_root, self.source_root, self.outer_host)
-                self.result["source_root"] = str(self.source_root)
-                self.controller_binding = preparation.source_binding(ROOT, self.source_root)
-                self.result["controller_source_binding"] = self.controller_binding
             require(self.output.is_relative_to(self.workspace), "isolation output is outside the mounted workspace; private evidence would be lost")
             self.result["outer_host"] = self.outer_host
             self.save()
@@ -420,9 +464,21 @@ class IsolatedRunner:
         """Execute an explicit command; preserve failure even if later cleanup succeeds."""
         code = 2
         try:
-            if self.source_root is not None:
-                require(command_source_root(command) == self.source_root, "command selected source root substituted")
-                preparation.check_current_source(self.controller_binding)
+            source_paths = source_arguments(command)
+            controller_binding = None
+            if source_paths:
+                require(all(path.is_relative_to(self.workspace) for path in source_paths),
+                        "runtime source paths are outside the isolated workspace")
+            published = len(command) >= 3 and str(command[1]) == str(ROOT / "tools/p1r-published-executor.py")
+            if published and command[2] in ("run", "observe"):
+                option = "--inputs" if command[2] == "run" else "--planning-observations"
+                require(command.count(option) == 1, "executor selected inputs missing or substituted")
+                self.result["selected_input"] = executor_input(command, ROOT)
+                selected = preparation.read_json(Path(command[command.index(option) + 1]))
+                if source_paths or "tooling" in selected:
+                    controller_binding = command_source_binding(command)
+                require(self.result["selected_input"] == executor_input(command, ROOT),
+                        "selected input changed during admission")
             _, data = self.docker(["info", "--format", "{{.ID}}"])
             outer_id = data.decode().strip()
             require(outer_id, "outer daemon identity missing")
@@ -466,29 +522,28 @@ class IsolatedRunner:
             self.docker(["cp", python + ":/usr/local", self.scratch / "python"])
             self.docker(["cp", daemon + ":/usr/local/bin/docker", self.scratch / "docker"])
             runner = self.create("sdk", SDK_IMAGE,
-                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume, self.source_root), ["infinity"])
+                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume, source_paths), ["infinity"])
             self.docker(["cp", self.scratch / "python", runner + ":/opt/python"])
             self.docker(["cp", self.scratch / "docker", runner + ":/usr/local/bin/docker"])
             self.docker(["start", runner])
             observed = self.inspect(runner)
             require(observed["NetworkMode"] == "container:" + daemon and observed["PidMode"] == "container:" + daemon
                     and not observed["Ports"] and not observed["Privileged"]
-                    and {row["Destination"] for row in observed["Mounts"]} == ({"/var/lib/docker", str(self.workspace)}
-                         | ({str(self.source_root)} if self.source_root is not None and not self.source_root.is_relative_to(self.workspace) else set())),
+                    and {row["Destination"] for row in observed["Mounts"]} == {"/var/lib/docker", str(self.workspace)},
                     "runner namespace or mounts substituted")
-            if self.source_root is not None:
-                preparation.check_current_source(self.controller_binding)
             self.result["runner_proof"] = observed
             _, measured = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_proof", "--outer-id", outer_id])
             self.result["toolchain_proof"] = json.loads(measured)
-            if len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
-                self.result["selected_input"] = executor_input(command, ROOT)
+            if controller_binding is not None:
+                preparation.check_current_source(controller_binding)
+            if published and command[2] in ("run", "observe"):
+                require(self.result["selected_input"] == executor_input(command, ROOT),
+                        "selected input changed before executor start")
             self.save()
             self.result.update(command_started=True, inner_command=list(map(str, command)), sdk=runner, daemon=daemon)
             self.save()
-            source_arguments = ["--source-root", str(self.source_root)] if self.source_root is not None else []
             code, stdout = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_inner",
-                                   "--out", self.output, "--outer-id", outer_id, *source_arguments, "--", *command], check=False, timeout=86400)
+                                   "--out", self.output, "--outer-id", outer_id, "--", *command], check=False, timeout=86400)
             self.result["command_stdout"] = stdout.decode("utf-8", "replace")
             require((self.output / "private-execution.json").is_file(), "private execution result missing")
             private = json.loads(regular(self.output / "private-execution.json"))
@@ -503,15 +558,14 @@ class IsolatedRunner:
             if self.result.get("command_started") and not self.private_finished():
                 self.orderly_interrupt()
             self.cleanup()
-        if self.result["passed"] and len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
+        if self.result["passed"] and published and command[2] in ("run", "observe"):
             try:
                 import p1r_published_qualification as qualification
-                if self.source_root is not None:
-                    preparation.check_current_source(self.controller_binding)
                 selected = executor_input(command, ROOT)
                 require(selected == self.result["selected_input"], "selected input changed during execution")
-                selection, _, scope = qualification.load_document(Path(selected["path"]), qualification.validate_inputs)
-                qualification.finalize_isolation_receipts(Path(command[command.index("--out")+1]),self.output,selection)
+                if command[2] == "run":
+                    selection, _, scope = qualification.load_document(Path(selected["path"]), qualification.validate_inputs)
+                    qualification.finalize_isolation_receipts(Path(command[command.index("--out")+1]),self.output,selection)
             except (Exception, KeyboardInterrupt) as error:
                 self.result["errors"].append(str(error))
                 self.result["passed"] = False
@@ -677,7 +731,6 @@ def main(arguments=None):
     internal = arguments[:1] == ["_inner"]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--source-root", type=Path)
     if internal:
         parser.add_argument("--outer-id", required=True)
         arguments = arguments[1:]
@@ -689,8 +742,8 @@ def main(arguments=None):
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     require(command, "explicit verification command required")
     if internal:
-        return inner(args.out, args.outer_id, command, args.source_root)
-    runner = IsolatedRunner(args.out, args.workspace, args.outer_host, args.source_root)
+        return inner(args.out, args.outer_id, command)
+    runner = IsolatedRunner(args.out, args.workspace, args.outer_host)
     code = runner.run(command)
     print(json.dumps({"out": str(runner.output), "passed": runner.result["passed"], "p1r_usable": False}), flush=True)
     return code

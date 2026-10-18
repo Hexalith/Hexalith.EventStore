@@ -1,5 +1,7 @@
 """A Docker boundary fixture driving the real controller, finalizer and importer."""
+import base64
 import copy
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -12,6 +14,66 @@ from unittest import mock
 import p1r_isolation as isolation
 import p1r_published_qualification as qualification
 import p1r_qualification as preparation
+
+_SOURCE_BINDING = preparation.source_binding
+
+
+@contextmanager
+def separate_source_fixture(root):
+    """Use real disposable Git inventories; only replace the immutable release coordinates."""
+    root = Path(root)
+    def command(repository, *argv):
+        return subprocess.check_output(['git', *argv], cwd=repository, stderr=subprocess.PIPE).decode().strip()
+    def repository(path, content):
+        path.mkdir(parents=True)
+        command(path, 'init', '-q')
+        command(path, 'config', 'user.email', 'fixture@example.invalid')
+        command(path, 'config', 'user.name', 'P1R fixture')
+        (path/'README.md').write_text(content+'\n')
+        command(path, 'add', 'README.md')
+        command(path, 'commit', '-qm', 'test: disposable binding fixture')
+        return path
+    tooling = repository(root/'tooling', 'tooling')
+    builds = repository(tooling/'references/Hexalith.Builds', 'qualification catalog')
+    source_builds = repository(root/'runtime-builds', 'release catalog')
+    source = repository(root/'runtime', 'release source')
+    for owner, dependency in ((tooling, builds), (source, source_builds)):
+        (owner/'.gitmodules').write_text('[submodule "Builds"]\n path = references/Hexalith.Builds\n url = fixture\n')
+        (owner/'src').mkdir()
+        (owner/'src/Runtime.cs').write_text('// committed runtime\n')
+        command(owner, 'add', '.gitmodules', 'src/Runtime.cs')
+        command(owner, 'update-index', '--add', '--cacheinfo', '160000,'+command(dependency,'rev-parse','HEAD')+',references/Hexalith.Builds')
+        command(owner, 'commit', '-qm', 'test: declare fixture inputs')
+    release = command(source, 'rev-parse', 'HEAD')
+    release_builds = command(source_builds, 'rev-parse', 'HEAD')
+    command(source, 'tag', 'v3.125.1')
+    pins = {'commit':command(tooling,'rev-parse','HEAD'), 'builds_commit':command(builds,'rev-parse','HEAD')}
+    with mock.patch.object(preparation,'RUNTIME_COMMIT',release), \
+            mock.patch.object(preparation,'RUNTIME_BUILDS_COMMIT',release_builds), \
+            mock.patch.object(preparation,'retained_inputs',return_value=[]), \
+            mock.patch.object(preparation,'source_binding',_SOURCE_BINDING):
+        yield SimpleNamespace(root=root,tooling=tooling,builds=builds,source=source,source_builds=source_builds,
+                              release=release,release_builds=release_builds,pins=pins,git=command)
+
+
+def separate_inputs(fixture):
+    """Select a non-executable test tuple with the complete real owner-input grammar."""
+    import p1r_published_executor as executor
+    def candidate(version, commit):
+        return {'version':version,'tag':'v'+version,'tag_commit':commit,
+                'builds':{'version':'4.30.1','commit':'b'*40},'feed':'https://fixture.invalid/v3/index.json',
+                'packages':[{'id':identifier,'archive_sha256':'c'*64,'content_hash':base64.b64encode(b'x'*64).decode(),
+                             'repository_commit':commit} for identifier in executor.PACKAGE_IDS]}
+    selected = candidate('3.125.1',fixture.release)
+    selected['tag_builds_commit'] = fixture.release_builds
+    return {'schema':qualification.INPUTS_SCHEMA,'fixture':None,
+            'authority':{'owner':'fixture','reference':'temporary-repositories-only','date':'2026-10-18'},
+            'candidate':selected,'rollback':None,'tooling':dict(fixture.pins),
+            'comparisons':[candidate(version,'d'*40) for version in qualification.COMPARISON_VERSIONS],
+            'operational_profile':{'runtime':'dapr','runtime_version':'1.18.2','backend':'state.postgresql',
+                'backend_image':executor.POSTGRES,'selected_by':'fixture','reference':'temporary-repositories-only'},
+            'assertion_instrumentation':{'mechanism':executor.MECHANISM,'accepted_by':'test-owner','reference':'fixture'},
+            'selected_additions':list(qualification.ADDITIONS)}
 
 
 class DockerBoundary:
@@ -145,7 +207,8 @@ class DockerBoundary:
         isolation.write_json(self.worker.output/'private-execution.json',private)
 
 
-def run_controller(root, receipt, context, private_failure=False, outer_failure=False, finalize=None, real_inner=False, mapped_bind=False, late_process=False):
+def run_controller(root, receipt, context, private_failure=False, outer_failure=False, finalize=None, real_inner=False, mapped_bind=False, late_process=False,
+                   source_paths=()):
     """Persist producer output through real _run; no finalizer or importer replacement."""
     root = Path(root)
     selected = root/'inputs.json'
@@ -160,6 +223,8 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
     isolation.write_json(root/'execution.json',execution)
     boundary = DockerBoundary(root,receipt,context,private_failure,outer_failure,real_inner,mapped_bind,late_process)
     command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(selected)]
+    if source_paths:
+        command += ['--source-root',str(source_paths[0]),'--source-builds-root',str(source_paths[1])]
     with mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
             mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
             mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):

@@ -88,6 +88,37 @@ class SeparateSourceMountTests(unittest.TestCase):
 
 
 class ControllerTests(unittest.TestCase):
+    def testObservePlanningIdentitySurvivesProvisioningAndRefusesChangedBytes(self):
+        for changed in (False,True):
+            with self.subTest(changed=changed):
+                worker = isolation.IsolatedRunner(self.worker.workspace/str(changed),workspace=self.worker.workspace,outer_host='unix:///outer')
+                self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
+                planning = worker.workspace/'planning.json'
+                planning.write_text('{"candidate_proposed":{}}')
+                command = ['python3',str(worker.workspace/'tools/p1r-published-executor.py'),'observe',
+                           '--out',str(worker.workspace/'observation'),'--planning-observations',str(planning),
+                           '--selection-reference','fixture']
+                def docker(argv, **kwargs):
+                    if argv[:1] == ['info']: return 0,b'outer\n'
+                    if argv[:2] == ['image','inspect']:
+                        return 0,json.dumps({'Id':'sha256:'+'a'*64,'RepoDigests':[argv[-1]],'Os':'linux','Architecture':'amd64'}).encode()
+                    if '_proof' in argv and changed:
+                        planning.write_text('{"candidate_proposed":{"changed":true}}')
+                    if '_inner' in argv:
+                        isolation.write_json(worker.output/'private-execution.json',{'passed':True})
+                    return 0,b'{}'
+                def cleanup(): worker.result['passed'] = not worker.result['errors']
+                proof = {'NetworkMode':'container:daemon','PidMode':'container:daemon','Ports':{},'Privileged':False,
+                         'Mounts':[{'Destination':'/var/lib/docker'},{'Destination':str(worker.workspace)}]}
+                with mock.patch.object(worker,'docker',side_effect=docker) as boundary, \
+                        mock.patch.object(worker,'create',side_effect=['daemon','python','sdk']), \
+                        mock.patch.object(worker,'private_finished',return_value=True), \
+                        mock.patch.object(worker,'inspect',return_value=proof), mock.patch.object(worker,'cleanup',side_effect=cleanup) as cleaned:
+                    self.assertEqual(worker._run(command),2 if changed else 0,worker.result['errors'])
+                if changed: self.assertIn('selected input changed before executor start',worker.result['errors'])
+                self.assertEqual(any('_inner' in call.args[0] for call in boundary.call_args_list),not changed)
+                cleaned.assert_called_once()
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -368,7 +399,7 @@ class AutomaticRoutingTests(unittest.TestCase):
                     os.chdir(root)
                     with mock.patch.dict(os.environ, {}, clear=True), mock.patch.object(isolation, "IsolatedRunner", Runner), \
                             mock.patch.dict(entry["main"].__globals__, Executor=mock.Mock(return_value=worker),
-                                            validate_execution_inputs=mock.Mock()), \
+                                            validate_execution_inputs=mock.Mock(), validate_observation_inputs=mock.Mock()), \
                             mock.patch.object(entry["qualification"], "load_document", side_effect=load), \
                             contextlib.redirect_stdout(io.StringIO()) as stdout:
                         arguments = [kind, "--out", "results"] + (["--inputs", "inputs.json"] if kind == "run" else
@@ -471,7 +502,8 @@ class RealPrivateProofTests(unittest.TestCase):
                         mock.patch.object(shutil,'which',side_effect=lambda name:executables[name]), \
                         mock.patch.object(preparation,'process_state',return_value={'pid':7,'start_ticks':1,'pgid':1,'session':1}), \
                         mock.patch.object(isolation,'namespaces',return_value=own), \
-                        mock.patch.dict(entry['main'].__globals__,Executor=mock.Mock(return_value=mock.Mock(errors=[]))) as globals_patch, \
+                        mock.patch.dict(entry['main'].__globals__,Executor=mock.Mock(return_value=mock.Mock(errors=[])),
+                                        validate_observation_inputs=mock.Mock()) as globals_patch, \
                         contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()) as stderr:
                     factory = entry['main'].__globals__['Executor']
                     code = entry['main'](['observe','--out',str(Path(directory)/'out'),'--planning-observations',str(path),

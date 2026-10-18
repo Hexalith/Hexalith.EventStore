@@ -51,6 +51,9 @@ FIXED_INPUTS = (
 SCHEMA = "hexalith.p1r.preparation.v1"
 SOURCE_TOP = frozenset(("src", "tests", "test", "tools", "samples", "deploy", "Props", "Targets", ".config", ".github"))
 EXCLUDED = frozenset(("bin", "obj", "node_modules", "__pycache__", ".git"))
+RUNTIME_VERSION = "3.125.1"
+RUNTIME_COMMIT = "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+RUNTIME_BUILDS_COMMIT = "4629ff2d3bd66376b29a553663c241d3a7b87853"
 
 
 class InvalidPacket(ValueError):
@@ -137,7 +140,18 @@ def relevant(name):
     return bool(parts) and not EXCLUDED.intersection(parts) and (source or configuration) and (len(parts) == 1 or parts[0] in SOURCE_TOP)
 
 
-def repository_binding(root):
+def executable_input(name):
+    """Identify untracked execution inputs, including ignored native and sourceless modules."""
+    path = PurePosixPath(name)
+    return bool(path.parts) and not EXCLUDED.intersection(path.parts) and path.parts[0] != "_bmad-output" and (
+        relevant(name) or path.suffix.lower() in (
+            ".cs", ".csproj", ".props", ".targets", ".config", ".py", ".sh", ".js", ".mjs", ".ts",
+            ".razor", ".slnx", ".ruleset", ".resx", ".rsp", ".json", ".yaml", ".yml",
+            ".so", ".pyd", ".dll", ".dylib", ".pyc", ".pyo", ".node") or ".so." in path.name
+        or path.name in (".editorconfig", ".gitattributes", ".gitmodules", ".gitignore"))
+
+
+def repository_binding(root, clean=False):
     require(root.is_dir() and root == root.resolve(), "source repository path unavailable")
     head = git(root, "rev-parse", "HEAD").decode().strip()
     require(bool(re.fullmatch(r"[0-9a-f]{40}", head)), "invalid source HEAD")
@@ -151,17 +165,21 @@ def repository_binding(root):
         name = raw_name.decode()
         if kind == "commit":
             gitlinks[name] = oid
-        elif relevant(name):
+        elif relevant(name) or (clean and executable_input(name)):
             committed[name] = oid
     names = set(committed)
     indexed = {}
+    indexed_gitlinks = {}
     for row in git(root, "ls-files", "--stage", "-z").split(b"\0"):
         if not row:
             continue
         info, raw_name = row.split(b"\t", 1)
         mode, oid, stage = info.decode().split()
         name = raw_name.decode()
-        if relevant(name):
+        if clean and mode == "160000":
+            require(stage == "0" and name not in indexed_gitlinks, "unmerged source dependency")
+            indexed_gitlinks[name] = oid
+        if relevant(name) or (clean and executable_input(name)):
             require(stage == "0" and name not in indexed, "unmerged or duplicate source index input")
             indexed[name] = oid
     names.update(indexed)
@@ -173,6 +191,26 @@ def repository_binding(root):
         files.append({"path": name, "sha256": digest(data), "git_blob": committed.get(name),
                       "index_blob": indexed.get(name)})
     require(bool(files), "empty source inventory")
+    if clean:
+        require(indexed_gitlinks == gitlinks, "staged source dependency inputs")
+        # Ignored source files still participate in compiler globs. Inventory all
+        # untracked paths here; only known generated directories are exempt.
+        untracked = [name.decode() for name in git(root, "ls-files", "--others", "-z").split(b"\0") if name]
+        require(not any(executable_input(name) or (
+                    not EXCLUDED.intersection(PurePosixPath(name).parts)
+                    and PurePosixPath(name).parts[0] != "_bmad-output" and (root / name).is_dir())
+                    for name in untracked), "untracked code, configuration or repository inputs")
+        require(not git(root, "diff", "HEAD", "--no-ext-diff", "--ignore-submodules=all"),
+                "tracked source inputs are not clean")
+        require(all(row["git_blob"] is not None and row["git_blob"] == row["index_blob"] for row in files),
+                "untracked or staged source inputs")
+        # hash-object reads physical bytes despite assume-unchanged/skip-worktree.
+        # Its owning Git attributes preserve legitimate checkout newline conversion.
+        observed = subprocess.run(["git", "hash-object", "--stdin-paths"], cwd=root,
+                                  input="".join(json.dumps(row["path"], ensure_ascii=False) + "\n" for row in files).encode(),
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=False)
+        require(observed.returncode == 0 and observed.stdout.decode().splitlines() == [row["git_blob"] for row in files],
+                "physical tracked source inputs are not clean")
     # Git applies the owning attributes for the canonical tracked diff; physical
     # file hashes separately bind any checkout newline/dirty/untracked bytes.
     diff = git(root, "diff", "HEAD", "--no-ext-diff", "--binary", "--", *sorted(names))
@@ -213,9 +251,19 @@ def retained_inputs(root):
     return [{"path": name, "sha256": digest(regular(root / name))} for name in sorted(names)]
 
 
-def source_binding(root=ROOT, source_root=None):
+def source_binding(root=ROOT, tooling=None, source_root=None, source_builds_root=None):
     root = Path(root).absolute()
-    main = repository_binding(root)
+    if isinstance(tooling, (str, Path)) and source_root is None:
+        source_root = tooling
+        tooling = None
+    require(tooling is not None or source_builds_root is None,
+            "source builds path requires selected tooling pins")
+    if tooling is not None:
+        members(tooling, ("commit", "builds_commit"), "invalid tooling pins")
+        require(all(isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value)
+                    for value in tooling.values()), "invalid tooling pins")
+        require(source_root is not None and source_builds_root is not None, "runtime source paths missing")
+    main = repository_binding(root, clean=tooling is not None)
     declared = declared_dependencies(root)
     require("references/Hexalith.Builds" in declared, "Builds dependency is not root declared")
     dependencies = []
@@ -223,7 +271,7 @@ def source_binding(root=ROOT, source_root=None):
         path = root / name
         initialized = (path / ".git").exists()
         dependencies.append({"path": name, "initialized": initialized,
-                             "binding": repository_binding(path) if initialized else None})
+                             "binding": repository_binding(path, clean=tooling is not None) if initialized else None})
     builds = next(row for row in dependencies if row["path"] == "references/Hexalith.Builds")
     workspace_builds = None
     if not builds["initialized"]:
@@ -253,7 +301,7 @@ def source_binding(root=ROOT, source_root=None):
                 "workspace Builds is not owned by the declared superproject")
         workspace_builds = {"workspace": str(workspace), "workspace_head": git(workspace, "rev-parse", "HEAD").decode().strip(),
                             "declarations_sha256": digest(regular(workspace / ".gitmodules")), "owner_path": owner_path,
-                            "gitlinks": gitlinks, "path": str(path), "binding": repository_binding(path)}
+                            "gitlinks": gitlinks, "path": str(path), "binding": repository_binding(path, clean=tooling is not None)}
     result = {"repository": str(root), "main": main, "dependencies": dependencies,
             "retained_inputs": retained_inputs(root),
             "python": {"path": str(Path(sys.executable).resolve()),
@@ -261,7 +309,28 @@ def source_binding(root=ROOT, source_root=None):
                        "version": list(sys.version_info[:3])}}
     if workspace_builds is not None:
         result["workspace_builds"] = workspace_builds
-    if source_root is not None:
+    if tooling is not None:
+        actual_builds = workspace_builds["binding"] if workspace_builds else builds["binding"]
+        require(main["head"] == tooling["commit"] and actual_builds["head"] == tooling["builds_commit"],
+                "tooling or qualification Builds pin mismatch")
+        source = Path(source_root).absolute()
+        source_builds = Path(source_builds_root).absolute()
+        require(source != root, "runtime source redirected to tooling")
+        for path in (source, source_builds):
+            require(git(path, "rev-parse", "--show-toplevel").decode().strip() == str(path),
+                    "runtime repository path substituted")
+        source_inventory = repository_binding(source, clean=True)
+        builds_inventory = repository_binding(source_builds, clean=True)
+        tag = git(source, "rev-parse", "v" + RUNTIME_VERSION + "^{commit}").decode().strip()
+        require(source_inventory["head"] == tag == RUNTIME_COMMIT,
+                "runtime release source or tag mismatch")
+        require(source_inventory["gitlinks"].get("references/Hexalith.Builds") == RUNTIME_BUILDS_COMMIT
+                and builds_inventory["head"] == RUNTIME_BUILDS_COMMIT,
+                "runtime source Builds pin mismatch")
+        result["tooling"] = dict(tooling)
+        result["runtime_source"] = {"repository": str(source), "main": source_inventory,
+                                    "builds": {"path": str(source_builds), "binding": builds_inventory}}
+    elif source_root is not None:
         source_root = Path(source_root).absolute()
         self_contained_checkout(root)
         self_contained_checkout(source_root)
@@ -270,17 +339,21 @@ def source_binding(root=ROOT, source_root=None):
     return result
 
 
-def self_contained_checkout(root):
-    """Reject linked worktrees, external Git metadata and borrowed object stores."""
-    root = Path(root)
-    require(root == root.resolve() and (root / ".git").is_dir()
-            and not (root / ".git").is_symlink(), "self-contained ordinary Git checkout required")
-    for path in (root, *(root / name for name in declared_dependencies(root) if (root / name / ".git").exists())):
-        git_dir = Path(git(path, "rev-parse", "--absolute-git-dir").decode().strip())
-        common = Path(git(path, "rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip())
-        require(git_dir == git_dir.resolve() == common and git_dir.is_relative_to(root)
-                and not (common / "objects/info/alternates").exists()
-                and not (common / "objects").is_symlink(), "shared Git metadata or object alternates refused")
+def check_current_source(binding):
+    if "tooling" in binding or "runtime_source" in binding:
+        require("tooling" in binding and isinstance(binding.get("runtime_source"), dict),
+                "runtime source binding missing")
+        runtime = binding["runtime_source"]
+        members(runtime, ("repository", "main", "builds"), "invalid runtime source binding")
+        members(runtime["builds"], ("path", "binding"), "invalid runtime Builds binding")
+        current = source_binding(Path(binding["repository"]), binding["tooling"], runtime.get("repository"),
+                                 runtime.get("builds", {}).get("path"))
+    elif "candidate_source" in binding:
+        source = binding["candidate_source"]
+        current = source_binding(Path(binding["repository"]), source_root=Path(source["repository"]))
+    else:
+        current = source_binding(Path(binding["repository"]))
+    require(binding == current, "source/configuration inputs changed")
 
 
 def require_clean_source(binding):
@@ -297,15 +370,63 @@ def require_clean_source(binding):
     require(builds is not None and builds["initialized"], "candidate Builds closure missing")
 
 
-def check_current_source(binding, check_python=True):
-    source = binding.get("candidate_source")
-    observed = (source_binding(Path(binding["repository"]), Path(source["repository"])) if source is not None
-                else source_binding(Path(binding["repository"])))
-    if not check_python:
-        observed["python"] = binding["python"]
-        if source is not None:
-            observed["candidate_source"]["python"] = source["python"]
-    require(binding == observed, "source/configuration inputs changed")
+def self_contained_checkout(root):
+    """Reject linked worktrees, external Git metadata and borrowed object stores."""
+    root = Path(root)
+    require(root == root.resolve() and (root / ".git").is_dir()
+            and not (root / ".git").is_symlink(), "self-contained ordinary Git checkout required")
+    for path in (root, *(root / name for name in declared_dependencies(root) if (root / name / ".git").exists())):
+        git_dir = Path(git(path, "rev-parse", "--absolute-git-dir").decode().strip())
+        common = Path(git(path, "rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip())
+        require(git_dir == git_dir.resolve() == common and git_dir.is_relative_to(root)
+                and not (common / "objects/info/alternates").exists()
+                and not (common / "objects").is_symlink(), "shared Git metadata or object alternates refused")
+
+
+def validate_selected_source(selection, binding):
+    """Keep optional runtime evidence inseparable from the selected tooling pins."""
+    tooling = selection.get("tooling") if selection is not None else None
+    if tooling is None:
+        require("tooling" not in binding and "runtime_source" not in binding,
+                "unselected runtime source binding")
+        return
+    candidate = selection["candidate"]
+    require(candidate["version"] == RUNTIME_VERSION and candidate["tag"] == "v" + RUNTIME_VERSION
+            and candidate["tag_commit"] == RUNTIME_COMMIT
+            and candidate.get("tag_builds_commit") == RUNTIME_BUILDS_COMMIT,
+            "separate runtime roots require exact 3.125.1")
+    require(binding.get("tooling") == tooling and isinstance(binding.get("runtime_source"), dict),
+            "selected runtime source binding missing or substituted")
+    runtime = binding["runtime_source"]
+    members(runtime, ("repository", "main", "builds"), "invalid runtime source binding")
+    members(runtime["builds"], ("path", "binding"), "invalid runtime Builds binding")
+    require(binding.get("main", {}).get("head") == tooling["commit"]
+            and runtime.get("main", {}).get("head") == RUNTIME_COMMIT
+            and runtime["builds"]["binding"].get("head") == RUNTIME_BUILDS_COMMIT,
+            "selected runtime source identity substituted")
+
+
+def runtime_source_properties(binding):
+    """Pin the existing source-root and Builds import seams without modifying release inputs."""
+    runtime = binding["runtime_source"]
+    catalog = str(Path(runtime["builds"]["path"]) / "Props/Directory.Packages.props")
+    properties = {"UseCurrentSource": "true", "UseHexalithProjectReferences": "true",
+                  "EventStoreSourceRoot": runtime["repository"], "EventStoreVersion": RUNTIME_VERSION,
+                  "Version": RUNTIME_VERSION, "HexalithEventStoreVersion": RUNTIME_VERSION,
+                  "HexalithCommonsFromSource": "false", "HexalithTenantsFromSource": "false"}
+    properties.update({"HexalithBuildPackageVersions" + str(index): catalog for index in range(1, 4)})
+    properties.update({"Hexalith" + str(index) + "BuildPackageProps": catalog for index in range(1, 5)})
+    return properties
+
+
+def source_evaluation_arguments(project, binding, kind):
+    """Construct the complete, bounded argv used for source import and graph evaluation."""
+    require(kind in ("imports", "evaluation"), "unknown source evaluation")
+    options = (["-preprocess"] if kind == "imports" else [
+        "-getProperty:MSBuildProjectFullPath,EventStoreVersion,HexalithEventStoreVersion,Version",
+        "-getItem:ProjectReference"])
+    return ["dotnet", "msbuild", str(project), "-nologo", *options, "-p:NuGetAudit=false",
+            *("-p:" + name + "=" + value for name, value in runtime_source_properties(binding).items())]
 
 
 def checks_counter(checks):

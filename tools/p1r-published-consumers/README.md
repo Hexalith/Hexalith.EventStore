@@ -255,10 +255,40 @@ Exact commands, results and preservation proof are retained in
 `../../_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/`.
 
 The released v3.125.1 source is
-`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`; this edited checkout cannot inherit
-its immutable binding. `validate_execution_inputs` and `observe_inputs` still
-require selected tag, selected source and tooling HEAD equality. Operational
-qualification is blocked until owners approve a separate tooling/source
-binding strategy, select the exact published tuple and prove restored graph
-agreement. Finite enrollment changes no production snapshot policy, pins,
+`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`. The approved tooling repair adds
+an optional `tooling: {commit, builds_commit}` block to planning observations and
+owner inputs. Both are full commits selected after review. `observe` and `run`
+require the tooling checkout and its actual qualification Builds checkout to
+match those pins before restore or resource creation. Without the block, the
+existing selected-tag/source/tooling equality guard remains in force.
+
+The separate-root path accepts only exact 3.125.1. Both `--source-root` and
+`--source-builds-root` are required: source HEAD and v3.125.1 must resolve to the
+release commit above, and source Builds must match release gitlink
+`4629ff2d3bd66376b29a553663c241d3a7b87853`. Both paths must be inside the
+isolated workspace mount. All tracked inputs must be clean; added code and
+configuration, including ignored compiler inputs, refuse. Generated `bin`/`obj`
+outputs remain excluded. There is no bypass flag.
+
+Scripts, fixtures and witnesses retain tooling attribution. Debug source
+ProjectReferences and the PostgreSQL component template use the verified release
+root; existing MSBuild import properties select its verified Builds catalog and
+the effective runtime version 3.125.1. Preprocessed imports, evaluated versions
+and the complete source-reference closure are checked before restore and retained
+in the checkout receipt for independent import validation. Release consumers
+continue to restore the selected packages without source references or source
+catalog overrides. No release source or catalog edit is needed.
+
+The existing source binding retains its tooling inventory and qualification
+Builds identity, with `runtime_source` recording the source inventory and source
+Builds path/identity. Both roots are rechecked through private isolation,
+execution, receipt import and packet validation, including after owned cleanup.
+Removing or swapping runtime evidence remains a refusal after receipt hashes are
+recomputed. `candidate.builds` continues to describe package construction; it
+does not select the qualification Builds checkout.
+
+The tooling and qualification Builds commits remain unselected. Named owners
+must still select the exact published tuple and prove archive/restore/lock/loaded
+graph agreement before a separately authorized published attempt. Tooling tests
+run no published qualification and change no production snapshot policy, pins,
 rollback=null, AD-17 drain/freeze/forward recovery, acceptance or Story 6.4 hold.

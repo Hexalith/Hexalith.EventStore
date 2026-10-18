@@ -14,6 +14,119 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import p1r_qualification as p
+from p1r_isolation_fixture import separate_source_fixture
+
+
+class SeparateRuntimeBindingTests(unittest.TestCase):
+    def testIndexFlagsCannotHidePhysicalTrackedChanges(self):
+        for role in ('tooling','source','builds','source_builds'):
+            for flag in ('--assume-unchanged','--skip-worktree'):
+                with self.subTest(role=role,flag=flag), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f,role)
+                    name = 'src/Runtime.cs' if role in ('tooling','source') else 'README.md'
+                    f.git(root,'update-index',flag,name)
+                    (root/name).write_text('// hidden modification\n')
+                    self.assertEqual(f.git(root,'diff','HEAD','--',name),'')
+                    with self.assertRaisesRegex(p.InvalidPacket,'physical tracked'):
+                        p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testPhysicalTrackedComparisonPreservesGitNewlineConversion(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            (f.source/'.gitattributes').write_text('*.cs text eol=crlf\n')
+            f.git(f.source,'add','.gitattributes')
+            f.git(f.source,'commit','-qm','test: configure fixture newlines')
+            (f.source/'src/Runtime.cs').write_bytes(b'// committed runtime\r\n')
+            f.git(f.source,'update-index','--assume-unchanged','src/Runtime.cs')
+            p.repository_binding(f.source,clean=True)
+
+    def testNativeSourcelessAndEmbeddedRepositoryInputsRefuse(self):
+        for role in ('tooling','source','builds','source_builds'):
+            for kind in ('.so','.so.1','.pyc','repository'):
+                with self.subTest(role=role,kind=kind), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f,role)
+                    if kind == 'repository':
+                        nested = root/'src/embedded'
+                        nested.mkdir(parents=True)
+                        f.git(nested,'init','-q')
+                        (nested/'Injected.cs').write_text('// nested compiler input\n')
+                        self.assertIn(b'src/embedded/',p.git(root,'ls-files','--others','-z').split(b'\0'))
+                    else:
+                        (root/('injected'+kind)).write_bytes(b'foreign module')
+                        (root/'.git/info/exclude').write_text('*'+kind+'\n')
+                    with self.assertRaisesRegex(p.InvalidPacket,'untracked'):
+                        p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testDistinctCleanRootsRetainBothInventoriesAndBuildsRoles(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as fixture:
+            binding = p.source_binding(fixture.tooling, fixture.pins, fixture.source, fixture.source_builds)
+            self.assertEqual(binding['main']['head'], fixture.pins['commit'])
+            self.assertEqual(binding['runtime_source']['main']['head'], fixture.release)
+            self.assertEqual(binding['runtime_source']['builds']['binding']['head'], fixture.release_builds)
+            self.assertNotEqual(fixture.release, fixture.pins['commit'])
+            p.check_current_source(binding)
+
+    def testPinPathAndTagSubstitutionsRefuse(self):
+        for replacement in ('tooling-head','tooling-builds','source-builds','source-path','missing-source','missing-pin','tag-missing','tag-replaced'):
+            with self.subTest(replacement=replacement), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                pins, source, builds = dict(f.pins), f.source, f.source_builds
+                if replacement == 'tooling-head': pins['commit'] = 'a'*40
+                elif replacement == 'tooling-builds': pins['builds_commit'] = f.release_builds
+                elif replacement == 'source-builds': builds = f.builds
+                elif replacement == 'source-path': source = f.tooling
+                elif replacement == 'missing-source': source = None
+                elif replacement == 'missing-pin': del pins['builds_commit']
+                elif replacement == 'tag-missing': f.git(f.source,'tag','-d','v3.125.1')
+                else: f.git(f.source,'tag','-f','v3.125.1','HEAD^')
+                with self.assertRaises(p.InvalidPacket):
+                    p.source_binding(f.tooling,pins,source,builds)
+
+    def testDirtyStagedAndUntrackedInputsRefuseForEveryRole(self):
+        for role in ('tooling','builds','source','source_builds'):
+            for mutation in ('dirty','staged','untracked-module','untracked-config','ignored-code','ignored-config'):
+                with self.subTest(role=role,mutation=mutation), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f,role)
+                    if mutation in ('dirty','staged'):
+                        (root/'README.md').write_text('changed\n')
+                        if mutation == 'staged': f.git(root,'add','README.md')
+                    else:
+                        extra = root/'added-module'
+                        extra.mkdir()
+                        name = 'new.py' if mutation == 'untracked-module' else 'Injected.cs' if mutation == 'ignored-code' else 'settings.json'
+                        (extra/name).write_text('{}\n')
+                        if mutation.startswith('ignored-'):
+                            (root/'.git/info/exclude').write_text('added-module/\n')
+                    with self.assertRaises(p.InvalidPacket):
+                        p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testIgnoredGeneratedOutputsAreNotSourceInputs(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            for role in ('tooling','builds','source','source_builds'):
+                root = getattr(f,role)
+                for name in ('obj/Generated.cs','bin/generated.so','__pycache__/generated.pyc'):
+                    path = root/name
+                    path.parent.mkdir(exist_ok=True)
+                    path.write_bytes(b'generated output')
+                (root/'.git/info/exclude').write_text('obj/\nbin/\n__pycache__/\n')
+            p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testInvocationEvidenceCopiesDoNotBecomeNewSourceInputs(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            binding = p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            output = f.tooling/'_bmad-output/evidence/invocation/consumers/candidate'
+            output.mkdir(parents=True)
+            (output/'Fixture.cs').write_text('// copied fixture evidence\n')
+            (output/'Probe.csproj').write_text('<Project />\n')
+            (output/'execution.json').write_text('{}\n')
+            p.check_current_source(binding)
+
+    def testRuntimeOmissionAndPostBindingDriftRefuse(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            binding = p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            removed = copy.deepcopy(binding)
+            del removed['runtime_source']
+            with self.assertRaises(p.InvalidPacket): p.check_current_source(removed)
+            (f.source/'src/Runtime.cs').write_text('// post-start drift\n')
+            with self.assertRaises(p.InvalidPacket): p.check_current_source(binding)
 
 
 class TimestampTests(unittest.TestCase):

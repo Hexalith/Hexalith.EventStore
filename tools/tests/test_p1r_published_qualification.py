@@ -33,6 +33,7 @@ sys.path.insert(0, str(TOOLS))
 import p1r_qualification as preparation  # noqa: E402
 import p1r_published_qualification as q  # noqa: E402
 import p1r_qualification_runtime as runtime  # noqa: E402
+from p1r_isolation_fixture import separate_inputs, separate_source_fixture
 
 PYTHON = str(Path(sys.executable).resolve())
 SYNTHETIC_BINDING = {"repository": str(q.ROOT), "fixture": q.SYNTHETIC,
@@ -74,11 +75,117 @@ def tearDownModule():
 MISSING = object()
 
 
+class SeparateRootPacketTests(unittest.TestCase):
+    def testCheckoutConsumerRootComesFromValidatedExecutorOutput(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            inputs = separate_inputs(f)
+            evidence = {'mechanism':'p1r-executed-checks-v1','cases':[],'executor_source':binding,
+                        'executor_source_sha256':sha(json.dumps(binding,indent=2,sort_keys=True).encode()+b'\n'),
+                        'source_evaluations':[{'project':str(f.root/'submitted/consumers/source/host/Host.csproj')}]}
+            receipt = {'lane':'checkout','cases':[],'inputs_sha256':'a'*64,'instrumentation':'p1r-executed-checks-v1',
+                       'execution_evidence':evidence}
+            context = {'source_binding':binding,'inputs':{'value':inputs,'scope':'owner-selected','sha256':'a'*64}}
+            verified_output = f.root/'verified-executor'
+            with mock.patch.object(q,'validate_final_isolation',return_value=verified_output), \
+                    mock.patch.object(q,'validate_source_evaluations',side_effect=RuntimeError('root boundary reached')) as graph:
+                with self.assertRaisesRegex(RuntimeError,'root boundary reached'):
+                    q.bind_lane(receipt,{'scope':'source-comparison-only'},context)
+            self.assertEqual(graph.call_args.args[2],verified_output/'consumers/source')
+
+    def testOptionalToolingFieldsAreBoundedToExactRelease(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            value = separate_inputs(f)
+            self.assertEqual(q.validate_inputs(value),'owner-selected')
+            for mutation in (lambda v:v['tooling'].pop('builds_commit'),
+                             lambda v:v['tooling'].update(commit='short'),
+                             lambda v:v['tooling'].update(extra='a'*40),
+                             lambda v:v['candidate'].update(version='3.125.2',tag='v3.125.2'),
+                             lambda v:v['candidate'].update(tag_commit='a'*40)):
+                changed = copy.deepcopy(value)
+                mutation(changed)
+                with self.assertRaises(q.InvalidPacket): q.validate_inputs(changed)
+
+    def testPacketCreationValidationAndRehashedRuntimeRemovalOrSwap(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            inputs = separate_inputs(f)
+            selection = f.root/'inputs.json'
+            write(selection,inputs)
+            support = f.root/'support.json'
+            write(support,{})
+            output = f.root/'packet'
+            with mock.patch.object(q,'ROOT',f.tooling), mock.patch.object(q,'validate_successor_support_table',return_value={}):
+                packet = q.create_packet(output,inputs=selection,root=f.tooling,source_root=f.source,
+                                         source_builds_root=f.source_builds,support_boundary=support)
+                self.assertEqual(packet['errors'],[])
+                self.assertTrue(q.validate_packet(output)['valid'])
+                original = (output/'source-binding.json').read_bytes()
+                for mutation in ('remove','remove-both','swap'):
+                    binding = json.loads(original)
+                    if mutation == 'swap': binding['runtime_source']['repository'] = str(f.tooling)
+                    else:
+                        del binding['runtime_source']
+                        if mutation == 'remove-both': del binding['tooling']
+                    preparation.write_json(output/'source-binding.json',binding)
+                    packet['source_binding_sha256'] = sha((output/'source-binding.json').read_bytes())
+                    preparation.write_json(output/'packet.json',packet)
+                    preparation.seal(output)
+                    with self.subTest(mutation=mutation), self.assertRaises(q.InvalidPacket): q.validate_packet(output)
+
+    def testLaneAndFinalIsolationCannotDropSelectedRuntimeEvenWithFreshHash(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            inputs = separate_inputs(f)
+            binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            del binding['runtime_source']
+            del binding['tooling']
+            context = {'inputs':{'value':inputs,'scope':'owner-selected','sha256':'a'*64},'source_binding':binding}
+            receipt = {'lane':'checkout','execution_evidence':{'executor_source':binding,
+                'executor_source_sha256':sha(json.dumps(binding,indent=2,sort_keys=True).encode()+b'\n')}}
+            with self.assertRaisesRegex(q.InvalidPacket,'runtime source binding'):
+                q.bind_lane(receipt,{'scope':'source-comparison-only'},context)
+            with self.assertRaisesRegex(q.InvalidPacket,'runtime source binding'):
+                q.validate_final_isolation(receipt,context)
+
+
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
 class PostgresqlComponentTests(unittest.TestCase):
+    def testLaneAcceptsDistinctReleaseTemplateAndRejectsRehashedToolingTemplate(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            template = (q.ROOT/'deploy/dapr/statestore-postgresql.yaml').read_text()
+            for root,marker in ((f.tooling,'tooling'),(f.source,'release')):
+                (root/'deploy/dapr').mkdir(parents=True)
+                (root/'deploy/dapr/statestore-postgresql.yaml').write_text(template+'\n# '+marker+' template\n')
+            # This test isolates template routing; inventory cleanliness has its own real-Git controls.
+            binding = {'repository':str(f.tooling),'tooling':f.pins,'main':{'head':f.pins['commit']},
+                       'runtime_source':{'repository':str(f.source),'main':{'head':f.release},
+                           'builds':{'path':str(f.source_builds),'binding':{'head':f.release_builds}}}}
+            inputs = separate_inputs(f)
+            context = {'source_binding':binding,'inputs':{'value':inputs,'scope':'owner-selected','sha256':'a'*64}}
+            command = {'argv':['fixture'],'cwd':str(f.root),'exit_code':0,'output':None,'output_sha256':'b'*64,
+                       'started_utc':at(1),'finished_utc':at(2)}
+            file = {'name':'state.yaml','content':(f.source/'deploy/dapr/statestore-postgresql.yaml').read_text(),
+                    'credential_redacted':True,'rendered_sha256':'c'*64}
+            case = {'id':'fixture','commands':[command],'configurations':[{'backend_image':inputs['operational_profile']['backend_image'],
+                    'runtime_version':'1.18.2','files':[file]}]}
+            evidence = {'mechanism':'p1r-executed-checks-v1','cases':[case],'executor_source':binding,
+                        'executor_source_sha256':sha(json.dumps(binding,indent=2,sort_keys=True).encode()+b'\n')}
+            receipt = {'lane':'provenance','instrumentation':'p1r-executed-checks-v1','inputs_sha256':'a'*64,
+                       'cases':[{'id':'fixture'}],'execution_evidence':evidence}
+            with mock.patch.object(preparation,'check_current_source'), \
+                    mock.patch.object(q,'validate_final_isolation',return_value=f.root/'output'), \
+                    mock.patch.object(q,'executed_case_inventory',return_value={'provenance':['fixture']}), \
+                    mock.patch.object(q.check_witnesses,'validate_case',side_effect=RuntimeError('template accepted')):
+                file['sha256'] = sha(file['content'].encode())
+                with self.assertRaisesRegex(RuntimeError,'template accepted'):
+                    q.bind_lane(receipt,{'scope':'operational'},context)
+                file['content'] = (f.tooling/'deploy/dapr/statestore-postgresql.yaml').read_text()
+                file['sha256'] = sha(file['content'].encode())
+                with self.assertRaisesRegex(q.InvalidPacket,'component template'):
+                    q.bind_lane(receipt,{'scope':'operational'},context)
+
     def component(self, **changes):
         file = {"content": (q.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text(),
                 "credential_redacted": True, "rendered_sha256": "a" * 64, **changes}
