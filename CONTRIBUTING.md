@@ -155,6 +155,15 @@ that run with:
 dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
 ```
 
+`debug` does not print the run id: it is the file name of the run state `<runId>.json` under
+`${XDG_DATA_HOME:-$HOME/.local/share}/hexalith-builds/g4-runs/` on Linux. When an earlier run used the same manifest,
+`down --manifest` refuses with `HXR024`; pass the newest run's id with `--run-id`:
+
+```bash
+ls -t "${XDG_DATA_HOME:-$HOME/.local/share}"/hexalith-builds/g4-runs/*.json | head -1
+dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json --run-id <runId>
+```
+
 `src/Hexalith.EventStore.AppHost` serves only this repository's own tests. A run of it is never evidence that
 EventStore runs in the Platform composition.
 

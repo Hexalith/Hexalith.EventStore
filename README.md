@@ -86,6 +86,8 @@ dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStor
 
 `debug` builds `references/Hexalith.EventStore` in Debug, starts only the `eventstore` gateway with its Dapr sidecar, the Dapr control plane and Redis, waits for `/ready`, and reports the `dotnet run` launcher process id. Attach your debugger to the launcher's child process (`ps --ppid <launcher-pid> -o pid,args`). See [CONTRIBUTING.md](CONTRIBUTING.md#run-and-debug-in-the-platform-workspace) and the Platform README for the full prerequisites.
 
+`debug` does not print the run id: it is the file name of the run state `<runId>.json` under `${XDG_DATA_HOME:-$HOME/.local/share}/hexalith-builds/g4-runs/` on Linux (newest: `ls -t "${XDG_DATA_HOME:-$HOME/.local/share}"/hexalith-builds/g4-runs/*.json | head -1`). When an earlier run used the same manifest, `down --manifest` refuses with `HXR024`; add `--run-id <runId>`.
+
 This repository's own `src/Hexalith.EventStore.AppHost` serves only this repository's own tests. A run of it is never evidence that EventStore runs in the Platform composition.
 
 ## Architecture
