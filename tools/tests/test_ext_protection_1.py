@@ -168,10 +168,53 @@ class ExtProtectionPolicyTests(unittest.TestCase):
         _, observation = self.baseline()
         observation['holdOrders'] = [{'holdOperationId': 'hold', 'dispatchOperationId': 'dispatch',
                                       'holdRevision': 1, 'dispatchRevision': 2, 'dispatchWon': False}]
+        observation['guardReceipts'] = [self.hold_receipt('hold', 1, 'hold-receipt'), self.hold_receipt('dispatch', 2, 'dispatch-receipt')]
         self.evaluate(observation, ['race', 'hold-order'])
         observation['roots'][0]['state'] = 'Destroyed'
         with self.assertRaisesRegex(v.Failed, 'HOLD_RACE_STATE_CONTRADICTION'):
             self.evaluate(observation, ['race', 'hold-order'])
+
+    def hold_receipt(self, operation, revision, receipt):
+        return {'OperationId': operation, 'IntentDigest': 'D' * 64, 'Status': 'Committed', 'GuardHighWater': revision,
+                'AcceptedAtAdmissionFenceOrdinal': 1, 'ReferenceId': operation, 'ReceiptId': receipt,
+                'AdmissionAttributionsJson': '[]', 'AcceptedWriteResourceId': '', 'AcceptedWriteFacts': None,
+                'AcceptedTargetMutationDigest': '', 'Capability': None, 'SigningRequestId': '', 'DetachedJwsDigest': ''}
+
+    def test_substituted_hold_pin_activation_and_restore_originals_reject(self):
+        _, observation = self.baseline()
+        observation['holdOrders'] = [{'holdOperationId': 'hold', 'dispatchOperationId': 'dispatch',
+                                      'holdRevision': 1, 'dispatchRevision': 2, 'dispatchWon': False}]
+        observation['guardReceipts'] = [self.hold_receipt('hold', 1, 'hold-receipt'), self.hold_receipt('dispatch', 2, 'dispatch-receipt')]
+        self.evaluate(observation, ['hold-order'])
+        observation['guardReceipts'][0]['GuardHighWater'] = 9
+        with self.assertRaisesRegex(v.Failed, 'HOLD_ORIGINAL_SUBSTITUTED'):
+            self.evaluate(observation, ['hold-order'])
+
+        _, observation = self.baseline()
+        observation['pinOutcomes'] = [{'status': status} for status in ('Pinned', 'HoldPinned', 'HoldPinned', 'Authorized', 'Unpinned')]
+        observation['pinOriginals'] = [{'OperationId': 'pin-' + str(index), 'Status': item['status'], 'ReceiptId': 'pin-receipt-' + str(index),
+                                        'Target': observation['roots'][0]['target']} for index, item in enumerate(observation['pinOutcomes'])]
+        self.evaluate(observation, ['pin'])
+        observation['pinOriginals'][1]['Status'] = 'Pinned'
+        with self.assertRaisesRegex(v.Failed, 'PIN_ORIGINAL_SUBSTITUTED'):
+            self.evaluate(observation, ['pin'])
+        observation['pinOriginals'][1]['Status'] = 'HoldPinned'
+        observation['pinOriginals'][1]['OperationId'] = observation['pinOriginals'][0]['OperationId']
+        with self.assertRaisesRegex(v.Failed, 'PIN_ORIGINAL_SUBSTITUTED'):
+            self.evaluate(observation, ['pin'])
+        observation['pinOriginals'][1]['OperationId'] = 'pin-1'
+        observation['pinOutcomes'][1]['target'] = observation['roots'][1]['target']
+        with self.assertRaisesRegex(v.Failed, 'PIN_ORIGINAL_SUBSTITUTED'):
+            self.evaluate(observation, ['pin'])
+
+        _, observation = self.baseline()
+        observation['copyInventoryBefore'] = ['copy-1']
+        observation['copyStatesAfter'] = [{'copyId': 'copy-1', 'readOutcome': 'Retained'}]
+        observation['restoreOriginals'] = [{'CopyId': 'copy-1', 'ReadOutcome': 'Retained', 'Kind': 'restored'}]
+        self.evaluate(observation, ['restore'])
+        observation['restoreOriginals'][0]['ReadOutcome'] = 'Revived'
+        with self.assertRaisesRegex(v.Failed, 'RESTORE_ORIGINAL_SUBSTITUTED'):
+            self.evaluate(observation, ['restore'])
 
     def test_every_target_requires_source_and_target_copies(self):
         targets, observation = self.baseline()
@@ -239,17 +282,17 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
                                 'publicAnchorFile': str(public), 'publicAnchorSha256': v.digest(public.read_bytes()),
                                 'credentialReference': 'env:OFFLINE_' + name.upper(), 'identity': name,
                                 'installationManifest': str(manifest), 'installationManifestSha256': v.digest(manifest.read_bytes())}
-        self.trust = [{'issuer': 'offline-issuer', 'audience': 'offline-protection', 'tenantId': 'tenant-é',
+        self.trust = [{'issuer': 'offline-issuer', 'audience': 'offline-protection', 'tenantId': 'tenant-a',
                        'keyFamily': 'DeletionBatchCapabilitySigningKey', 'keyVersion': 'retained-v1',
                        'publicAnchorId': 'public-anchor-1', 'publicAnchorVersion': 'anchor-v1',
                        'publicAnchorFile': str(self.public), 'publicAnchorSha256': v.digest(self.public.read_bytes()),
                        'trustProfileRevision': 7}]
-        self.targets = [{'TenantId': 'tenant-é', 'AgentInteractionId': interaction,
+        self.targets = [{'TenantId': 'tenant-a', 'AgentInteractionId': interaction,
                          'TargetProtectionKeyAlias': 'alias<&>+`\"\'😀\n'} for interaction in ('interaction-1', 'interaction-雪')]
-        capability = {'Issuer': 'offline-issuer', 'Audience': 'offline-protection', 'TenantId': 'tenant-é',
+        capability = {'Issuer': 'offline-issuer', 'Audience': 'offline-protection', 'TenantId': 'tenant-a',
                       'DeletionRequestId': 'deletion-\"\\\n雪', 'DestructionSealId': 'stable-seal', 'BatchKind': 'AcceptedSet',
                       'BatchOrdinal': 0, 'BatchId': 'batch-original', 'ManifestDigest': v.digest(v.target_manifest_bytes(self.targets)).upper(),
-                      'GuardStreamId': 'tenant-é:guard', 'IntendedIssuedGuardRevision': 23, 'AttestationOrdinal': 1,
+                      'GuardStreamId': 'tenant-a:guard', 'IntendedIssuedGuardRevision': 23, 'AttestationOrdinal': 1,
                       'SigningAttemptOrdinal': 3, 'CapabilityKeyVersion': 'retained-v1'}
         self.request = {'Capability': capability, 'DetachedJws': self.sign(capability), 'CommittedIssuedGuardRevision': 24,
                         'DispatchReceiptId': 'dispatch-original', 'DispatchGuardRevision': 27, 'Targets': self.targets}
@@ -280,7 +323,9 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
                                          'agentsRuntimeEnabled': False, 'roots': [{'target': target, 'state': 'Destroyed'} for target in self.targets],
                                          'records': [], 'replays': [], 'consumptionRequests': [self.request], 'guardBatches': [batch],
                                          'guardReceipts': receipts, 'ownerResults': [owner], 'providerResults': [provider],
-                                         'ownerRetryResults': [owner], 'ownerLookupResults': [owner], 'providerLookupResults': [provider]}))
+                                         'ownerRetryResults': [owner], 'ownerLookupResults': [owner], 'providerLookupResults': [provider],
+                                         'ownerBatches': [{'Original': self.request, 'Current': self.request, 'Outcome': owner, 'BlockedReplacement': None}],
+                                         'exactResults': [{'operationId': 'activation-original', 'receiptId': 'activation-result', 'status': 'Activated'}] * 2}))
 
     def key(self, name):
         private, public = (self.directory / (name + suffix) for suffix in ('.private.pem', '.public.pem'))
@@ -310,9 +355,285 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
         v.evaluate(observation or self.observation, {'steps': [], 'checks': ['erased', 'receipts', 'capability', 'exact-results']},
                    self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
 
+    def cohort(self, target_sets):
+        observed = copy.deepcopy(self.observation)
+        for field in ('consumptionRequests', 'guardBatches', 'guardReceipts', 'ownerResults', 'providerResults',
+                      'ownerRetryResults', 'ownerLookupResults', 'providerLookupResults', 'ownerBatches'):
+            observed[field] = []
+        for index, targets in enumerate(target_sets):
+            request = copy.deepcopy(self.request)
+            payload = request['Capability']
+            payload.update(BatchId='batch-' + str(index), BatchKind='Containment' if len(target_sets) > 1 else 'AcceptedSet',
+                           BatchOrdinal=index + 1 if len(target_sets) > 1 else 0,
+                           IntendedIssuedGuardRevision=23 + index * 10, ManifestDigest=v.digest(v.target_manifest_bytes(targets)).upper())
+            request.update(Targets=copy.deepcopy(targets), DetachedJws=self.sign(payload), CommittedIssuedGuardRevision=24 + index * 10,
+                           DispatchGuardRevision=27 + index * 10, DispatchReceiptId='dispatch-' + str(index))
+            batch = copy.deepcopy(self.observation['guardBatches'][0])
+            batch.update(BatchId=payload['BatchId'], Kind=payload['BatchKind'], Ordinal=payload['BatchOrdinal'], Targets=request['Targets'],
+                         ManifestDigest=payload['ManifestDigest'], IssueReceiptId='issue-' + str(index), DispatchReceiptId=request['DispatchReceiptId'],
+                         Capability=payload, DetachedJws=request['DetachedJws'], SigningRequestId=v.digest(v.capability_bytes(payload)).upper(),
+                         AttestationDigest=v.digest(request['DetachedJws'].encode()).upper(), IssuedGuardRevision=request['CommittedIssuedGuardRevision'],
+                         DispatchGuardRevision=request['DispatchGuardRevision'], ProtectionReceiptId='reservation-' + str(index),
+                         TargetReceiptIds=['target-' + str(index) + '-' + str(i) for i in range(len(targets))])
+            for position, name in enumerate(('issue', 'dispatch')):
+                receipt = copy.deepcopy(self.observation['guardReceipts'][position])
+                receipt.update(OperationId=name + '-operation-' + str(index), ReceiptId=batch['IssueReceiptId' if name == 'issue' else 'DispatchReceiptId'],
+                               ReferenceId=payload['BatchId'], Capability=payload, SigningRequestId=batch['SigningRequestId'], DetachedJwsDigest=batch['AttestationDigest'],
+                               GuardHighWater=batch['IssuedGuardRevision' if name == 'issue' else 'DispatchGuardRevision'])
+                observed['guardReceipts'].append(receipt)
+            vector = [{'Target': target, 'OriginalBatchId': payload['BatchId'], 'ReceiptId': batch['TargetReceiptIds'][i]} for i, target in enumerate(targets)]
+            owner = {**self.observation['ownerResults'][0], 'BatchId': payload['BatchId'], 'OwnerRevision': 9 + index,
+                     'ReceiptId': batch['ProtectionReceiptId'], 'TargetReceipts': vector}
+            provider = {**self.observation['providerResults'][0], 'BatchId': payload['BatchId'],
+                        'ReservationReceiptId': owner['ReceiptId'], 'TargetReceipts': vector}
+            for field, value in (('consumptionRequests', request), ('guardBatches', batch), ('ownerResults', owner), ('providerResults', provider),
+                                 ('ownerRetryResults', owner), ('ownerLookupResults', owner), ('providerLookupResults', provider),
+                                 ('ownerBatches', {'Original': request, 'Current': request, 'Outcome': owner, 'BlockedReplacement': None})):
+                observed[field].append(copy.deepcopy(value))
+        return observed
+
+    def covered(self):
+        observed = copy.deepcopy(self.observation)
+        request = copy.deepcopy(self.request)
+        # The original public artifact is retained; this defense-in-depth request grants no new authority.
+        request['Capability']['BatchId'] = 'later-coverage-batch'
+        outcome = {**copy.deepcopy(observed['ownerResults'][0]), 'BatchId': 'later-coverage-batch', 'Status': 4,
+                   'OwnerRevision': 10, 'ReceiptId': 'coverage-original'}
+        observed.update(coverageRequest=request, coverageOutcome=outcome,
+                        targetCoverage=[{'target': t, 'batchIds': ['batch-original'], 'ordinals': [0]} for t in self.targets],
+                        coverageOriginals=[{'Target': target, 'BatchId': 'batch-original', 'Ordinal': 0,
+                                            'ManifestDigest': self.request['Capability']['ManifestDigest'],
+                                            'ReceiptId': 'coverage-receipt-' + str(index)} for index, target in enumerate(self.targets, 1)])
+        observed['ownerBatches'].append(copy.deepcopy({'Original': request, 'Current': request, 'Outcome': outcome, 'BlockedReplacement': None}))
+        return observed
+
+    def evaluate_coverage(self, observed):
+        v.evaluate(observed, {'steps': [], 'checks': ['erased', 'receipts', 'coverage', 'already-destroyed']},
+                   self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+
     def test_nontrivial_separately_signed_request_and_native_originals_pass(self):
         self.evaluate()
         self.assertNotEqual(self.request['CommittedIssuedGuardRevision'], self.request['Capability']['IntendedIssuedGuardRevision'])
+
+    def test_retained_capability_boolean_and_float_substitutions_reject(self):
+        for location in ('guardBatches', 'guardReceipts'):
+            for field, values in (('BatchOrdinal', (False, 0.0)), ('AttestationOrdinal', (True, 1.0))):
+                for value in values:
+                    with self.subTest(location=location, field=field, value=value):
+                        observed = copy.deepcopy(self.observation)
+                        observed[location][0]['Capability'][field] = value
+                        with self.assertRaisesRegex(v.Failed, 'ORDINAL_INVALID'):
+                            self.evaluate(observed)
+
+    def test_p36_operation_exact_results_are_checked_in_addition_to_consumed_originals(self):
+        observed = copy.deepcopy(self.observation)
+        observed['reattestation'] = {'sameBatch': True, 'sameManifest': True, 'oldAttestationRevoked': True,
+                                     'activeCredentialCount': 1, 'compromiseBlockReceiptId': 'compromise-block',
+                                     'expectedBlockSetRevision': 1, 'activatedBlockSetRevision': 1}
+        observed['activationOriginal'] = {'OperationId': 'activation-original', 'CompromiseBlockReceiptId': 'compromise-block',
+                                          'ExpectedKeyBlockSetRevision': 1, 'ActivatedBlockSetRevision': 1,
+                                          'GuardReplacementReceiptId': 'guard-replacement', 'BatchId': self.request['Capability']['BatchId'],
+                                          'ManifestDigest': self.request['Capability']['ManifestDigest'],
+                                          'AttestationOrdinal': self.request['Capability']['AttestationOrdinal'],
+                                          'OldAttestationRevoked': True, 'ActiveCredentialCount': 1}
+        replacement = copy.deepcopy(observed['guardReceipts'][0])
+        replacement.update(OperationId='guard-replacement-operation', ReceiptId='guard-replacement')
+        observed['guardReceipts'].append(replacement)
+        checks = ['erased', 'receipts', 'reattested', 'exact-results']
+        v.evaluate(observed, {'steps': [], 'checks': checks}, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+        for values in ([], observed['exactResults'][:1], [observed['exactResults'][0], {**observed['exactResults'][0], 'receiptId': 'changed-activation'}]):
+            with self.subTest(values=values):
+                with self.assertRaisesRegex(v.Failed, 'EXACT_RESULT_DIVERGED'):
+                    self.evaluate({**observed, 'exactResults': values})
+        for field, value in (('BatchId', 'substituted-batch'), ('ManifestDigest', 'substituted-manifest'), ('AttestationOrdinal', 2), ('GuardReplacementReceiptId', 'missing-replacement')):
+            substituted = copy.deepcopy(observed)
+            substituted['activationOriginal'][field] = value
+            with self.assertRaisesRegex(v.Failed, 'ACTIVATION_ORIGINAL_SUBSTITUTED'):
+                v.evaluate(substituted, {'steps': [], 'checks': checks}, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+        substituted = copy.deepcopy(observed)
+        substituted['reattestation']['expectedBlockSetRevision'] = True
+        with self.assertRaisesRegex(v.Failed, 'ACTIVATION_ORIGINAL_SUBSTITUTED'):
+            v.evaluate(substituted, {'steps': [], 'checks': checks}, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+
+    def test_complete_multi_request_containment_cohort_passes(self):
+        self.evaluate(self.cohort([[target] for target in self.targets]))
+
+    def test_internally_consistent_signed_partial_and_overlapping_cohorts_reject(self):
+        for groups in ([self.targets[:1]], [self.targets[:1], self.targets[:1]]):
+            with self.subTest(groups=groups):
+                with self.assertRaisesRegex(v.Failed, 'CONSUMPTION_TARGET_INVENTORY_MISMATCH'):
+                    self.evaluate(self.cohort(groups))
+
+    def test_conflicting_guard_operation_id_across_two_containment_requests_rejects(self):
+        observed = self.cohort([[target] for target in self.targets])
+        observed['guardReceipts'][2]['OperationId'] = observed['guardReceipts'][0]['OperationId']
+        with self.assertRaisesRegex(v.Failed, 'GUARD_OPERATION_ORIGINAL_CONFLICT'):
+            self.evaluate(observed)
+
+    def test_guard_and_owner_native_revision_and_terminal_mirror_invariants(self):
+        for value in (False, 0.0, -1, 2 ** 63):
+            observed = copy.deepcopy(self.observation)
+            observed['guardBatches'][0]['BlockSetRevision'] = value
+            with self.assertRaisesRegex(v.Failed, 'ORDINAL_INVALID'):
+                self.evaluate(observed)
+        observed = copy.deepcopy(self.observation)
+        observed['ownerResults'][0]['KeyBlockSetRevision'] = observed['ownerResults'][0]['OwnerRevision'] + 1
+        with self.assertRaisesRegex(v.Failed, 'ORDINAL_INVALID'):
+            self.evaluate(observed)
+        for status in ('Unconsumed', 'ReplacementAwaitingActivation', 'AlreadyDestroyed'):
+            observed = copy.deepcopy(self.observation)
+            observed['guardBatches'][0].update(ProtectionOutcome=status, ProtectionReceiptId='unrelated-terminal')
+            with self.assertRaisesRegex(v.Failed, 'GUARD_TERMINAL_VECTOR_MISMATCH'):
+                self.evaluate(observed)
+
+    def test_actual_retained_owner_request_and_reservation_are_required(self):
+        observed = copy.deepcopy(self.observation)
+        observed.pop('ownerBatches')
+        with self.assertRaisesRegex(v.Failed, 'RETAINED_OWNER_BATCHES_MISSING'):
+            self.evaluate(observed)
+        for part, field, value in (('Current', 'DispatchReceiptId', 'other-dispatch'),
+                                   ('Outcome', 'ReceiptId', 'other-reservation')):
+            observed = copy.deepcopy(self.observation)
+            observed['ownerBatches'][0][part][field] = value
+            with self.assertRaisesRegex(v.Failed, 'RETAINED_OWNER_REQUEST_OR_RESERVATION_MISMATCH'):
+                self.evaluate(observed)
+        observed = copy.deepcopy(self.observation)
+        observed['ownerBatches'][0]['BlockedReplacement'] = {}
+        with self.assertRaisesRegex(v.Failed, 'RETAINED_OWNER_REQUEST_OR_RESERVATION_MISMATCH'):
+            self.evaluate(observed)
+        observed = copy.deepcopy(self.observation)
+        original = observed['ownerBatches'][0]['Original']
+        original['Capability']['DeletionRequestId'] = 'changed-but-validly-signed-original'
+        original['DetachedJws'] = self.sign(original['Capability'])
+        with self.assertRaisesRegex(v.Failed, 'RETAINED_ORIGINAL_BATCH_IDENTITY_CHANGED'):
+            self.evaluate(observed)
+        observed = copy.deepcopy(self.observation)
+        observed['ownerBatches'][0]['Original']['DispatchReceiptId'] = 'changed-original-dispatch'
+        with self.assertRaisesRegex(v.Failed, 'RETAINED_ORIGINAL_ATTESTATION_CHANGED'):
+            self.evaluate(observed)
+
+    def test_consistent_response_reservation_substitution_cannot_override_retained_owner(self):
+        observed = copy.deepcopy(self.observation)
+        for field in ('ownerResults', 'ownerRetryResults', 'ownerLookupResults'):
+            observed[field][0]['ReceiptId'] = 'substituted-reservation'
+        for field in ('providerResults', 'providerLookupResults'):
+            observed[field][0]['ReservationReceiptId'] = 'substituted-reservation'
+        observed['guardBatches'][0]['ProtectionReceiptId'] = 'substituted-reservation'
+        with self.assertRaisesRegex(v.Failed, 'RETAINED_OWNER_REQUEST_OR_RESERVATION_MISMATCH'):
+            self.evaluate(observed)
+
+    def test_p15_native_coverage_request_and_exact_original_vector_pass(self):
+        self.evaluate_coverage(self.covered())
+
+    def test_substituted_replacement_batch_rejects(self):
+        observed = copy.deepcopy(self.observation)
+        observed['ownerOutcome'] = {'status': 'ConsumptionBlocked', 'receiptId': 'block-receipt', 'blockedKeyVersion': 'key-v2', 'revocationRevision': 4}
+        observed['activationOutcome'] = {'status': 'ActivationBlockedByReplacementKeyCompromise', 'newBlockReceiptId': 'new-block',
+                                         'newKeyVersion': 'key-v2', 'revocationRevision': 4}
+        observed['activationOriginal'] = {'OperationId': 'activation-1', 'NewBlockReceiptId': 'new-block', 'NewKeyVersion': 'key-v2',
+                                          'RevocationRevision': 4, 'BatchId': self.request['Capability']['BatchId']}
+        case = {'steps': [], 'checks': ['replacement-blocked']}
+        v.evaluate(observed, case, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+        observed['activationOriginal']['BatchId'] = 'substituted-batch'
+        with self.assertRaisesRegex(v.Failed, 'ACTIVATION_ORIGINAL_SUBSTITUTED'):
+            v.evaluate(observed, case, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+        observed['activationOriginal']['BatchId'] = self.request['Capability']['BatchId']
+        observed['activationOriginal']['NewBlockReceiptId'] = 'substituted-block'
+        with self.assertRaisesRegex(v.Failed, 'ACTIVATION_ORIGINAL_SUBSTITUTED'):
+            v.evaluate(observed, case, self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+
+    def test_substituted_coverage_original_rejects(self):
+        observed = self.covered()
+        observed['coverageOriginals'][0]['BatchId'] = 'substituted-batch'
+        with self.assertRaisesRegex(v.Failed, 'COVERAGE_ORIGINAL_SUBSTITUTED'):
+            self.evaluate_coverage(observed)
+        observed = self.covered()
+        observed['coverageOriginals'][0]['ManifestDigest'] = 'substituted-manifest'
+        with self.assertRaisesRegex(v.Failed, 'COVERAGE_ORIGINAL_SUBSTITUTED'):
+            self.evaluate_coverage(observed)
+        for ordinal in (False, 0.0):
+            observed = self.covered()
+            observed['targetCoverage'][0]['ordinals'] = [ordinal]
+            with self.assertRaisesRegex(v.Failed, 'COVERAGE_ORIGINAL_SUBSTITUTED'):
+                self.evaluate_coverage(observed)
+
+    def test_p15_changed_batch_target_original_batch_and_order_reject(self):
+        for mutation in ('object-batch', 'changed-outcome-batch', 'changed-request-batch', 'changed-target', 'changed-original-batch', 'changed-order'):
+            with self.subTest(mutation=mutation):
+                observed = self.covered()
+                request, outcome = observed['coverageRequest'], observed['coverageOutcome']
+                if mutation == 'object-batch':
+                    outcome['BatchId'] = {'invalid': 'object'}
+                elif mutation == 'changed-outcome-batch':
+                    outcome['BatchId'] = 'substituted-later-batch'
+                elif mutation == 'changed-request-batch':
+                    request['Capability']['BatchId'] = 'substituted-later-batch'
+                elif mutation == 'changed-target':
+                    request['Targets'][0]['AgentInteractionId'] = 'interaction-0'
+                    request['Capability']['ManifestDigest'] = v.digest(v.target_manifest_bytes(request['Targets'])).upper()
+                elif mutation == 'changed-original-batch':
+                    outcome['TargetReceipts'][0]['OriginalBatchId'] = 'substituted-original-batch'
+                else:
+                    outcome['TargetReceipts'].reverse()
+                observed['ownerBatches'][-1] = copy.deepcopy({'Original': request, 'Current': request, 'Outcome': outcome, 'BlockedReplacement': None})
+                with self.assertRaises(v.Failed):
+                    self.evaluate_coverage(observed)
+
+    def test_native_aggregate_shape_and_consumption_identity_byte_bounds(self):
+        for tenant, batch in (('tenant-é', 'valid-batch'), ('a' * 65, 'valid-batch'), ('tenant-a', '-invalid'),
+                              ('tenant-a', 'invalid_'), ('tenant-a', 'a' * 257)):
+            request = copy.deepcopy(self.request)
+            request['Capability'].update(TenantId=tenant, BatchId=batch)
+            with self.assertRaisesRegex(v.Failed, 'AGGREGATE_IDENTITY_INVALID'):
+                v.capture_consumption_request(request)
+        request = copy.deepcopy(self.request)
+        request['DispatchReceiptId'] = 'é' * 1025
+        with self.assertRaisesRegex(v.Failed, 'IDENTITY_INVALID'):
+            v.capture_consumption_request(request)
+        for field, member in (('ownerResults', 'ReceiptId'), ('providerResults', 'ReservationReceiptId')):
+            observed = copy.deepcopy(self.observation)
+            observed[field][0][member] = 'é' * 1025
+            with self.assertRaisesRegex(v.Failed, 'IDENTITY_INVALID'):
+                self.evaluate(observed)
+        observed = copy.deepcopy(self.observation)
+        observed['ownerResults'][0]['TargetReceipts'][0]['ReceiptId'] = 'é' * 1025
+        with self.assertRaisesRegex(v.Failed, 'IDENTITY_INVALID'):
+            self.evaluate(observed)
+
+    def test_observation_trust_index_and_signature_cache_bound_openssl_work(self):
+        self.trust.extend({**self.trust[0], 'keyVersion': 'retained-' + str(index)} for index in range(100))
+        observed = self.cohort([[target] for target in self.targets])
+        with patch.object(v.subprocess, 'run', wraps=subprocess.run) as run:
+            self.evaluate(observed)
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(4, sum(command[:2] == ['openssl', 'ec'] for command in commands))
+        self.assertEqual(2, sum(command[:2] == ['openssl', 'dgst'] for command in commands))
+
+    def test_observation_deadline_and_end_pin_drift_block(self):
+        with patch.object(v, 'OBSERVATION_VERIFICATION_SECONDS', 0), patch.object(v.subprocess, 'run') as run:
+            with self.assertRaisesRegex(v.Blocked, 'OBSERVATION_VERIFICATION_DEADLINE'):
+                self.evaluate()
+            run.assert_not_called()
+        original_public = self.public.read_bytes()
+        actual_run = subprocess.run
+        def drifting_run(command, **kwargs):
+            if command[:2] == ['openssl', 'dgst']:
+                verification_path = Path(command[command.index('-verify') + 1])
+                self.assertNotEqual(self.public, verification_path)
+                self.assertEqual(original_public, verification_path.read_bytes())
+                self.public.write_bytes(original_public + b'\nchanged-after-capture')
+            return actual_run(command, **kwargs)
+        with patch.object(v.subprocess, 'run', side_effect=drifting_run):
+            with self.assertRaisesRegex(v.Blocked, 'INSTALLED_FILE_MISSING_OR_CHANGED'):
+                self.evaluate()
+
+    def test_compressed_transport_key_encoding_cannot_bypass_role_separation(self):
+        compressed = self.directory / 'compressed-role-public.pem'
+        subprocess.run(['openssl', 'ec', '-pubin', '-in', self.roles['executor']['publicAnchorFile'], '-conv_form', 'compressed',
+                        '-out', str(compressed)], check=True, capture_output=True)
+        self.roles['observer'].update(publicAnchorFile=str(compressed), publicAnchorSha256=v.digest(compressed.read_bytes()))
+        with self.assertRaisesRegex(v.Blocked, 'ROLE_SEPARATION_MISSING'):
+            v.validate_capability_trust(self.trust, self.roles)
 
     def test_retained_old_version_is_verifiable_without_expiry_or_renewal(self):
         _, public = self.key('current-capability')
@@ -503,7 +824,7 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
         engine = self.directory / 'engine.dll'
         engine.write_bytes(b'offline-binary')
         profile = {'schema': 'ext-protection-1-profile/v2', 'targetCommit': 'a' * 40, 'planSha256': 'b' * 64,
-                   'tenantReferences': {'primary': 'tenant-é', 'other': 'other'}, 'roles': self.roles,
+                   'tenantReferences': {'primary': 'tenant-a', 'other': 'other'}, 'roles': self.roles,
                    'engineBinary': {'path': str(engine), 'sha256': v.digest(engine.read_bytes())}, 'capabilityTrust': self.trust}
         path = self.directory / 'profile.json'
         with patch.dict(v.os.environ, {'OFFLINE_' + name.upper(): 'offline-value' for name in v.ROLE_NAMES}):

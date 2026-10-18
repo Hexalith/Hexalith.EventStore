@@ -9,6 +9,65 @@ namespace Hexalith.EventStore.Server.Actors;
 
 public partial class AggregateActor
 {
+    private Task? _unfinishedPayloadProtectionIo;
+
+    private void CheckPayloadProtectionIoReady()
+    {
+        if (_unfinishedPayloadProtectionIo is { IsCompleted: false })
+        { throw new PayloadProtectionRecoveryException(new InvalidOperationException("ProtectionCompletionIoPending")); }
+        if (_unfinishedPayloadProtectionIo is not null)
+        {
+            _ = _unfinishedPayloadProtectionIo.Exception;
+            _unfinishedPayloadProtectionIo = null;
+        }
+    }
+
+    private async Task<T> PayloadProtectionIoAsync<T>(Func<Task<T>> operation, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        CheckPayloadProtectionIoReady();
+        Task<T> pending = operation();
+        _unfinishedPayloadProtectionIo = pending;
+        try { return await pending.WaitAsync(token).ConfigureAwait(false); }
+        finally
+        {
+            if (pending.IsCompleted && ReferenceEquals(_unfinishedPayloadProtectionIo, pending))
+            { _ = pending.Exception; _unfinishedPayloadProtectionIo = null; }
+        }
+    }
+
+    private async Task PayloadProtectionIoAsync(Func<Task> operation, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        CheckPayloadProtectionIoReady();
+        Task pending = operation();
+        _unfinishedPayloadProtectionIo = pending;
+        try { await pending.WaitAsync(token).ConfigureAwait(false); }
+        finally
+        {
+            if (pending.IsCompleted && ReferenceEquals(_unfinishedPayloadProtectionIo, pending))
+            { _ = pending.Exception; _unfinishedPayloadProtectionIo = null; }
+        }
+    }
+
+    /// <summary>Quiesces original state/scheduler I/O before Dapr's automatic save can start.</summary>
+    protected override async Task OnPostActorMethodAsync(ActorMethodContext actorMethodContext)
+    {
+        if (_unfinishedPayloadProtectionIo is { } pending) { await pending.ConfigureAwait(false); }
+        await base.OnPostActorMethodAsync(actorMethodContext).ConfigureAwait(false);
+    }
+
+    /// <summary>Quiesces unknown original I/O before Dapr failure cleanup releases this actor turn.</summary>
+    protected override async Task OnActorMethodFailedAsync(ActorMethodContext actorMethodContext, Exception exception)
+    {
+        if (_unfinishedPayloadProtectionIo is { } pending)
+        {
+            try { await pending.ConfigureAwait(false); }
+            catch (Exception) { /* Preserve the original failure after the operation quiesces. */ }
+        }
+        await base.OnActorMethodFailedAsync(actorMethodContext, exception).ConfigureAwait(false);
+    }
+
     private async Task StagePayloadProtectionCompletionsAsync(AggregateIdentity identity,
         IReadOnlyCollection<PayloadProtectionCompletionContext> originals, CancellationToken cancellationToken)
     {
@@ -25,16 +84,18 @@ public partial class AggregateActor
     private async Task ArmPayloadProtectionCompletionReminderAsync(CancellationToken cancellationToken)
     {
         if (payloadProtectionService is not InteractionPayloadProtectionService) { return; }
-        _ = await RegisterReminderAsync(PayloadProtectionCompletionJournal.ReminderName, null,
-            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)).WaitAsync(cancellationToken).ConfigureAwait(false);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), IdempotencyTimeProvider);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token, cancellationToken);
+        await PayloadProtectionIoAsync(() => RegisterReminderAsync(PayloadProtectionCompletionJournal.ReminderName, null,
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30)), linked.Token).ConfigureAwait(false);
     }
 
     private async Task RearmPayloadProtectionCompletionReminderAsync()
     {
         if (payloadProtectionService is not InteractionPayloadProtectionService) { return; }
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30), IdempotencyTimeProvider);
-        var found = await StateManager.TryGetStateAsync<PayloadProtectionCompletionJournal>(
-            PayloadProtectionCompletionJournal.StateName, timeout.Token).WaitAsync(timeout.Token).ConfigureAwait(false);
+        var found = await PayloadProtectionIoAsync(() => StateManager.TryGetStateAsync<PayloadProtectionCompletionJournal>(
+            PayloadProtectionCompletionJournal.StateName, timeout.Token), timeout.Token).ConfigureAwait(false);
         if (found.HasValue && found.Value is { Completed: false })
         {
             await ArmPayloadProtectionCompletionReminderAsync(timeout.Token).ConfigureAwait(false);
@@ -51,15 +112,15 @@ public partial class AggregateActor
         CancellationToken token = timeout.Token;
         try
         {
-            await EnsureStateCacheBarrierAsync(correlationId: null, activity: null).WaitAsync(token).ConfigureAwait(false);
-            var found = await StateManager.TryGetStateAsync<PayloadProtectionCompletionJournal>(
-                PayloadProtectionCompletionJournal.StateName, token).WaitAsync(token).ConfigureAwait(false);
+            await PayloadProtectionIoAsync(() => EnsureStateCacheBarrierAsync(correlationId: null, activity: null), token).ConfigureAwait(false);
+            var found = await PayloadProtectionIoAsync(() => StateManager.TryGetStateAsync<PayloadProtectionCompletionJournal>(
+                PayloadProtectionCompletionJournal.StateName, token), token).ConfigureAwait(false);
             if (found.HasValue && found.Value is not { Completed: true })
             {
                 await RecoverPayloadProtectionCompletionsAsync(GetAggregateIdentityFromActorId(), token).ConfigureAwait(false);
-                await StateManager.SaveStateAsync(token).WaitAsync(token).ConfigureAwait(false);
+                await PayloadProtectionIoAsync(() => StateManager.SaveStateAsync(token), token).ConfigureAwait(false);
             }
-            await UnregisterReminderAsync(PayloadProtectionCompletionJournal.ReminderName).WaitAsync(token).ConfigureAwait(false);
+            await PayloadProtectionIoAsync(() => UnregisterReminderAsync(PayloadProtectionCompletionJournal.ReminderName), token).ConfigureAwait(false);
         }
         catch
         {
@@ -78,9 +139,8 @@ public partial class AggregateActor
         CancellationToken token = linked.Token;
         try
         {
-            ConditionalValue<PayloadProtectionCompletionJournal> found = await StateManager
-                .TryGetStateAsync<PayloadProtectionCompletionJournal>(PayloadProtectionCompletionJournal.StateName, token)
-                .WaitAsync(token).ConfigureAwait(false);
+            ConditionalValue<PayloadProtectionCompletionJournal> found = await PayloadProtectionIoAsync(() => StateManager
+                .TryGetStateAsync<PayloadProtectionCompletionJournal>(PayloadProtectionCompletionJournal.StateName, token), token).ConfigureAwait(false);
             if (!found.HasValue || found.Value is { Completed: true }) { return; }
             if (found.Value is null) { throw new InvalidOperationException("ProtectionCompletionJournalMismatch"); }
             PayloadProtectionCompletionJournal journal = found.Value;
@@ -93,8 +153,8 @@ public partial class AggregateActor
                 EventStorePayloadProtectionMetadata? metadata;
                 if (context.Occurrence.PayloadKind == PayloadProtectionPayloadKind.Event)
                 {
-                    ConditionalValue<EventEnvelope> source = await StateManager.TryGetStateAsync<EventEnvelope>(
-                        $"{identity.EventStreamKeyPrefix}{context.Occurrence.RecordSequence}", token).WaitAsync(token).ConfigureAwait(false);
+                    ConditionalValue<EventEnvelope> source = await PayloadProtectionIoAsync(() => StateManager.TryGetStateAsync<EventEnvelope>(
+                        $"{identity.EventStreamKeyPrefix}{context.Occurrence.RecordSequence}", token), token).ConfigureAwait(false);
                     if (!source.HasValue || source.Value.TenantId != identity.TenantId || source.Value.Domain != identity.Domain
                         || source.Value.AggregateId != identity.AggregateId || (ulong)source.Value.SequenceNumber != context.Occurrence.RecordSequence
                         || source.Value.EventTypeName != context.Occurrence.PayloadTypeId || source.Value.ApplicationPayloadDigest is null)
@@ -104,8 +164,8 @@ public partial class AggregateActor
                 }
                 else if (context.Occurrence.PayloadKind == PayloadProtectionPayloadKind.Snapshot)
                 {
-                    ConditionalValue<SnapshotRecord> source = await StateManager.TryGetStateAsync<SnapshotRecord>(
-                        identity.SnapshotKey, token).WaitAsync(token).ConfigureAwait(false);
+                    ConditionalValue<SnapshotRecord> source = await PayloadProtectionIoAsync(() => StateManager.TryGetStateAsync<SnapshotRecord>(
+                        identity.SnapshotKey, token), token).ConfigureAwait(false);
                     if (!source.HasValue || source.Value.TenantId != identity.TenantId || source.Value.Domain != identity.Domain
                         || source.Value.AggregateId != identity.AggregateId || (ulong)source.Value.SequenceNumber != context.Occurrence.RecordSequence)
                     { throw new InvalidOperationException("ProtectionCompletionSourceMismatch"); }
@@ -122,8 +182,8 @@ public partial class AggregateActor
             }
             // Retain originals. The caller's next atomic save records completion; a crash before
             // that save repeats exact idempotent lookup/completion, never a new encryption identity.
-            await StateManager.SetStateAsync(PayloadProtectionCompletionJournal.StateName,
-                journal with { Completed = true }, token).WaitAsync(token).ConfigureAwait(false);
+            await PayloadProtectionIoAsync(() => StateManager.SetStateAsync(PayloadProtectionCompletionJournal.StateName,
+                journal with { Completed = true }, token), token).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not PayloadProtectionRecoveryException)
         {

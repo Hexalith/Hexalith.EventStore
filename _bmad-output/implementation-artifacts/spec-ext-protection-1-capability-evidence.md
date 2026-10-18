@@ -1,7 +1,7 @@
 ---
 title: EXT-PROTECTION-1 capability and original receipt evidence
 created: 2026-10-18
-status: in-progress
+status: done
 route: dispatch
 baseline_commit: c0c08d450dff89faaeea2bb88dd570a589ce203d
 context:
@@ -48,12 +48,12 @@ Preserve unrelated work. No Live, provisioning, Agents execution/register edits,
 
 ## Tasks & Acceptance
 
-- [ ] `tools/ext_protection_1.py` and a focused helper if needed: require profile/v2 capabilityTrust records binding issuer/audience/tenant/family/key version, public anchor id/version/file/hash and trust revision. Retain old versions without capability expiry. Validate exact references and P-256; prevent transport-key substitution. Recheck all trust pins with each role call. Update binding digest through the accepted profile hash; no installation invented.
-- [ ] Validate actual consumptionRequests with strict payload types, canonical bytes, exact sorted full targets and native manifest digest; verify detached ES256 against exactly one separately accepted trust entry.
-- [ ] Reconstruct persisted batch/issue/dispatch receipt correlation from real contract fields, including signature digest and successful issue versus signed intended revision. Reject missing, ambiguous, substituted or inconsistent evidence. Document that currentness and linearizable reads still require installed authorities.
-- [ ] Replace fictional irreversible flags with native ordered receipts correlated across consumed owner/provider and exact retry/lookup terminal originals. Keep authenticated physical provenance and nonrollback as blockers.
-- [ ] Extend offline tests across the matrix. Include a nontrivial passing signed request and native records, plus rejection mutations. Run narrow Python checks and meaningful cross-language canonical/ES256 integration; do not run Live.
-- [ ] Update only the verifier protocol document with exact schema and remaining limitations. Report commands/results and file map to parent.
+- [x] `tools/ext_protection_1.py` and a focused helper if needed: require profile/v2 capabilityTrust records binding issuer/audience/tenant/family/key version, public anchor id/version/file/hash and trust revision. Retain old versions without capability expiry. Validate exact references and P-256; prevent transport-key substitution. Recheck all trust pins with each role call. Update binding digest through the accepted profile hash; no installation invented.
+- [x] Validate actual consumptionRequests with strict payload types, canonical bytes, exact sorted full targets and native manifest digest; verify detached ES256 against exactly one separately accepted trust entry.
+- [x] Reconstruct persisted batch/issue/dispatch receipt correlation from real contract fields, including signature digest and successful issue versus signed intended revision. Reject missing, ambiguous, substituted or inconsistent evidence. Document that currentness and linearizable reads still require installed authorities.
+- [x] Replace fictional irreversible flags with native ordered receipts correlated across consumed owner/provider and exact retry/lookup terminal originals. Keep authenticated physical provenance and nonrollback as blockers.
+- [x] Extend offline tests across the matrix. Include a nontrivial passing signed request and native records, plus rejection mutations. Run narrow Python checks and meaningful cross-language canonical/ES256 integration; do not run Live.
+- [x] Update only the verifier protocol document with exact schema and remaining limitations. Report commands/results and file map to parent.
 
 Acceptance: Given a valid separately trusted signature and consistent original records, offline validation passes. Given any listed substitution, it fails. No success establishes physical qualification or permits a cohort run.
 
@@ -61,9 +61,33 @@ Acceptance: Given a valid separately trusted signature and consistent original r
 
 Provider investigation evidence: installed runtime reference SHA256 31c28a9d1dd21eed8ca4d0c421088cb946b262c624ba461d0795cab92cd1feb3; mapping SHA256 f4e650995f0b35882377e01fb4f30b3944b018aec136e16496b6d349dd595ffe. Both explicitly lack lifecycle/nonrollback enrollment. The parent is preparing the concrete provider decision and acceptance mapping; these records are not code authorities for signature trust.
 
+Source subtask completed after all review findings were corrected: 52 verifier tests and one cross-language test pass, covering three vectors, bidirectional ES256 and 27 native Capture cases. Parent verification selected both modules together: 53 passed. The existing offline CI lane selects both modules in Release/package mode. G4 parent changes separately passed 309 affected cases and a final 19-case recovery selection. Exact commands and hashes are retained in the owner acceptance packet's continuation evidence directory. The parent delivery spec remains in-progress: G1 and the complete production artifact are blocked on the recorded provider decision and independent authorities. No Live, cohort, dependency status or Git mutation was performed by this implementation.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+All three review layers returned before correction. Each finding is retained separately; shared roots are corrected together. These are source corrections, not owner-record acceptance.
+
+| Finding | Verdict | Evidence and route |
+| --- | --- | --- |
+| Blind 1: skipped exact activation results | high | `receipts` suppressed `exact-results`, including P36. Patch both assertions and add operation-specific divergence regression. |
+| Blind 2: coverage batch identity | high | A truthy object passed as native BatchId. Patch native bounded identity and bind the actual coverage request, without minting successor authority. |
+| Blind 3: malformed revisions | medium | Guard block revision was untyped and owner block revision could exceed its owner revision. Patch native revision checks and tests. |
+| Blind 4: retained owner request absent | high | Valid original outcome vectors were not correlated with the owner's exact retained consumption request. Patch actual persisted DeletionConsumptionBatch correlation and reservation identity; invent no public reservation API. |
+| Blind 5: guard operation reuse | high | Distinct receipts for one stream/operation were accepted. Patch per-stream operation identity uniqueness with multi-request regression. |
+| Blind 6: native actor identity mismatch | high | Unicode tenant fixture passed verifier but fails native AggregateIdentity in Capture. Patch native tenant/batch identity; retain Unicode byte vectors in permitted fields and cross-check native acceptance. |
+| Blind 7: identity byte bounds | medium | Dispatch/reservation/receipt ids lacked the native 2,048-byte UTF-8 bound. Patch consistent bounds and regressions. |
+| Blind 8: unbounded trust work | high | Every request repeatedly decoded every trust anchor using subprocesses. Patch observation-level indexing, immutable pinned public bytes and one bounded verification budget; retain per-call pin checks. |
+| Blind 9: unfinished state I/O | high | Timed-out barrier/save could continue after the turn. Parent patches operation tracking, subsequent-entry refusal and runtime success/failure cleanup quiescence; add delayed noncooperative I/O tests. |
+| Blind 10: registration deadline | high | Ordinary commands have no cancellation token, so scheduler registration could wait forever. Parent patches bounded registration and exact late-acknowledgement quiescence. |
+| Edge 1: retained capability bool/float | high | Python equality treats `true`/`1.0` as the signed integer `1`. Patch canonical byte equality for every retained signed capability. |
+| Edge 2: detached cache barrier | high | Same demonstrated unfinished-I/O root as Blind 9; same correction, retained separately. |
+| Edge 3: P36 activation-result deletion | high | Same demonstrated skipped assertion as Blind 1; same correction, retained separately. |
+| Verification 1: complete cohort mutation survives | high | Reviewer removed the exact expected-target coverage assertion in memory; all 38 tests still passed. Add valid multi-request, signed partial and overlapping-cohort tests. |
+| Verification 2: native coverage mutation survives | high | Reviewer removed coverage vector equality in memory; all 38 tests still passed. Add passing P15-shaped evidence and original receipt/target/order substitutions. |
+| Verification 3: elapsed deadline untested | medium | Scheduler harness time does not advance actor TimeProvider; immediate failures do not test a shared budget. Parent adds fake-time slow read plus writer proof and durable journal/reminder assertions. |
+| Verification follow-up: fake-time signal race | medium | Entered signals preceded delay registration, allowing the test driver to advance first. Register the delay before signalling; retain the elapsed deadline assertion. Follow-up found no remaining source defect in I/O quiescence/deadline corrections. |
 
 ## Verification
 

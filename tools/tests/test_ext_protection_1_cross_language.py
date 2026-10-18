@@ -1,5 +1,6 @@
 """Offline .NET/openssl interoperability; ephemeral test keys, no installed roles or Live."""
 import base64
+import copy
 import importlib.util
 import json
 import os
@@ -29,7 +30,7 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
         project_references = os.environ.get('EXT_PROTECTION_INTEROP_PROJECT_REFERENCES', 'true')
         if configuration not in ('Debug', 'Release') or project_references not in ('true', 'false'):
             raise ValueError('Invalid offline interop build configuration')
-        sources = [FIXTURES / 'CapabilityInterop.cs', *[platform / name for name in
+        sources = [FIXTURES / 'CapabilityInterop.cs', ROOT / 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionIdentity.cs', *[platform / name for name in
                    ('DeletionBatchCapabilityCodec.cs', 'DeletionCapabilityTrustProfile.cs', 'DetachedEs256JwsCore.cs')]]
         contracts = ROOT / 'src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj'
         project = cls.directory / 'Interop.csproj'
@@ -80,18 +81,51 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
                 request = {'Capability': payload, 'Targets': targets, 'DetachedJws': jws,
                            'CommittedIssuedGuardRevision': payload['IntendedIssuedGuardRevision'] + 1,
                            'DispatchReceiptId': 'offline-dispatch', 'DispatchGuardRevision': payload['IntendedIssuedGuardRevision'] + 3}
+                candidates, expected_capture = [], []
+                for tenant, batch, dispatch, alias, accepted in (
+                        (payload['TenantId'].upper(), payload['BatchId'], 'dispatch', None, True),
+                        ('a' * 64, 'b' * 256, 'dispatch', None, True),
+                        ('a' * 65, 'valid-batch', 'dispatch', None, False),
+                        ('tenant-é', 'valid-batch', 'dispatch', None, False),
+                        ('tenant-a', 'b' * 257, 'dispatch', None, False),
+                        ('tenant-a', 'invalid_', 'dispatch', None, False),
+                        ('tenant-a', 'valid-batch', 'é' * 1024, 'é' * 1024, True),
+                        ('tenant-a', 'valid-batch', 'é' * 1025, None, False),
+                        ('tenant-a', 'valid-batch', 'dispatch', 'é' * 1025, False)):
+                    candidate = copy.deepcopy(request)
+                    candidate['Capability'].update(TenantId=tenant, BatchId=batch)
+                    candidate['DispatchReceiptId'] = dispatch
+                    for target in candidate['Targets']:
+                        target['TenantId'] = tenant
+                        if alias is not None:
+                            target['TargetProtectionKeyAlias'] = alias
+                    # Serialize all candidate vectors, including byte-bound negatives, as the actual default serializer does.
+                    raw_targets = ('[' + ','.join('[' + ','.join(v.native_json_string(value) for value in (
+                        target['TenantId'], target['AgentInteractionId'], target['TargetProtectionKeyAlias'])) + ']' for target in candidate['Targets']) + ']').encode('ascii') if alias is None or len(alias.encode()) <= 2048 else b'[]'
+                    candidate['Capability']['ManifestDigest'] = v.digest(raw_targets).upper()
+                    candidates.append(candidate)
+                    expected_capture.append(accepted)
+                    try:
+                        v.capture_consumption_request(candidate)
+                        python_accepted = True
+                    except v.Failed:
+                        python_accepted = False
+                    self.assertEqual(accepted, python_accepted)
                 input_value = {**request, 'PublicAnchorId': trust['publicAnchorId'], 'PublicAnchorVersion': trust['publicAnchorVersion'],
-                               'PublicAnchorFile': str(public), 'OfflinePrivateKeyFile': str(private)}
+                               'PublicAnchorFile': str(public), 'OfflinePrivateKeyFile': str(private), 'CaptureCandidates': candidates}
                 result = subprocess.run(['dotnet', str(self.assembly)], input=v.canonical(input_value), capture_output=True, check=True)
                 actual = v.strict_json(result.stdout)
                 for field, value in expected.items():
                     self.assertEqual(value, actual[field], field)
                 self.assertTrue(actual['pythonSignatureVerified'])
                 self.assertTrue(actual['changedPayloadRejected'])
+                self.assertTrue(actual['nativeCaptureAccepted'])
+                self.assertEqual(expected_capture, actual['nativeCaptureChecks'])
                 request['DetachedJws'] = actual['dotnetDetachedJws']
                 self.assertEqual(expected['signingRequestId'], v.validate_consumption_request(request, [trust], {})[0])
                 print(json.dumps({'vector': vector['id'], **expected, 'pythonSignatureVerified': True,
-                                  'dotnetSignatureVerified': True, 'changedPayloadRejected': True}, sort_keys=True))
+                                  'dotnetSignatureVerified': True, 'changedPayloadRejected': True,
+                                  'nativeCaptureAccepted': True, 'nativeCaptureChecks': actual['nativeCaptureChecks']}, sort_keys=True))
 
 
 if __name__ == '__main__':

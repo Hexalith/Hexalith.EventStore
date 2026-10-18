@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.Platform.Custody;
+using Hexalith.EventStore.Server.Security;
 
 /// <summary>Offline byte/signature interoperability probe compiled against the owning source primitives.</summary>
 internal static class CapabilityInterop
@@ -19,6 +20,20 @@ internal static class CapabilityInterop
         using var offlineKey = ECDsa.Create();
         offlineKey.ImportFromPem(File.ReadAllText(root.GetProperty("OfflinePrivateKeyFile").GetString()!));
         string signature = root.GetProperty("DetachedJws").GetString()!;
+        var captured = DeletionConsumptionIdentity.Capture(root.Deserialize<DeletionBatchConsumptionRequest>()!);
+        var captureChecks = new List<bool>();
+        foreach (var candidate in root.GetProperty("CaptureCandidates").EnumerateArray())
+        {
+            try
+            {
+                _ = DeletionConsumptionIdentity.Capture(candidate.Deserialize<DeletionBatchConsumptionRequest>()!);
+                captureChecks.Add(true);
+            }
+            catch (ArgumentException)
+            {
+                captureChecks.Add(false);
+            }
+        }
         var result = new Dictionary<string, object>
         {
             ["canonicalBase64"] = Convert.ToBase64String(DeletionBatchCapabilityIdentity.CanonicalPayload(payload)),
@@ -29,6 +44,8 @@ internal static class CapabilityInterop
             ["pythonSignatureVerified"] = DeletionBatchCapabilityCodec.Verify(payload, profile, signature, publicKey),
             ["changedPayloadRejected"] = !DeletionBatchCapabilityCodec.Verify(payload with { DeletionRequestId = payload.DeletionRequestId + "changed" }, profile, signature, publicKey),
             ["dotnetDetachedJws"] = DeletionBatchCapabilityCodec.Sign(payload, profile, offlineKey),
+            ["nativeCaptureAccepted"] = captured.Capability == payload,
+            ["nativeCaptureChecks"] = captureChecks,
         };
         Console.WriteLine(JsonSerializer.Serialize(result));
     }

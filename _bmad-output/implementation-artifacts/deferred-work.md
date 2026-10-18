@@ -6039,3 +6039,23 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-1-corrective-work-authorization-record-and-validator.md`
   summary: Assign ownership for minting the first live corrective-work owner-role registry and its authority/approvals GitHub issues.
   evidence: `validate-corrective-work-authorization.py` requires a baseline-committed `_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/owner-role-registry.json` with `authority_issue`/`approvals_issue` numbers; Story 9.1 forbids minting it and no Story 9.2–9.5 entry owns it, yet Story 9.3 (`epics.md:7686`) depends on a 9.1 authorization record for G-BASELINE. Live evaluation stays `FAIL / missing-authority` until an owner action or correct-course assigns it.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-oq-5-4-1.md`
+  summary: Quiesce a command turn that enters the state-cache barrier while payload-protection I/O is still running.
+  evidence: The reminder recovery test throws inside PayloadProtectionIoAsync before EnsureStateCacheBarrierAsync, so deleting CheckPayloadProtectionIoReady from the barrier would still leave that test green. This tracker predates the published-trust authority.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-oq-5-4-1.md`
+  summary: Track CompletePayloadProtectionAsync in the unfinished payload-protection I/O set.
+  evidence: Recovery waits on the writer proof with WaitAsync and does not store that task, so failure cleanup can return while the proof is still running. The surrounding reminder and state calls already use the tracker. This loop predates the published-trust authority.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-oq-5-4-1.md`
+  summary: Reject a Python tenant whose Unicode lowercase matches the ASCII aggregate pattern.
+  evidence: aggregate_identity can accept U+212A while AggregateIdentity rejects every code point at or above U+007F before lowercasing. The interop cases cover tenant-é and not that character. The helper predates the published-trust authority.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-oq-5-4-1.md`
+  summary: Verify the retained coverage Original signature and tie exact-results to the activation original.
+  evidence: retained_owner_batches validates Original through capture and skips validate_consumption_request. exact-results only checks that listed objects are canonical copies of each other. Both checks predate the new hold, pin, coverage, activation, and restore binders.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-oq-5-4-1.md`
+  summary: Apply one verification budget to role pin reads, canonicalization, and unreferenced guard-receipt operation ids.
+  evidence: Role.request starts a fresh budget, canonicalization precedes the deadline check, and operation-id uniqueness indexes referenced receipts. These paths predate the new original binders. Whether a committed dispatch receipt can exist without a separate authorization entry remains unverified.

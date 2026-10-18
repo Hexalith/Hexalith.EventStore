@@ -43,13 +43,13 @@
       "capability": {
         "Issuer": "offline-issuer",
         "Audience": "offline-protection",
-        "TenantId": "tenant-é",
+        "TenantId": "tenant-a",
         "DeletionRequestId": "request-€<>&é\u000f\b\t\n\f\r\\\"",
         "DestructionSealId": "stable-seal",
         "BatchKind": "AcceptedSet",
         "BatchOrdinal": 0,
         "BatchId": "batch-original",
-        "ManifestDigest": "B23EDAE3BF1DC5017B578267339F7157B3CA3CF8A29AF1589E73409DEBEB4A74",
+        "ManifestDigest": "739C2F9E50EE77168D794418A983F124D2E74ECEB72DFCCFBAE4E0EC60771D2A",
         "GuardStreamId": "guard:tenant-é",
         "IntendedIssuedGuardRevision": 23,
         "AttestationOrdinal": 2,
@@ -58,21 +58,21 @@
       },
       "targets": [
         {
-          "TenantId": "tenant-é",
+          "TenantId": "tenant-a",
           "AgentInteractionId": "i-😀",
           "TargetProtectionKeyAlias": "alias €<>&/é\u000f\b\t\n\f\r\\\"'+`雪  "
         },
         {
-          "TenantId": "tenant-é",
+          "TenantId": "tenant-a",
           "AgentInteractionId": "i-",
           "TargetProtectionKeyAlias": "alias €<>&/é\u000f\b\t\n\f\r\\\"'+`雪  "
         }
       ],
       "expected": {
-        "canonicalBase64": "eyJBdHRlc3RhdGlvbk9yZGluYWwiOjIsIkF1ZGllbmNlIjoib2ZmbGluZS1wcm90ZWN0aW9uIiwiQmF0Y2hJZCI6ImJhdGNoLW9yaWdpbmFsIiwiQmF0Y2hLaW5kIjoiQWNjZXB0ZWRTZXQiLCJCYXRjaE9yZGluYWwiOjAsIkNhcGFiaWxpdHlLZXlWZXJzaW9uIjoicmV0YWluZWQtdjEiLCJEZWxldGlvblJlcXVlc3RJZCI6InJlcXVlc3Qt4oKsPD4mw6lcdTAwMGZcYlx0XG5cZlxyXFxcIiIsIkRlc3RydWN0aW9uU2VhbElkIjoic3RhYmxlLXNlYWwiLCJHdWFyZFN0cmVhbUlkIjoiZ3VhcmQ6dGVuYW50LcOpIiwiSW50ZW5kZWRJc3N1ZWRHdWFyZFJldmlzaW9uIjoyMywiSXNzdWVyIjoib2ZmbGluZS1pc3N1ZXIiLCJNYW5pZmVzdERpZ2VzdCI6IkIyM0VEQUUzQkYxREM1MDE3QjU3ODI2NzMzOUY3MTU3QjNDQTNDRjhBMjlBRjE1ODlFNzM0MDlERUJFQjRBNzQiLCJTaWduaW5nQXR0ZW1wdE9yZGluYWwiOjMsIlRlbmFudElkIjoidGVuYW50LcOpIn0=",
-        "signingRequestId": "39CB403E28F1AD3FAA9499F16BAF855C1B6D0817273CD61C3699B310E73B8C6B",
-        "nativeTargetsBase64": "W1sidGVuYW50LVx1MDBFOSIsImktXHVEODNEXHVERTAwIiwiYWxpYXMgXHUyMEFDXHUwMDNDXHUwMDNFXHUwMDI2L1x1MDBFOVx1MDAwRlxiXHRcblxmXHJcXFx1MDAyMlx1MDAyN1x1MDAyQlx1MDA2MFx1OTZFQVx1MjAyOFx1MjAyOVx1MDA3RiJdLFsidGVuYW50LVx1MDBFOSIsImktXHVFMDAwIiwiYWxpYXMgXHUyMEFDXHUwMDNDXHUwMDNFXHUwMDI2L1x1MDBFOVx1MDAwRlxiXHRcblxmXHJcXFx1MDAyMlx1MDAyN1x1MDAyQlx1MDA2MFx1OTZFQVx1MjAyOFx1MjAyOVx1MDA3RiJdXQ==",
-        "manifestDigest": "B23EDAE3BF1DC5017B578267339F7157B3CA3CF8A29AF1589E73409DEBEB4A74"
+        "canonicalBase64": "eyJBdHRlc3RhdGlvbk9yZGluYWwiOjIsIkF1ZGllbmNlIjoib2ZmbGluZS1wcm90ZWN0aW9uIiwiQmF0Y2hJZCI6ImJhdGNoLW9yaWdpbmFsIiwiQmF0Y2hLaW5kIjoiQWNjZXB0ZWRTZXQiLCJCYXRjaE9yZGluYWwiOjAsIkNhcGFiaWxpdHlLZXlWZXJzaW9uIjoicmV0YWluZWQtdjEiLCJEZWxldGlvblJlcXVlc3RJZCI6InJlcXVlc3Qt4oKsPD4mw6lcdTAwMGZcYlx0XG5cZlxyXFxcIiIsIkRlc3RydWN0aW9uU2VhbElkIjoic3RhYmxlLXNlYWwiLCJHdWFyZFN0cmVhbUlkIjoiZ3VhcmQ6dGVuYW50LcOpIiwiSW50ZW5kZWRJc3N1ZWRHdWFyZFJldmlzaW9uIjoyMywiSXNzdWVyIjoib2ZmbGluZS1pc3N1ZXIiLCJNYW5pZmVzdERpZ2VzdCI6IjczOUMyRjlFNTBFRTc3MTY4RDc5NDQxOEE5ODNGMTI0RDJFNzRFQ0VCNzJERkNDRkJBRTRFMEVDNjA3NzFEMkEiLCJTaWduaW5nQXR0ZW1wdE9yZGluYWwiOjMsIlRlbmFudElkIjoidGVuYW50LWEifQ==",
+        "signingRequestId": "3FAEB56C08BFF6A2AD515212CCC2B5784AA7157D1B559782945BF9B44CB77D87",
+        "nativeTargetsBase64": "W1sidGVuYW50LWEiLCJpLVx1RDgzRFx1REUwMCIsImFsaWFzIFx1MjBBQ1x1MDAzQ1x1MDAzRVx1MDAyNi9cdTAwRTlcdTAwMEZcYlx0XG5cZlxyXFxcdTAwMjJcdTAwMjdcdTAwMkJcdTAwNjBcdTk2RUFcdTIwMjhcdTIwMjlcdTAwN0YiXSxbInRlbmFudC1hIiwiaS1cdUUwMDAiLCJhbGlhcyBcdTIwQUNcdTAwM0NcdTAwM0VcdTAwMjYvXHUwMEU5XHUwMDBGXGJcdFxuXGZcclxcXHUwMDIyXHUwMDI3XHUwMDJCXHUwMDYwXHU5NkVBXHUyMDI4XHUyMDI5XHUwMDdGIl1d",
+        "manifestDigest": "739C2F9E50EE77168D794418A983F124D2E74ECEB72DFCCFBAE4E0EC60771D2A"
       }
     },
     {

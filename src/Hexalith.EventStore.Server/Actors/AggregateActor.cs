@@ -5531,6 +5531,7 @@ public partial class AggregateActor(
 
     private async Task EnsureStateCacheBarrierAsync(string? correlationId, Activity? activity)
     {
+        CheckPayloadProtectionIoReady();
         if (!_stateCacheUnsafe
             && !_pendingFinalizerRecoveryRequired
             && !_pendingCountReconciliationRequired)
