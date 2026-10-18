@@ -128,8 +128,16 @@ direct submodule `references/Hexalith.EventStore`. Prerequisites:
 - `HEXALITH_DAPR_HOME` set to an absolute, isolated Dapr home: Dapr CLI `1.18.0` at `tools/dapr` and runtime
   `1.18.2` at `.dapr/bin/{daprd,placement,scheduler}`. The Platform README shows how to prepare one from the
   official release assets.
-- The checkout's `HEAD` equal to the gitlink staged in the Platform repository. After a local commit here, run
-  `git add references/Hexalith.EventStore` in the Platform root before starting a run.
+- The Platform workspace's direct `references/Hexalith.Builds`, `references/Hexalith.EventStore`,
+  `references/Hexalith.Tenants` and `references/Hexalith.Memories` checkouts, initialized without `--recursive`.
+  The tool reads all three declaration owners even for EventStore alone. Each `HEAD` must equal its gitlink
+  staged in Platform. After a local commit here, run `git add references/Hexalith.EventStore` in Platform
+  before starting a run.
+- The local Aspire orchestration and dashboard packages at `13.6.1`: run `dotnet restore apphost.cs` from
+  Platform once before the first `debug` run. Tool restore alone does not install these SDK packages.
+  If NuGet uses a custom `globalPackagesFolder`, set `NUGET_PACKAGES` to that absolute folder for both
+  restore and `debug`; otherwise the tool checks `~/.nuget/packages` and reports `HXR016` when packages
+  are missing.
 
 From the Platform root:
 
@@ -148,8 +156,8 @@ ps --ppid <launcher-pid> -o pid,args
 ```
 
 Attach to the child running `src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore`, for example with
-VS Code ("Attach to a .NET process"). Breakpoints in this checkout's sources bind. When you finish, stop only
-that run with:
+VS Code ("Attach to a .NET process"). Breakpoints in this checkout's sources bind. Stay attached until
+you finish, then stop only that run with:
 
 ```bash
 dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
