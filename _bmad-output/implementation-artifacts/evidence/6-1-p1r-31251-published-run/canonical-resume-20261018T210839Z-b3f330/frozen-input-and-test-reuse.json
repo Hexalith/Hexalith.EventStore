@@ -1,0 +1,179 @@
+{
+  "observed_utc": "2026-10-18T21:09:13.582904+00:00",
+  "scope": "read-only freeze and completed-test verification; no execution or acceptance",
+  "current_canonical_binding_sha256": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c",
+  "frozen_canonical_binding_sha256": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c",
+  "binding_unchanged": true,
+  "tests": {
+    "isolation": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation-attempt3.json",
+      "sha256": "94b2a9c3cbd81331a783b01cfdaf57e8123163766c36fcdcac710e23f9efaaff",
+      "expected_sha256": "94b2a9c3cbd81331a783b01cfdaf57e8123163766c36fcdcac710e23f9efaaff",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_isolation.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:25:18.244148+00:00",
+        "finished_utc": "2026-10-18T19:25:19.985396+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation-attempt3.log"
+      },
+      "log": ".....................................\n----------------------------------------------------------------------\nRan 37 tests in 1.672s\n\nOK\n"
+    },
+    "isolation_hardening": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-attempt3.json",
+      "sha256": "821ed14ddaa24a7cf7337432c723df6d8fcddc542222ad1a396d7f74c1362926",
+      "expected_sha256": "821ed14ddaa24a7cf7337432c723df6d8fcddc542222ad1a396d7f74c1362926",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_isolation_hardening.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:25:19.985540+00:00",
+        "finished_utc": "2026-10-18T19:25:48.016390+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-attempt3.log"
+      },
+      "log": ".........................\n----------------------------------------------------------------------\nRan 25 tests in 27.852s\n\nOK\n"
+    },
+    "isolation_hardening-optimized": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-optimized-attempt3.json",
+      "sha256": "3e29096f670236b7b5437e0fa384f607130b9e9bf2ecbb076f8076e440ca1fb2",
+      "expected_sha256": "3e29096f670236b7b5437e0fa384f607130b9e9bf2ecbb076f8076e440ca1fb2",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-O",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_isolation_hardening.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:25:48.016536+00:00",
+        "finished_utc": "2026-10-18T19:26:16.159287+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-optimized-attempt3.log"
+      },
+      "log": ".........................\n----------------------------------------------------------------------\nRan 25 tests in 27.638s\n\nOK\n"
+    },
+    "published_executor": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_executor-attempt5.json",
+      "sha256": "0675ee1cf81e7bbfb2c4f0c861b40a38417b85579c8cb10eb7d21a90bc91f696",
+      "expected_sha256": "0675ee1cf81e7bbfb2c4f0c861b40a38417b85579c8cb10eb7d21a90bc91f696",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_published_executor.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:23:27.039632+00:00",
+        "finished_utc": "2026-10-18T19:24:46.775223+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_executor-attempt5.log"
+      },
+      "log": "...................................................................................................................................................................\n----------------------------------------------------------------------\nRan 163 tests in 79.330s\n\nOK\n"
+    },
+    "published_qualification": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_qualification-attempt4.json",
+      "sha256": "b655f9532e31f83bd40ec3d2a0a0e311ba0f4ad0c2123077c53a78b96fc1ee94",
+      "expected_sha256": "b655f9532e31f83bd40ec3d2a0a0e311ba0f4ad0c2123077c53a78b96fc1ee94",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_published_qualification.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:22:43.866655+00:00",
+        "finished_utc": "2026-10-18T19:23:27.039418+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_qualification-attempt4.log"
+      },
+      "log": "...............................................................\n----------------------------------------------------------------------\nRan 63 tests in 43.102s\n\nOK\n"
+    },
+    "qualification": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/qualification-attempt5.json",
+      "sha256": "559a3cfc7e2838dbf7860b9db43134b7812f0982e0328113d0592f16f947b8e2",
+      "expected_sha256": "559a3cfc7e2838dbf7860b9db43134b7812f0982e0328113d0592f16f947b8e2",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_qualification.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:21:30.698588+00:00",
+        "finished_utc": "2026-10-18T19:22:43.866451+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/qualification-attempt5.log"
+      },
+      "log": "...........................................\n----------------------------------------------------------------------\nRan 43 tests in 72.328s\n\nOK\n"
+    },
+    "snapshot_registration": {
+      "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/snapshot_registration-attempt3.json",
+      "sha256": "ceb9b1972b2992297e9e368eec02a504e1d3fecd007c23330228a6860f93ddaa",
+      "expected_sha256": "ceb9b1972b2992297e9e368eec02a504e1d3fecd007c23330228a6860f93ddaa",
+      "hash_matches": true,
+      "value": {
+        "argv": [
+          "python3",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/tests",
+          "-p",
+          "test_p1r_snapshot_registration.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:24:46.775370+00:00",
+        "finished_utc": "2026-10-18T19:25:18.244003+00:00",
+        "exit_code": 0,
+        "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/snapshot_registration-attempt3.log"
+      },
+      "log": "..\n----------------------------------------------------------------------\nRan 2 tests in 31.431s\n\nOK\n"
+    }
+  },
+  "count": 358
+}

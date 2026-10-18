@@ -1,0 +1,347 @@
+{
+  "observed_utc": "2026-10-18T21:08:39.477247+00:00",
+  "verifier_root": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "source_root": "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+  "canonical_execution": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e",
+  "existing_processes": "  PID  PPID  PGID                  STARTED     ELAPSED STAT COMMAND\n 5828 62180 61595 Sun Oct 18 21:39:35 2026    01:29:29 S    python3 /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-executor.py run --out /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e --inputs /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json --source-root /tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f\n12819  5828 61595 Sun Oct 18 21:39:56 2026    01:29:08 Sl   docker --host unix:///var/run/docker.sock --config /tmp/p1r-isolation-9733c7324e2c45f8a89e363334b660b3-63gb1k77/docker-config exec 9c0189bcfa0282038484d60e89de81b8285410333c8a325804978beccd732e2b python3 /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-isolated-runner.py _inner --out /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e-isolation --outer-id afcd365d-1578-410b-af0b-98550207ef1c --source-root /tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f -- python3 /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-executor.py run --out /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e --inputs /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json --source-root /tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f\n61595 18194 61595 Sun Oct 18 21:37:16 2026    01:31:48 Ss   /bin/bash -lc python3 - <<'PY' import datetime,json,subprocess from pathlib import Path root=Path.cwd();base=root/'_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run';argv=['python3',str(base/'execute-final-31251.py')];path=base/'canonical-driver-command.json';assert not path.exists();log=path.with_suffix('.log') record={'argv':argv,'cwd':str(root),'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'output_log':str(log)};path.write_text(json.dumps(record,indent=2)+'\\n');print(json.dumps(record),flush=True) with log.open('wb') as output:p=subprocess.run(argv,cwd=root,stdout=output,stderr=subprocess.STDOUT) record.update(exit_code=p.returncode,finished_utc=datetime.datetime.now(datetime.timezone.utc).isoformat());path.write_text(json.dumps(record,indent=2)+'\\n');print(json.dumps(record),flush=True) raise SystemExit(p.returncode) PY\n62179 61595 61595 Sun Oct 18 21:37:16 2026    01:31:48 S    python3 -\n62180 62179 61595 Sun Oct 18 21:37:16 2026    01:31:48 S    python3 /tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execute-final-31251.py\n",
+  "files": {
+    "canonical-driver-command.json": {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-driver-command.json",
+      "sha256": "e07688ea703f703653351d974bb1f6f850e18d6d89f8982750cfaa102777ac74",
+      "value": {
+        "argv": [
+          "python3",
+          "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execute-final-31251.py"
+        ],
+        "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "started_utc": "2026-10-18T19:37:17.037261+00:00",
+        "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-driver-command.log"
+      }
+    },
+    "canonical-final-index.json": {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-final-index.json",
+      "sha256": "a0729141c8ebe98820e417b1b6808a6876182845df0f4a50d6be37edd20e4596",
+      "value": {
+        "scope": "fresh canonical technical evidence; acceptance remains pending",
+        "p1r_usable": false,
+        "started_utc": "2026-10-18T19:37:17.058338+00:00",
+        "finished_utc": null,
+        "commands": [
+          {
+            "label": "outer-before",
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-before-command-3820e5670b00472288b14c40238e0e4e.json",
+            "exit_code": 0
+          },
+          {
+            "label": "observe",
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observe-command-6508b7c575884cce90582e036e06e6e8.json",
+            "exit_code": 0
+          },
+          {
+            "label": "run",
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/run-command-5d40d0c63beb4512adc644d086b5180e.json"
+          }
+        ],
+        "errors": [],
+        "verifier_root": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "source_root": "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+        "driver_sha256": "7934c5a950bdbbd08855e840b9b7510c8b35ebfd605f1c433dbfdc8f395508d9",
+        "source_freeze": {
+          "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze-v3.json",
+          "sha256": "690a297d8037d3fef528b9a146ea7e3ab588f043bd6fde4a9a79df33b866a690"
+        },
+        "preceding_smoke": {
+          "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/smoke.json",
+          "sha256": "6fdf42fda6dc6c1b426052449eb68a906f20b122b8e2656d34c7f06a8dffc0aa",
+          "isolation_sha256": "241bb260dca4e41ca047e541f74fd837bc57cb026da90cd0465f496cf018ad54"
+        },
+        "observation": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8",
+        "inputs": {
+          "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+          "sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1"
+        },
+        "decisions": {
+          "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-decisions.json",
+          "sha256": "b296ef0751287a1af00cfa278db023002f9d133b09e73067c71c6c03ca02537f"
+        },
+        "execution": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e"
+      }
+    },
+    "verification-successor/final-source-freeze-v3.json": {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze-v3.json",
+      "sha256": "690a297d8037d3fef528b9a146ea7e3ab588f043bd6fde4a9a79df33b866a690",
+      "value": {
+        "binding_path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-binding-host-v3.json",
+        "binding_sha256": "11a59b0459026564c37f197b50b1f9eca2812086a80fadac7b89e5330747c195",
+        "canonical_binding_sha256": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c",
+        "observed_utc": "2026-10-18T19:26:41.983542+00:00",
+        "p1r_usable": false,
+        "previous_freezes_retained": [
+          "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze.json",
+          "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze-v2.json"
+        ],
+        "prior_reminder_identity_limitation": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v2-identity-limitation.json",
+        "required_suites": {
+          "isolation": {
+            "count": 37,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation-attempt3.json",
+            "sha256": "94b2a9c3cbd81331a783b01cfdaf57e8123163766c36fcdcac710e23f9efaaff"
+          },
+          "isolation_hardening": {
+            "count": 25,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-attempt3.json",
+            "sha256": "821ed14ddaa24a7cf7337432c723df6d8fcddc542222ad1a396d7f74c1362926"
+          },
+          "isolation_hardening-optimized": {
+            "count": 25,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-optimized-attempt3.json",
+            "sha256": "3e29096f670236b7b5437e0fa384f607130b9e9bf2ecbb076f8076e440ca1fb2"
+          },
+          "published_executor": {
+            "count": 163,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_executor-attempt5.json",
+            "sha256": "0675ee1cf81e7bbfb2c4f0c861b40a38417b85579c8cb10eb7d21a90bc91f696"
+          },
+          "published_qualification": {
+            "count": 63,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_qualification-attempt4.json",
+            "sha256": "b655f9532e31f83bd40ec3d2a0a0e311ba0f4ad0c2123077c53a78b96fc1ee94"
+          },
+          "qualification": {
+            "count": 43,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/qualification-attempt5.json",
+            "sha256": "559a3cfc7e2838dbf7860b9db43134b7812f0982e0328113d0592f16f947b8e2"
+          },
+          "snapshot_registration": {
+            "count": 2,
+            "record": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/snapshot_registration-attempt3.json",
+            "sha256": "ceb9b1972b2992297e9e368eec02a504e1d3fecd007c23330228a6860f93ddaa"
+          }
+        },
+        "samples": [
+          {
+            "seconds": 2.4409138670016546,
+            "sha256": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c"
+          },
+          {
+            "seconds": 2.389737706980668,
+            "sha256": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c"
+          },
+          {
+            "seconds": 2.3871083889971487,
+            "sha256": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c"
+          }
+        ],
+        "schema": "hexalith.p1r.successor-source-freeze.v3",
+        "source_mutations_frozen": true,
+        "source_root": "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+        "tests": 358,
+        "verifier_root": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf"
+      }
+    },
+    "observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json": {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+      "sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+      "value": {
+        "assertion_instrumentation": {
+          "accepted_by": "test-owner",
+          "mechanism": "p1r-executed-checks-v1",
+          "reference": "approved spec-6-1-p1r-31251-published-qualification.md; 2026-10-18 approve-and-continue"
+        },
+        "authority": {
+          "date": "2026-10-18",
+          "owner": "user",
+          "reference": "approved spec-6-1-p1r-31251-published-qualification.md; 2026-10-18 approve-and-continue"
+        },
+        "candidate": {
+          "builds": {
+            "commit": "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c",
+            "version": "4.33.1-1-g1dfc39e"
+          },
+          "feed": "https://api.nuget.org/v3/index.json",
+          "packages": [
+            {
+              "archive_sha256": "27bbd41df6a8b59e5fa71bd3d3c4ee30583c1b77b7999b53f0b7af530e97189c",
+              "content_hash": "WNTME86u/UfXN9Xf7GfSEwOAJ/XNtJM1Gitr6R+cfAjU4MblAYzG8f8J0eQmiCQP2u4zUe9BWmEt3r+haAM7ag==",
+              "id": "Hexalith.EventStore.Client",
+              "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+            },
+            {
+              "archive_sha256": "b386677aa8d37d74c2d22905c7422220dd7ca9b809379f2023a597d0ab64e802",
+              "content_hash": "FZrJQfCdE2dFpOBM1HGvowm5Z9RRyk+b3Gr3ps0TKNkd+WU0xQp0UUQ4WiJoEiZPnzlyhgk+DFxDmUMEDkbP7A==",
+              "id": "Hexalith.EventStore.Contracts",
+              "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+            },
+            {
+              "archive_sha256": "a05d9afae5d242e86f40a2dbd89b5c965b2715cfe395d3d99f0e8a68665b847e",
+              "content_hash": "FTMD2BwNZABi4JD95nV2Y4ObvUTyo2KIEKS93SV6nviA0hqW9Lz1Zdpk49+/Idc2yCRNnrMXlLoi7nlVG+i9jw==",
+              "id": "Hexalith.EventStore.DomainService",
+              "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+            },
+            {
+              "archive_sha256": "38e0698d5037955d10d2968c80defbd1845f3a217d6ee0ae68a800f9cada7da8",
+              "content_hash": "bKtWAtQrKTKj67XMXVrj6tLOUs/XOnhi9McJCKUeDe5Kl1isREnxA9Cph2UGhAfVi0dxrqP4krRet7pgmEojuw==",
+              "id": "Hexalith.EventStore.Server",
+              "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+            },
+            {
+              "archive_sha256": "71ce53d42bea7203cf463e431ba82c15e1e3a19fd1e73123f7d3894510642838",
+              "content_hash": "9TuqwCcEZPbUxumAV4EaBOh6muMVtquX4WNsNAQv1tvg3hfw0CE0UbEWl4wcv8bjp2xWgAgwt9p5MigFDiYzBg==",
+              "id": "Hexalith.EventStore.ServiceDefaults",
+              "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+            }
+          ],
+          "tag": "v3.125.1",
+          "tag_builds_commit": "4629ff2d3bd66376b29a553663c241d3a7b87853",
+          "tag_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b",
+          "version": "3.125.1"
+        },
+        "comparisons": [
+          {
+            "builds": {
+              "commit": "cfafcbf1e904138b435b63ba4fd79f86b8dda069",
+              "version": "4.19.2-20-gcfafcbf"
+            },
+            "feed": "https://api.nuget.org/v3/index.json",
+            "packages": [
+              {
+                "archive_sha256": "2399a970ca7f6685e04e1d5bad06f7a7dec88de9e2f767f32df2371f2e599601",
+                "content_hash": "UjVLImHNmOZkgc0VkzeFyWFLnCrqYZ967RH4PF1caD/xgsrMsRwtLtd6+d6JQs8f5eLTJyAvYinnguRqg+zYiw==",
+                "id": "Hexalith.EventStore.Client",
+                "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf"
+              },
+              {
+                "archive_sha256": "ee6cb34319615cf2612b75c6298aad3c1862ee07ce3cb78fa39deee1c62b7c1a",
+                "content_hash": "D46Ujom2BaRA9dliNQEDkddSI+aETQX56bfK6RnHSGOTJnrK5MdUvvg4txZJLc/8OvhMEuRhxwHbS96O+gKo0A==",
+                "id": "Hexalith.EventStore.Contracts",
+                "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf"
+              },
+              {
+                "archive_sha256": "e9377c4cf418dbb73e30eefaab98f0ba4381e1ce8dd6108225f348ab56b7810f",
+                "content_hash": "M0SprdUzSyPnfvFAIMHq2BT7HfxnR7G77DT26JnPxIFhBR3ysov7hkuaCUGVi+i5TfMLieEng+++UjdoaxNIjQ==",
+                "id": "Hexalith.EventStore.DomainService",
+                "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf"
+              },
+              {
+                "archive_sha256": "a9b1f8e8b83b069421951f386572042f67ef31a58f024310b6ff9ad794567f74",
+                "content_hash": "dDmVa7LxtzWyEsDYeyqfYaHAu7r0twGmagaCjVM+n9kFFMpAC5v7rWaIOi+CEiQUEkT/6kC5sXgHP0kYIy7tFg==",
+                "id": "Hexalith.EventStore.Server",
+                "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf"
+              },
+              {
+                "archive_sha256": "64b1b32359e04c6b3523fd8135f373bfa6bbcc3346bcda6c744de053519397d6",
+                "content_hash": "8SwIg3ok4Tb+rQnVJziGGZV0OSDRrHEinn5TUXX8zu2KdyWFAmZkdWb9nwjQ+xTvn/G9qznYBKH+O0oMupQGVQ==",
+                "id": "Hexalith.EventStore.ServiceDefaults",
+                "repository_commit": "650faf053a98ed1c03c048b8e0d2e4d281b095cf"
+              }
+            ],
+            "tag": "v3.70.1",
+            "tag_commit": "f13f9925fdca53efa2ab8c90d396ab106f91bb9c",
+            "version": "3.70.1"
+          },
+          {
+            "builds": {
+              "commit": "125566f1205ef4f4b81511cccaf4e4a0820db61d",
+              "version": "4.28.0-10-g125566f"
+            },
+            "feed": "https://api.nuget.org/v3/index.json",
+            "packages": [
+              {
+                "archive_sha256": "2085e60de82eefb00d0e76ea48438ecbcb14f610b9f65dc926feb1886af845b1",
+                "content_hash": "OSjRL4VNdN7U40CQKxVWeboQV4Go4mnXm5a6zuKsyMOz/1/qmq/g6VRbGyEN1wN9R6nDElv2RHeV754BlQvjjg==",
+                "id": "Hexalith.EventStore.Client",
+                "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de"
+              },
+              {
+                "archive_sha256": "5c32eada89b3d6424f89cb01929e5e18d3240c463f1f1a6e32a5fb380bd4d6f2",
+                "content_hash": "baYsmElIPNyTHly6B18qIldqyV3IQ10znHmYON+AKeuL3xyvacz2Jrn9xFMY8b2C/Ow874JYCkq0o6x/NbcUsQ==",
+                "id": "Hexalith.EventStore.Contracts",
+                "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de"
+              },
+              {
+                "archive_sha256": "ead5dfabb5d4cfc90739fa414b3c2f8806d388c8237f74737a864d3b7b518e93",
+                "content_hash": "HWvcNBAfLqxjZ2w7aOABVaZv2WXn7W3aox1GHjq5zFQe1UjXW3en/aiPazsa8ccXCUfXE+WqrA+Q1YNABKSmHw==",
+                "id": "Hexalith.EventStore.DomainService",
+                "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de"
+              },
+              {
+                "archive_sha256": "ca676768798b2dd69035eaef9dce92a8a55db2c77d44ce3b0dda216fb7ed776a",
+                "content_hash": "ag4Svmfv94X4DxxTRAiyJPQZM0IXxrH40JaOtTx5RTCfh2ASaKHf9aIwWJGSOL4pWHGqd5w3apvu4or1PYzoxg==",
+                "id": "Hexalith.EventStore.Server",
+                "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de"
+              },
+              {
+                "archive_sha256": "7f23addbfca231eac9c2a6b3cc73d9db82c7674478e5f5c79f90a73d7abeb5c4",
+                "content_hash": "oz8knL5wa0XjWO1FcvTASXgpew08t+pEN21lqn7dC6rvIYls9CeQ72KeRgQndEhN4DSGbupWBkGAIhLa9yd7Mg==",
+                "id": "Hexalith.EventStore.ServiceDefaults",
+                "repository_commit": "27279fe6431925a6ea046c3f89af61487185c7de"
+              }
+            ],
+            "tag": "v3.110.0",
+            "tag_commit": "27279fe6431925a6ea046c3f89af61487185c7de",
+            "version": "3.110.0"
+          }
+        ],
+        "fixture": null,
+        "operational_profile": {
+          "backend": "state.postgresql",
+          "backend_image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+          "reference": "approved spec-6-1-p1r-31251-published-qualification.md; 2026-10-18 approve-and-continue",
+          "runtime": "dapr",
+          "runtime_version": "1.18.2",
+          "selected_by": "user"
+        },
+        "rollback": null,
+        "schema": "hexalith.p1r.owner-inputs.v1",
+        "selected_additions": [
+          "reminder-recovery",
+          "logical-event-evolution"
+        ]
+      }
+    },
+    "observation-6508b7c575884cce90582e036e06e6e8/owner-decisions.json": {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-decisions.json",
+      "sha256": "b296ef0751287a1af00cfa278db023002f9d133b09e73067c71c6c03ca02537f",
+      "value": {
+        "conformance": {
+          "baseline": null,
+          "reference": null,
+          "status": "pending"
+        },
+        "decisions": [
+          {
+            "date": null,
+            "decision": "pending",
+            "owner": null,
+            "reference": null,
+            "role": "eventstore-owner"
+          },
+          {
+            "date": null,
+            "decision": "pending",
+            "owner": null,
+            "reference": null,
+            "role": "builds-owner"
+          },
+          {
+            "date": null,
+            "decision": "pending",
+            "owner": null,
+            "reference": null,
+            "role": "solution-owner"
+          },
+          {
+            "date": null,
+            "decision": "pending",
+            "owner": null,
+            "reference": null,
+            "role": "test-owner"
+          }
+        ],
+        "fixture": null,
+        "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+        "schema": "hexalith.p1r.owner-decisions.v1"
+      }
+    }
+  }
+}
