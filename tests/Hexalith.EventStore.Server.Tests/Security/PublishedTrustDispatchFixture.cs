@@ -49,7 +49,7 @@ internal sealed class PublishedTrustDispatchFixture
     {
         using ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         PublishedTrustDispatchFixture admitted = Create(key, "batch-a", 8, 10);
-        PublishedTrustDispatchFixture restricted = Create(key, "batch-b", 11, 14);
+        PublishedTrustDispatchFixture restricted = Create(key, "batch-b", 11, 14, "Containment", 1, "alias-b");
         return (admitted, restricted.Request, restricted.Batch, restricted.State.Receipts);
     }
 
@@ -59,18 +59,19 @@ internal sealed class PublishedTrustDispatchFixture
     internal static GovernanceProtocolReceipt HoldReceipt()
         => new("hold-registration", new string('D', 64), "Committed", 12, 1, "hold-later", "hold-receipt");
 
-    private static PublishedTrustDispatchFixture Create(ECDsa key, string batchId, long issuedRevision, long dispatchRevision)
+    private static PublishedTrustDispatchFixture Create(ECDsa key, string batchId, long issuedRevision, long dispatchRevision,
+        string batchKind = "AcceptedSet", long batchOrdinal = 0, string alias = "alias-a")
     {
-        var targets = new ProtectionTarget[] { new("tenant-a", "interaction-a", "alias-a") };
+        var targets = new ProtectionTarget[] { new("tenant-a", "interaction-a", alias) };
         string manifest = DeletionBatchCapabilityIdentity.TargetManifestDigest(targets);
-        var capability = new DeletionBatchCapabilityV1("issuer-a", "protection-a", "tenant-a", "request-1", "seal-1", "AcceptedSet", 0, batchId, manifest, "tenant-a:guard", 7, 1, 1, "key-v1");
+        var capability = new DeletionBatchCapabilityV1("issuer-a", "protection-a", "tenant-a", "request-1", "seal-1", batchKind, batchOrdinal, batchId, manifest, "tenant-a:guard", issuedRevision - 1, 1, 1, "key-v1");
         var trust = new PublishedDeletionCapabilityTrust("tenant-a", "DeletionBatchCapabilitySigningKey", "key-v1", "issuer-a", "protection-a", "anchor-1", "anchor-v1", key.ExportSubjectPublicKeyInfo(), 3, false);
         string jws = Sign(capability, key, trust);
         var request = new DeletionBatchConsumptionRequest(capability, jws, issuedRevision, "dispatch-" + batchId, dispatchRevision, targets);
         string digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(jws)));
         string signingId = DeletionBatchCapabilityIdentity.SigningRequestId(capability);
         var guardTargets = new GovernanceProtectionTarget[] { new(targets[0].TenantId, targets[0].AgentInteractionId, targets[0].TargetProtectionKeyAlias) };
-        var batch = new GovernanceBatchState(batchId, "AcceptedSet", 0, guardTargets, manifest, 1, "key-v1", digest, "issue-" + batchId, "dispatch-" + batchId, "Unconsumed", "", [], 0, [])
+        var batch = new GovernanceBatchState(batchId, batchKind, batchOrdinal, guardTargets, manifest, 1, "key-v1", digest, "issue-" + batchId, "dispatch-" + batchId, "Unconsumed", "", [], 0, [])
         {
             Capability = capability,
             DetachedJws = jws,

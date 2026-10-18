@@ -67,12 +67,15 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
             TenantGovernanceGuardState? first = await _guard.ReadAsync(captured.Capability.TenantId, cancellationToken).ConfigureAwait(false);
             byte[]? firstBytes = first is null ? null : JsonSerializer.SerializeToUtf8Bytes(first);
             TenantGovernanceGuardState? second = await _guard.ReadAsync(captured.Capability.TenantId, cancellationToken).ConfigureAwait(false);
-            if (firstBytes is null || second is null || !firstBytes.AsSpan().SequenceEqual(JsonSerializer.SerializeToUtf8Bytes(second)))
+            byte[]? secondBytes = second is null ? null : JsonSerializer.SerializeToUtf8Bytes(second);
+            if (firstBytes is null || secondBytes is null || !firstBytes.AsSpan().SequenceEqual(secondBytes))
             {
                 return false;
             }
 
-            return Admitted(second, captured);
+            // Admit only the compared bytes, never collections still owned by the guard reader.
+            TenantGovernanceGuardState? snapshot = JsonSerializer.Deserialize<TenantGovernanceGuardState>(secondBytes);
+            return snapshot is not null && Admitted(snapshot, captured);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -133,7 +136,10 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     private static bool Admitted(TenantGovernanceGuardState state, DeletionBatchConsumptionRequest request)
     {
         DeletionBatchCapabilityV1 capability = request.Capability;
-        if (state.TenantId != capability.TenantId || state.Deletions is null || state.Receipts is null || state.Holds is null || state.CompromisedKeyVersions is null)
+        if (state.TenantId != capability.TenantId || state.Revision < request.DispatchGuardRevision
+            || state.Deletions is null || state.Receipts is null || state.Holds is null || state.CompromisedKeyVersions is null
+            || state.Holds.Any(hold => !ValidHold(hold, state.TenantId))
+            || state.Holds.Select(hold => hold.HoldId).Distinct(StringComparer.Ordinal).Count() != state.Holds.Count)
         {
             return false;
         }
@@ -151,7 +157,8 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         GovernanceBatchState batch = batches[0];
         string jwsDigest = Convert.ToHexString(SHA256.HashData(StrictUtf8.GetBytes(request.DetachedJws)));
         string signingId = DeletionBatchCapabilityIdentity.SigningRequestId(capability);
-        if (owner is null || owner.IntegrityCompromised || owner.RequestId != capability.DeletionRequestId || owner.SealId != capability.DestructionSealId
+        if (owner is null || !ValidScope(owner.Scope, state.TenantId)
+            || owner.IntegrityCompromised || owner.RequestId != capability.DeletionRequestId || owner.SealId != capability.DestructionSealId
             || batch.Capability != capability || batch.DetachedJws != request.DetachedJws || batch.SigningRequestId != signingId
             || batch.Kind != capability.BatchKind || batch.Ordinal != capability.BatchOrdinal || batch.ManifestDigest != capability.ManifestDigest
             || batch.AttestationOrdinal != capability.AttestationOrdinal || batch.CapabilityKeyVersion != capability.CapabilityKeyVersion
@@ -167,10 +174,10 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
             return false;
         }
 
-        GovernanceBatchState[] active = owner.Batches.Where(item => item is not null && item.ProtectionOutcome == "Unconsumed"
-            && !string.IsNullOrWhiteSpace(item.DispatchReceiptId)).ToArray();
-        return active.Length == 1 && active[0] == batch
-            && Committed(state, batch.IssueReceiptId, batch.IssuedGuardRevision, capability, signingId, jwsDigest)
+        // Each batch holds its current attestation in place. The global exact-BatchId
+        // lookup above rejects duplicate credentials; other containment batches may
+        // independently have their own dispatched current attestation.
+        return Committed(state, batch.IssueReceiptId, batch.IssuedGuardRevision, capability, signingId, jwsDigest)
             && Committed(state, batch.DispatchReceiptId, batch.DispatchGuardRevision, capability, signingId, jwsDigest)
             && DistinctOperations(state, batch.IssueReceiptId, batch.DispatchReceiptId)
             && !EarlierHoldRestricts(state, owner, batch);
@@ -180,19 +187,38 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     {
         foreach (GovernanceHoldState hold in state.Holds)
         {
-            if (hold is null || !hold.Active || hold.Scope is null || deletion.Scope is null || !Overlaps(hold.Scope, deletion.Scope))
+            if (!hold.Active || !Overlaps(hold.Scope, deletion.Scope))
             {
                 continue;
             }
 
             GovernanceProtocolReceipt[] receipts = state.Receipts.Where(receipt => receipt is not null && receipt.Status == "Committed" && receipt.ReferenceId == hold.HoldId).ToArray();
-            if (receipts.Length != 1 || receipts[0].GuardHighWater <= batch.DispatchGuardRevision)
+            if (receipts.Length != 1 || !Text(receipts[0].OperationId) || !Text(receipts[0].ReceiptId)
+                || receipts[0].IntentDigest is not { Length: 64 } || !receipts[0].IntentDigest.All(char.IsAsciiHexDigit)
+                || receipts[0].GuardHighWater <= batch.DispatchGuardRevision || receipts[0].GuardHighWater > state.Revision)
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static bool ValidHold(GovernanceHoldState? hold, string tenantId)
+        => hold is not null && Text(hold.HoldId) && Text(hold.DispositionVersion)
+            && ValidScope(hold.Scope, tenantId)
+            && (hold.Active ? hold.ReleaseReceiptId == "" : Text(hold.ReleaseReceiptId));
+
+    private static bool ValidScope(GovernanceScopeV1? scope, string tenantId)
+        => scope is not null && scope.TenantId == tenantId
+            && (scope.Kind == "ExactInteraction" && Text(scope.AgentInteractionId) && scope.SourceConversationId == ""
+                || scope.Kind == "SourceDeletionExactConversation" && Text(scope.SourceConversationId) && scope.AgentInteractionId == "");
+
+    private static bool Text(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 2048) { return false; }
+        try { _ = StrictUtf8.GetByteCount(value); return true; }
+        catch (EncoderFallbackException) { return false; }
     }
 
     private static bool DistinctOperations(TenantGovernanceGuardState state, string issueReceiptId, string dispatchReceiptId)

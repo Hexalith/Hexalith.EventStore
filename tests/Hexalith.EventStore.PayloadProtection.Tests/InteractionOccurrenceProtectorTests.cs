@@ -60,6 +60,58 @@ public sealed class InteractionOccurrenceProtectorTests
         (await f.Adapter.UnprotectAsync(f.Identity with { Target = f.Identity.Target with { TargetProtectionKeyAlias = "wrong" } }, TestContext.Current.CancellationToken)).IsReadable.ShouldBeFalse();
         f.OwnedBuffers.All(buffer => buffer.All(value => value == 0)).ShouldBeTrue();
     }
+    /// <summary>Writer completion retains its cancellation-ignoring original mutation for owner cleanup after its logical deadline.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InterruptedWriterCompletionRetainsOriginalUntilItQuiesces(bool deadlineExpires)
+    {
+        var f = new InteractionOccurrenceProtectorFixture();
+        (await Write(f)).ShouldNotBeNull();
+        byte[] ciphertext = f.Record!.Sealed!.PayloadBytes.ToArray();
+        var (clock, advance) = CaptureClock();
+        var adapter = new InteractionOccurrenceProtector(f.Registry, f.Keys, clock);
+        using var caller = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var original = new TaskCompletionSource<InteractionOccurrenceReservationResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Registry.CompleteWriterAsync(f.Identity, InteractionOccurrenceProtectorFixture.Reference, "original-proof", true,
+            Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.ArgAt<CancellationToken>(4).CanBeCanceled.ShouldBeFalse();
+            entered.TrySetResult();
+            return original.Task;
+        });
+        Task<InteractionOccurrenceReservationResult> completion = adapter.CompleteWriterAsync(f.Identity,
+            InteractionOccurrenceProtectorFixture.Reference, "original-proof", true, caller.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        try
+        {
+            if (deadlineExpires) { advance(TimeSpan.FromSeconds(30)); }
+            else { caller.Cancel(); }
+            await Should.ThrowAsync<TimeoutException>(() => completion.WaitAsync(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken));
+            completion.IsCompleted.ShouldBeFalse();
+            f.Record.WriterState.ShouldBe(InteractionOccurrenceWriterState.SealedPending);
+            f.Record = f.Record with { WriterState = InteractionOccurrenceWriterState.Active, WriterProofId = "original-proof" };
+            original.SetResult(new(InteractionOccurrenceReservationStatus.Sealed, f.Record));
+            if (deadlineExpires)
+            {
+                await Should.ThrowAsync<TimeoutException>(() => completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            }
+            else
+            {
+                OperationCanceledException failure = await Should.ThrowAsync<OperationCanceledException>(() => completion.WaitAsync(
+                    TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+                failure.CancellationToken.ShouldBe(caller.Token);
+            }
+            completion.IsCompleted.ShouldBeTrue();
+            await f.Registry.Received(1).CompleteWriterAsync(f.Identity, InteractionOccurrenceProtectorFixture.Reference,
+                "original-proof", true, Arg.Any<CancellationToken>());
+            f.Record.Sealed!.PayloadBytes.ShouldBe(ciphertext);
+            f.Record.WriterProofId.ShouldBe("original-proof");
+            f.Keys.Leases.ShouldBe(1);
+        }
+        finally { original.TrySetResult(new(InteractionOccurrenceReservationStatus.Unavailable, null)); }
+    }
     /// <summary>Whole snapshot uses a distinct occurrence subkey and actual unchanged v2 snapshot codec, preserving plaintext only after source completion.</summary>
     [Fact]
     public async Task SnapshotUsesActualCoreAndExactWriterCompletion()

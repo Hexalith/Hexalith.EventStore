@@ -138,6 +138,7 @@ public static class GovernanceScopeGuardReducer
                 if (!ValidScope(hold.Scope, state.TenantId) || !Text(hold.HoldId) || !Text(hold.DispositionVersion) || state.Holds.Any(value => value.HoldId == hold.HoldId)) { return Denied(); }
                 state = state with { Holds = state.Holds.Append(new(hold.HoldId, hold.Scope, hold.DispositionVersion, true,
                     state.Deletions.Any(value => Text(value.SealId) && Overlaps(value.Scope, hold.Scope)), "")).ToArray() };
+                reference = hold.HoldId;
                 break;
             case GovernanceGuardOperation.ReleaseHold:
                 hold = command.Hold!;
