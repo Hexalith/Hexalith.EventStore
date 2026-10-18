@@ -1,0 +1,635 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hexalith.com/schemas/corrective-work-authorization.v1.json",
+  "title": "Corrective-work authorization v1 (no readiness or external authority)",
+  "$ref": "#/$defs/authorization",
+  "$defs": {
+    "binding": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "owner": {
+      "type": "object",
+      "properties": {
+        "github_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "github_login": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$(?![\\s\\S])"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[a-z][a-z0-9-]{0,63}$(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "github_id",
+        "github_login",
+        "role"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "mutations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "add",
+                    "modify",
+                    "delete",
+                    "mode"
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 4,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "path",
+              "mutations"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true
+        },
+        "prohibited_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true
+        },
+        "prohibited_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "readiness",
+              "release",
+              "deployment",
+              "production",
+              "migration",
+              "removal"
+            ]
+          },
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "allowed",
+        "prohibited_paths",
+        "prohibited_actions"
+      ],
+      "additionalProperties": false
+    },
+    "expected_evidence": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/output_binding"
+        },
+        "validator": {
+          "$ref": "#/$defs/binding"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "minItems": 0,
+          "maxItems": 32,
+          "uniqueItems": false
+        },
+        "expected_exit_code": {
+          "type": "integer",
+          "const": 0
+        }
+      },
+      "required": [
+        "file",
+        "validator",
+        "arguments",
+        "expected_exit_code"
+      ],
+      "additionalProperties": false
+    },
+    "evidence_result": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "validator_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "minItems": 6,
+          "maxItems": 38,
+          "uniqueItems": false
+        },
+        "exit_code": {
+          "type": "integer",
+          "const": 0
+        },
+        "stdout_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "stderr_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "file_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "path",
+        "validator_sha256",
+        "command",
+        "exit_code",
+        "stdout_sha256",
+        "stderr_sha256",
+        "file_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "postflight": {
+      "type": "object",
+      "properties": {
+        "output_subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "evidence_results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence_result"
+          },
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "output_subject_sha256",
+        "evidence_results"
+      ],
+      "additionalProperties": false
+    },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "hexalith.corrective-owner-registry.v1"
+        },
+        "version": {
+          "type": "integer",
+          "const": 1
+        },
+        "repository": {
+          "type": "string",
+          "const": "Hexalith/Hexalith.EventStore"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "authority_issue": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "approvals_issue": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owners": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "github_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "github_login": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$(?![\\s\\S])"
+              },
+              "roles": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512,
+                  "pattern": "^[a-z][a-z0-9-]{0,63}$(?![\\s\\S])"
+                },
+                "minItems": 1,
+                "maxItems": 128,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "github_id",
+              "github_login",
+              "roles"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true
+        },
+        "authority_owner": {
+          "type": "object",
+          "properties": {
+            "github_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "github_login": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$(?![\\s\\S])"
+            }
+          },
+          "required": [
+            "github_id",
+            "github_login"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema",
+        "version",
+        "repository",
+        "created_at",
+        "authority_issue",
+        "approvals_issue",
+        "owners",
+        "authority_owner"
+      ],
+      "additionalProperties": false
+    },
+    "failed_gate_result": {
+      "type": "object",
+      "properties": {
+        "gate": {
+          "type": "string",
+          "enum": [
+            "G-BASELINE",
+            "G-OQ8",
+            "G-TENANT",
+            "G-STATUS-ID",
+            "G-APPEND",
+            "G-CLAUSE",
+            "G-NFR8",
+            "G-COMPAT",
+            "G-AUTH-HOSTS",
+            "G-RUNTIME-PARITY",
+            "G-PUBLICATION-AUTH",
+            "G-CONSUMER",
+            "G-HIGH-RISK",
+            "G-NFR18",
+            "G-NFR-OWNERSHIP",
+            "G-MVP-COVERAGE",
+            "G-READINESS"
+          ]
+        },
+        "result": {
+          "type": "string",
+          "const": "FAIL"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "gate",
+        "result",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "authorization": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "hexalith.corrective-work-authorization.v1"
+        },
+        "version": {
+          "type": "integer",
+          "const": 1
+        },
+        "authorization_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{0,79}$(?![\\s\\S])"
+        },
+        "failed_gate": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "enum": [
+                "G-BASELINE",
+                "G-OQ8",
+                "G-TENANT",
+                "G-STATUS-ID",
+                "G-APPEND",
+                "G-CLAUSE",
+                "G-NFR8",
+                "G-COMPAT",
+                "G-AUTH-HOSTS",
+                "G-RUNTIME-PARITY",
+                "G-PUBLICATION-AUTH",
+                "G-CONSUMER",
+                "G-HIGH-RISK",
+                "G-NFR18",
+                "G-NFR-OWNERSHIP",
+                "G-MVP-COVERAGE",
+                "G-READINESS"
+              ]
+            },
+            "evidence": {
+              "$ref": "#/$defs/binding"
+            }
+          },
+          "required": [
+            "id",
+            "evidence"
+          ],
+          "additionalProperties": false
+        },
+        "prd": {
+          "$ref": "#/$defs/binding"
+        },
+        "baseline_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "minLength": 40,
+          "maxLength": 40
+        },
+        "input_subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "derivation": {
+          "type": "string",
+          "const": "hexalith.corrective-subject.v1"
+        },
+        "owner": {
+          "$ref": "#/$defs/owner"
+        },
+        "owner_role_registry": {
+          "$ref": "#/$defs/binding"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "expected_evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/expected_evidence"
+          },
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true
+        },
+        "validator": {
+          "$ref": "#/$defs/binding"
+        },
+        "contract": {
+          "$ref": "#/$defs/binding"
+        },
+        "issued_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "expires_at": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "revoked": {
+          "type": "boolean"
+        },
+        "corrective-work-only": {
+          "type": "boolean",
+          "const": true
+        },
+        "readiness": {
+          "type": "boolean",
+          "const": false
+        },
+        "release": {
+          "type": "boolean",
+          "const": false
+        },
+        "deployment": {
+          "type": "boolean",
+          "const": false
+        },
+        "production": {
+          "type": "boolean",
+          "const": false
+        },
+        "migration": {
+          "type": "boolean",
+          "const": false
+        },
+        "removal": {
+          "type": "boolean",
+          "const": false
+        },
+        "authorization_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "postflight": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/postflight"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "version",
+        "authorization_id",
+        "failed_gate",
+        "prd",
+        "baseline_commit",
+        "input_subject_sha256",
+        "derivation",
+        "owner",
+        "owner_role_registry",
+        "scope",
+        "expected_evidence",
+        "validator",
+        "contract",
+        "issued_at",
+        "expires_at",
+        "revoked",
+        "corrective-work-only",
+        "readiness",
+        "release",
+        "deployment",
+        "production",
+        "migration",
+        "removal",
+        "authorization_sha256",
+        "postflight"
+      ],
+      "additionalProperties": false
+    },
+    "output_binding": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "sha256": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "completion": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "hexalith.corrective-work-completion.v1"
+        },
+        "authorization_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "output_subject_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "schema",
+        "authorization_sha256",
+        "output_subject_sha256"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "x-contract": {
+    "canonicalization": "UTF-8 JSON, sorted object keys, compact separators, integer numbers, duplicate/unknown fields rejected. Raw file SHA-256 and exact modes. Normalize only authorization_sha256 and postflight on every correctly located, schema-recognized authorization in every Git layer. All immutable cores and unrelated files remain bound. No caller-selected exclusions. Scope mutations always use raw identities, independently of normalized subject/shadow identities. Schema patterns are anchored; fixed hashes have exact lengths.",
+    "input_subject": "SHA-256 of canonical {rule, baseline_tree, immutable_inputs}; immutable_inputs is baseline_commit, prd, failed_gate, owner_role_registry, validator, contract, expected_evidence, derivation. baseline_tree is the full baseline Git tree object ID. The baseline is a full ancestral commit; immutable files must equal its raw blobs.",
+    "output_subject": "SHA-256 of canonical {rule, authorization_sha256, input_subject_sha256, repository, evidence_results}. repository inventories current raw files/modes plus divergent committed_shadows and index_shadows (states different from both baseline and current). Mutations derive independently from raw baseline/HEAD/index/worktree, regardless of diff filters, assume-unchanged, skip-worktree or core.filemode. Identical-byte commits preserve the subject. Unchanged baseline symlink target bytes are bound without following them; new/changed symlinks and nonregular authority/evidence/executable inputs reject. Gitlinks are bound without traversing submodule files; changes/dirt reject. HEAD or local concurrent drift rejects. Nonempty uninitialized Gitlink directories reject; populated initialized checkouts require matching superproject-owned Git metadata and HEAD, using immediate directory/metadata checks without inventorying submodule source.",
+    "authority": "The unchanged baseline registry names numeric GitHub User identities and roles. Its exact raw SHA-256 needs one unedited human comment matching the baseline-bound authority_owner numeric ID/login in authority_issue. The exact canonical approval body is {schema: hexalith.corrective-owner-registry-approval.v1, subject_sha256: <registry raw SHA-256>}. Each authorization needs one unedited matching owner comment in approvals_issue with body {schema: hexalith.corrective-work-approval.v1, subject_sha256: <authorization_sha256>}. These are real JSON objects, canonicalized by the same rule. Fixed HTTPS GitHub repository issue-comment listing endpoints only, bounded pagination, no redirects. An OWNER, MEMBER or COLLABORATOR association cannot substitute for the exact authority_owner identity. Roles do not imply additional people or Assurance Control. Filter exact baseline-bound eligible numeric human identity/login before counting matching payloads, duplicates or revocations. Unrelated copied payloads have no effect. Authenticated revocations use current time after fetching. Re-read authenticated authority after executing evidence and before final local drift/expiry checks.",
+    "postflight": "Run <record> --changed-paths-from <full SHA> --postflight --write-postflight. Exact approved Python validators execute with the evidence path first, using python3 -I -S -B and bounded argv without shell evaluation. Missing completion yields non-authorizing FAIL/missing-completion with proposed_completion, exact canonical proposed_completion_body and proposed_completion_sha256 for human approval. No receipt is posted. The same fixed approvals issue must contain at most one eligible, unedited owner commitment: {schema: hexalith.corrective-work-completion.v1, authorization_sha256: <core digest>, output_subject_sha256: <derived digest>}. Only that committed output can populate a null local postflight; an existing envelope cannot be overwritten. Default preflight also enforces external commitments even when the local envelope is cleared/replaced/committed. Later postflight reexecutes exact evidence and compares output, command, exit and stdout/stderr/file hashes. A different output requires new authorization. Precreate all immutable authorization cores before completion. Deferred evidence sha256:null requires exact output scope; absent validators require exact add scope and preapproved future digest. Authority alone never passes the failed gate. Fixed evidence hashes are checked before handoff. Ignored validators and control characters in approved arguments reject preflight. Evidence positional argv is prefixed with ./ so option-like names cannot become flags; all executed argv after the interpreter token is retained exactly. Only the interpreter executable is normalized to portable python3 in the subject; execution uses the current isolated interpreter, independent of its host installation path.",
+    "invalidation": "Any PRD, baseline, input, derivation, schema, validator, registry, owner, scope, evidence or output drift requires a new authorization and receipt. Revoked/expired records reject. Live revocations use the same owner and fixed approvals issue with canonical body {schema: hexalith.corrective-work-revocation.v1, subject_sha256: <authorization_sha256>}. Approval never passes the failed gate, reconciles readiness, seals evidence, or grants release/deployment/production/migration/removal authority. Erasing or resetting local completion cannot erase the external first-output commitment. Canonical prohibited directories have exactly one trailing slash. Registry evaluation reports malformed records independently and continues. Prohibited paths cover the exact path and all descendants, with or without one trailing slash. Current authenticated service records are checked; missing/withdrawn records fail. A trusted issuer can deliberately withdraw/reissue its records; this protocol provides no append-only external history service.",
+    "registry_evaluation": "--evaluate-registry validates all live records in postflight. Missing registry or zero authorizations is FAIL. CI publishes the exact source commit and validator/contract digests, truthful results and the workflow source; fixture failures block, live failures do not."
+  }
+}

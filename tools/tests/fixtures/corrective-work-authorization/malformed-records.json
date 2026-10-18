@@ -1,0 +1,44 @@
+[
+  {
+    "id": "malformed-0",
+    "value": [],
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-1",
+    "value": null,
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-2",
+    "value": {},
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-3",
+    "value": true,
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-4",
+    "value": "record",
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "malformed-5",
+    "value": 4,
+    "result": "FAIL",
+    "reason": "schema"
+  },
+  {
+    "id": "deep-malformed-record",
+    "nesting_depth": 100000,
+    "result": "FAIL",
+    "reason": "json"
+  }
+]
