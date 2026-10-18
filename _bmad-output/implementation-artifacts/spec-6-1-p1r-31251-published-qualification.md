@@ -15,9 +15,9 @@ context:
 
 ## Intent
 
-**Problem:** Historical 3.115.0 qualification does not establish compatibility of the latest published EventStore. Existing fixtures enroll through 3.125.0, and their executor incorrectly couples the selected source checkout to the verifier checkout when qualifying an older published tag.
+**Problem:** Historical 3.115.0 evidence does not qualify the latest EventStore. Fixtures enroll through 3.125.0, and the executor couples candidate and verifier checkouts.
 
-**Approach:** Qualify the latest observed five-package family, 3.125.1, using finite fixture enrollment, independently bound verifier/tagged-source roots, and fresh isolated execution and audit. Preserve measured failures and pending owner decisions.
+**Approach:** Measure 3.125.1 using finite enrollment, separate verifier/source roots and isolated execution/audit.
 
 ## Boundaries & Constraints
 
@@ -43,7 +43,6 @@ context:
 - `tools/p1r_qualification.py::source_binding`, `tools/p1r_isolation.py`, `tools/p1r_isolation_evidence.py`: closure and private-runner identity/mount boundaries.
 - `tools/p1r_published_qualification.py::{validate_packet,finalize_isolation_receipts,bind_lane,bind_recovery,receipt_outcome}` and `tools/p1r_check_witnesses.py`: independent import, strict isolation and snapshot witnesses.
 - `tools/p1r-published-consumers/{Directory.Build.props,host/Host.csproj,domain/Domain.csproj}`: explicit capability/evolution/snapshot enrollment. Preserve historical conditions.
-- `tools/p1r-published-consumers/README.md` and `.github/workflows/p1r-qualification.yml`: current operating contract and focused checks.
 
 ## Tasks & Acceptance
 
@@ -70,7 +69,7 @@ context:
 
 ## Verification
 
-- Capture the required Aspire baseline before code changes; report environment blockers separately.
+- Capture the Aspire baseline before code changes; report blockers separately.
 - Run each of the six P1R Python discovery suites from `.github/workflows/p1r-qualification.yml` individually, plus optimized isolation hardening. Run actual Host/Domain/Probe project evaluations for enrolled and unenrolled versions.
 - Execute fresh Release/package lanes and distinct Debug/tagged-source comparisons, private failure/cleanup drills, independent audit and strict import attempts. Require zero executor errors for successful execution. Keep owner-disposition refusal explicit.
-- Run `git diff --check`; verify historical evidence and unrelated working-tree inputs remain unchanged.
+- Run `git diff --check`; verify preservation of historical and unrelated inputs.
