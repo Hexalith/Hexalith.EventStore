@@ -2,8 +2,8 @@ namespace Hexalith.EventStore.Aspire;
 
 /// <summary>
 /// Resolves on-disk paths to project files within a Hexalith mono-repo working tree, where the platform
-/// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) may be the current repository or checked
-/// out as Git submodules under the consuming repository's <c>references</c> folder.
+/// modules (<c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>, …) are either the current repository or checked
+/// out as direct Git submodules under the consuming repository's <c>references</c> folder.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -41,62 +41,55 @@ public static class RepositoryProjectPaths {
     }
 
     /// <summary>
-    /// Resolves the on-disk path to a project file inside a sibling Hexalith platform module
-    /// (e.g. <c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>), probing the supported checkout layouts.
+    /// Resolves the on-disk path to a project file inside a Hexalith platform module the consuming repository
+    /// depends on (e.g. <c>Hexalith.EventStore</c>, <c>Hexalith.Memories</c>), with the same rule as the workspace
+    /// source mapping. When <c>&lt;root&gt;/&lt;module&gt;.slnx</c> exists, the dependency is the consuming repository
+    /// itself and the project resolves under <c>&lt;root&gt;</c>. Otherwise it resolves under the direct submodule
+    /// <c>&lt;root&gt;/references/&lt;module&gt;</c>. No sibling, ancestor or root-level checkout is ever used.
     /// This keeps the launched project path (resolved here at runtime) identical to the build-time
     /// <c>&lt;ProjectReference&gt;</c> the AppHost uses to force a Debug build of the same project — so the AppHost
-    /// never compiles one csproj and launches another. Returns the first candidate that exists; if none do,
-    /// returns the standalone <c>&lt;root&gt;/references/&lt;module&gt;/…</c> path so the error names a diagnosable location.
+    /// never compiles one csproj and launches another.
     /// </summary>
     /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
     /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
     /// <returns>The absolute path to the resolved project file.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The project file does not exist at the mapped location. The message names the dependency and the expected path.
+    /// </exception>
     public static string GetReferencedModuleProjectPath(string moduleDirectory, params string[] moduleRelativePath)
+        => ResolveReferencedModuleProjectPath(GetRepositoryRoot(), moduleDirectory, moduleRelativePath);
+
+    /// <summary>
+    /// Applies the <see cref="GetReferencedModuleProjectPath"/> rule to an explicit consuming repository root.
+    /// </summary>
+    /// <param name="root">The consuming repository root.</param>
+    /// <param name="moduleDirectory">The dependency module's directory name (e.g. <c>Hexalith.EventStore</c>).</param>
+    /// <param name="moduleRelativePath">Path segments inside the module, ending in the target project file.</param>
+    /// <returns>The absolute path to the resolved project file.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The project file does not exist at the mapped location. The message names the dependency and the expected path.
+    /// </exception>
+    internal static string ResolveReferencedModuleProjectPath(string root, string moduleDirectory, params string[] moduleRelativePath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleDirectory);
         if (moduleRelativePath is null || moduleRelativePath.Length == 0)
         {
             throw new ArgumentException("At least one module-relative path segment is required.", nameof(moduleRelativePath));
         }
 
-        string root = GetRepositoryRoot();
+        string fullRoot = Path.GetFullPath(root);
         string relative = Path.Combine(moduleRelativePath);
+        bool isCurrentRepository = File.Exists(Path.Combine(fullRoot, moduleDirectory + ".slnx"));
+        string expected = isCurrentRepository
+            ? Path.GetFullPath(Path.Combine(fullRoot, relative))
+            : Path.GetFullPath(Path.Combine(fullRoot, "references", moduleDirectory, relative));
 
-        // Candidate module locations:
-        //   1. dependency is the current repository                   (module src under this root)
-        //   2. this repo nested directly inside the dependency repo   (module src one level up)
-        //   3. this repo nested two levels inside the dependency repo
-        //   4. dependency under this repo root                         (root-level sibling module checkout)
-        //   5. dependency under this repo's references/                (standalone dev)
-        //   6. dependency is a sibling of this repo                    (e.g. both under a parent's references/)
-        //   7. dependency under the parent's references/
-        //
-        // NOTE: this order is NOT the same as Directory.Build.props $(Hexalith*Root) auto-detection, which
-        // probes references/ FIRST and has no root-level candidate at all. Candidate 4 here is a legacy
-        // root-level layout that outranks references/ (candidate 5), so a stray <root>/Hexalith.<Module>/
-        // directory would shadow references/Hexalith.<Module>. No such directory exists in this repository
-        // (FR19), and reordering is tracked as deferred work from the Story 3.3 code review.
-        string standalone = Path.GetFullPath(Path.Combine(root, "references", moduleDirectory, relative));
-        string[] candidates =
-        [
-            Path.GetFullPath(Path.Combine(root, relative)),
-            Path.GetFullPath(Path.Combine(root, "..", relative)),
-            Path.GetFullPath(Path.Combine(root, "..", "..", relative)),
-            Path.GetFullPath(Path.Combine(root, moduleDirectory, relative)),
-            standalone,
-            Path.GetFullPath(Path.Combine(root, "..", moduleDirectory, relative)),
-            Path.GetFullPath(Path.Combine(root, "..", "references", moduleDirectory, relative)),
-        ];
-
-        foreach (string candidate in candidates)
-        {
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        return standalone;
+        return File.Exists(expected)
+            ? expected
+            : throw new InvalidOperationException(isCurrentRepository
+                ? $"Dependency '{moduleDirectory}' is the repository at '{fullRoot}', but its project '{expected}' does not exist."
+                : $"Dependency '{moduleDirectory}' must be checked out as the direct submodule 'references/{moduleDirectory}' of '{fullRoot}', but its project '{expected}' does not exist. Sibling, ancestor and root-level checkouts are not used. Initialize the submodule with 'git submodule update --init -- references/{moduleDirectory}'.");
     }
 
     /// <summary>

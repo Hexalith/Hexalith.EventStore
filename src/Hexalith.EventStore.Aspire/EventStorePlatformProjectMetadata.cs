@@ -6,9 +6,9 @@ namespace Hexalith.EventStore.Aspire;
 /// <summary>
 /// Cross-repo project metadata for the Hexalith.EventStore command-gateway service, resolved from the
 /// consuming repository's <c>Hexalith.EventStore</c> checkout via
-/// <see cref="RepositoryProjectPaths.GetReferencedModuleProjectPath"/>, which tolerates every layout (the
-/// dependency as the current repo, under this repo's <c>references/</c>, as a sibling under a parent's
-/// <c>references/</c>, or as a nested checkout inside the EventStore repo). <see cref="SuppressBuild"/> stays
+/// <see cref="RepositoryProjectPaths.GetReferencedModuleProjectPath"/>: the repository itself when its root holds
+/// <c>Hexalith.EventStore.slnx</c>, otherwise the direct submodule <c>references/Hexalith.EventStore</c>. Any other
+/// layout fails, naming the dependency and the expected path. <see cref="SuppressBuild"/> stays
 /// <see langword="true"/> so Aspire
 /// launches the server fast with <c>--no-build</c>; the consuming AppHost forces a fresh Debug compile via a
 /// build-only <c>&lt;ProjectReference&gt;</c> (so <c>aspire run</c> never serves a stale binary), while Release
@@ -27,8 +27,8 @@ internal sealed class EventStoreProjectMetadata : IProjectMetadata {
 }
 
 /// <summary>
-/// Cross-repo project metadata for the Hexalith.EventStore Admin Server host, resolved through the same flexible
-/// module layout as <see cref="EventStoreProjectMetadata"/>. See <see cref="EventStoreProjectMetadata"/> for the
+/// Cross-repo project metadata for the Hexalith.EventStore Admin Server host, resolved with the same mapping
+/// rule as <see cref="EventStoreProjectMetadata"/>. See <see cref="EventStoreProjectMetadata"/> for the
 /// <see cref="SuppressBuild"/> rationale.
 /// </summary>
 internal sealed class EventStoreAdminServerHostProjectMetadata : IProjectMetadata {
@@ -44,8 +44,8 @@ internal sealed class EventStoreAdminServerHostProjectMetadata : IProjectMetadat
 }
 
 /// <summary>
-/// Cross-repo project metadata for the Hexalith.EventStore Admin UI (Blazor) host, resolved through the same flexible
-/// module layout as <see cref="EventStoreProjectMetadata"/>. See <see cref="EventStoreProjectMetadata"/> for the
+/// Cross-repo project metadata for the Hexalith.EventStore Admin UI (Blazor) host, resolved with the same mapping
+/// rule as <see cref="EventStoreProjectMetadata"/>. See <see cref="EventStoreProjectMetadata"/> for the
 /// <see cref="SuppressBuild"/> rationale.
 /// </summary>
 internal sealed class EventStoreAdminUIProjectMetadata : IProjectMetadata {
