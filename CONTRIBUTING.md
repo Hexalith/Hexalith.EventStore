@@ -157,10 +157,13 @@ dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStor
 
 `debug` does not print the run id: it is the file name of the run state `<runId>.json` under
 `${XDG_DATA_HOME:-$HOME/.local/share}/hexalith-builds/g4-runs/` on Linux. When an earlier run used the same manifest,
-`down --manifest` refuses with `HXR024`; pass the newest run's id with `--run-id`:
+`down --manifest` refuses with `HXR024`. Inspect the state files and select the one whose `projectProcessIds`
+contains the launcher id reported by this `debug` invocation. Confirm its `manifestHash` matches
+`sha256sum references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json` (ignoring hexadecimal letter case),
+then pass its `runId` with `--run-id`. File modification time alone cannot identify your run, and an explicit
+`--run-id` is not cross-checked against the manifest:
 
 ```bash
-ls -t "${XDG_DATA_HOME:-$HOME/.local/share}"/hexalith-builds/g4-runs/*.json | head -1
 dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json --run-id <runId>
 ```
 
