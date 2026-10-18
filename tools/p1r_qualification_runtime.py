@@ -358,8 +358,7 @@ def run_process_controls(section, directory, invocation, python, before_each, af
     sentinel_process = None
     try:
         preparation.subreaper()
-        sentinel_process = subprocess.Popen([python, "-I", "-c", "import time; time.sleep(30)"],
-                                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        sentinel_process = preparation.start_shared_sentinel(python)
         observed = preparation.process_state(sentinel_process.pid)
         section["sentinel"]["identity"] = preparation.identity(observed) if observed is not None else None
         sentinel = preparation.sentinel_state(sentinel_process.pid)
@@ -374,6 +373,7 @@ def run_process_controls(section, directory, invocation, python, before_each, af
         if sentinel_process is not None:
             handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
+                sentinel_process.stdin.close()
                 sentinel_process.terminate()
                 try:
                     sentinel_process.wait(timeout=2)

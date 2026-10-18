@@ -310,6 +310,29 @@ class PacketTests(unittest.TestCase):
             nested.parent.rmdir()
             (self.prepare / "SHA256SUMS").write_bytes(original)
 
+    def testSlowSourceVerificationDoesNotExpireSharedSentinel(self):
+        out = Path(self.scratch.name) / "slow-source-verification"
+        verify = p.check_current_source
+        delayed = False
+
+        def slow_once(binding):
+            nonlocal delayed
+            verify(binding)
+            if not delayed:
+                delayed = True
+                # Exceed the former lifetime while retaining real process controls.
+                time.sleep(31)
+
+        with mock.patch.object(p, "check_current_source", side_effect=slow_once):
+            packet = p.create_packet(out, "run")
+        self.assertEqual(packet["errors"], [])
+        self.assertEqual(packet["sentinel"]["before"], packet["sentinel"]["after_controls"])
+        self.assertTrue(packet["sentinel"]["released"])
+        result = p.validate_packet(out)
+        self.assertEqual(result["process_assertions"], 38)
+        self.assertFalse(result["qualified"])
+        self.assertFalse(result["p1r_usable"])
+
     def testFailedInitialSentinelObservationIsSealedAndReleased(self):
         out = Path(self.scratch.name) / "sentinel-observation-failed"
         real_state = p.sentinel_state
@@ -496,6 +519,35 @@ class SourceAndProcessTests(unittest.TestCase):
                 tracked.unlink()
                 with self.assertRaisesRegex(p.InvalidPacket, "missing"):
                     p.repository_binding(root)
+
+    def testSharedSentinelExitsWhenParentDisconnects(self):
+        p.subreaper()
+        script = ("import os,sys; sys.path.insert(0,sys.argv[1]); "
+                  "import p1r_qualification as p; "
+                  "sentinel=p.start_shared_sentinel(sys.executable); "
+                  "print(sentinel.pid,flush=True); os._exit(0)")
+        parent = subprocess.run([sys.executable, "-I", "-c", script, str(p.ROOT / "tools")],
+                                capture_output=True, timeout=5, check=True)
+        pid = int(parent.stdout.strip())
+        reaped = False
+        try:
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                child, status = os.waitpid(pid, os.WNOHANG)
+                if child == pid:
+                    reaped = True
+                    self.assertEqual(os.waitstatus_to_exitcode(status), 0)
+                    break
+                time.sleep(.01)
+            self.assertTrue(reaped, "sentinel survived abrupt parent exit")
+        finally:
+            if not reaped:
+                os.kill(pid, signal.SIGKILL)
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline:
+                    if os.waitpid(pid, os.WNOHANG)[0] == pid:
+                        break
+                    time.sleep(.01)
 
     def testExternalSigintPreservesReceiptAndCleansActualDescendants(self):
         with tempfile.TemporaryDirectory(prefix="p1r-sigint-test-") as scratch:

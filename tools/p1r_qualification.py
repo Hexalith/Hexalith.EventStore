@@ -538,6 +538,13 @@ def seal(directory):
     (directory / "SHA256SUMS").write_text("".join(f"{digest(regular(directory / name))}  {name}\n" for name in files))
 
 
+def start_shared_sentinel(python):
+    """Stay alive until explicitly released or the owning parent's pipe closes."""
+    return subprocess.Popen([python, "-I", "-c", "import sys; sys.stdin.buffer.read(1)"],
+                            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, start_new_session=True)
+
+
 def create_packet(directory, mode, root=ROOT):
     require(mode in ("prepare", "run"), "unsupported preparation mode")
     directory = Path(directory).absolute()
@@ -569,8 +576,7 @@ def create_packet(directory, mode, root=ROOT):
             observe(packet["preparation"]["checks"], name, condition)
         if mode == "run":
             subreaper()
-            sentinel_process = subprocess.Popen([binding["python"]["path"], "-I", "-c", "import time; time.sleep(30)"],
-                                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            sentinel_process = start_shared_sentinel(binding["python"]["path"])
             observed = process_state(sentinel_process.pid)
             packet["sentinel"]["identity"] = identity(observed) if observed is not None else None
             sentinel = sentinel_state(sentinel_process.pid)
@@ -589,6 +595,7 @@ def create_packet(directory, mode, root=ROOT):
         if sentinel_process is not None:
             handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
+                sentinel_process.stdin.close()
                 sentinel_process.terminate()
                 try:
                     sentinel_process.wait(timeout=2)

@@ -1402,6 +1402,30 @@ class EvaluationTests(unittest.TestCase):
 
 
 class ProcessControlTests(PacketFixture):
+    def testSlowSourceVerificationDoesNotExpireSharedSentinel(self):
+        out = self.root / "slow-source-verification-controls"
+        (out / "receipts").mkdir(parents=True)
+        section = runtime.new_process_section()
+        invocation = uuid.uuid4().hex
+        started = preparation.stamp()
+        delayed = False
+
+        def slow_once():
+            nonlocal delayed
+            if not delayed:
+                delayed = True
+                time.sleep(31)
+
+        runtime.run_process_controls(section, out, invocation, PYTHON, slow_once, lambda: None)
+        self.assertEqual(section["sentinel"]["before"], section["sentinel"]["after_controls"])
+        self.assertTrue(section["sentinel"]["released"])
+        start, end = preparation.validate_times({"started_utc": started,
+                                                 "finished_utc": preparation.stamp()})
+        _, assertions = runtime.validate_process_controls(out, section, invocation, PYTHON,
+                                                          start, end)
+        self.assertEqual(assertions, 38)
+        self.assertEqual(section["scope"], "local-process-control")
+
     def testRealProcessControlsProveOnlyTheirLocalScope(self):
         out = self.root / "process-controls"
         packet = q.create_packet(out, process_controls=True)
