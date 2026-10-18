@@ -6033,3 +6033,9 @@ status: open
   summary: Give concurrent reminder discovery replicas bounded ownership or another durable progress mechanism.
   evidence: ClaimDiscoveryAsync immediately replaces owner/generation even for an unfinished sweep, while cursor CAS rejects old owners. Interleaved healthy replicas can repeatedly invalidate cursor advancement during slow convergence.
 
+
+## Deferred from: code review of spec-9-1-corrective-work-authorization-record-and-validator.md (2026-10-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-1-corrective-work-authorization-record-and-validator.md`
+  summary: Assign ownership for minting the first live corrective-work owner-role registry and its authority/approvals GitHub issues.
+  evidence: `validate-corrective-work-authorization.py` requires a baseline-committed `_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/owner-role-registry.json` with `authority_issue`/`approvals_issue` numbers; Story 9.1 forbids minting it and no Story 9.2–9.5 entry owns it, yet Story 9.3 (`epics.md:7686`) depends on a 9.1 authorization record for G-BASELINE. Live evaluation stays `FAIL / missing-authority` until an owner action or correct-course assigns it.
