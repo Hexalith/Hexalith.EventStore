@@ -7,6 +7,7 @@ internal static class DaprReadModelCreateConflict {
     /// <summary>Returns true only when an authoritative read proves the addressed key already exists.</summary>
     internal static async Task<bool> ExistsAsync(DaprClient client, string storeName, string key, CancellationToken cancellationToken) {
         try {
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
             (_, string etag) = await client.GetByteStateAndETagAsync(storeName, key, consistencyMode: ConsistencyMode.Strong, cancellationToken: cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             return !string.IsNullOrEmpty(etag);
