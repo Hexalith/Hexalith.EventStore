@@ -1,0 +1,687 @@
+{
+  "observed_utc": "2026-10-18T21:10:18.204887+00:00",
+  "scope": "historical nonpassing evidence; never replacement for canonical run",
+  "root": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run",
+  "executions": [
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/execution.json",
+      "sha256": "81e97c6ecdcd71adfff7a9db5c30fd1fa742d9443b641559883fd05029fbf112",
+      "finished_utc": "2026-10-18T18:40:55.009312+00:00",
+      "errors": [],
+      "p1r_usable": false,
+      "lanes": [
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json",
+          "sha256": "3f67cbc3c59d7ef82d04d9e7b68e7efdd3aaac4324bcc5383829c6c0bf63b924",
+          "lane": "provenance",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 33,
+            "failed": 0,
+            "passed": 33
+          },
+          "case_count": 3,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json",
+          "sha256": "c73a3d5157f66ce05d93f784fdd0c262d20665ad2bafc443f22cb1c19353bce3",
+          "lane": "legacy-metadata",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 20,
+            "failed": 0,
+            "passed": 20
+          },
+          "case_count": 6,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json",
+          "sha256": "9aa2a756a77061c9e5bce18886e16809fba573a86f208c3da311d08d90770774",
+          "lane": "metadata-read",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 40,
+            "failed": 0,
+            "passed": 40
+          },
+          "case_count": 12,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json",
+          "sha256": "aa5640ebceeec13b02bdc89e640ed9b9d7f217f35651eaf289b154536e8cba66",
+          "lane": "metadata-write",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 226,
+            "failed": 0,
+            "passed": 226
+          },
+          "case_count": 6,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json",
+          "sha256": "4690a23edf05521fde10ed46ecb0d1cc7bc9a06c892e0acd39623b6acd67382e",
+          "lane": "full-replay",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 270,
+            "failed": 0,
+            "passed": 270
+          },
+          "case_count": 6,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json",
+          "sha256": "73e512f25666ad22bc28011db560c4de8079f8a8ccfa22df5b11d34b6a93a4b6",
+          "lane": "snapshot-tail",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 298,
+            "failed": 0,
+            "passed": 298
+          },
+          "case_count": 6,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json",
+          "sha256": "102d5e4790d5cfc57e994d6249f9f0c4a18c69f3be79e1eb73ccbc39cfbd85a9",
+          "lane": "retained-covered",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 298,
+            "failed": 0,
+            "passed": 298
+          },
+          "case_count": 6,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json",
+          "sha256": "7686fdb4c1b70107fff9c208d1f8280913f52ec5e6757e7a3495950bd2b9e339",
+          "lane": "retained-uncovered",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 596,
+            "failed": 0,
+            "passed": 596
+          },
+          "case_count": 12,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json",
+          "sha256": "da50435cf8be9e535cb5c0692e9b8068353454a30f4d4c30b4646f1935022c92",
+          "lane": "missing-event",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 540,
+            "failed": 0,
+            "passed": 540
+          },
+          "case_count": 12,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json",
+          "sha256": "e53edacfac389100411de5b6bb155751642fedf63e0b98df562ae554c8812496",
+          "lane": "invalid-evidence",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 354,
+            "failed": 0,
+            "passed": 354
+          },
+          "case_count": 15,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json",
+          "sha256": "14c62be4c7715e14d777ea43e8e8fde83b90a4be3a90b2eedcb9116a86af1540",
+          "lane": "query-wire",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 192,
+            "failed": 0,
+            "passed": 192
+          },
+          "case_count": 24,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json",
+          "sha256": "63b6efcc6617f7732cd88f97fe63bcd50c2430a9b6e63f10e5617326f60d5740",
+          "lane": "projection-wire",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 34,
+            "failed": 0,
+            "passed": 34
+          },
+          "case_count": 6,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json",
+          "sha256": "1de753eb807c87d887b86e87eaea6fa9e2479b40b4070e2b49e3067430c1f170",
+          "lane": "mixed-api",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 641,
+            "failed": 0,
+            "passed": 641
+          },
+          "case_count": 27,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json",
+          "sha256": "ed905465426797908916aaa40492411ec5084206a002d6ff0d2183d2c99ac594",
+          "lane": "checkout",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 704,
+            "failed": 0,
+            "passed": 704
+          },
+          "case_count": 11,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json",
+          "sha256": "9426285e48c705d6648d7c85b73b2550216b86212965e052d6cbb0e524812004",
+          "lane": "post-upgrade-restore",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "failed",
+          "compatibility": "unverified",
+          "assertions": {
+            "attempted": 61,
+            "failed": 3,
+            "passed": 58
+          },
+          "case_count": 1,
+          "failures": [
+            {
+              "case": "fresh-backup-restore-append-restart",
+              "checks": [
+                "fresh-restore-appends-thirteen",
+                "fresh-restart-reconstructs-thirteen",
+                "restored-head-thirteen"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json",
+          "sha256": "32fc2050c9b9d28beb9c47d398e0ed251609946064eba12a4ab42f711ddf218a",
+          "lane": "pre-upgrade-restore",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 44,
+            "failed": 0,
+            "passed": 44
+          },
+          "case_count": 1,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json",
+          "sha256": "917122cc9e9af319644ff423ed9cdd99c7462876655f1d7dbef5d4a652bf16c6",
+          "lane": "failure-cleanup",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 115,
+            "failed": 0,
+            "passed": 115
+          },
+          "case_count": 3,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json",
+          "sha256": "a7548bc3d1cdc94fd373d33c6a053739f16c184e347c619b36c3e63f52cbe66f",
+          "lane": "reminder-recovery",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "failed",
+          "compatibility": "unverified",
+          "assertions": {
+            "attempted": 131,
+            "failed": 4,
+            "passed": 127
+          },
+          "case_count": 3,
+          "failures": [
+            {
+              "case": "scheduled-restart-effect",
+              "checks": [
+                "scheduled-effect-not-committed-before-restart",
+                "restart-convergence-no-direct-submission"
+              ]
+            },
+            {
+              "case": "tenant-preservation",
+              "checks": [
+                "scheduled-effect-not-committed-before-restart",
+                "restart-convergence-no-direct-submission"
+              ]
+            }
+          ]
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json",
+          "sha256": "1de093d66a1f803717c21d7385e5ebe4ba50e1c3d7a4cc13a861f985ee232d40",
+          "lane": "logical-event-evolution",
+          "schema": "hexalith.p1r.lane-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 193,
+            "failed": 0,
+            "passed": 193
+          },
+          "case_count": 3,
+          "failures": []
+        }
+      ],
+      "recovery": [
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/fc3d5b12716e4a368511ee05d8f8e3f9.json",
+          "sha256": "aa87361afd6157ed62d09676d7819a5ca4e86c41cc77ca816e42d6c1d7ccf202",
+          "lane": "hexalith.p1r.cleanup-receipt.v1",
+          "schema": "hexalith.p1r.cleanup-receipt.v1",
+          "execution": "passed",
+          "compatibility": "compatible",
+          "assertions": {
+            "attempted": 7,
+            "failed": 0,
+            "passed": 7
+          },
+          "case_count": 0,
+          "failures": []
+        },
+        {
+          "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b20eb493a6bb4027a835afce09c5a8f8.json",
+          "sha256": "b66f94a5a5bfa9b08c5d589ac8af78a9f37d0b7205eb549847132554f5a3447f",
+          "lane": "candidate",
+          "schema": "hexalith.p1r.restore-receipt.v1",
+          "execution": "failed",
+          "compatibility": "incompatible",
+          "assertions": {
+            "attempted": 12,
+            "failed": 2,
+            "passed": 10
+          },
+          "case_count": 0,
+          "failures": []
+        }
+      ],
+      "lane_assertions": {
+        "attempted": 4790,
+        "passed": 4783,
+        "failed": 7
+      }
+    }
+  ],
+  "wrappers": [
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-4c589413d7d342be93f276b7ba03098e-isolation/isolation.json",
+      "sha256": "35305837e8df3b17c01d98e4181fdc3e3d671c6364282acc1ab6c20c60cbaaed",
+      "passed": false,
+      "errors": [
+        "private execution verification failed"
+      ],
+      "command_exit_code": 2,
+      "finished_utc": "2026-10-18T18:44:27.527053+00:00",
+      "cleanup": [
+        {
+          "absent_containers": [
+            "d10c39ca4e3321a22406479114d31d8d3e99c39a5622e8f7ab8997c3caf3ecad",
+            "4a70e6650b238b2c7b959819471348749734539411d2293a27d0355956fc19b6",
+            "b36fad3de3b843e9d8da485346a2da13b65f7800b54f32369dc3edc5712c4a84"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa-56vwixa2"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T18:44:24.515174+00:00",
+          "id": 1,
+          "nested_inventory": {
+            "complete": true,
+            "containers": [],
+            "daemon": "b36fad3de3b843e9d8da485346a2da13b65f7800b54f32369dc3edc5712c4a84"
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T18:44:19.856044+00:00",
+          "targeted": [
+            "d10c39ca4e3321a22406479114d31d8d3e99c39a5622e8f7ab8997c3caf3ecad",
+            "4a70e6650b238b2c7b959819471348749734539411d2293a27d0355956fc19b6",
+            "b36fad3de3b843e9d8da485346a2da13b65f7800b54f32369dc3edc5712c4a84",
+            "volume:p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa",
+            "scratch:/tmp/p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa-56vwixa2"
+          ]
+        },
+        {
+          "absent_containers": [
+            "d10c39ca4e3321a22406479114d31d8d3e99c39a5622e8f7ab8997c3caf3ecad",
+            "4a70e6650b238b2c7b959819471348749734539411d2293a27d0355956fc19b6",
+            "b36fad3de3b843e9d8da485346a2da13b65f7800b54f32369dc3edc5712c4a84"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa-56vwixa2"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T18:44:27.519092+00:00",
+          "id": 2,
+          "nested_inventory": {
+            "daemon_absent": true,
+            "prior_empty_inventory": true
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T18:44:24.524928+00:00",
+          "targeted": [
+            "d10c39ca4e3321a22406479114d31d8d3e99c39a5622e8f7ab8997c3caf3ecad",
+            "4a70e6650b238b2c7b959819471348749734539411d2293a27d0355956fc19b6",
+            "b36fad3de3b843e9d8da485346a2da13b65f7800b54f32369dc3edc5712c4a84",
+            "volume:p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa",
+            "scratch:/tmp/p1r-isolation-df5539a54ffe4fa397cbf7beeefcafaa-56vwixa2"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-aeef800700b64f5a8299a10e2bf3880f-isolation/isolation.json",
+      "sha256": "18d560663b4d6b17d94c8fdd07197a16c0995be06a057aa4473986d2262a4078",
+      "passed": false,
+      "errors": [
+        "private execution verification failed"
+      ],
+      "command_exit_code": 2,
+      "finished_utc": "2026-10-18T18:47:42.715825+00:00",
+      "cleanup": [
+        {
+          "absent_containers": [
+            "0208cf972995b27812e1e11d7cb15b25f6ecba24d882d47afcf30bacc45b2186",
+            "06ee3ac1c3b652e1bdcd071c5752cb8c78a864edcfdc01be0a19549b81bfc0d2",
+            "47fcb43de745525e44c9b353b5636a96bf2a565e89b36eafdc0d9ff14d2b374a"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-4aaa5df20ec047249a7c754b776dea60-jqj8vx4l"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-4aaa5df20ec047249a7c754b776dea60"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T18:47:39.535869+00:00",
+          "id": 1,
+          "nested_inventory": {
+            "complete": true,
+            "containers": [],
+            "daemon": "47fcb43de745525e44c9b353b5636a96bf2a565e89b36eafdc0d9ff14d2b374a"
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T18:47:34.830067+00:00",
+          "targeted": [
+            "0208cf972995b27812e1e11d7cb15b25f6ecba24d882d47afcf30bacc45b2186",
+            "06ee3ac1c3b652e1bdcd071c5752cb8c78a864edcfdc01be0a19549b81bfc0d2",
+            "47fcb43de745525e44c9b353b5636a96bf2a565e89b36eafdc0d9ff14d2b374a",
+            "volume:p1r-isolation-4aaa5df20ec047249a7c754b776dea60",
+            "scratch:/tmp/p1r-isolation-4aaa5df20ec047249a7c754b776dea60-jqj8vx4l"
+          ]
+        },
+        {
+          "absent_containers": [
+            "0208cf972995b27812e1e11d7cb15b25f6ecba24d882d47afcf30bacc45b2186",
+            "06ee3ac1c3b652e1bdcd071c5752cb8c78a864edcfdc01be0a19549b81bfc0d2",
+            "47fcb43de745525e44c9b353b5636a96bf2a565e89b36eafdc0d9ff14d2b374a"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-4aaa5df20ec047249a7c754b776dea60-jqj8vx4l"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-4aaa5df20ec047249a7c754b776dea60"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T18:47:42.707633+00:00",
+          "id": 2,
+          "nested_inventory": {
+            "daemon_absent": true,
+            "prior_empty_inventory": true
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T18:47:39.544538+00:00",
+          "targeted": [
+            "0208cf972995b27812e1e11d7cb15b25f6ecba24d882d47afcf30bacc45b2186",
+            "06ee3ac1c3b652e1bdcd071c5752cb8c78a864edcfdc01be0a19549b81bfc0d2",
+            "47fcb43de745525e44c9b353b5636a96bf2a565e89b36eafdc0d9ff14d2b374a",
+            "volume:p1r-isolation-4aaa5df20ec047249a7c754b776dea60",
+            "scratch:/tmp/p1r-isolation-4aaa5df20ec047249a7c754b776dea60-jqj8vx4l"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3-isolation/isolation.json",
+      "sha256": "ab6cf4e9bfbdffb24e401328b29bcc7e1ce4568b3c62a63c3cd273c17bf611e1",
+      "passed": false,
+      "errors": [
+        "[Errno 13] Permission denied: '/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json.writing'"
+      ],
+      "command_exit_code": 0,
+      "finished_utc": "2026-10-18T18:41:12.183060+00:00",
+      "cleanup": [
+        {
+          "absent_containers": [
+            "e73433f627bdac043605d92889fb23bd0bfa9b953c89d6f268f484953cbdc173",
+            "dc31ddce3e36e26021f2760d1caff4bdf390d2d913780c23c7e3fb89732c23dc",
+            "70c5b5169d21c0dce0e4878a80fdfc1f4570dbaacf06e7e3248354c857954d18"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-23e3146fb09045b784cc26d4d124b957-2v4bn879"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-23e3146fb09045b784cc26d4d124b957"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T18:41:09.029087+00:00",
+          "id": 1,
+          "nested_inventory": {
+            "complete": true,
+            "containers": [],
+            "daemon": "70c5b5169d21c0dce0e4878a80fdfc1f4570dbaacf06e7e3248354c857954d18"
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T18:40:59.797548+00:00",
+          "targeted": [
+            "e73433f627bdac043605d92889fb23bd0bfa9b953c89d6f268f484953cbdc173",
+            "dc31ddce3e36e26021f2760d1caff4bdf390d2d913780c23c7e3fb89732c23dc",
+            "70c5b5169d21c0dce0e4878a80fdfc1f4570dbaacf06e7e3248354c857954d18",
+            "volume:p1r-isolation-23e3146fb09045b784cc26d4d124b957",
+            "scratch:/tmp/p1r-isolation-23e3146fb09045b784cc26d4d124b957-2v4bn879"
+          ]
+        },
+        {
+          "absent_containers": [
+            "e73433f627bdac043605d92889fb23bd0bfa9b953c89d6f268f484953cbdc173",
+            "dc31ddce3e36e26021f2760d1caff4bdf390d2d913780c23c7e3fb89732c23dc",
+            "70c5b5169d21c0dce0e4878a80fdfc1f4570dbaacf06e7e3248354c857954d18"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-23e3146fb09045b784cc26d4d124b957-2v4bn879"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-23e3146fb09045b784cc26d4d124b957"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T18:41:12.174707+00:00",
+          "id": 2,
+          "nested_inventory": {
+            "daemon_absent": true,
+            "prior_empty_inventory": true
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T18:41:09.037807+00:00",
+          "targeted": [
+            "e73433f627bdac043605d92889fb23bd0bfa9b953c89d6f268f484953cbdc173",
+            "dc31ddce3e36e26021f2760d1caff4bdf390d2d913780c23c7e3fb89732c23dc",
+            "70c5b5169d21c0dce0e4878a80fdfc1f4570dbaacf06e7e3248354c857954d18",
+            "volume:p1r-isolation-23e3146fb09045b784cc26d4d124b957",
+            "scratch:/tmp/p1r-isolation-23e3146fb09045b784cc26d4d124b957-2v4bn879"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-a87fc7cc50e3447aae60a23491db9773-isolation/isolation.json",
+      "sha256": "461eeb774a1a8ee8c2c15ee8ef6732bdaaba4879c7d5f2cf74c1ffd03277440f",
+      "passed": true,
+      "errors": [],
+      "command_exit_code": 0,
+      "finished_utc": "2026-10-18T17:31:47.858153+00:00",
+      "cleanup": [
+        {
+          "absent_containers": [
+            "8c7a3fa1b0edcaa0c51a97a293e030ccf325a8a9e361c662d9d6ed08821ec686",
+            "ac8474c38b3838777c188254f00afdd372795e00d551ec2538022aea33b03796",
+            "e37a0c1bc9763ef355bedb08db9b14d2cbcee07f100765ee2a577d3c54c0d353"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-74659c804299438192474a1ac3642771-cbusngt_"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-74659c804299438192474a1ac3642771"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T17:31:44.193158+00:00",
+          "id": 1,
+          "nested_inventory": {
+            "complete": true,
+            "containers": [],
+            "daemon": "e37a0c1bc9763ef355bedb08db9b14d2cbcee07f100765ee2a577d3c54c0d353"
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T17:31:38.266342+00:00",
+          "targeted": [
+            "8c7a3fa1b0edcaa0c51a97a293e030ccf325a8a9e361c662d9d6ed08821ec686",
+            "ac8474c38b3838777c188254f00afdd372795e00d551ec2538022aea33b03796",
+            "e37a0c1bc9763ef355bedb08db9b14d2cbcee07f100765ee2a577d3c54c0d353",
+            "volume:p1r-isolation-74659c804299438192474a1ac3642771",
+            "scratch:/tmp/p1r-isolation-74659c804299438192474a1ac3642771-cbusngt_"
+          ]
+        },
+        {
+          "absent_containers": [
+            "8c7a3fa1b0edcaa0c51a97a293e030ccf325a8a9e361c662d9d6ed08821ec686",
+            "ac8474c38b3838777c188254f00afdd372795e00d551ec2538022aea33b03796",
+            "e37a0c1bc9763ef355bedb08db9b14d2cbcee07f100765ee2a577d3c54c0d353"
+          ],
+          "absent_scratch": [
+            "/tmp/p1r-isolation-74659c804299438192474a1ac3642771-cbusngt_"
+          ],
+          "absent_volumes": [
+            "p1r-isolation-74659c804299438192474a1ac3642771"
+          ],
+          "errors": [],
+          "finished_utc": "2026-10-18T17:31:47.849028+00:00",
+          "id": 2,
+          "nested_inventory": {
+            "daemon_absent": true,
+            "prior_empty_inventory": true
+          },
+          "remaining": [],
+          "started_utc": "2026-10-18T17:31:44.202028+00:00",
+          "targeted": [
+            "8c7a3fa1b0edcaa0c51a97a293e030ccf325a8a9e361c662d9d6ed08821ec686",
+            "ac8474c38b3838777c188254f00afdd372795e00d551ec2538022aea33b03796",
+            "e37a0c1bc9763ef355bedb08db9b14d2cbcee07f100765ee2a577d3c54c0d353",
+            "volume:p1r-isolation-74659c804299438192474a1ac3642771",
+            "scratch:/tmp/p1r-isolation-74659c804299438192474a1ac3642771-cbusngt_"
+          ]
+        }
+      ]
+    }
+  ],
+  "audits": [
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-4c589413d7d342be93f276b7ba03098e/audit.json",
+      "sha256": "d0fe68cfe4a153fed11383f83ae81e5ba9408b482e3bc231c62aecbab6fb6543",
+      "valid_evidence": false,
+      "errors": [
+        {
+          "message": "'<=' not supported between instances of 'str' and 'datetime.datetime'",
+          "type": "TypeError"
+        }
+      ],
+      "qualified": false,
+      "p1r_usable": false
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-aeef800700b64f5a8299a10e2bf3880f/audit.json",
+      "sha256": "887ca47b78b5bd8560b449aba941a60199dc34003efcebb912843016caade947",
+      "valid_evidence": false,
+      "errors": [
+        {
+          "message": "proposed successor lacks final isolation evidence",
+          "type": "InvalidPacket"
+        }
+      ],
+      "qualified": false,
+      "p1r_usable": false
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-aeef800700b64f5a8299a10e2bf3880f/audit.json",
+      "sha256": "887ca47b78b5bd8560b449aba941a60199dc34003efcebb912843016caade947",
+      "valid_evidence": false,
+      "errors": [
+        {
+          "message": "proposed successor lacks final isolation evidence",
+          "type": "InvalidPacket"
+        }
+      ],
+      "qualified": false,
+      "p1r_usable": false
+    }
+  ]
+}
