@@ -22,6 +22,8 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public Action<string> AfterTryDeleteByteState { get; set; }
 
+    public Action<string> BeforeReadByteState { get; set; }
+
     public Exception ExecuteStateTransactionException { get; init; }
 
     public int ExecuteStateTransactionCallCount { get; private set; }
@@ -223,6 +225,7 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
+        BeforeReadByteState?.Invoke(key);
         cancellationToken.ThrowIfCancellationRequested();
         return _byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
             ? Task.FromResult<(ReadOnlyMemory<byte>, string)>((entry.Value, entry.ETag))
@@ -365,6 +368,9 @@ internal sealed class RecordingDaprClient : DaprClient
         BeforeTrySaveByteState?.Invoke(key, binaryValue);
 
         bool exists = _byteStore.TryGetValue(key, out (byte[] Value, string ETag) current);
+        // Redis reports an unqualified first-write collision as Internal instead of an ETag mismatch.
+        if (exists && string.IsNullOrEmpty(etag))
+            throw new Dapr.DaprException("Create-only contention without an explicit initial ETag.");
         bool matches = exists
             ? string.Equals(current.ETag, etag, StringComparison.Ordinal)
             : string.IsNullOrEmpty(etag);

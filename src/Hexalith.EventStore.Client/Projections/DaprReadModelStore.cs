@@ -161,15 +161,22 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         ArgumentNullException.ThrowIfNull(etag);
 
         RecordTypedMutation(value);
-        return await _daprClient
-            .TrySaveStateAsync(
-                storeName,
-                key,
-                value,
-                etag,
-                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        try {
+            return await _daprClient
+                .TrySaveStateAsync(
+                    storeName,
+                    key,
+                    value,
+                    etag,
+                    new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Dapr.DaprException) when (etag.Length == 0 && !cancellationToken.IsCancellationRequested) {
+            if (await DaprReadModelCreateConflict.ExistsAsync(_daprClient, storeName, key, cancellationToken).ConfigureAwait(false))
+                return false;
+            throw;
+        }
     }
 
     /// <inheritdoc/>
@@ -188,18 +195,25 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         long ttlSeconds = ToTtlSeconds(timeToLive);
 
         RecordTypedMutation(value);
-        return await _daprClient
-            .TrySaveStateAsync(
-                storeName,
-                key,
-                value,
-                etag,
-                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
-                    ["ttlInSeconds"] = ttlSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        try {
+            return await _daprClient
+                .TrySaveStateAsync(
+                    storeName,
+                    key,
+                    value,
+                    etag,
+                    new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
+                    metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
+                        ["ttlInSeconds"] = ttlSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Dapr.DaprException) when (etag.Length == 0 && !cancellationToken.IsCancellationRequested) {
+            if (await DaprReadModelCreateConflict.ExistsAsync(_daprClient, storeName, key, cancellationToken).ConfigureAwait(false))
+                return false;
+            throw;
+        }
     }
 
     /// <inheritdoc/>
