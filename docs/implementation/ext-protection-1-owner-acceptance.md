@@ -2,6 +2,33 @@
 
 **Disposition: incomplete delivery; do not accept as Committed.** The partial implementation contains occurrence-aware interaction field protection, safe actor completion and idle recovery wiring, sealed distribution, default-provider refusal, typed erased aggregate replay, and an owner-verifier harness with actual capability-signature and native-original correlation. It does not contain the complete production artifact required by the Agents register. The missing custody/authority implementations are source delivery gaps, not merely missing environment variables. No Live verification ran; no Agents consumer was enabled; no register/status was changed by this continuation.
 
+## Current owner-delivery checkpoint — 2026-10-18
+
+This continuation began from clean `main` at EventStore HEAD `993be1bcc03fea06b9cd451ad04d57783a119e83`; the separately inspected Platform checkout was clean at `5f18593639832d1245577dd93ec07687517d3acb`. These are observations, not complete delivery targets. The spec's approved erasure-first stop still applies, so this checkpoint updates evidence and records the exact missing implementation rather than constructing a substitute provider. No production code changed. Earlier evidence and the frozen intent are preserved; all full-delivery tasks remain incomplete.
+
+Evidence directory: `/home/administrator/hexalith-protection-evidence/ext-protection-1/owner-delivery-current-20261018T140417Z-52d12c204ffc4c0ab45a5232353a1e39/`. `baseline.json` records the starting branches, full revisions, working trees and authority/source hashes. Each check has its original `*.command.json`, `*.result.json` and hash-bound log; `validation-manifest.json` and `source-files.json` bind the completed checkpoint and tested assembly. Commands below run from EventStore unless a different directory is stated.
+
+| Exact command / observation | Current result |
+| --- | --- |
+| `dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1` | Exit 0; zero warnings/errors; `server-build.log`. |
+| Direct xUnit v3 assembly command below | **181 passed**, zero errors/failed/skipped/unrun; `authority-owner-components.log`. These are source/component checks with synthetic infrastructure. |
+| `python3 -m unittest discover -s tools/tests -p 'test_ext_protection_1*.py' -v` | **56 passed**, exit 0; `verifier-offline.log`. No installed role was invoked. |
+| `python3 tools/verify-ext-protection-1.py --mode Source` | Exit 0; 41 planned cases, unchanged plan SHA-256 `c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c`, `liveExecuted:false`; `source.log`. |
+| From Platform: `rg -n -U --glob '*.cs' '(class\|record)\s+\w+[^;{]*:\s*[^{;]*\bICustodyKeyLifecycleProvider\b' src` | Exit 1, no implementation match; `provider-discovery.log`. A separate direct-reference search finds only the interface and its optional actor constructor dependency (`platform-lifecycle-bindings.log`). No `WrapDek`, `UnwrapDek` or `DestroyDekManifest` implementation exists in those Platform sources. |
+| `rg -n -U --glob '*.cs' '(class\|record)\s+\w+[^;{]*:\s*[^{;]*\b(IAtomicDeletionManifestProvider\|IInteractionOccurrenceKeyProvider\|IInteractionProtectionBindingProvider)\b' src` | Exit 1, no implementation match; `eventstore-provider-discovery.log`. Direct-reference inspection finds only contracts and consumers (`provider-bindings.log`); opt-in registration creates none of these required providers. |
+| From Platform's `docs/implementation/ext-secrets-1-option-a-feasibility-2026-10-18/`: `sha256sum --check SHA256SUMS` | Exit 0; both retained native result/command files verified; `retained-native-proof.log`. This validates historical evidence bytes and does not rerun the native probe. |
+| Read-only installed-reference and retained-native-result inspection, exact Python argv in `installed-reference-check.command.json` | The command-path accepted profile is absent. The installed public runtime reference retains SHA-256 `31c28a9d1dd21eed8ca4d0c421088cb946b262c624ba461d0795cab92cd1feb3`; lifecycle authority, all-copy inventory, nonrollback journal, restore target, protection owner and accepted replacement commit remain null. Native result SHA-256 `6efa381bc70b3de57a24142e5e679f53781c7f89d5ab6740fb7664966f30888e` still records restored target plaintext equality and `g1Qualified:false`; `installed-reference-check.log`. |
+
+```bash
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll \
+  -class Hexalith.EventStore.Server.Tests.Security.PublishedTrustDeletionConsumptionAuthorityTests \
+  -class Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionActorTests \
+  -class Hexalith.EventStore.Server.Tests.Security.InteractionOccurrenceRegistryActorTests \
+  -class Hexalith.EventStore.Server.Tests.Security.GovernanceScopeGuardTests -noColor
+```
+
+**Unresolved acceptance:** G1/G3 require Platform's concrete erasure hierarchy, independently surviving authority and complete copy inventory before the stopped production provider/atomic-manifest construction can proceed. The installed HMAC binding and ordinary Raft recovery cannot supply them. G2 still requires actual nonrollback admission/compromise/activation authority; the published dispatch verifier's other authority methods deliberately deny. G4 needs mixed-root snapshot policy and installed recovery/replay qualification. G5/G6 need actual independent roles, fixtures and complete native authority/signing chains. G7 therefore still has no complete canonical target, accepted integration date or acceptable Committed command. Physical integration cannot run against a missing provider. No Live/cohort/Agents execution, provisioning, destructive infrastructure operation, dependency-status/register edit or Git mutation occurred.
+
 ## Guard membership and ordering correction — 2026-10-18
 
 This continuation began on `main` at canonical HEAD `55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b` with nine pre-existing modified files. Those changes were preserved. This HEAD is an observation, not a complete delivery target. Retained evidence is `/home/administrator/hexalith-protection-evidence/ext-protection-1/owner-guard-facts-20261018T134430Z-4c27480a1a114c0cb66de622cb618552/`: `baseline.json` and `initial-diff.patch` record the starting state; `validation-manifest.json` binds exact argv, working directories, exits and log hashes; `source-files.json` binds the final source and tested binaries.
