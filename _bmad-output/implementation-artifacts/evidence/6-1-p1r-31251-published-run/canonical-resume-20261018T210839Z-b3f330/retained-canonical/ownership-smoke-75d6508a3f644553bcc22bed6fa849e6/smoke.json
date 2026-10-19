@@ -1,0 +1,62 @@
+{
+  "controlled_command_vector": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-executor.py",
+    "run",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/ownership-smoke-75d6508a3f644553bcc22bed6fa849e6",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-owner-inputs.json",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f"
+  ],
+  "errors": [],
+  "finished_utc": "2026-10-18T19:03:12.713689+00:00",
+  "handoff": {
+    "directories": [
+      {
+        "after": {
+          "gid": 1000,
+          "uid": 1000
+        },
+        "before": {
+          "gid": 0,
+          "uid": 0
+        },
+        "mode": 493,
+        "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/ownership-smoke-75d6508a3f644553bcc22bed6fa849e6"
+      },
+      {
+        "after": {
+          "gid": 1000,
+          "uid": 1000
+        },
+        "before": {
+          "gid": 0,
+          "uid": 0
+        },
+        "mode": 493,
+        "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/ownership-smoke-75d6508a3f644553bcc22bed6fa849e6/receipts"
+      }
+    ],
+    "execution_sha256": "3721c1feb0478d4e105f3cc73a006b66bfc6c1c27752044f441014ac7508e7db",
+    "executor_source_sha256": "12cce793b03ad6882c9babe3857b17bb8068c31aea8d740c8f83c0f59e5b1cef",
+    "host_owner": {
+      "gid": 1000,
+      "uid": 1000
+    },
+    "invocation": "c17153b647ec49afa0d921cdd9b92001",
+    "schema": "hexalith.p1r.executor-output-handoff.v1",
+    "selected_input": {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-owner-inputs.json",
+      "sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1"
+    }
+  },
+  "mode": "ownership",
+  "p1r_usable": false,
+  "receipt": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/ownership-smoke-75d6508a3f644553bcc22bed6fa849e6/receipts/control.json",
+  "receipt_sha256_before_host_finalization": "1538990f4a6460482da8380918038f236093b839182f15bbf6e02dd5089dc214",
+  "scope": "bounded private control; not full qualification",
+  "script_sha256": "f10a24e70879068c5c32c7a4d9f8d2b3b374077c11b154669a5af499f797d2bf",
+  "started_utc": "2026-10-18T19:03:09.265136+00:00"
+}

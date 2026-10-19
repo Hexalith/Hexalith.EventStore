@@ -1,0 +1,18 @@
+{
+  "private_execution": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e-isolation/private-execution.json",
+  "dotnet_version": "10.0.401",
+  "python_version": [
+    3,
+    12,
+    12
+  ],
+  "source_sdk_pin": {
+    "version": "10.0.401",
+    "rollForward": "latestPatch"
+  },
+  "source_sdk_pin_sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+  "verifier_sdk_pin": {
+    "version": "10.0.402",
+    "rollForward": "latestPatch"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-isolated-runner.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a-isolation",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+    "--",
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-31251.py",
+    "reminder",
+    "--verifier-root",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-owner-inputs.json",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a",
+    "--wrapper",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a-isolation"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "started_utc": "2026-10-18T19:04:11.202607+00:00",
+  "out": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a",
+  "isolation": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a-isolation",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T19:14:09.148364+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-command-92a4e8ab7103441597fa053337ab0b2a.log"
+}
