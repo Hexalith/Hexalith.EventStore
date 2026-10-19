@@ -33,6 +33,41 @@ namespace Hexalith.EventStore.DomainService.Tests;
 /// Tier 1 coverage of the domain-service SDK host extensions and the moved router/metadata helpers.
 /// </summary>
 public sealed class EventStoreDomainServiceExtensionsTests {
+    /// <summary>Selective mapping preserves bespoke routes and protects every SDK projection endpoint.</summary>
+    [Fact]
+    public void SelectiveProjectionMappingPreservesHostRoutesAndWorkloadPolicies()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService();
+        WebApplication app = builder.Build();
+        foreach (string route in new[] { "/process", "/query", "/replay-state", "/project" })
+            _ = app.MapPost(route, () => Results.Ok());
+
+        _ = app.MapEventStoreDomainProjectionEndpoints();
+
+        RouteEndpoint[] endpoints = GetRouteEndpoints(app);
+        foreach (string route in new[] { "/process", "/query", "/replay-state", "/project" })
+            endpoints.Count(endpoint => endpoint.RoutePattern.RawText == route).ShouldBe(1);
+        endpoints.ShouldNotContain(endpoint => endpoint.RoutePattern.RawText == "/");
+        endpoints.ShouldNotContain(endpoint => endpoint.RoutePattern.RawText == "/admin/operational-index-metadata");
+        foreach (RouteEndpoint endpoint in endpoints.Where(endpoint => endpoint.RoutePattern.RawText!.StartsWith("/project/", StringComparison.Ordinal)))
+        {
+            string route = endpoint.RoutePattern.RawText!;
+            EventStoreDomainServiceRoute catalog = EventStoreDomainServiceRoutes.Operational.Single(item => item.Route == route);
+            endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+                .Select(data => data.Policy).ShouldBe([catalog.Policy]);
+        }
+        AssertRouteSupports(app, "/project/v2", HttpMethods.Post);
+        AssertRouteSupports(app, "/project/rebuild/v1", HttpMethods.Post);
+        AssertRouteSupports(app, "/project/rebuild/part/v1", HttpMethods.Post);
+        AssertRouteSupports(app, "/project/rebuild/shared/v1", HttpMethods.Post);
+
+        _ = app.MapEventStoreDomainProjectionMetadataEndpoint();
+        RouteEndpoint metadata = GetRouteEndpoints(app).Single(endpoint => endpoint.RoutePattern.RawText == "/admin/operational-index-metadata");
+        metadata.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+            .Select(data => data.Policy).ShouldBe([EventStoreDomainServiceRoutes.Operational.Single(item => item.Route == "/admin/operational-index-metadata").Policy]);
+    }
+
     [Fact]
     public void MetadataReportsRegisteredHandlerOnlyDomainWithoutGrantingOrphanProjectionCapabilities()
     {

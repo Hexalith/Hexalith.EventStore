@@ -17,6 +17,133 @@ public sealed class SharedProjectionEpochCoordinatorTests {
         ["ordinary-dispatch"]);
 
     [Fact]
+    public async Task CapturedIdentityPrefixExtendsAfterOrdinaryGrowthAndPreservesReplay() {
+        var store = new InMemoryReadModelStore();
+        SharedProjectionEpochCoordinator coordinator = await PrepareSequenceSeedAsync(store, "prefix", 1);
+        byte[] identities = CapturedIdentities(8);
+        await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "prefix", "widget-a", 1,
+            capturedEventDigests: identities[..32]);
+        await coordinator.CompleteOwnerSequenceHandoffAsync(s_scope, "prefix");
+        _ = await coordinator.CatchUpAsync(s_scope, Fold(coordinator));
+        SharedProjectionLease lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        for (int position = 2; position <= 8; position++) {
+            (await coordinator.JournalAsync(s_scope, lease, Delivery(position, 1) with { OwnerSequenceNumber = position }))
+                .ShouldBe(SharedProjectionJournalResult.Journaled);
+            (await coordinator.CatchUpAsync(s_scope, Fold(coordinator))).ShouldBe(1);
+        }
+
+        SharedProjectionCheckpoint checkpoint = (await coordinator.GetCheckpointAsync(s_scope, "widget-a"))!;
+        checkpoint.OwnerSequenceNumber.ShouldBe(8);
+        checkpoint.CapturedEventDigests!.Length.ShouldBe(32);
+        (await coordinator.ReadAsync<Counter>(s_scope, "index")).Value!.Value.ShouldBe(8);
+
+        _ = await coordinator.BeginAsync(s_scope, "complete", "complete-inventory",
+            new Dictionary<string, long> { ["widget-a"] = 8 });
+        _ = await coordinator.StageAsync(s_scope, "complete", [Write(8)]);
+        await coordinator.CommitAsync(s_scope, "complete", requireOwnerSequenceHandoff: true);
+        await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "complete", "widget-a", 8,
+            capturedEventDigests: identities);
+        await coordinator.SeedCapturedOwnerSequenceAsync(s_scope, "complete", "widget-a", 8,
+            capturedEventDigests: identities);
+        await coordinator.CompleteOwnerSequenceHandoffAsync(s_scope, "complete");
+        _ = await coordinator.CatchUpAsync(s_scope, Fold(coordinator));
+        (await coordinator.GetCheckpointAsync(s_scope, "widget-a"))!.CapturedEventDigests!.ShouldBe(identities);
+
+        lease = await coordinator.RefreshLeaseAsync(s_scope, "ordinary-dispatch");
+        for (int position = 1; position <= 8; position++) {
+            (await coordinator.JournalAsync(s_scope, lease, Delivery(position, 1) with { OwnerSequenceNumber = position }))
+                .ShouldBe(SharedProjectionJournalResult.AlreadyCaptured);
+        }
+
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(1, 2) with { OwnerSequenceNumber = 1 }))
+            .ShouldBe(SharedProjectionJournalResult.IdentityConflict);
+        (await coordinator.JournalAsync(s_scope, lease, Delivery(9, 1) with { OwnerSequenceNumber = 9 }))
+            .ShouldBe(SharedProjectionJournalResult.Journaled);
+        (await coordinator.CatchUpAsync(s_scope, Fold(coordinator))).ShouldBe(1);
+        (await coordinator.ReadAsync<Counter>(s_scope, "index")).Value!.Value.ShouldBe(9);
+    }
+
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(8, false)]
+    [InlineData(1, true)]
+    public async Task SequenceSeedRejectsConflictingOrMissingKnownPrefix(long priorSequence, bool omitIdentities) {
+        var store = new InMemoryReadModelStore();
+        SharedProjectionEpochCoordinator coordinator = await PrepareSequenceSeedAsync(store, "conflicting-prefix", 8);
+        byte[] identities = CapturedIdentities(8);
+        var existing = new SharedProjectionCheckpoint(priorSequence, [1], priorSequence, identities[..32]);
+        store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("widget-a"), existing);
+        ReadModelEntry<SharedProjectionCheckpoint> before = await store.GetAsync<SharedProjectionCheckpoint>(
+            s_scope.StoreName, s_scope.CheckpointKey("widget-a"));
+        identities[0] ^= 1;
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.SeedCapturedOwnerSequenceAsync(
+            s_scope, "conflicting-prefix", "widget-a", 8, capturedEventDigests: omitIdentities ? null : identities));
+        ReadModelEntry<SharedProjectionCheckpoint> after = await store.GetAsync<SharedProjectionCheckpoint>(
+            s_scope.StoreName, s_scope.CheckpointKey("widget-a"));
+        after.ETag.ShouldBe(before.ETag);
+        JsonSerializer.Serialize(after.Value).ShouldBe(JsonSerializer.Serialize(before.Value));
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(31, 1)]
+    [InlineData(33, 8)]
+    [InlineData(64, 1)]
+    [InlineData(288, 8)]
+    public async Task SequenceSeedRejectsMalformedRetainedIdentityVectors(int byteCount, long priorSequence) {
+        var store = new InMemoryReadModelStore();
+        SharedProjectionEpochCoordinator coordinator = await PrepareSequenceSeedAsync(store, "malformed-prefix", 8);
+        store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("widget-a"),
+            new SharedProjectionCheckpoint(8, [8], priorSequence, new byte[byteCount]));
+        ReadModelEntry<SharedProjectionCheckpoint> before = await store.GetAsync<SharedProjectionCheckpoint>(
+            s_scope.StoreName, s_scope.CheckpointKey("widget-a"));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.SeedCapturedOwnerSequenceAsync(
+            s_scope, "malformed-prefix", "widget-a", 8, capturedEventDigests: CapturedIdentities(8)));
+        (await store.GetAsync<SharedProjectionCheckpoint>(s_scope.StoreName, s_scope.CheckpointKey("widget-a")))
+            .ETag.ShouldBe(before.ETag);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(31)]
+    [InlineData(224)]
+    [InlineData(255)]
+    [InlineData(288)]
+    public async Task SequenceSeedRequiresANewCompleteIdentityVector(int byteCount) {
+        var store = new InMemoryReadModelStore();
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await Should.ThrowAsync<ArgumentException>(() => coordinator.SeedCapturedOwnerSequenceAsync(
+            s_scope, "incomplete", "widget-a", 8, capturedEventDigests: new byte[byteCount]));
+        store.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task SequenceSeedPrefixExtensionPreservesANewerConcurrentCheckpoint() {
+        var store = new InMemoryReadModelStore();
+        SharedProjectionEpochCoordinator coordinator = await PrepareSequenceSeedAsync(store, "extension-race", 8);
+        byte[] identities = CapturedIdentities(8);
+        store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("widget-a"),
+            new SharedProjectionCheckpoint(8, [8], 8, identities[..32]));
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.SeedCapturedOwnerSequenceAsync(
+            s_scope, "stale-operation", "widget-a", 8, capturedEventDigests: identities));
+        bool raced = false;
+        var newer = new SharedProjectionCheckpoint(9, [9], 9, identities[..32]);
+        store.ConcurrentWriteBeforeTrySave = () => {
+            store.ConcurrentWriteBeforeTrySave = null;
+            raced = true;
+            store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("widget-a"), newer);
+        };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.SeedCapturedOwnerSequenceAsync(
+            s_scope, "extension-race", "widget-a", 8, capturedEventDigests: identities));
+        raced.ShouldBeTrue();
+        JsonSerializer.Serialize((await coordinator.GetCheckpointAsync(s_scope, "widget-a")))
+            .ShouldBe(JsonSerializer.Serialize(newer));
+    }
+
+    [Fact]
     public async Task CapturedPositionRequiresTheCapturedEventIdentity() {
         var store = new InMemoryReadModelStore();
         var coordinator = new SharedProjectionEpochCoordinator(store, store);
@@ -588,6 +715,21 @@ public sealed class SharedProjectionEpochCoordinatorTests {
         (await restarted.ReadGenerationAsync<Counter>(s_scope, 1, "index")).Value.ShouldBeNull();
         (await restarted.ReadAsync<Counter>(s_scope, "index")).Generation.ShouldBe(0);
     }
+
+    private static async Task<SharedProjectionEpochCoordinator> PrepareSequenceSeedAsync(
+        InMemoryReadModelStore store, string operationId, int position) {
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(s_scope, "ordinary-dispatch");
+        _ = await coordinator.BeginAsync(s_scope, operationId, "inventory",
+            new Dictionary<string, long> { ["widget-a"] = position });
+        _ = await coordinator.StageAsync(s_scope, operationId, [Write(position)]);
+        await coordinator.CommitAsync(s_scope, operationId, requireOwnerSequenceHandoff: true);
+        return coordinator;
+    }
+
+    private static byte[] CapturedIdentities(int count)
+        => Enumerable.Range(1, count).SelectMany(position => SharedProjectionCapturedEventIdentity.Compute(
+            "widget-a", position, position, JsonSerializer.SerializeToUtf8Bytes(1))).ToArray();
 
     private static SharedProjectionDelivery Delivery(long position, int delta)
         => new("widget-a", position, JsonSerializer.SerializeToUtf8Bytes(delta), JsonSerializer.SerializeToUtf8Bytes(position));

@@ -437,6 +437,22 @@ public sealed partial class SharedProjectionEpochCoordinator
                     throw new InvalidOperationException("The owner checkpoint sequence exceeds its rebuild history.");
                 }
 
+                if (existing.CapturedEventDigests is { } knownIdentities)
+                {
+                    if (knownIdentities.Length == 0 || knownIdentities.Length % 32 != 0
+                        || knownIdentities.Length / 32 > existing.OwnerSequenceNumber)
+                    {
+                        throw new InvalidOperationException("The owner checkpoint has malformed captured event identities.");
+                    }
+
+                    if (capturedEventDigests is null && existing.OwnerSequenceNumber < lastSequenceNumber
+                        || capturedEventDigests is not null && (knownIdentities.Length > capturedEventDigests.Length
+                            || !knownIdentities.AsSpan().SequenceEqual(capturedEventDigests.AsSpan(0, knownIdentities.Length))))
+                    {
+                        throw new InvalidOperationException("The captured owner event identities conflict with the checkpoint.");
+                    }
+                }
+
                 if (existing.OwnerSequenceNumber == lastSequenceNumber)
                 {
                     if (existing.Position != capturedPosition)
@@ -444,15 +460,14 @@ public sealed partial class SharedProjectionEpochCoordinator
                         throw new InvalidOperationException("The owner checkpoint does not match its rebuild capture.");
                     }
 
-                    if (capturedEventDigests is null || existing.CapturedEventDigests is not null
-                        && existing.CapturedEventDigests.AsSpan().SequenceEqual(capturedEventDigests))
+                    if (capturedEventDigests is null
+                        || existing.CapturedEventDigests?.Length == capturedEventDigests.Length)
                     {
                         return;
                     }
-                    if (existing.CapturedEventDigests is not null)
-                    {
-                        throw new InvalidOperationException("The captured owner event identities conflict with the checkpoint.");
-                    }
+
+                    // Ordinary delivery advances the checkpoint while retaining the last rebuilt
+                    // identity prefix. Extend a verified prefix through the same conditional save.
                 }
             }
 

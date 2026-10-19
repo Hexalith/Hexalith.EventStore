@@ -278,7 +278,6 @@ public static class EventStoreDomainServiceExtensions {
         ValidateDomainQueryHandlerRoutes(app.Services);
         app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
         bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
-        bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
         if (mapProjectionEndpoint) {
             ValidateDomainProjectionHandlerRoutes(app.Services);
         }
@@ -361,6 +360,100 @@ public static class EventStoreDomainServiceExtensions {
                 })
                 .RequireEventStoreDomainServicePolicy("/project");
         }
+
+        _ = app.MapEventStoreDomainProjectionEndpoints();
+
+        _ = app.MapEventStoreDomainProjectionMetadataEndpoint();
+
+        _ = app.MapPost("/project/source-guard/reconcile-applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
+            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
+                Results.Ok(await DomainProjectionOwnerProof.ReconcileAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/project/source-guard/reconcile-applied-receipt/v1");
+        _ = app.MapPost("/project/source-guard/applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
+            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
+                Results.Ok(await DomainProjectionOwnerProof.ReadAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/project/source-guard/applied-receipt/v1");
+        _ = app.MapPost("/project/source-guard/owner-proof/v1", async (ProjectionOwnerProofRequest request,
+            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken cancellationToken) =>
+            Results.Ok(await DomainProjectionOwnerProof.ReadAsync(services, request, catalog, cancellationToken).ConfigureAwait(false)))
+            .RequireEventStoreDomainServicePolicy("/project/source-guard/owner-proof/v1");
+
+        return app;
+    }
+
+    /// <summary>Maps SDK-owned named/shared capability metadata for a host with bespoke domain routes.</summary>
+    /// <param name="app">The registered domain-service application.</param>
+    /// <returns>The application for chaining.</returns>
+    public static WebApplication MapEventStoreDomainProjectionMetadataEndpoint(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        _ = app.MapPost(
+            "/admin/operational-index-metadata",
+            (AdminOperationalIndexMetadata.Request request,
+             DiscoveryResult discovery,
+             IEnumerable<IDomainQueryHandler> queryHandlers,
+             IEnumerable<IAsyncDomainProjectionHandler> namedProjectionHandlers,
+             IEnumerable<IDomainProjectionHandler> legacyProjectionHandlers,
+             IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
+             IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
+             IServiceProviderIsKeyedService keyedServices,
+             [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
+             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations) => {
+                DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
+                AdminOperationalIndexMetadata.Response response;
+                if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
+                    response = AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers);
+                }
+                else {
+                    if (!string.Equals(request.AppId, identity.AppId, StringComparison.Ordinal)
+                        || !string.Equals(request.ServiceVersion, identity.ServiceVersion, StringComparison.Ordinal)
+                        || request.Domains.Count != 1) {
+                        return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                    }
+
+                    response = AdminOperationalIndexMetadata.Create(
+                        discovery,
+                        request.Domains,
+                        queryHandlers,
+                        namedProjectionHandlers,
+                        identity.AppId,
+                        identity.ServiceVersion,
+                        projectionDispatchOptions.Value,
+                        request.Domains
+                            .Where(domain => keyedServices.IsKeyedService(typeof(IDomainProcessor), domain)
+                                || keyedServices.IsKeyedService(typeof(IAsyncDomainProcessor), domain))
+                            .ToArray(),
+                        legacyProjectionHandlers);
+                }
+
+                if (request.ProjectionSourceGuardVersion is not null and not 1)
+                    return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
+                if (request.ProjectionSourceGuardVersion == 1)
+                {
+                    response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers);
+                    response = DomainProjectionReplayRecovery.BindMetadata(app.Services, response, namedProjectionHandlers);
+                }
+                RegisterNamedProjectionCatalog(response, catalogRegistry);
+                return Results.Ok(response);
+            })
+            .RequireEventStoreDomainServicePolicy("/admin/operational-index-metadata");
+
+        return app;
+    }
+
+    /// <summary>
+    /// Maps only the named projection dispatch and rebuild endpoints for a host that owns its
+    /// process, query, replay-state and legacy projection routes. Uses the same workload policies,
+    /// replay-header binding and durable rebuild protocol as the complete domain-service mapper.
+    /// </summary>
+    /// <param name="app">The web application with domain-service services registered.</param>
+    /// <returns>The application for chaining.</returns>
+    public static WebApplication MapEventStoreDomainProjectionEndpoints(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
+        ValidateNamedDomainProjectionHandlerRoutes(app.Services);
+        bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
 
         if (mapNamedProjectionEndpoint) {
             _ = app.MapPost(
@@ -461,70 +554,6 @@ public static class EventStoreDomainServiceExtensions {
             }).RequireEventStoreDomainServicePolicy("/project/rebuild/reclaim-guarded/v1");
         }
         MapSharedProjectionRebuildEndpoint(app);
-
-        _ = app.MapPost(
-            "/admin/operational-index-metadata",
-            (AdminOperationalIndexMetadata.Request request,
-             DiscoveryResult discovery,
-             IEnumerable<IDomainQueryHandler> queryHandlers,
-             IEnumerable<IAsyncDomainProjectionHandler> namedProjectionHandlers,
-             IEnumerable<IDomainProjectionHandler> legacyProjectionHandlers,
-             IOptions<ProjectionDispatchOptions> projectionDispatchOptions,
-             IOptions<DomainProjectionIdentityOptions> projectionIdentityOptions,
-             IServiceProviderIsKeyedService keyedServices,
-             [FromServices] DomainProjectionCatalogRegistry catalogRegistry,
-             IEnumerable<DomainProjectionOwnerProofRegistration> ownerProofRegistrations) => {
-                DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
-                AdminOperationalIndexMetadata.Response response;
-                if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
-                    response = AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers);
-                }
-                else {
-                    if (!string.Equals(request.AppId, identity.AppId, StringComparison.Ordinal)
-                        || !string.Equals(request.ServiceVersion, identity.ServiceVersion, StringComparison.Ordinal)
-                        || request.Domains.Count != 1) {
-                        return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
-                    }
-
-                    response = AdminOperationalIndexMetadata.Create(
-                        discovery,
-                        request.Domains,
-                        queryHandlers,
-                        namedProjectionHandlers,
-                        identity.AppId,
-                        identity.ServiceVersion,
-                        projectionDispatchOptions.Value,
-                        request.Domains
-                            .Where(domain => keyedServices.IsKeyedService(typeof(IDomainProcessor), domain)
-                                || keyedServices.IsKeyedService(typeof(IAsyncDomainProcessor), domain))
-                            .ToArray(),
-                        legacyProjectionHandlers);
-                }
-
-                if (request.ProjectionSourceGuardVersion is not null and not 1)
-                    return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
-                if (request.ProjectionSourceGuardVersion == 1)
-                {
-                    response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers);
-                    response = DomainProjectionReplayRecovery.BindMetadata(app.Services, response, namedProjectionHandlers);
-                }
-                RegisterNamedProjectionCatalog(response, catalogRegistry);
-                return Results.Ok(response);
-            })
-            .RequireEventStoreDomainServicePolicy("/admin/operational-index-metadata");
-
-        _ = app.MapPost("/project/source-guard/reconcile-applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
-            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
-                Results.Ok(await DomainProjectionOwnerProof.ReconcileAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
-            .RequireEventStoreDomainServicePolicy("/project/source-guard/reconcile-applied-receipt/v1");
-        _ = app.MapPost("/project/source-guard/applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
-            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
-                Results.Ok(await DomainProjectionOwnerProof.ReadAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
-            .RequireEventStoreDomainServicePolicy("/project/source-guard/applied-receipt/v1");
-        _ = app.MapPost("/project/source-guard/owner-proof/v1", async (ProjectionOwnerProofRequest request,
-            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken cancellationToken) =>
-            Results.Ok(await DomainProjectionOwnerProof.ReadAsync(services, request, catalog, cancellationToken).ConfigureAwait(false)))
-            .RequireEventStoreDomainServicePolicy("/project/source-guard/owner-proof/v1");
 
         return app;
     }
