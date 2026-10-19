@@ -1,0 +1,2294 @@
+diff --git a/.gitattributes b/.gitattributes
+index 46f205ae..bdec6c5f 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -123,3 +123,6 @@ docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verifi
+ docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json -text
+ docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json -text
+ docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json -text
++
++# New P1R receipts bind literal bytes, command output and archive identities.
++_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/** -text -whitespace
+diff --git a/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md b/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md
+index 6455daca..fcdc9791 100644
+--- a/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md
++++ b/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md
+@@ -2,7 +2,9 @@
+ title: '6.1-P1R published EventStore 3.125.1 qualification'
+ type: 'feature'
+ created: '2026-10-18'
+-status: 'draft'
++status: 'in-progress'
++approved: '2026-10-18'
++approval_decision: 'approve-and-continue'
+ route: 'dispatch'
+ review_loop_iteration: 0
+ baseline_commit: 'd55c6f7c11e9bce6f17d490a84c83f1561979d63'
+@@ -48,11 +50,11 @@ context:
+ 
+ **Execution:**
+ 
+-- [ ] `tools/p1r-published-executor.py`, `tools/p1r_published_executor.py`, `tools/p1r_qualification.py` — add explicit tagged-source selection, defaulting legacy calls compatibly. Build Debug/source consumers from that root; independently bind verifier closure and exact immutable candidate production/build closure. Keep selected tag/source equality and reject dirty/substituted candidate source.
+-- [ ] `tools/p1r_isolation.py`, `tools/p1r_isolation_evidence.py`, `tools/p1r_published_qualification.py` — carry both roots/closures through private execution, receipts, finalization and independent validation. Use self-contained ordinary Git checkouts without shared metadata/alternates. Recheck identities after waits and before sealing; preserve legacy validation contracts.
+-- [ ] `tools/p1r-published-consumers/{Directory.Build.props,host/Host.csproj,domain/Domain.csproj}`, `tools/p1r_published_executor.py`, `tools/p1r_check_witnesses.py`, `tools/p1r_published_qualification.py` — enroll exactly 3.125.1 for genuine snapshot/evolution execution and full isolation validation. Preserve historical version constants and measured support rules.
+-- [ ] `tools/tests/{test_p1r_published_executor.py,test_p1r_published_qualification.py,test_p1r_snapshot_registration.py,test_p1r_isolation.py,test_p1r_isolation_hardening.py}` — verify the matrix through real callers, including rehashed root/source substitution, post-wait drift, missing witnesses and unenrolled candidates. Retain earlier enrolled coverage.
+-- [ ] `tools/p1r-published-consumers/README.md` — document finite enrollment, separate roots and pending-decision behavior.
++- [x] `tools/p1r-published-executor.py`, `tools/p1r_published_executor.py`, `tools/p1r_qualification.py` — add explicit tagged-source selection, defaulting legacy calls compatibly. Build Debug/source consumers from that root; independently bind verifier closure and exact immutable candidate production/build closure. Keep selected tag/source equality and reject dirty/substituted candidate source.
++- [x] `tools/p1r_isolation.py`, `tools/p1r_isolation_evidence.py`, `tools/p1r_published_qualification.py` — carry both roots/closures through private execution, receipts, finalization and independent validation. Use self-contained ordinary Git checkouts without shared metadata/alternates. Recheck identities after waits and before sealing; preserve legacy validation contracts.
++- [x] `tools/p1r-published-consumers/{Directory.Build.props,host/Host.csproj,domain/Domain.csproj}`, `tools/p1r_published_executor.py`, `tools/p1r_check_witnesses.py`, `tools/p1r_published_qualification.py` — enroll exactly 3.125.1 for genuine snapshot/evolution execution and full isolation validation. Preserve historical version constants and measured support rules.
++- [x] `tools/tests/{test_p1r_published_executor.py,test_p1r_published_qualification.py,test_p1r_snapshot_registration.py,test_p1r_isolation.py,test_p1r_isolation_hardening.py}` — verify the matrix through real callers, including rehashed root/source substitution, post-wait drift, missing witnesses and unenrolled candidates. Retain earlier enrolled coverage.
++- [x] `tools/p1r-published-consumers/README.md` — document finite enrollment, separate roots and pending-decision behavior.
+ - [ ] `_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/` — retain fresh official observations and selected inputs, then execute canonical observe/run, measure-boundary and independent audit. Preserve literal commands, counts, errors, package proof, persisted recovery and cleanup. Attempt strict prepare/validate with genuine available inputs; retain missing-disposition refusal rather than fabricate a passing packet. Add byte-preservation attributes for new sealed evidence as needed.
+ 
+ **Acceptance Criteria:**
+@@ -63,6 +65,33 @@ context:
+ 
+ ## Implementation Notes
+ 
++- User approved and continued on 2026-10-18. The working tree is now clean at
++  `ce1eba0c459f4a00b2e555668e2e548af81f34f5`; intervening user commits and
++  submodule updates are preserved. The original planning baseline stays recorded
++  above and is not authority to revert those changes.
++
++- Implementation runs in the independent verifier checkout
++  `/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf`;
++  selected production source stays in the independent exact-tag checkout
++  `/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f`.
++  Concurrent user Git changes in the original workspace are preserved. These
++  retained paths must remain available for physical source-assembly validation.
++- Final source freeze v3 passed all six required suites individually plus
++  optimized hardening: 358 tests total, real Host/Domain builds and
++  Host/Domain/Probe evaluations, `git diff --check` and Python compilation.
++  Versioned freeze records and every failed development attempt are retained
++  under the independent evidence tree. Canonical Git observation ignores replace
++  refs and verifies physical tagged bytes despite index flags, ignored source
++  injection or external transforms.
++- The initial full run is retained as nonpassing history: executor errors were
++  empty but seven lane assertions and two separate recovery assertions failed;
++  outer finalization also failed on receipt-directory ownership. Its Reminder
++  restart lead was almost exhausted before registration, and its stale callback
++  did not retain the original due-time identity. Successor tooling corrects those
++  fixture boundaries without changing production behavior or rewriting receipts.
++  Fresh final observe/full/audit remain in progress; pending owner, conformance
++  and architect disposition decisions confer no acceptance.
++
+ ## Spec Change Log
+ 
+ ## Review Triage Log
+diff --git a/tools/p1r-published-consumers/README.md b/tools/p1r-published-consumers/README.md
+index e568a880..22730c5a 100644
+--- a/tools/p1r-published-consumers/README.md
++++ b/tools/p1r-published-consumers/README.md
+@@ -35,7 +35,7 @@ events. Original event and snapshot hashes must survive those appends. Historica
+ comparison fixtures retain their original stopped-writer snapshot diagnostic;
+ they cannot establish genuine successor snapshot creation. Enrollment is a finite
+ tooling allowlist; later versions receive no successor compiler definitions or
+-snapshot fixture sources, and an unenrolled successor's genuine seed refuses.
++snapshot fixture sources, and an unenrolled candidate's seed refuses at every interval.
+ The refusal occurs before fixture state reset or writer start. The selected
+ candidate's restore writer must use that exact candidate version. The 3.125.0
+ operational importer also requires the final private isolation and cleanup journal.
+@@ -254,11 +254,51 @@ recovery import corpus. These checks execute no published P1R qualification.
+ Exact commands, results and preservation proof are retained in
+ `../../_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/`.
+ 
+-The released v3.125.1 source is
+-`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`; this edited checkout cannot inherit
+-its immutable binding. `validate_execution_inputs` and `observe_inputs` still
+-require selected tag, selected source and tooling HEAD equality. Operational
+-qualification is blocked until owners approve a separate tooling/source
+-binding strategy, select the exact published tuple and prove restored graph
+-agreement. Finite enrollment changes no production snapshot policy, pins,
+-rollback=null, AD-17 drain/freeze/forward recovery, acceptance or Story 6.4 hold.
++The published 3.125.1 qualification selects source
++`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b` and tag Builds
++`4629ff2d3bd66376b29a553663c241d3a7b87853`. Pass `--source-root` to both
++`observe` and `run` to select a self-contained ordinary Git checkout at that
++exact tag, and pass the same root to strict `prepare`. The verifier closure
++records the current tools and their execution Builds independently. Its
++`candidate_source` closure records the immutable production/build inputs;
++independent validation reconstructs both roles and refuses dirty, missing,
++substituted or drifting source. Linked worktrees and borrowed Git object stores
++are refused. Legacy calls without this option retain their historical binding.
++Canonical Git observation ignores replacement refs. Physical production and
++build bytes must match tagged blobs in their declared checkout form, including
++LF C# and CRLF `global.json`. Index flags, external attributes/filters and ignored
++source injections cannot hide changes; ordinary generated `bin`/`obj` outputs
++remain excluded.
++
++Reminder fixtures reserve a separate 120-second startup/restart lead and retain
++the same armed revision-one deadline across restart. Revision two selects its
++own future deadline. Checks before and after each registration require at least
++five seconds remaining, bind the launched due time and refuse missed windows.
++The natural scheduler observation budget remains 30 seconds after the due time.
++Registration reports the literal due time, revision and published reminder name.
++The callback repeats the original armed identity explicitly, including after a
++revision-two restart changes the current due time. Independent validation
++recomputes the published schedule tuple and binds both registrations, the
++callback query and the identity actually invoked. Legacy callback calls without
++an explicit identity continue to use their current fixture environment.
++Before private SDK teardown, a completed canonical run with an explicit source root returns only
++its output and receipt directories to the owner of the host-created wrapper
++directory. This preserves receipt bytes and modes while allowing the host to
++attach final isolation evidence atomically.
++
++The private runner mounts that exact candidate root when it is outside the
++verifier workspace. It rechecks source after readiness waits and before final
++receipt attachment. Source consumers use Debug/project references into the
++selected root, including its SDK and central package pins. Their assets, locks
++and physically loaded assemblies are independently bound. Package consumers
++continue to restore the signed immutable nuget.org bytes in Release. The finite
++snapshot/evolution enrollment includes exactly 3.125.1 alongside the earlier
++enrolled versions; 3.126.0 remains refused before state reset or writer startup.
++
++Fresh technical measurements retain every failed check and execution error.
++A measured successor support table remains pending until its architect supplies
++a genuine disposition. Strict preparation refuses that missing decision; all
++four owner decisions and same-baseline conformance remain pending and
++`p1r_usable=false`. This tooling changes no production snapshot policy, pins,
++rollback=null, Projects AD-17 drain/freeze/forward recovery, acceptance, sprint
++status or readiness.
+diff --git a/tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs b/tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs
+index 9aad52c6..7684298c 100644
+--- a/tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs
++++ b/tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs
+@@ -10,8 +10,8 @@ internal sealed class FixtureReminderIntentSource : IReminderIntentSource
+     internal ReminderIntent? Current { get; set; }
+ 
+     /// <summary>Creates the same immutable witness before and after an application restart.</summary>
+-    internal static ReminderIntent Intent(int revision) => new("tenant-a", "counter", "fixture",
+-        DateTimeOffset.Parse(Environment.GetEnvironmentVariable("P1R_REMINDER_DUE")
++    internal static ReminderIntent Intent(int revision, string? due = null) => new("tenant-a", "counter", "fixture",
++        DateTimeOffset.Parse(due ?? Environment.GetEnvironmentVariable("P1R_REMINDER_DUE")
+             ?? throw new InvalidOperationException("Owned reminder due time unavailable."), System.Globalization.CultureInfo.InvariantCulture), EffectKindCatalog.DateResume,
+         "p1r-counter-resume-v1", "{}"u8.ToArray(), "counter", "fixture", revision, revision);
+ 
+diff --git a/tools/p1r-published-consumers/host/QualificationCapabilities.cs b/tools/p1r-published-consumers/host/QualificationCapabilities.cs
+index bd51d828..ab62e194 100644
+--- a/tools/p1r-published-consumers/host/QualificationCapabilities.cs
++++ b/tools/p1r-published-consumers/host/QualificationCapabilities.cs
+@@ -50,12 +50,21 @@ internal static class QualificationCapabilities
+         app.MapPost("/reminder/register/{revision:int}", async (int revision, FixtureReminderIntentSource source, IReminderRegistrar registrar) =>
+         {
+             source.Current = FixtureReminderIntentSource.Intent(revision);
+-            return Results.Ok(await registrar.ConvergeAsync(new ReminderTarget("tenant-a", "counter", "fixture")));
++            ReminderConvergenceResult result = await registrar.ConvergeAsync(new ReminderTarget("tenant-a", "counter", "fixture"));
++            return Results.Ok(new { result.Armed, result.Submitted, result.Cancelled, result.Unresolved, result.Quarantined,
++                intent_due = Environment.GetEnvironmentVariable("P1R_REMINDER_DUE"), intent_revision = revision,
++                reminder_name = ReminderIdentityCodec.ComputeReminderName(source.Current) });
+         });
+-        app.MapPost("/reminder/callback/{revision:int}", async (int revision, IConfiguration configuration) =>
++        app.MapPost("/reminder/callback/{revision:int}", async (int revision, string? due, string? reminderName, IConfiguration configuration) =>
+         {
+             string actorId = ReminderIdentityCodec.ComputeActorId("tenant-a", "fixture");
+-            string name = ReminderIdentityCodec.ComputeReminderName(FixtureReminderIntentSource.Intent(revision));
++            string selectedDue = due ?? Environment.GetEnvironmentVariable("P1R_REMINDER_DUE")
++                ?? throw new InvalidOperationException("Owned reminder due time unavailable.");
++            string name = ReminderIdentityCodec.ComputeReminderName(FixtureReminderIntentSource.Intent(revision, selectedDue));
++            if (reminderName is not null && !string.Equals(reminderName, name, StringComparison.Ordinal))
++            {
++                return Results.BadRequest(new { error = "callback-intent-identity-mismatch" });
++            }
+             using HttpClient client = new();
+             string address = configuration["ASPNETCORE_URLS"] ?? throw new InvalidOperationException("Owned app address unavailable.");
+             using HttpRequestMessage request = new(HttpMethod.Put, address + $"/actors/P1RReminderActor/{actorId}/method/remind/{name}");
+@@ -63,7 +72,8 @@ internal static class QualificationCapabilities
+             request.Headers.Add("dapr-api-token", configuration["APP_API_TOKEN"]);
+             using HttpResponseMessage response = await client.SendAsync(request);
+             IAggregateActor actor = ActorProxy.Create<IAggregateActor>(new ActorId("tenant-a:counter:fixture"), "AggregateActor");
+-            return Results.Ok(new { callback_status = (int)response.StatusCode, sequence = await actor.GetCurrentSequenceAsync() });
++            return Results.Ok(new { callback_status = (int)response.StatusCode, sequence = await actor.GetCurrentSequenceAsync(),
++                intent_due = selectedDue, intent_revision = revision, reminder_name = name });
+         });
+ #endif
+         app.MapPost("/qualification/{operation}", async (string operation, IServiceProvider services, IConfiguration configuration) =>
+diff --git a/tools/p1r-published-executor.py b/tools/p1r-published-executor.py
+index 7b9349c4..eb8c641b 100644
+--- a/tools/p1r-published-executor.py
++++ b/tools/p1r-published-executor.py
+@@ -19,9 +19,11 @@ def main(arguments=None):
+     observe.add_argument("--out", type=Path, required=True)
+     observe.add_argument("--planning-observations", type=Path, required=True)
+     observe.add_argument("--selection-reference", required=True)
++    observe.add_argument("--source-root", type=Path, help="exact tagged production source checkout")
+     execute = commands.add_parser("run", help="run all canonical families and selected additions")
+     execute.add_argument("--out", type=Path, required=True)
+     execute.add_argument("--inputs", type=Path, required=True)
++    execute.add_argument("--source-root", type=Path, help="exact tagged production source checkout")
+     inventory = commands.add_parser("inventory", help="read an exactly owned state fixture; no runtime application access")
+     inventory.add_argument("--container", required=True)
+     inventory.add_argument("--invocation", required=True)
+@@ -35,19 +37,24 @@ def main(arguments=None):
+             return 0
+         # Resolve every path while still in the caller's original working directory.
+         args.out = args.out.absolute()
++        if args.source_root is not None:
++            args.source_root = args.source_root.absolute()
+         if args.command == "run":
+             args.inputs = args.inputs.absolute()
+             inputs, data, scope = qualification.load_document(args.inputs, qualification.validate_inputs)
+             qualification.require(scope == "owner-selected", "synthetic selections cannot execute published qualification")
+-            validate_execution_inputs(inputs)
++            validate_execution_inputs(inputs, args.source_root) if args.source_root is not None else validate_execution_inputs(inputs)
+         else:
+             args.planning_observations = args.planning_observations.absolute()
+         if not os.environ.get("HEXALITH_P1R_ISOLATION"):
+             from p1r_isolation import IsolatedRunner
+-            isolation = IsolatedRunner(args.out.with_name(args.out.name + "-isolation"))
++            isolation = (IsolatedRunner(args.out.with_name(args.out.name + "-isolation"), source_root=args.source_root)
++                         if args.source_root is not None else IsolatedRunner(args.out.with_name(args.out.name + "-isolation")))
+             forwarded = [args.command, "--out", str(args.out)]
+             forwarded += (["--inputs", str(args.inputs)] if args.command == "run" else
+                           ["--planning-observations", str(args.planning_observations), "--selection-reference", args.selection_reference])
++            if args.source_root is not None:
++                forwarded += ["--source-root", str(args.source_root)]
+             code = isolation.run(["python3", str(Path(__file__).resolve()), *forwarded])
+             responses = []
+             for line in isolation.result.get("command_stdout", "").splitlines():
+@@ -65,11 +72,12 @@ def main(arguments=None):
+         from p1r_isolation import private_proof, OUTER_MARKER
+         private_proof(os.environ.get(OUTER_MARKER))
+         if args.command == "observe":
+-            worker = Executor(args.out)
++            worker = Executor(args.out, source_root=args.source_root) if args.source_root is not None else Executor(args.out)
+             worker.observe_inputs(json.loads(args.planning_observations.read_bytes()), args.selection_reference)
+             worker.cleanup()
+         else:
+-            worker = Executor(args.out, inputs)
++            worker = (Executor(args.out, inputs, source_root=args.source_root) if args.source_root is not None
++                      else Executor(args.out, inputs))
+             worker.inputs_sha256 = qualification.digest(data)
+             worker.result["inputs_sha256"] = worker.inputs_sha256
+             worker.save()
+diff --git a/tools/p1r-published-qualification.py b/tools/p1r-published-qualification.py
+index 19ad1ada..32fe104d 100644
+--- a/tools/p1r-published-qualification.py
++++ b/tools/p1r-published-qualification.py
+@@ -21,6 +21,7 @@ def main(arguments=None):
+     commands = parser.add_subparsers(dest="command", required=True)
+     prepare = commands.add_parser("prepare", help="create a new sealed qualification packet")
+     prepare.add_argument("--out", type=Path, required=True, help="new output directory (must not exist)")
++    prepare.add_argument("--source-root", type=Path, help="self-contained exact tagged candidate source checkout")
+     prepare.add_argument("--inputs", type=Path, help="owner execution inputs (hexalith.p1r.owner-inputs.v1)")
+     prepare.add_argument("--decisions", type=Path, help="owner decisions and same-baseline conformance")
+     prepare.add_argument("--candidate-evidence", type=Path, help="isolated Release package evidence for the candidate")
+@@ -54,7 +55,8 @@ def main(arguments=None):
+             packet = create_packet(args.out, inputs=args.inputs, decisions=args.decisions,
+                                    candidate_evidence=args.candidate_evidence, rollback_evidence=args.rollback_evidence,
+                                    receipts=tuple(args.receipt), process_controls=args.process_controls,
+-                                   comparison_evidence=tuple(args.comparison_evidence), support_boundary=args.support_boundary)
++                                   comparison_evidence=tuple(args.comparison_evidence), support_boundary=args.support_boundary,
++                                   source_root=args.source_root)
+             if packet["errors"]:
+                 # The sealed packet retains the refusal; report its exact errors and refusals instead of validating.
+                 print(json.dumps({"valid": False, "qualified": False, "p1r_usable": False,
+diff --git a/tools/p1r_check_witnesses.py b/tools/p1r_check_witnesses.py
+index 4689af5c..ebc1807c 100644
+--- a/tools/p1r_check_witnesses.py
++++ b/tools/p1r_check_witnesses.py
+@@ -7,6 +7,8 @@ import ast
+ import base64
+ import binascii
+ import inspect
++import urllib.parse
++from datetime import datetime, timedelta
+ from functools import lru_cache
+ from pathlib import Path
+ 
+@@ -439,6 +441,86 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
+     for identity,passed in expected.items():
+         require(checks[prefix+identity] is passed, 'qualified snapshot check contradicts retained execution output')
+ 
++def reminder_name(due_utc, revision, tenant='tenant-a', item='fixture'):
++    """Recompute the version-one published schedule tuple without calling the fixture."""
++    due = datetime.fromisoformat(due_utc)
++    require(due.utcoffset() == timedelta(0) and type(revision) is int and revision >= 0,
++            'invalid reminder schedule identity')
++    elapsed = due.replace(tzinfo=None) - datetime(1,1,1)
++    ticks = (elapsed.days*86400+elapsed.seconds)*10_000_000+elapsed.microseconds*10
++    data = b''
++    for value in ('schedule',tenant,item):
++        encoded = value.encode('utf-8')
++        data += len(encoded).to_bytes(4,'big')+encoded
++    data += ticks.to_bytes(8,'big',signed=True)+revision.to_bytes(8,'big',signed=True)
++    bits = int(digest(data),16) << 4
++    alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
++    return 'date-wrs-'+''.join(alphabet[(bits >> (5*(51-index))) & 31] for index in range(52))
++
++
++def validate_reminder_identity(observation, successful_http, checks, identifier):
++    registrations = [(command,response) for command,response in successful_http
++                     if command['argv'][:2] == ['HTTP','POST'] and '/reminder/register/' in command['argv'][2]]
++    callbacks = [(command,response) for command,response in successful_http
++                 if command['argv'][:2] == ['HTTP','POST'] and '/reminder/callback/' in command['argv'][2]]
++    require(len(registrations) == 2 and len(callbacks) == 1, 'reminder identity lacks exact registration and callback commands')
++    for index,(command,response) in enumerate(registrations):
++        revision = 2 if index == 1 and identifier == 'stale-generation-refusal' else 1
++        due = observation['deadline_windows'][index*2]['due_utc']
++        require(urllib.parse.urlsplit(command['argv'][2]).path == '/reminder/register/'+str(revision)
++                and response == observation['registration' if index == 0 else 'rearmed']
++                and response.get('intent_due') == due and response.get('intent_revision') == revision
++                and response.get('reminder_name') == reminder_name(due,revision),
++                'armed reminder identity differs from literal due, revision or published tuple')
++    original = registrations[0][1]
++    command,response = callbacks[0]
++    callback = urllib.parse.urlsplit(command['argv'][2])
++    require(callback.path == '/reminder/callback/1'
++            and urllib.parse.parse_qs(callback.query,strict_parsing=True) == {
++                'due':[original['intent_due']], 'reminderName':[original['reminder_name']]}
++            and response == observation.get('repeated_or_stale')
++            and all(response.get(key) == original[key] for key in ('intent_due','intent_revision','reminder_name'))
++            and checks.get('callback-replays-original-armed-identity') is True,
++            'callback does not replay the exact original armed reminder')
++    accepted = type(response.get('callback_status')) is int and 200 <= response['callback_status'] < 300
++    require(checks.get('callback-actor-request-accepted') is accepted,
++            'callback actor request status contradicts its measured acceptance')
++
++
++def validate_reminder_windows(observation, successful_http, configurations, checks, identifier):
++    windows = observation.get('deadline_windows')
++    phases = ('initial-before-register', 'initial-after-register', 'restart-before-register', 'restart-after-register')
++    require(isinstance(windows,list) and len(windows) == 4
++            and [row.get('phase') for row in windows] == list(phases), 'reminder future deadline proof missing')
++    registrations = [command for command,response in successful_http if command['argv'][:2] == ['HTTP','POST']
++                     and '/reminder/register/' in command['argv'][2]]
++    require(len(registrations) == 2, 'reminder deadline lacks exact registration commands')
++    for index,command in enumerate(registrations):
++        before, after = windows[index*2:index*2+2]
++        require(before['selected_utc'] == after['selected_utc'] and before['due_utc'] == after['due_utc'],
++                'reminder immutable intent changed during registration')
++        started, finished = (datetime.fromisoformat(command[key]) for key in ('started_utc','finished_utc'))
++        require(datetime.fromisoformat(before['observed_utc']) <= started <= finished
++                <= datetime.fromisoformat(after['observed_utc']), 'reminder deadline proof does not bracket registration')
++        for window in (before,after):
++            selected, due, observed = (datetime.fromisoformat(window[key]) for key in ('selected_utc','due_utc','observed_utc'))
++            remaining = (due-observed).total_seconds()
++            require(all(value.utcoffset() == timedelta(0) for value in (selected,due,observed))
++                    and selected <= observed and (due-selected).total_seconds() == 120
++                    and window.get('startup_lead_seconds') == 120 and window.get('minimum_remaining_seconds') == 5
++                    and window.get('remaining_seconds') == remaining and remaining >= 5
++                    and checks.get('reminder-'+window['phase']+'-deadline-future') is True,
++                    'reminder deadline expired or timing proof substituted')
++        eligible = [row for row in configurations if datetime.fromisoformat(row['observed_utc']) <= started]
++        require(eligible and max(eligible,key=lambda row: row['observed_utc']).get('reminder_due') == before['due_utc'],
++                'reminder due differs from actual launched configuration')
++    if identifier != 'stale-generation-refusal':
++        require(windows[0]['due_utc'] == windows[2]['due_utc']
++                and windows[0]['selected_utc'] == windows[2]['selected_utc'],
++                'armed reminder intent was rescheduled during restart')
++    require(observation.get('due') == windows[-1]['due_utc'], 'reminder final due differs from retained intent')
++
++
+ def validate_case(row, evidence, binding, lane, retained_sources, candidate_version='3.119.0'):
+     """Recompute check, probe, inventory and rendered-runtime consistency."""
+     import json
+@@ -668,6 +750,9 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
+         require(not equivalent or comparison.get('delta') == [], 'equivalence carries contradictory semantic deltas')
+ 
+     if not incomplete and lane == 'reminder-recovery':
++        if candidate_version == '3.125.1':
++            validate_reminder_windows(observation, successful_http, configurations, checks, row['id'])
++            validate_reminder_identity(observation, successful_http, checks, row['id'])
+         for name, identity in (('registration','initial-convergence-no-direct-submission'), ('rearmed','restart-convergence-no-direct-submission')):
+             value = observation.get(name)
+             require(isinstance(value,dict) and identity in checks, 'reminder attribution drops stable submitted check')
+diff --git a/tools/p1r_isolation.py b/tools/p1r_isolation.py
+index 4faf6230..eb2b121f 100644
+--- a/tools/p1r_isolation.py
++++ b/tools/p1r_isolation.py
+@@ -112,16 +112,63 @@ def private_proof(outer_id):
+             "outer_daemon_id": outer_id, "socket": SOCKET, "process": process,
+             "namespaces": own, "daemon_namespaces": daemon_namespaces, "executables": executables,
+             "python_version": list(sys.version_info[:3]),
+-            "dotnet_version": subprocess.check_output(["dotnet", "--version"], env=environment).decode().strip(),
++            "dotnet_version": subprocess.check_output(["dotnet", "--version"], env=environment, cwd="/").decode().strip(),
+             "glibc": os.confstr("CS_GNU_LIBC_VERSION")}
+ 
+ 
+-def inner(output, outer_id, command):
++def inner(output, outer_id, command, source_root=None):
+     with signal_handling():
+-        return _inner(output, outer_id, command)
++        return _inner(output, outer_id, command, source_root)
+ 
+ 
+-def _inner(output, outer_id, command):
++def handoff_executor_output(command, wrapper_output, binding, source_root, output_was_absent):
++    """Return only this completed canonical run's directories to the host owner."""
++    command = list(map(str, command))
++    if source_root is None or command[:3] != ["python3", str(ROOT / "tools/p1r-published-executor.py"), "run"]:
++        return None
++    selected = executor_input(command, ROOT)
++    require(command_source_root(command) == source_root and output_was_absent,
++            "executor ownership handoff lacks an invocation-owned output")
++    run = Path(command[4])
++    require(run != ROOT and run.is_relative_to(ROOT) and run == run.resolve() and run.is_dir(),
++            "executor ownership output escaped verifier")
++    require(binding.get("repository") == str(ROOT), "executor ownership source root substituted")
++    source_path, execution_path = run / "executor-source.json", run / "execution.json"
++    source_data, execution_data = regular(source_path), regular(execution_path)
++    execution = json.loads(execution_data)
++    require(json.loads(source_data) == binding and execution.get("executor_source_sha256") == digest(source_data)
++            and execution.get("schema") == "hexalith.p1r.executor.v1"
++            and execution.get("inputs_sha256") == selected["sha256"] and execution.get("finished_utc")
++            and bool(re.fullmatch(r"[0-9a-f]{32}", execution.get("invocation", ""))),
++            "executor ownership handoff source or execution substituted")
++    receipts = run / "receipts"
++    require(receipts == receipts.resolve() and receipts.is_dir()
++            and isinstance(execution.get("receipts"), list) and bool(execution["receipts"]),
++            "executor ownership receipt directory unavailable")
++    for name in execution["receipts"]:
++        path = Path(name)
++        require(path.parent == receipts and path.suffix == ".json", "executor ownership receipt escaped output")
++        regular(path)
++    wrapper_output = Path(wrapper_output)
++    require(wrapper_output == wrapper_output.resolve() and wrapper_output.is_dir(), "wrapper owner path substituted")
++    owner = wrapper_output.stat()
++    rows = []
++    for path in (run, receipts):
++        before = path.stat()
++        os.chown(path, owner.st_uid, owner.st_gid, follow_symlinks=False)
++        after = path.stat()
++        require((after.st_uid, after.st_gid) == (owner.st_uid, owner.st_gid)
++                and (before.st_mode & 0o7777) == (after.st_mode & 0o7777), "executor ownership handoff failed")
++        rows.append({"path": str(path), "before": {"uid": before.st_uid, "gid": before.st_gid},
++                     "after": {"uid": after.st_uid, "gid": after.st_gid}, "mode": after.st_mode & 0o7777})
++    require(regular(source_path) == source_data and regular(execution_path) == execution_data,
++            "executor ownership handoff changed evidence bytes")
++    return {"schema": "hexalith.p1r.executor-output-handoff.v1", "invocation": execution["invocation"],
++            "host_owner": {"uid": owner.st_uid, "gid": owner.st_gid}, "selected_input": selected,
++            "executor_source_sha256": digest(source_data), "execution_sha256": digest(execution_data), "directories": rows}
++
++
++def _inner(output, outer_id, command, source_root=None):
+     """Retain command failures and repeated exact-process cleanup in the private namespace."""
+     output = Path(output)
+     result = {"schema": SCHEMA, "scope": "isolated-command-verification", "invocation": os.environ.get(MARKER),
+@@ -137,17 +184,24 @@ def _inner(output, outer_id, command):
+             try:
+                 return original_git(root, *arguments)
+             except InvalidPacket:
+-                probe = subprocess.run(["git", "--no-pager", *arguments], cwd=root,
++                probe = subprocess.run(["git", "--no-replace-objects", "--no-pager", *arguments], cwd=root,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                 result["git_failure"] = {"cwd": str(root), "arguments": arguments, "exit_code": probe.returncode,
+                                          "stderr": probe.stderr.decode("utf-8", "replace")}
+                 raise
+         preparation.git = diagnosed_git
+         try:
+-            result["source_binding"] = preparation.source_binding()
++            result["source_binding"] = (preparation.source_binding(ROOT, source_root) if source_root is not None
++                                        else preparation.source_binding())
+         finally:
+             preparation.git = original_git
+         write_json(output / "private-execution.json", result)
++        canonical_run = source_root is not None and list(map(str, command[:3])) == [
++            "python3", str(ROOT / "tools/p1r-published-executor.py"), "run"]
++        if canonical_run:
++            executor_input(command, ROOT)
++            result["executor_output_was_absent"] = not Path(command[4]).exists()
++            require(result["executor_output_was_absent"], "executor output already exists before command")
+         environment = dict(private_environment(), HEXALITH_P1R_CONTROL_NONCE=owner.nonce,
+                            **{OUTER_MARKER: outer_id})
+         process = subprocess.Popen(command, env=environment, start_new_session=True)
+@@ -189,6 +243,12 @@ def _inner(output, outer_id, command):
+                     result["source_checked_after_cleanup"] = True
+                 except (Exception, KeyboardInterrupt) as error:
+                     result["errors"].append(str(error) if isinstance(error, InvalidPacket) else type(error).__name__)
++            if "source_binding" in result and result.get("executor_output_was_absent"):
++                try:
++                    result["executor_output_handoff"] = handoff_executor_output(
++                        command, output, result["source_binding"], source_root, result["executor_output_was_absent"])
++                except (Exception, KeyboardInterrupt) as error:
++                    result["errors"].append(str(error) if isinstance(error, InvalidPacket) else type(error).__name__)
+             result["finished_utc"] = stamp()
+             result["passed"] = result["exit_code"] == 0 and not result["errors"] and all(
+                 not row["errors"] and not row["remaining"] for row in result["cleanup"])
+@@ -212,12 +272,26 @@ def interrupt_supervisor(output, invocation):
+     return 0
+ 
+ 
++def command_source_root(command):
++    """Read only the explicit tagged-source argument; reject ambiguous selection."""
++    command = list(map(str, command))
++    if "--source-root" not in command:
++        return None
++    require(command.count("--source-root") == 1 and command.index("--source-root") + 1 < len(command),
++            "ambiguous selected source root")
++    root = Path(command[command.index("--source-root") + 1])
++    require(root.is_absolute() and root == root.resolve(), "selected source root path substituted")
++    return root
++
++
+ def executor_input(command, repository):
+     """Bind the complete published executor grammar and exact physical input bytes."""
+     command = list(map(str, command))
+-    require(len(command) == 7 and command[:3] == ["python3", str(Path(repository)/"tools/p1r-published-executor.py"), "run"]
++    source = command_source_root(command)
++    require(len(command) == (9 if source is not None else 7) and command[:3] == ["python3", str(Path(repository)/"tools/p1r-published-executor.py"), "run"]
+             and command[3] == "--out" and command[5] == "--inputs", "published executor arguments substituted")
+     output, path = Path(command[4]), Path(command[6])
++    require(source is None or command[7:] == ["--source-root", str(source)], "published executor source arguments substituted")
+     require(output.is_absolute() and output == output.resolve() and path.is_absolute(), "published executor paths substituted")
+     return {"path":str(path), "sha256":digest(regular(path))}
+ 
+@@ -264,15 +338,22 @@ def validate_workspace(workspace, repository, outer_host):
+     return workspace
+ 
+ 
+-def sdk_arguments(workspace, repository, invocation, daemon, volume):
++def sdk_arguments(workspace, repository, invocation, daemon, volume, source_root=None):
+     """Construct the single permitted SDK container profile."""
+     git_paths = [Path(workspace), *(Path(workspace)/name for name in preparation.declared_dependencies(Path(workspace)))]
++    source_mount = []
++    if source_root is not None:
++        source_root = Path(source_root)
++        git_paths += [source_root, *(source_root / name for name in preparation.declared_dependencies(source_root))]
++        if not source_root.is_relative_to(Path(workspace)):
++            source_mount = ["--mount", "type=bind,src=" + str(source_root) + ",dst=" + str(source_root)]
++    git_paths = list(dict.fromkeys(git_paths))
+     git_options = ["--env", "GIT_CONFIG_COUNT=" + str(len(git_paths))]
+     for index, path in enumerate(git_paths):
+         git_options += ["--env", f"GIT_CONFIG_KEY_{index}=safe.directory", "--env", f"GIT_CONFIG_VALUE_{index}={path}"]
+     return ["--network", "container:"+daemon, "--pid", "container:"+daemon, "--cap-add", "SYS_PTRACE",
+             "--mount", "type=volume,src="+volume+",dst=/var/lib/docker",
+-            "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace),
++            "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace), *source_mount,
+             "--workdir", str(repository), "--env", MARKER+"="+invocation,
+             "--env", "DOCKER_HOST="+SOCKET, "--env", "DOCKER_CONFIG="+CLIENT_CONFIG, *git_options,
+             "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+@@ -282,14 +363,15 @@ def sdk_arguments(workspace, repository, invocation, daemon, volume):
+ class IsolatedRunner:
+     """Own only exact outer container/volume identities carrying this invocation label."""
+ 
+-    def __init__(self, output, workspace=None, outer_host=None):
++    def __init__(self, output, workspace=None, outer_host=None, source_root=None):
+         with signal_handling():
+-            self.initialize(output, workspace, outer_host)
++            self.initialize(output, workspace, outer_host, source_root)
+ 
+-    def initialize(self, output, workspace=None, outer_host=None):
++    def initialize(self, output, workspace=None, outer_host=None, source_root=None):
+         self.output = Path(output).absolute()
+         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
+         self.invocation = uuid.uuid4().hex
++        self.source_root = Path(source_root).absolute() if source_root is not None else None
+         self.scratch = None
+         self.environment = {key: value for key, value in os.environ.items()
+                             if not key.startswith("DOCKER_") and key not in ("CONTAINER_HOST", "CONTAINER_CONNECTION")}
+@@ -312,6 +394,11 @@ class IsolatedRunner:
+                     "only a local Unix Docker endpoint is supported")
+             selected_workspace = workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT
+             self.workspace = validate_workspace(selected_workspace, ROOT, self.outer_host)
++            if self.source_root is not None:
++                validate_workspace(self.source_root, self.source_root, self.outer_host)
++                self.result["source_root"] = str(self.source_root)
++                self.controller_binding = preparation.source_binding(ROOT, self.source_root)
++                self.result["controller_source_binding"] = self.controller_binding
+             require(self.output.is_relative_to(self.workspace), "isolation output is outside the mounted workspace; private evidence would be lost")
+             self.result["outer_host"] = self.outer_host
+             self.save()
+@@ -392,6 +479,9 @@ class IsolatedRunner:
+         """Execute an explicit command; preserve failure even if later cleanup succeeds."""
+         code = 2
+         try:
++            if self.source_root is not None:
++                require(command_source_root(command) == self.source_root, "command selected source root substituted")
++                preparation.check_current_source(self.controller_binding)
+             _, data = self.docker(["info", "--format", "{{.ID}}"])
+             outer_id = data.decode().strip()
+             require(outer_id, "outer daemon identity missing")
+@@ -435,15 +525,18 @@ class IsolatedRunner:
+             self.docker(["cp", python + ":/usr/local", self.scratch / "python"])
+             self.docker(["cp", daemon + ":/usr/local/bin/docker", self.scratch / "docker"])
+             runner = self.create("sdk", SDK_IMAGE,
+-                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume), ["infinity"])
++                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume, self.source_root), ["infinity"])
+             self.docker(["cp", self.scratch / "python", runner + ":/opt/python"])
+             self.docker(["cp", self.scratch / "docker", runner + ":/usr/local/bin/docker"])
+             self.docker(["start", runner])
+             observed = self.inspect(runner)
+             require(observed["NetworkMode"] == "container:" + daemon and observed["PidMode"] == "container:" + daemon
+                     and not observed["Ports"] and not observed["Privileged"]
+-                    and {row["Destination"] for row in observed["Mounts"]} == {"/var/lib/docker", str(self.workspace)},
++                    and {row["Destination"] for row in observed["Mounts"]} == ({"/var/lib/docker", str(self.workspace)}
++                         | ({str(self.source_root)} if self.source_root is not None and not self.source_root.is_relative_to(self.workspace) else set())),
+                     "runner namespace or mounts substituted")
++            if self.source_root is not None:
++                preparation.check_current_source(self.controller_binding)
+             self.result["runner_proof"] = observed
+             _, measured = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_proof", "--outer-id", outer_id])
+             self.result["toolchain_proof"] = json.loads(measured)
+@@ -452,8 +545,9 @@ class IsolatedRunner:
+             self.save()
+             self.result.update(command_started=True, inner_command=list(map(str, command)), sdk=runner, daemon=daemon)
+             self.save()
++            source_arguments = ["--source-root", str(self.source_root)] if self.source_root is not None else []
+             code, stdout = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_inner",
+-                                   "--out", self.output, "--outer-id", outer_id, "--", *command], check=False, timeout=86400)
++                                   "--out", self.output, "--outer-id", outer_id, *source_arguments, "--", *command], check=False, timeout=86400)
+             self.result["command_stdout"] = stdout.decode("utf-8", "replace")
+             require((self.output / "private-execution.json").is_file(), "private execution result missing")
+             private = json.loads(regular(self.output / "private-execution.json"))
+@@ -471,6 +565,8 @@ class IsolatedRunner:
+         if self.result["passed"] and len(command) >= 3 and str(command[1]) == str(ROOT/"tools/p1r-published-executor.py") and command[2] == "run":
+             try:
+                 import p1r_published_qualification as qualification
++                if self.source_root is not None:
++                    preparation.check_current_source(self.controller_binding)
+                 selected = executor_input(command, ROOT)
+                 require(selected == self.result["selected_input"], "selected input changed during execution")
+                 selection, _, scope = qualification.load_document(Path(selected["path"]), qualification.validate_inputs)
+@@ -640,6 +736,7 @@ def main(arguments=None):
+     internal = arguments[:1] == ["_inner"]
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--out", type=Path, required=True)
++    parser.add_argument("--source-root", type=Path)
+     if internal:
+         parser.add_argument("--outer-id", required=True)
+         arguments = arguments[1:]
+@@ -651,8 +748,8 @@ def main(arguments=None):
+     command = args.command[1:] if args.command[:1] == ["--"] else args.command
+     require(command, "explicit verification command required")
+     if internal:
+-        return inner(args.out, args.outer_id, command)
+-    runner = IsolatedRunner(args.out, args.workspace, args.outer_host)
++        return inner(args.out, args.outer_id, command, args.source_root)
++    runner = IsolatedRunner(args.out, args.workspace, args.outer_host, args.source_root)
+     code = runner.run(command)
+     print(json.dumps({"out": str(runner.output), "passed": runner.result["passed"], "p1r_usable": False}), flush=True)
+     return code
+diff --git a/tools/p1r_isolation_evidence.py b/tools/p1r_isolation_evidence.py
+index efbccef9..c545af8b 100644
+--- a/tools/p1r_isolation_evidence.py
++++ b/tools/p1r_isolation_evidence.py
+@@ -44,7 +44,20 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
+     invocation, volume = wrapper['invocation'], wrapper['owned_volume']
+     require(volume == 'p1r-isolation-'+invocation, 'outer volume identity substituted')
+     mounts = wrapper['runner_proof']['Mounts']
+-    workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind'))
++    workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind' and repository.is_relative_to(Path(row['Destination']))))
++    source = context['source_binding'].get('candidate_source')
++    source_root = Path(source['repository']) if source is not None else None
++    bind_roots = {workspace} | ({source_root} if source_root is not None and not source_root.is_relative_to(workspace) else set())
++    if source is not None:
++        require(wrapper.get('source_root') == str(source_root)
++                and isolation.command_source_root(wrapper['inner_command']) == source_root,
++                'isolation selected tagged source root differs')
++        controller = wrapper.get('controller_source_binding', {})
++        def without_python(binding):
++            return {key:(without_python(value) if key == 'candidate_source' else value)
++                    for key,value in binding.items() if key != 'python'}
++        require(without_python(controller) == without_python(context['source_binding']),
++                'controller and private source closures differ')
+     outer_socket = Path(wrapper['outer_host'].removeprefix('unix://'))
+     require(canonical_engine_directory(str(workspace)) and not outer_socket.is_relative_to(workspace)
+             and not outer_socket.resolve().is_relative_to(workspace), 'isolation workspace exposes the outer Docker socket')
+@@ -167,7 +180,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
+         observed_mounts = settings['Mounts']
+         require(isinstance(observed_mounts,list), 'observed role mounts missing')
+         expected_destinations = {'daemon':{'/var/lib/docker'},'python-tools':set(),
+-                                 'sdk':{'/var/lib/docker',str(workspace)}}[role]
++                                 'sdk':{'/var/lib/docker',*(str(path) for path in bind_roots)}}[role]
+         require(len(observed_mounts) == len(expected_destinations)
+                 and {mount.get('Destination') for mount in observed_mounts} == expected_destinations,
+                 'observed role mounts contradict creation')
+@@ -175,7 +188,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
+             require(mount.get('RW') is True
+                     and (mount['Destination'] == '/var/lib/docker' and mount.get('Type') == 'volume'
+                          and mount.get('Name') == volume
+-                         or mount['Destination'] == str(workspace) and mount.get('Type') == 'bind'
++                         or Path(mount['Destination']) in bind_roots and mount.get('Type') == 'bind'
+                          and canonical_engine_directory(mount.get('Source'))), 'observed role mount identity or access differs')
+         require(identity not in static_inspections or static_inspections[identity] == settings,
+                 'observed static role configuration changed between inspections')
+@@ -226,15 +239,16 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
+     created('python-tools',isolation.PYTHON_IMAGE,['--network','none','--entrypoint','/bin/true'],[])
+     take(['cp',python+':/usr/local',scratch/'python'])
+     take(['cp',daemon+':/usr/local/bin/docker',scratch/'docker'])
+-    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume),['infinity'])
++    created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume,source_root),['infinity'])
+     take(['cp',scratch/'python',sdk+':/opt/python'])
+     take(['cp',scratch/'docker',sdk+':/usr/local/bin/docker'])
+     take(['start',sdk])
+     require(inspected(sdk) == wrapper['runner_proof'], 'runner inspection differs from literal output')
+     require(parsed(take(['exec',sdk,'python3',repository/'tools/p1r-isolated-runner.py','_proof','--outer-id',wrapper['outer_daemon_id']])) == measured,
+             'literal SDK toolchain proof substituted')
++    source_arguments = ['--source-root', str(source_root)] if source_root is not None else []
+     launched = take(['exec',sdk,'python3',repository/'tools/p1r-isolated-runner.py','_inner','--out',Path(wrapper_path).parent,
+-                     '--outer-id',wrapper['outer_daemon_id'],'--',*command])
++                     '--outer-id',wrapper['outer_daemon_id'],*source_arguments,'--',*command])
+     require(times(launched)[0] <= times(private)[0] <= times(private)[1] <= times(launched)[1]
+             and launched['output'] == wrapper.get('command_stdout'), 'actual SDK launch or private interval substituted')
+     require(times(private)[0] <= times(private['cleanup'][0])[0]
+diff --git a/tools/p1r_published_executor.py b/tools/p1r_published_executor.py
+index ef6deb31..cb191110 100644
+--- a/tools/p1r_published_executor.py
++++ b/tools/p1r_published_executor.py
+@@ -20,6 +20,7 @@ import sys
+ import tempfile
+ import time
+ import urllib.error
++import urllib.parse
+ import urllib.request
+ import uuid
+ 
+@@ -42,6 +43,8 @@ BUILDS_COMMIT = "2cf00028bbe563d80d4d12b5fb2054914f14fcb6"
+ TAG_BUILDS_COMMIT = "468fdbba04e2d9a27d251298875125b57fa6d836"
+ PROJECTS = ("Host", "Domain", "Probe")
+ STATUS_RETRYABILITY = (None, False, True)
++REMINDER_STARTUP_LEAD_SECONDS = 120
++REMINDER_MINIMUM_WINDOW_SECONDS = 5
+ DOCKER_FORMAT = ('{"Id":{{json .Id}},"Image":{{json .Image}},"Name":{{json .Name}},'
+                  '"State":{"Running":{{json .State.Running}},"StartedAt":{{json .State.StartedAt}}},'
+                  '"Config":{"Labels":{"hexalith.p1r.invocation":{{json (index .Config.Labels "hexalith.p1r.invocation")}}}}}')
+@@ -179,7 +182,7 @@ def reserve_port():
+     raise InvalidPacket("invocation loopback port unavailable")
+ 
+ 
+-def validate_execution_inputs(inputs):
++def validate_execution_inputs(inputs, source_root=None):
+     """Refuse a substituted approved tuple before any consumer or operational resource starts."""
+     require(qualification.validate_inputs(inputs) == "owner-selected", "synthetic inputs cannot execute published operations")
+     candidate, profile = inputs["candidate"], inputs["operational_profile"]
+@@ -195,9 +198,13 @@ def validate_execution_inputs(inputs):
+         return
+     require(qualification.is_successor_selection(inputs) and candidate["tag_builds_commit"],
+             "unrepaired or unbound successor selection")
+-    tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+-    source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
+-    tag_builds = preparation.git(ROOT, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
++    selected_root = ROOT if source_root is None else Path(source_root)
++    if source_root is not None or candidate["version"] == "3.125.1":
++        binding = preparation.source_binding(ROOT, selected_root)
++        qualification.validate_candidate_source(binding, inputs)
++    tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
++    source_commit = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
++    tag_builds = preparation.git(selected_root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+     require(tag_commit == source_commit == candidate["tag_commit"]
+             and len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
+             and tag_builds[2] == candidate["tag_builds_commit"],
+@@ -261,13 +268,15 @@ class Executor:
+     def versions(self, value):
+         self._versions = value
+ 
+-    def __init__(self, output, inputs=None):
++    def __init__(self, output, inputs=None, source_root=None):
+         self.output = Path(output).absolute()
+         require(not self.output.exists() and self.output == self.output.resolve(), "output exists or is substituted")
+         self.output.mkdir(parents=True)
+         self.invocation = uuid.uuid4().hex
+         self.scratch = Path(tempfile.mkdtemp(prefix="p1r-published-" + self.invocation + "-"))
+         self.inputs = inputs
++        self.source_root = Path(source_root).absolute() if source_root is not None else ROOT
++        self.explicit_source_root = source_root is not None
+         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
+         self.versions = ("3.110.0", "3.70.1", self.candidate)
+         self.inputs_sha256 = digest(canonical(inputs)) if inputs else None
+@@ -296,7 +305,8 @@ class Executor:
+                        "inputs_sha256": self.inputs_sha256, "receipts": [], "errors": [], "p1r_usable": False}
+         self.save()
+         try:
+-            self.source_binding = preparation.source_binding()
++            self.source_binding = (preparation.source_binding(ROOT, self.source_root) if self.explicit_source_root
++                                   else preparation.source_binding())
+             write_json(self.output / "executor-source.json", self.source_binding)
+             self.result["executor_source_sha256"] = digest(regular(self.output / "executor-source.json"))
+             self.shared_before = self.shared()
+@@ -306,6 +316,16 @@ class Executor:
+             self.cleanup()
+             raise
+ 
++    def check_sources(self):
++        """Recheck both roles after waits and before retaining dependent measurements."""
++        binding = getattr(self, "source_binding", None)
++        if binding is None:
++            return
++        preparation.check_current_source(binding)
++        selected = getattr(self, "inputs", None) or ({"candidate": self.selected_candidate} if hasattr(self, "selected_candidate") else None)
++        if selected is not None:
++            qualification.validate_candidate_source(binding, selected)
++
+     def save(self):
+         write_json(self.output / "commands.json", self.commands)
+         self.result.update(receipts=self.receipts, errors=self.errors)
+@@ -500,15 +520,23 @@ class Executor:
+         while time.monotonic() < deadline:
+             require(item["process"].poll() is None, "owned application exited during startup")
+             try:
+-                return self.http("GET", url, timeout=1)
++                observed = self.http("GET", url, timeout=1)
+             except (OSError, urllib.error.URLError, InvalidPacket):
+                 time.sleep(.15)
++                continue
++            self.check_sources()
++            return observed
+         raise TimeoutError("owned endpoint startup timeout")
+ 
+     def build_consumers(self, version, source=False):
++        self.check_sources()
+         role = "source" if source else "candidate" if version == self.candidate else "comparison-" + version
+         root = self.output / "consumers" / role
+         shutil.copytree(CONSUMERS, root)
++        if getattr(self, "explicit_source_root", False):
++            # The private SDK is selected by the tagged source, independently of
++            # newer verifier SDK pins. Preserve both original pins in their roots.
++            shutil.copyfile(self.source_root / "global.json", root / "global.json")
+         packages = root / "packages"
+         environment = dict(os.environ, CI="true", NUGET_PACKAGES=str(packages), DOTNET_NOLOGO="true",
+                            DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE="false", DOTNET_USE_POLLING_FILE_WATCHER="1")
+@@ -516,7 +544,7 @@ class Executor:
+         props = ["-p:EventStoreVersion=" + version, "-p:NuGetAudit=false"]
+         if source:
+             environment.pop("CI", None)
+-            props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(ROOT)]
++            props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(getattr(self, "source_root", ROOT))]
+         manifest = {"schema": qualification.EVIDENCE_SCHEMA, "role": role, "fixture": None,
+                     "packages_root": "packages", "configuration": configuration, "projects": []}
+         serving_binaries = {}
+@@ -559,6 +587,9 @@ class Executor:
+                                          "lock": project.lower() + "/packages.lock.json", "loaded": loaded, "output": output})
+             self.identities.setdefault(version if not source else "source", []).extend(identity["assemblies"])
+         write_json(root / "evidence.json", manifest)
++        if source and "candidate_source" in getattr(self, "source_binding", {}):
++            write_json(root / "source-evidence.json", qualification.source_consumer_binding(root, self.source_binding))
++        self.check_sources()
+         self.evidence[role] = root
+         return root
+ 
+@@ -589,6 +620,9 @@ class Executor:
+     def observe_inputs(self, planning, reference):
+         """Observe the already approved six selections; verify downloads rather than reuse preflight passes."""
+         candidate = planning["candidate_proposed"]
++        self.selected_candidate = candidate
++        selected_root = getattr(self, "source_root", ROOT)
++        self.check_sources()
+         self.candidate = candidate["version"]
+         self.versions = ("3.110.0", "3.70.1", self.candidate)
+         if self.candidate == CANDIDATE:
+@@ -604,23 +638,23 @@ class Executor:
+                             for package in candidate["packages"])
+                     and "tag_builds_commit" in candidate,
+                     "successor observation lacks exact source-bound packages or tag Builds identity")
+-            tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+-            source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
++            tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
++            source_commit = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
+             require(tag_commit == source_commit == candidate["tag_commit"],
+                     "successor observation source or tag substituted")
+             expected_tag_builds = candidate["tag_builds_commit"]
+-        tag_builds = preparation.git(ROOT, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
++        tag_builds = preparation.git(selected_root, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
+         require(len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
+                 and tag_builds[2] == expected_tag_builds, "candidate tag Builds provenance substituted")
+         selections = {}
+         for version in self.versions:
+             root = self.build_consumers(version)
+-            tag_commit = preparation.git(ROOT, "rev-parse", "v" + version + "^{commit}").decode().strip()
++            tag_commit = preparation.git(selected_root, "rev-parse", "v" + version + "^{commit}").decode().strip()
+             if version == self.candidate:
+                 builds = {key: candidate["builds"][key] for key in ("version", "commit")}
+                 require(tag_commit == candidate["tag_commit"], "candidate tag substituted")
+             else:
+-                tree = preparation.git(ROOT, "ls-tree", "v" + version, "references/Hexalith.Builds").decode().split()
++                tree = preparation.git(selected_root, "ls-tree", "v" + version, "references/Hexalith.Builds").decode().split()
+                 require(len(tree) == 4 and tree[:2] == ["160000", "commit"], "comparison Builds provenance missing")
+                 commit = tree[2]
+                 builds_root = (Path(self.source_binding["workspace_builds"]["path"]) if "workspace_builds" in self.source_binding
+@@ -662,6 +696,7 @@ class Executor:
+                   "assertion_instrumentation": {"mechanism": MECHANISM, "accepted_by": "test-owner", "reference": reference},
+                   "selected_additions": list(qualification.ADDITIONS)}
+         qualification.validate_inputs(inputs)
++        self.check_sources()
+         self.inputs = inputs
+         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
+         self.versions = ("3.110.0", "3.70.1", self.candidate)
+@@ -735,6 +770,7 @@ class Executor:
+             "observed_utc": stamp(),
+             "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version in ("source", self.candidate) else None,
+             "dotnet_reload_config_on_change": False, "dotnet_polling_file_watcher": True,
++            "reminder_due": getattr(self, "reminder_due", None),
+             "files": [{"name": path.name, "path": str(path),
+                        "sha256": digest(tracked_state) if path.name == "state.yaml" else digest(regular(path)),
+                        "content": tracked_state.decode() if path.name == "state.yaml" else path.read_text(),
+@@ -891,10 +927,13 @@ class Executor:
+         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
+ 
+     def seed(self, version, interval, checks, write_alias=None):
++        require(self.candidate in (CANDIDATE, *qualification.FOLDED_SNAPSHOT_VERSIONS)
++                and version in (self.candidate, "source", *qualification.COMPARISON_VERSIONS),
++                "snapshot fixture candidate or writer is not explicitly enabled")
+         genuine = interval == 10 and qualification.is_successor_selection(
+             {"candidate": {"version": self.candidate if version == "source" else version}})
+         if genuine:
+-            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
++            require(self.candidate in qualification.FOLDED_SNAPSHOT_VERSIONS
+                     and version in (self.candidate, "source"), "successor snapshot fixture is not explicitly enabled")
+         self.stop_nodes()
+         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
+@@ -1088,7 +1127,9 @@ class Executor:
+             expected = "refusal"
+         observed, outcome, disposition = {}, "error", "compatible"
+         try:
++            self.check_sources()
+             observed, outcome, disposition = action(checks)
++            self.check_sources()
+         except (Exception, KeyboardInterrupt) as error:
+             checks.check("execution-completed", False)
+             observed = {"error": type(error).__name__, "reason": str(error)}
+@@ -1124,7 +1165,7 @@ class Executor:
+         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
+                     "configurations": getattr(self, "configurations", [])[start_configuration:],
+                     "check_witnesses": checks.witnesses}
+-        if self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1") and getattr(self, "last_snapshot_creation", None) is not None:
++        if self.candidate in qualification.FOLDED_SNAPSHOT_VERSIONS and getattr(self, "last_snapshot_creation", None) is not None:
+             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
+             data = regular(path)
+             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}
+@@ -1154,6 +1195,10 @@ class Executor:
+                               "executor_source": self.source_binding, "cases": evidence,
+                               "predicate_sources": [self.witness_sources[path] for path in sorted({
+                                   witness["source"] for case in evidence for witness in case["check_witnesses"] if witness["kind"] == "predicate"})]}
++        if name == "checkout" and "candidate_source" in self.source_binding and "source" in self.evidence:
++            source_manifest = self.evidence["source"] / "source-evidence.json"
++            execution_evidence["source_consumer"] = {"path": str(source_manifest), "sha256": digest(regular(source_manifest)),
++                                                      "content": regular(source_manifest).decode()}
+         counter = {key: sum(case["assertions"][key] for case in cases) for key in ("attempted", "passed", "failed")}
+         passed = (counter["attempted"] > 0 and counter["failed"] == 0
+                   and all(case["expected"] == case["outcome"] and (case["outcome"] != "refusal" or
+@@ -1447,13 +1492,28 @@ class Executor:
+         return {"completed": completed, "observations": observations, "manual_callback_sent_before_observation": False,
+                 "started_utc": started_utc, "deadline_utc": deadline_utc, "budget_seconds": 30}
+ 
++    def reminder_window(self, due, selected_utc, phase, checks):
++        observed_utc = stamp()
++        remaining = (due - datetime.datetime.fromisoformat(observed_utc)).total_seconds()
++        checks.check("reminder-" + phase + "-deadline-future", remaining >= REMINDER_MINIMUM_WINDOW_SECONDS)
++        require(remaining >= REMINDER_MINIMUM_WINDOW_SECONDS,
++                "reminder fixture future deadline missed before dependent operation")
++        return {"phase": phase, "selected_utc": selected_utc, "due_utc": due.isoformat(),
++                "observed_utc": observed_utc, "remaining_seconds": remaining,
++                "startup_lead_seconds": REMINDER_STARTUP_LEAD_SECONDS,
++                "minimum_remaining_seconds": REMINDER_MINIMUM_WINDOW_SECONDS}
++
+     def reminder_case(self, identifier, checks):
+         self.seed(self.candidate, 1000, checks)
+         before = self.inventory()
+-        due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=12)
++        selected_utc = stamp()
++        due = datetime.datetime.fromisoformat(selected_utc) + datetime.timedelta(seconds=REMINDER_STARTUP_LEAD_SECONDS)
+         self.reminder_due = due.isoformat()
+         self.start_nodes(self.candidate)
++        windows = [self.reminder_window(due, selected_utc, "initial-before-register", checks)]
+         registration = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/1", {})
++        windows.append(self.reminder_window(due, selected_utc, "initial-after-register", checks))
++        original_due = self.reminder_due
+         checks.check("reminder-armed", registration.get("armed") == 1 and registration.get("unresolved") == 0)
+         checks.check("initial-convergence-no-direct-submission", registration.get("submitted") == 0)
+         natural = None
+@@ -1468,15 +1528,30 @@ class Executor:
+         restart_before = self.inventory()
+         revision = 2 if identifier == "stale-generation-refusal" else 1
+         if revision == 2:
+-            self.reminder_due = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=30)).isoformat()
++            selected_utc = stamp()
++            due = datetime.datetime.fromisoformat(selected_utc) + datetime.timedelta(seconds=REMINDER_STARTUP_LEAD_SECONDS)
++            self.reminder_due = due.isoformat()
+         self.start_nodes(self.candidate)
++        windows.append(self.reminder_window(due, selected_utc, "restart-before-register", checks))
+         rearmed = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/{revision}", {})
++        windows.append(self.reminder_window(due, selected_utc, "restart-after-register", checks))
+         checks.check("reminder-converges-after-restart", rearmed.get("unresolved") == 0 and rearmed.get("quarantined") == 0)
+         checks.check("restart-convergence-no-direct-submission", rearmed.get("submitted") == 0)
+         if revision == 1:
+             time.sleep(max(0, (due - datetime.datetime.now(datetime.timezone.utc)).total_seconds()) + .2)
+             natural = self.natural_reminder(checks)
+-        repeated = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/callback/1", {})
++        callback_url = f"http://127.0.0.1:{self.host_port}/reminder/callback/1"
++        if self.candidate == "3.125.1":
++            require(registration.get("intent_due") == original_due and registration.get("intent_revision") == 1
++                    and isinstance(registration.get("reminder_name"), str), "original armed reminder identity missing")
++            callback_url += "?" + urllib.parse.urlencode({"due": original_due, "reminderName": registration["reminder_name"]})
++        repeated = self.http("POST", callback_url, {})
++        if self.candidate == "3.125.1":
++            checks.check("callback-actor-request-accepted", isinstance(repeated.get("callback_status"), int)
++                         and not isinstance(repeated.get("callback_status"), bool)
++                         and 200 <= repeated["callback_status"] < 300)
++            checks.check("callback-replays-original-armed-identity", repeated.get("intent_due") == original_due
++                         and repeated.get("intent_revision") == 1 and repeated.get("reminder_name") == registration["reminder_name"])
+         checks.check("restart-or-stale-callback-no-second-effect", repeated.get("sequence") == 13)
+         self.stop_nodes()
+         after = self.inventory()
+@@ -1485,7 +1560,7 @@ class Executor:
+         if revision == 2:
+             checks.check("stale-generation-domain-preserved", runtime.domain(restart_before, "tenant-a") == runtime.domain(after, "tenant-a"))
+         return {"before": restart_before if revision == 2 else before, "after": after,
+-                "due": self.reminder_due, "registration": registration, "rearmed": rearmed,
++                "due": self.reminder_due, "deadline_windows": windows, "registration": registration, "rearmed": rearmed,
+                 "natural_scheduler_effect": natural, "repeated_or_stale": repeated,
+                 "fixture_authority": "bounded Test authority; P2 acceptance pending"}, "refusal" if revision == 2 else "effect", "compatible"
+ 
+@@ -1626,7 +1701,7 @@ class Executor:
+         return {"before": before, "after": after, "owned_processes": identities}, "effect", "compatible"
+ 
+     def execute(self):
+-        validate_execution_inputs(self.inputs)
++        validate_execution_inputs(self.inputs, self.source_root) if self.explicit_source_root else validate_execution_inputs(self.inputs)
+         if self.candidate == CANDIDATE:
+             policy = qualification.load_support_table(self.inputs)
+             self.support_rules = {(lane, rule["id"]): rule["treatment"] for lane, entry in policy["lanes"].items()
+@@ -1639,7 +1714,7 @@ class Executor:
+             self.verify_selected_candidate_archives()
+             self.topology()
+             for lane in qualification.SCENARIOS:
+-                preparation.check_current_source(self.source_binding)
++                self.check_sources()
+                 if lane == "provenance":
+                     action, operational = self.provenance_case, False
+                 elif lane in ("legacy-metadata", "metadata-read"):
+@@ -1666,12 +1741,12 @@ class Executor:
+                     action, operational = lambda identifier, checks, lane=lane: self.live_case(lane, identifier, checks), True
+                 self.lane(lane, action, operational)
+             if "reminder-recovery" in self.inputs["selected_additions"]:
+-                preparation.check_current_source(self.source_binding)
++                self.check_sources()
+                 self.lane("reminder-recovery", self.reminder_case, True)
+             if "logical-event-evolution" in self.inputs["selected_additions"]:
+-                preparation.check_current_source(self.source_binding)
++                self.check_sources()
+                 self.lane("logical-event-evolution", self.evolution_case, True)
+-            preparation.check_current_source(self.source_binding)
++            self.check_sources()
+         finally:
+             cleanup = self.cleanup()
+             if self.pending_restore is not None:
+@@ -1775,6 +1850,10 @@ class Executor:
+             self.receipts.append(str(path))
+         else:
+             self.result["consumer_cleanup"] = str(path)
++        try:
++            self.check_sources()
++        except (Exception, KeyboardInterrupt) as error:
++            self.errors.append("final source check: " + str(error))
+         self.result["finished_utc"] = stamp()
+         self.save()
+         return receipt
+diff --git a/tools/p1r_published_qualification.py b/tools/p1r_published_qualification.py
+index 43bf6fa8..00983cdf 100644
+--- a/tools/p1r_published_qualification.py
++++ b/tools/p1r_published_qualification.py
+@@ -80,6 +80,10 @@ PACKET_KEYS = ("schema", "invocation", "started_utc", "finished_utc", "source_bi
+ ROW_KEYS = ("id", "execution", "compatibility", "scope", "assertions", "receipts", "reason")
+ INPUT_KEYS = ("schema", "fixture", "authority", "candidate", "rollback", "operational_profile",
+               "assertion_instrumentation", "selected_additions")
++FOLDED_SNAPSHOT_VERSIONS = ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
++ISOLATION_VERSIONS = ("3.122.1", "3.125.0", "3.125.1")
++SELECTED_SOURCE_COMMIT = "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
++SELECTED_TAG_BUILDS = "4629ff2d3bd66376b29a553663c241d3a7b87853"
+ COMPARISON_VERSIONS = ("3.70.1", "3.110.0")
+ SUCCESSOR_PACKAGE_IDS = tuple("Hexalith.EventStore." + name for name in
+                               ("Client", "Contracts", "DomainService", "Server", "ServiceDefaults"))
+@@ -152,6 +156,88 @@ def is_successor_selection(selection):
+         tuple(int(part) for part in version.split(".")) > (3, 120, 0))
+ 
+ 
++def source_consumer_binding(root, binding):
++    """Reconstruct Debug project graphs, locks and loaded physical source assemblies."""
++    root = Path(root)
++    source = binding["candidate_source"]
++    source_root = Path(source["repository"])
++    manifest = parse_json(regular(root / "evidence.json"))
++    require(manifest.get("role") == "source" and manifest.get("configuration") == "Debug"
++            and [row.get("name") for row in manifest.get("projects", [])] == ["Host", "Domain", "Probe"],
++            "distinct Debug source consumer inventory missing")
++    sdk = root / "global.json"
++    declared = next((row["sha256"] for row in source["main"]["files"] if row["path"] == "global.json"), None)
++    require(digest(regular(sdk)) == declared, "consumer SDK pin differs from tagged source")
++    files = [{"path": str(sdk), "sha256": declared}, {"path": str(root / "evidence.json"), "sha256": digest(regular(root / "evidence.json"))}]
++    for project in manifest["projects"]:
++        assets = parse_json(regular(root / relative(project["assets"])))
++        restore = assets.get("project", {}).get("restore", {})
++        project_path = root / project["name"].lower() / (project["name"] + ".csproj")
++        require(restore.get("projectPath") == str(project_path), "Debug source assets consumer project path differs")
++        files.append({"path": str(project_path), "sha256": digest(regular(project_path))})
++        references = {Path(path) for framework in restore.get("frameworks", {}).values()
++                      for path in framework.get("projectReferences", {})}
++        expected = {source_root / "src" / name / (name + ".csproj") for name in SUCCESSOR_PACKAGE_IDS}
++        require(references == expected, "Debug source project references differ from selected tagged root")
++        for name, library in assets.get("libraries", {}).items():
++            if library.get("type") == "project":
++                path = (project_path.parent / library["path"]).resolve()
++                require(path.is_relative_to(source_root), "Debug source graph escapes selected source closure")
++                files.append({"path": str(path), "sha256": digest(regular(path))})
++        loaded = parse_json(regular(root / relative(project["loaded"])))
++        require({row["name"] for row in loaded.get("assemblies", [])} == set(SUCCESSOR_PACKAGE_IDS),
++                "Debug source loaded package inventory differs")
++        for row in loaded["assemblies"]:
++            path = Path(row["path"])
++            require(path == root / project["output"] / (row["name"] + ".dll")
++                    and digest(regular(path)) == row["sha256"], "Debug source loaded physical assembly differs")
++            built = source_root / "src" / row["name"] / "bin/Debug/net10.0" / (row["name"] + ".dll")
++            require(digest(regular(built)) == row["sha256"], "Debug loaded assembly differs from selected source build output")
++            files.extend([{"path": str(path), "sha256": row["sha256"]},
++                          {"path": str(built), "sha256": row["sha256"]}])
++        for name in ("assets", "lock", "loaded"):
++            path = root / relative(project[name])
++            files.append({"path": str(path), "sha256": digest(regular(path))})
++    return {"source_root": str(source_root), "source_binding_sha256": digest(preparation.canonical(source)), "files": files}
++
++
++def validate_source_consumer(evidence, binding):
++    """Refuse relabelled or rehashed current-source comparison evidence."""
++    reference = evidence.get("source_consumer")
++    require(isinstance(reference, dict) and set(reference) == {"path", "sha256", "content"},
++            "selected tagged Debug source consumer proof missing")
++    path = Path(reference["path"])
++    data = regular(path)
++    require(path.is_absolute() and path.name == "source-evidence.json"
++            and reference["content"].encode() == data and digest(data) == reference["sha256"]
++            and parse_json(data) == source_consumer_binding(path.parent, binding),
++            "selected tagged Debug source consumer proof substituted")
++
++
++def validate_candidate_source(binding, selection):
++    """Independently bind production source to the selected tag, never verifier HEAD."""
++    candidate = selection["candidate"]
++    source = binding.get("candidate_source")
++    require(source is not None or candidate["version"] != "3.125.1", "selected candidate source closure missing")
++    if source is None:
++        return
++    preparation.require_clean_source(source)
++    root = Path(source["repository"])
++    preparation.self_contained_checkout(Path(binding["repository"]))
++    preparation.self_contained_checkout(root)
++    head = preparation.git(root, "rev-parse", "HEAD").decode().strip()
++    tag = preparation.git(root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
++    tree = preparation.git(root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
++    require(head == tag == source["main"]["head"] == candidate["tag_commit"]
++            and len(tree) == 4 and tree[:2] == ["160000", "commit"]
++            and tree[2] == candidate.get("tag_builds_commit"),
++            "candidate tag, exact source, or tag Builds identity substituted")
++    if candidate["version"] == "3.125.1":
++        require(head == SELECTED_SOURCE_COMMIT and tree[2] == SELECTED_TAG_BUILDS
++                and candidate["feed"] == "https://api.nuget.org/v3/index.json",
++                "selected 3.125.1 published source substituted")
++
++
+ # Owner inputs and decisions -------------------------------------------------------------------------------------
+ 
+ def validate_selection(value, role):
+@@ -1238,12 +1324,24 @@ def validate_final_isolation(receipt, context):
+     runner = wrapper.get("runner_proof", {})
+     sdk, daemon = wrapper.get("sdk"), wrapper.get("daemon")
+     destinations = {item.get("Destination") for item in runner.get("Mounts", [])}
++    source = context["source_binding"].get("candidate_source")
++    source_root = Path(source["repository"]) if source is not None else None
++    if source is not None:
++        require(wrapper.get("source_root") == str(source_root)
++                and isolation.command_source_root(command) == source_root,
++                "final isolation selected tagged source root substituted")
++        validate_candidate_source(context["source_binding"], context["inputs"]["value"])
++    verifier_mounts = [Path(item["Destination"]) for item in runner.get("Mounts", [])
++                       if item.get("Type") == "bind" and Path(context["source_binding"]["repository"]).is_relative_to(Path(item["Destination"]))]
++    expected_mount_count = 2 + int(source_root is not None and not any(source_root.is_relative_to(path) for path in verifier_mounts))
+     require(owned.get(sdk, {}).get("role") == "sdk" and owned[sdk].get("image") == isolation.SDK_IMAGE
+             and owned.get(daemon, {}).get("role") == "daemon" and owned[daemon].get("image") == isolation.DAEMON_IMAGE
+             and runner.get("Id") == sdk and runner.get("Labels", {}).get(isolation.LABEL) == wrapper["invocation"]
+             and runner.get("NetworkMode") == runner.get("PidMode") == "container:"+str(daemon)
+             and runner.get("Ports") == {} and runner.get("Privileged") is False
+-            and len(destinations) == 2 and "/var/lib/docker" in destinations
++            and len(destinations) == expected_mount_count and "/var/lib/docker" in destinations
++            and (source_root is None or any(source_root.is_relative_to(Path(destination)) for destination in destinations
++                                           if destination != "/var/lib/docker"))
+             and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
+                     for destination in destinations if destination != "/var/lib/docker"),
+             "final isolation runner ownership, mounts or namespace binding differs")
+@@ -1309,7 +1407,7 @@ def validate_final_isolation(receipt, context):
+ 
+ def finalize_isolation_receipts(output, isolation_output, selection):
+     """Attach new successful wrapper evidence after teardown, retaining old receipt schemas."""
+-    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0", "3.125.1"):
++    if selection["candidate"]["version"] not in ISOLATION_VERSIONS:
+         return
+     output, isolation_output = Path(output), Path(isolation_output)
+     reference = {}
+@@ -1321,6 +1419,9 @@ def finalize_isolation_receipts(output, isolation_output, selection):
+     private = parse_json(reference["private"]["content"].encode())
+     context = {"source_binding":private.get("source_binding"),
+                "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
++    if "candidate_source" in context["source_binding"]:
++        preparation.check_current_source(context["source_binding"], check_python=False)
++    validate_candidate_source(context.get("source_binding", {}), selection)
+     pending = []
+     for name in execution["receipts"]:
+         path = Path(name)
+@@ -1343,12 +1444,14 @@ def finalize_isolation_receipts(output, isolation_output, selection):
+ 
+ def bind_lane(receipt, outcome, context):
+     selection = context["inputs"]["value"] if context["inputs"] else None
++    if selection is not None and context["inputs"]["scope"] == "owner-selected":
++        validate_candidate_source(context.get("source_binding", {}), selection)
+     if receipt["lane"] in ADDITIONS:
+         require(selection is not None and receipt["lane"] in selection["selected_additions"], R_NOT_SELECTED)
+     if outcome["scope"] == "tooling-synthetic":
+         return
+     require_owner_binding(receipt, context, "published or operational evidence lacks owner-selected inputs")
+-    if selection["candidate"]["version"] in ("3.122.1", "3.125.0", "3.125.1") and (outcome["scope"] == "operational"
++    if selection["candidate"]["version"] in ISOLATION_VERSIONS and (outcome["scope"] == "operational"
+             or any(case.get("configurations") for case in receipt.get("execution_evidence", {}).get("cases", []))):
+         validate_final_isolation(receipt,context)
+     instrumentation = selection["assertion_instrumentation"]
+@@ -1360,6 +1463,8 @@ def bind_lane(receipt, outcome, context):
+                 and isinstance(evidence.get("cases"), list)
+                 and [case.get("id") for case in evidence["cases"]] == [case["id"] for case in receipt["cases"]],
+                 "measured executor lacks retained per-case command evidence")
++        if receipt["lane"] == "checkout" and "candidate_source" in context["source_binding"]:
++            validate_source_consumer(evidence, context["source_binding"])
+         require(evidence.get("executor_source") == context.get("source_binding"),
+                 "executor checkout differs from the independently bound source closure")
+         expected_source_bytes = json.dumps(context["source_binding"], indent=2, sort_keys=True, allow_nan=False).encode() + b"\n"
+@@ -1427,12 +1532,14 @@ def bind_lane(receipt, outcome, context):
+ 
+ def bind_recovery(receipt, outcome, lane, context):
+     selection = context["inputs"]["value"] if context["inputs"] else None
++    if selection is not None and context["inputs"]["scope"] == "owner-selected":
++        validate_candidate_source(context.get("source_binding", {}), selection)
+     if lane == "rollback-restore":
+         require(selection is not None and selection["rollback"] is not None, R_NO_ROLLBACK)
+     if outcome["scope"] == "tooling-synthetic":
+         return
+     require_owner_binding(receipt, context, "operational evidence lacks owner-selected inputs")
+-    if selection["candidate"]["version"] in ("3.122.1", "3.125.0", "3.125.1"):
++    if selection["candidate"]["version"] in ISOLATION_VERSIONS:
+         validate_final_isolation(receipt,context)
+     runtime.require_operational_profile(selection)
+     require(receipt["profile"] == selection["operational_profile"], "operational evidence lacks the selected profile")
+@@ -1455,7 +1562,7 @@ def receipt_outcome(receipt, context):
+         return ("scenarios" if receipt["lane"] in SCENARIOS else "additions"), receipt["lane"], outcome
+     if schema in (runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
+         selection = (context.get("inputs") or {}).get("value", {})
+-        require(selection.get("candidate", {}).get("version") in ("3.122.1", "3.125.0", "3.125.1")
++        require(selection.get("candidate", {}).get("version") in ISOLATION_VERSIONS
+                 and isinstance(receipt["execution_evidence"],dict)
+                 and set(receipt["execution_evidence"]) == {"isolation"}, "recovery isolation extension differs from contract")
+     if schema == runtime.RESTORE_SCHEMA:
+@@ -1503,7 +1610,7 @@ def public(record):
+ 
+ 
+ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=None, rollback_evidence=None, receipts=(),
+-                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None):
++                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None, source_root=None):
+     """Create a new sealed packet; refusals and interruptions are retained rather than defaulted."""
+     directory = Path(directory).absolute()
+     require(not directory.exists() and not directory.is_symlink(), "output path already exists")
+@@ -1522,7 +1629,8 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
+         dependent = (candidate_evidence, rollback_evidence, decisions, support_boundary, *receipts, *comparison_evidence)
+         require(inputs is not None or all(value is None for value in dependent),
+                 "dependent execution refused: " + R_INPUTS)
+-        binding = preparation.source_binding(root)
++        binding = (preparation.source_binding(root, source_root) if source_root is not None
++                   else preparation.source_binding(root))
+         write_json(directory / "source-binding.json", binding)
+         packet["source_binding_sha256"] = digest(regular(directory / "source-binding.json"))
+         if inputs is not None:
+@@ -1530,6 +1638,8 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
+             inputs_record = bound_document(directory, value, data, scope, "inputs.json")
+             packet["inputs"] = public(inputs_record)
+             packet["lanes"] = lanes = initial_lanes(value)
++            if scope == "owner-selected":
++                validate_candidate_source(binding, value)
+             if scope == "tooling-synthetic" or not is_successor_selection(value):
+                 require(support_boundary is None, "sealed 3.119.0 boundary cannot be replaced")
+             else:
+@@ -1649,6 +1759,8 @@ def validate_packet(directory):
+     require(packet["refusals"] == refusals(inputs, decisions), "refusals differ from bound inputs")
+     selection = inputs["value"] if inputs is not None else None
+     support_value = None
++    if inputs is not None and inputs["scope"] == "owner-selected":
++        validate_candidate_source(binding, selection)
+     if selection is not None and inputs["scope"] == "owner-selected" and is_successor_selection(selection):
+         record = packet.get("support_boundary")
+         members(record, ("path", "sha256"), "successor support boundary binding missing")
+diff --git a/tools/p1r_qualification.py b/tools/p1r_qualification.py
+index 694a595d..b5deecf3 100644
+--- a/tools/p1r_qualification.py
++++ b/tools/p1r_qualification.py
+@@ -122,7 +122,7 @@ def relative(name):
+ 
+ 
+ def git(root, *arguments):
+-    result = subprocess.run(["git", "--no-pager", *arguments], cwd=root,
++    result = subprocess.run(["git", "--no-replace-objects", "--no-pager", *arguments], cwd=root,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=False)
+     require(result.returncode == 0, "source repository observation failed")
+     return result.stdout
+@@ -137,7 +137,90 @@ def relevant(name):
+     return bool(parts) and not EXCLUDED.intersection(parts) and (source or configuration) and (len(parts) == 1 or parts[0] in SOURCE_TOP)
+ 
+ 
+-def repository_binding(root):
++def tagged_attributes(root, names, canonical_attributes=False):
++    environment = dict(os.environ)
++    options = []
++    if canonical_attributes:
++        environment["GIT_ATTR_NOSYSTEM"] = "1"
++        environment.pop("GIT_ATTR_SOURCE", None)
++        options = ["-c", "core.attributesFile=/dev/null"]
++    attributes = ("text", "eol", "filter", "working-tree-encoding", "ident")
++    result = subprocess.run(["git", "--no-replace-objects", *options, "check-attr", "--cached", "-z",
++                             *attributes, "--", *names], cwd=root, env=environment,
++                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=False)
++    require(result.returncode == 0, "tagged source attributes unavailable")
++    fields = result.stdout.split(b"\0")
++    require(fields[-1:] == [b""] and (len(fields) - 1) % 3 == 0, "invalid tagged source attributes")
++    observed = {name: {} for name in names}
++    for offset in range(0, len(fields) - 1, 3):
++        name, attribute, value = (part.decode() for part in fields[offset:offset + 3])
++        require(name in observed and attribute in attributes and attribute not in observed[name],
++                "tagged source attributes substituted")
++        observed[name][attribute] = value
++    require(all(set(row) == set(attributes) for row in observed.values()), "incomplete tagged source attributes")
++    return observed
++
++
++def require_tagged_checkout(root, observed, committed=None, indexed=None):
++    """Bind physical production bytes without trusting index flags or clean filters."""
++    require(git(root, "rev-parse", "HEAD").decode().strip() == observed["head"], "tagged source HEAD changed")
++    if committed is None:
++        committed = {}
++        for entry in git(root, "ls-tree", "-rz", "HEAD").split(b"\0"):
++            if entry:
++                info, raw_name = entry.split(b"\t", 1)
++                _, kind, oid = info.decode().split()
++                if kind == "blob" and relevant(raw_name.decode()):
++                    committed[raw_name.decode()] = oid
++    if indexed is None:
++        indexed = {}
++        for entry in git(root, "ls-files", "--stage", "-z").split(b"\0"):
++            if entry:
++                info, raw_name = entry.split(b"\t", 1)
++                _, oid, stage = info.decode().split()
++                name = raw_name.decode()
++                if relevant(name):
++                    require(stage == "0" and name not in indexed, "unmerged tagged source index")
++                    indexed[name] = oid
++    files = observed["files"]
++    require(committed and indexed == committed and len(files) == len(committed)
++            and {row["path"] for row in files} == set(committed)
++            and all(row["git_blob"] == row["index_blob"] == committed[row["path"]] for row in files),
++            "tagged source inventory or index differs")
++    # Ignored source files can still be included by an SDK glob or MSBuild import.
++    # Generated bin/obj/node_modules remain excluded by the existing inventory.
++    require(not any(relevant(name.decode()) for name in git(root, "ls-files", "--others", "-z").split(b"\0") if name),
++            "untracked tagged source input refused")
++    info_name = Path(git(root, "rev-parse", "--git-path", "info/attributes").decode().strip())
++    info_path = info_name if info_name.is_absolute() else root / info_name
++    require(not (info_path.exists() or info_path.is_symlink()) or not regular(info_path),
++            "external tagged source attributes refused")
++    names = sorted(committed)
++    attributes = tagged_attributes(root, names, True)
++    require(tagged_attributes(root, names) == attributes, "external tagged source attributes refused")
++    for row in files:
++        attribute = attributes[row["path"]]
++        require(all(attribute[name] in ("unspecified", "unset") for name in ("filter", "working-tree-encoding", "ident")),
++                "tagged source filter or encoding transform refused")
++        require(attribute["text"] in ("auto", "set", "unset", "unspecified")
++                and attribute["eol"] in ("lf", "crlf", "unset", "unspecified"), "unsupported tagged source text attributes")
++        data = regular(root / relative(row["path"]))
++        require(digest(data) == row["sha256"], "physical tagged source changed during binding")
++        canonical_data = data
++        if attribute["eol"] == "crlf":
++            require(b"\n" not in data.replace(b"\r\n", b""), "physical tagged source requires declared CRLF")
++            canonical_data = data.replace(b"\r\n", b"\n")
++        elif attribute["eol"] == "lf":
++            require(b"\r\n" not in data, "physical tagged source requires declared LF")
++        # With no declared ending, text=auto permits Git's uniform CRLF checkout.
++        elif attribute["text"] in ("auto", "set") and b"\0" not in data \
++                and b"\n" not in data.replace(b"\r\n", b""):
++            canonical_data = data.replace(b"\r\n", b"\n")
++        oid = hashlib.sha1(b"blob " + str(len(canonical_data)).encode() + b"\0" + canonical_data).hexdigest()
++        require(oid == committed[row["path"]], "physical tagged source differs from canonical committed bytes")
++
++
++def repository_binding(root, tagged=False):
+     require(root.is_dir() and root == root.resolve(), "source repository path unavailable")
+     head = git(root, "rev-parse", "HEAD").decode().strip()
+     require(bool(re.fullmatch(r"[0-9a-f]{40}", head)), "invalid source HEAD")
+@@ -173,9 +256,11 @@ def repository_binding(root):
+         files.append({"path": name, "sha256": digest(data), "git_blob": committed.get(name),
+                       "index_blob": indexed.get(name)})
+     require(bool(files), "empty source inventory")
++    if tagged:
++        require_tagged_checkout(root, {"head": head, "files": files}, committed, indexed)
+     # Git applies the owning attributes for the canonical tracked diff; physical
+     # file hashes separately bind any checkout newline/dirty/untracked bytes.
+-    diff = git(root, "diff", "HEAD", "--no-ext-diff", "--binary", "--", *sorted(names))
++    diff = git(root, "diff", "HEAD", "--no-ext-diff", "--no-textconv", "--binary", "--", *sorted(names))
+     require(git(root, "rev-parse", "HEAD").decode().strip() == head, "source HEAD changed during binding")
+     return {"head": head, "diff_sha256": digest(diff), "files": files, "gitlinks": gitlinks}
+ 
+@@ -213,9 +298,9 @@ def retained_inputs(root):
+     return [{"path": name, "sha256": digest(regular(root / name))} for name in sorted(names)]
+ 
+ 
+-def source_binding(root=ROOT):
++def source_binding(root=ROOT, source_root=None, *, _tagged=False):
+     root = Path(root).absolute()
+-    main = repository_binding(root)
++    main = repository_binding(root, tagged=True) if _tagged else repository_binding(root)
+     declared = declared_dependencies(root)
+     require("references/Hexalith.Builds" in declared, "Builds dependency is not root declared")
+     dependencies = []
+@@ -223,7 +308,7 @@ def source_binding(root=ROOT):
+         path = root / name
+         initialized = (path / ".git").exists()
+         dependencies.append({"path": name, "initialized": initialized,
+-                             "binding": repository_binding(path) if initialized else None})
++                             "binding": (repository_binding(path, tagged=True) if _tagged else repository_binding(path)) if initialized else None})
+     builds = next(row for row in dependencies if row["path"] == "references/Hexalith.Builds")
+     workspace_builds = None
+     if not builds["initialized"]:
+@@ -261,11 +346,56 @@ def source_binding(root=ROOT):
+                        "version": list(sys.version_info[:3])}}
+     if workspace_builds is not None:
+         result["workspace_builds"] = workspace_builds
++    if source_root is not None:
++        source_root = Path(source_root).absolute()
++        self_contained_checkout(root)
++        self_contained_checkout(source_root)
++        result["candidate_source"] = source_binding(source_root, _tagged=True)
++        require_clean_source(result["candidate_source"])
+     return result
+ 
+ 
+-def check_current_source(binding):
+-    require(binding == source_binding(Path(binding["repository"])), "source/configuration inputs changed")
++def self_contained_checkout(root):
++    """Reject linked worktrees, external Git metadata and borrowed object stores."""
++    root = Path(root)
++    require(root == root.resolve() and (root / ".git").is_dir()
++            and not (root / ".git").is_symlink(), "self-contained ordinary Git checkout required")
++    for path in (root, *(root / name for name in declared_dependencies(root) if (root / name / ".git").exists())):
++        git_dir = Path(git(path, "rev-parse", "--absolute-git-dir").decode().strip())
++        common = Path(git(path, "rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip())
++        require(git_dir == git_dir.resolve() == common and git_dir.is_relative_to(root)
++                and not (common / "objects/info/alternates").exists()
++                and not (common / "objects").is_symlink(), "shared Git metadata or object alternates refused")
++
++
++def require_clean_source(binding):
++    """Candidate production/build inputs must retain their committed tagged bytes."""
++    require("workspace_builds" not in binding, "candidate Builds must be self-contained")
++    for observed in (binding["main"], *(row["binding"] for row in binding["dependencies"] if row["initialized"])):
++        require(observed["diff_sha256"] == digest(b"") and all(
++            row["git_blob"] is not None and row["git_blob"] == row["index_blob"] for row in observed["files"]),
++            "dirty candidate production or build source refused")
++    for row in binding["dependencies"]:
++        require(not row["initialized"] or row["binding"]["head"] == binding["main"]["gitlinks"].get(row["path"]),
++                "candidate dependency differs from tagged gitlink")
++    builds = next((row for row in binding["dependencies"] if row["path"] == "references/Hexalith.Builds"), None)
++    require(builds is not None and builds["initialized"], "candidate Builds closure missing")
++    root = Path(binding["repository"])
++    require_tagged_checkout(root, binding["main"])
++    for row in binding["dependencies"]:
++        if row["initialized"]:
++            require_tagged_checkout(root / relative(row["path"]), row["binding"])
++
++
++def check_current_source(binding, check_python=True):
++    source = binding.get("candidate_source")
++    observed = (source_binding(Path(binding["repository"]), Path(source["repository"])) if source is not None
++                else source_binding(Path(binding["repository"])))
++    if not check_python:
++        observed["python"] = binding["python"]
++        if source is not None:
++            observed["candidate_source"]["python"] = source["python"]
++    require(binding == observed, "source/configuration inputs changed")
+ 
+ 
+ def checks_counter(checks):
+diff --git a/tools/tests/p1r_isolation_fixture.py b/tools/tests/p1r_isolation_fixture.py
+index 6f35df68..281bb534 100644
+--- a/tools/tests/p1r_isolation_fixture.py
++++ b/tools/tests/p1r_isolation_fixture.py
+@@ -72,6 +72,8 @@ class DockerBoundary:
+                     Mounts=[{'Destination':'/var/lib/docker','Type':'volume','Name':self.worker.volume,'RW':True},
+                             {'Destination':str(self.worker.workspace),'Source':('/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/fixture/'+('a'*64)
+                                       if self.mapped_bind else str(self.worker.workspace)),'Type':'bind','RW':True}])
++            if role == 'sdk' and self.worker.source_root is not None and not self.worker.source_root.is_relative_to(self.worker.workspace):
++                value['Mounts'].append({'Destination':str(self.worker.source_root),'Source':str(self.worker.source_root),'Type':'bind','RW':True})
+             self.containers[identity] = value
+             Path(args[args.index('--cidfile')+1]).write_text(identity)
+             output = identity+'\n'
+@@ -159,11 +161,15 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
+         finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=selected_hash,receipts=[str(path)])
+     isolation.write_json(root/'execution.json',execution)
+     boundary = DockerBoundary(root,receipt,context,private_failure,outer_failure,real_inner,mapped_bind,late_process)
++    source = context['source_binding'].get('candidate_source')
++    source_root = Path(source['repository']) if source is not None else None
+     command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(selected)]
++    if source_root is not None:
++        command += ['--source-root', str(source_root)]
+     with mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
+             mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
+             mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):
+-        worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer')
++        worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',source_root=source_root)
+         boundary.worker = worker
+         # Fixture executor timestamps are historical, so launch starts before them.
+         original_run = boundary.run
+diff --git a/tools/tests/test_p1r_isolation.py b/tools/tests/test_p1r_isolation.py
+index b91644dd..66582538 100644
+--- a/tools/tests/test_p1r_isolation.py
++++ b/tools/tests/test_p1r_isolation.py
+@@ -51,6 +51,42 @@ class PrivateEndpointTests(unittest.TestCase):
+             self.assertRegex(image, "^" + isolation.IMAGE_PATTERN + "$")
+ 
+ 
++class SeparateSourceMountTests(unittest.TestCase):
++    def testExactSourceArgumentAndMountAreIndependentOfVerifierRoot(self):
++        with tempfile.TemporaryDirectory() as directory:
++            base = Path(directory)
++            verifier,source = base/'verifier',base/'source'
++            verifier.mkdir();source.mkdir()
++            inputs = verifier/'inputs.json';inputs.write_text('{}')
++            command = ['python3',str(verifier/'tools/p1r-published-executor.py'),'run','--out',str(verifier/'run'),
++                       '--inputs',str(inputs),'--source-root',str(source)]
++            self.assertEqual(isolation.command_source_root(command),source)
++            self.assertEqual(isolation.executor_input(command,verifier),{'path':str(inputs),'sha256':preparation.digest(b'{}')})
++            with mock.patch.object(preparation,'declared_dependencies',return_value=['references/Hexalith.Builds']):
++                args = isolation.sdk_arguments(verifier,verifier,'a'*32,'daemon','volume',source)
++            self.assertIn('type=bind,src='+str(source)+',dst='+str(source),args)
++            self.assertIn('type=bind,src='+str(verifier)+',dst='+str(verifier),args)
++            for changed in (command+['--source-root',str(verifier)],command[:-1]+[str(source/'..')],
++                            command[:7]+['--inputs',str(inputs)]):
++                with self.subTest(command=changed), self.assertRaises(preparation.InvalidPacket):
++                    isolation.executor_input(changed,verifier)
++
++    def testOrdinaryCheckoutBoundaryRefusesLinkedAndBorrowedMetadata(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory)
++            (root/'.git/objects/info').mkdir(parents=True)
++            with mock.patch.object(preparation,'declared_dependencies',return_value=[]), \
++                    mock.patch.object(preparation,'git',return_value=str(root/'.git').encode()):
++                preparation.self_contained_checkout(root)
++                (root/'.git/objects/info/alternates').write_text('/shared/objects')
++                with self.assertRaisesRegex(preparation.InvalidPacket,'alternates'):
++                    preparation.self_contained_checkout(root)
++            shutil.rmtree(root/'.git')
++            (root/'.git').write_text('gitdir: /shared/worktrees/candidate')
++            with self.assertRaisesRegex(preparation.InvalidPacket,'ordinary Git'):
++                preparation.self_contained_checkout(root)
++
++
+ class ControllerTests(unittest.TestCase):
+     def setUp(self):
+         self.temporary = tempfile.TemporaryDirectory()
+@@ -660,5 +696,85 @@ class RepairAttemptTests(unittest.TestCase):
+                 entry["require_inventory"](q, runtime, run, execution, receipts)
+ 
+ 
++class ExecutorOutputOwnershipTests(unittest.TestCase):
++    @contextlib.contextmanager
++    def fixture(self):
++        with tempfile.TemporaryDirectory(prefix='p1r-owned-output-') as scratch:
++            root = Path(scratch)
++            wrapper,run = root/'wrapper',root/'execution'
++            wrapper.mkdir();(run/'receipts').mkdir(parents=True)
++            inputs=root/'inputs.json';inputs.write_text('{"controlled":true}\n')
++            binding={'repository':str(root),'scope':'controlled ownership boundary; no qualification'}
++            preparation.write_json(run/'executor-source.json',binding)
++            receipt=run/'receipts/receipt.json';preparation.write_json(receipt,{'controlled':True})
++            preparation.write_json(run/'execution.json',{'schema':'hexalith.p1r.executor.v1','invocation':'a'*32,
++                'finished_utc':'2026-10-18T00:00:00+00:00','inputs_sha256':preparation.digest(inputs.read_bytes()),
++                'executor_source_sha256':preparation.digest((run/'executor-source.json').read_bytes()),'receipts':[str(receipt)]})
++            command=['python3',str(root/'tools/p1r-published-executor.py'),'run','--out',str(run),'--inputs',str(inputs),
++                     '--source-root',str(root/'selected-source')]
++            with mock.patch.object(isolation,'ROOT',root):yield root,wrapper,run,binding,command
++
++    def testOwnershipHandoffChangesOnlyExactCompletedRunDirectories(self):
++        with self.fixture() as (root,wrapper,run,binding,command):
++            before={str(path):path.read_bytes() for path in run.rglob('*') if path.is_file()}
++            result=isolation.handoff_executor_output(command,wrapper,binding,Path(command[-1]),True)
++            self.assertEqual([row['path'] for row in result['directories']],[str(run),str(run/'receipts')])
++            self.assertEqual(result['host_owner'],{'uid':wrapper.stat().st_uid,'gid':wrapper.stat().st_gid})
++            self.assertEqual(before,{str(path):path.read_bytes() for path in run.rglob('*') if path.is_file()})
++            self.assertIsNone(isolation.handoff_executor_output(['python3','unrelated.py'],wrapper,binding,None,True))
++
++    def testSubstitutedOwnershipCommandSourceReceiptOrExistingOutputCannotBeChowned(self):
++        for mutation in ('command','source','receipt','existing','root','input'):
++            with self.subTest(mutation=mutation),self.fixture() as (root,wrapper,run,binding,command):
++                absent=True
++                if mutation=='command':command+=['--unexpected']
++                elif mutation=='source':binding=dict(binding,repository='/substituted')
++                elif mutation=='receipt':
++                    value=json.loads((run/'execution.json').read_bytes());value['receipts']=[str(root/'outside.json')]
++                    preparation.write_json(run/'execution.json',value)
++                elif mutation=='existing':absent=False
++                elif mutation=='root':command[4]=str(root.parent)
++                else:(root/'inputs.json').write_text('substituted input')
++                with mock.patch.object(isolation.os,'chown') as chown:
++                    with self.assertRaises(preparation.InvalidPacket):
++                        isolation.handoff_executor_output(command,wrapper,binding,root/'selected-source',absent)
++                    chown.assert_not_called()
++
++    def testActualRootToControllerBoundaryAllowsAtomicReceiptFinalization(self):
++        if os.geteuid()==0 or shutil.which('sudo') is None:
++            self.skipTest('requires a nonroot controller with sudo; private smoke covers the SDK boundary')
++        with self.fixture() as (root,wrapper,run,binding,command):
++            sudo=['sudo','-n',sys.executable,'-c']
++            if subprocess.run(['sudo','-n','true'],capture_output=True).returncode:
++                self.skipTest('noninteractive root boundary unavailable')
++            paths=[str(run),str(run/'receipts')]
++            change='import os,json,sys;[os.chown(p,int(sys.argv[2]),int(sys.argv[3])) for p in json.loads(sys.argv[1])]'
++            subprocess.run([*sudo,change,json.dumps(paths),'0','0'],check=True,capture_output=True)
++            try:
++                with self.assertRaises(PermissionError):
++                    preparation.write_json(run/'receipts/receipt.json',{'finalized':True})
++                script=('import json,sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
++                        'import p1r_isolation as i;i.ROOT=Path(sys.argv[2]);'
++                        'r=i.handoff_executor_output(json.loads(sys.argv[3]),Path(sys.argv[4]),json.loads(sys.argv[5]),Path(sys.argv[6]),True);'
++                        'print(json.dumps(r))')
++                process=subprocess.run([*sudo,script,str(preparation.ROOT/'tools'),str(root),json.dumps(command),
++                                        str(wrapper),json.dumps(binding),command[-1]],check=True,capture_output=True,text=True)
++                result=json.loads(process.stdout)
++                self.assertTrue(all(row['before']['uid']==0 and row['after']['uid']==os.getuid() for row in result['directories']))
++                preparation.write_json(run/'receipts/receipt.json',{'finalized':True})
++                self.assertEqual(json.loads((run/'receipts/receipt.json').read_bytes()),{'finalized':True})
++            finally:
++                subprocess.run([*sudo,change,json.dumps(paths),str(os.getuid()),str(os.getgid())],check=True,capture_output=True)
++
++    def testLegacyWorkspaceOutputOutsideRepositoryKeepsExistingGrammarWithoutHandoff(self):
++        with self.fixture() as (root,wrapper,run,binding,command):
++            legacy=command[:7]
++            legacy[4]=str(root.parent/'umbrella-output')
++            self.assertEqual(isolation.executor_input(legacy,root)['path'],str(root/'inputs.json'))
++            with mock.patch.object(isolation.os,'chown') as chown:
++                self.assertIsNone(isolation.handoff_executor_output(legacy,wrapper,binding,None,False))
++                chown.assert_not_called()
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tools/tests/test_p1r_isolation_hardening.py b/tools/tests/test_p1r_isolation_hardening.py
+index c444b777..89db97b4 100644
+--- a/tools/tests/test_p1r_isolation_hardening.py
++++ b/tools/tests/test_p1r_isolation_hardening.py
+@@ -23,6 +23,25 @@ from p1r_isolation_fixture import run_controller
+ import test_p1r_published_executor as published_tests
+ 
+ 
++class TaggedSourceLifecycleTests(unittest.TestCase):
++    def testIndependentImportRefusesRehashedRoleAndRootSubstitution(self):
++        for record,mutation in (
++            ('private',lambda value:value['source_binding']['candidate_source'].__setitem__('repository',str(preparation.ROOT))),
++            ('wrapper',lambda value:value.__setitem__('source_root',str(preparation.ROOT))),
++            ('wrapper',lambda value:value['controller_source_binding']['candidate_source']['main'].__setitem__('head','0'*40)),
++            ('wrapper',lambda value:value['inner_command'].__setitem__(-1,str(preparation.ROOT))),
++        ):
++            witness = published_tests.Published31251SnapshotWitnessTests()
++            witness.setUp()
++            self.addCleanup(witness.doCleanups)
++            receipt,context = witness.import_fixture(scope='operational')
++            self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
++            witness.change_isolation(receipt,record,mutation)
++            with self.subTest(record=record),self.assertRaises(preparation.InvalidPacket):
++                qualification.receipt_outcome(receipt,context)
++            witness.doCleanups()
++
++
+ class LifecycleTests(unittest.TestCase):
+     def fixture(self, **options):
+         witness = published_tests.ProposedQualifiedSnapshotWitnessTests()
+diff --git a/tools/tests/test_p1r_published_executor.py b/tools/tests/test_p1r_published_executor.py
+index 23582d11..8805667e 100644
+--- a/tools/tests/test_p1r_published_executor.py
++++ b/tools/tests/test_p1r_published_executor.py
+@@ -804,6 +804,51 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
+ class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
+     candidate_version = '3.125.1'
+ 
++    def setUp(self):
++        super().setUp()
++        self.tagged_root = Path(self.temporary.name) / 'tagged-source'
++        self.tagged_root.mkdir()
++        (self.tagged_root/'.gitmodules').write_text('[submodule \"Builds\"]\n path = references/Hexalith.Builds\n url = fixture-builds\n')
++        self.test_binding = None
++        original_binding,original_git = preparation.source_binding,preparation.git
++        def bind(root=preparation.ROOT,source_root=None):
++            if self.test_binding is not None and Path(root) == preparation.ROOT:
++                return copy.deepcopy(self.test_binding)
++            return original_binding(root,source_root) if source_root is not None else original_binding(root)
++        def git(root,*arguments):
++            if Path(root) == self.tagged_root:
++                if arguments[0] == 'ls-tree':
++                    return ('160000 commit '+qualification.SELECTED_TAG_BUILDS+'\treferences/Hexalith.Builds\n').encode()
++                return qualification.SELECTED_SOURCE_COMMIT.encode()
++            return original_git(root,*arguments)
++        for patcher in (mock.patch.object(preparation,'source_binding',side_effect=bind),
++                        mock.patch.object(preparation,'self_contained_checkout'),
++                        mock.patch.object(preparation,'require_tagged_checkout'),
++                        mock.patch.object(preparation,'git',side_effect=git)):
++            patcher.start()
++            self.addCleanup(patcher.stop)
++
++    def attach_isolation(self,receipt,context):
++        binding = context['source_binding']
++        production = {'head':qualification.SELECTED_SOURCE_COMMIT,'diff_sha256':preparation.digest(b''),
++            'files':[{'path':'src/Production.cs','sha256':'a'*64,'git_blob':'b'*40,'index_blob':'b'*40}],
++            'gitlinks':{'references/Hexalith.Builds':qualification.SELECTED_TAG_BUILDS}}
++        binding['candidate_source'] = {'repository':str(self.tagged_root),'main':production,'retained_inputs':[],
++            'python':binding['python'],'dependencies':[{'path':'references/Hexalith.Builds','initialized':True,
++                'binding':dict(copy.deepcopy(production),head=qualification.SELECTED_TAG_BUILDS)}]}
++        self.test_binding = binding
++        context['inputs']['value']['candidate'].update(tag='v3.125.1',tag_commit=qualification.SELECTED_SOURCE_COMMIT,
++            tag_builds_commit=qualification.SELECTED_TAG_BUILDS,feed='https://api.nuget.org/v3/index.json')
++        source_path = Path(self.temporary.name)/'executor-source.json'
++        executor.write_json(source_path,binding)
++        execution_path = Path(self.temporary.name)/'execution.json'
++        execution = json.loads(execution_path.read_bytes())
++        execution['executor_source_sha256'] = executor.digest(source_path.read_bytes())
++        executor.write_json(execution_path,execution)
++        receipt['execution_evidence'].update(executor_source=binding,executor_source_sha256=executor.digest(source_path.read_bytes()))
++        receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
++        return super().attach_isolation(receipt,context)
++
+ 
+ class IndependentRecoverySelectionTests(unittest.TestCase):
+     def setUp(self):
+@@ -929,7 +974,7 @@ class MeasurementTests(unittest.TestCase):
+         for candidate,version in (("3.125.0","3.122.0"),("3.125.0","3.122.2"),
+                                   ("3.125.0","3.125.2"),("3.125.2","3.125.2"),
+                                   ("3.125.2","source"),("3.126.0","3.126.0"),("3.126.0","source"),
+-                                  ("3.125.0","3.125.1"),("3.125.1","3.125.0"),
++                                  ("3.125.1","3.126.0"),("3.125.1","3.125.0"),
+                                   ("3.125.0","3.121.0")):
+             worker, checks = self.snapshotSeedWorker(None,candidate=candidate)
+             with self.subTest(candidate=candidate,version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
+@@ -941,9 +986,25 @@ class MeasurementTests(unittest.TestCase):
+             worker.postgres_query.assert_not_called()
+             worker.start_nodes.assert_not_called()
+ 
++    def testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation(self):
++        for interval in (10, 50, 1000):
++            for candidate, version in (("3.126.0", "source"), ("3.126.0", "3.126.0"),
++                                       ("3.126.0", "3.110.0"), ("3.125.2", "source"),
++                                       ("3.125.1", "3.125.0"), ("3.125.1", "3.126.0"),
++                                       ("3.125.1", "unknown")):
++                worker, checks = self.snapshotSeedWorker(None, candidate=candidate)
++                with self.subTest(interval=interval, candidate=candidate, version=version):
++                    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
++                        worker.seed(version, interval, checks)
++                    worker.stop_nodes.assert_not_called()
++                    worker.postgres_query.assert_not_called()
++                    worker.start_nodes.assert_not_called()
++                    worker.probe.assert_not_called()
++                    worker.mutate.assert_not_called()
++
+     def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
+-        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),
+-                                 ("3.125.1","3.125.1"),("3.125.1","source"),("3.125.0","source"),
++        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),("3.125.1","3.125.1"),
++                                 ("3.125.1","source"),("3.125.0","source"),
+                                  ("3.122.2","3.122.2"),("3.125.2","3.125.2"),
+                                  ("3.126.0","source"),("3.125.0",None)):
+             with self.subTest(candidate=candidate,writer=writer):
+@@ -1272,6 +1333,161 @@ class MeasurementTests(unittest.TestCase):
+         self.assertEqual(observed["observations"], [])
+         self.assertEqual(checks.counter, {"attempted": 1, "passed": 0, "failed": 1})
+ 
++    def reminderWorker(self):
++        worker = executor.Executor.__new__(executor.Executor)
++        worker.candidate, worker.host_port, worker.sidecar_port = '3.125.1', 10001, 10002
++        worker.seed, worker.stop_nodes, worker.start_nodes = mock.Mock(), mock.Mock(), mock.Mock()
++        worker.inventory = mock.Mock(return_value=[])
++        worker.probe = mock.Mock(return_value={'sequence':12})
++        worker.natural_reminder = mock.Mock(return_value={'completed':True})
++        def http(method,url,body):
++            parsed = executor.urllib.parse.urlsplit(url)
++            revision = int(parsed.path.rsplit('/',1)[-1])
++            query = executor.urllib.parse.parse_qs(parsed.query)
++            due = query.get('due',[worker.reminder_due])[0]
++            identity = {'intent_due':due,'intent_revision':revision,
++                        'reminder_name':executor.witnesses.reminder_name(due,revision)}
++            return dict(identity, **({'armed':1,'unresolved':0,'quarantined':0,'submitted':0}
++                                    if '/register/' in url else {'sequence':13,'callback_status':204}))
++        worker.http = mock.Mock(side_effect=http)
++        return worker
++
++    def testReminderFutureLeadSurvivesSlowReadinessAndPreservesArmedDue(self):
++        worker = self.reminderWorker()
++        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
++                   '2026-10-18T00:01:50.100000+00:00']
++        checks = executor.Measurements()
++        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
++            observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
++        self.assertEqual({window['due_utc'] for window in observed['deadline_windows']}, {'2026-10-18T00:02:00+00:00'})
++        self.assertEqual(checks.counter['failed'],0)
++        self.assertEqual(worker.http.call_count,3)
++
++    def testReminderMissedInitialOrRestartWindowRefusesWithoutRescheduling(self):
++        for phase,moments,posts in (
++            ('initial',['2026-10-18T00:00:00+00:00','2026-10-18T00:02:01+00:00'],0),
++            ('initial-response',['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                                 '2026-10-18T00:02:01+00:00'],1),
++            ('restart',['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                        '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:01+00:00'],1)):
++            worker,checks = self.reminderWorker(),executor.Measurements()
++            with self.subTest(phase=phase), mock.patch.object(executor,'stamp',side_effect=moments), \
++                    mock.patch.object(executor.time,'sleep'):
++                with self.assertRaisesRegex(preparation.InvalidPacket,'future deadline missed'):
++                    worker.reminder_case('scheduled-restart-effect',checks)
++                self.assertEqual(worker.http.call_count,posts)
++                self.assertEqual(worker.reminder_due,'2026-10-18T00:02:00+00:00')
++                self.assertEqual(checks.counter['failed'],1)
++
++    def testReminderRevisionTwoHasItsOwnFutureStartupLead(self):
++        worker,checks = self.reminderWorker(),executor.Measurements()
++        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:40+00:00',
++                   '2026-10-18T00:03:50+00:00','2026-10-18T00:03:50.100000+00:00']
++        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
++            observed,_,_ = worker.reminder_case('stale-generation-refusal',checks)
++        self.assertEqual(observed['deadline_windows'][0]['due_utc'],'2026-10-18T00:02:00+00:00')
++        self.assertEqual(observed['deadline_windows'][2]['due_utc'],'2026-10-18T00:04:40+00:00')
++        callback = executor.urllib.parse.urlsplit(worker.http.call_args.args[1])
++        self.assertEqual(executor.urllib.parse.parse_qs(callback.query), {
++            'due':[observed['registration']['intent_due']], 'reminderName':[observed['registration']['reminder_name']]})
++        self.assertNotEqual(observed['registration']['reminder_name'],observed['rearmed']['reminder_name'])
++        self.assertEqual(observed['repeated_or_stale']['reminder_name'],observed['registration']['reminder_name'])
++        self.assertEqual(checks.counter['failed'],0)
++
++    def testReminderIndependentCodecMatchesPublishedGoldenVectors(self):
++        for item,revision,expected in (
++            ('item-1',0,'DH9MMM0QHN2MWP2XDVTVGDQ8PMVMN8KDNFAPWMAJQNA7T0E6PB20'),
++            ('item-1',1,'AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0'),
++            ('Item-1',1,'6P3J38VYKVQCKFH8WGX4ZP2KCD7QJVT8MN0D74K352JFEMV75NYG')):
++            with self.subTest(item=item,revision=revision):
++                self.assertEqual(executor.witnesses.reminder_name('2026-10-01T09:30:00+00:00',revision,item=item),'date-wrs-'+expected)
++
++    def testReminderProducerRetainsRejectedActorRequestAsFailedMeasurement(self):
++        for status in (403,404,500,None,True):
++            worker,checks = self.reminderWorker(),executor.Measurements()
++            invoke = worker.http.side_effect
++            def http(method,url,body):
++                response = invoke(method,url,body)
++                if '/callback/' in url:response['callback_status'] = status
++                return response
++            worker.http.side_effect = http
++            moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                       '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
++                       '2026-10-18T00:01:50.100000+00:00']
++            with self.subTest(status=status),mock.patch.object(executor,'stamp',side_effect=moments),mock.patch.object(executor.time,'sleep'):
++                observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
++                self.assertEqual(checks.counter['failed'],1)
++                self.assertIn({'id':'callback-actor-request-accepted','passed':False},checks.checks)
++                self.assertEqual(observed['repeated_or_stale']['callback_status'],status)
++
++    def testReminderIdentityImportRejectsUnknownTokenAndRehashedSubstitutions(self):
++        worker,checks = self.reminderWorker(),executor.Measurements()
++        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:40+00:00',
++                   '2026-10-18T00:03:50+00:00','2026-10-18T00:03:50.100000+00:00']
++        with mock.patch.object(executor,'stamp',side_effect=moments),mock.patch.object(executor.time,'sleep'):
++            observed,_,_ = worker.reminder_case('stale-generation-refusal',checks)
++        rows = [({'argv':['HTTP','POST',call.args[1]]},observed[key])
++                for call,key in zip(worker.http.call_args_list,('registration','rearmed','repeated_or_stale'))]
++        values = {row['id']:row['passed'] for row in checks.checks}
++        executor.witnesses.validate_reminder_identity(observed,rows,values,'stale-generation-refusal')
++        for mutation in ('due','name','revision','request','unknown-token','missing-query','rearmed','check','status'):
++            changed,commands,verdicts = copy.deepcopy(observed),copy.deepcopy(rows),dict(values)
++            if mutation in ('due','name','revision'):
++                key = {'due':'intent_due','name':'reminder_name','revision':'intent_revision'}[mutation]
++                changed['registration'][key] = {'due':changed['due'],'name':changed['rearmed']['reminder_name'],'revision':2}[mutation]
++            elif mutation == 'request':commands[-1][0]['argv'][2] += '&due=2026-10-18T00%3A04%3A40%2B00%3A00'
++            elif mutation == 'unknown-token':
++                # The previous fixture recomputed revision one with revision two's current due.
++                due = changed['rearmed']['intent_due']
++                name = executor.witnesses.reminder_name(due,1)
++                changed['repeated_or_stale'].update(intent_due=due,reminder_name=name)
++                commands[-1][0]['argv'][2] = 'http://127.0.0.1/reminder/callback/1?'+executor.urllib.parse.urlencode({'due':due,'reminderName':name})
++            elif mutation == 'missing-query':commands[-1][0]['argv'][2] = 'http://127.0.0.1/reminder/callback/1'
++            elif mutation == 'rearmed':changed['rearmed']['reminder_name'] = changed['registration']['reminder_name']
++            elif mutation == 'status':changed['repeated_or_stale']['callback_status'] = 403
++            else:verdicts['callback-replays-original-armed-identity'] = False
++            commands = [(command,copy.deepcopy(changed[key])) for (command,_),key in
++                        zip(commands,('registration','rearmed','repeated_or_stale'))]
++            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
++                executor.witnesses.validate_reminder_identity(changed,commands,verdicts,'stale-generation-refusal')
++
++        for status in (403,404,500,None,True):
++            changed,commands,verdicts = copy.deepcopy(observed),copy.deepcopy(rows),dict(values)
++            changed['repeated_or_stale']['callback_status'] = status
++            verdicts['callback-actor-request-accepted'] = False
++            commands[-1] = (commands[-1][0],copy.deepcopy(changed['repeated_or_stale']))
++            with self.subTest(retained_nonpassing_status=status):
++                executor.witnesses.validate_reminder_identity(changed,commands,verdicts,'stale-generation-refusal')
++
++    def testReminderTimingImportBindsActualRegistrationAndLaunchConfiguration(self):
++        worker,checks = self.reminderWorker(),executor.Measurements()
++        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
++                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
++                   '2026-10-18T00:01:50.100000+00:00']
++        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
++            observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
++        commands = [({'argv':['HTTP','POST','http://127.0.0.1/reminder/register/1'],
++                     'started_utc':'2026-10-18T00:01:'+second+'.010000+00:00',
++                     'finished_utc':'2026-10-18T00:01:'+second+'.090000+00:00'}, {}) for second in ('10','50')]
++        configurations = [{'observed_utc':'2026-10-18T00:01:'+second+'+00:00','reminder_due':observed['due']}
++                          for second in ('00','40')]
++        values = {row['id']:row['passed'] for row in checks.checks}
++        executor.witnesses.validate_reminder_windows(observed,commands,configurations,values,'scheduled-restart-effect')
++        for mutation in ('missing','remaining','expired','due','phase','command','configuration'):
++            changed,rows,configs = copy.deepcopy(observed),copy.deepcopy(commands),copy.deepcopy(configurations)
++            if mutation == 'missing':del changed['deadline_windows']
++            elif mutation == 'remaining':changed['deadline_windows'][0]['remaining_seconds'] += 1
++            elif mutation == 'expired':changed['deadline_windows'][0]['observed_utc'] = '2026-10-18T00:03:00+00:00'
++            elif mutation == 'due':changed['deadline_windows'][2]['due_utc'] = '2026-10-18T00:03:00+00:00'
++            elif mutation == 'phase':changed['deadline_windows'].reverse()
++            elif mutation == 'command':rows[0][0]['finished_utc'] = '2026-10-18T00:03:00+00:00'
++            else:configs[1]['reminder_due'] = '2026-10-18T00:03:00+00:00'
++            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
++                executor.witnesses.validate_reminder_windows(changed,rows,configs,values,'scheduled-restart-effect')
++
+     def testExecutionRefusesSubstitutedApprovedTupleBeforeOperations(self):
+         inputs = {"candidate": {"version": "3.119.0", "tag": "v3.119.0",
+             "tag_commit": "f463442cca19e4199982a23a08bae4a490767d4a",
+@@ -1359,6 +1575,8 @@ class MeasurementTests(unittest.TestCase):
+         observations = [b"a" * 40, b"d" * 40,
+                         b"160000 commit " + b"b" * 40 + b"\treferences/Hexalith.Builds\n"]
+         with mock.patch.object(qualification, "validate_inputs", return_value="owner-selected"), \
++             mock.patch.object(preparation, "source_binding", return_value={}), \
++             mock.patch.object(qualification, "validate_candidate_source"), \
+              mock.patch.object(preparation, "git", side_effect=observations):
+             with self.assertRaisesRegex(preparation.InvalidPacket, "exact source"):
+                 executor.validate_execution_inputs(inputs)
+@@ -2197,5 +2415,95 @@ class BoundaryAdmissionTests(unittest.TestCase):
+         self.assertEqual(checks.counter["failed"], 1)
+ 
+ 
++class PublishedPatchSourceTests(unittest.TestCase):
++    """Real selection, wait and snapshot callers; Git observations are tooling fixtures."""
++
++    def fixture(self):
++        source_root = Path('/selected/tagged-source')
++        clean = {'head': qualification.SELECTED_SOURCE_COMMIT, 'diff_sha256': preparation.digest(b''),
++                 'files': [{'path': 'src/Production.cs', 'git_blob': 'a'*40,
++                            'index_blob': 'a'*40, 'sha256': 'b'*64}],
++                 'gitlinks': {'references/Hexalith.Builds': qualification.SELECTED_TAG_BUILDS}}
++        builds = dict(copy.deepcopy(clean), head=qualification.SELECTED_TAG_BUILDS)
++        source = {'repository': str(source_root), 'main': clean,
++                  'dependencies': [{'path':'references/Hexalith.Builds','initialized':True,'binding':builds}]}
++        binding = {'repository':str(preparation.ROOT), 'main':{'head':'f'*40}, 'candidate_source':source}
++        candidate = {'version':'3.125.1','tag':'v3.125.1','tag_commit':qualification.SELECTED_SOURCE_COMMIT,
++            'tag_builds_commit':qualification.SELECTED_TAG_BUILDS,
++            'builds':{'version':'4.33.1','commit':'c'*40},'feed':'https://api.nuget.org/v3/index.json'}
++        inputs = {'candidate':candidate,'rollback':None,'comparisons':[{'version':v} for v in qualification.COMPARISON_VERSIONS],
++            'assertion_instrumentation':{'mechanism':executor.MECHANISM},'selected_additions':list(qualification.ADDITIONS),
++            'operational_profile':{'runtime':'dapr','runtime_version':'1.18.2','backend':'state.postgresql','backend_image':executor.POSTGRES}}
++        def git(root,*arguments):
++            if Path(root) != source_root:
++                return b'f'*40
++            if arguments[0] == 'ls-tree':
++                return ('160000 commit '+qualification.SELECTED_TAG_BUILDS+'\treferences/Hexalith.Builds\n').encode()
++            return qualification.SELECTED_SOURCE_COMMIT.encode()
++        return source_root,binding,inputs,git
++
++    def testNewerVerifierCanSelectOnlyExactCleanTaggedProductionAndBuildClosure(self):
++        source_root,binding,inputs,git = self.fixture()
++        for mutation in (None,'head','builds','dirty','missing-builds','tag','feed'):
++            changed = copy.deepcopy(binding)
++            selected = copy.deepcopy(inputs)
++            if mutation == 'head': changed['candidate_source']['main']['head'] = '0'*40
++            if mutation == 'builds': changed['candidate_source']['dependencies'][0]['binding']['head'] = '0'*40
++            if mutation == 'dirty': changed['candidate_source']['main']['diff_sha256'] = preparation.digest(b'dirty source')
++            if mutation == 'missing-builds': changed['candidate_source']['dependencies'] = []
++            if mutation == 'tag': selected['candidate']['tag_commit'] = '0'*40
++            if mutation == 'feed': selected['candidate']['feed'] = 'https://substituted.invalid/v3/index.json'
++            with self.subTest(mutation=mutation), mock.patch.object(qualification,'validate_inputs',return_value='owner-selected'), \
++                    mock.patch.object(preparation,'source_binding',return_value=changed) as bind, \
++                    mock.patch.object(preparation,'require_tagged_checkout'), \
++                    mock.patch.object(preparation,'self_contained_checkout'), mock.patch.object(preparation,'git',side_effect=git):
++                if mutation is None:
++                    executor.validate_execution_inputs(selected,source_root)
++                    bind.assert_called_once_with(executor.ROOT,source_root)
++                else:
++                    with self.assertRaises(preparation.InvalidPacket):
++                        executor.validate_execution_inputs(selected,source_root)
++
++    def testMissingCandidateClosureCannotBeRehashedIntoAnImport(self):
++        _,binding,inputs,_ = self.fixture()
++        del binding['candidate_source']
++        for binder in (qualification.bind_lane,qualification.bind_recovery):
++            context = {'source_binding':binding,'inputs':{'value':inputs,'scope':'owner-selected'}}
++            with self.subTest(binder=binder.__name__), self.assertRaisesRegex(preparation.InvalidPacket,'source closure missing'):
++                if binder == qualification.bind_lane:
++                    binder({'lane':'checkout'},{'scope':'operational'},context)
++                else:
++                    binder({}, {'scope':'operational'}, 'candidate-restore', context)
++
++    def testReadyWaitRechecksSourceAfterReturningAndRefusesDrift(self):
++        worker = executor.Executor.__new__(executor.Executor)
++        worker.http = mock.Mock(return_value={'ready':True})
++        worker.source_binding = {'repository':'/selected/verifier','candidate_source':{'repository':'/selected/source'}}
++        worker.inputs = None
++        item = {'process':mock.Mock()}
++        item['process'].poll.return_value = None
++        with mock.patch.object(preparation,'check_current_source',side_effect=preparation.InvalidPacket('post-wait drift')) as check:
++            with self.assertRaisesRegex(preparation.InvalidPacket,'post-wait drift'):
++                worker.wait('http://127.0.0.1:12345/ready',item)
++        worker.http.assert_called_once()
++        check.assert_called_once_with(worker.source_binding)
++
++    def testSelectedPatchRequiresEveryGenuineSnapshotWitness(self):
++        helper = QualifiedSnapshotWitnessTests()
++        helper.candidate_version = '3.125.1'
++        helper.setUp()
++        self.addCleanup(helper.doCleanups)
++        for lane in ('post-upgrade-restore','snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
++            for writer in (('3.125.1',) if lane == 'post-upgrade-restore' else ('3.125.1','source')):
++                with self.subTest(lane=lane,writer=writer):
++                    fixture = helper.fixture(writer_version=writer,lane=lane)
++                    helper.validate(fixture,lane)
++                    del fixture[1]['snapshot_fixture_source']
++                    with self.assertRaises(preparation.InvalidPacket):
++                        helper.validate(fixture,lane)
++        self.assertIn('3.125.1',qualification.ISOLATION_VERSIONS)
++        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.126.0','snapshot-tail','source-to-3.110.0'))
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tools/tests/test_p1r_published_qualification.py b/tools/tests/test_p1r_published_qualification.py
+index 0165875e..d6454101 100644
+--- a/tools/tests/test_p1r_published_qualification.py
++++ b/tools/tests/test_p1r_published_qualification.py
+@@ -78,6 +78,77 @@ def sha(data):
+     return hashlib.sha256(data).hexdigest()
+ 
+ 
++class TaggedSourceConsumerTests(unittest.TestCase):
++    def fixture(self, directory):
++        base = Path(directory)
++        root,source_root = base/'consumers/source',base/'candidate'
++        root.mkdir(parents=True);source_root.mkdir()
++        sdk = b'{"sdk":{"version":"10.0.401"}}'
++        (root/'global.json').write_bytes(sdk)
++        binding = {'candidate_source':{'repository':str(source_root),'main':{'files':[{'path':'global.json','sha256':q.digest(sdk)}]}}}
++        manifest = {'role':'source','configuration':'Debug','projects':[]}
++        for project in ('Host','Domain','Probe'):
++            stem = project.lower()
++            files = {'assets':stem+'/obj/project.assets.json','lock':stem+'/packages.lock.json','loaded':'loaded/'+project+'.json'}
++            output = stem+'/bin/Debug/net10.0'
++            references = {str(source_root/'src'/name/(name+'.csproj')):{} for name in q.SUCCESSOR_PACKAGE_IDS}
++            consumer_project = root/stem/(project+'.csproj')
++            consumer_project.parent.mkdir(parents=True,exist_ok=True);consumer_project.write_text('<Project />')
++            for name in q.SUCCESSOR_PACKAGE_IDS:
++                source_project = source_root/'src'/name/(name+'.csproj')
++                source_project.parent.mkdir(parents=True,exist_ok=True);source_project.write_text('<Project />')
++            loaded = []
++            for name in q.SUCCESSOR_PACKAGE_IDS:
++                # Build outputs are shared; each consumer loads the same actual source assembly.
++                data = name.encode()
++                for path in (root/output/(name+'.dll'),source_root/'src'/name/'bin/Debug/net10.0'/(name+'.dll')):
++                    path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
++                loaded.append({'name':name,'path':str(root/output/(name+'.dll')),'sha256':q.digest(data)})
++            values = {'assets':{'project':{'restore':{'projectPath':str(consumer_project),'frameworks':{'net10.0':{'projectReferences':references}}}},
++                                'libraries':{'Server':{'type':'project','path':os.path.relpath(source_root/'src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj',consumer_project.parent)}}},
++                      'lock':{},'loaded':{'assemblies':loaded}}
++            for name,path in files.items():
++                (root/path).parent.mkdir(parents=True,exist_ok=True);q.write_json(root/path,values[name])
++            manifest['projects'].append({'name':project,'output':output,**files})
++        q.write_json(root/'evidence.json',manifest)
++        return root,binding
++
++    def testIndependentSourceGraphProofRejectsRehashedRootAndLoadedBinarySubstitution(self):
++        for mutation in (None,'root','assembly','sdk','lock','project-path','missing-project'):
++            with self.subTest(mutation=mutation),tempfile.TemporaryDirectory() as directory:
++                root,binding = self.fixture(directory)
++                path = root/'source-evidence.json'
++                q.write_json(path,q.source_consumer_binding(root,binding))
++                reference = {'path':str(path),'sha256':q.digest(path.read_bytes()),'content':path.read_text()}
++                if mutation == 'root':
++                    assets = root/'host/obj/project.assets.json'
++                    data = q.parse_json(assets.read_bytes())
++                    refs = data['project']['restore']['frameworks']['net10.0']['projectReferences']
++                    key = next(iter(refs));refs[str(q.ROOT/'src/Substituted.csproj')] = refs.pop(key)
++                    q.write_json(assets,data)
++                    record = q.parse_json(path.read_bytes())
++                    next(item for item in record['files'] if item['path']==str(assets))['sha256'] = q.digest(assets.read_bytes())
++                    q.write_json(path,record)
++                    reference.update(sha256=q.digest(path.read_bytes()),content=path.read_text())
++                elif mutation == 'assembly':
++                    (root/'host/bin/Debug/net10.0/Hexalith.EventStore.Server.dll').write_bytes(b'substituted')
++                elif mutation == 'sdk':
++                    (root/'global.json').write_text('{"sdk":{"version":"10.0.402"}}')
++                elif mutation == 'lock':
++                    (root/'host/packages.lock.json').write_text('{"substituted":true}')
++                elif mutation == 'project-path':
++                    assets = root/'host/obj/project.assets.json'
++                    data = q.parse_json(assets.read_bytes());data['project']['restore']['projectPath'] = str(root/'other/Host.csproj')
++                    q.write_json(assets,data)
++                elif mutation == 'missing-project':
++                    (Path(binding['candidate_source']['repository'])/'src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj').unlink()
++                if mutation is None:
++                    q.validate_source_consumer({'source_consumer':reference},binding)
++                else:
++                    with self.assertRaises(preparation.InvalidPacket):
++                        q.validate_source_consumer({'source_consumer':reference},binding)
++
++
+ class PostgresqlComponentTests(unittest.TestCase):
+     def component(self, **changes):
+         file = {"content": (q.ROOT / "deploy/dapr/statestore-postgresql.yaml").read_text(),
+diff --git a/tools/tests/test_p1r_qualification.py b/tools/tests/test_p1r_qualification.py
+index d80ec662..e422bdfa 100644
+--- a/tools/tests/test_p1r_qualification.py
++++ b/tools/tests/test_p1r_qualification.py
+@@ -696,5 +696,145 @@ class SourceAndProcessTests(unittest.TestCase):
+                 sentinel_process.wait(timeout=2)
+ 
+ 
++class TaggedPhysicalSourceTests(unittest.TestCase):
++    """Real Git/index/filter observations; disposable object sharing is fixture-only."""
++
++    @contextlib.contextmanager
++    def checkout(self):
++        with tempfile.TemporaryDirectory(prefix="p1r-tagged-bytes-") as scratch:
++            root = Path(scratch) / "source"
++            builds = root / "references/Hexalith.Builds"
++            names = {".editorconfig", ".gitattributes", "global.json",
++                     "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs", "src/Untracked.cs"}
++            for source, target in ((p.ROOT, root), (p.ROOT / "references/Hexalith.Builds", builds)):
++                target.parent.mkdir(parents=True, exist_ok=True)
++                subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(source), str(target)],
++                               check=True, capture_output=True)
++                subprocess.run(["git", "read-tree", "HEAD"], cwd=target, check=True, capture_output=True)
++                tracked = {name.decode() for name in p.git(target, "ls-files", "-z").split(b"\0") if name}
++                selected = sorted(names.intersection(tracked))
++                subprocess.run(["git", "checkout-index", "--", *selected], cwd=target, check=True, capture_output=True)
++            with mock.patch.object(p, "relevant", side_effect=lambda name: name in names):
++                def binding():
++                    main, dependency = p.repository_binding(root), p.repository_binding(builds)
++                    # The fixture tests byte admission, independently of tag selection.
++                    main["gitlinks"]["references/Hexalith.Builds"] = dependency["head"]
++                    return {"repository": str(root), "main": main, "dependencies": [
++                        {"path": "references/Hexalith.Builds", "initialized": True, "binding": dependency}]}
++                p.require_clean_source(binding())
++                yield root, builds, binding
++
++    def testIndexFlagsCannotHidePhysicalProductionOrBuildChanges(self):
++        for flag in ("--assume-unchanged", "--skip-worktree"):
++            for target in ("production", "build"):
++                with self.subTest(flag=flag, target=target), self.checkout() as (root, builds, binding):
++                    repository = root if target == "production" else builds
++                    subprocess.run(["git", "update-index", flag, "--", ".editorconfig"],
++                                   cwd=repository, check=True, capture_output=True)
++                    path = repository / ".editorconfig"
++                    path.write_bytes(path.read_bytes() + b"\n# hidden physical source change\n")
++                    observed = binding()
++                    changed = observed["main"] if target == "production" else observed["dependencies"][0]["binding"]
++                    self.assertEqual(changed["diff_sha256"], p.digest(b""))
++                    with self.assertRaisesRegex(p.InvalidPacket, "tagged|physical"):
++                        p.require_clean_source(observed)
++
++    def testReplacementTreeCannotSubstituteCanonicalTaggedObjects(self):
++        with self.checkout() as (root, _, binding):
++            original = p.git(root, "rev-parse", "HEAD:.editorconfig").decode().strip()
++            original_tree = p.git(root, "rev-parse", "HEAD^{tree}").decode().strip()
++            data = (root / ".editorconfig").read_bytes() + b"\n# replacement-backed change\n"
++            changed = subprocess.check_output(["git", "hash-object", "-w", "--stdin"], cwd=root, input=data).strip()
++            tree = subprocess.check_output(["git", "ls-tree", "HEAD"], cwd=root)
++            tree = b"\n".join((line.split(b" ", 2)[0] + b" blob " + changed + b"\t.editorconfig")
++                               if line.endswith(b"\t.editorconfig") else line for line in tree.splitlines()) + b"\n"
++            replacement = subprocess.check_output(["git", "mktree"], cwd=root, input=tree).strip().decode()
++            subprocess.run(["git", "replace", original_tree, replacement], cwd=root, check=True, capture_output=True)
++            subprocess.run(["git", "update-index", "--cacheinfo", "100644", changed.decode(), ".editorconfig"],
++                           cwd=root, check=True, capture_output=True)
++            (root / ".editorconfig").write_bytes(data)
++            self.assertEqual(subprocess.check_output(["git", "rev-parse", "HEAD:.editorconfig"], cwd=root).strip(), changed)
++            self.assertEqual(p.git(root, "rev-parse", "HEAD:.editorconfig").decode().strip(), original)
++            with self.assertRaises(p.InvalidPacket):
++                p.require_clean_source(binding())
++
++    def testDeclaredCrLfIsAcceptedAndUnexpectedCrLfForLfSourceIsRefused(self):
++        with self.checkout() as (root, _, binding):
++            global_json = (root / "global.json").read_bytes()
++            self.assertIn(b"\r\n", global_json)
++            self.assertNotIn(b"\n", global_json.replace(b"\r\n", b""))
++            p.require_clean_source(binding())
++            source = root / "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs"
++            self.assertNotIn(b"\r\n", source.read_bytes())
++            source.write_bytes(source.read_bytes().replace(b"\n", b"\r\n"))
++            observed = binding()
++            self.assertEqual(observed["main"]["diff_sha256"], p.digest(b""))
++            with self.assertRaisesRegex(p.InvalidPacket, "tagged|physical"):
++                p.require_clean_source(observed)
++
++    def testExternalCleanFilterAndAttributesCannotHidePhysicalChanges(self):
++        for location in ("info", "configured"):
++            with self.subTest(location=location), self.checkout() as (root, _, binding):
++                original = (root / ".editorconfig").read_bytes()
++                filter_script = root.parent / "filter.py"
++                filter_script.write_text("import sys\nsys.stdin.buffer.read()\nsys.stdout.buffer.write(" + repr(original) + ")\n")
++                subprocess.run(["git", "config", "filter.hide.clean", sys.executable + " " + str(filter_script)],
++                               cwd=root, check=True, capture_output=True)
++                attributes = root / ".git/info/attributes" if location == "info" else root.parent / "attributes"
++                attributes.write_text(".editorconfig filter=hide\n")
++                if location == "configured":
++                    subprocess.run(["git", "config", "core.attributesFile", str(attributes)],
++                                   cwd=root, check=True, capture_output=True)
++                (root / ".editorconfig").write_bytes(original + b"\n# hidden by clean filter\n")
++                observed = binding()
++                self.assertEqual(observed["main"]["diff_sha256"], p.digest(b""))
++                with self.assertRaisesRegex(p.InvalidPacket, "attributes|filter|tagged|physical"):
++                    p.require_clean_source(observed)
++
++    def testIgnoredSourceInjectionIsRefusedWhileGeneratedOutputsRemainAllowed(self):
++        with self.checkout() as (root, _, binding):
++            generated = root / "src/obj/Generated.cs"
++            generated.parent.mkdir(parents=True, exist_ok=True)
++            generated.write_text("generated output\n")
++            p.require_clean_source(binding())
++            (root / ".git/info/exclude").write_text("src/Untracked.cs\n")
++            injected = root / "src/Untracked.cs"
++            injected.parent.mkdir(parents=True, exist_ok=True)
++            injected.write_text("// ignored source can affect compilation\n")
++            observed = binding()
++            self.assertNotIn("src/Untracked.cs", [row["path"] for row in observed["main"]["files"]])
++            with self.assertRaisesRegex(p.InvalidPacket, "untracked|tagged|physical"):
++                p.require_clean_source(observed)
++
++    def testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff(self):
++        for location in ("info", "configured", "worktree"):
++            with self.subTest(location=location), self.checkout() as (root, _, _):
++                marker = root.parent / "filter-executed"
++                script = root.parent / "filter.py"
++                script.write_text("import pathlib,sys\npathlib.Path(" + repr(str(marker))
++                                  + ").touch()\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n")
++                subprocess.run(["git", "config", "filter.hide.clean", sys.executable + " " + str(script)],
++                               cwd=root, check=True, capture_output=True)
++                if location == "worktree":
++                    attributes = root / ".gitattributes"
++                    attributes.write_bytes(attributes.read_bytes() + b"\n.editorconfig filter=hide\n")
++                    subprocess.run(["git", "update-index", "--assume-unchanged", "--", ".gitattributes"],
++                                   cwd=root, check=True, capture_output=True)
++                else:
++                    attributes = root / ".git/info/attributes" if location == "info" else root.parent / "attributes"
++                    attributes.write_text(".editorconfig filter=hide\n")
++                    if location == "configured":
++                        subprocess.run(["git", "config", "core.attributesFile", str(attributes)],
++                                       cwd=root, check=True, capture_output=True)
++                # Git may refresh another file through its clean filter while
++                # setting the index flag. The strict-observation boundary starts
++                # after that controlled setup, whose trace is retained separately.
++                if marker.exists():
++                    marker.unlink()
++                with self.assertRaises(p.InvalidPacket):
++                    p.repository_binding(root, tagged=True)
++                self.assertFalse(marker.exists(), "refusal must precede filtered diff execution")
++
++
+ if __name__ == "__main__":
+     unittest.main()

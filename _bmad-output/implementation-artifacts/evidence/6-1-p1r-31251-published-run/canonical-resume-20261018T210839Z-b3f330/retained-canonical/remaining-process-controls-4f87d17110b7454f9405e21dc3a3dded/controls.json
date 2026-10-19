@@ -1,0 +1,124 @@
+{
+  "assertions": 38,
+  "errors": [],
+  "finished_utc": "2026-10-18T21:36:17.196177+00:00",
+  "invocation": "11ec8691404242ae9cd4697ecf0ec144",
+  "p1r_usable": false,
+  "passed": true,
+  "process_controls": {
+    "rows": [
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "startup-failure",
+        "receipt": "receipts/d3bb6ec49af84ddfab194574f0af83bf.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "success",
+        "receipt": "receipts/422a136691834e41bf49eb43a3af2388.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "timeout",
+        "receipt": "receipts/400658abdccd44e69371907a6c1ce49b.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "cancellation",
+        "receipt": "receipts/e86ac424b69f454a9e47ddfdfd5eb76f.json"
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "descendants",
+        "receipt": "receipts/9aba996ab5f64ab2aa711762c199cd0f.json"
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "repeated-cleanup",
+        "receipt": "receipts/c0af7716826f4d67a3b1c831e451a984.json"
+      }
+    ],
+    "scope": "local-process-control",
+    "sentinel": {
+      "after_controls": {
+        "pgid": 698,
+        "pid": 698,
+        "running": true,
+        "session": 698,
+        "start_ticks": 22297511
+      },
+      "after_release": null,
+      "before": {
+        "pgid": 698,
+        "pid": 698,
+        "running": true,
+        "session": 698,
+        "start_ticks": 22297511
+      },
+      "identity": {
+        "pgid": 698,
+        "pid": 698,
+        "session": 698,
+        "start_ticks": 22297511
+      },
+      "released": true
+    }
+  },
+  "qualified": false,
+  "retained_files": [
+    "receipts/400658abdccd44e69371907a6c1ce49b.json",
+    "receipts/400658abdccd44e69371907a6c1ce49b.txt",
+    "receipts/422a136691834e41bf49eb43a3af2388.json",
+    "receipts/422a136691834e41bf49eb43a3af2388.txt",
+    "receipts/9aba996ab5f64ab2aa711762c199cd0f.json",
+    "receipts/9aba996ab5f64ab2aa711762c199cd0f.txt",
+    "receipts/c0af7716826f4d67a3b1c831e451a984.json",
+    "receipts/c0af7716826f4d67a3b1c831e451a984.txt",
+    "receipts/d3bb6ec49af84ddfab194574f0af83bf.json",
+    "receipts/d3bb6ec49af84ddfab194574f0af83bf.txt",
+    "receipts/e86ac424b69f454a9e47ddfdfd5eb76f.json",
+    "receipts/e86ac424b69f454a9e47ddfdfd5eb76f.txt"
+  ],
+  "scope": "bounded process controls only; no runtime qualification or acceptance",
+  "script": {
+    "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/resume-process-controls.py",
+    "sha256": "27c09aef9ded3aa1495e2f62a1f117de5c0b32961d08b3f47060ac4286580a30"
+  },
+  "started_utc": "2026-10-18T21:35:45.394541+00:00"
+}

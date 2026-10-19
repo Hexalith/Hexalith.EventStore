@@ -1,0 +1,4 @@
+{
+  "p1r_usable": false,
+  "scope": "controlled host atomic finalization write; not a P1R receipt"
+}
