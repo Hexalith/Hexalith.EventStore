@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-tests.py",
+    "-v",
+    "-k",
+    "testActualImportAcceptsSibling",
+    "-k",
+    "testControllerRechecks"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:33:32.030233+00:00",
+  "finished_utc": "2026-10-18T22:33:32.916673+00:00",
+  "exit_code": 1,
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-red.log",
+  "log_sha256": "65d83128de0619d5aa21383ae1e2cb15269dad8d14e4331a5f80aca3bb3f3725"
+}

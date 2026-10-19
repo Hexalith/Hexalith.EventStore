@@ -1,0 +1,23 @@
+{
+  "name": "isolation",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation.py"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:03:48.622791+00:00",
+  "finished_utc": "2026-10-18T22:03:51.971386+00:00",
+  "exit_code": 1,
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-abc0a6a2f22747b08d85df105e358af1/isolation.log",
+  "log_sha256": "67c1b743ed715d9fef49c92628436f4f453570b42053f63f4defcabe1906fecd",
+  "tests": 38,
+  "ok": false,
+  "skips": false,
+  "source_unchanged": true
+}

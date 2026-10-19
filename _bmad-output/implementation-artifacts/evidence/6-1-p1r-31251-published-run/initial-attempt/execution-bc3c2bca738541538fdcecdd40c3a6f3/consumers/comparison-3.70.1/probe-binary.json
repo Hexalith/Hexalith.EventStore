@@ -1,0 +1,6 @@
+{
+  "configuration": "Release",
+  "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/comparison-3.70.1/probe/bin/Release/net10.0/Probe.dll",
+  "role": "comparison-3.70.1",
+  "sha256": "fd25ae14090bcbb8c3072f92c174f70388176321dfb7c373f92b55d3229500c5"
+}

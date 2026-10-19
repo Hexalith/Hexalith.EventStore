@@ -1,0 +1,19 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15118-0ebf-7563-8f32-ec4e09fdd6aa",
+  "call_id": "call_386936f4523f44a5a233bca24f6f468c",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script failed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "Script error:\napply_patch verification failed: Failed to find expected lines in /tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py:\nclass Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792361893.5678055
+  }
+}

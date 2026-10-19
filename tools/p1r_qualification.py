@@ -125,7 +125,7 @@ def relative(name):
 
 
 def git(root, *arguments):
-    result = subprocess.run(["git", "--no-pager", *arguments], cwd=root,
+    result = subprocess.run(["git", "--no-replace-objects", "--no-pager", *arguments], cwd=root,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=False)
     require(result.returncode == 0, "source repository observation failed")
     return result.stdout
@@ -140,6 +140,89 @@ def relevant(name):
     return bool(parts) and not EXCLUDED.intersection(parts) and (source or configuration) and (len(parts) == 1 or parts[0] in SOURCE_TOP)
 
 
+def tagged_attributes(root, names, canonical_attributes=False):
+    environment = dict(os.environ)
+    options = []
+    if canonical_attributes:
+        environment["GIT_ATTR_NOSYSTEM"] = "1"
+        environment.pop("GIT_ATTR_SOURCE", None)
+        options = ["-c", "core.attributesFile=/dev/null"]
+    attributes = ("text", "eol", "filter", "working-tree-encoding", "ident")
+    result = subprocess.run(["git", "--no-replace-objects", *options, "check-attr", "--cached", "-z",
+                             *attributes, "--", *names], cwd=root, env=environment,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=False)
+    require(result.returncode == 0, "tagged source attributes unavailable")
+    fields = result.stdout.split(b"\0")
+    require(fields[-1:] == [b""] and (len(fields) - 1) % 3 == 0, "invalid tagged source attributes")
+    observed = {name: {} for name in names}
+    for offset in range(0, len(fields) - 1, 3):
+        name, attribute, value = (part.decode() for part in fields[offset:offset + 3])
+        require(name in observed and attribute in attributes and attribute not in observed[name],
+                "tagged source attributes substituted")
+        observed[name][attribute] = value
+    require(all(set(row) == set(attributes) for row in observed.values()), "incomplete tagged source attributes")
+    return observed
+
+
+def require_tagged_checkout(root, observed, committed=None, indexed=None):
+    """Bind physical production bytes without trusting index flags or clean filters."""
+    require(git(root, "rev-parse", "HEAD").decode().strip() == observed["head"], "tagged source HEAD changed")
+    if committed is None:
+        committed = {}
+        for entry in git(root, "ls-tree", "-rz", "HEAD").split(b"\0"):
+            if entry:
+                info, raw_name = entry.split(b"\t", 1)
+                _, kind, oid = info.decode().split()
+                if kind == "blob" and relevant(raw_name.decode()):
+                    committed[raw_name.decode()] = oid
+    if indexed is None:
+        indexed = {}
+        for entry in git(root, "ls-files", "--stage", "-z").split(b"\0"):
+            if entry:
+                info, raw_name = entry.split(b"\t", 1)
+                _, oid, stage = info.decode().split()
+                name = raw_name.decode()
+                if relevant(name):
+                    require(stage == "0" and name not in indexed, "unmerged tagged source index")
+                    indexed[name] = oid
+    files = observed["files"]
+    require(committed and indexed == committed and len(files) == len(committed)
+            and {row["path"] for row in files} == set(committed)
+            and all(row["git_blob"] == row["index_blob"] == committed[row["path"]] for row in files),
+            "tagged source inventory or index differs")
+    # Ignored source files can still be included by an SDK glob or MSBuild import.
+    # Generated bin/obj/node_modules remain excluded by the existing inventory.
+    require(not any(relevant(name.decode()) for name in git(root, "ls-files", "--others", "-z").split(b"\0") if name),
+            "untracked tagged source input refused")
+    info_name = Path(git(root, "rev-parse", "--git-path", "info/attributes").decode().strip())
+    info_path = info_name if info_name.is_absolute() else root / info_name
+    require(not (info_path.exists() or info_path.is_symlink()) or not regular(info_path),
+            "external tagged source attributes refused")
+    names = sorted(committed)
+    attributes = tagged_attributes(root, names, True)
+    require(tagged_attributes(root, names) == attributes, "external tagged source attributes refused")
+    for row in files:
+        attribute = attributes[row["path"]]
+        require(all(attribute[name] in ("unspecified", "unset") for name in ("filter", "working-tree-encoding", "ident")),
+                "tagged source filter or encoding transform refused")
+        require(attribute["text"] in ("auto", "set", "unset", "unspecified")
+                and attribute["eol"] in ("lf", "crlf", "unset", "unspecified"), "unsupported tagged source text attributes")
+        data = regular(root / relative(row["path"]))
+        require(digest(data) == row["sha256"], "physical tagged source changed during binding")
+        canonical_data = data
+        if attribute["eol"] == "crlf":
+            require(b"\n" not in data.replace(b"\r\n", b""), "physical tagged source requires declared CRLF")
+            canonical_data = data.replace(b"\r\n", b"\n")
+        elif attribute["eol"] == "lf":
+            require(b"\r\n" not in data, "physical tagged source requires declared LF")
+        # With no declared ending, text=auto permits Git's uniform CRLF checkout.
+        elif attribute["text"] in ("auto", "set") and b"\0" not in data \
+                and b"\n" not in data.replace(b"\r\n", b""):
+            canonical_data = data.replace(b"\r\n", b"\n")
+        oid = hashlib.sha1(b"blob " + str(len(canonical_data)).encode() + b"\0" + canonical_data).hexdigest()
+        require(oid == committed[row["path"]], "physical tagged source differs from canonical committed bytes")
+
+
 def executable_input(name):
     """Identify untracked execution inputs, including ignored native and sourceless modules."""
     path = PurePosixPath(name)
@@ -151,7 +234,7 @@ def executable_input(name):
         or path.name in (".editorconfig", ".gitattributes", ".gitmodules", ".gitignore"))
 
 
-def repository_binding(root, clean=False):
+def repository_binding(root, clean=False, *, tagged=False):
     require(root.is_dir() and root == root.resolve(), "source repository path unavailable")
     head = git(root, "rev-parse", "HEAD").decode().strip()
     require(bool(re.fullmatch(r"[0-9a-f]{40}", head)), "invalid source HEAD")
@@ -191,6 +274,8 @@ def repository_binding(root, clean=False):
         files.append({"path": name, "sha256": digest(data), "git_blob": committed.get(name),
                       "index_blob": indexed.get(name)})
     require(bool(files), "empty source inventory")
+    if tagged:
+        require_tagged_checkout(root, {"head": head, "files": files}, committed, indexed)
     if clean:
         require(indexed_gitlinks == gitlinks, "staged source dependency inputs")
         # Ignored source files still participate in compiler globs. Inventory all
@@ -200,6 +285,10 @@ def repository_binding(root, clean=False):
                     not EXCLUDED.intersection(PurePosixPath(name).parts)
                     and PurePosixPath(name).parts[0] != "_bmad-output" and (root / name).is_dir())
                     for name in untracked), "untracked code, configuration or repository inputs")
+        try:
+            require_tagged_checkout(root, {"head": head, "files": files}, committed, indexed)
+        except InvalidPacket as error:
+            raise InvalidPacket("physical tracked source inputs are not clean: " + str(error)) from error
         require(not git(root, "diff", "HEAD", "--no-ext-diff", "--ignore-submodules=all"),
                 "tracked source inputs are not clean")
         require(all(row["git_blob"] is not None and row["git_blob"] == row["index_blob"] for row in files),
@@ -213,7 +302,7 @@ def repository_binding(root, clean=False):
                 "physical tracked source inputs are not clean")
     # Git applies the owning attributes for the canonical tracked diff; physical
     # file hashes separately bind any checkout newline/dirty/untracked bytes.
-    diff = git(root, "diff", "HEAD", "--no-ext-diff", "--binary", "--", *sorted(names))
+    diff = git(root, "diff", "HEAD", "--no-ext-diff", "--no-textconv", "--binary", "--", *sorted(names))
     require(git(root, "rev-parse", "HEAD").decode().strip() == head, "source HEAD changed during binding")
     return {"head": head, "diff_sha256": digest(diff), "files": files, "gitlinks": gitlinks}
 
@@ -251,7 +340,7 @@ def retained_inputs(root):
     return [{"path": name, "sha256": digest(regular(root / name))} for name in sorted(names)]
 
 
-def source_binding(root=ROOT, tooling=None, source_root=None, source_builds_root=None):
+def source_binding(root=ROOT, tooling=None, source_root=None, source_builds_root=None, *, _tagged=False):
     root = Path(root).absolute()
     if isinstance(tooling, (str, Path)) and source_root is None:
         source_root = tooling
@@ -263,7 +352,7 @@ def source_binding(root=ROOT, tooling=None, source_root=None, source_builds_root
         require(all(isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value)
                     for value in tooling.values()), "invalid tooling pins")
         require(source_root is not None and source_builds_root is not None, "runtime source paths missing")
-    main = repository_binding(root, clean=tooling is not None)
+    main = repository_binding(root, tagged=True) if _tagged else repository_binding(root, clean=tooling is not None)
     declared = declared_dependencies(root)
     require("references/Hexalith.Builds" in declared, "Builds dependency is not root declared")
     dependencies = []
@@ -271,7 +360,7 @@ def source_binding(root=ROOT, tooling=None, source_root=None, source_builds_root
         path = root / name
         initialized = (path / ".git").exists()
         dependencies.append({"path": name, "initialized": initialized,
-                             "binding": repository_binding(path, clean=tooling is not None) if initialized else None})
+                             "binding": (repository_binding(path, tagged=True) if _tagged else repository_binding(path, clean=tooling is not None)) if initialized else None})
     builds = next(row for row in dependencies if row["path"] == "references/Hexalith.Builds")
     workspace_builds = None
     if not builds["initialized"]:
@@ -334,12 +423,12 @@ def source_binding(root=ROOT, tooling=None, source_root=None, source_builds_root
         source_root = Path(source_root).absolute()
         self_contained_checkout(root)
         self_contained_checkout(source_root)
-        result["candidate_source"] = source_binding(source_root)
+        result["candidate_source"] = source_binding(source_root, _tagged=True)
         require_clean_source(result["candidate_source"])
     return result
 
 
-def check_current_source(binding):
+def check_current_source(binding, check_python=True):
     if "tooling" in binding or "runtime_source" in binding:
         require("tooling" in binding and isinstance(binding.get("runtime_source"), dict),
                 "runtime source binding missing")
@@ -353,6 +442,10 @@ def check_current_source(binding):
         current = source_binding(Path(binding["repository"]), source_root=Path(source["repository"]))
     else:
         current = source_binding(Path(binding["repository"]))
+    if not check_python:
+        current["python"] = binding["python"]
+        if "candidate_source" in binding:
+            current["candidate_source"]["python"] = binding["candidate_source"]["python"]
     require(binding == current, "source/configuration inputs changed")
 
 
@@ -368,6 +461,11 @@ def require_clean_source(binding):
                 "candidate dependency differs from tagged gitlink")
     builds = next((row for row in binding["dependencies"] if row["path"] == "references/Hexalith.Builds"), None)
     require(builds is not None and builds["initialized"], "candidate Builds closure missing")
+    root = Path(binding["repository"])
+    require_tagged_checkout(root, binding["main"])
+    for row in binding["dependencies"]:
+        if row["initialized"]:
+            require_tagged_checkout(root / relative(row["path"]), row["binding"])
 
 
 def self_contained_checkout(root):

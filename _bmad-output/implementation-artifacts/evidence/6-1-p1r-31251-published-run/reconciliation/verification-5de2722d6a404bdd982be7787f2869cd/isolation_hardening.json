@@ -1,0 +1,23 @@
+{
+  "name": "isolation_hardening",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation_hardening.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-18T22:51:44.510429+00:00",
+  "finished_utc": "2026-10-18T22:52:20.650098+00:00",
+  "exit_code": 0,
+  "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-5de2722d6a404bdd982be7787f2869cd/isolation_hardening.log",
+  "log_sha256": "e0516e0a137a7649d7a8cc6ed1af9fb7142263a26a06d41dd96bb0990a3517d4",
+  "tests": 29,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

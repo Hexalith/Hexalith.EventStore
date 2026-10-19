@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "tools.tests.test_p1r_published_executor.QualifiedSnapshotWitnessTests.testCanonicalEmptyBodyReadinessGETAndFailedRetryAreAccepted",
+    "tools.tests.test_p1r_published_executor.QualifiedSnapshotWitnessTests.testRestartedDomainReadinessGETRequiresItsBoundPhysicalLaunch"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+  "started_utc": "2026-10-18T21:38:55.859866+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/readiness-red-attempt2.log",
+  "exit_code": 1,
+  "finished_utc": "2026-10-18T21:38:57.244911+00:00"
+}

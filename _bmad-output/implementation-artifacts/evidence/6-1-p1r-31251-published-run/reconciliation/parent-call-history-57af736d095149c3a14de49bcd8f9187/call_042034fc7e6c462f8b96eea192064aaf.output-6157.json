@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15122-e7b7-7d91-92aa-fbc795e6ec2b",
+  "call_id": "call_042034fc7e6c462f8b96eea192064aaf",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 2.4 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"46c692\",\"wall_time_seconds\":1.003274392,\"session_id\":9615,\"original_token_count\":37,\"output\":\"{\\\"started\\\": \\\"qualification\\\", \\\"argv\\\": [\\\"/usr/bin/python3\\\", \\\"-m\\\", \\\"unittest\\\", \\\"discover\\\", \\\"-s\\\", \\\"tools/tests\\\", \\\"-p\\\", \\\"test_p1r_qualification.py\\\"]}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"713fc2\",\"wall_time_seconds\":1.000795751,\"session_id\":39742,\"original_token_count\":0,\"output\":\"\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792362604.4710662
+  }
+}

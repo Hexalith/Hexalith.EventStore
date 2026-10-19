@@ -1,0 +1,6 @@
+testExplicitInterpreterDiagnosticStillRechecksEveryPhysicalSourceRole (test_p1r_qualification.InterpreterSourceCheckTests.testExplicitInterpreterDiagnosticStillRechecksEveryPhysicalSourceRole) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.071s
+
+OK

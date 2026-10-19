@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a1510e-a622-77f1-8511-d2cd40edd5f4",
+  "call_id": "call_ea545c8805d64de795ef96dbf62d2a05",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 1.4 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"b5cd3b\",\"wall_time_seconds\":1.211446831,\"exit_code\":0,\"original_token_count\":72,\"output\":\"{\\n  \\\"syntax\\\": \\\"passed\\\",\\n  \\\"diff_check_exit_code\\\": 0,\\n  \\\"diff_check_output\\\": \\\"\\\",\\n  \\\"attributes_delta\\\": \\\"\\\\n# New P1R receipts bind literal bytes, command output and archive identities.\\\\n_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/** -text -whitespace\\\\n\\\"\\n}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792361276.9620547
+  }
+}

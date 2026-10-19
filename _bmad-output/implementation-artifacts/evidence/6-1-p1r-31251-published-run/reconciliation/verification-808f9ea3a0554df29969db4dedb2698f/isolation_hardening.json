@@ -1,0 +1,23 @@
+{
+  "name": "isolation_hardening",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_isolation_hardening.py"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:35:36.476740+00:00",
+  "finished_utc": "2026-10-18T22:36:20.052602+00:00",
+  "exit_code": 0,
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-808f9ea3a0554df29969db4dedb2698f/isolation_hardening.log",
+  "log_sha256": "10d3c54b40a5a368245485822955b24cb534fbffd4f74ef0d480ab102a3013f7",
+  "tests": 28,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

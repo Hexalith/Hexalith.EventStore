@@ -23,6 +23,51 @@ from p1r_isolation_fixture import run_controller, separate_inputs, separate_sour
 import test_p1r_published_executor as published_tests
 
 
+class TaggedSourceLifecycleTests(unittest.TestCase):
+    def testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup(self):
+        witness = published_tests.Published31251SnapshotWitnessTests()
+        witness.setUp()
+        self.addCleanup(witness.doCleanups)
+        events = []
+        check = preparation.check_current_source
+        docker = isolation.IsolatedRunner.docker
+        finalize = qualification.finalize_isolation_receipts
+        def checked(binding, **kwargs):
+            events.append(('source', kwargs))
+            return check(binding, **kwargs)
+        def called(worker, *args, **kwargs):
+            events.append(('docker', None))
+            return docker(worker, *args, **kwargs)
+        def finalized(*args, **kwargs):
+            events.append(('finalize', None))
+            return finalize(*args, **kwargs)
+        with mock.patch.object(preparation, 'check_current_source', side_effect=checked), \
+                mock.patch.object(isolation.IsolatedRunner, 'docker', new=called), \
+                mock.patch.object(qualification, 'finalize_isolation_receipts', side_effect=finalized):
+            witness.import_fixture(scope='operational')
+        self.assertEqual(events[0][0], 'source')
+        final = next(index for index, value in enumerate(events) if value[0] == 'finalize')
+        self.assertEqual(events[final - 1][0], 'source')
+        self.assertTrue(any(value == ('source', {'check_python': False}) for value in events[final + 1:]))
+
+    def testIndependentImportRefusesRehashedRoleAndRootSubstitution(self):
+        for record,mutation in (
+            ('private',lambda value:value['source_binding']['candidate_source'].__setitem__('repository',str(preparation.ROOT))),
+            ('wrapper',lambda value:value.__setitem__('source_root',str(preparation.ROOT))),
+            ('wrapper',lambda value:value['controller_source_binding']['candidate_source']['main'].__setitem__('head','0'*40)),
+            ('wrapper',lambda value:value['inner_command'].__setitem__(-1,str(preparation.ROOT))),
+        ):
+            witness = published_tests.Published31251SnapshotWitnessTests()
+            witness.setUp()
+            self.addCleanup(witness.doCleanups)
+            receipt,context = witness.import_fixture(scope='operational')
+            self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+            witness.change_isolation(receipt,record,mutation)
+            with self.subTest(record=record),self.assertRaises(preparation.InvalidPacket):
+                qualification.receipt_outcome(receipt,context)
+            witness.doCleanups()
+
+
 class SeparateRootIsolationTests(unittest.TestCase):
     def testExactSourceSuffixAndPrivatePreflightKeepBothBindings(self):
         with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:

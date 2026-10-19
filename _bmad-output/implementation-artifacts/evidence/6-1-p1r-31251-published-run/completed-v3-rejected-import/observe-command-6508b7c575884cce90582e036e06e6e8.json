@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-executor.py",
+    "observe",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8",
+    "--planning-observations",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations.json",
+    "--selection-reference",
+    "approved spec-6-1-p1r-31251-published-qualification.md; 2026-10-18 approve-and-continue",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "started_utc": "2026-10-18T19:37:20.101688+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observe-command-6508b7c575884cce90582e036e06e6e8.log",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T19:39:35.719655+00:00"
+}

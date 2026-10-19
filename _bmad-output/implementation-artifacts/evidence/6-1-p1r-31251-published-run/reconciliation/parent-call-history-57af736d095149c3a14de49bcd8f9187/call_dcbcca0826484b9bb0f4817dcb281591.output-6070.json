@@ -1,0 +1,19 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15120-b560-7502-b804-15a291515fa7",
+  "call_id": "call_dcbcca0826484b9bb0f4817dcb281591",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.0 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792362460.5129662
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/tools/p1r-isolated-runner.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-2f578ede569b4b08a880338b46e043ce-isolation",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+    "--",
+    "python3",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-31251.py",
+    "--verifier-root",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+    "--out",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-2f578ede569b4b08a880338b46e043ce"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+  "started_utc": "2026-10-18T21:54:12.661414+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-smoke-command-2f578ede569b4b08a880338b46e043ce.log",
+  "exit_code": 2,
+  "finished_utc": "2026-10-18T21:55:06.522197+00:00"
+}

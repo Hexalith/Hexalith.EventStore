@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15140-f8bc-7080-b36f-85c120d45e6c",
+  "call_id": "call_2eb36d5dab0943c1b47f68aa42bf653e",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.2 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"dacabb\",\"wall_time_seconds\":0.062725737,\"exit_code\":0,\"original_token_count\":43,\"output\":\"{'commands': 2638, 'lanes': 9, 'cases': 69, 'assertions': {'attempted': 2321, 'passed': 2321, 'failed': 0}, 'latest_lane': 'missing-event', 'finished': None, 'errors': []}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"current_time\":\"2026-10-18 23:02:54 UTC\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792364574.9084928
+  }
+}

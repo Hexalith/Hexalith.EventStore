@@ -1,0 +1,19 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15102-44a9-7082-9e02-b148ed0bb5d7",
+  "call_id": "call_89227382067e436e809993f8e627bbfa",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 1.2 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"40728a\",\"wall_time_seconds\":1.001773351,\"session_id\":83521,\"original_token_count\":0,\"output\":\"\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792360465.5772765
+  }
+}

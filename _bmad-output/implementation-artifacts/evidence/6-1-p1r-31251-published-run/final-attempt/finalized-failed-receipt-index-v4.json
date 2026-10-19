@@ -1,0 +1,44 @@
+{
+  "scope": "finalized receipt hashes; earlier pre-finalization observations remain unchanged",
+  "receipts": [
+    {
+      "lane": "checkout",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+      "sha256_finalized": "75e8c1e0a5f3476c456ff74ed3cf0f620c86cdb912cfed6b8fb6be1caff5d7d4",
+      "assertions": {
+        "attempted": 700,
+        "failed": 6,
+        "passed": 694
+      },
+      "failed_check_ids": {
+        "snapshot-tail": [
+          "source:tenant-b:append-1-accepted",
+          "source:tenant-b:append-1-one-event",
+          "source:tenant-b:committed-count",
+          "source:seed-persisted-fifteen-events",
+          "source:second-tenant-hydrates",
+          "source-package-semantics-equivalent"
+        ]
+      }
+    },
+    {
+      "lane": "post-upgrade-restore",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json",
+      "sha256_finalized": "a0417027b54d5f5924e0560d9657eb985581895a322ba2c2a2267318d85859ac",
+      "assertions": {
+        "attempted": 61,
+        "failed": 3,
+        "passed": 58
+      },
+      "failed_check_ids": {
+        "fresh-backup-restore-append-restart": [
+          "fresh-restore-appends-thirteen",
+          "fresh-restart-reconstructs-thirteen",
+          "restored-head-thirteen"
+        ]
+      }
+    }
+  ],
+  "qualified": false,
+  "p1r_usable": false
+}

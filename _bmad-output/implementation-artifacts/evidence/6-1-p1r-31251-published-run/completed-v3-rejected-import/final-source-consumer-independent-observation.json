@@ -1,0 +1,67 @@
+{
+  "scope": "read-only independent source consumer reconstruction during canonical run; final audit remains authoritative",
+  "evidence_path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/source/source-evidence.json",
+  "sha256": "1c68f482f8544e91da66f0deb866d445dd9765b7e40c04447ac8b178b842442d",
+  "source_root": "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+  "file_count": 62,
+  "recomputed_equal": true,
+  "builds": [
+    {
+      "id": 3304,
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/source/host/Host.csproj",
+        "--no-restore",
+        "-c",
+        "Debug",
+        "-m:1",
+        "-p:EventStoreVersion=3.125.1",
+        "-p:NuGetAudit=false",
+        "-p:UseCurrentSource=true",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:EventStoreSourceRoot=/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T20:52:34.730437+00:00"
+    },
+    {
+      "id": 3311,
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/source/domain/Domain.csproj",
+        "--no-restore",
+        "-c",
+        "Debug",
+        "-m:1",
+        "-p:EventStoreVersion=3.125.1",
+        "-p:NuGetAudit=false",
+        "-p:UseCurrentSource=true",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:EventStoreSourceRoot=/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T20:52:47.612953+00:00"
+    },
+    {
+      "id": 3318,
+      "argv": [
+        "dotnet",
+        "build",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/source/probe/Probe.csproj",
+        "--no-restore",
+        "-c",
+        "Debug",
+        "-m:1",
+        "-p:EventStoreVersion=3.125.1",
+        "-p:NuGetAudit=false",
+        "-p:UseCurrentSource=true",
+        "-p:UseHexalithProjectReferences=true",
+        "-p:EventStoreSourceRoot=/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T20:53:01.987674+00:00"
+    }
+  ]
+}

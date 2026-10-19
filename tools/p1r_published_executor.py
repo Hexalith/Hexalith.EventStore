@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -42,6 +43,8 @@ BUILDS_COMMIT = "2cf00028bbe563d80d4d12b5fb2054914f14fcb6"
 TAG_BUILDS_COMMIT = "468fdbba04e2d9a27d251298875125b57fa6d836"
 PROJECTS = ("Host", "Domain", "Probe")
 STATUS_RETRYABILITY = (None, False, True)
+REMINDER_STARTUP_LEAD_SECONDS = 120
+REMINDER_MINIMUM_WINDOW_SECONDS = 5
 DOCKER_FORMAT = ('{"Id":{{json .Id}},"Image":{{json .Image}},"Name":{{json .Name}},'
                  '"State":{"Running":{{json .State.Running}},"StartedAt":{{json .State.StartedAt}}},'
                  '"Config":{"Labels":{"hexalith.p1r.invocation":{{json (index .Config.Labels "hexalith.p1r.invocation")}}}}}')
@@ -207,6 +210,9 @@ def validate_execution_inputs(inputs, source_root=None, source_builds_root=None)
     if "tooling" in inputs:
         return
     selected_root = ROOT if source_root is None else Path(source_root)
+    if source_root is None and candidate["version"] == "3.125.1":
+        binding = preparation.source_binding(ROOT, selected_root)
+        qualification.validate_candidate_source(binding, inputs)
     tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
     source_commit = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
     tag_builds = preparation.git(selected_root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
@@ -227,7 +233,11 @@ def validate_observation_inputs(planning, source_root=None, source_builds_root=N
                 and all(row["repository_commit"] == preparation.RUNTIME_COMMIT for row in candidate["packages"]),
                 "successor observation lacks exact source-bound packages")
         return binding
-    require(source_root is None and source_builds_root is None, "source paths require selected tooling pins")
+    require(source_builds_root is None, "source builds path requires selected tooling pins")
+    selected_root = ROOT if source_root is None else Path(source_root)
+    if source_root is not None:
+        binding = preparation.source_binding(ROOT, source_root)
+        qualification.validate_candidate_source(binding, {"candidate": candidate})
     if candidate["version"] == CANDIDATE:
         require(candidate["tag_commit"] == TAG_COMMIT and candidate["builds"]["commit"] == BUILDS_COMMIT,
                 "candidate selection substituted")
@@ -235,11 +245,11 @@ def validate_observation_inputs(planning, source_root=None, source_builds_root=N
     else:
         require(qualification.is_successor_selection({"candidate": candidate}), "unrepaired or unbound successor selection")
         qualification.validate_selection(candidate, "candidate")
-        tag = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
-        head = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
+        tag = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+        head = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
         require(tag == head == candidate["tag_commit"], "successor observation source or tag substituted")
         expected_builds = candidate.get("tag_builds_commit")
-    tree = preparation.git(ROOT, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    tree = preparation.git(selected_root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
     require(len(tree) == 4 and tree[:2] == ["160000", "commit"] and tree[2] == expected_builds,
             "candidate tag Builds provenance substituted")
 
@@ -308,7 +318,7 @@ class Executor:
             if inputs is not None:
                 preparation.validate_selected_source(inputs, initial_binding)
         else:
-            require(source_root is None and source_builds_root is None, "source paths require selected tooling pins")
+            require(source_builds_root is None, "source builds path requires selected tooling pins")
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "output exists or is substituted")
         self.output.mkdir(parents=True)
@@ -316,6 +326,7 @@ class Executor:
         self.scratch = Path(tempfile.mkdtemp(prefix="p1r-published-" + self.invocation + "-"))
         self.inputs = inputs
         self.source_root = Path(source_root).absolute() if source_root is not None else ROOT
+        self.explicit_source_root = source_root is not None and selected_tooling is None
         self.source_builds_root = Path(source_builds_root).absolute() if source_builds_root is not None else None
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
@@ -345,7 +356,9 @@ class Executor:
                        "inputs_sha256": self.inputs_sha256, "receipts": [], "errors": [], "p1r_usable": False}
         self.save()
         try:
-            self.source_binding = initial_binding if selected_tooling is not None else preparation.source_binding()
+            self.source_binding = (initial_binding if selected_tooling is not None else
+                                   preparation.source_binding(ROOT, self.source_root) if self.explicit_source_root else
+                                   preparation.source_binding())
             write_json(self.output / "executor-source.json", self.source_binding)
             self.result["executor_source_sha256"] = digest(regular(self.output / "executor-source.json"))
             self.shared_before = self.shared()
@@ -590,11 +603,12 @@ class Executor:
         return measured
 
     def build_consumers(self, version, source=False):
-        if "runtime_source" in getattr(self, "source_binding", {}):
-            preparation.check_current_source(self.source_binding)
+        self.check_sources()
         role = "source" if source else "candidate" if version == self.candidate else "comparison-" + version
         root = self.output / "consumers" / role
         shutil.copytree(CONSUMERS, root)
+        if getattr(self, "explicit_source_root", False) or "runtime_source" in getattr(self, "source_binding", {}):
+            shutil.copyfile(self.source_root / "global.json", root / "global.json")
         packages = root / "packages"
         environment = dict(os.environ, CI="true", NUGET_PACKAGES=str(packages), DOTNET_NOLOGO="true",
                            DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE="false", DOTNET_USE_POLLING_FILE_WATCHER="1")
@@ -660,6 +674,9 @@ class Executor:
             if "runtime_source" in getattr(self, "source_binding", {}):
                 preparation.check_current_source(self.source_binding)
         write_json(root / "evidence.json", manifest)
+        if source and "candidate_source" in getattr(self, "source_binding", {}):
+            write_json(root / "source-evidence.json", qualification.source_consumer_binding(root, self.source_binding))
+        self.check_sources()
         self.evidence[role] = root
         return root
 
@@ -690,6 +707,8 @@ class Executor:
     def observe_inputs(self, planning, reference):
         """Observe the already approved six selections; verify downloads rather than reuse preflight passes."""
         candidate = planning["candidate_proposed"]
+        self.selected_candidate = candidate
+        self.check_sources()
         tooling = planning.get("tooling")
         if tooling is not None:
             binding = validate_observation_inputs(planning, getattr(self, "source_root", None),
@@ -711,12 +730,12 @@ class Executor:
                     and "tag_builds_commit" in candidate,
                     "successor observation lacks exact source-bound packages or tag Builds identity")
             if tooling is None:
-                tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
-                source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
+                tag_commit = preparation.git(getattr(self, "source_root", ROOT), "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+                source_commit = preparation.git(getattr(self, "source_root", ROOT), "rev-parse", "HEAD").decode().strip()
                 require(tag_commit == source_commit == candidate["tag_commit"],
                         "successor observation source or tag substituted")
             expected_tag_builds = candidate["tag_builds_commit"]
-        runtime_root = getattr(self, "source_root", ROOT) if tooling is not None else ROOT
+        runtime_root = getattr(self, "source_root", ROOT)
         tag_builds = preparation.git(runtime_root, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
         require(len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
                 and tag_builds[2] == expected_tag_builds, "candidate tag Builds provenance substituted")
@@ -774,6 +793,7 @@ class Executor:
             inputs["tooling"] = dict(tooling)
             preparation.check_current_source(self.source_binding)
         qualification.validate_inputs(inputs)
+        self.check_sources()
         self.inputs = inputs
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
@@ -847,6 +867,7 @@ class Executor:
             "observed_utc": stamp(),
             "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version in ("source", self.candidate) else None,
             "dotnet_reload_config_on_change": False, "dotnet_polling_file_watcher": True,
+            "reminder_due": getattr(self, "reminder_due", None),
             "files": [{"name": path.name, "path": str(path),
                        "sha256": digest(tracked_state) if path.name == "state.yaml" else digest(regular(path)),
                        "content": tracked_state.decode() if path.name == "state.yaml" else path.read_text(),
@@ -1003,6 +1024,9 @@ class Executor:
         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
 
     def seed(self, version, interval, checks, write_alias=None):
+        require(self.candidate in (CANDIDATE, *qualification.FOLDED_SNAPSHOT_VERSIONS)
+                and version in (self.candidate, "source", *qualification.COMPARISON_VERSIONS),
+                "snapshot fixture candidate or writer is not explicitly enabled")
         genuine = interval == 10 and qualification.is_successor_selection(
             {"candidate": {"version": self.candidate if version == "source" else version}})
         if genuine:
@@ -1200,7 +1224,9 @@ class Executor:
             expected = "refusal"
         observed, outcome, disposition = {}, "error", "compatible"
         try:
+            self.check_sources()
             observed, outcome, disposition = action(checks)
+            self.check_sources()
         except (Exception, KeyboardInterrupt) as error:
             checks.check("execution-completed", False)
             observed = {"error": type(error).__name__, "reason": str(error)}
@@ -1268,6 +1294,10 @@ class Executor:
                                   witness["source"] for case in evidence for witness in case["check_witnesses"] if witness["kind"] == "predicate"})]}
         if name == "checkout" and "runtime_source" in self.source_binding:
             execution_evidence["source_evaluations"] = getattr(self, "source_evaluations", [])
+        if name == "checkout" and "candidate_source" in self.source_binding and "source" in self.evidence:
+            source_manifest = self.evidence["source"] / "source-evidence.json"
+            execution_evidence["source_consumer"] = {"path": str(source_manifest), "sha256": digest(regular(source_manifest)),
+                                                      "content": regular(source_manifest).decode()}
         counter = {key: sum(case["assertions"][key] for case in cases) for key in ("attempted", "passed", "failed")}
         passed = (counter["attempted"] > 0 and counter["failed"] == 0
                   and all(case["expected"] == case["outcome"] and (case["outcome"] != "refusal" or
@@ -1561,13 +1591,28 @@ class Executor:
         return {"completed": completed, "observations": observations, "manual_callback_sent_before_observation": False,
                 "started_utc": started_utc, "deadline_utc": deadline_utc, "budget_seconds": 30}
 
+    def reminder_window(self, due, selected_utc, phase, checks):
+        observed_utc = stamp()
+        remaining = (due - datetime.datetime.fromisoformat(observed_utc)).total_seconds()
+        checks.check("reminder-" + phase + "-deadline-future", remaining >= REMINDER_MINIMUM_WINDOW_SECONDS)
+        require(remaining >= REMINDER_MINIMUM_WINDOW_SECONDS,
+                "reminder fixture future deadline missed before dependent operation")
+        return {"phase": phase, "selected_utc": selected_utc, "due_utc": due.isoformat(),
+                "observed_utc": observed_utc, "remaining_seconds": remaining,
+                "startup_lead_seconds": REMINDER_STARTUP_LEAD_SECONDS,
+                "minimum_remaining_seconds": REMINDER_MINIMUM_WINDOW_SECONDS}
+
     def reminder_case(self, identifier, checks):
         self.seed(self.candidate, 1000, checks)
         before = self.inventory()
-        due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=12)
+        selected_utc = stamp()
+        due = datetime.datetime.fromisoformat(selected_utc) + datetime.timedelta(seconds=REMINDER_STARTUP_LEAD_SECONDS)
         self.reminder_due = due.isoformat()
         self.start_nodes(self.candidate)
+        windows = [self.reminder_window(due, selected_utc, "initial-before-register", checks)]
         registration = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/1", {})
+        windows.append(self.reminder_window(due, selected_utc, "initial-after-register", checks))
+        original_due = self.reminder_due
         checks.check("reminder-armed", registration.get("armed") == 1 and registration.get("unresolved") == 0)
         checks.check("initial-convergence-no-direct-submission", registration.get("submitted") == 0)
         natural = None
@@ -1582,15 +1627,30 @@ class Executor:
         restart_before = self.inventory()
         revision = 2 if identifier == "stale-generation-refusal" else 1
         if revision == 2:
-            self.reminder_due = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=30)).isoformat()
+            selected_utc = stamp()
+            due = datetime.datetime.fromisoformat(selected_utc) + datetime.timedelta(seconds=REMINDER_STARTUP_LEAD_SECONDS)
+            self.reminder_due = due.isoformat()
         self.start_nodes(self.candidate)
+        windows.append(self.reminder_window(due, selected_utc, "restart-before-register", checks))
         rearmed = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/{revision}", {})
+        windows.append(self.reminder_window(due, selected_utc, "restart-after-register", checks))
         checks.check("reminder-converges-after-restart", rearmed.get("unresolved") == 0 and rearmed.get("quarantined") == 0)
         checks.check("restart-convergence-no-direct-submission", rearmed.get("submitted") == 0)
         if revision == 1:
             time.sleep(max(0, (due - datetime.datetime.now(datetime.timezone.utc)).total_seconds()) + .2)
             natural = self.natural_reminder(checks)
-        repeated = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/callback/1", {})
+        callback_url = f"http://127.0.0.1:{self.host_port}/reminder/callback/1"
+        if self.candidate == "3.125.1":
+            require(registration.get("intent_due") == original_due and registration.get("intent_revision") == 1
+                    and isinstance(registration.get("reminder_name"), str), "original armed reminder identity missing")
+            callback_url += "?" + urllib.parse.urlencode({"due": original_due, "reminderName": registration["reminder_name"]})
+        repeated = self.http("POST", callback_url, {})
+        if self.candidate == "3.125.1":
+            checks.check("callback-actor-request-accepted", isinstance(repeated.get("callback_status"), int)
+                         and not isinstance(repeated.get("callback_status"), bool)
+                         and 200 <= repeated["callback_status"] < 300)
+            checks.check("callback-replays-original-armed-identity", repeated.get("intent_due") == original_due
+                         and repeated.get("intent_revision") == 1 and repeated.get("reminder_name") == registration["reminder_name"])
         checks.check("restart-or-stale-callback-no-second-effect", repeated.get("sequence") == 13)
         self.stop_nodes()
         after = self.inventory()
@@ -1599,7 +1659,7 @@ class Executor:
         if revision == 2:
             checks.check("stale-generation-domain-preserved", runtime.domain(restart_before, "tenant-a") == runtime.domain(after, "tenant-a"))
         return {"before": restart_before if revision == 2 else before, "after": after,
-                "due": self.reminder_due, "registration": registration, "rearmed": rearmed,
+                "due": self.reminder_due, "deadline_windows": windows, "registration": registration, "rearmed": rearmed,
                 "natural_scheduler_effect": natural, "repeated_or_stale": repeated,
                 "fixture_authority": "bounded Test authority; P2 acceptance pending"}, "refusal" if revision == 2 else "effect", "compatible"
 
@@ -1740,7 +1800,9 @@ class Executor:
         return {"before": before, "after": after, "owned_processes": identities}, "effect", "compatible"
 
     def execute(self):
-        validate_execution_inputs(self.inputs, getattr(self, "source_root", None),
+        selected_root = getattr(self, "source_root", None) if (
+            "tooling" in self.inputs or getattr(self, "explicit_source_root", False)) else None
+        validate_execution_inputs(self.inputs, selected_root,
                                   getattr(self, "source_builds_root", None))
         if self.candidate == CANDIDATE:
             policy = qualification.load_support_table(self.inputs)
@@ -1754,7 +1816,7 @@ class Executor:
             self.verify_selected_candidate_archives()
             self.topology()
             for lane in qualification.SCENARIOS:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 if lane == "provenance":
                     action, operational = self.provenance_case, False
                 elif lane in ("legacy-metadata", "metadata-read"):
@@ -1781,12 +1843,12 @@ class Executor:
                     action, operational = lambda identifier, checks, lane=lane: self.live_case(lane, identifier, checks), True
                 self.lane(lane, action, operational)
             if "reminder-recovery" in self.inputs["selected_additions"]:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 self.lane("reminder-recovery", self.reminder_case, True)
             if "logical-event-evolution" in self.inputs["selected_additions"]:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 self.lane("logical-event-evolution", self.evolution_case, True)
-            preparation.check_current_source(self.source_binding)
+            self.check_sources()
         finally:
             cleanup = self.cleanup()
             if self.pending_restore is not None:
@@ -1890,6 +1952,10 @@ class Executor:
             self.receipts.append(str(path))
         else:
             self.result["consumer_cleanup"] = str(path)
+        try:
+            self.check_sources()
+        except (Exception, KeyboardInterrupt) as error:
+            self.errors.append("final source check: " + str(error))
         self.result["finished_utc"] = stamp()
         self.save()
         return receipt

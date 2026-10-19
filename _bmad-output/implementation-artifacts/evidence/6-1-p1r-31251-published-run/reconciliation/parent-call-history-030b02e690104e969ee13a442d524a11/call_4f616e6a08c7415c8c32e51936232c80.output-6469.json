@@ -1,0 +1,19 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a1512d-d1f5-72b2-a3b1-c4b2975b45fe",
+  "call_id": "call_4f616e6a08c7415c8c32e51936232c80",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.8 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"9a82ec\",\"wall_time_seconds\":0.659106531,\"exit_code\":0,\"original_token_count\":267,\"output\":\"{\\n  \\\"path\\\": \\\"/tmp/p1r-31251-additional-tracked-review-e7a97404476f459282e0a9949f67453c.patch\\\",\\n  \\\"sha256\\\": \\\"485e88406750fe19e3e9a9df7b99ba26771ff03c14531d2f4abb3f44efdf686d\\\",\\n  \\\"lines\\\": 554,\\n  \\\"sections\\\": [\\n    {\\n      \\\"path\\\": \\\"_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/.gitattributes\\\",\\n      \\\"byte_offset\\\": 0\\n    },\\n    {\\n      \\\"path\\\": \\\"_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/.gitignore\\\",\\n      \\\"byte_offset\\\": 365\\n    },\\n    {\\n      \\\"path\\\": \\\"_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/README.md\\\",\\n      \\\"byte_offset\\\": 809\\n    },\\n    {\\n      \\\"path\\\": \\\"_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/review-0/README.md\\\",\\n      \\\"byte_offset\\\": 10807\\n    },\\n    {\\n      \\\"path\\\": \\\"_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/verify-preservation.py\\\",\\n      \\\"byte_offset\\\": 17581\\n    },\\n    {\\n      \\\"path\\\": \\\"_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md\\\",\\n      \\\"byte_offset\\\": 25180\\n    }\\n  ]\\n}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792363319.797421
+  }
+}

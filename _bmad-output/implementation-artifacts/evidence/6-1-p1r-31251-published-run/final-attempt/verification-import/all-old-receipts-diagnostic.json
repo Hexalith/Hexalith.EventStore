@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/diagnose-import-31251.py",
+    "--reader-root",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+    "--reader-source",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+    "--execution",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+    "--out",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/diagnostic-7d9c2147a13a4903b5b6193859d7cbb4"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+  "started_utc": "2026-10-18T21:41:55.045453+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/all-old-receipts-diagnostic.log",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T21:43:09.093347+00:00"
+}

@@ -123,3 +123,6 @@ docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verifi
 docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json -text
 docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json -text
 docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json -text
+
+# New P1R receipts bind literal bytes, command output and archive identities.
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/** -text -whitespace

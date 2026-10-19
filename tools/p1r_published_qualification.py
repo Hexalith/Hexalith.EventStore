@@ -156,6 +156,64 @@ def is_successor_selection(selection):
         tuple(int(part) for part in version.split(".")) > (3, 120, 0))
 
 
+def source_consumer_binding(root, binding):
+    """Reconstruct Debug project graphs, locks and loaded physical source assemblies."""
+    root = Path(root)
+    source = binding["candidate_source"]
+    source_root = Path(source["repository"])
+    manifest = parse_json(regular(root / "evidence.json"))
+    require(manifest.get("role") == "source" and manifest.get("configuration") == "Debug"
+            and [row.get("name") for row in manifest.get("projects", [])] == ["Host", "Domain", "Probe"],
+            "distinct Debug source consumer inventory missing")
+    sdk = root / "global.json"
+    declared = next((row["sha256"] for row in source["main"]["files"] if row["path"] == "global.json"), None)
+    require(digest(regular(sdk)) == declared, "consumer SDK pin differs from tagged source")
+    files = [{"path": str(sdk), "sha256": declared}, {"path": str(root / "evidence.json"), "sha256": digest(regular(root / "evidence.json"))}]
+    for project in manifest["projects"]:
+        assets = parse_json(regular(root / relative(project["assets"])))
+        restore = assets.get("project", {}).get("restore", {})
+        project_path = root / project["name"].lower() / (project["name"] + ".csproj")
+        require(restore.get("projectPath") == str(project_path), "Debug source assets consumer project path differs")
+        files.append({"path": str(project_path), "sha256": digest(regular(project_path))})
+        references = {Path(path) for framework in restore.get("frameworks", {}).values()
+                      for path in framework.get("projectReferences", {})}
+        expected = {source_root / "src" / name / (name + ".csproj") for name in SUCCESSOR_PACKAGE_IDS}
+        require(references == expected, "Debug source project references differ from selected tagged root")
+        for name, library in assets.get("libraries", {}).items():
+            if library.get("type") == "project":
+                path = (project_path.parent / library["path"]).resolve()
+                require(path.is_relative_to(source_root), "Debug source graph escapes selected source closure")
+                files.append({"path": str(path), "sha256": digest(regular(path))})
+        loaded = parse_json(regular(root / relative(project["loaded"])))
+        require({row["name"] for row in loaded.get("assemblies", [])} == set(SUCCESSOR_PACKAGE_IDS),
+                "Debug source loaded package inventory differs")
+        for row in loaded["assemblies"]:
+            path = Path(row["path"])
+            require(path == root / project["output"] / (row["name"] + ".dll")
+                    and digest(regular(path)) == row["sha256"], "Debug source loaded physical assembly differs")
+            built = source_root / "src" / row["name"] / "bin/Debug/net10.0" / (row["name"] + ".dll")
+            require(digest(regular(built)) == row["sha256"], "Debug loaded assembly differs from selected source build output")
+            files.extend([{"path": str(path), "sha256": row["sha256"]},
+                          {"path": str(built), "sha256": row["sha256"]}])
+        for name in ("assets", "lock", "loaded"):
+            path = root / relative(project[name])
+            files.append({"path": str(path), "sha256": digest(regular(path))})
+    return {"source_root": str(source_root), "source_binding_sha256": digest(preparation.canonical(source)), "files": files}
+
+
+def validate_source_consumer(evidence, binding):
+    """Refuse relabelled or rehashed current-source comparison evidence."""
+    reference = evidence.get("source_consumer")
+    require(isinstance(reference, dict) and set(reference) == {"path", "sha256", "content"},
+            "selected tagged Debug source consumer proof missing")
+    path = Path(reference["path"])
+    data = regular(path)
+    require(path.is_absolute() and path.name == "source-evidence.json"
+            and reference["content"].encode() == data and digest(data) == reference["sha256"]
+            and parse_json(data) == source_consumer_binding(path.parent, binding),
+            "selected tagged Debug source consumer proof substituted")
+
+
 def validate_candidate_source(binding, selection):
     """Independently bind production source to the selected tag, never verifier HEAD."""
     candidate = selection["candidate"]
@@ -1279,12 +1337,24 @@ def validate_final_isolation(receipt, context):
     runner = wrapper.get("runner_proof", {})
     sdk, daemon = wrapper.get("sdk"), wrapper.get("daemon")
     destinations = {item.get("Destination") for item in runner.get("Mounts", [])}
+    source = context["source_binding"].get("candidate_source")
+    source_root = Path(source["repository"]) if source is not None else None
+    if source is not None:
+        require(wrapper.get("source_root") == str(source_root)
+                and isolation.command_source_root(command) == source_root,
+                "final isolation selected tagged source root substituted")
+        validate_candidate_source(context["source_binding"], context["inputs"]["value"])
+    verifier_mounts = [Path(item["Destination"]) for item in runner.get("Mounts", [])
+                       if item.get("Type") == "bind" and Path(context["source_binding"]["repository"]).is_relative_to(Path(item["Destination"]))]
+    expected_mount_count = 2 + int(source_root is not None and not any(source_root.is_relative_to(path) for path in verifier_mounts))
     require(owned.get(sdk, {}).get("role") == "sdk" and owned[sdk].get("image") == isolation.SDK_IMAGE
             and owned.get(daemon, {}).get("role") == "daemon" and owned[daemon].get("image") == isolation.DAEMON_IMAGE
             and runner.get("Id") == sdk and runner.get("Labels", {}).get(isolation.LABEL) == wrapper["invocation"]
             and runner.get("NetworkMode") == runner.get("PidMode") == "container:"+str(daemon)
             and runner.get("Ports") == {} and runner.get("Privileged") is False
-            and len(destinations) == 2 and "/var/lib/docker" in destinations
+            and len(destinations) == expected_mount_count and "/var/lib/docker" in destinations
+            and (source_root is None or any(source_root.is_relative_to(Path(destination)) for destination in destinations
+                                           if destination != "/var/lib/docker"))
             and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
                     for destination in destinations if destination != "/var/lib/docker"),
             "final isolation runner ownership, mounts or namespace binding differs")
@@ -1363,6 +1433,9 @@ def finalize_isolation_receipts(output, isolation_output, selection):
     private = parse_json(reference["private"]["content"].encode())
     context = {"source_binding":private.get("source_binding"),
                "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
+    if "candidate_source" in context["source_binding"]:
+        preparation.check_current_source(context["source_binding"], check_python=False)
+    validate_candidate_source(context.get("source_binding", {}), selection)
     pending = []
     for name in execution["receipts"]:
         path = Path(name)
@@ -1488,6 +1561,8 @@ def bind_lane(receipt, outcome, context):
         if "runtime_source" in context["source_binding"] and receipt["lane"] == "checkout":
             require(run_root is not None, "source consumer output lacks validated isolation")
             validate_source_evaluations(evidence, context["source_binding"], run_root / "consumers/source")
+        if "candidate_source" in context["source_binding"] and receipt["lane"] == "checkout":
+            validate_source_consumer(evidence, context["source_binding"])
         require([row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
                 "measured executor lacks the selected historical directions")
         require([case["id"] for case in receipt["cases"]] == list(executed_case_inventory(selection)[receipt["lane"]]),
@@ -1506,7 +1581,8 @@ def bind_lane(receipt, outcome, context):
                             and digest(file["content"].encode()) == file.get("sha256"),
                             "executed configuration content differs from its hash")
                     if file.get("name") == "state.yaml" and selection["operational_profile"]["backend"] == "state.postgresql":
-                        validate_postgresql_component(file, context["source_binding"].get("runtime_source", {}).get("repository", ROOT))
+                        source = context["source_binding"].get("runtime_source", context["source_binding"].get("candidate_source", {}))
+                        validate_postgresql_component(file, source.get("repository", ROOT))
             require(isinstance(case.get("commands"), list) and bool(case["commands"]),
                     "executed case lacks literal command evidence")
             for command in case["commands"]:
@@ -1656,8 +1732,8 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
         if selected is not None and "tooling" in selected[0]:
             binding = preparation.source_binding(root, selected[0]["tooling"], source_root, source_builds_root)
         else:
-            require(source_root is None and source_builds_root is None, "source paths require selected tooling pins")
-            binding = preparation.source_binding(root)
+            require(source_builds_root is None, "source builds path requires selected tooling pins")
+            binding = preparation.source_binding(root, source_root) if source_root is not None else preparation.source_binding(root)
         preparation.validate_selected_source(selected[0] if selected else None, binding)
         write_json(directory / "source-binding.json", binding)
         packet["source_binding_sha256"] = digest(regular(directory / "source-binding.json"))
@@ -1665,6 +1741,8 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
             value, data, scope = selected
             inputs_record = bound_document(directory, value, data, scope, "inputs.json")
             packet["inputs"] = public(inputs_record)
+            if scope == "owner-selected":
+                validate_candidate_source(binding, value)
             packet["lanes"] = lanes = initial_lanes(value)
             if scope == "tooling-synthetic" or not is_successor_selection(value):
                 require(support_boundary is None, "sealed 3.119.0 boundary cannot be replaced")
@@ -1785,6 +1863,8 @@ def validate_packet(directory):
     require(packet["refusals"] == refusals(inputs, decisions), "refusals differ from bound inputs")
     selection = inputs["value"] if inputs is not None else None
     preparation.validate_selected_source(selection, binding)
+    if inputs is not None and inputs["scope"] == "owner-selected":
+        validate_candidate_source(binding, selection)
     support_value = None
     if selection is not None and inputs["scope"] == "owner-selected" and is_successor_selection(selection):
         record = packet.get("support_boundary")

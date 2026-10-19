@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a150f7-2d06-7273-9c1b-6e764e7686bd",
+  "call_id": "call_f65cfbf4e9b7493782c6bb250c7d81ab",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.2 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": ""
+    },
+    {
+      "type": "input_text",
+      "text": "{\"current_time\":\"2026-10-18 21:42:18 UTC\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792359738.6303878
+  }
+}

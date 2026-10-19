@@ -1,0 +1,21 @@
+{
+  "recorded_utc": "2026-10-18T19:16:56.501320+00:00",
+  "source_freeze": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze-v2.json",
+  "status": "retained timing smoke; stale identity proof superseded",
+  "limitation": "After revision-two restart, the callback recomputed revision one using current revision-two due, producing an unknown schedule token instead of replaying the original armed reminder. Passing stale assertions do not establish original stale-job replay.",
+  "source_semantics": "ReminderIdentityCodec.EncodeScheduleTuple includes due UTC ticks and schedule revision.",
+  "artifacts": [
+    {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/smoke.json",
+      "sha256": "cba893d16b9d53b5be6a76cde5081af6608803398b9a81a39f3036ae346c6c09"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json",
+      "sha256": "8e3761248b94741db81987274b1afbd27de015c618a96d5b4b5a8da691ecda9d"
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-command-92a4e8ab7103441597fa053337ab0b2a.json",
+      "sha256": "9da9c10ae4d51961ff1855b17932f939a713bd14342d977f87fbb0516dcc30c4"
+    }
+  ]
+}

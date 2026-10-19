@@ -1,0 +1,39 @@
+{
+  "errors": [],
+  "executor_source_sha256": "12cce793b03ad6882c9babe3857b17bb8068c31aea8d740c8f83c0f59e5b1cef",
+  "finished_utc": "2026-10-18T19:13:50.247379+00:00",
+  "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+  "invocation": "6087f719938741aa8870445f9abbe24b",
+  "owned_containers": {
+    "2253b33b1784b2d1fa8dba769f4ac0d477b394facdd5c82ca01d37117a6de2c6": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-6087f719938741aa8870445f9abbe24b-source-b0992e08",
+      "port": 25385,
+      "role": "source"
+    },
+    "4862cd20684e6f9be34d803591aa2184a6f8d4cb6d5327a1f7424ec233e715b1": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-6087f719938741aa8870445f9abbe24b-pubsub-9516c30d",
+      "port": 21691,
+      "role": "pubsub"
+    },
+    "9fb5cc1e6965102310a8d01834105474e861643582d2c2a4c62a3672b593fad6": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-6087f719938741aa8870445f9abbe24b-scheduler-23fc33b0",
+      "port": 18730,
+      "role": "scheduler"
+    },
+    "efe70cbfcbc64a2488a462b25962524b5a1ee42b9f746e6d0d9d1915e8d7dcb7": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-6087f719938741aa8870445f9abbe24b-placement-7442311d",
+      "port": 11098,
+      "role": "placement"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/receipts/54e68ed472914d5daaec5c8189613cb6.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-18T19:04:39.019311+00:00"
+}

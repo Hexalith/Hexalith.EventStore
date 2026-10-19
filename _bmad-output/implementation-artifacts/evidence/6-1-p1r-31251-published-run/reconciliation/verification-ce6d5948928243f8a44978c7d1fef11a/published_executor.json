@@ -1,0 +1,23 @@
+{
+  "name": "published_executor",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_executor.py"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:41:15.721355+00:00",
+  "finished_utc": "2026-10-18T22:43:25.124861+00:00",
+  "exit_code": 0,
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-ce6d5948928243f8a44978c7d1fef11a/published_executor.log",
+  "log_sha256": "78058ce01cc4dae20a708265726aa705c8d33a4f5cfce97162f4c6e8bacb2539",
+  "tests": 183,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

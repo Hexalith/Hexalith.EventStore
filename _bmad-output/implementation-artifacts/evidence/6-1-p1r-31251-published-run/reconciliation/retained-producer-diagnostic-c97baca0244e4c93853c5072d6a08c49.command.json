@@ -1,0 +1,24 @@
+{
+  "scope": "nonqualifying merged reader diagnostic after restoring existing interpreter API",
+  "argv": [
+    "/usr/bin/python3",
+    "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/diagnose-retained-producer.py",
+    "--reader-root",
+    "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "--reader-source",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+    "--execution",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+    "--out",
+    "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/retained-producer-diagnostic-c97baca0244e4c93853c5072d6a08c49"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:30:03.364303+00:00",
+  "script_sha256": "eac945ba3bb0c315235c82326392e677526921f1095174d1b4f79354c1a0d959",
+  "exit_code": 2,
+  "finished_utc": "2026-10-18T22:30:41.461119+00:00",
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/retained-producer-diagnostic-c97baca0244e4c93853c5072d6a08c49.log",
+  "log_sha256": "8e911bbefac378a8dfa624f3919f0f5d270510877eb537eed9b960ac8179d360"
+}

@@ -7,6 +7,8 @@ import ast
 import base64
 import binascii
 import inspect
+import urllib.parse
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 
@@ -242,6 +244,9 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
     def argument(command, name):
         argv = command['argv']
         return argv[argv.index(name)+1] if argv.count(name) == 1 and argv.index(name)+1 < len(argv) else None
+    def readiness_get(command, url):
+        argv = command['argv']
+        return argv == ['HTTP','GET',url] or argv == ['HTTP','GET',url,'request-sha256='+digest(b'')]
     def launched(probe, project, appid, endpoint=None):
         start,end = times[probe['id']]
         matches = []
@@ -282,7 +287,7 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
                     'qualified snapshot launch cleanup ownership differs')
             for url,ready_start in (('http://127.0.0.1:'+str(argument(sidecar,'--app-port'))+'/ready',times[hosts[0]['id']][0]),
                         ('http://127.0.0.1:'+str(argument(sidecar,'--dapr-http-port'))+'/v1.0/healthz/outbound',side_start)):
-                require(any(command.get('exit_code') == 0 and command['argv'][:3] == ['HTTP','GET',url]
+                require(any(command.get('exit_code') == 0 and readiness_get(command,url)
                             and ready_start <= times[command['id']][0]
                             and times[command['id']][1] < start for command in commands.values()),
                         'qualified snapshot launch lacks successful endpoint readiness')
@@ -323,9 +328,18 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
                 for command in retained_commands), 'qualified snapshot database lacks retained container ownership inspection')
     domain_sidecar,domain_host,domain_config = launched(nine_command,'Domain','counter')
     require(domain_config['id'] == first_config['id'], 'qualified snapshot registration uses another state-store configuration')
+    readiness_sidecars = [first_sidecar,tail_sidecar,domain_sidecar]
+    if any(argument(command,'--app-id') == 'counter' and command.get('runtime_configuration') == tail_config['id']
+           for command in commands.values()):
+        tail_domain_sidecar,_,tail_domain_config = launched(tail_command,'Domain','counter')
+        require(tail_domain_config['id'] == tail_config['id'], 'qualified snapshot restarted Domain configuration differs')
+        readiness_sidecars.append(tail_domain_sidecar)
+    readiness_urls = {url for sidecar in readiness_sidecars for url in (
+        'http://127.0.0.1:'+str(argument(sidecar,'--app-port'))+'/ready',
+        'http://127.0.0.1:'+str(argument(sidecar,'--dapr-http-port'))+'/v1.0/healthz/outbound')}
     registration = seed.get('registration')
-    require(isinstance(registration,dict) and any(command['argv'][:3] == ['HTTP','GET',
-                'http://127.0.0.1:'+str(argument(domain_sidecar,'--app-port'))+'/ready']
+    require(isinstance(registration,dict) and any(readiness_get(command,
+                'http://127.0.0.1:'+str(argument(domain_sidecar,'--app-port'))+'/ready')
                 and isinstance(outputs.get(identity),dict) and outputs[identity].get('snapshot_qualification') == registration
                 and times[domain_host['id']][0] <= times[identity][0] <= times[identity][1] < times[nine_command['id']][0]
                 for identity,command in commands.items()), 'qualified snapshot registration differs from retained Domain readiness')
@@ -370,6 +384,7 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
             require(argv in (nine_command['argv'], manual_command['argv'], tail_command['argv'],
                              first_host['argv'], domain_host['argv'], tail_host['argv'], inventory_argv, provider_argv)
                     or argv[:2] == ['HTTP', 'GET'] and len(argv) == 3
+                    or any(readiness_get(command,url) for url in readiness_urls)
                     or argv[:2] == ['docker', 'exec']  # Exact read-only SQL profile is required below.
                     or argv == ['docker', 'ps', '-aq']
                     or argv[:4] == ['docker', 'inspect', '--format', DOCKER_FORMAT]
@@ -438,6 +453,86 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
             'qualified snapshot envelope differs from persisted inventory hash')
     for identity,passed in expected.items():
         require(checks[prefix+identity] is passed, 'qualified snapshot check contradicts retained execution output')
+
+def reminder_name(due_utc, revision, tenant='tenant-a', item='fixture'):
+    """Recompute the version-one published schedule tuple without calling the fixture."""
+    due = datetime.fromisoformat(due_utc)
+    require(due.utcoffset() == timedelta(0) and type(revision) is int and revision >= 0,
+            'invalid reminder schedule identity')
+    elapsed = due.replace(tzinfo=None) - datetime(1,1,1)
+    ticks = (elapsed.days*86400+elapsed.seconds)*10_000_000+elapsed.microseconds*10
+    data = b''
+    for value in ('schedule',tenant,item):
+        encoded = value.encode('utf-8')
+        data += len(encoded).to_bytes(4,'big')+encoded
+    data += ticks.to_bytes(8,'big',signed=True)+revision.to_bytes(8,'big',signed=True)
+    bits = int(digest(data),16) << 4
+    alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+    return 'date-wrs-'+''.join(alphabet[(bits >> (5*(51-index))) & 31] for index in range(52))
+
+
+def validate_reminder_identity(observation, successful_http, checks, identifier):
+    registrations = [(command,response) for command,response in successful_http
+                     if command['argv'][:2] == ['HTTP','POST'] and '/reminder/register/' in command['argv'][2]]
+    callbacks = [(command,response) for command,response in successful_http
+                 if command['argv'][:2] == ['HTTP','POST'] and '/reminder/callback/' in command['argv'][2]]
+    require(len(registrations) == 2 and len(callbacks) == 1, 'reminder identity lacks exact registration and callback commands')
+    for index,(command,response) in enumerate(registrations):
+        revision = 2 if index == 1 and identifier == 'stale-generation-refusal' else 1
+        due = observation['deadline_windows'][index*2]['due_utc']
+        require(urllib.parse.urlsplit(command['argv'][2]).path == '/reminder/register/'+str(revision)
+                and response == observation['registration' if index == 0 else 'rearmed']
+                and response.get('intent_due') == due and response.get('intent_revision') == revision
+                and response.get('reminder_name') == reminder_name(due,revision),
+                'armed reminder identity differs from literal due, revision or published tuple')
+    original = registrations[0][1]
+    command,response = callbacks[0]
+    callback = urllib.parse.urlsplit(command['argv'][2])
+    require(callback.path == '/reminder/callback/1'
+            and urllib.parse.parse_qs(callback.query,strict_parsing=True) == {
+                'due':[original['intent_due']], 'reminderName':[original['reminder_name']]}
+            and response == observation.get('repeated_or_stale')
+            and all(response.get(key) == original[key] for key in ('intent_due','intent_revision','reminder_name'))
+            and checks.get('callback-replays-original-armed-identity') is True,
+            'callback does not replay the exact original armed reminder')
+    accepted = type(response.get('callback_status')) is int and 200 <= response['callback_status'] < 300
+    require(checks.get('callback-actor-request-accepted') is accepted,
+            'callback actor request status contradicts its measured acceptance')
+
+
+def validate_reminder_windows(observation, successful_http, configurations, checks, identifier):
+    windows = observation.get('deadline_windows')
+    phases = ('initial-before-register', 'initial-after-register', 'restart-before-register', 'restart-after-register')
+    require(isinstance(windows,list) and len(windows) == 4
+            and [row.get('phase') for row in windows] == list(phases), 'reminder future deadline proof missing')
+    registrations = [command for command,response in successful_http if command['argv'][:2] == ['HTTP','POST']
+                     and '/reminder/register/' in command['argv'][2]]
+    require(len(registrations) == 2, 'reminder deadline lacks exact registration commands')
+    for index,command in enumerate(registrations):
+        before, after = windows[index*2:index*2+2]
+        require(before['selected_utc'] == after['selected_utc'] and before['due_utc'] == after['due_utc'],
+                'reminder immutable intent changed during registration')
+        started, finished = (datetime.fromisoformat(command[key]) for key in ('started_utc','finished_utc'))
+        require(datetime.fromisoformat(before['observed_utc']) <= started <= finished
+                <= datetime.fromisoformat(after['observed_utc']), 'reminder deadline proof does not bracket registration')
+        for window in (before,after):
+            selected, due, observed = (datetime.fromisoformat(window[key]) for key in ('selected_utc','due_utc','observed_utc'))
+            remaining = (due-observed).total_seconds()
+            require(all(value.utcoffset() == timedelta(0) for value in (selected,due,observed))
+                    and selected <= observed and (due-selected).total_seconds() == 120
+                    and window.get('startup_lead_seconds') == 120 and window.get('minimum_remaining_seconds') == 5
+                    and window.get('remaining_seconds') == remaining and remaining >= 5
+                    and checks.get('reminder-'+window['phase']+'-deadline-future') is True,
+                    'reminder deadline expired or timing proof substituted')
+        eligible = [row for row in configurations if datetime.fromisoformat(row['observed_utc']) <= started]
+        require(eligible and max(eligible,key=lambda row: row['observed_utc']).get('reminder_due') == before['due_utc'],
+                'reminder due differs from actual launched configuration')
+    if identifier != 'stale-generation-refusal':
+        require(windows[0]['due_utc'] == windows[2]['due_utc']
+                and windows[0]['selected_utc'] == windows[2]['selected_utc'],
+                'armed reminder intent was rescheduled during restart')
+    require(observation.get('due') == windows[-1]['due_utc'], 'reminder final due differs from retained intent')
+
 
 def validate_case(row, evidence, binding, lane, retained_sources, candidate_version='3.119.0'):
     """Recompute check, probe, inventory and rendered-runtime consistency."""
@@ -668,6 +763,9 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
         require(not equivalent or comparison.get('delta') == [], 'equivalence carries contradictory semantic deltas')
 
     if not incomplete and lane == 'reminder-recovery':
+        if candidate_version == '3.125.1':
+            validate_reminder_windows(observation, successful_http, configurations, checks, row['id'])
+            validate_reminder_identity(observation, successful_http, checks, row['id'])
         for name, identity in (('registration','initial-convergence-no-direct-submission'), ('rearmed','restart-convergence-no-direct-submission')):
             value = observation.get(name)
             require(isinstance(value,dict) and identity in checks, 'reminder attribution drops stable submitted check')

@@ -35,7 +35,7 @@ events. Original event and snapshot hashes must survive those appends. Historica
 comparison fixtures retain their original stopped-writer snapshot diagnostic;
 they cannot establish genuine successor snapshot creation. Enrollment is a finite
 tooling allowlist; later versions receive no successor compiler definitions or
-snapshot fixture sources, and an unenrolled successor's genuine seed refuses.
+snapshot fixture sources, and an unenrolled candidate's seed refuses at every interval.
 The refusal occurs before fixture state reset or writer start. The selected
 candidate's restore writer must use that exact candidate version. The 3.125.0
 operational importer also requires the final private isolation and cleanup journal.
@@ -254,41 +254,78 @@ recovery import corpus. These checks execute no published P1R qualification.
 Exact commands, results and preservation proof are retained in
 `../../_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/`.
 
-The released v3.125.1 source is
-`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`. The approved tooling repair adds
-an optional `tooling: {commit, builds_commit}` block to planning observations and
-owner inputs. Both are full commits selected after review. `observe` and `run`
-require the tooling checkout and its actual qualification Builds checkout to
-match those pins before restore or resource creation. Without the block, the
-existing selected-tag/source/tooling equality guard remains in force.
+The published 3.125.1 qualification selects source
+`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b` and tag Builds
+`4629ff2d3bd66376b29a553663c241d3a7b87853`. Pass `--source-root` to both
+`observe` and `run` to select a self-contained ordinary Git checkout at that
+exact tag, and pass the same root to strict `prepare`. The verifier closure
+records the current tools and their execution Builds independently. Its
+`candidate_source` closure records the immutable production/build inputs;
+independent validation reconstructs both roles and refuses dirty, missing,
+substituted or drifting source. Linked worktrees and borrowed Git object stores
+are refused. Legacy calls without this option retain their historical binding.
+Canonical Git observation ignores replacement refs. Physical production and
+build bytes must match tagged blobs in their declared checkout form, including
+LF C# and CRLF `global.json`. Index flags, external attributes/filters and ignored
+source injections cannot hide changes; ordinary generated `bin`/`obj` outputs
+remain excluded.
 
-The separate-root path accepts only exact 3.125.1. Both `--source-root` and
-`--source-builds-root` are required: source HEAD and v3.125.1 must resolve to the
-release commit above, and source Builds must match release gitlink
-`4629ff2d3bd66376b29a553663c241d3a7b87853`. Both paths must be inside the
-isolated workspace mount. All tracked inputs must be clean; added code and
-configuration, including ignored compiler inputs, refuse. Generated `bin`/`obj`
-outputs remain excluded. There is no bypass flag.
+Genuine snapshot import accepts the executor's literal empty-body GET hash only
+for ready and outbound-health URLs bound to its owned physical launches. Failed
+readiness retries remain visible. Legacy three-field GET records keep their
+existing grammar; extra arguments, altered hashes and foreign endpoints cannot
+enter through the new form.
 
-Scripts, fixtures and witnesses retain tooling attribution. Debug source
-ProjectReferences and the PostgreSQL component template use the verified release
-root; existing MSBuild import properties select its verified Builds catalog and
-the effective runtime version 3.125.1. Preprocessed imports, evaluated versions
-and the complete source-reference closure are checked before restore and retained
-in the checkout receipt for independent import validation. Release consumers
-continue to restore the selected packages without source references or source
-catalog overrides. No release source or catalog edit is needed.
+Reminder fixtures reserve a separate 120-second startup/restart lead and retain
+the same armed revision-one deadline across restart. Revision two selects its
+own future deadline. Checks before and after each registration require at least
+five seconds remaining, bind the launched due time and refuse missed windows.
+The natural scheduler observation budget remains 30 seconds after the due time.
+Registration reports the literal due time, revision and published reminder name.
+The callback repeats the original armed identity explicitly, including after a
+revision-two restart changes the current due time. Independent validation
+recomputes the published schedule tuple and binds both registrations, the
+callback query and the identity actually invoked. Legacy callback calls without
+an explicit identity continue to use their current fixture environment.
+Before private SDK teardown, a completed canonical run with an explicit source root returns only
+its output and receipt directories to the owner of the host-created wrapper
+directory. This preserves receipt bytes and modes while allowing the host to
+attach final isolation evidence atomically.
 
-The existing source binding retains its tooling inventory and qualification
-Builds identity, with `runtime_source` recording the source inventory and source
-Builds path/identity. Both roots are rechecked through private isolation,
-execution, receipt import and packet validation, including after owned cleanup.
-Removing or swapping runtime evidence remains a refusal after receipt hashes are
-recomputed. `candidate.builds` continues to describe package construction; it
-does not select the qualification Builds checkout.
+The private runner mounts that exact candidate root when it is outside the
+verifier workspace. It rechecks source after readiness waits and before final
+receipt attachment. Source consumers use Debug/project references into the
+selected root, including its SDK and central package pins. Their assets, locks
+and physically loaded assemblies are independently bound. Package consumers
+continue to restore the signed immutable nuget.org bytes in Release. The finite
+snapshot/evolution enrollment includes exactly 3.125.1 alongside the earlier
+enrolled versions; 3.126.0 remains refused before state reset or writer startup.
 
-The tooling and qualification Builds commits remain unselected. Named owners
-must still select the exact published tuple and prove archive/restore/lock/loaded
-graph agreement before a separately authorized published attempt. Tooling tests
-run no published qualification and change no production snapshot policy, pins,
-rollback=null, AD-17 drain/freeze/forward recovery, acceptance or Story 6.4 hold.
+Fresh technical measurements retain every failed check and execution error.
+A measured successor support table remains pending until its architect supplies
+a genuine disposition. Strict preparation refuses that missing decision; all
+four owner decisions and same-baseline conformance remain pending and
+`p1r_usable=false`. This tooling changes no production snapshot policy, pins,
+rollback=null, Projects AD-17 drain/freeze/forward recovery, acceptance, sprint
+status or readiness.
+
+The optional pinned-tooling route also accepts a `tooling: {commit, builds_commit}`
+block in observations and inputs. In that route, pass both `--source-root` and
+`--source-builds-root`; tooling and qualification Builds must match the selected
+full commits. Its `runtime_source` binding retains separate source and Builds
+identities, complete preprocessed imports and evaluated source references. These
+paths must be inside the isolated workspace. Existing MSBuild import properties
+select the verified release Builds catalog and runtime version; pre-restore and
+post-restore evaluations retain the complete source-reference graph. The
+PostgreSQL component template also comes from that verified release root.
+Physical-byte checks precede Git filters in both source-selection routes.
+Completed canonical runs in either route return only their fresh output and
+receipt directories to the wrapper owner before host finalization.
+Tooling pins must be explicitly supplied for the pinned route. This published
+qualification uses the independently retained verifier/candidate closure route
+above. Legacy calls without explicit roots retain their historical binding.
+
+Both explicit source routes copy the selected tagged source’s `global.json` into
+each fresh consumer root before the first MSBuild evaluation or restore. This
+selects its SDK for Debug source builds and Release published-package builds,
+even when the verifier checkout pins a newer SDK.

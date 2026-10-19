@@ -1,0 +1,90 @@
+...............................................................................................................F....FF...F....F............................
+======================================================================
+FAIL: testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof (test_p1r_published_executor.Published31251SnapshotWitnessTests.testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 247, in testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof
+    receipt,context = self.import_fixture()
+                      ~~~~~~~~~~~~~~~~~~~^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 845, in attach_isolation
+    return super().attach_isolation(receipt,context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['final isolation execution, receipt registration or source differs']
+
+======================================================================
+FAIL: testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes (test_p1r_published_executor.Published31251SnapshotWitnessTests.testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 709, in testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes
+    receipt,context = self.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 845, in attach_isolation
+    return super().attach_isolation(receipt,context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['final isolation execution, receipt registration or source differs']
+
+======================================================================
+FAIL: testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract (test_p1r_published_executor.Published31251SnapshotWitnessTests.testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 749, in testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract
+    receipt,context = self.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 845, in attach_isolation
+    return super().attach_isolation(receipt,context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['final isolation execution, receipt registration or source differs']
+
+======================================================================
+FAIL: testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands (test_p1r_published_executor.Published31251SnapshotWitnessTests.testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 664, in testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands
+    receipt,context = self.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 845, in attach_isolation
+    return super().attach_isolation(receipt,context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['final isolation execution, receipt registration or source differs']
+
+======================================================================
+FAIL: testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope (test_p1r_published_executor.Published31251SnapshotWitnessTests.testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 702, in testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope
+    receipt,context = self.import_fixture()
+                      ~~~~~~~~~~~~~~~~~~~^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 845, in attach_isolation
+    return super().attach_isolation(receipt,context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['final isolation execution, receipt registration or source differs']
+
+----------------------------------------------------------------------
+Ran 155 tests in 73.858s
+
+FAILED (failures=5)

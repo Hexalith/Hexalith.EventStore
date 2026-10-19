@@ -1,0 +1,3 @@
+text(await tools.exec_command({cmd:"rg -n 'load_tests|unittest\\.skip|@.*skip|def test.*(Missing|Source|Finite|Interrupted|FailedStartup|Sigint|SuccessorPacket|EverySeed|ActualImport|SingleSourceObserve)' tools/tests/test_p1r_qualification.py tools/tests/test_p1r_published_qualification.py tools/tests/test_p1r_published_executor.py tools/tests/test_p1r_isolation.py tools/tests/test_p1r_isolation_hardening.py tools/tests/test_p1r_snapshot_registration.py",workdir:load("p1r_31251_run_state").integration_root,max_output_tokens:6500}));
+text(await tools.write_stdin({session_id:87220,chars:"",yield_time_ms:1000,max_output_tokens:2500}));
+text(await tools.clock__curr_time({}));

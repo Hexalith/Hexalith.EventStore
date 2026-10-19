@@ -1,0 +1,23 @@
+{
+  "name": "snapshot_registration",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_snapshot_registration.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-18T22:51:07.869846+00:00",
+  "finished_utc": "2026-10-18T22:51:42.358055+00:00",
+  "exit_code": 0,
+  "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-5de2722d6a404bdd982be7787f2869cd/snapshot_registration.log",
+  "log_sha256": "d526665be3e68deff5134d505905fba7ecab50151ea4748d83b3c7b8294806b7",
+  "tests": 3,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

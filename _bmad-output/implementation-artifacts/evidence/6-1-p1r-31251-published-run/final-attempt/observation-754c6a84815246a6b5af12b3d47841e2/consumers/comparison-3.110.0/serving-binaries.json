@@ -1,0 +1,16 @@
+{
+  "Domain": {
+    "configuration": "Release",
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/consumers/comparison-3.110.0/domain/bin/Release/net10.0/Domain.dll",
+    "project": "Domain",
+    "role": "comparison-3.110.0",
+    "sha256": "2bc0ab4908f154d1db33a1974d4f6ae343dd68260773c82f4cff682fd6349d2a"
+  },
+  "Host": {
+    "configuration": "Release",
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/consumers/comparison-3.110.0/host/bin/Release/net10.0/Host.dll",
+    "project": "Host",
+    "role": "comparison-3.110.0",
+    "sha256": "dbb5ee0dd6e8f66a45b38b7d9f0e3f5249bbb6c66122f50a2050c408cdf8c695"
+  }
+}

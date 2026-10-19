@@ -52,6 +52,21 @@ class PrivateEndpointTests(unittest.TestCase):
 
 
 class SeparateSourceMountTests(unittest.TestCase):
+    def testSingleSourceObserveRetainsItsSelectionReferenceAndExactSuffix(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root/'source';source.mkdir()
+            planning = root/'planning.json';planning.write_text('{}\n')
+            command = ['python3',str(root/'tools/p1r-published-executor.py'),'observe','--out',str(root/'observation'),
+                       '--planning-observations',str(planning),'--selection-reference','controlled-fixture',
+                       '--source-root',str(source)]
+            self.assertEqual(isolation.executor_input(command,root),
+                             {'path':str(planning),'sha256':preparation.digest(planning.read_bytes())})
+            for changed in (command+['--source-root',str(root)],command[:7]+command[9:]+command[7:9],
+                            command[:8]+['']+command[9:]):
+                with self.subTest(command=changed),self.assertRaises(preparation.InvalidPacket):
+                    isolation.executor_input(changed,root)
+
     def testExactSourceArgumentAndMountAreIndependentOfVerifierRoot(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -726,6 +741,119 @@ class RepairAttemptTests(unittest.TestCase):
             (run / "receipts" / "unregistered.json").write_text("{}")
             with self.assertRaisesRegex(preparation.InvalidPacket, "inventories differ"):
                 entry["require_inventory"](q, runtime, run, execution, receipts)
+
+
+class ExecutorOutputOwnershipTests(unittest.TestCase):
+    @contextlib.contextmanager
+    def fixture(self):
+        with tempfile.TemporaryDirectory(prefix='p1r-owned-output-') as scratch:
+            root = Path(scratch)
+            wrapper,run = root/'wrapper',root/'execution'
+            wrapper.mkdir();(run/'receipts').mkdir(parents=True)
+            inputs=root/'inputs.json';inputs.write_text('{"controlled":true}\n')
+            binding={'repository':str(root),'scope':'controlled ownership boundary; no qualification'}
+            preparation.write_json(run/'executor-source.json',binding)
+            receipt=run/'receipts/receipt.json';preparation.write_json(receipt,{'controlled':True})
+            preparation.write_json(run/'execution.json',{'schema':'hexalith.p1r.executor.v1','invocation':'a'*32,
+                'finished_utc':'2026-10-18T00:00:00+00:00','inputs_sha256':preparation.digest(inputs.read_bytes()),
+                'executor_source_sha256':preparation.digest((run/'executor-source.json').read_bytes()),'receipts':[str(receipt)]})
+            command=['python3',str(root/'tools/p1r-published-executor.py'),'run','--out',str(run),'--inputs',str(inputs),
+                     '--source-root',str(root/'selected-source')]
+            with mock.patch.object(isolation,'ROOT',root):yield root,wrapper,run,binding,command
+
+    def testOwnershipHandoffChangesOnlyExactCompletedRunDirectories(self):
+        with self.fixture() as (root,wrapper,run,binding,command):
+            before={str(path):path.read_bytes() for path in run.rglob('*') if path.is_file()}
+            result=isolation.handoff_executor_output(command,wrapper,binding,Path(command[-1]),True)
+            self.assertEqual([row['path'] for row in result['directories']],[str(run),str(run/'receipts')])
+            self.assertEqual(result['host_owner'],{'uid':wrapper.stat().st_uid,'gid':wrapper.stat().st_gid})
+            self.assertEqual(before,{str(path):path.read_bytes() for path in run.rglob('*') if path.is_file()})
+            self.assertIsNone(isolation.handoff_executor_output(['python3','unrelated.py'],wrapper,binding,None,True))
+
+    def testPinnedSourceChildHandsFreshOutputBackAndRefusesSubstitutedSource(self):
+        for substituted in (False, True):
+            with self.subTest(substituted=substituted), self.fixture() as (root,wrapper,run,binding,command):
+                source = root/'selected-source'
+                binding['runtime_source'] = {'repository':str(root/'other-source' if substituted else source)}
+                preparation.write_json(run/'executor-source.json',binding)
+                execution = preparation.read_json(run/'execution.json')
+                execution['executor_source_sha256'] = preparation.digest((run/'executor-source.json').read_bytes())
+                preparation.write_json(run/'execution.json',execution)
+                template = run.rename(root/'template')
+                script = root/'tools/p1r-published-executor.py'
+                script.parent.mkdir()
+                script.write_text('import shutil,sys\nshutil.copytree('+repr(str(template))
+                                  + ',sys.argv[sys.argv.index("--out")+1])\n')
+                command += ['--source-builds-root',str(root/'selected-builds')]
+                with mock.patch.object(isolation,'command_source_binding',return_value=binding), \
+                        mock.patch.object(isolation,'private_proof',return_value={}), \
+                        mock.patch.object(preparation,'check_current_source'), \
+                        mock.patch.object(isolation,'private_environment',return_value=dict(os.environ)):
+                    code = isolation._inner(wrapper,'controlled-outer',command)
+                result = preparation.read_json(wrapper/'private-execution.json')
+                self.assertEqual(code,2 if substituted else 0)
+                self.assertTrue(result['executor_output_was_absent'])
+                self.assertEqual(len(result['cleanup']),2)
+                self.assertTrue(all(not row['remaining'] and not row['errors'] for row in result['cleanup']))
+                if substituted:
+                    self.assertTrue(result['errors'])
+                    self.assertNotIn('executor_output_handoff',result)
+                else:
+                    self.assertEqual(result['errors'],[])
+                    self.assertEqual([row['path'] for row in result['executor_output_handoff']['directories']],
+                                     [str(run),str(run/'receipts')])
+
+    def testSubstitutedOwnershipCommandSourceReceiptOrExistingOutputCannotBeChowned(self):
+        for mutation in ('command','source','receipt','existing','root','input'):
+            with self.subTest(mutation=mutation),self.fixture() as (root,wrapper,run,binding,command):
+                absent=True
+                if mutation=='command':command+=['--unexpected']
+                elif mutation=='source':binding=dict(binding,repository='/substituted')
+                elif mutation=='receipt':
+                    value=json.loads((run/'execution.json').read_bytes());value['receipts']=[str(root/'outside.json')]
+                    preparation.write_json(run/'execution.json',value)
+                elif mutation=='existing':absent=False
+                elif mutation=='root':command[4]=str(root.parent)
+                else:(root/'inputs.json').write_text('substituted input')
+                with mock.patch.object(isolation.os,'chown') as chown:
+                    with self.assertRaises(preparation.InvalidPacket):
+                        isolation.handoff_executor_output(command,wrapper,binding,root/'selected-source',absent)
+                    chown.assert_not_called()
+
+    def testActualRootToControllerBoundaryAllowsAtomicReceiptFinalization(self):
+        if os.geteuid()==0 or shutil.which('sudo') is None:
+            self.skipTest('requires a nonroot controller with sudo; private smoke covers the SDK boundary')
+        with self.fixture() as (root,wrapper,run,binding,command):
+            sudo=['sudo','-n',sys.executable,'-c']
+            if subprocess.run(['sudo','-n','true'],capture_output=True).returncode:
+                self.skipTest('noninteractive root boundary unavailable')
+            paths=[str(run),str(run/'receipts')]
+            change='import os,json,sys;[os.chown(p,int(sys.argv[2]),int(sys.argv[3])) for p in json.loads(sys.argv[1])]'
+            subprocess.run([*sudo,change,json.dumps(paths),'0','0'],check=True,capture_output=True)
+            try:
+                with self.assertRaises(PermissionError):
+                    preparation.write_json(run/'receipts/receipt.json',{'finalized':True})
+                script=('import json,sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);'
+                        'import p1r_isolation as i;i.ROOT=Path(sys.argv[2]);'
+                        'r=i.handoff_executor_output(json.loads(sys.argv[3]),Path(sys.argv[4]),json.loads(sys.argv[5]),Path(sys.argv[6]),True);'
+                        'print(json.dumps(r))')
+                process=subprocess.run([*sudo,script,str(preparation.ROOT/'tools'),str(root),json.dumps(command),
+                                        str(wrapper),json.dumps(binding),command[-1]],check=True,capture_output=True,text=True)
+                result=json.loads(process.stdout)
+                self.assertTrue(all(row['before']['uid']==0 and row['after']['uid']==os.getuid() for row in result['directories']))
+                preparation.write_json(run/'receipts/receipt.json',{'finalized':True})
+                self.assertEqual(json.loads((run/'receipts/receipt.json').read_bytes()),{'finalized':True})
+            finally:
+                subprocess.run([*sudo,change,json.dumps(paths),str(os.getuid()),str(os.getgid())],check=True,capture_output=True)
+
+    def testLegacyWorkspaceOutputOutsideRepositoryKeepsExistingGrammarWithoutHandoff(self):
+        with self.fixture() as (root,wrapper,run,binding,command):
+            legacy=command[:7]
+            legacy[4]=str(root.parent/'umbrella-output')
+            self.assertEqual(isolation.executor_input(legacy,root)['path'],str(root/'inputs.json'))
+            with mock.patch.object(isolation.os,'chown') as chown:
+                self.assertIsNone(isolation.handoff_executor_output(legacy,wrapper,binding,None,False))
+                chown.assert_not_called()
 
 
 if __name__ == "__main__":

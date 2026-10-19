@@ -112,18 +112,66 @@ def private_proof(outer_id):
             "outer_daemon_id": outer_id, "socket": SOCKET, "process": process,
             "namespaces": own, "daemon_namespaces": daemon_namespaces, "executables": executables,
             "python_version": list(sys.version_info[:3]),
-            "dotnet_version": subprocess.check_output(["dotnet", "--version"], env=environment).decode().strip(),
+            "dotnet_version": subprocess.check_output(["dotnet", "--version"], env=environment, cwd="/").decode().strip(),
             "glibc": os.confstr("CS_GNU_LIBC_VERSION")}
 
 
-def inner(output, outer_id, command):
+def inner(output, outer_id, command, source_root=None):
     with signal_handling():
-        return _inner(output, outer_id, command)
+        return _inner(output, outer_id, command, source_root)
 
 
-def _inner(output, outer_id, command):
+def handoff_executor_output(command, wrapper_output, binding, source_root, output_was_absent):
+    """Return only this completed canonical run's directories to the host owner."""
+    command = list(map(str, command))
+    if source_root is None or command[:3] != ["python3", str(ROOT / "tools/p1r-published-executor.py"), "run"]:
+        return None
+    selected = executor_input(command, ROOT)
+    require(command_source_root(command) == source_root and output_was_absent,
+            "executor ownership handoff lacks an invocation-owned output")
+    run = Path(command[4])
+    require(run != ROOT and run.is_relative_to(ROOT) and run == run.resolve() and run.is_dir(),
+            "executor ownership output escaped verifier")
+    require(binding.get("repository") == str(ROOT), "executor ownership source root substituted")
+    source_path, execution_path = run / "executor-source.json", run / "execution.json"
+    source_data, execution_data = regular(source_path), regular(execution_path)
+    execution = json.loads(execution_data)
+    require(json.loads(source_data) == binding and execution.get("executor_source_sha256") == digest(source_data)
+            and execution.get("schema") == "hexalith.p1r.executor.v1"
+            and execution.get("inputs_sha256") == selected["sha256"] and execution.get("finished_utc")
+            and bool(re.fullmatch(r"[0-9a-f]{32}", execution.get("invocation", ""))),
+            "executor ownership handoff source or execution substituted")
+    receipts = run / "receipts"
+    require(receipts == receipts.resolve() and receipts.is_dir()
+            and isinstance(execution.get("receipts"), list) and bool(execution["receipts"]),
+            "executor ownership receipt directory unavailable")
+    for name in execution["receipts"]:
+        path = Path(name)
+        require(path.parent == receipts and path.suffix == ".json", "executor ownership receipt escaped output")
+        regular(path)
+    wrapper_output = Path(wrapper_output)
+    require(wrapper_output == wrapper_output.resolve() and wrapper_output.is_dir(), "wrapper owner path substituted")
+    owner = wrapper_output.stat()
+    rows = []
+    for path in (run, receipts):
+        before = path.stat()
+        os.chown(path, owner.st_uid, owner.st_gid, follow_symlinks=False)
+        after = path.stat()
+        require((after.st_uid, after.st_gid) == (owner.st_uid, owner.st_gid)
+                and (before.st_mode & 0o7777) == (after.st_mode & 0o7777), "executor ownership handoff failed")
+        rows.append({"path": str(path), "before": {"uid": before.st_uid, "gid": before.st_gid},
+                     "after": {"uid": after.st_uid, "gid": after.st_gid}, "mode": after.st_mode & 0o7777})
+    require(regular(source_path) == source_data and regular(execution_path) == execution_data,
+            "executor ownership handoff changed evidence bytes")
+    return {"schema": "hexalith.p1r.executor-output-handoff.v1", "invocation": execution["invocation"],
+            "host_owner": {"uid": owner.st_uid, "gid": owner.st_gid}, "selected_input": selected,
+            "executor_source_sha256": digest(source_data), "execution_sha256": digest(execution_data), "directories": rows}
+
+
+def _inner(output, outer_id, command, source_root=None):
     """Retain command failures and repeated exact-process cleanup in the private namespace."""
     output = Path(output)
+    handoff_source_root = source_root
     result = {"schema": SCHEMA, "scope": "isolated-command-verification", "invocation": os.environ.get(MARKER),
               "started_utc": stamp(), "command": command, "exit_code": None, "errors": [], "p1r_usable": False}
     result["supervisor"] = preparation.identity(preparation.process_state(os.getpid()))
@@ -137,17 +185,26 @@ def _inner(output, outer_id, command):
             try:
                 return original_git(root, *arguments)
             except InvalidPacket:
-                probe = subprocess.run(["git", "--no-pager", *arguments], cwd=root,
+                probe = subprocess.run(["git", "--no-replace-objects", "--no-pager", *arguments], cwd=root,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
                 result["git_failure"] = {"cwd": str(root), "arguments": arguments, "exit_code": probe.returncode,
                                          "stderr": probe.stderr.decode("utf-8", "replace")}
                 raise
         preparation.git = diagnosed_git
         try:
-            result["source_binding"] = command_source_binding(command)
+            result["source_binding"] = (preparation.source_binding(ROOT, source_root) if source_root is not None
+                                        else command_source_binding(command))
         finally:
             preparation.git = original_git
+        if handoff_source_root is None and "runtime_source" in result["source_binding"]:
+            handoff_source_root = Path(result["source_binding"]["runtime_source"]["repository"])
         write_json(output / "private-execution.json", result)
+        canonical_run = handoff_source_root is not None and list(map(str, command[:3])) == [
+            "python3", str(ROOT / "tools/p1r-published-executor.py"), "run"]
+        if canonical_run:
+            executor_input(command, ROOT)
+            result["executor_output_was_absent"] = not Path(command[4]).exists()
+            require(result["executor_output_was_absent"], "executor output already exists before command")
         environment = dict(private_environment(), HEXALITH_P1R_CONTROL_NONCE=owner.nonce,
                            **{OUTER_MARKER: outer_id})
         process = subprocess.Popen(command, env=environment, start_new_session=True)
@@ -187,6 +244,12 @@ def _inner(output, outer_id, command):
                 try:
                     preparation.check_current_source(result["source_binding"])
                     result["source_checked_after_cleanup"] = True
+                except (Exception, KeyboardInterrupt) as error:
+                    result["errors"].append(str(error) if isinstance(error, InvalidPacket) else type(error).__name__)
+            if "source_binding" in result and result.get("executor_output_was_absent"):
+                try:
+                    result["executor_output_handoff"] = handoff_executor_output(
+                        command, output, result["source_binding"], handoff_source_root, result["executor_output_was_absent"])
                 except (Exception, KeyboardInterrupt) as error:
                     result["errors"].append(str(error) if isinstance(error, InvalidPacket) else type(error).__name__)
             result["finished_utc"] = stamp()
@@ -248,7 +311,8 @@ def command_source_binding(command):
         selected = preparation.read_json(Path(command[command.index(option) + 1]))
         if "tooling" not in selected:
             require(not paths, "source paths require selected tooling pins")
-            return preparation.source_binding()
+            source = command_source_root(command)
+            return preparation.source_binding(ROOT, source) if source is not None else preparation.source_binding()
         if command[2] == "run":
             executor.validate_execution_inputs(selected, *paths)
         else:
@@ -274,7 +338,7 @@ def executor_input(command, repository):
             "published executor arguments substituted")
     output, path = Path(command[4]), Path(command[6])
     if source is not None and not paths:
-        require(command[7:] == ["--source-root", str(source)], "published executor source arguments substituted")
+        require(command[9 if observe else 7:] == ["--source-root", str(source)], "published executor source arguments substituted")
     require(output.is_absolute() and output == output.resolve() and path.is_absolute(), "published executor paths substituted")
     return {"path":str(path), "sha256":digest(regular(path))}
 
@@ -323,6 +387,8 @@ def validate_workspace(workspace, repository, outer_host):
 
 def sdk_arguments(workspace, repository, invocation, daemon, volume, source_paths=()):
     """Construct the single permitted SDK container profile."""
+    if source_paths is None:
+        source_paths = ()
     if isinstance(source_paths, (str, Path)):
         source_paths = (Path(source_paths),)
     git_paths = [Path(workspace)]
@@ -354,12 +420,13 @@ def sdk_arguments(workspace, repository, invocation, daemon, volume, source_path
 class IsolatedRunner:
     """Own only exact outer container/volume identities carrying this invocation label."""
 
-    def __init__(self, output, workspace=None, outer_host=None):
+    def __init__(self, output, workspace=None, outer_host=None, source_root=None):
         with signal_handling():
-            self.initialize(output, workspace, outer_host)
+            self.initialize(output, workspace, outer_host, source_root)
 
-    def initialize(self, output, workspace=None, outer_host=None):
+    def initialize(self, output, workspace=None, outer_host=None, source_root=None):
         self.output = Path(output).absolute()
+        self.source_root = Path(source_root).absolute() if source_root is not None else None
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
         self.invocation = uuid.uuid4().hex
         self.scratch = None
@@ -384,6 +451,11 @@ class IsolatedRunner:
                     "only a local Unix Docker endpoint is supported")
             selected_workspace = workspace or preparation.git(ROOT, "rev-parse", "--show-superproject-working-tree").decode().strip() or ROOT
             self.workspace = validate_workspace(selected_workspace, ROOT, self.outer_host)
+            if self.source_root is not None:
+                validate_workspace(self.source_root, self.source_root, self.outer_host)
+                self.result["source_root"] = str(self.source_root)
+                self.controller_binding = preparation.source_binding(ROOT, self.source_root)
+                self.result["controller_source_binding"] = self.controller_binding
             require(self.output.is_relative_to(self.workspace), "isolation output is outside the mounted workspace; private evidence would be lost")
             self.result["outer_host"] = self.outer_host
             self.save()
@@ -465,20 +537,27 @@ class IsolatedRunner:
         code = 2
         try:
             source_paths = source_arguments(command)
-            controller_binding = None
+            controller_binding = getattr(self, "controller_binding", None)
             if source_paths:
                 require(all(path.is_relative_to(self.workspace) for path in source_paths),
                         "runtime source paths are outside the isolated workspace")
+            elif self.source_root is not None:
+                source_paths = (self.source_root,)
             published = len(command) >= 3 and str(command[1]) == str(ROOT / "tools/p1r-published-executor.py")
             if published and command[2] in ("run", "observe"):
+                if not source_arguments(command):
+                    require(command_source_root(command) == self.source_root,
+                            "executor and isolation selected source roots differ")
                 option = "--inputs" if command[2] == "run" else "--planning-observations"
                 require(command.count(option) == 1, "executor selected inputs missing or substituted")
                 self.result["selected_input"] = executor_input(command, ROOT)
                 selected = preparation.read_json(Path(command[command.index(option) + 1]))
-                if source_paths or "tooling" in selected:
+                if "tooling" in selected:
                     controller_binding = command_source_binding(command)
                 require(self.result["selected_input"] == executor_input(command, ROOT),
                         "selected input changed during admission")
+            if controller_binding is not None:
+                preparation.check_current_source(controller_binding)
             _, data = self.docker(["info", "--format", "{{.ID}}"])
             outer_id = data.decode().strip()
             require(outer_id, "outer daemon identity missing")
@@ -529,7 +608,8 @@ class IsolatedRunner:
             observed = self.inspect(runner)
             require(observed["NetworkMode"] == "container:" + daemon and observed["PidMode"] == "container:" + daemon
                     and not observed["Ports"] and not observed["Privileged"]
-                    and {row["Destination"] for row in observed["Mounts"]} == {"/var/lib/docker", str(self.workspace)},
+                    and {row["Destination"] for row in observed["Mounts"]} == ({"/var/lib/docker", str(self.workspace)}
+                        | {str(path) for path in source_paths if not path.is_relative_to(self.workspace)}),
                     "runner namespace or mounts substituted")
             self.result["runner_proof"] = observed
             _, measured = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_proof", "--outer-id", outer_id])
@@ -543,7 +623,9 @@ class IsolatedRunner:
             self.result.update(command_started=True, inner_command=list(map(str, command)), sdk=runner, daemon=daemon)
             self.save()
             code, stdout = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_inner",
-                                   "--out", self.output, "--outer-id", outer_id, "--", *command], check=False, timeout=86400)
+                                   "--out", self.output, "--outer-id", outer_id,
+                                   *(["--source-root", str(self.source_root)] if self.source_root is not None else []),
+                                   "--", *command], check=False, timeout=86400)
             self.result["command_stdout"] = stdout.decode("utf-8", "replace")
             require((self.output / "private-execution.json").is_file(), "private execution result missing")
             private = json.loads(regular(self.output / "private-execution.json"))
@@ -561,6 +643,8 @@ class IsolatedRunner:
         if self.result["passed"] and published and command[2] in ("run", "observe"):
             try:
                 import p1r_published_qualification as qualification
+                if controller_binding is not None:
+                    preparation.check_current_source(controller_binding)
                 selected = executor_input(command, ROOT)
                 require(selected == self.result["selected_input"], "selected input changed during execution")
                 if command[2] == "run":
@@ -731,6 +815,7 @@ def main(arguments=None):
     internal = arguments[:1] == ["_inner"]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--source-root", type=Path)
     if internal:
         parser.add_argument("--outer-id", required=True)
         arguments = arguments[1:]
@@ -742,8 +827,8 @@ def main(arguments=None):
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     require(command, "explicit verification command required")
     if internal:
-        return inner(args.out, args.outer_id, command)
-    runner = IsolatedRunner(args.out, args.workspace, args.outer_host)
+        return inner(args.out, args.outer_id, command, args.source_root)
+    runner = IsolatedRunner(args.out, args.workspace, args.outer_host, args.source_root)
     code = runner.run(command)
     print(json.dumps({"out": str(runner.output), "passed": runner.result["passed"], "p1r_usable": False}), flush=True)
     return code

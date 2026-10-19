@@ -1,0 +1,77 @@
+FFFFFFFF
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='tooling', location='info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='tooling', location='configured')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='source', location='info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='source', location='configured')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='builds', location='info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='builds', location='configured')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='source_builds', location='info')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (__main__.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) (role='source_builds', location='configured')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/clean-filter-boundary-tests.py", line 30, in testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem
+    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 2.895s
+
+FAILED (failures=8)

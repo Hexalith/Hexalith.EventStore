@@ -1,0 +1,3 @@
+text(await tools.exec_command({cmd:"df -h /tmp",max_output_tokens:1000}));
+text(await tools.exec_command({cmd:"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nroot=Path('/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31')\np=root/'_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation'\nfor d in sorted(p.glob('verification-*'),key=lambda x:x.stat().st_mtime)[-3:]:\n index=d/'index.json'\n if index.exists():\n  v=json.loads(index.read_text());print(d.name,[(row['name'],row['tests'],row['exit_code']) for row in v['suites']])\nPY",max_output_tokens:1700}));
+text(await tools.clock__curr_time({}));

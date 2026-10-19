@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/opt/python/bin/python3.12",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 4298,
+          "pid": 4298,
+          "session": 4298,
+          "start_ticks": 23121669
+        },
+        {
+          "pgid": 4299,
+          "pid": 4299,
+          "session": 4299,
+          "start_ticks": 23121670
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "descendants",
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-18T23:53:10.727322+00:00",
+  "id": "f13a2ecba5554cfdb4d0bb2f26959adf",
+  "invocation": "00eb18f0d3c745ea9eba1d2a702562bb",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/f13a2ecba5554cfdb4d0bb2f26959adf.txt",
+    "sha256": "6013da01d7a5d317748ab436ea2d3b82323c9b4bec94d093d67e06c2c4f2e160"
+  },
+  "owned_processes": [
+    {
+      "pgid": 4298,
+      "pid": 4298,
+      "session": 4298,
+      "start_ticks": 23121669
+    },
+    {
+      "pgid": 4299,
+      "pid": 4299,
+      "session": 4299,
+      "start_ticks": 23121670
+    }
+  ],
+  "root_process": {
+    "pgid": 4298,
+    "pid": 4298,
+    "session": 4298,
+    "start_ticks": 23121669
+  },
+  "started_utc": "2026-10-18T23:53:10.309313+00:00",
+  "timed_out": true
+}

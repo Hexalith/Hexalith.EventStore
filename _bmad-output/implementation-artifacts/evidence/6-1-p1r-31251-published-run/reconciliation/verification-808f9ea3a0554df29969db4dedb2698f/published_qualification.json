@@ -1,0 +1,23 @@
+{
+  "name": "published_qualification",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_qualification.py"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:31:40.510202+00:00",
+  "finished_utc": "2026-10-18T22:32:25.299860+00:00",
+  "exit_code": 0,
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-808f9ea3a0554df29969db4dedb2698f/published_qualification.log",
+  "log_sha256": "2bb9ecebf101791a08f90a17671ca0803ccaf07ed7041f5a5beb5f571cbd8c62",
+  "tests": 68,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "exit_code": 0,
+      "label": "snapshot-outer-before",
+      "record": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-outer-before-command-2f578ede569b4b08a880338b46e043ce.json"
+    },
+    {
+      "exit_code": 2,
+      "label": "snapshot-smoke",
+      "record": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-smoke-command-2f578ede569b4b08a880338b46e043ce.json"
+    },
+    {
+      "exit_code": 0,
+      "label": "snapshot-outer-after",
+      "record": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-outer-after-command-2f578ede569b4b08a880338b46e043ce.json"
+    }
+  ],
+  "errors": [
+    {
+      "message": "bounded private control retained a nonzero exit",
+      "type": "AssertionError"
+    }
+  ],
+  "finished_utc": "2026-10-18T21:55:07.337980+00:00",
+  "scope": "fresh bounded real snapshot/GET fixture control",
+  "smoke": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-2f578ede569b4b08a880338b46e043ce",
+  "source_freeze": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/final-source-freeze-v4.json",
+    "sha256": "88ad0d72508280ec5cfd420d9a70daeb083353f1798f7ef6fbb0386f75d98ec2"
+  },
+  "started_utc": "2026-10-18T21:54:11.685935+00:00"
+}

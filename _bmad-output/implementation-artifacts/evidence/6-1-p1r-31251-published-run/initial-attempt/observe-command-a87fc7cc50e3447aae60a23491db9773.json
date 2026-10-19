@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/p1r-published-executor.py",
+    "observe",
+    "--out",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-a87fc7cc50e3447aae60a23491db9773",
+    "--planning-observations",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations.json",
+    "--selection-reference",
+    "approved spec-6-1-p1r-31251-published-qualification.md; 2026-10-18 approve-and-continue",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+  "started_utc": "2026-10-18T17:29:41.491659+00:00",
+  "out": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-a87fc7cc50e3447aae60a23491db9773",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T17:31:47.888482+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observe-command-a87fc7cc50e3447aae60a23491db9773.log"
+}

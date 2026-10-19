@@ -1,0 +1,1 @@
+text(await tools.exec_command({cmd:"python3 _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/audit-complete-suites.py",workdir:load("p1r_31251_run_state").integration_root,yield_time_ms:1000,max_output_tokens:2000}));

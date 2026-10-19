@@ -1,0 +1,170 @@
+{
+  "scope": "complete integration verification after compatibility repairs",
+  "root": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "driver_sha256": "34eb9c58f54ac9d3f63e481cb88d61d61714654e238d86940dfb6721388d15e4",
+  "source_manifest_sha256": "2039bcd02a61f5adf0eb6b17acc85203e26ebb4bda9fd0fd6183fa941e1df016",
+  "suites": [
+    {
+      "name": "qualification",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_qualification.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:20:19.352303+00:00",
+      "finished_utc": "2026-10-18T22:22:10.744843+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/qualification.log",
+      "log_sha256": "307341f269fb0a6ea34fb1c4f81c60ed0956bc69921f489541107b5e04a4b155",
+      "tests": 53,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    },
+    {
+      "name": "published_qualification",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_qualification.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:22:10.749691+00:00",
+      "finished_utc": "2026-10-18T22:22:58.265306+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/published_qualification.log",
+      "log_sha256": "d3ecb850379cd1c1323a63ecdb80a50e9933f423eced6e45ccc0cf07578ff932",
+      "tests": 68,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    },
+    {
+      "name": "published_executor",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_published_executor.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:22:58.271194+00:00",
+      "finished_utc": "2026-10-18T22:25:44.158632+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/published_executor.log",
+      "log_sha256": "ef4795f9479e4b0bd7fe618d164be31a041d2e5ee9efca2534c90c4dc7db2ce9",
+      "tests": 182,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    },
+    {
+      "name": "snapshot_registration",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_snapshot_registration.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:25:44.163030+00:00",
+      "finished_utc": "2026-10-18T22:27:12.821190+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/snapshot_registration.log",
+      "log_sha256": "a1870fe4cc185d583c37d7324841e9e5760ba3bd1e721790afe7c06c9edd7d01",
+      "tests": 3,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    },
+    {
+      "name": "isolation",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:27:12.829651+00:00",
+      "finished_utc": "2026-10-18T22:27:15.716785+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/isolation.log",
+      "log_sha256": "15e95327ea2c52c3c9cf6c37ee1ed450d79358ff3eecdc24d490689e5a859c2d",
+      "tests": 40,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    },
+    {
+      "name": "isolation_hardening",
+      "argv": [
+        "/usr/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:27:15.722851+00:00",
+      "finished_utc": "2026-10-18T22:28:10.580078+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/isolation_hardening.log",
+      "log_sha256": "f0ec0dd142588b7d807bf1c9b7193a50256c4975e66036d03aa9afe5e095c713",
+      "tests": 28,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    },
+    {
+      "name": "isolation_hardening_optimized",
+      "argv": [
+        "/usr/bin/python3",
+        "-O",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/tests",
+        "-p",
+        "test_p1r_isolation_hardening.py"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "started_utc": "2026-10-18T22:28:10.585066+00:00",
+      "finished_utc": "2026-10-18T22:29:01.178094+00:00",
+      "exit_code": 0,
+      "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/isolation_hardening_optimized.log",
+      "log_sha256": "e46aef38fd13bc3cbe537237f93b5977eacea212f60b51e292a0e93873ea0ab7",
+      "tests": 28,
+      "ok": true,
+      "skips": false,
+      "source_unchanged": true
+    }
+  ]
+}

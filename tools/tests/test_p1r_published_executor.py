@@ -153,6 +153,36 @@ class SeparateRootExecutorTests(unittest.TestCase):
                         worker.cleanup.assert_called_once()
                 self.assertEqual(worker.source_binding,binding)
 
+    def testBothSourceRoutesSelectTheTaggedSdkBeforeEvaluationOrRestore(self):
+        class ConsumerBoundaryReached(Exception):
+            pass
+        for route in ('candidate_source', 'runtime_source'):
+            for source in (False, True):
+                with self.subTest(route=route, source=source), tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    tagged = root/'tagged'
+                    tagged.mkdir()
+                    selected_sdk = b'{"sdk":{"version":"10.0.401","rollForward":"disable"}}\n'
+                    (tagged/'global.json').write_bytes(selected_sdk)
+                    consumers = root/'consumer-template'
+                    consumers.mkdir()
+                    worker = executor.Executor.__new__(executor.Executor)
+                    worker.output, worker.source_root, worker.candidate = root/'execution', tagged, '3.125.1'
+                    worker.explicit_source_root = route == 'candidate_source'
+                    worker.source_binding = {} if route == 'candidate_source' else {
+                        'runtime_source': {'repository':str(tagged), 'builds':{'path':str(root/'builds')}}}
+                    worker.check_sources = mock.Mock()
+                    role = 'source' if source else 'candidate'
+                    def boundary(*args, **kwargs):
+                        self.assertEqual((worker.output/'consumers'/role/'global.json').read_bytes(), selected_sdk)
+                        raise ConsumerBoundaryReached()
+                    worker.run = mock.Mock(side_effect=boundary)
+                    worker.evaluate_source_consumers = mock.Mock(side_effect=boundary)
+                    with mock.patch.object(executor,'CONSUMERS',consumers), \
+                            self.assertRaises(ConsumerBoundaryReached):
+                        worker.build_consumers('3.125.1',source=source)
+                    self.assertEqual(worker.run.call_count + worker.evaluate_source_consumers.call_count, 1)
+
     def testSourceConsumersUseVerifiedReferencesCatalogAndVersionBeforeRestore(self):
         with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
             worker = executor.Executor.__new__(executor.Executor)
@@ -428,6 +458,71 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
             self.rehash_inventory(fixture)
             with self.subTest(executable=executable), self.assertRaises(preparation.InvalidPacket):
                 self.validate(fixture)
+
+    def testCanonicalEmptyBodyReadinessGETAndFailedRetryAreAccepted(self):
+        fixture = self.fixture()
+        for command in fixture[1]['commands']:
+            if command['argv'][:2] == ['HTTP','GET']:
+                command['argv'].append('request-sha256='+executor.digest(b''))
+        retry = copy.deepcopy(fixture[1]['commands'][13])
+        retry.update(id=100,exit_code=124,started_utc='2026-10-14T00:00:15.250000+00:00',
+                     finished_utc='2026-10-14T00:00:15.300000+00:00',output='URLError',
+                     output_sha256=executor.digest(b'URLError'))
+        fixture[1]['commands'].append(retry)
+        self.rehash_inventory(fixture)
+        self.validate(fixture)
+
+    def testFourArgumentSeedGETRejectsAlteredHashExtraArgumentsAndForeignURLs(self):
+        for mutation in ('hash','extra','foreign-ready','foreign-health','query','host'):
+            fixture = self.fixture()
+            command = copy.deepcopy(fixture[1]['commands'][13])
+            command['id'] = 100
+            command['argv'].append('request-sha256='+executor.digest(b''))
+            if mutation == 'hash':
+                command['argv'][3] = 'request-sha256='+executor.digest(b'changed')
+            elif mutation == 'extra':
+                command['argv'].append('unapproved-extra-argument')
+            elif mutation == 'foreign-ready':
+                command['argv'][2] = 'http://127.0.0.1:19999/ready'
+            elif mutation == 'foreign-health':
+                command['argv'][2] = 'http://127.0.0.1:19999/v1.0/healthz/outbound'
+            elif mutation == 'query':
+                command['argv'][2] += '?substituted=true'
+            else:
+                command['argv'][2] = command['argv'][2].replace('127.0.0.1','localhost')
+            fixture[1]['commands'].append(command)
+            self.rehash_inventory(fixture)
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(preparation.InvalidPacket,'unapproved|readiness'):
+                self.validate(fixture)
+
+    def testRestartedDomainReadinessGETRequiresItsBoundPhysicalLaunch(self):
+        fixture = self.fixture()
+        commands,configurations = fixture[1]['commands'],fixture[1]['configurations']
+        host,sidecar = copy.deepcopy(commands[8]),copy.deepcopy(commands[9])
+        host.update(id=100,started_utc='2026-10-14T00:00:14+00:00',finished_utc='2026-10-14T00:00:20+00:00',
+                    output='Now listening on: http://127.0.0.1:10008')
+        host['output_sha256'] = executor.digest(host['output'].encode())
+        sidecar.update(id=101,started_utc='2026-10-14T00:00:14.200000+00:00',finished_utc='2026-10-14T00:00:20+00:00',
+                       runtime_configuration=configurations[1]['id'],
+                       runtime_configuration_sha256=executor.digest(executor.canonical(configurations[1])))
+        for name,value in (('--app-port','10008'),('--dapr-http-port','10007')):
+            sidecar['argv'][sidecar['argv'].index(name)+1] = value
+        for command in (host,sidecar):
+            command['process'] = {key:command['id'] for key in ('pid','pgid','session','start_ticks')}
+            command['owned_processes'] = [command['process']]
+            command['cleanup'][0]['before'] = [command['process']]
+        commands.extend((host,sidecar))
+        for identity,url in ((102,'http://127.0.0.1:10008/ready'),(103,'http://127.0.0.1:10007/v1.0/healthz/outbound')):
+            command = copy.deepcopy(commands[13])
+            command.update(id=identity,argv=['HTTP','GET',url,'request-sha256='+executor.digest(b'')],
+                           started_utc='2026-10-14T00:00:14.500000+00:00',finished_utc='2026-10-14T00:00:14.600000+00:00')
+            commands.append(command)
+        self.rehash_inventory(fixture)
+        self.validate(fixture)
+        sidecar['runtime_configuration'] = configurations[0]['id']
+        sidecar['runtime_configuration_sha256'] = executor.digest(executor.canonical(configurations[0]))
+        with self.assertRaises(preparation.InvalidPacket):
+            self.validate(fixture)
 
     def testShellMediatedProviderMutationInsideSeedIsRejected(self):
         for shell in ('sh', '/bin/bash', 'env', 'busybox', '/bin/toybox', 'timeout'):
@@ -1060,6 +1155,89 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
 class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
     candidate_version = '3.125.1'
 
+    def setUp(self):
+        super().setUp()
+        self.tagged_root = Path(self.temporary.name) / 'tagged-source'
+        self.tagged_root.mkdir()
+        component = self.tagged_root/'deploy/dapr/statestore-postgresql.yaml'
+        component.parent.mkdir(parents=True)
+        component.write_bytes((preparation.ROOT/'deploy/dapr/statestore-postgresql.yaml').read_bytes())
+        (self.tagged_root/'.gitmodules').write_text('[submodule \"Builds\"]\n path = references/Hexalith.Builds\n url = fixture-builds\n')
+        self.test_binding = None
+        original_binding,original_git = preparation.source_binding,preparation.git
+        def bind(root=preparation.ROOT,source_root=None):
+            if self.test_binding is not None and Path(root) == preparation.ROOT:
+                return copy.deepcopy(self.test_binding)
+            return original_binding(root,source_root) if source_root is not None else original_binding(root)
+        def git(root,*arguments):
+            if Path(root) == self.tagged_root:
+                if arguments[0] == 'ls-tree':
+                    return ('160000 commit '+qualification.SELECTED_TAG_BUILDS+'\treferences/Hexalith.Builds\n').encode()
+                return qualification.SELECTED_SOURCE_COMMIT.encode()
+            return original_git(root,*arguments)
+        for patcher in (mock.patch.object(preparation,'source_binding',side_effect=bind),
+                        mock.patch.object(preparation,'self_contained_checkout'),
+                        mock.patch.object(preparation,'require_tagged_checkout'),
+                        mock.patch.object(preparation,'git',side_effect=git)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def testActualImportReadsPostgresqlTemplateFromTheBoundTaggedRoot(self):
+        receipt,context = self.import_fixture(scope='operational')
+        validate = qualification.validate_postgresql_component
+        with mock.patch.object(qualification,'validate_postgresql_component',wraps=validate) as observed:
+            self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+        self.assertTrue(observed.call_args_list)
+        self.assertTrue(all(Path(call.args[1]) == self.tagged_root for call in observed.call_args_list))
+        component = self.tagged_root/'deploy/dapr/statestore-postgresql.yaml'
+        component.write_bytes(component.read_bytes()+b'\n# substituted bound template\n')
+        with self.assertRaisesRegex(preparation.InvalidPacket,'PostgreSQL component template'):
+            qualification.receipt_outcome(receipt,context)
+
+    def testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution(self):
+        with tempfile.TemporaryDirectory(prefix='p1r-sibling-source-') as temporary:
+            target = Path(temporary) / 'tagged-source'
+            shutil.move(str(self.tagged_root), target)
+            self.tagged_root = target
+            receipt, context = self.import_fixture(scope='operational')
+            self.assertEqual(qualification.receipt_outcome(receipt, context)[2]['execution'], 'passed')
+            for mutation in ('mount', 'command'):
+                receipt, context = self.import_fixture(scope='operational')
+                if mutation == 'mount':
+                    def change(value):
+                        mount = next(row for row in value['runner_proof']['Mounts']
+                                     if row['Destination'] == str(self.tagged_root))
+                        mount['Destination'] = str(self.tagged_root.parent / 'substituted')
+                    self.change_isolation(receipt, 'wrapper', change)
+                else:
+                    self.change_isolation(receipt, 'private',
+                                          lambda value: value['command'].__setitem__(-1, str(preparation.ROOT)))
+                    self.change_isolation(receipt, 'wrapper',
+                                          lambda value: value['inner_command'].__setitem__(-1, str(preparation.ROOT)))
+                with self.subTest(mutation=mutation), self.assertRaises(preparation.InvalidPacket):
+                    qualification.receipt_outcome(receipt, context)
+
+    def attach_isolation(self,receipt,context):
+        binding = context['source_binding']
+        production = {'head':qualification.SELECTED_SOURCE_COMMIT,'diff_sha256':preparation.digest(b''),
+            'files':[{'path':'src/Production.cs','sha256':'a'*64,'git_blob':'b'*40,'index_blob':'b'*40}],
+            'gitlinks':{'references/Hexalith.Builds':qualification.SELECTED_TAG_BUILDS}}
+        binding['candidate_source'] = {'repository':str(self.tagged_root),'main':production,'retained_inputs':[],
+            'python':binding['python'],'dependencies':[{'path':'references/Hexalith.Builds','initialized':True,
+                'binding':dict(copy.deepcopy(production),head=qualification.SELECTED_TAG_BUILDS)}]}
+        self.test_binding = binding
+        context['inputs']['value']['candidate'].update(tag='v3.125.1',tag_commit=qualification.SELECTED_SOURCE_COMMIT,
+            tag_builds_commit=qualification.SELECTED_TAG_BUILDS,feed='https://api.nuget.org/v3/index.json')
+        source_path = Path(self.temporary.name)/'executor-source.json'
+        executor.write_json(source_path,binding)
+        execution_path = Path(self.temporary.name)/'execution.json'
+        execution = json.loads(execution_path.read_bytes())
+        execution['executor_source_sha256'] = executor.digest(source_path.read_bytes())
+        executor.write_json(execution_path,execution)
+        receipt['execution_evidence'].update(executor_source=binding,executor_source_sha256=executor.digest(source_path.read_bytes()))
+        receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+        return super().attach_isolation(receipt,context)
+
 
 class IndependentRecoverySelectionTests(unittest.TestCase):
     def setUp(self):
@@ -1197,9 +1375,25 @@ class MeasurementTests(unittest.TestCase):
             worker.postgres_query.assert_not_called()
             worker.start_nodes.assert_not_called()
 
+    def testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation(self):
+        for interval in (10, 50, 1000):
+            for candidate, version in (("3.126.0", "source"), ("3.126.0", "3.126.0"),
+                                       ("3.126.0", "3.110.0"), ("3.125.2", "source"),
+                                       ("3.125.1", "3.125.0"), ("3.125.1", "3.126.0"),
+                                       ("3.125.1", "unknown")):
+                worker, checks = self.snapshotSeedWorker(None, candidate=candidate)
+                with self.subTest(interval=interval, candidate=candidate, version=version):
+                    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+                        worker.seed(version, interval, checks)
+                    worker.stop_nodes.assert_not_called()
+                    worker.postgres_query.assert_not_called()
+                    worker.start_nodes.assert_not_called()
+                    worker.probe.assert_not_called()
+                    worker.mutate.assert_not_called()
+
     def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
         for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),("3.125.1","3.125.1"),
-                                 ("3.125.1","3.125.1"),("3.125.1","source"),("3.125.0","source"),
+                                 ("3.125.1","source"),("3.125.0","source"),
                                  ("3.122.2","3.122.2"),("3.125.2","3.125.2"),
                                  ("3.126.0","source"),("3.125.0",None)):
             with self.subTest(candidate=candidate,writer=writer):
@@ -1542,6 +1736,161 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(observed["observations"], [])
         self.assertEqual(checks.counter, {"attempted": 1, "passed": 0, "failed": 1})
 
+    def reminderWorker(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.candidate, worker.host_port, worker.sidecar_port = '3.125.1', 10001, 10002
+        worker.seed, worker.stop_nodes, worker.start_nodes = mock.Mock(), mock.Mock(), mock.Mock()
+        worker.inventory = mock.Mock(return_value=[])
+        worker.probe = mock.Mock(return_value={'sequence':12})
+        worker.natural_reminder = mock.Mock(return_value={'completed':True})
+        def http(method,url,body):
+            parsed = executor.urllib.parse.urlsplit(url)
+            revision = int(parsed.path.rsplit('/',1)[-1])
+            query = executor.urllib.parse.parse_qs(parsed.query)
+            due = query.get('due',[worker.reminder_due])[0]
+            identity = {'intent_due':due,'intent_revision':revision,
+                        'reminder_name':executor.witnesses.reminder_name(due,revision)}
+            return dict(identity, **({'armed':1,'unresolved':0,'quarantined':0,'submitted':0}
+                                    if '/register/' in url else {'sequence':13,'callback_status':204}))
+        worker.http = mock.Mock(side_effect=http)
+        return worker
+
+    def testReminderFutureLeadSurvivesSlowReadinessAndPreservesArmedDue(self):
+        worker = self.reminderWorker()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
+                   '2026-10-18T00:01:50.100000+00:00']
+        checks = executor.Measurements()
+        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
+        self.assertEqual({window['due_utc'] for window in observed['deadline_windows']}, {'2026-10-18T00:02:00+00:00'})
+        self.assertEqual(checks.counter['failed'],0)
+        self.assertEqual(worker.http.call_count,3)
+
+    def testReminderMissedInitialOrRestartWindowRefusesWithoutRescheduling(self):
+        for phase,moments,posts in (
+            ('initial',['2026-10-18T00:00:00+00:00','2026-10-18T00:02:01+00:00'],0),
+            ('initial-response',['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                                 '2026-10-18T00:02:01+00:00'],1),
+            ('restart',['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                        '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:01+00:00'],1)):
+            worker,checks = self.reminderWorker(),executor.Measurements()
+            with self.subTest(phase=phase), mock.patch.object(executor,'stamp',side_effect=moments), \
+                    mock.patch.object(executor.time,'sleep'):
+                with self.assertRaisesRegex(preparation.InvalidPacket,'future deadline missed'):
+                    worker.reminder_case('scheduled-restart-effect',checks)
+                self.assertEqual(worker.http.call_count,posts)
+                self.assertEqual(worker.reminder_due,'2026-10-18T00:02:00+00:00')
+                self.assertEqual(checks.counter['failed'],1)
+
+    def testReminderRevisionTwoHasItsOwnFutureStartupLead(self):
+        worker,checks = self.reminderWorker(),executor.Measurements()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:40+00:00',
+                   '2026-10-18T00:03:50+00:00','2026-10-18T00:03:50.100000+00:00']
+        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('stale-generation-refusal',checks)
+        self.assertEqual(observed['deadline_windows'][0]['due_utc'],'2026-10-18T00:02:00+00:00')
+        self.assertEqual(observed['deadline_windows'][2]['due_utc'],'2026-10-18T00:04:40+00:00')
+        callback = executor.urllib.parse.urlsplit(worker.http.call_args.args[1])
+        self.assertEqual(executor.urllib.parse.parse_qs(callback.query), {
+            'due':[observed['registration']['intent_due']], 'reminderName':[observed['registration']['reminder_name']]})
+        self.assertNotEqual(observed['registration']['reminder_name'],observed['rearmed']['reminder_name'])
+        self.assertEqual(observed['repeated_or_stale']['reminder_name'],observed['registration']['reminder_name'])
+        self.assertEqual(checks.counter['failed'],0)
+
+    def testReminderIndependentCodecMatchesPublishedGoldenVectors(self):
+        for item,revision,expected in (
+            ('item-1',0,'DH9MMM0QHN2MWP2XDVTVGDQ8PMVMN8KDNFAPWMAJQNA7T0E6PB20'),
+            ('item-1',1,'AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0'),
+            ('Item-1',1,'6P3J38VYKVQCKFH8WGX4ZP2KCD7QJVT8MN0D74K352JFEMV75NYG')):
+            with self.subTest(item=item,revision=revision):
+                self.assertEqual(executor.witnesses.reminder_name('2026-10-01T09:30:00+00:00',revision,item=item),'date-wrs-'+expected)
+
+    def testReminderProducerRetainsRejectedActorRequestAsFailedMeasurement(self):
+        for status in (403,404,500,None,True):
+            worker,checks = self.reminderWorker(),executor.Measurements()
+            invoke = worker.http.side_effect
+            def http(method,url,body):
+                response = invoke(method,url,body)
+                if '/callback/' in url:response['callback_status'] = status
+                return response
+            worker.http.side_effect = http
+            moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                       '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
+                       '2026-10-18T00:01:50.100000+00:00']
+            with self.subTest(status=status),mock.patch.object(executor,'stamp',side_effect=moments),mock.patch.object(executor.time,'sleep'):
+                observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
+                self.assertEqual(checks.counter['failed'],1)
+                self.assertIn({'id':'callback-actor-request-accepted','passed':False},checks.checks)
+                self.assertEqual(observed['repeated_or_stale']['callback_status'],status)
+
+    def testReminderIdentityImportRejectsUnknownTokenAndRehashedSubstitutions(self):
+        worker,checks = self.reminderWorker(),executor.Measurements()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:40+00:00',
+                   '2026-10-18T00:03:50+00:00','2026-10-18T00:03:50.100000+00:00']
+        with mock.patch.object(executor,'stamp',side_effect=moments),mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('stale-generation-refusal',checks)
+        rows = [({'argv':['HTTP','POST',call.args[1]]},observed[key])
+                for call,key in zip(worker.http.call_args_list,('registration','rearmed','repeated_or_stale'))]
+        values = {row['id']:row['passed'] for row in checks.checks}
+        executor.witnesses.validate_reminder_identity(observed,rows,values,'stale-generation-refusal')
+        for mutation in ('due','name','revision','request','unknown-token','missing-query','rearmed','check','status'):
+            changed,commands,verdicts = copy.deepcopy(observed),copy.deepcopy(rows),dict(values)
+            if mutation in ('due','name','revision'):
+                key = {'due':'intent_due','name':'reminder_name','revision':'intent_revision'}[mutation]
+                changed['registration'][key] = {'due':changed['due'],'name':changed['rearmed']['reminder_name'],'revision':2}[mutation]
+            elif mutation == 'request':commands[-1][0]['argv'][2] += '&due=2026-10-18T00%3A04%3A40%2B00%3A00'
+            elif mutation == 'unknown-token':
+                # The previous fixture recomputed revision one with revision two's current due.
+                due = changed['rearmed']['intent_due']
+                name = executor.witnesses.reminder_name(due,1)
+                changed['repeated_or_stale'].update(intent_due=due,reminder_name=name)
+                commands[-1][0]['argv'][2] = 'http://127.0.0.1/reminder/callback/1?'+executor.urllib.parse.urlencode({'due':due,'reminderName':name})
+            elif mutation == 'missing-query':commands[-1][0]['argv'][2] = 'http://127.0.0.1/reminder/callback/1'
+            elif mutation == 'rearmed':changed['rearmed']['reminder_name'] = changed['registration']['reminder_name']
+            elif mutation == 'status':changed['repeated_or_stale']['callback_status'] = 403
+            else:verdicts['callback-replays-original-armed-identity'] = False
+            commands = [(command,copy.deepcopy(changed[key])) for (command,_),key in
+                        zip(commands,('registration','rearmed','repeated_or_stale'))]
+            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
+                executor.witnesses.validate_reminder_identity(changed,commands,verdicts,'stale-generation-refusal')
+
+        for status in (403,404,500,None,True):
+            changed,commands,verdicts = copy.deepcopy(observed),copy.deepcopy(rows),dict(values)
+            changed['repeated_or_stale']['callback_status'] = status
+            verdicts['callback-actor-request-accepted'] = False
+            commands[-1] = (commands[-1][0],copy.deepcopy(changed['repeated_or_stale']))
+            with self.subTest(retained_nonpassing_status=status):
+                executor.witnesses.validate_reminder_identity(changed,commands,verdicts,'stale-generation-refusal')
+
+    def testReminderTimingImportBindsActualRegistrationAndLaunchConfiguration(self):
+        worker,checks = self.reminderWorker(),executor.Measurements()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
+                   '2026-10-18T00:01:50.100000+00:00']
+        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
+        commands = [({'argv':['HTTP','POST','http://127.0.0.1/reminder/register/1'],
+                     'started_utc':'2026-10-18T00:01:'+second+'.010000+00:00',
+                     'finished_utc':'2026-10-18T00:01:'+second+'.090000+00:00'}, {}) for second in ('10','50')]
+        configurations = [{'observed_utc':'2026-10-18T00:01:'+second+'+00:00','reminder_due':observed['due']}
+                          for second in ('00','40')]
+        values = {row['id']:row['passed'] for row in checks.checks}
+        executor.witnesses.validate_reminder_windows(observed,commands,configurations,values,'scheduled-restart-effect')
+        for mutation in ('missing','remaining','expired','due','phase','command','configuration'):
+            changed,rows,configs = copy.deepcopy(observed),copy.deepcopy(commands),copy.deepcopy(configurations)
+            if mutation == 'missing':del changed['deadline_windows']
+            elif mutation == 'remaining':changed['deadline_windows'][0]['remaining_seconds'] += 1
+            elif mutation == 'expired':changed['deadline_windows'][0]['observed_utc'] = '2026-10-18T00:03:00+00:00'
+            elif mutation == 'due':changed['deadline_windows'][2]['due_utc'] = '2026-10-18T00:03:00+00:00'
+            elif mutation == 'phase':changed['deadline_windows'].reverse()
+            elif mutation == 'command':rows[0][0]['finished_utc'] = '2026-10-18T00:03:00+00:00'
+            else:configs[1]['reminder_due'] = '2026-10-18T00:03:00+00:00'
+            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
+                executor.witnesses.validate_reminder_windows(changed,rows,configs,values,'scheduled-restart-effect')
+
     def testExecutionRefusesSubstitutedApprovedTupleBeforeOperations(self):
         inputs = {"candidate": {"version": "3.119.0", "tag": "v3.119.0",
             "tag_commit": "f463442cca19e4199982a23a08bae4a490767d4a",
@@ -1629,6 +1978,8 @@ class MeasurementTests(unittest.TestCase):
         observations = [b"a" * 40, b"d" * 40,
                         b"160000 commit " + b"b" * 40 + b"\treferences/Hexalith.Builds\n"]
         with mock.patch.object(qualification, "validate_inputs", return_value="owner-selected"), \
+             mock.patch.object(preparation, "source_binding", return_value={}), \
+             mock.patch.object(qualification, "validate_candidate_source"), \
              mock.patch.object(preparation, "git", side_effect=observations):
             with self.assertRaisesRegex(preparation.InvalidPacket, "exact source"):
                 executor.validate_execution_inputs(inputs)
@@ -2507,6 +2858,7 @@ class PublishedPatchSourceTests(unittest.TestCase):
             if mutation == 'feed': selected['candidate']['feed'] = 'https://substituted.invalid/v3/index.json'
             with self.subTest(mutation=mutation), mock.patch.object(qualification,'validate_inputs',return_value='owner-selected'), \
                     mock.patch.object(preparation,'source_binding',return_value=changed) as bind, \
+                    mock.patch.object(preparation,'require_tagged_checkout'), \
                     mock.patch.object(preparation,'self_contained_checkout'), mock.patch.object(preparation,'git',side_effect=git):
                 if mutation is None:
                     executor.validate_execution_inputs(selected,source_root)

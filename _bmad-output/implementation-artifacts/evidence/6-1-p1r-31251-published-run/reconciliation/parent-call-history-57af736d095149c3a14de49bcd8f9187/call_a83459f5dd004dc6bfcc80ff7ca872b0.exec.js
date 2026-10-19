@@ -1,0 +1,3 @@
+text(await tools.exec_command({cmd:"python3 - <<'PY'\nfrom pathlib import Path\np=Path('/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation')\nold=p/'audit-complete-suites.py';new=p/'audit-complete-suites-v2.py'\nif new.exists(): raise SystemExit('refuse audit script replacement')\ntext=old.read_text().replace(\"base = Path(__file__).resolve().parent / 'verification-34825a9564d245df8fab3bb8a28ec74a'\",'base = Path(sys.argv[1]).resolve()')\nnew.write_text(text)\nprint(new)\nPY",max_output_tokens:1000}));
+text(await tools.write_stdin({session_id:9615,chars:"",yield_time_ms:1000,max_output_tokens:1800}));
+text(await tools.clock__curr_time({}));

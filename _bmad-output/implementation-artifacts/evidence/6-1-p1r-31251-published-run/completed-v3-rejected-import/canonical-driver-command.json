@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execute-final-31251.py"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "started_utc": "2026-10-18T19:37:17.037261+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-driver-command.log",
+  "exit_code": 2,
+  "finished_utc": "2026-10-18T21:30:39.653991+00:00"
+}

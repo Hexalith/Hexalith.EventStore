@@ -51,7 +51,9 @@ def main(arguments=None):
             validate_observation_inputs(planning, args.source_root, args.source_builds_root)
         if not os.environ.get("HEXALITH_P1R_ISOLATION"):
             from p1r_isolation import IsolatedRunner
-            isolation = IsolatedRunner(args.out.with_name(args.out.name + "-isolation"))
+            isolation = IsolatedRunner(args.out.with_name(args.out.name + "-isolation"),
+                                       **({"source_root": args.source_root} if args.source_root is not None
+                                          and args.source_builds_root is None else {}))
             forwarded = [args.command, "--out", str(args.out)]
             forwarded += (["--inputs", str(args.inputs)] if args.command == "run" else
                           ["--planning-observations", str(args.planning_observations), "--selection-reference", args.selection_reference])

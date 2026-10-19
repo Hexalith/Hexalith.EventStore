@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15126-1603-7783-a436-50ba1671be14",
+  "call_id": "call_89703c8f68094caea37334f79fdfe884",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 1.0 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"0a9f0b\",\"wall_time_seconds\":0.768314568,\"exit_code\":0,\"original_token_count\":912,\"output\":\"testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup (__main__.ControllerSourceOrderTests.testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup) ... FAIL\\ntestActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution (__main__.SiblingTaggedSourceTests.testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution) ... FAIL\\n\\n======================================================================\\nFAIL: testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup (__main__.ControllerSourceOrderTests.testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup)\\n----------------------------------------------------------------------\\nTraceback (most recent call last):\\n  File \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-tests.py\\\", line 65, in testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup\\n    self.assertEqual(events[0][0], 'source')\\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError: 'docker' != 'source'\\n- docker\\n+ source\\n\\n\\n======================================================================\\nFAIL: testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution (__main__.SiblingTaggedSourceTests.testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution)\\n----------------------------------------------------------------------\\nTraceback (most recent call last):\\n  File \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-tests.py\\\", line 24, in testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution\\n    receipt, context = self.import_fixture(scope='operational')\\n                       ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py\\\", line 554, in import_fixture\\n    receipt = self.attach_isolation(receipt,context)\\n  File \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py\\\", line 1186, in attach_isolation\\n    return super().attach_isolation(receipt,context)\\n           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\\n  File \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py\\\", line 564, in attach_isolation\\n    self.assertEqual(code,0,worker.result['errors'])\\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError: 2 != 0 : ['final isolation runner ownership, mounts or namespace binding differs']\\n\\n----------------------------------------------------------------------\\nRan 2 tests in 0.726s\\n\\nFAILED (failures=2)\\n\\n{\\\"argv\\\": [\\\"/usr/bin/python3\\\", \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-tests.py\\\", \\\"-v\\\", \\\"-k\\\", \\\"testActualImportAcceptsSibling\\\", \\\"-k\\\", \\\"testControllerRechecks\\\"], \\\"cwd\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31\\\", \\\"started_utc\\\": \\\"2026-10-18T22:33:32.030233+00:00\\\", \\\"finished_utc\\\": \\\"2026-10-18T22:33:32.916673+00:00\\\", \\\"exit_code\\\": 1, \\\"log\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-red.log\\\", \\\"log_sha256\\\": \\\"65d83128de0619d5aa21383ae1e2cb15269dad8d14e4331a5f80aca3bb3f3725\\\"}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792362812.931325
+  }
+}

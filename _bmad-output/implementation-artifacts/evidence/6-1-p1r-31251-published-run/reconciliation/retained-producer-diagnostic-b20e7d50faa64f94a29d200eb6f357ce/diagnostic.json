@@ -1,0 +1,24 @@
+{
+  "errors": [
+    {
+      "message": "check_current_source() got an unexpected keyword argument 'check_python'",
+      "type": "TypeError"
+    }
+  ],
+  "execution": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e",
+  "finished_utc": "2026-10-18T22:26:58.366858+00:00",
+  "invocation": "a8f20407c7b841d3b1b3ba48f5512499",
+  "p1r_usable": false,
+  "packages": {},
+  "producer_binding": {
+    "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/executor-source.json",
+    "sha256": "2c47aee97120d1145482be608cce91512c63cda0eda8135ae7ccd8e9af8e0cf8"
+  },
+  "qualified": false,
+  "reader_binding_sha256": "1f255e27a20e0ae55d559c26073b8197f8c89349959a6b241d3b0ac0ca57f451",
+  "reader_root": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "receipts": [],
+  "scope": "nonqualifying diagnostic with separate corrected reader and unchanged original producer binding",
+  "script_sha256": "eac945ba3bb0c315235c82326392e677526921f1095174d1b4f79354c1a0d959",
+  "started_utc": "2026-10-18T22:26:55.015436+00:00"
+}

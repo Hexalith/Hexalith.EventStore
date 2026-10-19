@@ -41,6 +41,9 @@ def separate_source_fixture(root):
         (owner/'.gitmodules').write_text('[submodule "Builds"]\n path = references/Hexalith.Builds\n url = fixture\n')
         (owner/'src').mkdir()
         (owner/'src/Runtime.cs').write_text('// committed runtime\n')
+        if owner == source:
+            (owner/'global.json').write_text('{"sdk":{"version":"10.0.401","rollForward":"disable"}}\n')
+            command(owner, 'add', 'global.json')
         command(owner, 'add', '.gitmodules', 'src/Runtime.cs')
         command(owner, 'update-index', '--add', '--cacheinfo', '160000,'+command(dependency,'rev-parse','HEAD')+',references/Hexalith.Builds')
         command(owner, 'commit', '-qm', 'test: declare fixture inputs')
@@ -134,6 +137,8 @@ class DockerBoundary:
                     Mounts=[{'Destination':'/var/lib/docker','Type':'volume','Name':self.worker.volume,'RW':True},
                             {'Destination':str(self.worker.workspace),'Source':('/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/fixture/'+('a'*64)
                                       if self.mapped_bind else str(self.worker.workspace)),'Type':'bind','RW':True}])
+            if role == 'sdk' and self.worker.source_root is not None and not self.worker.source_root.is_relative_to(self.worker.workspace):
+                value['Mounts'].append({'Destination':str(self.worker.source_root),'Source':str(self.worker.source_root),'Type':'bind','RW':True})
             self.containers[identity] = value
             Path(args[args.index('--cidfile')+1]).write_text(identity)
             output = identity+'\n'
@@ -222,13 +227,17 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
         finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=selected_hash,receipts=[str(path)])
     isolation.write_json(root/'execution.json',execution)
     boundary = DockerBoundary(root,receipt,context,private_failure,outer_failure,real_inner,mapped_bind,late_process)
+    source = context['source_binding'].get('candidate_source')
+    source_root = Path(source['repository']) if source is not None else None
     command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(selected)]
     if source_paths:
         command += ['--source-root',str(source_paths[0]),'--source-builds-root',str(source_paths[1])]
+    elif source_root is not None:
+        command += ['--source-root', str(source_root)]
     with mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
             mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
             mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):
-        worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer')
+        worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',source_root=source_root)
         boundary.worker = worker
         # Fixture executor timestamps are historical, so launch starts before them.
         original_run = boundary.run

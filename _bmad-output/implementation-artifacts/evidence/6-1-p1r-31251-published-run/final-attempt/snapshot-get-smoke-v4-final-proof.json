@@ -1,0 +1,38 @@
+{
+  "scope": "bounded real snapshot GET control, not qualification",
+  "smoke": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093/smoke.json",
+    "sha256": "dbff324b3252fd8e8f2ca1f3459534777a19d5f2a5ee0a27da217a4658f30e3b"
+  },
+  "wrapper": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093-isolation/isolation.json",
+    "sha256": "06e3752a9a61476bef50480e148f60e4a9b5aa8daa41dc974ba5cf66f835d8c5"
+  },
+  "private": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093-isolation/private-execution.json",
+    "sha256": "2142e534cc89742d0390a7709db604413ffe49acc10459bef8ea49aea1d9fd2d"
+  },
+  "actual_get_count": 59,
+  "actual_get_exit_codes": {
+    "0": 17,
+    "124": 42
+  },
+  "actual_sdk": "10.0.401",
+  "actual_python": [
+    3,
+    12,
+    12
+  ],
+  "main_assertions": {
+    "attempted": 66,
+    "failed": 0,
+    "passed": 66
+  },
+  "cleanup_assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "qualified": false,
+  "p1r_usable": false
+}

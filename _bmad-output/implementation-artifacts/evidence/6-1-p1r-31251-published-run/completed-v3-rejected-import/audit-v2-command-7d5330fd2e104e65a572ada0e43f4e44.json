@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-isolated-runner.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-7d5330fd2e104e65a572ada0e43f4e44-isolation",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+    "--",
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251-v2.py",
+    "--verifier-root",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+    "--execution",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+    "--decisions",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-decisions.json",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-7d5330fd2e104e65a572ada0e43f4e44"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "started_utc": "2026-10-18T21:29:12.927267+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-command-7d5330fd2e104e65a572ada0e43f4e44.log",
+  "exit_code": 2,
+  "finished_utc": "2026-10-18T21:30:38.738445+00:00"
+}
