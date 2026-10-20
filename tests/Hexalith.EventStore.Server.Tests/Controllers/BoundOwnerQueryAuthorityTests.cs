@@ -43,6 +43,7 @@ public sealed class BoundOwnerQueryAuthorityTests
     [Theory]
     [InlineData("valid")]
     [InlineData("nondelegated")]
+    [InlineData("transitive")]
     [InlineData("actor")]
     [InlineData("tenant")]
     [InlineData("payload")]
@@ -79,6 +80,14 @@ public sealed class BoundOwnerQueryAuthorityTests
             IsDelegated = identity.IsDelegated, DelegationId = identity.DelegationId, Scopes = identity.Scopes, Audience = identity.Audience,
             CallerAuthority = new("authenticated-caller", ["ProjectUser"], ["read_metadata"]),
         };
+        if (fault == "transitive") original = original with
+        {
+            CallerAuthority = new("delegated-owner-query", [], ["read_metadata"])
+            {
+                OriginatingContext = new(identity.OriginalActorId, identity.AuthenticatedWorkloadId,
+                    identity.IsDelegated, identity.DelegationId, identity.Scopes, identity.Audience),
+            },
+        };
         string assertion = WorkloadAssertionTestTokens.Create(fault == "audience" ? "other" : "projects", fault == "caller" ? "other" : "eventstore",
             [EventStoreWorkloadOperations.DomainServiceQuery], issuedAt: fault == "expired" ? DateTime.UtcNow.AddMinutes(-10) : null,
             bindings: QueryCallerAuthorityBinding.Bind(original));
@@ -106,7 +115,7 @@ public sealed class BoundOwnerQueryAuthorityTests
             new Claim(ClaimTypes.NameIdentifier, "workload:projects"), new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "projects")], "validated-workload")) } } };
         controller.Request.Headers[BoundOwnerQueryProof.HeaderName] = BoundOwnerQueryProof.Issue(request, "projects", Convert.ToBase64String(key.ExportPkcs8PrivateKey()), DateTimeOffset.UtcNow);
         IActionResult result = await controller.SubmitBoundOwnerAuthorityAsync(request, TestContext.Current.CancellationToken);
-        if (fault is "valid" or "nondelegated")
+        if (fault is "valid" or "nondelegated" or "transitive")
         {
             result.ShouldBeOfType<OkObjectResult>();
             await mediator.Received(1).Send(Arg.Is<SubmitQuery>(query => query.CallerAuthority != null && query.CallerAuthority.Origin == "delegated-owner-query"

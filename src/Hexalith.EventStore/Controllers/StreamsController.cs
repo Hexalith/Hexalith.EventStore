@@ -134,7 +134,18 @@ public sealed partial class StreamsController(
                 new ActorId(identity.ActorId),
                 "AggregateActor");
 
-            AggregateStreamMetadata streamMetadata = await actor.GetStreamMetadataAsync().ConfigureAwait(false);
+            SourceProofInspection? native = null;
+            AggregateStreamMetadata streamMetadata;
+            if (request.RequireNativeProof)
+            {
+                if (!workloadOnly) return Forbid();
+                native = await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+                if (native is not { Status: SourceProofInspectionStatus.Available, Erased: false, Proof: { Erased: false } proof }
+                    || !SourceProofCodec.IsValid(proof, identity, native.CurrentSequence, proof.RetainedFloor))
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                streamMetadata = new(native.Exists, native.CurrentSequence);
+            }
+            else streamMetadata = await actor.GetStreamMetadataAsync().ConfigureAwait(false);
             if (!streamMetadata.Exists) {
                 return ProblemWithReason(
                     StatusCodes.Status404NotFound,
@@ -147,7 +158,16 @@ public sealed partial class StreamsController(
             long currentSequence = streamMetadata.CurrentSequence;
             ServerEventEnvelope[] pageEvents;
             try {
-                pageEvents = await actor
+                if (native is not null)
+                {
+                    if (request.PageSize > 255) return BadRequest();
+                    SourceEventRange range = await actor.ReadNativeEventsBoundedRangeAsync(request.FromSequence,
+                        Math.Max(request.FromSequence, Math.Min(request.ToSequence ?? currentSequence, currentSequence)),
+                        request.PageSize + 1, 2_097_152).WaitAsync(cancellationToken).ConfigureAwait(false);
+                    if (range.ReasonCode is not null) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                    pageEvents = range.Events;
+                }
+                else pageEvents = await actor
                     .ReadEventsRangeAsync(request.FromSequence, request.ToSequence, request.PageSize + 1)
                     .ConfigureAwait(false);
             }
@@ -228,17 +248,23 @@ public sealed partial class StreamsController(
             long? lastReturned = orderedEvents.Count == 0
                 ? null
                 : orderedEvents[^1].SequenceNumber;
-            bool truncated = pageEvents.Length > request.PageSize;
+            bool truncated = pageEvents.Length > request.PageSize
+                || native is not null && (lastReturned ?? request.FromSequence)
+                    < Math.Min(request.ToSequence ?? currentSequence, currentSequence);
 
             // P-D3: Continuation tokens are not yet implemented (token request-binding deferred).
             // The validator at ValidateRequest line ~211 unconditionally rejects non-null tokens.
             // Emitting a random token would break paging, so we always return null and require
             // callers to paginate by setting FromSequence = lastSequenceReturned (exclusive).
+            if (native is not null && await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != native)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+
             return Ok(new StreamReadPage(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                [.. readableEvents.Select(ToStreamReadEvent)],
+                [.. readableEvents.Select((item, index) => ToStreamReadEvent(item) with
+                { NativeEventDigest = native is null ? null : SourceProofCodec.ComputeEventHash(orderedEvents[index]) })],
                 new StreamReadMetadata(
                     request.FromSequence,
                     request.ToSequence,
@@ -246,7 +272,8 @@ public sealed partial class StreamsController(
                     latestSequence,
                     orderedEvents.Count,
                     truncated,
-                    NextContinuationToken: null)));
+                    NextContinuationToken: null)
+                { NativeProof = native?.Proof is { } nativeProof ? SourceProofCodec.ToNative(nativeProof) : null }));
         }
         catch (OperationCanceledException) {
             throw;

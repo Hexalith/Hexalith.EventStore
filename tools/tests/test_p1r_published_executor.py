@@ -362,7 +362,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
         self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
-        for version in ('3.119.0','3.122.0','3.122.2','3.125.2','3.126.0'):
+        for version in ('3.119.0','3.122.0','3.122.2','3.125.2','3.126.1','3.127.0'):
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'snapshot-tail','source-to-3.110.0'))
 
@@ -1408,8 +1408,8 @@ class MeasurementTests(unittest.TestCase):
     def testUnenrolledSuccessorSeedRefusesBeforeManualSnapshotOrDiagnosticSynthesis(self):
         for candidate,version in (("3.125.0","3.122.0"),("3.125.0","3.122.2"),
                                   ("3.125.0","3.125.2"),("3.125.2","3.125.2"),
-                                  ("3.125.2","source"),("3.126.0","3.126.0"),("3.126.0","source"),
-                                  ("3.125.1","3.126.0"),("3.125.1","3.125.0"),
+                                  ("3.125.2","source"),("3.127.0","3.127.0"),("3.127.0","source"),
+                                  ("3.125.1","3.127.0"),("3.125.1","3.125.0"),
                                   ("3.125.0","3.121.0")):
             worker, checks = self.snapshotSeedWorker(None,candidate=candidate)
             with self.subTest(candidate=candidate,version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
@@ -1423,9 +1423,9 @@ class MeasurementTests(unittest.TestCase):
 
     def testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation(self):
         for interval in (10, 50, 1000):
-            for candidate, version in (("3.126.0", "source"), ("3.126.0", "3.126.0"),
-                                       ("3.126.0", "3.110.0"), ("3.125.2", "source"),
-                                       ("3.125.1", "3.125.0"), ("3.125.1", "3.126.0"),
+            for candidate, version in (("3.127.0", "source"), ("3.127.0", "3.127.0"),
+                                       ("3.127.0", "3.110.0"), ("3.125.2", "source"),
+                                       ("3.125.1", "3.125.0"), ("3.125.1", "3.127.0"),
                                        ("3.125.1", "unknown")):
                 worker, checks = self.snapshotSeedWorker(None, candidate=candidate)
                 with self.subTest(interval=interval, candidate=candidate, version=version):
@@ -1441,7 +1441,7 @@ class MeasurementTests(unittest.TestCase):
         for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),("3.125.1","3.125.1"),
                                  ("3.125.1","source"),("3.125.0","source"),
                                  ("3.122.2","3.122.2"),("3.125.2","3.125.2"),
-                                 ("3.126.0","source"),("3.125.0",None)):
+                                 ("3.127.0","source"),("3.125.0",None)):
             with self.subTest(candidate=candidate,writer=writer):
                 worker = executor.Executor.__new__(executor.Executor)
                 worker.commands, worker.configurations, worker.errors = [], [], []
@@ -1451,7 +1451,7 @@ class MeasurementTests(unittest.TestCase):
                     worker.commands.append({"id":1})
                     return {"seed_snapshot":worker.last_snapshot_creation},"effect","compatible"
                 _,evidence = worker.case("snapshot-tail",(writer or candidate)+"-to-3.110.0",action,False)
-                if candidate in ("3.122.2","3.125.2","3.126.0") or writer is None:
+                if candidate in ("3.122.2","3.125.2","3.127.0") or writer is None:
                     self.assertNotIn("snapshot_fixture_source",evidence)
                 else:
                     path = preparation.ROOT/"tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
@@ -2957,7 +2957,7 @@ class PublishedPatchSourceTests(unittest.TestCase):
                     with self.assertRaises(preparation.InvalidPacket):
                         helper.validate(fixture,lane)
         self.assertIn('3.125.1',qualification.ISOLATION_VERSIONS)
-        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.126.0','snapshot-tail','source-to-3.110.0'))
+        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.127.0','snapshot-tail','source-to-3.110.0'))
 
 
 if __name__ == "__main__":

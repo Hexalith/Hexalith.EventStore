@@ -13,6 +13,71 @@ public sealed class SourceNamespaceSnapshotReaderTests
     private static readonly SourcePublicationScope Scope = new("tenant-a", "conversation", "catalogue", "installed-1");
     private static readonly AggregateIdentity Identity = new("tenant-a", "conversation", "source-a");
 
+    /// <summary>Equal numeric heads cannot hide a replacement incarnation, changed prefix or loss of native evidence between cuts.</summary>
+    [Theory]
+    [InlineData("incarnation")]
+    [InlineData("digest")]
+    [InlineData("message")]
+    [InlineData("missing")]
+    public async Task SameHeadNativeChangesBetweenCutsWithholdSnapshot(string change)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var source = NativePublicationFixture.Stream(Identity, now, 1);
+        NativeSourceProof proof = source.NativeProof!;
+        var head = new SourcePublicationHead(Identity, 1) { NativeProof = proof };
+        var cut = new SourcePublicationCut(Scope, "authority", now, now.AddMinutes(1), [head], true);
+        NativeSourceProof? changed = change switch
+        {
+            "incarnation" => proof with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" },
+            "digest" => proof with { CumulativeDigest = new string('b', 64) },
+            "message" => proof with { HeadMessageId = "replacement-event" },
+            _ => null,
+        };
+        var namespaces = Substitute.For<ISourcePublicationNamespaceSource>();
+        namespaces.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(cut,
+            cut with { Sources = [head with { NativeProof = changed }] });
+        var streams = Substitute.For<IAuthoritativeEventStreamReader>();
+        streams.ReadAsync(Identity, Arg.Any<CancellationToken>()).Returns(new AuthoritativeStreamReadResult(
+            source, null));
+        (await new SourceNamespaceSnapshotReader(namespaces, streams, TimeProvider.System).ReadAsync(Scope,
+            TestContext.Current.CancellationToken)).ShouldBeNull();
+        await streams.Received(1).ReadAsync(Identity, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>A native cut requires the actual raw-envelope prefix, including when the source has advanced.</summary>
+    [Theory]
+    [InlineData("matching")]
+    [InlineData("advanced")]
+    [InlineData("missing-proof")]
+    [InlineData("incarnation")]
+    [InlineData("digest")]
+    [InlineData("event-digest")]
+    public async Task NativeCutBindsActualSourceProofAndExactAccumulatedPrefix(string scenario)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var original = NativePublicationFixture.Stream(Identity, now, 1);
+        var source = scenario == "advanced" ? NativePublicationFixture.Stream(Identity, now, 2) : original;
+        source = scenario switch
+        {
+            "missing-proof" => source with { NativeProof = null },
+            "incarnation" => NativePublicationFixture.Stream(Identity, now, 1, "01ARZ3NDEKTSV4RRFFQ69G5FAW"),
+            "digest" => source with { NativeProof = source.NativeProof! with { CumulativeDigest = new string('b', 64) } },
+            "event-digest" => source with { Events = [source.Events[0] with { NativeEventDigest = new string('c', 64) }] },
+            _ => source,
+        };
+        var cut = new SourcePublicationCut(Scope, "authority", now, now.AddMinutes(1),
+            [new(Identity, 1) { NativeProof = original.NativeProof }], true);
+        var namespaces = Substitute.For<ISourcePublicationNamespaceSource>(); namespaces.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(cut);
+        var streams = Substitute.For<IAuthoritativeEventStreamReader>();
+        streams.ReadAsync(Identity, Arg.Any<CancellationToken>()).Returns(new AuthoritativeStreamReadResult(source, null));
+        var result = await new SourceNamespaceSnapshotReader(namespaces, streams, TimeProvider.System).ReadAsync(Scope, TestContext.Current.CancellationToken);
+        if (scenario is not ("matching" or "advanced")) { result.ShouldBeNull(); return; }
+        var selected = result.ShouldNotBeNull().Sources.Single();
+        selected.Head.ShouldBe(1);
+        selected.NativeProof.ShouldBe(original.NativeProof);
+        System.Text.Json.JsonSerializer.Serialize(selected.Events).ShouldBe(System.Text.Json.JsonSerializer.Serialize(original.Events));
+    }
+
     /// <summary>Streaming small summaries handles complete namespaces without retaining the sum of their payloads; raw snapshots retain the existing whole-read byte bound.</summary>
     [Fact]
     public async Task FoldReleasesEachPrefixBeforeNextAndRawSnapshotBoundsAggregateBytes()

@@ -2,7 +2,6 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 
-using ByteAether.Ulid;
 
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Client.Projections;
@@ -15,24 +14,9 @@ internal static class SourceProofCodec
     /// <summary>The only supported source codec version.</summary>
     internal const int Version = 1;
 
-    /// <summary>Creates the scoped chain seed for a new stream incarnation.</summary>
+    /// <summary>Creates the existing scoped source-v1 seed.</summary>
     internal static SourceProof CreateSeed(AggregateIdentity identity, string incarnation)
-    {
-        ArgumentNullException.ThrowIfNull(identity);
-        if (!Ulid.TryParse(incarnation, null, out _))
-        {
-            throw new ArgumentException("The source incarnation must be a ULID.", nameof(incarnation));
-        }
-
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        AppendString(hash, "hexalith.projection.source.seed.v1");
-        AppendString(hash, identity.TenantId);
-        AppendString(hash, identity.Domain);
-        AppendString(hash, identity.AggregateId);
-        AppendString(hash, incarnation);
-        return new(Version, identity.TenantId, identity.Domain, identity.AggregateId,
-            incarnation, 0, null, Convert.ToHexStringLower(hash.GetHashAndReset()), 1, false);
-    }
+        => FromNative(Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.CreateSeed(identity, incarnation));
 
     /// <summary>Hashes every persisted envelope field in its approved order.</summary>
     internal static string ComputeEventHash(EventEnvelope envelope)
@@ -96,44 +80,26 @@ internal static class SourceProofCodec
     internal static SourceProof Extend(SourceProof previous, EventEnvelope envelope)
         => ExtendVerified(previous, envelope, ComputeEventHash(envelope));
 
-    /// <summary>Extends using an already measured raw-envelope digest, avoiding a duplicate source hash.</summary>
+    /// <summary>Extends using the shared source-v1 step and the already measured raw-envelope hash.</summary>
     internal static SourceProof ExtendVerified(SourceProof previous, EventEnvelope envelope, string eventDigest)
     {
-        ArgumentNullException.ThrowIfNull(previous);
-        ArgumentNullException.ThrowIfNull(envelope);
-        var identity = new AggregateIdentity(envelope.TenantId, envelope.Domain, envelope.AggregateId);
-        if (!IsValid(previous, identity, previous.HeadSequence, previous.RetainedFloor)
-            || previous.Erased || envelope.SequenceNumber != checked(previous.HeadSequence + 1)
-            || string.IsNullOrWhiteSpace(envelope.MessageId) || !IsDigest(eventDigest))
-        {
-            throw new ArgumentException("The source envelope does not extend the proven contiguous stream.", nameof(envelope));
-        }
-
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        AppendString(hash, "hexalith.projection.source.step.v1");
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.SourceChainExtensions);
-        hash.AppendData(Convert.FromHexString(previous.CumulativeDigest));
-        hash.AppendData(Convert.FromHexString(eventDigest));
-        return previous with
-        {
-            HeadSequence = envelope.SequenceNumber,
-            HeadMessageId = envelope.MessageId,
-            CumulativeDigest = Convert.ToHexStringLower(hash.GetHashAndReset()),
-        };
+        return FromNative(Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.ExtendDigest(ToNative(previous),
+            new(envelope.TenantId, envelope.Domain, envelope.AggregateId), envelope.SequenceNumber, envelope.MessageId, eventDigest));
     }
 
-    /// <summary>Validates metadata evidence without reading any event envelope.</summary>
+    /// <summary>Validates native metadata through the existing shared codec.</summary>
     internal static bool IsValid(SourceProof proof, AggregateIdentity identity, long head, long floor)
-        => proof.CodecVersion == Version && proof.HeadSequence == head && head >= 0
-            && floor >= 1 && floor - 1 <= head && proof.RetainedFloor == floor
-            && string.Equals(proof.TenantId, identity.TenantId, StringComparison.Ordinal)
-            && string.Equals(proof.Domain, identity.Domain, StringComparison.Ordinal)
-            && string.Equals(proof.AggregateId, identity.AggregateId, StringComparison.Ordinal)
-            && Ulid.TryParse(proof.SourceIncarnation, null, out _)
-            && IsDigest(proof.CumulativeDigest)
-            && (head == 0 ? proof.HeadMessageId is null
-                && proof.CumulativeDigest == CreateSeed(identity, proof.SourceIncarnation).CumulativeDigest
-                : !string.IsNullOrWhiteSpace(proof.HeadMessageId));
+        => Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.IsValid(ToNative(proof), identity, head, floor);
+
+    /// <summary>Copies native metadata without assigning a new revision or receipt.</summary>
+    internal static Hexalith.EventStore.Contracts.Streams.NativeSourceProof ToNative(SourceProof proof)
+        => new(proof.CodecVersion, proof.TenantId, proof.Domain, proof.AggregateId, proof.SourceIncarnation,
+            proof.HeadSequence, proof.HeadMessageId, proof.CumulativeDigest, proof.RetainedFloor, proof.Erased);
+
+    private static SourceProof FromNative(Hexalith.EventStore.Contracts.Streams.NativeSourceProof proof)
+        => new(proof.CodecVersion, proof.TenantId, proof.Domain, proof.AggregateId, proof.SourceIncarnation,
+            proof.HeadSequence, proof.HeadMessageId, proof.CumulativeDigest, proof.RetainedFloor, proof.Erased);
 
     /// <summary>Recognizes only an authenticated actor-owned empty seed, preserving rejection of unproven zero metadata.</summary>
     internal static bool IsQualifiedEmpty(AggregateMetadata metadata, AggregateIdentity identity)

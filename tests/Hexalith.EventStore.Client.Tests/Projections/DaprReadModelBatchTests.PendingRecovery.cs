@@ -73,7 +73,7 @@ public partial class DaprReadModelBatchTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PendingKeyRecoveryCannotBypassGuardedOwnerMode(bool coordinated)
+    public async Task PendingKeyRecoveryRequiresSingleOwnerAndStillRejectsCoordinatedOwnerMode(bool coordinated)
     {
         using var client = new RecordingDaprClient();
         var scope = Scope();
@@ -82,9 +82,18 @@ public partial class DaprReadModelBatchTests
         var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("detail", new
             { ProjectionOwner = owner, ProjectionVersion = "v1" }, ReadModelBatchConcurrency.CreateOnly)])
         { RetainManifestForRecovery = true, OwnerSelection = coordinated ? null : owner, OwnerSelections = coordinated ? [owner] : null };
-        await Should.ThrowAsync<ArgumentException>(() => CreateStore(client).ExecuteAsync(batch));
-        client.TrySaveByteOperations.ShouldBeEmpty();
-        client.ByteStoreContains("detail").ShouldBeFalse();
+        if (coordinated)
+        {
+            await Should.ThrowAsync<ArgumentException>(() => CreateStore(client).ExecuteAsync(batch));
+            client.TrySaveByteOperations.ShouldBeEmpty();
+            client.ByteStoreContains("detail").ShouldBeFalse();
+        }
+        else
+        {
+            (await CreateStore(client).ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
+            ReadModelBatchEnvelope.FromBytes(client.ByteStoreValue("detail")).ShouldBeNull();
+            ReadModelBatchMarker.ReadProof(client.ByteStoreValue(scope.ComputeMarkerKey()))!.OwnerSelection.ShouldBe(owner);
+        }
     }
 
     [Theory]

@@ -819,7 +819,11 @@ class TaggedPhysicalSourceTests(unittest.TestCase):
             builds = root / "references/Hexalith.Builds"
             names = {".editorconfig", ".gitattributes", "global.json",
                      "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs", "src/Untracked.cs"}
-            for source, target in ((p.ROOT, root), (p.ROOT / "references/Hexalith.Builds", builds)):
+            builds_source = p.ROOT / "references/Hexalith.Builds"
+            if not (builds_source / ".git").exists():
+                binding = p.source_binding()
+                builds_source = Path(binding["workspace_builds"]["path"])
+            for source, target in ((p.ROOT, root), (builds_source, builds)):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(source), str(target)],
                                check=True, capture_output=True)

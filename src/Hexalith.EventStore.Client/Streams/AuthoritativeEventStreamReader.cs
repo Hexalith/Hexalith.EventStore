@@ -8,10 +8,25 @@ namespace Hexalith.EventStore.Client.Streams;
 /// <summary>Verifies an authorized contiguous prefix between two equal sampled heads.</summary>
 /// <param name="gateway">The authenticated gateway client; each page is independently authorized.</param>
 /// <param name="timeProvider">The observation clock.</param>
+/// <param name="requireNativeProof">Requires exact native prefix validation; legacy pages never satisfy this opt-in lane.</param>
 /// <param name="readTimeout">Optional positive whole-read deadline of at most thirty seconds; invalid bounds fail closed.</param>
-public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gateway, TimeProvider timeProvider, TimeSpan? readTimeout = null)
+public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gateway, TimeProvider timeProvider, TimeSpan? readTimeout, bool requireNativeProof)
     : IAuthoritativeEventStreamReader
 {
+    /// <summary>Preserves the original legacy reader constructor for existing compiled consumers.</summary>
+    /// <param name="gateway">Authenticated gateway client.</param>
+    /// <param name="timeProvider">Observation clock.</param>
+    /// <param name="readTimeout">Optional whole-read deadline.</param>
+    public AuthoritativeEventStreamReader(IEventStoreGatewayClient gateway, TimeProvider timeProvider, TimeSpan? readTimeout = null)
+        : this(gateway, timeProvider, readTimeout, requireNativeProof: false) { }
+
+    /// <summary>Creates a reader with explicit native proof requirements and the default deadline.</summary>
+    /// <param name="gateway">Authenticated gateway client.</param>
+    /// <param name="timeProvider">Observation clock.</param>
+    /// <param name="requireNativeProof">Requires the native source codec on every page.</param>
+    public AuthoritativeEventStreamReader(IEventStoreGatewayClient gateway, TimeProvider timeProvider, bool requireNativeProof)
+        : this(gateway, timeProvider, null, requireNativeProof) { }
+
     private const int PageSize = 100;
     private const int MaxEvents = 10_000;
     private const int MaxAttempts = 3;
@@ -68,7 +83,12 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
         for (int attempt = 0; attempt < MaxAttempts; attempt++)
         {
             deadline.ThrowIfCancellationRequested();
-            long head = await ReadHeadAsync(identity, deadline).ConfigureAwait(false);
+            StreamReadPage first = await ReadHeadAsync(identity, deadline).ConfigureAwait(false);
+            long head = first.Metadata.LatestSequence;
+            NativeSourceProof? native = first.Metadata.NativeProof;
+            if (requireNativeProof && (native is null || native.Erased || native.RetainedFloor != 1
+                || !NativeSourceProofCodec.IsValid(native, identity, head, 1))) return new(null, "source-native-proof-unavailable");
+            NativeSourceProof? chain = native is null ? null : NativeSourceProofCodec.CreateSeed(identity, native.SourceIncarnation);
             if (head > MaxEvents)
             {
                 return new(null, "source-bound-exceeded");
@@ -81,7 +101,7 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
             while (cursor < head)
             {
                 var request = new StreamReadRequest(identity.TenantId, identity.Domain, identity.AggregateId,
-                    cursor, head, PageSize: PageSize);
+                    cursor, head, PageSize: PageSize) { RequireNativeProof = requireNativeProof };
                 StreamReadPage supplied = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
                 long priorBytes = bytes;
                 (StreamReadPage page, long capturedBytes, long next) = await deadline.ReadAsync(_ =>
@@ -92,7 +112,7 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                     return Task.FromResult((ownedPage, ownedBytes, ownedNext));
                 }).ConfigureAwait(false);
                 bytes = capturedBytes;
-                if (page.Metadata.LatestSequence != head)
+                if (page.Metadata.LatestSequence != head || requireNativeProof && page.Metadata.NativeProof != native)
                 {
                     changed = true;
                     break;
@@ -111,6 +131,11 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                         return new(null, "source-gap-or-unreadable");
                     }
 
+                    if (requireNativeProof)
+                    {
+                        chain = NativeSourceProofCodec.ExtendDigest(chain!, identity, item.SequenceNumber,
+                            item.MessageId, item.NativeEventDigest!);
+                    }
                     events.Add(item);
                 }
 
@@ -120,21 +145,23 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                 }
             }
 
-            if (!changed && await ReadHeadAsync(identity, deadline).ConfigureAwait(false) == head)
+            StreamReadPage final = await ReadHeadAsync(identity, deadline).ConfigureAwait(false);
+            if (!changed && final.Metadata.LatestSequence == head
+                && (!requireNativeProof || final.Metadata.NativeProof == native && chain == native))
             {
                 deadline.ThrowIfCancellationRequested();
                 return new(new AuthoritativeEventStream(identity, head, timeProvider.GetUtcNow(),
-                    events.AsReadOnly(), Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16))), null);
+                    events.AsReadOnly(), Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16))) { NativeProof = requireNativeProof ? native : null }, null);
             }
         }
 
         return new(null, "source-head-changed");
     }
 
-    private async Task<long> ReadHeadAsync(AggregateIdentity identity, AuthoritativeStreamReadDeadline deadline)
+    private async Task<StreamReadPage> ReadHeadAsync(AggregateIdentity identity, AuthoritativeStreamReadDeadline deadline)
     {
         var request = new StreamReadRequest(identity.TenantId, identity.Domain, identity.AggregateId,
-            ToSequence: 0, PageSize: 1);
+            ToSequence: 0, PageSize: 1) { RequireNativeProof = requireNativeProof };
         StreamReadPage supplied = await deadline.ReadAsync(token => gateway.ReadStreamAsync(request, token)).ConfigureAwait(false);
         return await deadline.ReadAsync(_ =>
         {
@@ -146,7 +173,7 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                 throw new InvalidOperationException("Invalid head observation.");
             }
 
-            return Task.FromResult(page.Metadata.LatestSequence);
+            return Task.FromResult(page);
         }).ConfigureAwait(false);
     }
 

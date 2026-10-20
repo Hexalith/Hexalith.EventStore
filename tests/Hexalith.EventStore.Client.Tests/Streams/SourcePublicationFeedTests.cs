@@ -46,6 +46,163 @@ public sealed class SourcePublicationFeedTests
     private static SourcePublicationIndexState? Clone(SourcePublicationIndexState? state)
         => state is null ? null : JsonSerializer.Deserialize<SourcePublicationIndexState>(JsonSerializer.SerializeToUtf8Bytes(state, Json), Json);
 
+    /// <summary>Native metadata survives persisted restart and refuses equal-head replacement without changing retained publications.</summary>
+    [Theory]
+    [InlineData("incarnation")]
+    [InlineData("digest")]
+    [InlineData("missing")]
+    public async Task NativePrefixReplacementPoisonsPersistedIndex(string change)
+    {
+        var f = Fixture();
+        var source = NativePublicationFixture.Stream(Identity, At);
+        NativeSourceProof proof = source.NativeProof!;
+        var head = new SourcePublicationHead(Identity, 2) { NativeProof = proof };
+        var cut = Cut() with { Sources = [head] };
+        f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(cut);
+        f.Streams.ReadAsync(Identity, Arg.Any<CancellationToken>()).Returns(new AuthoritativeStreamReadResult(source, null));
+        (await f.Feed.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).IsAvailable.ShouldBeTrue();
+        f.State()!.Sources.Single().NativeProof.ShouldBe(proof);
+        var retained = f.State()!.Entries.ToArray();
+        NativeSourceProof? changed = change switch
+        {
+            "incarnation" => proof with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" },
+            "digest" => proof with { CumulativeDigest = new string('b', 64) },
+            _ => null,
+        };
+        f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(cut with { Sources = [head with { NativeProof = changed }] });
+        var restart = new SourcePublicationFeed(f.Namespace, f.Streams, f.Projector, f.Store, TimeProvider.System);
+        (await restart.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).FailureReason.ShouldBe("publication-source-incompatible");
+        f.State()!.Entries.ShouldBe(retained); f.State()!.Sources.Single().NativeProof.ShouldBe(proof);
+        f.State()!.PoisonCode.ShouldBe("publication-source-incompatible");
+    }
+
+    /// <summary>The native cut binds the codec-verified source prefix, rather than only its final message identifier.</summary>
+    [Theory]
+    [InlineData("matching")]
+    [InlineData("advanced")]
+    [InlineData("missing-proof")]
+    [InlineData("incarnation")]
+    [InlineData("digest")]
+    [InlineData("event-digest")]
+    public async Task NativeCutRequiresActualMatchingSourcePrefixBeforeProjectionOrPersistence(string scenario)
+    {
+        var f = Fixture();
+        var original = NativePublicationFixture.Stream(Identity, At);
+        var source = scenario == "advanced" ? NativePublicationFixture.Stream(Identity, At, 3) : original;
+        source = scenario switch
+        {
+            "missing-proof" => source with { NativeProof = null },
+            "incarnation" => NativePublicationFixture.Stream(Identity, At, 2, "01ARZ3NDEKTSV4RRFFQ69G5FAW"),
+            "digest" => source with { NativeProof = source.NativeProof! with { CumulativeDigest = new string('b', 64) } },
+            "event-digest" => source with { Events = [source.Events[0] with { NativeEventDigest = new string('c', 64) }, source.Events[1]] },
+            _ => source,
+        };
+        f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(Cut() with { Sources = [new(Identity, 2) { NativeProof = original.NativeProof }] });
+        f.Streams.ReadAsync(Identity, Arg.Any<CancellationToken>()).Returns(new AuthoritativeStreamReadResult(source, null));
+        var result = await f.Feed.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken);
+        if (scenario is not ("matching" or "advanced"))
+        {
+            result.FailureReason.ShouldBe("publication-source-hole"); f.State().ShouldBeNull();
+            f.Projector.ReceivedCalls().ShouldBeEmpty();
+            f.Store.ReceivedCalls().ShouldNotContain(call => call.GetMethodInfo().Name == nameof(ISourcePublicationIndexStore.TryWriteAsync)
+                || call.GetMethodInfo().Name == nameof(ISourcePublicationIndexStore.AdvanceReconciliationProgressAsync));
+            return;
+        }
+        result.IsAvailable.ShouldBeTrue();
+        var selected = f.Projector.ReceivedCalls().Single().GetArguments()[0].ShouldBeOfType<AuthoritativeEventStream>();
+        selected.NativeProof.ShouldBe(original.NativeProof);
+        selected.Head.ShouldBe(2); JsonSerializer.Serialize(selected.Events).ShouldBe(JsonSerializer.Serialize(original.Events));
+        f.State()!.Sources.Single().NativeProof.ShouldBe(original.NativeProof);
+    }
+
+    /// <summary>Native enrollment cannot migrate or poison legacy offsets and independently anchored work.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task LegacyToNativeRequiresExplicitUpgradeWithoutChangingRetainedState(int mode)
+    {
+        var f = Fixture();
+        (await f.Feed.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).IsAvailable.ShouldBeTrue();
+        var prior = f.State()!;
+        if (mode > 0)
+        {
+            var progress = new SourcePublicationReconciliationProgress(Scope, 1, Cut().AuthorityRevision,
+                Cut().Sources, 1, prior.Entries.Select(entry => entry.Publication).ToArray(), "original-legacy-receipt") { OriginalCut = Cut() };
+            (await f.Store.TryWriteAsync(Scope, prior.Revision, prior with { Revision = prior.Revision + 1, ReconciliationProgress = progress,
+                Sources = mode == 2 ? [] : prior.Sources, Entries = mode == 2 ? [] : prior.Entries }, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        }
+        byte[] retained = JsonSerializer.SerializeToUtf8Bytes(f.State(), Json);
+        var native = NativePublicationFixture.Stream(Identity, At);
+        f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(Cut() with { Sources = [new(Identity, 2) { NativeProof = native.NativeProof }] });
+        f.Store.ClearReceivedCalls(); f.Streams.ClearReceivedCalls();
+        (await f.Feed.ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken)).FailureReason.ShouldBe("publication-source-upgrade-required");
+        JsonSerializer.SerializeToUtf8Bytes(f.State(), Json).ShouldBe(retained);
+        f.Streams.ReceivedCalls().ShouldBeEmpty();
+        f.Store.ReceivedCalls().ShouldAllBe(call => call.GetMethodInfo().Name == nameof(ISourcePublicationIndexStore.ReadAsync));
+    }
+
+    /// <summary>Independently retained work selects the original native prefix after the unworked source advances.</summary>
+    [Fact]
+    public async Task RetainedOriginalNativeCutCompletesAgainstAuthenticAdvancedSource()
+    {
+        var f = Fixture();
+        var secondIdentity = new AggregateIdentity(Scope.Tenant, Scope.Domain, "source-b");
+        var first = NativePublicationFixture.Stream(Identity, At, 1);
+        var second = NativePublicationFixture.Stream(secondIdentity, At, 1);
+        var advanced = NativePublicationFixture.Stream(secondIdentity, At, 2);
+        var original = Cut() with { Sources = [new(Identity, 1) { NativeProof = first.NativeProof }, new(secondIdentity, 1) { NativeProof = second.NativeProof }] };
+        var current = original with { Sources = [original.Sources[0], new(secondIdentity, 2) { NativeProof = advanced.NativeProof }] };
+        static SourcePublicationDescriptor[] Project(AuthoritativeEventStream source) => [.. source.Events.Select(item =>
+            new SourcePublicationDescriptor(source.Identity.AggregateId + "-" + item.SequenceNumber, source.Identity,
+                item.SequenceNumber, item.MessageId, Convert.ToHexString(SHA256.HashData(item.Payload))))];
+        var progress = new SourcePublicationReconciliationProgress(Scope, 1, original.AuthorityRevision,
+            original.Sources, 1, Project(first), "independent-original") { OriginalCut = original };
+        var partial = new SourcePublicationIndexState(Scope, 1, original.AuthorityRevision, [], [], null) { ReconciliationProgress = progress };
+        (await f.Store.TryWriteAsync(Scope, 0, partial, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        f.Namespace.ReadAsync(Scope, Arg.Any<CancellationToken>()).Returns(current);
+        f.Streams.ReadAsync(secondIdentity, Arg.Any<CancellationToken>()).Returns(new AuthoritativeStreamReadResult(advanced, null));
+        f.Projector.Project(Arg.Any<AuthoritativeEventStream>(), Arg.Any<CancellationToken>()).Returns(call => Project(call.Arg<AuthoritativeEventStream>()));
+        f.Store.ReadReconciliationProgressAsync(Arg.Any<SourcePublicationCut>(), Arg.Any<CancellationToken>()).Returns(_ => progress);
+        f.Store.AdvanceReconciliationProgressAsync(Arg.Any<SourcePublicationReconciliationAdvance>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var proposal = call.Arg<SourcePublicationReconciliationAdvance>();
+            proposal.Cut.Sources.ShouldBe(original.Sources); proposal.CurrentCut!.Sources.ShouldBe(current.Sources);
+            proposal.Source.ShouldBe(original.Sources[1]); proposal.ObservedHead.ShouldBe(2);
+            proposal.Publications.ShouldBe(Project(second));
+            progress = progress with { Version = 2, VerifiedSources = 2, Publications = progress.Publications.Concat(proposal.Publications).ToArray() };
+            var state = f.State()!;
+            (await f.Store.TryWriteAsync(Scope, state.Revision, state with { Revision = state.Revision + 1, ReconciliationProgress = progress }, call.Arg<CancellationToken>())).ShouldBeTrue();
+            return (SourcePublicationReconciliationProgress?)progress;
+        });
+        var result = await new SourcePublicationFeed(f.Namespace, f.Streams, f.Projector, f.Store, TimeProvider.System)
+            .ReadAsync(Scope, cancellationToken: TestContext.Current.CancellationToken);
+        result.IsAvailable.ShouldBeTrue();
+        result.Page!.Checkpoint.Sources.ShouldBe(original.Sources);
+        result.Page.Entries.Select(entry => entry.Offset).ShouldBe([1L, 2L]);
+        f.State()!.Sources[1].NativeProof.ShouldBe(second.NativeProof);
+        var selected = f.Projector.ReceivedCalls().Single().GetArguments()[0].ShouldBeOfType<AuthoritativeEventStream>();
+        selected.Head.ShouldBe(1); selected.NativeProof.ShouldBe(second.NativeProof);
+        await f.Streams.DidNotReceive().ReadAsync(Identity, Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Retained work cannot structurally continue under a replaced or downgraded native source.</summary>
+    [Fact]
+    public void ReconciliationRequiresSameNativeIncarnationAndEqualHeadPrefix()
+    {
+        NativeSourceProof proof = new(1, Identity.TenantId, Identity.Domain, Identity.AggregateId,
+            "01ARZ3NDEKTSV4RRFFQ69G5FAV", 2, "event-2", new string('a', 64), 1, false);
+        var head = new SourcePublicationHead(Identity, 2) { NativeProof = proof };
+        var cut = Cut() with { Sources = [head] };
+        var progress = new SourcePublicationReconciliationProgress(Scope, 1, cut.AuthorityRevision,
+            cut.Sources, 1, [], "synthetic-original") { OriginalCut = cut };
+        progress.CanContinueUnder(cut).ShouldBeTrue();
+        progress.CanContinueUnder(cut with { Sources = [head with { NativeProof = null }] }).ShouldBeFalse();
+        progress.CanContinueUnder(cut with { Sources = [head with { NativeProof = proof with { CumulativeDigest = new string('b', 64) } }] }).ShouldBeFalse();
+        progress.CanContinueUnder(cut with { Sources = [head with { Head = 3, NativeProof = proof with
+            { HeadSequence = 3, SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" } }] }).ShouldBeFalse();
+    }
+
     /// <summary>Restart and ordered paging preserve exact source references/offsets and complete finite-cut state.</summary>
     [Fact]
     public async Task BackfillRestartAndPagingReuseOriginalOffsets()

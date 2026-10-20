@@ -89,6 +89,9 @@ public interface IAggregateActor : IActor {
     /// <param name="maxBytes">The compact array byte ceiling, at most 2,097,152.</param>
     Task<SourceEventRange> ReadMeasuredEventsBoundedRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes);
 
+    /// <summary>Reads native events only after the stable inspection barrier refuses recovery work in this actor turn.</summary>
+    Task<SourceEventRange> ReadNativeEventsBoundedRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes);
+
     /// <summary>Returns the source stream's authoritative inclusive retained floor, or null if absent.</summary>
     Task<long?> GetRetainedFloorAsync();
 

@@ -72,6 +72,47 @@ public sealed class DaprSourcePublicationIndexStoreTests
         return new(proxies);
     }
 
+    /// <summary>Adding optional native metadata cannot change the anchored serialization of legacy vectors.</summary>
+    [Fact]
+    public void LegacySourceVectorRetainsItsExactAnchoredJson()
+    {
+        var identity = State().Sources.Single().Identity;
+        byte[] legacy = JsonSerializer.SerializeToUtf8Bytes(new { Identity = identity, Head = 2L });
+        byte[] current = JsonSerializer.SerializeToUtf8Bytes(new SourcePublicationHead(identity, 2));
+        current.ShouldBe(legacy);
+    }
+
+    /// <summary>The owning actor preserves native incarnation/prefix across durable restart even when a private writer supplies the same numeric head.</summary>
+    [Theory]
+    [InlineData("incarnation")]
+    [InlineData("digest")]
+    [InlineData("missing")]
+    public async Task NativePrefixCannotBeSubstitutedThroughOwningActor(string change)
+    {
+        var backend = new InMemoryStateManager(); var actor = Actor(backend); var original = State();
+        var source = original.Sources.Single().Identity;
+        NativeSourceProof proof = new(1, source.TenantId, source.Domain, source.AggregateId,
+            "01ARZ3NDEKTSV4RRFFQ69G5FAV", 2, "event-2", new string('a', 64), 1, false);
+        var head = original.Sources.Single() with { NativeProof = proof };
+        original = original with { Sources = [head] };
+        (await actor.TryWriteAsync(new(0, original))).ShouldBeTrue();
+        var committed = backend.CommittedState.Single(); byte[] saved = JsonSerializer.SerializeToUtf8Bytes(committed.Value);
+        NativeSourceProof? changed = change switch
+        {
+            "incarnation" => proof with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" },
+            "digest" => proof with { CumulativeDigest = new string('b', 64) },
+            _ => null,
+        };
+        (await actor.TryWriteAsync(new(1, original with { Revision = 2, Sources = [head with { NativeProof = changed }] }))).ShouldBeFalse();
+        JsonSerializer.SerializeToUtf8Bytes(backend.CommittedState.Single().Value).ShouldBe(saved);
+        var restored = new InMemoryStateManager();
+        await restored.SetStateAsync(committed.Key, JsonSerializer.Deserialize<SourcePublicationIndexState>(saved)!);
+        await restored.SaveStateAsync();
+        var restarted = Actor(restored, Authorities.GetValue(backend, _ => Operations()));
+        (await restarted.ReadAsync(Scope))!.Sources.Single().NativeProof.ShouldBe(proof);
+        JsonSerializer.SerializeToUtf8Bytes(restored.CommittedState.Single().Value).ShouldBe(saved);
+    }
+
     /// <summary>Actual SaveState persists the exact revision/references and a fresh actor instance reads the committed bytes.</summary>
     [Fact]
     public async Task ConditionalCommitAndRestartPreservePersistedExactOutcome()

@@ -22,7 +22,18 @@ public sealed class SourcePublicationNamespaceTests
     private static SourceProofInspection Proof(AggregateIdentity identity, long head)
         => new(SourceProofInspectionStatus.Available, true, head, false,
             new Hexalith.EventStore.Server.Events.SourceProof(1, identity.TenantId, identity.Domain,
-                identity.AggregateId, "native-incarnation", head, head == 0 ? null : "native-message", new string('a', 64), 1, false));
+                identity.AggregateId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", head, head == 0 ? null : "native-message",
+                head == 0 ? EmptyDigest(identity) : new string('a', 64), 1, false));
+
+    private static string EmptyDigest(AggregateIdentity identity)
+    {
+        // Exercise the native seed codec through its existing internal Server type without a
+        // second test implementation of the digest scheme.
+        Type codec = typeof(Hexalith.EventStore.Server.Events.SourceProof).Assembly
+            .GetType("Hexalith.EventStore.Server.Events.SourceProofCodec", throwOnError: true)!;
+        return ((Hexalith.EventStore.Server.Events.SourceProof)codec.GetMethod("CreateSeed",
+            BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, [identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV"])!).CumulativeDigest;
+    }
 
     [Theory]
     [InlineData("absent")]
@@ -42,7 +53,7 @@ public sealed class SourcePublicationNamespaceTests
             "absent" => new(SourceProofInspectionStatus.Unsupported, false, 0, false, null),
             "unsupported" => original with { Status = SourceProofInspectionStatus.Unsupported, Proof = null },
             "erasure" => original with { Erased = true },
-            "incarnation" => original with { Proof = original.Proof! with { SourceIncarnation = "replacement" } },
+            "incarnation" => original with { Proof = original.Proof! with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" } },
             "digest" => original with { Proof = original.Proof! with { CumulativeDigest = new string('b', 64) } },
             _ => original with { Proof = original.Proof! with { RetainedFloor = 2 } },
         };
@@ -50,6 +61,50 @@ public sealed class SourcePublicationNamespaceTests
         (await new DaprSourcePublicationNamespaceSource(Proxies(actor, source), Authority(), TimeProvider.System)
             .ReadAsync(Scope, TestContext.Current.CancellationToken)).ShouldBeNull();
         await source.DidNotReceive().GetStreamMetadataAsync();
+    }
+
+    /// <summary>A zero numeric head and seed-shaped text cannot replace the native codec's scoped persisted empty seed.</summary>
+    [Fact]
+    public async Task UnbackedEmptySeedCannotEstablishCompleteCut()
+    {
+        var actor = Substitute.For<ISourcePublicationNamespaceActor>();
+        actor.ReadAsync(Scope).Returns(Installation());
+        var source = Substitute.For<IAggregateActor>();
+        var empty = Proof(Existing, 0);
+        source.InspectSourceProofAsync().Returns(empty with { Proof = empty.Proof! with { CumulativeDigest = new string('a', 64) } });
+        (await new DaprSourcePublicationNamespaceSource(Proxies(actor, source), Authority(), TimeProvider.System)
+            .ReadAsync(Scope, TestContext.Current.CancellationToken)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CertifiedEmptyInstallationDiffersFromMissingInstallation()
+    {
+        var actor = Substitute.For<ISourcePublicationNamespaceActor>();
+        var empty = Installation() with { Sources = [], InitialSources = [] };
+        actor.ReadAsync(Scope).Returns(empty);
+        var source = Substitute.For<IAggregateActor>();
+        var reader = new DaprSourcePublicationNamespaceSource(Proxies(actor, source), Authority(), TimeProvider.System);
+        var cut = await reader.ReadAsync(Scope, TestContext.Current.CancellationToken);
+        cut.ShouldNotBeNull(); cut.IsComplete.ShouldBeTrue(); cut.Sources.ShouldBeEmpty();
+        actor.ReadAsync(Scope).Returns((SourcePublicationNamespaceState?)null);
+        (await reader.ReadAsync(Scope, TestContext.Current.CancellationToken)).ShouldBeNull();
+        await source.DidNotReceive().InspectSourceProofAsync();
+    }
+
+    [Fact]
+    public void SourcePublicationEnrollmentRequiresIndependentAuthoritiesAndExactScopes()
+    {
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        var authority = Authority(); var operations = Operations();
+        Should.Throw<ArgumentNullException>(() => Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions
+            .AddEventStoreSourcePublication(services, [Scope], null!, operations));
+        Should.Throw<ArgumentException>(() => Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions
+            .AddEventStoreSourcePublication(services, [], authority, operations));
+        Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions
+            .AddEventStoreSourcePublication(services, [Scope], authority, operations);
+        services.ShouldContain(descriptor => descriptor.ServiceType == typeof(Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration));
+        Should.Throw<ArgumentException>(() => Hexalith.EventStore.Server.Configuration.EventStoreServerServiceCollectionExtensions
+            .AddEventStoreSourcePublication(services, [Scope], authority, operations));
     }
 
     private static SourcePublicationNamespaceState Installation() => new(Scope, 1, "installation-authority-1",
@@ -168,7 +223,7 @@ public sealed class SourcePublicationNamespaceTests
         (await Actor(backend).ReadAsync(Scope) is not null).ShouldBe(commitBeforeFault);
     }
 
-    /// <summary>Actual committed metadata produces a finite vector; an unused pre-registration contributes head zero.</summary>
+    /// <summary>Real roster persistence is paired with substituted native inspections; zero requires a supported persisted empty-stream proof.</summary>
     [Fact]
     public async Task QualifiedRosterUsesNativeProofIncludingPersistedEmptyStream()
     {
@@ -183,6 +238,8 @@ public sealed class SourcePublicationNamespaceTests
         var cut = await new DaprSourcePublicationNamespaceSource(proxies, Authority(), TimeProvider.System).ReadAsync(Scope, TestContext.Current.CancellationToken);
         cut!.IsComplete.ShouldBeTrue(); cut.Sources.Single(h => h.Identity == Existing).Head.ShouldBe(4);
         cut.Sources.Single(h => h.Identity == Created).Head.ShouldBe(0); cut.AuthorityRevision.ShouldEndWith(":2");
+        cut.Sources.Single(h => h.Identity == Created).NativeProof.ShouldNotBeNull().CumulativeDigest.ShouldBe(EmptyDigest(Created));
+        cut.Sources.Single(h => h.Identity == Existing).NativeProof.ShouldNotBeNull().SourceIncarnation.ShouldBe("01ARZ3NDEKTSV4RRFFQ69G5FAV");
         await existing.Received(2).InspectSourceProofAsync(); await empty.Received(2).InspectSourceProofAsync();
     }
 

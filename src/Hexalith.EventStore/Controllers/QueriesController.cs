@@ -73,7 +73,7 @@ public partial class QueriesController(
         QueryCallerAuthority? ownerAuthority = null;
         if (request.OriginatingQuery is not null || request.OriginatingAssertion is not null)
         {
-            if (request.OriginatingQuery is not { CallerAuthority.Origin: "authenticated-caller" } original
+            if (request.OriginatingQuery is not { CallerAuthority.Origin: "authenticated-caller" or "delegated-owner-query" } original
                 || original.TenantId != query.Tenant || original.UserId != request.PrincipalId || assertionValidator is null)
                 return Forbid();
             string gatewayWorkload = configuration?["Authentication:QueryAuthority:GatewayWorkloadId"] ?? "eventstore";
@@ -81,10 +81,17 @@ public partial class QueriesController(
                 DaprInternalAuthenticationOptions.SchemeName, request.OriginatingAssertion,
                 EventStoreWorkloadOperations.DomainServiceQuery, [gatewayWorkload], caller, cancellationToken).ConfigureAwait(false);
             if (!origin.Succeeded || origin.Principal is null || !QueryCallerAuthorityBinding.Verify(original, origin.Principal, gatewayWorkload)) return Forbid();
+            if (original.CallerAuthority.Origin == "delegated-owner-query"
+                && (original.CallerAuthority.OriginatingContext is not { } inherited
+                    || inherited.OriginalActorId != request.PrincipalId || !original.IsDelegated
+                    || inherited.IsDelegated && string.IsNullOrWhiteSpace(inherited.DelegationId)
+                    || !inherited.IsDelegated && inherited.DelegationId is not null)) return Forbid();
             ownerAuthority = new("delegated-owner-query", [], original.CallerAuthority.Permissions)
             {
-                OriginatingContext = new(original.OriginalActorId!, original.AuthenticatedWorkloadId,
-                    original.IsDelegated, original.DelegationId, original.Scopes, original.Audience),
+                OriginatingContext = original.CallerAuthority.Origin == "delegated-owner-query"
+                    ? original.CallerAuthority.OriginatingContext
+                    : new(original.OriginalActorId!, original.AuthenticatedWorkloadId,
+                        original.IsDelegated, original.DelegationId, original.Scopes, original.Audience),
             };
         }
 
@@ -99,6 +106,8 @@ public partial class QueriesController(
             OriginalActorId: request.PrincipalId, IsDelegated: true,
             Audience: ownerAuthority is not null && workloadOptions?.Get(DaprInternalAuthenticationOptions.SchemeName).Audience is { Length: > 0 } audience
                 ? [audience.Trim()] : null) { CallerAuthority = ownerAuthority };
+        if (query.QueryType == Hexalith.EventStore.Contracts.Projections.InspectProjectionCurrentQuery.QueryType)
+            return await InspectProjectionCurrentAsync(request, ownerAuthority, correlationId, cancellationToken).ConfigureAwait(false);
         SubmitQueryResult result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false);
         Response.Headers.CacheControl = "no-store";
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload,

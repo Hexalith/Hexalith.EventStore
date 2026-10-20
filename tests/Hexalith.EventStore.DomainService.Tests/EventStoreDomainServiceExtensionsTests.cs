@@ -1486,7 +1486,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         _ = builder.Services.AddSingleton<IAsyncDomainProjectionHandler>(handler);
         _ = builder.Services.AddKeyedSingleton<IDomainProcessor>(domain, Substitute.For<IDomainProcessor>());
         _ = builder.Services.AddSingleton(new DomainProjectionOwnerProofRegistration(domain, route, capability, new("models", route)));
-        await WebApplication app = builder.Build();
+        await using WebApplication app = builder.Build();
         _ = app.UseEventStoreDomainService();
         // This body has exactly the old server's fields, with no capability negotiation.
         var oldRequest = new AdminOperationalIndexMetadata.Request([domain]) { AppId = "sample", ServiceVersion = "v1" };
@@ -1752,7 +1752,7 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         builder.Services.AddEventStoreBoundedV1DomainSerialization("widget", profile => profile
             .Add<WidgetCreated>("bounded-é", "json", 2,
                 (_, stream, token) => stream.WriteAsync("{}"u8.ToArray(), token).AsTask()));
-        await WebApplication app = builder.Build();
+        await using WebApplication app = builder.Build();
         _ = app.UseEventStoreDomainService();
         (int status, string body) = await InvokeEndpointAsync(app, "/process", CreateProcessRequest());
         status.ShouldBe(StatusCodes.Status200OK);

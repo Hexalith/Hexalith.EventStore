@@ -329,3 +329,23 @@ Both explicit source routes copy the selected tagged source’s `global.json` in
 each fresh consumer root before the first MSBuild evaluation or restore. This
 selects its SDK for Debug source builds and Release published-package builds,
 even when the verifier checkout pins a newer SDK.
+
+## Exact 3.126.0 enrollment, 2026-10-20
+
+The approved P0 current-catalog preparation target additionally enrolls published
+3.126.0 for the existing finite snapshot, recovery, Reminder and evolution proof.
+Its exact tag/source is `fcf78d6cafb6c0c9f52dc350a9a09aff54ded288`; tag-construction
+Builds is `1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c`. The verifier and its actual
+execution Builds remain separate identities. Use the existing separate
+verifier/candidate-closure route with an explicit clean tagged `--source-root`.
+The optional pinned-tooling/runtime-source route remains bounded to its existing
+3.125.1 contract; this enrollment does not silently widen that route.
+
+The fixture executes genuine manual snapshot nine, tail twelve, restore floor
+five/head twelve and append thirteen, plus the existing strict Reminder and
+logical evolution additions. Exact 3.126.0 package writers and the separately
+bound Debug source writer are supported fixture inputs; 3.126.1/3.127.0 and
+cross-version writer substitution remain refused. Historical 3.125.1 identities,
+measurements and failures are preserved. Enrollment and synthetic controls grant
+no P1R support boundary, conformance, acceptance, downgrade, or consumer adoption.
+Keep comparison-only 3.70.1/3.110.0, rollback null and AD-17 forward recovery.
