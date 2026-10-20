@@ -1,0 +1,32 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+    - name: brokers
+      secretKeyRef: {name: qualification-kafka, key: brokers}
+    - name: caCert
+      secretKeyRef: {name: qualification-kafka, key: caCert}
+    - name: clientCert
+      secretKeyRef: {name: qualification-kafka, key: clientCert}
+    - name: clientKey
+      secretKeyRef: {name: qualification-kafka, key: clientKey}
+    - {name: authType, value: mtls}
+    - {name: disableTls, value: "false"}
+    - {name: skipVerify, value: "false"}
+    - {name: consumerGroup, value: qualification-replay}
+    - {name: clientID, value: qualification}
+    - {name: initialOffset, value: oldest}
+    - {name: maxMessageBytes, value: "1048576"}
+    - {name: consumeRetryInterval, value: 1s}
+    - {name: allowedTopics, value: "qualification.events,qualification.poison,qualification.quarantine,qualification.failed-diversion,qualification.quarantine-denied,qualification.expiry,qualification.backpressure,qualification.missing-binding"}
+    - {name: publishingScopes, value: "qualification-publisher=qualification.events,qualification.poison,qualification.failed-diversion,qualification.expiry,qualification.backpressure,qualification.missing-binding;qualification-consumer=qualification.quarantine"}
+    - {name: subscriptionScopes, value: "qualification-consumer=qualification.events,qualification.poison,qualification.quarantine,qualification.failed-diversion,qualification.expiry,qualification.backpressure"}
+auth:
+  secretStore: openbao
+scopes:
+  - qualification-publisher
+  - qualification-consumer

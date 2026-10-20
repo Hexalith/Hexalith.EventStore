@@ -1,0 +1,20 @@
+{
+  "apiVersion": "dapr.io/v1alpha1",
+  "kind": "Configuration",
+  "metadata": {
+    "name": "qualification"
+  },
+  "spec": {
+    "secrets": {
+      "scopes": [
+        {
+          "allowedSecrets": [
+            "qualification-kafka"
+          ],
+          "defaultAccess": "deny",
+          "storeName": "openbao"
+        }
+      ]
+    }
+  }
+}

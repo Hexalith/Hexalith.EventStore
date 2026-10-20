@@ -1,0 +1,26 @@
+.............F..........E.
+======================================================================
+ERROR: testPartialTwoCheckSeedRetainsBothTenantsAndNoUnattemptedProbeChecks (test_p1r_verifier_corrections.SeedPreconditionCorrectionsTests.testPartialTwoCheckSeedRetainsBothTenantsAndNoUnattemptedProbeChecks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_verifier_corrections.py", line 198, in testPartialTwoCheckSeedRetainsBothTenantsAndNoUnattemptedProbeChecks
+    self.assertEqual(worker.last_seed['persisted']['inventory'], verifier_rows(raw))
+                     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+KeyError: 'persisted'
+
+======================================================================
+FAIL: testCompleteSeedProofIsValidatedBeforeNormalizingDynamicFields (test_p1r_verifier_corrections.SeedPreconditionCorrectionsTests.testCompleteSeedProofIsValidatedBeforeNormalizingDynamicFields)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_verifier_corrections.py", line 148, in testCompleteSeedProofIsValidatedBeforeNormalizingDynamicFields
+    worker.actor.assert_not_called()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 947, in assert_not_called
+    raise AssertionError(msg)
+AssertionError: Expected 'mock' to not have been called. Called 1 times.
+Calls: [call()].
+
+----------------------------------------------------------------------
+Ran 26 tests in 2.847s
+
+FAILED (failures=1, errors=1)

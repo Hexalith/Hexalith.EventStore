@@ -1,0 +1,54 @@
+{
+  "startedUtc": "2026-10-20T12:44:27.795531+00:00",
+  "endedUtc": "2026-10-20T12:44:27.961510+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "tools/validate-corrective-work-authorization.py",
+    "--evaluate-registry"
+  ],
+  "exitCode": 1,
+  "stdout": "{\"contract_sha256\":\"e3650beeb2c754be557c2fd4f73b9f0f1c40ec8154148c514f76d31b1b59c110\",\"corrective-work-only\":true,\"deployment\":false,\"detail\":\"live corrective-work authorization registry is absent\",\"migration\":false,\"phase\":\"registry\",\"production\":false,\"readiness\":false,\"reason\":\"missing-authority\",\"release\":false,\"removal\":false,\"result\":\"FAIL\",\"source_commit\":\"f6b545cd02632f662136d0b4b8e6952baa7afec3\",\"validator_sha256\":\"b34fe37745bdfde72e7d243e4413d3406da9193cbd8a275d11136e3af23b5062\"}\n",
+  "stderr": "",
+  "verdict": {
+    "contract_sha256": "e3650beeb2c754be557c2fd4f73b9f0f1c40ec8154148c514f76d31b1b59c110",
+    "corrective-work-only": true,
+    "deployment": false,
+    "detail": "live corrective-work authorization registry is absent",
+    "migration": false,
+    "phase": "registry",
+    "production": false,
+    "readiness": false,
+    "reason": "missing-authority",
+    "release": false,
+    "removal": false,
+    "result": "FAIL",
+    "source_commit": "f6b545cd02632f662136d0b4b8e6952baa7afec3",
+    "validator_sha256": "b34fe37745bdfde72e7d243e4413d3406da9193cbd8a275d11136e3af23b5062"
+  },
+  "baselineRegistryProbe": {
+    "argv": [
+      "git",
+      "cat-file",
+      "-e",
+      "f6b545cd02632f662136d0b4b8e6952baa7afec3:_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/owner-role-registry.json"
+    ],
+    "exitCode": 128,
+    "stderr": "fatal: path '_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/owner-role-registry.json' does not exist in 'f6b545cd02632f662136d0b4b8e6952baa7afec3'\n"
+  },
+  "prdBaseline": {
+    "head": "f6b545cd02632f662136d0b4b8e6952baa7afec3",
+    "committedSha256": "fefa6f69b62c30ba0fb14565b32c9d12f1e7fcc5d99ac9e390f1b0b9a6ec6e82",
+    "workingSha256": "d0440bf973e4accd1fea80bbf0ef22ac392338ca29b39ada0cbe7708f4fa0efb",
+    "equal": false
+  },
+  "authorityRequirements": {
+    "liveRegistryPath": "_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/owner-role-registry.json",
+    "registryMustMatchBaseline": true,
+    "prdMustMatchBaseline": true,
+    "registryApproval": "One unedited matching numeric-human GitHub registry approval in authority_issue",
+    "workApproval": "One unedited matching numeric-human GitHub authorization approval in approvals_issue",
+    "scope": "Explicit allowed paths/mutation classes with no production/external authority"
+  },
+  "runtimeCodeChanged": false
+}

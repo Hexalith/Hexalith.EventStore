@@ -1,0 +1,31 @@
+{
+  "integrity": "PASS",
+  "technicalQualification": "FAIL",
+  "failedScenarios": [
+    "rabbitmq/app-topic-scopes",
+    "rabbitmq/broker-restart",
+    "rabbitmq/cancellation-backpressure",
+    "rabbitmq/durable-quarantine",
+    "rabbitmq/failed-diversion",
+    "rabbitmq/missing-bindings",
+    "rabbitmq/missing-secret",
+    "rabbitmq/retention-expiry",
+    "rabbitmq/secret-rotation",
+    "rabbitmq/stable-id-deduplication",
+    "rabbitmq/tls-negative",
+    "kafka/app-topic-scopes",
+    "kafka/broker-restart",
+    "kafka/cancellation-backpressure",
+    "kafka/crash-redelivery",
+    "kafka/durable-quarantine",
+    "kafka/failed-diversion",
+    "kafka/missing-bindings",
+    "kafka/missing-secret",
+    "kafka/retention-expiry",
+    "kafka/secret-rotation",
+    "kafka/stable-id-deduplication",
+    "kafka/tls-negative"
+  ],
+  "productionEligibility": "FAIL",
+  "selectedBroker": null
+}

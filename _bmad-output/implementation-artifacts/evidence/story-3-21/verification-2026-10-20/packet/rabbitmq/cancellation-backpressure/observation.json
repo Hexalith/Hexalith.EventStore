@@ -1,0 +1,45 @@
+{
+  "acknowledgedLoss": 4,
+  "boundedSeconds": 1.001574490001076,
+  "broker": "rabbitmq",
+  "cancelled": true,
+  "cancelledEffects": 1,
+  "cancelledMessageId": "690e7671ae4f440ac935261c",
+  "negativeConfirmRejected": false,
+  "publishResults": [
+    {
+      "id": "b528371e7fc14bfe4a287ee4",
+      "status": 204
+    },
+    {
+      "id": "13f894f8729d0fe1a880f716",
+      "status": 204
+    },
+    {
+      "id": "efb6a91e4333319304c32414",
+      "status": 204
+    },
+    {
+      "id": "e6fc25cc807b17a5326c312d",
+      "status": 204
+    },
+    {
+      "id": "3b588b16844a8a3c398fd63d",
+      "status": 204
+    },
+    {
+      "id": "f0c6f06671bb885136cb0e83",
+      "status": 204
+    },
+    {
+      "id": "7ba6417ed19242f27889449b",
+      "status": 204
+    },
+    {
+      "id": "259f2226c5f0d61132047f04",
+      "status": 204
+    }
+  ],
+  "quotaReceipt": null,
+  "scenario": "cancellation-backpressure"
+}

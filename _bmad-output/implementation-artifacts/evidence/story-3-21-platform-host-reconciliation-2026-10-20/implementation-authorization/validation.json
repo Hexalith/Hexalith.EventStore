@@ -1,0 +1,77 @@
+{
+  "checkedUtc": "2026-10-20T12:45:10.549366+00:00",
+  "checks": [
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/next-bmad-build-story-3-21.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/implementation-artifacts/evidence/story-3-21-platform-host-reconciliation-2026-10-20/implementation-authorization/handoff.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "localLinks": {
+    "status": "PASS",
+    "missing": []
+  },
+  "protectedInputComparison": {
+    "status": "PASS",
+    "unexpectedChanges": []
+  },
+  "frozenIntentUnchanged": true,
+  "artifacts": {
+    "_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md": "e65355dd46ff167ca32f9ef5f1178a370cbbe889159f350d365bb3a56e21c34f",
+    "_bmad-output/planning-artifacts/next-bmad-build-story-3-21.md": "40f5efc628f741c52f69a27fb2b8aa7a5c17e6ee395c0d3bae3d0d0c96e340fc"
+  },
+  "authorizationByUser": true,
+  "repositoryPreflight": "FAIL/missing-authority",
+  "runtimeCodeChanged": false,
+  "runtimeExecutionStarted": false,
+  "productionChanged": false,
+  "selectedBroker": null
+}

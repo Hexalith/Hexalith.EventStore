@@ -1,0 +1,8 @@
+{
+  "broker": "rabbitmq",
+  "effectCount": 1,
+  "messageId": "b9c90845093ed89a8651fcf6",
+  "receiptCount": 2,
+  "sameId": true,
+  "scenario": "stable-id-deduplication"
+}

@@ -1,0 +1,20 @@
+{
+  "apiVersion": "dapr.io/v1alpha1",
+  "kind": "Component",
+  "metadata": {
+    "name": "qualification-state"
+  },
+  "scopes": [
+    "qualification-consumer"
+  ],
+  "spec": {
+    "metadata": [
+      {
+        "name": "connectionString",
+        "value": "/tmp/story-3-21-private-pq2h06c3/work/rabbitmq-effects.sqlite"
+      }
+    ],
+    "type": "state.sqlite",
+    "version": "v1"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "allowedEffects": 1,
+  "broker": "rabbitmq",
+  "diagnosticMatched": true,
+  "messageId": "9cb2444e4ea678c2bacdfe61",
+  "negativeExitCode": 1,
+  "negativeExitedNaturally": true,
+  "negativeReady": false,
+  "negativeResourceDirectory": "/tmp/story-3-21-private-pq2h06c3/work/rabbitmq-qualification-publisher-e6fa9e60",
+  "scenario": "missing-secret"
+}

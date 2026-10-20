@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "recordKind": "conversation-planning-and-intent-approval",
+  "recordedUtc": "2026-10-20T12:01:26.352199+00:00",
+  "approvalText": "approve",
+  "approver": "user in this conversation",
+  "configuredUserDisplayName": "Administrator",
+  "identityLimit": "No external role-registry identity or AD-26 issuer role inferred. This is a planning/intent approval receipt, not a Story 9.1 authorization or publication authority record.",
+  "approvedSubjects": {
+    "_bmad-output/planning-artifacts/sprint-change-proposal-2026-10-20.md": {
+      "sha256": "ce96d402a1e69635c8590e9a1cd2700c64ff907986343b2be75998303ddd2cd0",
+      "retainedCopy": "approval/as-approved-sprint-change-proposal-2026-10-20.md"
+    },
+    "_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md": {
+      "sha256": "2435832e51541e64d1e3155de5ead2119448fe82480883f52411706aac1622b2",
+      "retainedCopy": "approval/as-approved-spec-3-21-local-broker-failure-diagnosis.md"
+    },
+    "_bmad-output/planning-artifacts/next-bmad-build-story-3-21.md": {
+      "sha256": "fe124667e22d7ae6d2cf41b98d0feee3f6692d07cd74f744e023e3f03babbe21",
+      "retainedCopy": "approval/as-approved-next-bmad-build-story-3-21.md"
+    }
+  },
+  "esDiagFrozenBlockSha256": "16f0a8b84547de341ecdc664b24594928ceda517e16b13177aa4672d379eeb99",
+  "beforeAmendment": {
+    "_bmad-output/planning-artifacts/prd.md": "fefa6f69b62c30ba0fb14565b32c9d12f1e7fcc5d99ac9e390f1b0b9a6ec6e82",
+    "_bmad-output/planning-artifacts/epics.md": "c9e08b90310a9f45eb98560f66b399abfb0d48522fe7df9530c4a98f1ad1bf9a",
+    "_bmad-output/planning-artifacts/architecture.md": "a4a970a6b0314c1112e15d19bb143c5c626206e48f46b9abd0145f052e90eff4",
+    "_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/.memlog.md": "38cfcee7aa9f550e49d9910378955446713c5de075e190eb3803835daa779994",
+    "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md": "27fb35e7cd8dcf66b00d75f9f50ae6938e511a312065463d0e4daf7a9ad6f92c",
+    "_bmad-output/implementation-artifacts/epic-3-context.md": "bc9f65baa6d1cd1cfeb21500142f0f91c54cb21db9cda16213409636228bca3e"
+  },
+  "scope": "Finalize the moderate course correction, apply approved EventStore planning amendments, approve ES-DIAG intent, and route future repository-owned work.",
+  "correctiveWorkAuthorizationValidated": false,
+  "ad26Ratified": false,
+  "brokerSelected": null,
+  "productionAuthorized": false,
+  "buildStarted": false,
+  "externalMessagesSent": false
+}

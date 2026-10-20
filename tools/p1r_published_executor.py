@@ -55,6 +55,7 @@ PACKAGE_IDS = tuple("Hexalith.EventStore." + name for name in ("Client", "Contra
 REDIS_DIAGNOSTIC = ("local rows={} for _,key in ipairs(redis.call('KEYS','*')) do "
                     "if redis.call('TYPE',key).ok=='hash' then local data=redis.call('HGET',key,'data') "
                     "if data then table.insert(rows,{key,data}) end end end return cjson.encode(rows)")
+PRECONDITION_QUERY = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
 
 
 def write_json(path, value):
@@ -304,6 +305,9 @@ def semantic_delta(package, source):
 
 def persisted_preconditions(rows, raw):
     """Keep exact domain bytes and declare each excluded dynamic field for comparison."""
+    derived = fixture_domain_rows(raw)
+    require([row for row in rows if row["kind"] != "bookkeeping"] == derived,
+            "persisted precondition coordinates differ from raw domain bytes")
     state, semantics, excluded = {}, [], []
     dynamic = {"event": {"messageId", "correlationId", "causationId", "timestamp"},
                "metadata": {"lastModified", "eTag", "etag"}, "snapshot": {"createdAt"}}
@@ -330,8 +334,76 @@ def persisted_preconditions(rows, raw):
     return {"inventory": rows, "state": state, "semantic": semantics, "dynamic_fields": excluded}
 
 
+def fixture_domain_rows(raw):
+    """Derive fixture inventory coordinates from literal keys and persisted contents."""
+    rows = []
+    for key, data in sorted(raw.items()):
+        kind = "metadata" if key.endswith(":metadata") else "snapshot" if key.endswith(":snapshot") else "event" if ":events:" in key else None
+        if kind is None:
+            continue
+        match = re.fullmatch(r"(?:eventstore\|\|(?:AggregateActor\|\|(?P<actor_tenant>tenant-[ab]):counter:fixture\|\|)?)?"
+                             r"(?P<tenant>tenant-[ab]):counter:fixture:(?:metadata|snapshot|events:(?P<sequence>[1-9][0-9]*))", key)
+        require(match is not None, "unexpected persisted fixture domain key")
+        tenant = match['tenant']
+        require(match['actor_tenant'] is None or match['actor_tenant'] == tenant,
+                "persisted actor and state-key tenant differ")
+        value = json.loads(data)
+        if isinstance(value, dict):
+            require(all(value.get(field, expected) == expected for field, expected in
+                        (("tenantId", tenant), ("domain", "counter"), ("aggregateId", "fixture"))),
+                    "persisted payload and state-key identity differ")
+            if 'identity' in value:
+                identity = value['identity']
+                require(isinstance(identity, dict) and all(identity.get(field, expected) == expected for field, expected in
+                            (("tenantId", tenant), ("domain", "counter"), ("aggregateId", "fixture"),
+                             ("actorId", tenant + ":counter:fixture"))), "persisted nested identity and state key differ")
+        sequence = int(match['sequence']) if kind == "event" else value.get("currentSequence" if kind == "metadata" else "sequenceNumber")
+        floor = value.get("retainedFloor", 1) if kind == "metadata" else None
+        require(type(sequence) is int and sequence >= 0 and (kind != "metadata" or type(floor) is int),
+                "persisted fixture coordinates require exact integer types")
+        if kind == "event" and isinstance(value, dict):
+            require(type(value.get("sequenceNumber")) is int and value["sequenceNumber"] == sequence,
+                    "persisted event key and sequence differ")
+        rows.append({"key": key, "tenant": tenant, "kind": kind, "sequence": sequence,
+                     "floor": floor, "sha256": digest(data)})
+    return rows
+
+
+def validate_seed_proofs(rows, raw):
+    """Validate each complete seed proof before discarding any dynamic comparison fields."""
+    require([row for row in rows if row["kind"] != "bookkeeping"] == fixture_domain_rows(raw),
+            "seed coordinates contradict persisted bytes")
+    for tenant, head in (("tenant-a", 12), ("tenant-b", 3)):
+        metadata = [json.loads(raw[row["key"]]) for row in rows if row["tenant"] == tenant and row["kind"] == "metadata"]
+        require(len(metadata) == 1 and type(metadata[0].get("currentSequence")) is int
+                and metadata[0]["currentSequence"] == head and type(metadata[0].get("retainedFloor", 1)) is int
+                and metadata[0].get("retainedFloor", 1) == 1 and metadata[0].get("sourceErasurePending", False) is False,
+                "invalid complete seed metadata")
+        proof = metadata[0].get("sourceProof")
+        if proof is None:
+            continue
+        events = {row["sequence"]: raw[row["key"]] for row in rows if row["tenant"] == tenant and row["kind"] == "event"}
+        require(isinstance(proof, dict) and type(proof.get("codecVersion")) is int and proof["codecVersion"] == 1
+                and proof.get("tenantId") == tenant and proof.get("domain") == "counter" and proof.get("aggregateId") == "fixture"
+                and type(proof.get("headSequence")) is int and proof["headSequence"] == head
+                and type(proof.get("retainedFloor")) is int and proof["retainedFloor"] == 1 and proof.get("erased") is False
+                and isinstance(proof.get("sourceIncarnation"), str)
+                and re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", proof["sourceIncarnation"]) is not None
+                and isinstance(proof.get("cumulativeDigest"), str)
+                and re.fullmatch(r"[0-9a-f]{64}", proof["cumulativeDigest"]) is not None
+                and sorted(events) == list(range(1, head + 1)) and isinstance(proof.get("headMessageId"), str)
+                and bool(proof["headMessageId"].strip()) and proof["headMessageId"] == json.loads(events[head]).get("messageId"),
+                "malformed complete seed source proof")
+        require(all(json.loads(data).get("tenantId") == tenant and json.loads(data).get("domain") == "counter"
+                    and json.loads(data).get("aggregateId") == "fixture" for data in events.values())
+                and source_proof_digest(events, proof) == proof["cumulativeDigest"], "complete seed source proof digest or identity differs")
+
+
 def retained_metadata(values, floor):
     """Refuse malformed positive inputs before changing any retention coordinate."""
+    rows = fixture_domain_rows(values)
+    if floor == 1:
+        validate_seed_proofs(rows, values)
     metadata = [json.loads(data) for key, data in values.items() if "tenant-a" in key and key.endswith(":metadata")]
     snapshots = [json.loads(data) for key, data in values.items() if "tenant-a" in key and key.endswith(":snapshot")]
     events = {int(key.rsplit(":", 1)[1]): data for key, data in values.items() if "tenant-a" in key and ":events:" in key}
@@ -340,6 +412,14 @@ def retained_metadata(values, floor):
             and metadata[0].get("retainedFloor", 1) == floor and snapshots[0].get("sequenceNumber") == 9
             and sorted(events) == list(range(floor, 13)) and secondary[0].get("currentSequence") == 3,
             "malformed retained fixture coordinates")
+    snapshot = snapshots[0]
+    require(type(snapshot.get("sequenceNumber")) is int and type(snapshot.get("snapshotEnvelopeVersion", 0)) is int
+            and snapshot.get("snapshotEnvelopeVersion", 0) in (0, 1) and snapshot.get("state") == {"count": 9}
+            and type(snapshot["state"].get("count")) is int
+            and all(snapshot.get(key, expected) == expected for key, expected in
+                    (("tenantId", "tenant-a"), ("domain", "counter"), ("aggregateId", "fixture")))
+            and ("protectionMetadata" not in snapshot or snapshot["protectionMetadata"].get("state") in (0, "Unprotected")),
+            "malformed retained Counter snapshot envelope or folded state")
     value = metadata[0]
     proof = value.get("sourceProof")
     if proof is not None:
@@ -369,6 +449,9 @@ def source_proof_digest(events, proof):
     chain = bytes.fromhex(digest(seed))
     for sequence in sorted(events):
         event = json.loads(events[sequence])
+        require(all(type(event.get(field)) is int for field in ("sequenceNumber", "globalPosition", "metadataVersion"))
+                and (event.get("payloadVersion") is None or type(event["payloadVersion"]) is int),
+                "source proof event coordinates require exact integer types")
         timestamp = event["timestamp"]
         date = datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         utc = date.astimezone(datetime.timezone.utc)
@@ -1043,7 +1126,7 @@ class Executor:
                          "-At", "-v", "ON_ERROR_STOP=1", "-f", "-"], input_bytes=query.encode(), retain=retain)
 
     def postgres_state(self, container):
-        data = self.postgres_query(container, "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state")
+        data = self.postgres_query(container, PRECONDITION_QUERY)
         return {key: postgres_value(value) for key, value in json.loads(data)}
 
     def postgres_audits(self, container):
@@ -1080,6 +1163,23 @@ class Executor:
         return json.loads(self.run([str(Path(sys.executable).resolve()), "-I", ROOT / "tools/p1r-published-executor.py", "inventory",
                                    "--container", container, "--invocation", self.invocation,
                                    "--backend", self.inputs["operational_profile"]["backend"]]))
+
+    def capture_preconditions(self, rows=None, complete_seed=False):
+        rows = self.inventory() if rows is None else rows
+        inventory_command = self.commands[-1]["id"] if getattr(self, "commands", []) else None
+        raw = self.raw_state(self.redis)
+        provider_command = self.commands[-1]["id"] if getattr(self, "commands", []) else None
+        if complete_seed:
+            domain_keys = {row["key"] for row in rows if row["kind"] != "bookkeeping"}
+            self.last_seed["captured_input"] = {"inventory": rows, "database": self.redis, "invocation": getattr(self, "invocation", None),
+                "commands": {"inventory": inventory_command, "provider": provider_command},
+                "state": {key: {"base64": base64.b64encode(data).decode(), "sha256": digest(data)}
+                          for key, data in raw.items() if key in domain_keys}}
+            validate_seed_proofs(rows, raw)
+        record = persisted_preconditions(rows, raw)
+        record.update(database=self.redis, invocation=getattr(self, "invocation", None),
+                      commands={"inventory": inventory_command, "provider": provider_command})
+        return record, raw
 
     def mutate(self, kind, variant=None):
         """Bounded diagnostics modify only the stopped writer's invocation-owned test fixture."""
@@ -1164,8 +1264,8 @@ class Executor:
         self.last_seed = {"writer": version, "interval": interval, "tenants": {}, "valid": False}
         try:
             rows = self._seed(version, interval, checks, write_alias)
-            raw = self.raw_state(self.redis)
-            self.last_seed["persisted"] = persisted_preconditions(rows, raw)
+            record, raw = self.capture_preconditions(rows, complete_seed=True)
+            self.last_seed["persisted"] = record
             primary, snapshot, events = runtime.stream(rows, "tenant-a")
             secondary, _, second_events = runtime.stream(rows, "tenant-b")
             checks.check("seed-primary-coordinates-exact", primary is not None and primary["sequence"] == 12
@@ -1173,6 +1273,10 @@ class Executor:
             checks.check("seed-secondary-coordinates-exact", secondary is not None and secondary["sequence"] == 3
                          and secondary["floor"] == 1 and sorted(second_events) == [1, 2, 3])
             checks.check("seed-snapshot-coordinate-exact", (None if snapshot is None else snapshot["sequence"]) == (9 if interval == 10 else None))
+            primary_snapshots = [row for row in rows if row["tenant"] == "tenant-a" and row["kind"] == "snapshot"]
+            secondary_snapshots = [row for row in rows if row["tenant"] == "tenant-b" and row["kind"] == "snapshot"]
+            checks.check("seed-snapshot-cardinality-exact", len(primary_snapshots) == (1 if interval == 10 else 0)
+                         and len(secondary_snapshots) == 0)
         except Exception as error:
             # Preserve partial inventories even when startup/probe/byte binding fails.
             self.last_seed["error"] = {"type": type(error).__name__, "reason": str(error)}
@@ -1284,39 +1388,55 @@ class Executor:
         if lane == "missing-event":
             self.mutate("missing", variant)
         before = self.inventory()
+        preconditions, _ = self.capture_preconditions(before)
         return {"before": before, "seed_snapshot": seed_snapshot,
                 "seed_preconditions": self.last_seed,
-                "persisted_preconditions": persisted_preconditions(before, self.raw_state(self.redis)),
+                "persisted_preconditions": preconditions,
                 "retained_fixture": getattr(self, "last_retained_fixture", None)}
 
     def live_case(self, lane, identifier, checks, prepared=None):
+        self.live_progress = dict(prepared or {})
+        try:
+            return self._live_case(lane, identifier, checks, prepared)
+        except Exception as error:
+            error.observations = dict(self.live_progress, **getattr(error, "observations", {}))
+            raise
+
+    def _live_case(self, lane, identifier, checks, prepared=None):
         writer, tail = identifier.split("-to-")
         reader, _, variant = tail.partition("-")
         interval = 10 if lane in ("snapshot-tail", "retained-covered", "metadata-write", "retained-uncovered") else 1000
         prepared = self.prepare_live_case(lane, identifier, checks) if prepared is None else prepared
+        self.live_progress.update(prepared)
         before, seed_snapshot = prepared["before"], prepared["seed_snapshot"]
         self.start_nodes(reader, interval=interval)
         negative = lane in ("retained-uncovered", "missing-event")
         result = self.actor(reader, "tenant-a", 12, "AssertCounter", checks, "primary:")
+        self.live_progress["primary"] = result
         checks.check("primary-expected-hydration", result.get("accepted") is (not negative))
         checks.check("hydration-no-events", result.get("event_count") == 0)
         checks.check("primary-sequence-twelve", result.get("sequence") == 12)
         second = self.actor(reader, "tenant-b", 3, "AssertCounter", checks, "secondary:")
+        self.live_progress["secondary"] = second
         checks.check("second-tenant-hydrates", second.get("accepted") is True)
         append, replay, appended = None, None, None
         if lane == "metadata-write":
             append = self.actor(reader, "tenant-a", 12, "IncrementCounter", checks, "append:")
+            self.live_progress["append"] = append
             checks.check("append-effect-accepted", append.get("accepted") is True and append.get("event_count") == 1)
         self.stop_nodes()
         if lane == "metadata-write" and append.get("accepted") is True and append.get("event_count") == 1:
             appended = self.inventory()
+            self.live_progress["appended_inventory"] = appended
             self.start_nodes(reader, interval=interval)
             replay = self.actor(reader, "tenant-a", 13, "AssertCounter", checks, "restart:")
+            self.live_progress["replay"] = replay
             checks.check("supported-append-restart-rehydrates-thirteen", replay.get("accepted") is True and replay.get("sequence") == 13)
             restarted_second = self.actor(reader, "tenant-b", 3, "AssertCounter", checks, "restart-secondary:")
             checks.check("supported-append-restart-second-tenant-hydrates", restarted_second.get("accepted") is True and restarted_second.get("sequence") == 3)
             self.stop_nodes()
         after = self.inventory()
+        self.live_progress["after"] = after
         before_domain = [row for row in before if row["kind"] != "bookkeeping"]
         after_domain = [row for row in after if row["kind"] != "bookkeeping"]
         prior = {row["key"]: row["sha256"] for row in before if row["kind"] in ("event", "snapshot")}
@@ -1421,13 +1541,19 @@ class Executor:
         if getattr(self, "support_rules", {}).get((lane, identifier)) == "refused":
             expected = "refusal"
         observed, outcome, disposition = {}, "error", "unverified"
+        source_guard_phase = "before-action"
         try:
             self.check_sources()
+            source_guard_phase = "action"
             observed, outcome, disposition = action(checks)
+            source_guard_phase = "after-action"
             self.check_sources()
         except (Exception, KeyboardInterrupt) as error:
             checks.check("execution-completed", False)
-            observed = dict(getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+            observed = dict(observed, **getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+            if source_guard_phase != "action":
+                observed["source_guard_failure"] = source_guard_phase
+            outcome = "error"
             disposition = "unverified"
             self.errors.append(lane + "/" + identifier + ": " + str(error))
             if isinstance(error, KeyboardInterrupt):
@@ -1526,8 +1652,9 @@ class Executor:
         self.seed(version, 1000, checks)
         self.mutate(mutation)
         before = self.inventory()
+        preconditions, _ = self.capture_preconditions(before)
         return {"before": before, "seed_preconditions": self.last_seed,
-                "persisted_preconditions": persisted_preconditions(before, self.raw_state(self.redis))}
+                "persisted_preconditions": preconditions}
 
     def invalid_case(self, identifier, checks, prepared=None):
         version, _, mutation = identifier.partition("-")
@@ -1724,12 +1851,15 @@ class Executor:
         processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "start-writer", self.commands[-1], restored_db, processes)
         before = self.actor(self.candidate, "tenant-a", 12, "AssertCounter", checks, "restored:")
+        primary_command = self.commands[-1]
+        primary_id = self.recovery_command(commands, "replay", primary_command, restored_db)
         self.restore_progress["primary"] = before
         checks.check("fresh-restore-hydrates-twelve", before.get("accepted") is True
                      and before.get("sequence") == 12 and before.get("event_count") == 0)
         append = self.actor(self.candidate, "tenant-a", 12, "IncrementCounter", checks, "append:")
         self.restore_progress["append"] = append
-        self.recovery_command(commands, "append", self.commands[-1], restored_db)
+        append_command = self.commands[-1]
+        append_id = self.recovery_command(commands, "append", append_command, restored_db)
         checks.check("fresh-restore-appends-thirteen", append.get("accepted") is True and append.get("event_count") == 1
                      and append.get("sequence") == 13)
         appended = self.inventory(restored)
@@ -1753,10 +1883,14 @@ class Executor:
                      & {(item["pid"], item["start_ticks"]) for item in restarted_processes})
         replay = self.actor(self.candidate, "tenant-a", 13, "AssertCounter", checks, "restart:")
         self.restore_progress["replay"] = replay
-        self.recovery_command(commands, "replay", self.commands[-1], restored_db)
+        replay_command = self.commands[-1]
+        replay_id = self.recovery_command(commands, "replay", replay_command, restored_db)
         checks.check("fresh-restart-reconstructs-thirteen", replay.get("accepted") is True
                      and replay.get("sequence") == 13 and replay.get("event_count") == 0)
         second = self.actor(self.candidate, "tenant-b", 3, "AssertCounter", checks, "secondary:")
+        secondary_command = self.commands[-1]
+        secondary_id = self.recovery_command(commands, "replay", secondary_command, restored_db)
+        self.restore_progress["secondary"] = second
         checks.check("restored-second-tenant-hydrates-three", second.get("accepted") is True
                      and second.get("sequence") == 3 and second.get("event_count") == 0)
         restarted = self.inventory(restored)
@@ -1774,7 +1908,7 @@ class Executor:
             {row["key"]: row["sha256"] for row in rows}.get(key) == sha256
             for rows in (copied, appended, restarted) for key, sha256 in prior.items()))
         checks.check("restore-second-tenant-unchanged", runtime.domain(source, "tenant-b") == runtime.domain(restarted, "tenant-b"))
-        self.pending_restore = {"schema": runtime.RESTORE_SCHEMA, "id": uuid.uuid4().hex, "role": "candidate",
+        self.pending_restore = {"schema": runtime.RESTORE_SCHEMA_V2, "id": uuid.uuid4().hex, "role": "candidate",
             "scope": "operational", "fixture": self.fixture, "inputs_sha256": self.inputs_sha256,
             "profile": self.inputs["operational_profile"], "packages": {package["id"]: package["archive_sha256"]
                 for package in self.inputs["candidate"]["packages"]}, "tenants": {"primary": "tenant-a", "secondary": "tenant-b"},
@@ -1784,7 +1918,12 @@ class Executor:
                 "appended_sequence": append.get("sequence") if append.get("accepted") is True and append.get("event_count") == 1
                     and appended_metadata is not None and appended_metadata["sequence"] == append.get("sequence")
                     and append.get("sequence") in appended_events else None,
-                "state_after_restart": replay.get("sequence") if replay.get("accepted") is True else None}}
+                "state_after_restart": replay.get("sequence") if replay.get("accepted") is True else None,
+                "restore_checks": checks.checks,
+                "responses": {name: {"command": identity, "output": command.get("output", ""), "observation": observation}
+                    for name, identity, command, observation in (("primary", primary_id, primary_command, before),
+                        ("append", append_id, append_command, append), ("replay", replay_id, replay_command, replay),
+                        ("secondary", secondary_id, secondary_command, second))}}}
         outcome = ("refusal" if before.get("accepted") is False or append.get("accepted") is False or replay.get("accepted") is False
                    else "effect" if before.get("accepted") is True and append.get("accepted") is True
                    and append.get("event_count") == 1 and replay.get("accepted") is True else "error")
@@ -2057,15 +2196,17 @@ class Executor:
             if equal:
                 for branch in ("package", "source"):
                     self.redis, self.redis_port = databases[branch]
+                    reader_start = len(getattr(self, "commands", []))
                     try:
                         paired[branch], outcomes[branch], _ = (self.invalid_case(cases[branch], measured[branch], prepared[branch])
                             if lane == "invalid-evidence" else self.live_case(lane, cases[branch], measured[branch], prepared[branch]))
                     except Exception as error:
                         measured[branch].check("execution-completed", False)
-                        paired[branch] = dict(prepared[branch], error=type(error).__name__, reason=str(error))
+                        paired[branch] = dict(prepared[branch], **getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
                         outcomes[branch] = "error"
                     finally:
                         self.stop_nodes()
+                        paired[branch]["reader_commands"] = [command["id"] for command in getattr(self, "commands", [])[reader_start:]]
             else:
                 for branch in paired.values():
                     branch["dependent_operations"] = "unattempted"
@@ -2087,7 +2228,8 @@ class Executor:
             "scope": "equal successful persisted fixtures; exact bytes retained and dynamic fields explicitly recorded",
             "package": package_semantics, "source": source_semantics, "delta": semantic_delta(package_semantics, source_semantics)}
         return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, \
-            outcomes["source"], "compatible" if all(row["passed"] for row in checks.checks) else "unverified" if not equal else "incompatible"
+            "error" if "error" in outcomes.values() else outcomes["source"], \
+            "unverified" if "error" in outcomes.values() or not equal else "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def failure_case(self, identifier, checks):
         before_shared = self.shared()

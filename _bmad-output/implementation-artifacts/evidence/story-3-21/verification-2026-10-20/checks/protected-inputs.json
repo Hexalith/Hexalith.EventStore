@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--exit-code",
+    "f6b545cd02632f662136d0b4b8e6952baa7afec3",
+    "--",
+    ".github/workflows/ci.yml",
+    ".github/workflows/integration.yml",
+    "references/Hexalith.Builds",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13"
+  ],
+  "endedUtc": "2026-10-20T11:09:21.572423+00:00",
+  "exitCode": 0,
+  "startedUtc": "2026-10-20T11:09:21.555506+00:00",
+  "stderr": "",
+  "stdout": ""
+}

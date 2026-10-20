@@ -1,0 +1,11 @@
+{
+  "allowedEffects": 1,
+  "broker": "kafka",
+  "forbiddenAppMessageId": "f6fc80d458b8ccd5b36bc336",
+  "forbiddenAppStatus": 404,
+  "forbiddenSubscriptions": 0,
+  "forbiddenTopicMessageId": "593b0aba04258215bcd6cc90",
+  "forbiddenTopicStatus": 403,
+  "messageId": "dc033f8699933d4748e189d4",
+  "scenario": "app-topic-scopes"
+}

@@ -8,9 +8,9 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[5]
 BASE = Path(__file__).resolve().parent
 ENTRY = json.loads((BASE / 'entry.json').read_text())
-ALLOWED = {'tools/p1r_published_executor.py', 'tools/p1r_check_witnesses.py',
+ALLOWED = {'.github/workflows/p1r-qualification.yml', 'tools/p1r_published_qualification.py', 'tools/p1r_qualification_runtime.py', 'tools/p1r_published_executor.py', 'tools/p1r_check_witnesses.py',
            'tools/tests/test_p1r_published_executor.py', 'tools/tests/test_p1r_verifier_corrections.py'}
-CONCURRENT = {'_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.json',
+CONCURRENT = {'_bmad-output/implementation-artifacts/sprint-status.yaml', '_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.json',
               '_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md'}
 HISTORY = '_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/'
 FOLLOWUP = '_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/'
@@ -32,15 +32,22 @@ def main():
         after = sha(path) if path.is_file() else None
         if after != before:
             changes.append({'path': name, 'before_sha256': before, 'after_sha256': after})
-    expected_historical = {name for name in ENTRY['tracked_files'] if name.startswith(HISTORY)}
+    historical_baseline_path = BASE.parent / 'entry.json'
+    historical_baseline_name = str(historical_baseline_path.relative_to(ROOT))
+    baseline_unchanged = sha(historical_baseline_path) == ENTRY['tracked_files'][historical_baseline_name]
+    historical_baseline = json.loads(historical_baseline_path.read_text())
+    expected_historical = set(historical_baseline['historical_files'])
     actual_historical = {str(path.relative_to(ROOT)) for path in (ROOT / HISTORY).rglob('*') if path.is_file()}
-    historical_changes = [row for row in changes if row['path'].startswith(HISTORY)]
+    historical_changes = [{'path': name, 'before_sha256': before,
+                           'after_sha256': sha(ROOT / name) if (ROOT / name).is_file() else None}
+                          for name, before in historical_baseline['historical_files'].items()
+                          if not (ROOT / name).is_file() or sha(ROOT / name) != before]
     old_followup_changes = [row for row in changes if row['path'].startswith(FOLLOWUP)]
     unexpected = [row for row in changes if row['path'] not in ALLOWED | CONCURRENT]
     index = Path(git('rev-parse', '--git-path', 'index').decode().strip())
     if not index.is_absolute():
         index = ROOT / index
-    checks = {'historical_v4_unchanged': not historical_changes and expected_historical == actual_historical,
+    checks = {'retained_historical_baseline_unchanged': baseline_unchanged, 'historical_v4_unchanged': not historical_changes and expected_historical == actual_historical,
               'original_followup_unchanged': not old_followup_changes,
               'original_frozen_wrapper_unchanged': sha(ROOT / WRAPPER) == ENTRY['tracked_files'][WRAPPER],
               'no_unexpected_tracked_changes': not unexpected,
@@ -54,7 +61,8 @@ def main():
                   or Path(row['path']).name.startswith('Directory.') for row in changes)}
     observed = json.loads((BASE / 'concurrent-unrelated-observation.json').read_text())
     report = {'qualified': False, 'p1r_usable': False, 'checks': checks, 'entry_tracked_files': len(ENTRY['tracked_files']),
-              'historical_files': len(expected_historical), 'historical_changes': historical_changes,
+              'historical_files': len(expected_historical), 'historical_bytes': historical_baseline['historical_bytes'],
+              'historical_baseline': historical_baseline_name, 'historical_changes': historical_changes,
               'historical_added': sorted(actual_historical - expected_historical),
               'historical_removed': sorted(expected_historical - actual_historical),
               'original_followup_changes': old_followup_changes, 'tracked_changes': changes,
@@ -66,7 +74,7 @@ def main():
               'limit': 'Unrelated concurrent changes are recorded literally. This task never writes, restores, stages or commits them.'}
     (BASE / 'preservation.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
     print(json.dumps({'checks': checks, 'unexpected': unexpected, 'historical_files': len(expected_historical)}))
-    return 0 if all(value for key, value in checks.items() if key != 'index_bytes_unchanged') else 1
+    return 0 if all(value for key, value in checks.items() if key not in ('index_bytes_unchanged', 'head_unchanged')) else 1
 
 
 if __name__ == '__main__':

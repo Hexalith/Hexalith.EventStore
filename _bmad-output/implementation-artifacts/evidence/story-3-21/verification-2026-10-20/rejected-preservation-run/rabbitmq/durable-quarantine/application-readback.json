@@ -1,0 +1,132 @@
+{
+  "commandReceipt": 105,
+  "kind": "persisted-application-http-readback",
+  "ledger": [
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "receipt",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "receivedUtc": "2026-10-20T10:54:05.279745+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "receipt",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "receivedUtc": "2026-10-20T10:54:05.686833+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "receipt",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "receivedUtc": "2026-10-20T10:54:06.280930+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "635fb0a8a0c2018f6555faa1",
+      "kind": "receipt",
+      "messageId": "635fb0a8a0c2018f6555faa1",
+      "receivedUtc": "2026-10-20T10:54:14.845007+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:17.057509+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:17.261216+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:17.467775+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:17.478035+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:17.682047+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:17.886141+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "receipt",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "receivedUtc": "2026-10-20T10:54:25.654954+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "effect",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "persistedUtc": "2026-10-20T10:54:06.283867+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "635fb0a8a0c2018f6555faa1",
+      "kind": "effect",
+      "messageId": "635fb0a8a0c2018f6555faa1",
+      "persistedUtc": "2026-10-20T10:54:14.850380+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "963f5bec9a402ecd6a3ccdfc",
+      "kind": "effect",
+      "messageId": "963f5bec9a402ecd6a3ccdfc",
+      "persistedUtc": "2026-10-20T10:54:25.658182+00:00",
+      "route": "/quarantine"
+    }
+  ],
+  "stateComponent": "qualification-state",
+  "stateReadback": {
+    "etag": "4c5f52c8-712a-42ed-9ade-6f6f91f781e8",
+    "status": 200,
+    "value": [
+      {
+        "id": "9e1accbdef965602c940b8c1",
+        "kind": "effect",
+        "messageId": "9e1accbdef965602c940b8c1",
+        "persistedUtc": "2026-10-20T10:54:06.283867+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "635fb0a8a0c2018f6555faa1",
+        "kind": "effect",
+        "messageId": "635fb0a8a0c2018f6555faa1",
+        "persistedUtc": "2026-10-20T10:54:14.850380+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "963f5bec9a402ecd6a3ccdfc",
+        "kind": "effect",
+        "messageId": "963f5bec9a402ecd6a3ccdfc",
+        "persistedUtc": "2026-10-20T10:54:25.658182+00:00",
+        "route": "/quarantine"
+      }
+    ]
+  }
+}

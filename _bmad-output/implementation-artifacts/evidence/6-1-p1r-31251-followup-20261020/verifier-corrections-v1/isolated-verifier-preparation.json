@@ -1,0 +1,55 @@
+{
+  "scope": "task-owned ordinary verifier checkout for bounded controls only; no root Git mutation",
+  "checkout": "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc",
+  "started_utc": "2026-10-20T10:29:03.329837+00:00",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--no-hardlinks",
+        "--no-recurse-submodules",
+        "--quiet",
+        "/home/administrator/projects/hexalith/eventstore",
+        "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--no-hardlinks",
+        "--no-recurse-submodules",
+        "--quiet",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds",
+        "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc/references/Hexalith.Builds"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--no-hardlinks",
+        "--no-recurse-submodules",
+        "--quiet",
+        "/home/administrator/projects/hexalith/eventstore/references/Hexalith.AI.Tools",
+        "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc/references/Hexalith.AI.Tools"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "finished_utc": "2026-10-20T10:29:16.983120+00:00",
+  "source_snapshot": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/final-verifier-sources-59b3d1434d094202870a052a1e773cc8",
+  "new_evidence_base": "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1",
+  "new_head": "f6b545cd02632f662136d0b4b8e6952baa7afec3",
+  "new_builds_head": "6a38cb0f2e74977d7457fc59e6af79457ed8196a",
+  "new_ai_head": "3f194e17174994d308ec84af9ee2b5aa68674d0d"
+}

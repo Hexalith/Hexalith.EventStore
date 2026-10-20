@@ -1,0 +1,43 @@
+{
+  "commandReceipt": 65,
+  "kind": "persisted-application-http-readback",
+  "ledger": [
+    {
+      "id": "15b84ae183ce04fbe30726e0",
+      "kind": "receipt",
+      "messageId": "15b84ae183ce04fbe30726e0",
+      "route": "/events"
+    },
+    {
+      "id": "15b84ae183ce04fbe30726e0",
+      "kind": "receipt",
+      "messageId": "15b84ae183ce04fbe30726e0",
+      "route": "/events"
+    },
+    {
+      "id": "15b84ae183ce04fbe30726e0",
+      "kind": "receipt",
+      "messageId": "15b84ae183ce04fbe30726e0",
+      "route": "/events"
+    },
+    {
+      "id": "15b84ae183ce04fbe30726e0",
+      "kind": "effect",
+      "messageId": "15b84ae183ce04fbe30726e0",
+      "route": "/events"
+    }
+  ],
+  "stateComponent": "qualification-state",
+  "stateReadback": {
+    "etag": "e9df2efb-ff2a-4904-99a6-ce04b8cbd5ea",
+    "status": 200,
+    "value": [
+      {
+        "id": "15b84ae183ce04fbe30726e0",
+        "kind": "effect",
+        "messageId": "15b84ae183ce04fbe30726e0",
+        "route": "/events"
+      }
+    ]
+  }
+}

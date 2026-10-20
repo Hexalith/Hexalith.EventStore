@@ -1441,10 +1441,10 @@ def finalize_isolation_receipts(output, isolation_output, selection):
         path = Path(name)
         require(path.parent == output/"receipts", "isolation receipt escaped executor output")
         receipt = parse_json(regular(path))
-        if receipt.get("schema") not in (LANE_RECEIPT_SCHEMA, runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA):
+        if receipt.get("schema") not in (LANE_RECEIPT_SCHEMA, runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2, runtime.CLEANUP_SCHEMA):
             continue
         receipt.setdefault("execution_evidence", {})["isolation"] = reference
-        if receipt["schema"] == runtime.RESTORE_SCHEMA:
+        if receipt["schema"] in (runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2):
             receipt["cleanup"].setdefault("execution_evidence", {})["isolation"] = reference
         if receipt["schema"] == LANE_RECEIPT_SCHEMA:
             receipt["output_sha256"] = digest(preparation.canonical(receipt["execution_evidence"]))
@@ -1658,12 +1658,12 @@ def receipt_outcome(receipt, context):
         outcome = lane_outcome(receipt)
         bind_lane(receipt, outcome, context)
         return ("scenarios" if receipt["lane"] in SCENARIOS else "additions"), receipt["lane"], outcome
-    if schema in (runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
+    if schema in (runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
         selection = (context.get("inputs") or {}).get("value", {})
         require(selection.get("candidate", {}).get("version") in ISOLATION_VERSIONS
                 and isinstance(receipt["execution_evidence"],dict)
                 and set(receipt["execution_evidence"]) == {"isolation"}, "recovery isolation extension differs from contract")
-    if schema == runtime.RESTORE_SCHEMA:
+    if schema in (runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2):
         if "execution_evidence" in receipt.get("cleanup", {}):
             require(receipt.get("execution_evidence") == receipt["cleanup"]["execution_evidence"],
                     "restore isolation reference differs from contributing cleanup")

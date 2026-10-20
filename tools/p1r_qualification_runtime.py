@@ -17,11 +17,13 @@ from __future__ import annotations
 import re
 import signal
 import subprocess
+from pathlib import Path
 
 import p1r_qualification as preparation
 from p1r_qualification import canonical, digest, members, require, validate_times
 
 RESTORE_SCHEMA = "hexalith.p1r.restore-receipt.v1"
+RESTORE_SCHEMA_V2 = "hexalith.p1r.restore-receipt.v2"
 CLEANUP_SCHEMA = "hexalith.p1r.cleanup-receipt.v1"
 RECEIPT_SCOPES = ("tooling-synthetic", "operational")
 FLOOR, SNAPSHOT, HEAD, APPEND = 5, 9, 12, 13
@@ -34,6 +36,11 @@ RESTORE_CHECKS = ("fresh-restored-database", "restored-equals-backup-source", "r
                   "reconstructed-head-twelve", "appended-thirteen", "retained-floor-preserved",
                   "prior-event-hashes-preserved", "snapshot-preserved", "second-tenant-preserved", "fresh-restart",
                   "restart-reconstructs-thirteen", "owned-cleanup-complete")
+ACTUAL_RESTORE_CHECKS = ("backup-nonempty", "fresh-restore-full-inventory-identical",
+    "fresh-restore-original-bytes-and-proof-identical", "fresh-restore-hydrates-twelve", "fresh-restore-appends-thirteen",
+    "fresh-append-persisted-head-and-event-thirteen", "fresh-restart-processes-distinct", "fresh-restart-reconstructs-thirteen",
+    "restored-second-tenant-hydrates-three", "restored-floor-five", "restored-head-thirteen", "restored-snapshot-nine",
+    "restored-event-sequence-set-exact", "restore-prior-event-and-snapshot-bytes-preserved", "restore-second-tenant-unchanged")
 CLEANUP_CHECKS = ("first-attempt-targets-every-owned", "repeated-cleanup", "later-attempts-continue",
                   "no-owned-remaining", "no-cleanup-errors", "shared-discovery-complete", "shared-preserved")
 RESTORE_KEYS = ("schema", "id", "role", "scope", "fixture", "inputs_sha256", "profile", "packages", "tenants", "commands",
@@ -184,6 +191,48 @@ def domain(rows, tenant):
     return [row for row in rows if row["tenant"] == tenant and row["kind"] != "bookkeeping"]
 
 
+def actual_restore_observations(receipt, commands):
+    """Derive future recovery success from literal responses and every executed restore check."""
+    import json
+    observed = receipt["observations"]
+    actual = observed.get("restore_checks")
+    require(isinstance(actual, list) and actual, "missing actual restore checks")
+    preparation.validate_counter(preparation.checks_counter(actual), actual)
+    by_id = {check["id"]: check["passed"] for check in actual}
+    require(set(ACTUAL_RESTORE_CHECKS) <= set(by_id), "future recovery drops a required actual restore check")
+    responses = observed.get("responses")
+    members(responses, ("primary", "append", "replay", "secondary"), "missing literal restore responses")
+    require(inventories_command(receipt, "restored") < responses["primary"]["command"]
+            < responses["append"]["command"] < responses["replay"]["command"] < responses["secondary"]["command"]
+            < inventories_command(receipt, "restarted"), "literal restore response order differs from execution")
+    passed = []
+    for name, tenant, expected, kind, events in (("primary", receipt["tenants"]["primary"], 12, "AssertCounter", 0),
+            ("append", receipt["tenants"]["primary"], 13, "IncrementCounter", 1),
+            ("replay", receipt["tenants"]["primary"], 13, "AssertCounter", 0),
+            ("secondary", receipt["tenants"]["secondary"], 3, "AssertCounter", 0)):
+        item = responses[name]
+        members(item, ("command", "output", "observation"), "invalid literal restore response")
+        command = commands.get(item["command"])
+        require(command is not None and command["database"] == receipt["databases"]["restored"]
+                and command["step"] == ("append" if name == "append" else "replay")
+                and isinstance(item["output"], str) and digest(item["output"].encode()) == command["output_sha256"],
+                "restore response differs from its executed command")
+        argv = command["argv"]
+        require(len(argv) == 8 and argv[0] == "dotnet" and Path(argv[1]).name == "Probe.dll"
+                and argv[2] == "actor" and argv[4:6] == [tenant, "fixture"] and argv[7] == kind
+                and argv[6] == str(12 if name == "append" else expected), "restore response actor command substituted")
+        output = json.loads(item["output"])
+        require(output.get("instrumentation") == "p1r-executed-checks-v1"
+                and output.get("observation") == item["observation"], "literal restore observation substituted")
+        preparation.validate_counter(output["measurement"]["assertions"], output["measurement"]["checks"])
+        response = item["observation"]
+        passed.append(command["exit_code"] == 0 and response.get("accepted") is True
+                      and type(response.get("sequence")) is int and response["sequence"] == expected
+                      and type(response.get("event_count")) is int and response["event_count"] == events
+                      and all(check["passed"] for check in output["measurement"]["checks"]))
+    return all(passed) and all(by_id.values())
+
+
 def restore_observations(receipt, commands, inventories):
     source_db, restored_db = receipt["databases"]["source"], receipt["databases"]["restored"]
     primary, secondary = receipt["tenants"]["primary"], receipt["tenants"]["secondary"]
@@ -233,9 +282,12 @@ def restore_observations(receipt, commands, inventories):
     reconstructed = (observations["state_after_restart"] == APPEND and restart_id is not None
                      and any(restart_id < replay < restarted_inventory for replay in replays)
                      and domain(restarted, primary) == domain(appended, primary))
-    return checks_from((fresh, restored == source, retained_shape, observations["state_before_append"] == HEAD, thirteen,
+    checks = checks_from((fresh, restored == source, retained_shape, observations["state_before_append"] == HEAD, thirteen,
                         floor, prior, snapshot, second, fresh_restart, reconstructed,
                         receipt["cleanup"]["execution"] == "passed"), RESTORE_CHECKS)
+    if receipt["schema"] == RESTORE_SCHEMA_V2:
+        checks.append({"id": "all-actual-restore-checks-and-responses", "passed": actual_restore_observations(receipt, commands)})
+    return checks
 
 
 def inventories_command(receipt, name):
@@ -244,7 +296,8 @@ def inventories_command(receipt, name):
 
 def restore_outcome(receipt):
     """Validate a fresh-database restore/append/restart receipt and return its derived outcome."""
-    validate_header(receipt, RESTORE_KEYS, RESTORE_SCHEMA, "restore receipt members differ")
+    require(receipt.get("schema") in (RESTORE_SCHEMA, RESTORE_SCHEMA_V2), "unsupported restore receipt schema")
+    validate_header(receipt, RESTORE_KEYS, receipt["schema"], "restore receipt members differ")
     require(receipt["role"] in ROLES, "unknown restore role")
     require(isinstance(receipt["packages"], dict) and all(isinstance(k, str) and PACKAGE_ID.fullmatch(k)
                                                           and isinstance(v, str) and HEX64.fullmatch(v)
@@ -273,10 +326,11 @@ def restore_outcome(receipt):
     for name in ("restored", "appended", "restarted"):
         inventories[name] = validate_inventory(receipt["inventories"][name], commands, restored_db)
     require(restores[0]["id"] < inventories_command(receipt, "restored"), "restored inventory precedes its restore")
-    members(receipt["observations"], ("state_before_append", "appended_sequence", "state_after_restart"),
+    scalar_keys = ("state_before_append", "appended_sequence", "state_after_restart")
+    members(receipt["observations"], scalar_keys + (("responses", "restore_checks") if receipt["schema"] == RESTORE_SCHEMA_V2 else ()),
             "invalid replay observations")
-    for value in receipt["observations"].values():
-        integer(value, "invalid replay observations", optional=True)
+    for key in scalar_keys:
+        integer(receipt["observations"][key], "invalid replay observations", optional=True)
     cleanup = cleanup_outcome(receipt["cleanup"])
     require(receipt["cleanup"]["scope"] == receipt["scope"]
             and receipt["cleanup"]["inputs_sha256"] == receipt["inputs_sha256"]

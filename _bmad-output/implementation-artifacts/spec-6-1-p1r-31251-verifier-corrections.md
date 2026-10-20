@@ -2,7 +2,7 @@
 title: '6.1 P1R 3.125.1 bounded verifier corrections V1–V3'
 type: 'bugfix'
 created: '2026-10-20'
-status: 'in-review'
+status: 'done'
 approved: '2026-10-20'
 approval_decision: 'explicit user instruction implementing retained proposal V1–V3'
 route: 'dispatch'
@@ -95,3 +95,15 @@ The coordinator retains entry hashes and performs bounded runtime discovery cont
 - `python3 -m unittest discover -s tools/tests -p 'test_p1r_published_executor.py'` — all executor regressions pass; run any new focused module explicitly.
 - Relevant independent witness/qualification tests if their validation paths change.
 - `git diff --check` — no whitespace errors in modified source/tests.
+
+## Final literal-key correction
+
+The final retained V4 byte control exposed a parser that accepted only shortened fake fixture keys. Both executor and independent witness parsing now admit the actual `eventstore||AggregateActor||<actor-id>||<state-key>` layout and require matching actor/state/payload tenant identity. Three new regressions cover literal keys, mismatches and supported simple fixture forms. The failed construction attempt and invalidated runtime attempt remain retained; frozen intent is unchanged.
+
+All 17 review findings were fixed in their grouped verifier patches. No deferred implementation finding remains. This status does not accept qualification, Story 6.4, owner gates or conformance.
+
+## Completion evidence
+
+Final focused suites passed: 184 executor, 31 corrections and 68 published-qualification tests. The unchanged preparation suite passed 54 tests in the isolated verifier checkout after a retained shared-checkout failure; the retained narrow SIGINT rerun passed. Final literal V4 fixture construction reproduced both new controls byte-for-byte. Final bounded live controls passed 70/70 positive restore and 54/54 negative refusal checks; independent v2 recovery validation passed 13/13 and executor cleanup passed 7/7. The verified owned lock reproduced Dapr registration deadlines with tenant A12/B-first-append refusal. Historical V4 causality remains unresolved.
+
+All six runtime invocations and their cleanup proofs are retained. Whole-host preservation failed on attempts 4–6 due to changes outside owned identities; no container was filtered or altered to repair that result. This task performed no staging, commit, push, publication, production-runtime/dependency change or full qualification matrix. Concurrent external commit f6b545cd02632f662136d0b4b8e6952baa7afec3 absorbed earlier task files; it remains untouched. A separately named qualification still requires exclusive host/repository ownership, full required lanes, independent import, conformance and owner decisions. See `evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/README.md`.

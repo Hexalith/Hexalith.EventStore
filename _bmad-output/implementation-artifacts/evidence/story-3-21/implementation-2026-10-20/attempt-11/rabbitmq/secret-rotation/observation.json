@@ -1,0 +1,6 @@
+{
+  "blockedBy": "sidecar exited during readiness; inspect retained process log",
+  "broker": "rabbitmq",
+  "failureClass": "observed-scenario-failure",
+  "scenario": "secret-rotation"
+}

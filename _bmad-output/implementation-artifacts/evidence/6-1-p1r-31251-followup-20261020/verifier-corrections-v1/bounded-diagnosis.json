@@ -537,7 +537,7 @@
       "lock_released_utc": null
     }
   ],
-  "historical_cause": "V4 lacked SQLite/lock/IO samples; historical root cause remains unproven. Controlled lock observations establish a mechanism only.",
+  "historical_cause": "V4 lacked SQLite/lock/IO samples; historical root cause remains unproven. This invocation did not reproduce registration deadlines.",
   "method_limit": "SQLite rows are read through mode=ro/query_only; file hashes and /proc samples are observations over time, not an atomic database backup.",
   "profile": {
     "dapr_version": "1.18.2",
@@ -622,5 +622,6 @@
     },
     "compatibility": "compatible",
     "execution": "passed"
-  }
+  },
+  "lock_control_limit": "The first in-process lock control did not verify contention; renewal timestamps continued to advance and no registration deadlines occurred. Its 32 passing seed checks are retained, and it supplies no contention-mechanism proof. A separately named owned-process control is prepared."
 }

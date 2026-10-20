@@ -9,6 +9,11 @@
 # same CRLF drift silently invalidates the canonical subject on a clean worktree. Python sources
 # carried only `text=auto`, which leaves the working-tree ending to the editor.
 *.py text eol=lf
+# Story 3.21 binds candidate and retained packet bytes by SHA-256.
+deploy/dapr/qualification/** text eol=lf
+.github/workflows/dapr-broker-qualification.yml text eol=lf
+_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/** -text
+_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/** -text
 commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.
 .husky/* text eol=lf

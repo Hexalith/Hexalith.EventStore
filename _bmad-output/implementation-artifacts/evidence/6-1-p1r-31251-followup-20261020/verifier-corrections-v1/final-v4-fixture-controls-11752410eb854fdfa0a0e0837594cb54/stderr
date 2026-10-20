@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+  File "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/construct_v4_controls.py", line 35, in main
+    worker.mutate('retained', variant)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_published_executor.py", line 1177, in mutate
+    original = retained_metadata(values, 1)
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_published_executor.py", line 391, in retained_metadata
+    rows = fixture_domain_rows(values)
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_published_executor.py", line 345, in fixture_domain_rows
+    require(match is not None, "unexpected persisted fixture domain key")
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 65, in require
+    raise InvalidPacket(reason)
+p1r_qualification.InvalidPacket: unexpected persisted fixture domain key

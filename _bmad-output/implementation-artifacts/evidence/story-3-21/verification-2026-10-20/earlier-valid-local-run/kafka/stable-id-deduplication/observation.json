@@ -1,0 +1,8 @@
+{
+  "broker": "kafka",
+  "effectCount": 1,
+  "messageId": "5cf27899d4e7329ce2d497e1",
+  "receiptCount": 2,
+  "sameId": true,
+  "scenario": "stable-id-deduplication"
+}

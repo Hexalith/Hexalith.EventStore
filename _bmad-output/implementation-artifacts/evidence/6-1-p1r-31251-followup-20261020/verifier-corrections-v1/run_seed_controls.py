@@ -31,7 +31,7 @@ def main():
     report = {'scope': 'bounded controls only; no qualification', 'qualified': False, 'p1r_usable': False,
               'started_utc': stamp(), 'source_root': str(SOURCE), 'errors': []}
     before = inventory(); write_json(invocation / 'whole-host-before.json', before)
-    command = ['python3', str(BASE / 'seed_controls.py'), '--out', str(invocation / 'runtime'), '--source-root', str(SOURCE)]
+    command = ['python3', str(BASE / 'seed_controls.py'), '--out', str(invocation / 'runtime'), '--source-root', str(SOURCE), *sys.argv[1:]]
     report['command'] = command
     runner = None
     try:

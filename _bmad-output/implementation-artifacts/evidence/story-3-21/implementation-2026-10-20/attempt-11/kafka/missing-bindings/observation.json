@@ -1,0 +1,6 @@
+{
+  "blockedBy": "command docker exited 125: 7c1c857cd48e188443a5f3c707957923389712e6a58cf839ec15ec34df75b584\ndocker: Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:49793 -> 127.0.0.1:0: /forwards/expose returned unexpected status: 500\n\nRun 'docker run --help' for more information\n",
+  "broker": "kafka",
+  "failureClass": "infrastructure-blocker",
+  "scenario": "missing-bindings"
+}

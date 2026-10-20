@@ -534,7 +534,7 @@ def validate_reminder_windows(observation, successful_http, configurations, chec
     require(observation.get('due') == windows[-1]['due_utc'], 'reminder final due differs from retained intent')
 
 
-def validate_persisted_preconditions(record, inventories, commands):
+def validate_persisted_preconditions(record, inventories, commands, reader_commands=(), normalize=True):
     """Bind future fixture prerequisites to exact provider bytes and explicit exclusions."""
     import json
     rows, state = record.get('inventory'), record.get('state')
@@ -545,19 +545,68 @@ def validate_persisted_preconditions(record, inventories, commands):
         require(digest(data) == item['sha256'], 'seed precondition bytes changed')
         raw[key] = data
     require(set(raw) == {item['key'] for item in rows if item['kind'] != 'bookkeeping'}, 'seed preconditions omit domain bytes')
-    providers = []
-    for command in commands:
-        if command.get('exit_code') != 0 or command.get('output') is None:
+    by_id = {command['id']: command for command in commands}
+    binding = record.get('commands', {})
+    inventory, provider = (by_id.get(binding.get(name)) for name in ('inventory', 'provider'))
+    database, invocation = record.get('database'), record.get('invocation')
+    require(isinstance(database, str) and database and isinstance(invocation, str) and invocation
+            and inventory is not None and provider is not None and inventory['id'] < provider['id']
+            and inventory.get('exit_code') == provider.get('exit_code') == 0,
+            'seed prerequisites lack ordered branch inventory/provider commands')
+    argv = inventory['argv']
+    require('inventory' in argv and '--container' in argv and argv[argv.index('--container') + 1] == database
+            and '--invocation' in argv and argv[argv.index('--invocation') + 1] == invocation
+            and '--backend' in argv and argv[argv.index('--backend') + 1] == 'state.postgresql'
+            and json.loads(inventory.get('output', 'null')) == rows
+            and digest(inventory['output'].encode()) == inventory.get('output_sha256'),
+            'seed inventory command target or literal output substituted')
+    query = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
+    require(provider.get('argv') == ['docker', 'exec', '-i', database, 'psql', '-U', 'postgres', '-d', 'eventstore',
+                                    '-At', '-v', 'ON_ERROR_STOP=1', '-f', '-']
+            and provider.get('provider_sql') == query and provider.get('input_sha256') == digest(query.encode())
+            and provider.get('input_bytes') == len(query.encode()) and isinstance(provider.get('output'), str)
+            and digest(provider['output'].encode()) == provider.get('output_sha256'),
+            'seed provider is not the bound readonly branch query')
+    pairs = json.loads(provider['output'])
+    require(isinstance(pairs, list) and all(isinstance(item, list) and len(item) == 2 for item in pairs),
+            'seed provider output is not literal state rows')
+    provider_raw = {key: base64.b64decode(item, validate=True) if isinstance(item, str) else canonical(item) for key, item in pairs}
+    require(all(provider_raw.get(key) == data for key, data in raw.items()), 'seed preconditions differ from retained provider bytes')
+    require(all(identity in by_id and provider['id'] < identity for identity in reader_commands),
+            'seed prerequisites follow a dependent reader command')
+    import re
+    derived = []
+    for key, data in sorted(provider_raw.items()):
+        kind = 'metadata' if key.endswith(':metadata') else 'snapshot' if key.endswith(':snapshot') else 'event' if ':events:' in key else None
+        if kind is None:
             continue
-        try:
-            value = json.loads(command['output'])
-            if isinstance(value, list) and all(isinstance(item, list) and len(item) == 2 for item in value):
-                providers.append({key: base64.b64decode(item, validate=True) if isinstance(item, str) else canonical(item)
-                                  for key, item in value})
-        except (ValueError, TypeError, binascii.Error):
-            pass
-    require(any(all(provider.get(key) == data for key, data in raw.items()) for provider in providers),
-            'seed preconditions differ from retained provider bytes')
+        match = re.fullmatch(r'(?:eventstore\|\|(?:AggregateActor\|\|(?P<actor_tenant>tenant-[ab]):counter:fixture\|\|)?)?'
+                             r'(?P<tenant>tenant-[ab]):counter:fixture:(?:metadata|snapshot|events:(?P<sequence>[1-9][0-9]*))', key)
+        require(match is not None, 'seed provider contains an unexpected domain key')
+        tenant = match['tenant']
+        require(match['actor_tenant'] is None or match['actor_tenant'] == tenant,
+                'seed provider actor and state-key tenant differ')
+        value = json.loads(data)
+        if isinstance(value, dict):
+            require(all(value.get(field, expected) == expected for field, expected in
+                        (('tenantId', tenant), ('domain', 'counter'), ('aggregateId', 'fixture'))),
+                    'seed provider payload and state-key identity differ')
+            if 'identity' in value:
+                identity = value['identity']
+                require(isinstance(identity, dict) and all(identity.get(field, expected) == expected for field, expected in
+                            (('tenantId', tenant), ('domain', 'counter'), ('aggregateId', 'fixture'),
+                             ('actorId', tenant + ':counter:fixture'))), 'seed provider nested identity and state key differ')
+        sequence = int(match['sequence']) if kind == 'event' else value.get('currentSequence' if kind == 'metadata' else 'sequenceNumber')
+        floor = value.get('retainedFloor', 1) if kind == 'metadata' else None
+        require(type(sequence) is int and sequence >= 0 and (kind != 'metadata' or type(floor) is int),
+                'seed provider coordinates are not exact integers')
+        require(kind != 'event' or not isinstance(value, dict) or type(value.get('sequenceNumber')) is int
+                and value['sequenceNumber'] == sequence, 'seed provider event key and sequence differ')
+        derived.append({'key': key, 'tenant': tenant, 'kind': kind, 'sequence': sequence, 'floor': floor, 'sha256': digest(data)})
+    require([row for row in rows if row['kind'] != 'bookkeeping'] == derived,
+            'seed inventory coordinates contradict raw keys and values')
+    if not normalize:
+        return
     semantic, dynamic = [], []
     exclusions = {'event': ('causationId', 'correlationId', 'messageId', 'timestamp'),
                   'metadata': ('eTag', 'etag', 'lastModified'), 'snapshot': ('createdAt',)}
@@ -681,6 +730,16 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
                     [item for item in after if item['kind'] != 'bookkeeping']}
     observed_sets = [(observation, '')]
     future_preconditions = observation.get('comparison', {}).get('preconditions')
+    corrected_source = any(Path(path).name == 'p1r_published_executor.py' and any(
+        isinstance(node, ast.ClassDef) and node.name == 'SeedFailure' for node in ast.walk(retained_tree(content)))
+        for path, content in retained.items())
+    seeded_checkout = lane == 'checkout' and row['id'] in ('full-replay', 'snapshot-tail', 'retained-covered',
+        'retained-uncovered', 'missing-event', 'metadata-write', 'invalid-evidence')
+    executor_paths = [path for path in sources if Path(path).name == 'p1r_published_executor.py']
+    require(not seeded_checkout or all(path in retained for path in executor_paths),
+            'seeded checkout drops its bound retained executor source')
+    require(not (corrected_source and seeded_checkout) or isinstance(future_preconditions, dict),
+            'source-bound corrected executor drops required seed prerequisite gate')
     require('source-package-seed-preconditions-successful' not in checks or isinstance(future_preconditions, dict),
             'source comparison drops future seed prerequisites')
     if lane == 'checkout' and future_preconditions is not None:
@@ -690,20 +749,55 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
             seed = observed.get('seed_preconditions', {})
             for check in seed.get('checks', []):
                 require(checks.get(branch + ':' + check['id']) is check['passed'], 'seed drops an actual failed or attempted check')
+            if 'captured_input' in seed:
+                validate_persisted_preconditions(seed['captured_input'], inventories, evidence['commands'],
+                                                observed.get('reader_commands', []), normalize=False)
             if 'persisted' in seed:
-                validate_persisted_preconditions(seed['persisted'], inventories, evidence['commands'])
+                validate_persisted_preconditions(seed['persisted'], inventories, evidence['commands'], observed.get('reader_commands', []))
             if 'persisted_preconditions' in observed:
-                validate_persisted_preconditions(observed['persisted_preconditions'], inventories, evidence['commands'])
+                validate_persisted_preconditions(observed['persisted_preconditions'], inventories, evidence['commands'], observed.get('reader_commands', []))
+                if 'persisted' in seed:
+                    require(observed['persisted_preconditions']['database'] == seed['persisted']['database'],
+                            'branch seed and reader prerequisite database differ')
         successful = all(paired[branch].get('seed_preconditions', {}).get('valid') is True
                          and bool(paired[branch]['seed_preconditions'].get('checks'))
                          and all(check['passed'] for check in paired[branch]['seed_preconditions']['checks'])
                          and 'persisted_preconditions' in paired[branch] for branch in paired)
         equal = successful and paired['package']['persisted_preconditions']['semantic'] == paired['source']['persisted_preconditions']['semantic']
+        reader_probes = [command for command in evidence['commands'] if len(command.get('argv', [])) > 2
+                         and command['argv'][0] == 'dotnet' and command['argv'][2] in ('actor', 'sequence', 'retained-floor')]
+        if successful:
+            require(paired['package']['persisted_preconditions']['database'] != paired['source']['persisted_preconditions']['database'],
+                    'source/package prerequisites substitute the same branch database')
+            recorded = [identity for observed in paired.values() for identity in observed.get('reader_commands', [])]
+            require(len(recorded) == len(set(recorded)) and all(command['id'] in recorded for command in reader_probes),
+                    'dependent reader command omitted from paired observations')
+            barrier = max(observed['persisted_preconditions']['commands']['provider'] for observed in paired.values())
+            require(all(command['id'] > barrier for command in reader_probes), 'dependent reader ran before both prerequisite captures')
+            configurations = {item['id']: item for item in evidence.get('configurations', [])}
+            for branch, observed in paired.items():
+                database = observed['persisted_preconditions']['database']
+                identifier = observation['comparison']['source_case' if branch == 'source' else 'selected_case']
+                expected_reader = identifier.partition('-')[0] if row['id'] == 'invalid-evidence' else identifier.split('-to-', 1)[1].partition('-')[0]
+                for probe in reader_probes:
+                    if probe['id'] not in observed.get('reader_commands', []):
+                        continue
+                    endpoints = []
+                    for launch in evidence['commands']:
+                        arguments = launch.get('argv', [])
+                        if '--app-id' not in arguments or arguments[arguments.index('--app-id') + 1] != 'eventstore' or '--dapr-http-port' not in arguments:
+                            continue
+                        configuration = configurations.get(launch.get('runtime_configuration'), {})
+                        endpoints.append((f"http://127.0.0.1:{arguments[arguments.index('--dapr-http-port') + 1]}",
+                                          configuration.get('state_container'), configuration.get('version')))
+                    require((probe['argv'][3], database, expected_reader) in endpoints,
+                            'dependent reader target differs from its branch prerequisite database or version')
         require(future_preconditions == {'successful': successful, 'equal': equal}
                 and checks.get('source-package-seed-preconditions-successful') is successful
                 and checks.get('source-package-seed-preconditions-equal') is equal, 'source/package seed prerequisites contradict persisted fixtures')
         if not equal:
             require(incomplete and row['disposition'] != 'compatible'
+                    and not reader_probes
                     and all(value.get('dependent_operations') == 'unattempted' for value in paired.values())
                     and checks.get('source-package-semantics-equivalent') is False,
                     'invalid or unequal seeds support source/package equivalence')

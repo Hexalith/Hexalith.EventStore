@@ -1,0 +1,11 @@
+{
+  "allowedEffects": 1,
+  "broker": "rabbitmq",
+  "diagnosticMatched": true,
+  "messageId": "3fc311a0c56f6035057f1e26",
+  "negativeExitCode": 1,
+  "negativeExitedNaturally": true,
+  "negativeReady": false,
+  "negativeResourceDirectory": "/tmp/story-3-21-private-xj0g11ww/work/rabbitmq-qualification-publisher-b75a9ad9",
+  "scenario": "tls-negative"
+}

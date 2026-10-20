@@ -1,0 +1,248 @@
+{
+  "brokers": {
+    "kafka": {
+      "app-topic-scopes": {
+        "applicationReadback": "kafka/app-topic-scopes/application-readback.json",
+        "brokerDiagnostics": "kafka/app-topic-scopes/broker-diagnostics.json",
+        "observation": "kafka/app-topic-scopes/observation.json",
+        "result": "PASS"
+      },
+      "broker-restart": {
+        "applicationReadback": "kafka/broker-restart/application-readback.json",
+        "brokerDiagnostics": "kafka/broker-restart/broker-diagnostics.json",
+        "observation": "kafka/broker-restart/observation.json",
+        "result": "PASS"
+      },
+      "cancellation-backpressure": {
+        "applicationReadback": "kafka/cancellation-backpressure/application-readback.json",
+        "brokerDiagnostics": "kafka/cancellation-backpressure/broker-diagnostics.json",
+        "observation": "kafka/cancellation-backpressure/observation.json",
+        "result": "PASS"
+      },
+      "crash-redelivery": {
+        "applicationReadback": "kafka/crash-redelivery/application-readback.json",
+        "brokerDiagnostics": "kafka/crash-redelivery/broker-diagnostics.json",
+        "observation": "kafka/crash-redelivery/observation.json",
+        "result": "PASS"
+      },
+      "durable-quarantine": {
+        "applicationReadback": "kafka/durable-quarantine/application-readback.json",
+        "brokerDiagnostics": "kafka/durable-quarantine/broker-diagnostics.json",
+        "observation": "kafka/durable-quarantine/observation.json",
+        "result": "PASS"
+      },
+      "failed-diversion": {
+        "applicationReadback": "kafka/failed-diversion/application-readback.json",
+        "brokerDiagnostics": "kafka/failed-diversion/broker-diagnostics.json",
+        "observation": "kafka/failed-diversion/observation.json",
+        "result": "PASS"
+      },
+      "missing-bindings": {
+        "applicationReadback": "kafka/missing-bindings/application-readback.json",
+        "brokerDiagnostics": "kafka/missing-bindings/broker-diagnostics.json",
+        "observation": "kafka/missing-bindings/observation.json",
+        "result": "PASS"
+      },
+      "missing-secret": {
+        "applicationReadback": "kafka/missing-secret/application-readback.json",
+        "brokerDiagnostics": "kafka/missing-secret/broker-diagnostics.json",
+        "observation": "kafka/missing-secret/observation.json",
+        "result": "PASS"
+      },
+      "retention-expiry": {
+        "applicationReadback": "kafka/retention-expiry/application-readback.json",
+        "brokerDiagnostics": "kafka/retention-expiry/broker-diagnostics.json",
+        "observation": "kafka/retention-expiry/observation.json",
+        "result": "PASS"
+      },
+      "secret-rotation": {
+        "applicationReadback": "kafka/secret-rotation/application-readback.json",
+        "brokerDiagnostics": "kafka/secret-rotation/broker-diagnostics.json",
+        "observation": "kafka/secret-rotation/observation.json",
+        "result": "FAIL"
+      },
+      "stable-id-deduplication": {
+        "applicationReadback": "kafka/stable-id-deduplication/application-readback.json",
+        "brokerDiagnostics": "kafka/stable-id-deduplication/broker-diagnostics.json",
+        "observation": "kafka/stable-id-deduplication/observation.json",
+        "result": "PASS"
+      },
+      "tls-negative": {
+        "applicationReadback": "kafka/tls-negative/application-readback.json",
+        "brokerDiagnostics": "kafka/tls-negative/broker-diagnostics.json",
+        "observation": "kafka/tls-negative/observation.json",
+        "result": "PASS"
+      }
+    },
+    "rabbitmq": {
+      "app-topic-scopes": {
+        "applicationReadback": "rabbitmq/app-topic-scopes/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/app-topic-scopes/broker-diagnostics.json",
+        "observation": "rabbitmq/app-topic-scopes/observation.json",
+        "result": "PASS"
+      },
+      "broker-restart": {
+        "applicationReadback": "rabbitmq/broker-restart/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/broker-restart/broker-diagnostics.json",
+        "observation": "rabbitmq/broker-restart/observation.json",
+        "result": "PASS"
+      },
+      "cancellation-backpressure": {
+        "applicationReadback": "rabbitmq/cancellation-backpressure/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/cancellation-backpressure/broker-diagnostics.json",
+        "observation": "rabbitmq/cancellation-backpressure/observation.json",
+        "result": "FAIL"
+      },
+      "crash-redelivery": {
+        "applicationReadback": "rabbitmq/crash-redelivery/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/crash-redelivery/broker-diagnostics.json",
+        "observation": "rabbitmq/crash-redelivery/observation.json",
+        "result": "PASS"
+      },
+      "durable-quarantine": {
+        "applicationReadback": "rabbitmq/durable-quarantine/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/durable-quarantine/broker-diagnostics.json",
+        "observation": "rabbitmq/durable-quarantine/observation.json",
+        "result": "PASS"
+      },
+      "failed-diversion": {
+        "applicationReadback": "rabbitmq/failed-diversion/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/failed-diversion/broker-diagnostics.json",
+        "observation": "rabbitmq/failed-diversion/observation.json",
+        "result": "PASS"
+      },
+      "missing-bindings": {
+        "applicationReadback": "rabbitmq/missing-bindings/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/missing-bindings/broker-diagnostics.json",
+        "observation": "rabbitmq/missing-bindings/observation.json",
+        "result": "FAIL"
+      },
+      "missing-secret": {
+        "applicationReadback": "rabbitmq/missing-secret/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/missing-secret/broker-diagnostics.json",
+        "observation": "rabbitmq/missing-secret/observation.json",
+        "result": "PASS"
+      },
+      "retention-expiry": {
+        "applicationReadback": "rabbitmq/retention-expiry/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/retention-expiry/broker-diagnostics.json",
+        "observation": "rabbitmq/retention-expiry/observation.json",
+        "result": "PASS"
+      },
+      "secret-rotation": {
+        "applicationReadback": "rabbitmq/secret-rotation/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/secret-rotation/broker-diagnostics.json",
+        "observation": "rabbitmq/secret-rotation/observation.json",
+        "result": "FAIL"
+      },
+      "stable-id-deduplication": {
+        "applicationReadback": "rabbitmq/stable-id-deduplication/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/stable-id-deduplication/broker-diagnostics.json",
+        "observation": "rabbitmq/stable-id-deduplication/observation.json",
+        "result": "PASS"
+      },
+      "tls-negative": {
+        "applicationReadback": "rabbitmq/tls-negative/application-readback.json",
+        "brokerDiagnostics": "rabbitmq/tls-negative/broker-diagnostics.json",
+        "observation": "rabbitmq/tls-negative/observation.json",
+        "result": "PASS"
+      }
+    }
+  },
+  "failedScenarios": [
+    "kafka/secret-rotation",
+    "rabbitmq/cancellation-backpressure",
+    "rabbitmq/missing-bindings",
+    "rabbitmq/secret-rotation"
+  ],
+  "images": {
+    "daprd": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-daprd-1.18.7.manifest.json",
+        "sha256": "5da0d379de20830846616d56d07af1594e6ba30cdca8e3ba9de25d18a7624ece"
+      },
+      "reference": "ghcr.io/dapr/daprd@sha256:5da0d379de20830846616d56d07af1594e6ba30cdca8e3ba9de25d18a7624ece",
+      "version": "1.18.7"
+    },
+    "injector": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-injector-1.18.7.manifest.json",
+        "sha256": "4a7b491b2ac5d27c92f0c4192fedd54319452c0dd7d6ae30cda6a4266f751943"
+      },
+      "reference": "ghcr.io/dapr/injector@sha256:4a7b491b2ac5d27c92f0c4192fedd54319452c0dd7d6ae30cda6a4266f751943",
+      "version": "1.18.7"
+    },
+    "kafka": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/apache-kafka-4.3.1.manifest.json",
+        "sha256": "77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837"
+      },
+      "reference": "docker.io/apache/kafka@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837",
+      "version": "4.3.1"
+    },
+    "operator": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-operator-1.18.7.manifest.json",
+        "sha256": "42192d91b0942afd694740336e4bd047d55235ebfb3b9cbd4ec0e05ae4026cae"
+      },
+      "reference": "ghcr.io/dapr/operator@sha256:42192d91b0942afd694740336e4bd047d55235ebfb3b9cbd4ec0e05ae4026cae",
+      "version": "1.18.7"
+    },
+    "placement": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-placement-1.18.7.manifest.json",
+        "sha256": "c9da106eddcbb625c94baea31af4ed576d32750741b442c99f51518c420e76cc"
+      },
+      "reference": "ghcr.io/dapr/placement@sha256:c9da106eddcbb625c94baea31af4ed576d32750741b442c99f51518c420e76cc",
+      "version": "1.18.7"
+    },
+    "rabbitmq": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/library-rabbitmq-4.3.6-management.manifest.json",
+        "sha256": "54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58"
+      },
+      "reference": "docker.io/library/rabbitmq@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58",
+      "version": "4.3.6-management"
+    },
+    "scheduler": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-scheduler-1.18.7.manifest.json",
+        "sha256": "2cc2da2f7c4ece604041e6a420de04a297afb24cea8b3c9394bd0e126a334444"
+      },
+      "reference": "ghcr.io/dapr/scheduler@sha256:2cc2da2f7c4ece604041e6a420de04a297afb24cea8b3c9394bd0e126a334444",
+      "version": "1.18.7"
+    },
+    "sentry": {
+      "manifest": {
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-sentry-1.18.7.manifest.json",
+        "sha256": "b9fc166085289661f516150dc1c47ac3495b9e6d1e666079cb71cd2374ca7256"
+      },
+      "reference": "ghcr.io/dapr/sentry@sha256:b9fc166085289661f516150dc1c47ac3495b9e6d1e666079cb71cd2374ca7256",
+      "version": "1.18.7"
+    }
+  },
+  "packetSha256": "0968e7272885b0ad1c5492be0bc7fd7b3c7b3123f4bfaaca37a6d3cfc4246ec0",
+  "productionEligible": false,
+  "runtime": {
+    "binarySha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+    "cliSha256": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5",
+    "cliVersion": "1.18.2",
+    "componentsVersion": "1.18.6",
+    "minimum": "1.18.3",
+    "sources": [
+      {
+        "commit": "b32a815fa2260983e181b95272ea555fe17d3895",
+        "repository": "dapr/dapr",
+        "tag": "v1.18.7"
+      },
+      {
+        "commit": "eac9e31dd14cd798c9996aae30818b572aa12c59",
+        "repository": "dapr/components-contrib",
+        "tag": "v1.18.6"
+      }
+    ],
+    "version": "1.18.7"
+  },
+  "selectedBroker": null,
+  "status": "proposed-candidate-inventory-not-owner-accepted"
+}

@@ -1,0 +1,108 @@
+{
+  "checks": {
+    "dependency_and_build_declarations_unchanged": true,
+    "head_unchanged": false,
+    "historical_v4_unchanged": true,
+    "index_bytes_unchanged": false,
+    "no_unexpected_tracked_changes": true,
+    "original_followup_unchanged": true,
+    "original_frozen_wrapper_unchanged": true,
+    "production_source_unchanged": true,
+    "retained_historical_baseline_unchanged": true,
+    "staged_diff_empty": true,
+    "tag_source_unchanged": true
+  },
+  "concurrent_files_current": [
+    {
+      "current_sha256": "7118a69f1ea2301ae65535e9f1b929c98eb22901c7f616e4c66cb23f7131cd75",
+      "observed_sha256": "7118a69f1ea2301ae65535e9f1b929c98eb22901c7f616e4c66cb23f7131cd75",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.json"
+    },
+    {
+      "current_sha256": "e581c600f38c42e4fee3ebc75d05d7aab1994db4e40cc7613e5fa411af12b711",
+      "observed_sha256": "6a2d4404025df86cfc4b4740ba3ce75b4f81477dfd71b513749de4c89dea2e59",
+      "path": "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md"
+    },
+    {
+      "current_sha256": "f8b69bf32f93da5a38385effe4bac9887d6e5d3bfd433791860517b87257487d",
+      "observed_sha256": "f8b69bf32f93da5a38385effe4bac9887d6e5d3bfd433791860517b87257487d",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.before-approval.json"
+    },
+    {
+      "current_sha256": "893cb0dd0e014011f048eb118445878c0b104ab76caae0f1924af951187a889e",
+      "observed_sha256": "893cb0dd0e014011f048eb118445878c0b104ab76caae0f1924af951187a889e",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/spec-approval.json"
+    },
+    {
+      "current_sha256": "05fd17582c9803f5270449c220e5c102bfe80b01f9b69ccc31f78e6c4ab3b64a",
+      "observed_sha256": "05fd17582c9803f5270449c220e5c102bfe80b01f9b69ccc31f78e6c4ab3b64a",
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/spec.before-approval.md"
+    }
+  ],
+  "entry_tracked_files": 29983,
+  "historical_added": [],
+  "historical_baseline": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/entry.json",
+  "historical_bytes": 1852650799,
+  "historical_changes": [],
+  "historical_files": 4880,
+  "historical_removed": [],
+  "limit": "Unrelated concurrent changes are recorded literally. This task never writes, restores, stages or commits them.",
+  "original_followup_changes": [],
+  "p1r_usable": false,
+  "qualified": false,
+  "tracked_changes": [
+    {
+      "after_sha256": "7c460e8f77e5acc23a9f96056770ba31f385e9cd51b3d9e7e7c71907cc82dbf5",
+      "before_sha256": "34344a325205c53de9fdeec951c898c2528263161950ade7f0ec6a632fc790d0",
+      "path": ".github/workflows/p1r-qualification.yml"
+    },
+    {
+      "after_sha256": "e581c600f38c42e4fee3ebc75d05d7aab1994db4e40cc7613e5fa411af12b711",
+      "before_sha256": "6a2d4404025df86cfc4b4740ba3ce75b4f81477dfd71b513749de4c89dea2e59",
+      "path": "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md"
+    },
+    {
+      "after_sha256": "68b426ba2a00790a06f72d0c9b9f994e13755c2c35ccf87c0873877904f5f7df",
+      "before_sha256": "792672fcd62b56de9ef79fd6acdf6e8cc4e6845378b464cf987260721bad4bb2",
+      "path": "_bmad-output/implementation-artifacts/sprint-status.yaml"
+    },
+    {
+      "after_sha256": "b686e3886a36a06028e6c9163738a36085285face713db2bb81ff7d5e22eb6f7",
+      "before_sha256": "586c6bfd4dddf84ba7d4aa698dd960440508f0827a28df47af2f7a7be38a1a02",
+      "path": "tools/p1r_check_witnesses.py"
+    },
+    {
+      "after_sha256": "99eb3de223963b92b8205fc2a41e167bb0d155b553f539502ffd394beb426d01",
+      "before_sha256": "f4084a5ae94eb8bd8e86666bb918121b289c342f0417e85ac4d9ec942cf3484e",
+      "path": "tools/p1r_published_executor.py"
+    },
+    {
+      "after_sha256": "f69aae74d8c8204ec4c3e5e1b1ef6bbaeb79b64444898fb257747b5008912b64",
+      "before_sha256": "7ac31ff38612f2dd56357003c59c03cfc541559857c588ed27e45ac41226ada7",
+      "path": "tools/p1r_published_qualification.py"
+    },
+    {
+      "after_sha256": "a6734257ffb3d363157d5ea3be59a149ddf565adbea72a3a8fdc051766f5231e",
+      "before_sha256": "4a63c2b18e049077a675c52ee0dec2724d55886f67b0744ec99e06bdf29d1f4a",
+      "path": "tools/p1r_qualification_runtime.py"
+    },
+    {
+      "after_sha256": "e1a9827e101ba55e62f9255c3982a32ca01c5d8f1d469de5d3235e248d45efe9",
+      "before_sha256": "4238f9d2ab56edb4f0b4a3f008fca64948fdc7403040ec6b93a2be9dba905b3c",
+      "path": "tools/tests/test_p1r_published_executor.py"
+    }
+  ],
+  "unexpected_changes": [],
+  "unrelated_concurrent_changes": [
+    {
+      "after_sha256": "e581c600f38c42e4fee3ebc75d05d7aab1994db4e40cc7613e5fa411af12b711",
+      "before_sha256": "6a2d4404025df86cfc4b4740ba3ce75b4f81477dfd71b513749de4c89dea2e59",
+      "path": "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md"
+    },
+    {
+      "after_sha256": "68b426ba2a00790a06f72d0c9b9f994e13755c2c35ccf87c0873877904f5f7df",
+      "before_sha256": "792672fcd62b56de9ef79fd6acdf6e8cc4e6845378b464cf987260721bad4bb2",
+      "path": "_bmad-output/implementation-artifacts/sprint-status.yaml"
+    }
+  ]
+}

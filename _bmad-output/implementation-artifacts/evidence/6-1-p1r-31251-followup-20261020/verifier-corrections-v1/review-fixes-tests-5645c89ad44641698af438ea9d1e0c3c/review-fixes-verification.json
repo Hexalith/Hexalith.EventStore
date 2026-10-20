@@ -1,0 +1,31 @@
+{
+  "scope": "Review correction follow-up only; no runtime controls, publication, staging, commits or old evidence/binding edits.",
+  "verification": {
+    "correction_regressions": {
+      "tests": 28,
+      "passed": true
+    },
+    "affected_existing_tests": {
+      "tests": 7,
+      "passed": true
+    },
+    "whitespace": {
+      "command": "git diff --check -- .github/workflows/p1r-qualification.yml tools/p1r_published_executor.py tools/p1r_check_witnesses.py tools/p1r_qualification_runtime.py tools/p1r_published_qualification.py tools/tests/test_p1r_verifier_corrections.py",
+      "exit_code": 0
+    }
+  },
+  "historical_recovery": "v1 grammar and 12 checks preserved; v2 adds literal command-bound responses and all actual restore checks, independently deriving a thirteenth aggregate check.",
+  "source_sha256": {
+    "tools/p1r_published_executor.py": "3abd7e16453940ad3c33d56ad1048ce5a541a3cb9c2bcdefde66375e0f854d73",
+    "tools/p1r_check_witnesses.py": "4b59f4280a7e6ded1823d8686fd604f3bbc2e7840fadd36b2e6567af28c1e571",
+    "tools/p1r_qualification_runtime.py": "a6734257ffb3d363157d5ea3be59a149ddf565adbea72a3a8fdc051766f5231e",
+    "tools/p1r_published_qualification.py": "f69aae74d8c8204ec4c3e5e1b1ef6bbaeb79b64444898fb257747b5008912b64",
+    "tools/tests/test_p1r_verifier_corrections.py": "ff9b5248580d45b2660afa7642311461c4012316daa3076609d386e05d0f34fb",
+    "tools/tests/fixtures/p1r-source-proof/source-v1-v4-vector.json": "a99f2d4dfdbea239293f2886ffcfcd4c7cd309a49e467db5152ce63353b12bbe",
+    ".github/workflows/p1r-qualification.yml": "7c460e8f77e5acc23a9f96056770ba31f385e9cd51b3d9e7e7c71907cc82dbf5"
+  },
+  "qualified": false,
+  "p1r_usable": false,
+  "owner_acceptance": "pending",
+  "conformance": "pending"
+}

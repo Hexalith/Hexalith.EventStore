@@ -10,7 +10,12 @@ candidate remains 3.125.1 / v3.125.1 /
 55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b; it must receive a separately sealed
 verifier closure and independently observed execution Builds.
 
-Before provisioning, the operator must secure either a dedicated disposable
+Before provisioning, bind the corrected verifier in an isolated ordinary checkout
+or otherwise secure exclusive ownership of its repository for the complete
+run. Concurrent commits in this follow-up changed the shared repository HEAD;
+none were issued by this task. A moving verifier invalidates its source closure.
+
+The operator must secure either a dedicated disposable
 host or an exclusive host window covering preflight, execution, audit and final
 cleanup. The window must cover all users and automation that can create,
 remove, restart or upgrade containers. Recording this prerequisite is not a
@@ -41,7 +46,7 @@ into a pass. A quiet bounded diagnostic on today's host is not an exclusive leas
 or proof that a longer qualification will preserve the host.
 
 The future run additionally requires successful cold and restart/reuse
-Two-tenant seeding under the exact Dapr 1.18.2 / PostgreSQL v1 image profile,
+two-tenant seeding under the exact Dapr 1.18.2 / PostgreSQL v1 image profile,
 coherent retained-floor/proof inputs, truthful paired prerequisites, a fixed
 verifier revision, all 17 scenario lanes plus Reminder and evolution, recovery
 and failure drills, independent strict import and genuine owner decisions. Keep

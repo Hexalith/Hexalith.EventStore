@@ -1,0 +1,11 @@
+{
+  "allowedEffects": 1,
+  "broker": "kafka",
+  "diagnosticMatched": true,
+  "messageId": "4b721d10db5260cbfd6a3104",
+  "negativeExitCode": 1,
+  "negativeExitedNaturally": true,
+  "negativeReady": false,
+  "negativeResourceDirectory": "/tmp/story-3-21-private-dzcbwbf2/work/kafka-qualification-publisher-32b3dec8",
+  "scenario": "tls-negative"
+}

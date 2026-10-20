@@ -1,0 +1,38 @@
+{
+  "command": [
+    "python3",
+    "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/seed_controls.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/seed-control-invocation-19649d41c45843d288693ac8a0c7e355/runtime",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+    "--controls",
+    "lock-retained"
+  ],
+  "errors": [],
+  "exit_code": 0,
+  "finished_utc": "2026-10-20T10:33:10.021000+00:00",
+  "isolation_passed": true,
+  "p1r_usable": false,
+  "qualified": false,
+  "scope": "bounded controls only; no qualification",
+  "source_root": "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+  "started_utc": "2026-10-20T10:29:38.520117+00:00",
+  "whole_host": {
+    "added": [
+      "4c4379972703cf694c972558bee5e91590ecb666565bfd63309ec84d3db4a4d8",
+      "83ac8fc37c1e95199a077d59cb819d77c9c3799ec5473d26dd22ac9d0debcbd3",
+      "983f8a03ae1b6f5c1a6b08dc8e842c4ee82601f837dd48f66bff920180e4851a",
+      "c67e6b74c3f80cd18b16f05f9a070610f1bd2510b78303fca659a2398e3f9ee0"
+    ],
+    "after_count": 8,
+    "after_sha256": "1fcb8f9c99f19377927b6c0b89fb7c2b1147546647b6573906f5c1817dcaebd5",
+    "before_count": 5,
+    "before_sha256": "39bc4179720724e5e0e5049187a7620e592d58ab8bdd2e47731428308387c3d9",
+    "changed": [],
+    "entire_set_unchanged": false,
+    "removed": [
+      "9da358381e10c0eb9680d3b2dd71992d88be4996843c088dce27bff315451e81"
+    ]
+  }
+}

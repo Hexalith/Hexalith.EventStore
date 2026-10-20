@@ -1,0 +1,74 @@
+[
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_executor.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/eventstore",
+    "started_utc": "2026-10-20T10:24:35.458804+00:00",
+    "test_sha256": "e1a9827e101ba55e62f9255c3982a32ca01c5d8f1d469de5d3235e248d45efe9",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T10:27:01.438264+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_verifier_corrections.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/eventstore",
+    "started_utc": "2026-10-20T10:24:35.459135+00:00",
+    "test_sha256": "ff9b5248580d45b2660afa7642311461c4012316daa3076609d386e05d0f34fb",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T10:24:40.062149+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_qualification.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/eventstore",
+    "started_utc": "2026-10-20T10:24:35.459784+00:00",
+    "test_sha256": "5fb315c0b125e1700bee61f89e5df7d8d31cd41d7ab0ea10cd278ac3e1b5f8c8",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T10:25:20.177938+00:00"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_qualification.py",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/eventstore",
+    "started_utc": "2026-10-20T10:24:35.460713+00:00",
+    "test_sha256": "385b14908b035d695e0ec65aef83de16503205968e7c52ec585c3515adffb29f",
+    "exit_code": 1,
+    "finished_utc": "2026-10-20T10:26:19.108440+00:00"
+  }
+]

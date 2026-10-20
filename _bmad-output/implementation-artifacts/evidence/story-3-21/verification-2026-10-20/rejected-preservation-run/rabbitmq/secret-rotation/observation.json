@@ -1,0 +1,10 @@
+{
+  "broker": "rabbitmq",
+  "controlledRestart": true,
+  "messageId": "da206eb18fefaa031ca8c4de",
+  "newGenerationEffects": 1,
+  "oldGenerationDenied": false,
+  "scenario": "secret-rotation",
+  "staleMessageId": "effba09571993a73da301280",
+  "stalePublishStatus": 599
+}

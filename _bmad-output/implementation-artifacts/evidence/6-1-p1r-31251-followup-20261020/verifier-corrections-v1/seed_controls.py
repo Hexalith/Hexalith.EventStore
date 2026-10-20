@@ -98,6 +98,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--source-root', type=Path, required=True)
+    parser.add_argument('--controls', choices=('all', 'discovery', 'retained', 'lock', 'lock-retained'), default='all')
     args = parser.parse_args()
     require(bool(os.environ.get('HEXALITH_P1R_ISOLATION')), 'private runner required')
     manifest = json.loads((BASE / 'control-inputs-manifest.json').read_text())
@@ -126,6 +127,8 @@ def main():
                     'loaded package identities differ from retained binaries')
         for name, injection in (('cold-3.110.0', False), ('reused-discovery-3.110.0', False),
                                 ('induced-eight-second-write-lock-3.110.0', True)):
+            if args.controls not in ('all', 'discovery', 'lock', 'lock-retained') or (args.controls in ('lock', 'lock-retained') and not injection):
+                continue
             attempt = {'name': name, 'version': '3.110.0', 'started_utc': stamp(), 'injected': injection,
                        'tenants': {}, 'samples': [], 'errors': [], 'command_start': len(worker.commands) + 1}
             report['attempts'].append(attempt); save()
@@ -134,7 +137,7 @@ def main():
             def sampler():
                 while not finished.wait(.5):
                     attempt['samples'].append(sample(worker, 'periodic'))
-            observer = None; lock_thread = None
+            observer = None; locker = None; lock_marker = None
             try:
                 worker.stop_nodes()
                 attempt['samples'].append(sample(worker, 'before-start'))
@@ -142,21 +145,29 @@ def main():
                 worker.start_nodes('3.110.0', interval=1000)
                 attempt['samples'].append(sample(worker, 'both-ready'))
                 observer = threading.Thread(target=sampler); observer.start()
-                if injection:
-                    acquired = threading.Event()
-                    def hold():
-                        try:
-                            with sqlite3.connect(worker.scratch / 'discovery.sqlite', timeout=1) as connection:
-                                connection.execute('BEGIN IMMEDIATE')
-                                attempt['lock_acquired_utc'] = stamp(); acquired.set()
-                                time.sleep(8)
-                                connection.rollback(); attempt['lock_released_utc'] = stamp()
-                        except Exception as error:
-                            attempt['lock_error'] = str(error); acquired.set()
-                    lock_thread = threading.Thread(target=hold); lock_thread.start()
-                    require(acquired.wait(2) and 'lock_error' not in attempt, 'task-private control lock unavailable')
-                    time.sleep(6)
                 for tenant, count in (('tenant-a', 12), ('tenant-b', 3)):
+                    if injection and tenant == 'tenant-b':
+                        lock_marker = worker.scratch / 'lock-control.json'
+                        locker_code = "import ctypes,sys;ctypes.CDLL(sys.argv[1],mode=ctypes.RTLD_GLOBAL);import sqlite3,time,json,os;from pathlib import Path;from datetime import datetime,timezone;c=sqlite3.connect(sys.argv[2],timeout=1);c.execute('BEGIN IMMEDIATE');v={'pid':os.getpid(),'acquired_utc':datetime.now(timezone.utc).isoformat()};p=Path(sys.argv[3]);p.write_text(json.dumps(v));print(json.dumps(v),flush=True);time.sleep(8);c.rollback();v['released_utc']=datetime.now(timezone.utc).isoformat();p.write_text(json.dumps(v));print(json.dumps(v),flush=True);c.close()"
+                        locker = worker.launch([sys.executable, '-I', '-c', locker_code, str(SQLITE_LIBRARY),
+                                                str(worker.scratch / 'discovery.sqlite'), str(lock_marker)], dict(os.environ))
+                        deadline = time.monotonic() + 2
+                        while not lock_marker.exists() and time.monotonic() < deadline:
+                            require(locker['process'].poll() is None, 'owned lock process exited before acquisition')
+                            time.sleep(.02)
+                        require(lock_marker.exists(), 'owned lock process did not acquire bounded lock')
+                        attempt['lock_process'] = locker['ownership'].root
+                        attempt['lock_acquired_utc'] = json.loads(lock_marker.read_text())['acquired_utc']
+                        try:
+                            with sqlite3.connect(worker.scratch / 'discovery.sqlite', timeout=0) as contender:
+                                contender.execute('BEGIN IMMEDIATE'); contender.rollback()
+                            attempt['verified_contention'] = False
+                        except sqlite3.OperationalError as error:
+                            attempt['verified_contention'] = 'locked' in str(error).lower()
+                            attempt['contention_error'] = str(error)
+                        require(attempt['verified_contention'], 'lock control failed to establish actual contention')
+                        time.sleep(6)
+
                     attempt['samples'].append(sample(worker, 'before-' + tenant))
                     try:
                         observed = worker.probe('3.110.0', ['seed', f'http://127.0.0.1:{worker.sidecar_port}', tenant, 'fixture', str(count)], measured, tenant + ':')
@@ -172,9 +183,11 @@ def main():
             except Exception as error:
                 attempt['errors'].append(type(error).__name__ + ': ' + str(error))
             finally:
-                if lock_thread:
-                    lock_thread.join(12)
-                    require(not lock_thread.is_alive(), 'lock control thread failed to finish')
+                if locker:
+                    locker['process'].wait(timeout=12)
+                    if lock_marker.exists():
+                        attempt['lock_released_utc'] = json.loads(lock_marker.read_text()).get('released_utc')
+                    require(locker['process'].returncode == 0, 'owned lock process failed')
                 finished.set()
                 if observer:
                     observer.join(5)
@@ -188,7 +201,7 @@ def main():
                 save()
                 print(json.dumps({'attempt': name, 'passed': attempt['passed'], 'assertions': measured.counter}), flush=True)
         # Two finite verifier fixture controls, separate from discovery and any matrix.
-        for name in ('coherent-retained-restore-3.125.1', 'mismatched-proof-refusal-3.125.1'):
+        for name in (('coherent-retained-restore-3.125.1', 'mismatched-proof-refusal-3.125.1') if args.controls in ('all', 'retained', 'lock-retained') else ()):
             attempt = {'name': name, 'version': '3.125.1', 'started_utc': stamp(), 'errors': [],
                        'command_start': len(worker.commands) + 1}
             report['attempts'].append(attempt); save()
@@ -251,7 +264,9 @@ def main():
         except Exception as error:
             report['cleanup_error'] = str(error)
         report['finished_utc'] = stamp(); save()
-    report['uninduced_controls_passed'] = all(a['passed'] for a in report['attempts'] if not a.get('injected'))
+    uninduced = [a for a in report['attempts'] if not a.get('injected')]
+    report['uninduced_controls_count'] = len(uninduced)
+    report['uninduced_controls_passed'] = all(a['passed'] for a in uninduced) if uninduced else None
     save()
     # Exit status covers diagnostic collection/cleanup; individual failed attempts stay nonpassing.
     return 0 if not report['errors'] and report.get('cleanup', {}).get('execution') == 'passed' else 2

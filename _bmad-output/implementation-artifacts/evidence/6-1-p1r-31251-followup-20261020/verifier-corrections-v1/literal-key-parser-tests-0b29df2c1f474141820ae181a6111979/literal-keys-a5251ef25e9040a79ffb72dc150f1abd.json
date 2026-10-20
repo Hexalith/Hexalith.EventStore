@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "test_p1r_verifier_corrections.LiteralActorKeyTests"
+  ],
+  "env": {
+    "PYTHONPATH": "tools:tools/tests"
+  },
+  "exit_code": 0
+}

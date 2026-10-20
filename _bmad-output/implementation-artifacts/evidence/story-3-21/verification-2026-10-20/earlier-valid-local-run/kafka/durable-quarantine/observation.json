@@ -1,0 +1,10 @@
+{
+  "broker": "kafka",
+  "captureBlockedBeforeBrokerRestart": true,
+  "messageId": "90778da884dc6d8a465e38f4",
+  "poisonReceipts": 3,
+  "quarantineEffects": 1,
+  "restartReceipt": 334,
+  "scenario": "durable-quarantine",
+  "survivedRestart": true
+}

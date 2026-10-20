@@ -1,0 +1,10 @@
+{
+  "broker": "kafka",
+  "controlledRestart": true,
+  "messageId": "cf5f0aa62922dff9982c7d53",
+  "newGenerationEffects": 1,
+  "oldGenerationDenied": true,
+  "scenario": "secret-rotation",
+  "staleMessageId": "466b496b515c57f5294e804e",
+  "stalePublishStatus": 500
+}

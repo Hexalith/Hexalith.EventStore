@@ -1,0 +1,21 @@
+{
+  "checks": {
+    "git_diff_check_exit_code": 0,
+    "final_verifier_22_files_match": true,
+    "frozen_spec_block_unchanged": true,
+    "main_repository_staged_diff_bytes": 0,
+    "historical_scoped_preservation_exit_code": 0,
+    "independent_v2_recovery_exit_code": 0
+  },
+  "implementation_spec": {
+    "path": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-verifier-corrections.md",
+    "sha256": "d9789e7c2ebc54f4dd2ea4b0da6b9427de5e6a28693ac878e9c5f3f6b9940ce1",
+    "status": "done",
+    "status_scope": "bounded verifier corrections only"
+  },
+  "readme_sha256": "312e382d9b47e06cd03db3812171e3e4c9428fc0498aa398525a3e1670f9a5f5",
+  "qualified": false,
+  "p1r_usable": false,
+  "owner_acceptance": "pending",
+  "conformance": "pending"
+}

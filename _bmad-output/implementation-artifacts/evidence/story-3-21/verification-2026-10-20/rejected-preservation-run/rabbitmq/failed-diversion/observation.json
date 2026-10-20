@@ -1,0 +1,10 @@
+{
+  "beforeRestartReceiptCount": 3,
+  "broker": "rabbitmq",
+  "denialObserved": true,
+  "messageId": "e1093465297042c5938c9175",
+  "quarantineEffects": 0,
+  "restartReceipt": 112,
+  "scenario": "failed-diversion",
+  "sourceRecoveredAfterRestart": true
+}

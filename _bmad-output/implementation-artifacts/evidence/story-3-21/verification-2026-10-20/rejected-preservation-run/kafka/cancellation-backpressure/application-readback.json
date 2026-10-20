@@ -1,0 +1,538 @@
+{
+  "commandReceipt": 472,
+  "kind": "persisted-application-http-readback",
+  "ledger": [
+    {
+      "id": "c9bda16fecd75bf28708be98",
+      "kind": "receipt",
+      "messageId": "c9bda16fecd75bf28708be98",
+      "receivedUtc": "2026-10-20T10:55:43.821543+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c9bda16fecd75bf28708be98",
+      "kind": "receipt",
+      "messageId": "c9bda16fecd75bf28708be98",
+      "receivedUtc": "2026-10-20T10:55:44.030370+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "faaeebe8c6bee7a25aaeb7f1",
+      "kind": "receipt",
+      "messageId": "faaeebe8c6bee7a25aaeb7f1",
+      "receivedUtc": "2026-10-20T10:55:53.617453+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:55:55.774968+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:55:55.979334+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:55:56.184140+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:55:56.245567+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:56:04.252074+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:06.577809+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:06.782257+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:06.987933+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:16.529389+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:16.733942+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:16.938800+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "6106022eb4d0ac376d88b06f",
+      "kind": "receipt",
+      "messageId": "6106022eb4d0ac376d88b06f",
+      "receivedUtc": "2026-10-20T10:56:45.963605+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:45.985147+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "6106022eb4d0ac376d88b06f",
+      "kind": "receipt",
+      "messageId": "6106022eb4d0ac376d88b06f",
+      "receivedUtc": "2026-10-20T10:56:48.977498+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:56:48.987442+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "receipt",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "receivedUtc": "2026-10-20T10:56:48.989638+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:48.997192+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:49.960702+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:50.170133+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:50.374801+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "6e13e81bd9656c4d3740c5d6",
+      "kind": "receipt",
+      "messageId": "6e13e81bd9656c4d3740c5d6",
+      "receivedUtc": "2026-10-20T10:56:52.367226+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "6e13e81bd9656c4d3740c5d6",
+      "kind": "receipt",
+      "messageId": "6e13e81bd9656c4d3740c5d6",
+      "receivedUtc": "2026-10-20T10:56:52.411976+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "5d7c98c7120b28925eec679b",
+      "kind": "receipt",
+      "messageId": "5d7c98c7120b28925eec679b",
+      "receivedUtc": "2026-10-20T10:56:54.830447+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:55.380867+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:55.587792+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:56:55.795303+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "df0a48e41d12b1a826c70758",
+      "kind": "receipt",
+      "messageId": "df0a48e41d12b1a826c70758",
+      "receivedUtc": "2026-10-20T10:56:57.557067+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "78d2b95a3b9cf61e36bbbe59",
+      "kind": "receipt",
+      "messageId": "78d2b95a3b9cf61e36bbbe59",
+      "receivedUtc": "2026-10-20T10:57:00.173351+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:57:00.806298+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:57:01.013663+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:57:01.222572+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:57:06.235111+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:57:06.441620+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "c4d928f437ea4ee18e543088",
+      "kind": "receipt",
+      "messageId": "c4d928f437ea4ee18e543088",
+      "receivedUtc": "2026-10-20T10:57:06.650797+00:00",
+      "route": "/poison"
+    },
+    {
+      "id": "cf5f0aa62922dff9982c7d53",
+      "kind": "receipt",
+      "messageId": "cf5f0aa62922dff9982c7d53",
+      "receivedUtc": "2026-10-20T10:57:08.092804+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "e56937cfbe6bc3d53ac7c4d3",
+      "kind": "receipt",
+      "messageId": "e56937cfbe6bc3d53ac7c4d3",
+      "receivedUtc": "2026-10-20T10:58:15.181415+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "56e57858e2280cf7f403d1e8",
+      "kind": "receipt",
+      "messageId": "56e57858e2280cf7f403d1e8",
+      "receivedUtc": "2026-10-20T10:58:15.201228+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "8a588c70f4a0c1aef2d58078",
+      "kind": "receipt",
+      "messageId": "8a588c70f4a0c1aef2d58078",
+      "receivedUtc": "2026-10-20T10:58:15.208070+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "8a588c70f4a0c1aef2d58078",
+      "kind": "receipt",
+      "messageId": "8a588c70f4a0c1aef2d58078",
+      "receivedUtc": "2026-10-20T10:58:15.228404+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "8a588c70f4a0c1aef2d58078",
+      "kind": "receipt",
+      "messageId": "8a588c70f4a0c1aef2d58078",
+      "receivedUtc": "2026-10-20T10:58:15.233001+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "25914edc402d12a13a5651b9",
+      "kind": "receipt",
+      "messageId": "25914edc402d12a13a5651b9",
+      "receivedUtc": "2026-10-20T10:58:15.272303+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "25914edc402d12a13a5651b9",
+      "kind": "receipt",
+      "messageId": "25914edc402d12a13a5651b9",
+      "receivedUtc": "2026-10-20T10:58:15.279086+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "25914edc402d12a13a5651b9",
+      "kind": "receipt",
+      "messageId": "25914edc402d12a13a5651b9",
+      "receivedUtc": "2026-10-20T10:58:15.282582+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "89efd18a4e42522535c49257",
+      "kind": "receipt",
+      "messageId": "89efd18a4e42522535c49257",
+      "receivedUtc": "2026-10-20T10:58:15.285604+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c9bda16fecd75bf28708be98",
+      "kind": "effect",
+      "messageId": "c9bda16fecd75bf28708be98",
+      "persistedUtc": "2026-10-20T10:55:44.038137+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "faaeebe8c6bee7a25aaeb7f1",
+      "kind": "effect",
+      "messageId": "faaeebe8c6bee7a25aaeb7f1",
+      "persistedUtc": "2026-10-20T10:55:53.621225+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "cecb5e2feb36958710d2ee15",
+      "kind": "effect",
+      "messageId": "cecb5e2feb36958710d2ee15",
+      "persistedUtc": "2026-10-20T10:56:04.255218+00:00",
+      "route": "/quarantine"
+    },
+    {
+      "id": "6106022eb4d0ac376d88b06f",
+      "kind": "effect",
+      "messageId": "6106022eb4d0ac376d88b06f",
+      "persistedUtc": "2026-10-20T10:56:45.973741+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "6e13e81bd9656c4d3740c5d6",
+      "kind": "effect",
+      "messageId": "6e13e81bd9656c4d3740c5d6",
+      "persistedUtc": "2026-10-20T10:56:52.372934+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "5d7c98c7120b28925eec679b",
+      "kind": "effect",
+      "messageId": "5d7c98c7120b28925eec679b",
+      "persistedUtc": "2026-10-20T10:56:54.839501+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "df0a48e41d12b1a826c70758",
+      "kind": "effect",
+      "messageId": "df0a48e41d12b1a826c70758",
+      "persistedUtc": "2026-10-20T10:56:57.560899+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "78d2b95a3b9cf61e36bbbe59",
+      "kind": "effect",
+      "messageId": "78d2b95a3b9cf61e36bbbe59",
+      "persistedUtc": "2026-10-20T10:57:00.176147+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "cf5f0aa62922dff9982c7d53",
+      "kind": "effect",
+      "messageId": "cf5f0aa62922dff9982c7d53",
+      "persistedUtc": "2026-10-20T10:57:08.097965+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "e56937cfbe6bc3d53ac7c4d3",
+      "kind": "effect",
+      "messageId": "e56937cfbe6bc3d53ac7c4d3",
+      "persistedUtc": "2026-10-20T10:58:15.185005+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "56e57858e2280cf7f403d1e8",
+      "kind": "effect",
+      "messageId": "56e57858e2280cf7f403d1e8",
+      "persistedUtc": "2026-10-20T10:58:15.204654+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "8a588c70f4a0c1aef2d58078",
+      "kind": "effect",
+      "messageId": "8a588c70f4a0c1aef2d58078",
+      "persistedUtc": "2026-10-20T10:58:15.210565+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "25914edc402d12a13a5651b9",
+      "kind": "effect",
+      "messageId": "25914edc402d12a13a5651b9",
+      "persistedUtc": "2026-10-20T10:58:15.275419+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "89efd18a4e42522535c49257",
+      "kind": "effect",
+      "messageId": "89efd18a4e42522535c49257",
+      "persistedUtc": "2026-10-20T10:58:15.287797+00:00",
+      "route": "/events"
+    }
+  ],
+  "stateComponent": "qualification-state",
+  "stateReadback": {
+    "etag": "e8823c36-9b86-4ec9-a115-1a7bdcb4c532",
+    "status": 200,
+    "value": [
+      {
+        "id": "c9bda16fecd75bf28708be98",
+        "kind": "effect",
+        "messageId": "c9bda16fecd75bf28708be98",
+        "persistedUtc": "2026-10-20T10:55:44.038137+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "faaeebe8c6bee7a25aaeb7f1",
+        "kind": "effect",
+        "messageId": "faaeebe8c6bee7a25aaeb7f1",
+        "persistedUtc": "2026-10-20T10:55:53.621225+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "cecb5e2feb36958710d2ee15",
+        "kind": "effect",
+        "messageId": "cecb5e2feb36958710d2ee15",
+        "persistedUtc": "2026-10-20T10:56:04.255218+00:00",
+        "route": "/quarantine"
+      },
+      {
+        "id": "6106022eb4d0ac376d88b06f",
+        "kind": "effect",
+        "messageId": "6106022eb4d0ac376d88b06f",
+        "persistedUtc": "2026-10-20T10:56:45.973741+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "6e13e81bd9656c4d3740c5d6",
+        "kind": "effect",
+        "messageId": "6e13e81bd9656c4d3740c5d6",
+        "persistedUtc": "2026-10-20T10:56:52.372934+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "5d7c98c7120b28925eec679b",
+        "kind": "effect",
+        "messageId": "5d7c98c7120b28925eec679b",
+        "persistedUtc": "2026-10-20T10:56:54.839501+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "df0a48e41d12b1a826c70758",
+        "kind": "effect",
+        "messageId": "df0a48e41d12b1a826c70758",
+        "persistedUtc": "2026-10-20T10:56:57.560899+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "78d2b95a3b9cf61e36bbbe59",
+        "kind": "effect",
+        "messageId": "78d2b95a3b9cf61e36bbbe59",
+        "persistedUtc": "2026-10-20T10:57:00.176147+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "cf5f0aa62922dff9982c7d53",
+        "kind": "effect",
+        "messageId": "cf5f0aa62922dff9982c7d53",
+        "persistedUtc": "2026-10-20T10:57:08.097965+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "e56937cfbe6bc3d53ac7c4d3",
+        "kind": "effect",
+        "messageId": "e56937cfbe6bc3d53ac7c4d3",
+        "persistedUtc": "2026-10-20T10:58:15.185005+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "56e57858e2280cf7f403d1e8",
+        "kind": "effect",
+        "messageId": "56e57858e2280cf7f403d1e8",
+        "persistedUtc": "2026-10-20T10:58:15.204654+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "8a588c70f4a0c1aef2d58078",
+        "kind": "effect",
+        "messageId": "8a588c70f4a0c1aef2d58078",
+        "persistedUtc": "2026-10-20T10:58:15.210565+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "25914edc402d12a13a5651b9",
+        "kind": "effect",
+        "messageId": "25914edc402d12a13a5651b9",
+        "persistedUtc": "2026-10-20T10:58:15.275419+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "89efd18a4e42522535c49257",
+        "kind": "effect",
+        "messageId": "89efd18a4e42522535c49257",
+        "persistedUtc": "2026-10-20T10:58:15.287797+00:00",
+        "route": "/events"
+      }
+    ]
+  }
+}
