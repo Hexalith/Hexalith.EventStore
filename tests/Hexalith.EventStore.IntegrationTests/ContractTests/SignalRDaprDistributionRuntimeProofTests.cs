@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Diagnostics;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -29,6 +30,320 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 public sealed class SignalRDaprDistributionRuntimeProofTests
 {
     private static readonly TimeSpan s_positiveWait = TimeSpan.FromSeconds(15);
+
+    /// <summary>Qualifies a bounded exact-topic catalog rollout for a tenant absent from the startup catalog.</summary>
+    [Fact]
+    public async Task DaprRedisStreams_ExactTopicCatalogRollout_AddsTenantOnBothSidecars()
+    {
+        DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(4));
+        string suffix = Guid.NewGuid().ToString("N")[..12];
+        string tenant = $"tenant-a-{suffix}";
+        string addedTenant = $"tenant-b-{suffix}";
+        string projection = $"catalog-{suffix}";
+        string freshProjection = $"catalog-fresh-{suffix}";
+        string scope = $"scope-{suffix}";
+        string initialTopic = NamingConventionEngine.GetProjectionChangedTopic(projection, tenant);
+        string addedTopic = NamingConventionEngine.GetProjectionChangedTopic(projection, addedTenant);
+        string freshTopic = NamingConventionEngine.GetProjectionChangedTopic(freshProjection, addedTenant);
+        string key = $"story-2-13:{addedTenant}:{projection}";
+        await using SignalRDaprDistributionFixture fixture = await SignalRDaprDistributionFixture
+            .StartAsync([initialTopic], cancellation.Token).ConfigureAwait(true);
+        using DaprClient writer = new DaprClientBuilder().UseGrpcEndpoint(fixture.First.DaprGrpcEndpoint).Build();
+        using DaprClient reader = new DaprClientBuilder().UseGrpcEndpoint(fixture.Second.DaprGrpcEndpoint).Build();
+        var firstStore = new DaprReadModelStore(writer);
+        var secondStore = new DaprReadModelStore(reader);
+        await firstStore.SaveAsync("statestore", key,
+            new Dictionary<string, int> { ["version"] = 1 }, cancellation.Token).ConfigureAwait(true);
+        ReadModelEntry<Dictionary<string, int>> before = await secondStore
+            .GetAsync<Dictionary<string, int>>("statestore", key, cancellation.Token).ConfigureAwait(true);
+        before.Value!["version"].ShouldBe(1);
+
+        var firstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var secondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var firstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var secondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var controlFirstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var controlSecondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var controlFirstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var controlSecondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        await using HubConnection first = CreateConnection(fixture.First.AppEndpoint, addedTenant, firstSignals.Writer, firstDetails.Writer);
+        await using HubConnection second = CreateConnection(fixture.Second.AppEndpoint, addedTenant, secondSignals.Writer, secondDetails.Writer);
+        await using HubConnection controlFirst = CreateConnection(fixture.First.AppEndpoint, tenant, controlFirstSignals.Writer, controlFirstDetails.Writer);
+        await using HubConnection controlSecond = CreateConnection(fixture.Second.AppEndpoint, tenant, controlSecondSignals.Writer, controlSecondDetails.Writer);
+        foreach (HubConnection connection in new[] { first, second, controlFirst, controlSecond })
+        {
+            await connection.StartAsync(cancellation.Token).ConfigureAwait(true);
+        }
+        foreach (HubConnection connection in new[] { first, second })
+        {
+            await connection.InvokeAsync("JoinGroup", projection, addedTenant, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroupScoped", projection, addedTenant, scope, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroup", freshProjection, addedTenant, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroupScoped", freshProjection, addedTenant, scope, cancellation.Token).ConfigureAwait(true);
+        }
+        foreach (HubConnection control in new[] { controlFirst, controlSecond })
+        {
+            await control.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token).ConfigureAwait(true);
+            await control.InvokeAsync("JoinGroupScoped", projection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+            await control.InvokeAsync("JoinGroup", freshProjection, tenant, cancellation.Token).ConfigureAwait(true);
+            await control.InvokeAsync("JoinGroupScoped", freshProjection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+            await Should.ThrowAsync<HubException>(() => control.InvokeAsync(
+                "JoinGroupScoped", projection, addedTenant, scope, cancellation.Token)).ConfigureAwait(true);
+        }
+
+        await writer.PublishEventAsync("pubsub", initialTopic,
+            new ProjectionChangedNotification(projection, tenant) { Provenance = CreateProvenance(projection, tenant, initialTopic) },
+            cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(controlFirstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        (await ReadAsync(controlSecondSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        await writer.PublishEventAsync("pubsub", addedTopic,
+            new ProjectionChangedNotification(projection, addedTenant) { Provenance = CreateProvenance(projection, addedTenant, addedTopic) },
+            cancellation.Token).ConfigureAwait(true);
+        bool[] preRolloutDelivery = await Task.WhenAll(
+            ReceivesWithinAsync(firstSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(secondSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
+        preRolloutDelivery.Any(static received => received).ShouldBeFalse("the shipped wildcard does not subscribe to the new tenant's Redis stream");
+        await fixture.CaptureEvidenceAsync("topic-catalog-before-rollout", startedUtc, new
+        {
+            InitialTopic = initialTopic, AddedTopic = addedTopic, NewTenantDeliveredBeforeRollout = false,
+            PriorVersion = before.Value!["version"], PriorETag = before.ETag,
+        }, cancellation.Token).ConfigureAwait(true);
+        int[] hostsBefore = [fixture.First.ApplicationProcessId, fixture.Second.ApplicationProcessId];
+        int[] sidecarsBefore = [fixture.First.SidecarProcessId, fixture.Second.SidecarProcessId];
+        string?[] connectionsBefore = [first.ConnectionId, second.ConnectionId];
+        int subscriptionIndex = await fixture.AddExactTopicAsync(addedTopic, cancellation.Token).ConfigureAwait(true);
+        int freshSubscriptionIndex = await fixture.AddExactTopicAsync(freshTopic, cancellation.Token).ConfigureAwait(true);
+        await fixture.ReloadSidecarsAsync(cancellation.Token).ConfigureAwait(true);
+        fixture.First.ApplicationProcessId.ShouldBe(hostsBefore[0]);
+        fixture.Second.ApplicationProcessId.ShouldBe(hostsBefore[1]);
+        fixture.First.SidecarProcessId.ShouldNotBe(sidecarsBefore[0]);
+        fixture.Second.SidecarProcessId.ShouldNotBe(sidecarsBefore[1]);
+        first.ConnectionId.ShouldBe(connectionsBefore[0]);
+        second.ConnectionId.ShouldBe(connectionsBefore[1]);
+        foreach (SignalRDaprDistributionNode node in new[] { fixture.First, fixture.Second })
+        {
+            JsonElement runtime = await node.GetRuntimeMetadataAsync(cancellation.Token).ConfigureAwait(true);
+            runtime.GetProperty("subscriptions").EnumerateArray().Any(subscription =>
+                subscription.GetProperty("topic").GetString() == addedTopic).ShouldBeTrue();
+            runtime.GetProperty("subscriptions").EnumerateArray().Any(subscription =>
+                subscription.GetProperty("topic").GetString() == freshTopic).ShouldBeTrue();
+        }
+
+        await firstStore.SaveAsync("statestore", key,
+            new Dictionary<string, int> { ["version"] = 2 }, cancellation.Token).ConfigureAwait(true);
+        var metadata = new Dictionary<string, string> { ["phase"] = "after-catalog-rollout" };
+        await writer.PublishEventAsync("pubsub", freshTopic,
+            new ProjectionChangedNotification(freshProjection, addedTenant)
+            {
+                Provenance = CreateProvenance(freshProjection, addedTenant, freshTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        await writer.PublishEventAsync("pubsub", freshTopic,
+            new ProjectionChangedNotification(freshProjection, addedTenant, GroupScope: scope, Metadata: metadata)
+            {
+                Provenance = CreateProvenance(freshProjection, addedTenant, freshTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        await ReadFreshSignalAsync(firstSignals.Reader, freshProjection, addedTenant, cancellation.Token).ConfigureAwait(true);
+        await ReadFreshSignalAsync(secondSignals.Reader, freshProjection, addedTenant, cancellation.Token).ConfigureAwait(true);
+        await ReadRecoveryDetailAsync(firstDetails.Reader, freshProjection, addedTenant, scope, metadata, cancellation.Token).ConfigureAwait(true);
+        await ReadRecoveryDetailAsync(secondDetails.Reader, freshProjection, addedTenant, scope, metadata, cancellation.Token).ConfigureAwait(true);
+        ReadModelEntry<Dictionary<string, int>>[] after = await Task.WhenAll(
+            WaitForReadbackAsync(firstStore, key, cancellation.Token),
+            WaitForReadbackAsync(secondStore, key, cancellation.Token)).ConfigureAwait(true);
+        foreach (ReadModelEntry<Dictionary<string, int>> entry in after)
+        {
+            entry.Value!["version"].ShouldBe(2);
+            entry.ETag.ShouldNotBe(before.ETag);
+            entry.ETag.ShouldBe(after[0].ETag);
+        }
+        bool[] foreignDetails = await Task.WhenAll(
+            ReceivesWithinAsync(controlFirstDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(controlSecondDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
+        foreignDetails.Any(static received => received).ShouldBeFalse();
+        var foreignSignals = await Task.WhenAll(
+            ObserveTenantBoundaryAsync(controlFirstSignals.Reader, static notice => notice.Tenant, tenant, cancellation.Token),
+            ObserveTenantBoundaryAsync(controlSecondSignals.Reader, static notice => notice.Tenant, tenant, cancellation.Token)).ConfigureAwait(true);
+        foreignSignals.Any(static observation => observation.ForeignTenant).ShouldBeFalse();
+        await fixture.CaptureEvidenceAsync("topic-catalog-after-rollout", startedUtc, new
+        {
+            InitialTopic = initialTopic, AddedTopic = addedTopic, FreshControlTopic = freshTopic,
+            AddedSubscriptionSha256 = fixture.SubscriptionSha256(subscriptionIndex),
+            FreshSubscriptionSha256 = fixture.SubscriptionSha256(freshSubscriptionIndex),
+            HostProcessIdsBefore = hostsBefore, SidecarProcessIdsBefore = sidecarsBefore,
+            FirstConnectionId = first.ConnectionId, SecondConnectionId = second.ConnectionId,
+            PriorVersion = before.Value!["version"], PriorETag = before.ETag,
+            ReadbackVersions = after.Select(static entry => entry.Value!["version"]).ToArray(),
+            ReadbackETags = after.Select(static entry => entry.ETag).ToArray(),
+            OtherTenantReceivedAddedTenantHints = false,
+            Limits = new[] { "fixture-only-coordinated-exact-topic-catalog-rollout", "no-automatic-tenant-discovery",
+                "sidecar-restart-replay-is-allowed", "synthetic-read-model-not-real-projection-completion",
+                "no-production-catalog-issuer-or-profile", "no-package-deployment-transition-or-rollback" },
+        }, cancellation.Token).ConfigureAwait(true);
+    }
+
+    /// <summary>Checks a provider network fault shared by both sidecars without stopping the shared provider.</summary>
+    [Fact]
+    public async Task DaprRedisStreams_ProviderNetworkOutage_BoundsFailureAndRestoresReadbackAndHints()
+    {
+        DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        string suffix = Guid.NewGuid().ToString("N")[..12];
+        string tenant = $"tenant-a-{suffix}";
+        string otherTenant = $"tenant-b-{suffix}";
+        string projection = $"network-{suffix}";
+        string recoveryProjection = $"network-restored-{suffix}";
+        string scope = $"scope-{suffix}";
+        string topic = NamingConventionEngine.GetProjectionChangedTopic(projection, tenant);
+        string recoveryTopic = NamingConventionEngine.GetProjectionChangedTopic(recoveryProjection, tenant);
+        string key = $"story-2-13:{tenant}:{projection}";
+        await using var network = new SignalRDaprNetworkFaultProxy();
+        await using SignalRDaprDistributionFixture fixture = await SignalRDaprDistributionFixture
+            .StartAsync([topic, recoveryTopic], cancellation.Token, redisPort: network.Port).ConfigureAwait(true);
+        using DaprClient writer = new DaprClientBuilder().UseGrpcEndpoint(fixture.First.DaprGrpcEndpoint).Build();
+        using DaprClient reader = new DaprClientBuilder().UseGrpcEndpoint(fixture.Second.DaprGrpcEndpoint).Build();
+        var firstStore = new DaprReadModelStore(writer);
+        var secondStore = new DaprReadModelStore(reader);
+        await firstStore.SaveAsync("statestore", key,
+            new Dictionary<string, int> { ["version"] = 1 }, cancellation.Token).ConfigureAwait(true);
+        ReadModelEntry<Dictionary<string, int>> before = await secondStore
+            .GetAsync<Dictionary<string, int>>("statestore", key, cancellation.Token).ConfigureAwait(true);
+        before.Value!["version"].ShouldBe(1);
+        before.ETag.ShouldNotBeNullOrWhiteSpace();
+
+        var firstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var secondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var firstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var secondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var deniedFirstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var deniedSecondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var deniedFirstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var deniedSecondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        await using HubConnection first = CreateConnection(fixture.First.AppEndpoint, tenant, firstSignals.Writer, firstDetails.Writer);
+        await using HubConnection second = CreateConnection(fixture.Second.AppEndpoint, tenant, secondSignals.Writer, secondDetails.Writer);
+        await using HubConnection deniedFirst = CreateConnection(fixture.First.AppEndpoint, otherTenant, deniedFirstSignals.Writer, deniedFirstDetails.Writer);
+        await using HubConnection deniedSecond = CreateConnection(fixture.Second.AppEndpoint, otherTenant, deniedSecondSignals.Writer, deniedSecondDetails.Writer);
+        foreach (HubConnection connection in new[] { first, second, deniedFirst, deniedSecond })
+        {
+            await connection.StartAsync(cancellation.Token).ConfigureAwait(true);
+        }
+
+        foreach (HubConnection connection in new[] { first, second })
+        {
+            await connection.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroupScoped", projection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroup", recoveryProjection, tenant, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroupScoped", recoveryProjection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+        }
+        foreach (HubConnection denied in new[] { deniedFirst, deniedSecond })
+        {
+            await denied.InvokeAsync("JoinGroup", recoveryProjection, otherTenant, cancellation.Token).ConfigureAwait(true);
+            await denied.InvokeAsync("JoinGroupScoped", recoveryProjection, otherTenant, scope, cancellation.Token).ConfigureAwait(true);
+            await Should.ThrowAsync<HubException>(() => denied.InvokeAsync(
+                "JoinGroupScoped", recoveryProjection, tenant, scope, cancellation.Token)).ConfigureAwait(true);
+        }
+
+        await writer.PublishEventAsync("pubsub", topic,
+            new ProjectionChangedNotification(projection, tenant) { Provenance = CreateProvenance(projection, tenant, topic) },
+            cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        (await ReadAsync(secondSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        string? firstConnectionId = first.ConnectionId;
+        string? secondConnectionId = second.ConnectionId;
+        int activeBefore = network.ActiveConnections;
+        activeBefore.ShouldBeGreaterThan(0);
+        DateTimeOffset faultStartedUtc = DateTimeOffset.UtcNow;
+        await network.BlockAsync(cancellation.Token).ConfigureAwait(true);
+        network.ActiveConnections.ShouldBe(0);
+        network.DisconnectedConnections.ShouldBeGreaterThan(0);
+
+        // Failed/cancelled calls establish no absence, completion, or freshness. Retain their outcomes as unknown.
+        var outageNotice = new ProjectionChangedNotification(projection, tenant, GroupScope: scope,
+            Metadata: new Dictionary<string, string> { ["phase"] = "uncertain-outage-publication" })
+        {
+            Provenance = CreateProvenance(projection, tenant, topic),
+        };
+        (string publishFailure, double publishMilliseconds) = await ObserveBoundedProviderFailureAsync(
+            token => writer.PublishEventAsync("pubsub", topic, outageNotice, token), cancellation.Token).ConfigureAwait(true);
+        (string firstReadFailure, double firstReadMilliseconds) = await ObserveBoundedProviderFailureAsync(
+            async token => { _ = await firstStore.GetAsync<Dictionary<string, int>>("statestore", key, token).ConfigureAwait(false); },
+            cancellation.Token).ConfigureAwait(true);
+        (string secondReadFailure, double secondReadMilliseconds) = await ObserveBoundedProviderFailureAsync(
+            async token => { _ = await secondStore.GetAsync<Dictionary<string, int>>("statestore", key, token).ConfigureAwait(false); },
+            cancellation.Token).ConfigureAwait(true);
+        bool[] outageHints = await Task.WhenAll(
+            ReceivesWithinAsync(firstDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(secondDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
+        outageHints.Any(static received => received).ShouldBeFalse("both sidecars have lost their only provider route");
+        network.RejectedConnections.ShouldBeGreaterThan(0);
+        DateTimeOffset faultRestoredUtc = DateTimeOffset.UtcNow;
+        network.Restore();
+
+        ReadModelEntry<Dictionary<string, int>>[] restored = await Task.WhenAll(
+            WaitForReadbackAsync(firstStore, key, cancellation.Token),
+            WaitForReadbackAsync(secondStore, key, cancellation.Token)).ConfigureAwait(true);
+        foreach (ReadModelEntry<Dictionary<string, int>> entry in restored)
+        {
+            entry.Value!["version"].ShouldBe(1);
+            entry.ETag.ShouldBe(before.ETag, "failed publications and reads must not mutate the authoritative read model");
+        }
+
+        await firstStore.SaveAsync("statestore", key,
+            new Dictionary<string, int> { ["version"] = 2 }, cancellation.Token).ConfigureAwait(true);
+        ReadModelEntry<Dictionary<string, int>> changed = await secondStore
+            .GetAsync<Dictionary<string, int>>("statestore", key, cancellation.Token).ConfigureAwait(true);
+        changed.Value!["version"].ShouldBe(2);
+        changed.ETag.ShouldNotBe(before.ETag);
+
+        // A fresh topic distinguishes recovery delivery from any retry of the uncertain outage publication.
+        await writer.PublishEventAsync("pubsub", recoveryTopic,
+            new ProjectionChangedNotification(recoveryProjection, tenant)
+            {
+                Provenance = CreateProvenance(recoveryProjection, tenant, recoveryTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        var metadata = new Dictionary<string, string> { ["phase"] = "restored-network-control" };
+        await writer.PublishEventAsync("pubsub", recoveryTopic,
+            new ProjectionChangedNotification(recoveryProjection, tenant, GroupScope: scope, Metadata: metadata)
+            {
+                Provenance = CreateProvenance(recoveryProjection, tenant, recoveryTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((recoveryProjection, tenant));
+        (await ReadAsync(secondSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((recoveryProjection, tenant));
+        await ReadRecoveryDetailAsync(firstDetails.Reader, recoveryProjection, tenant, scope, metadata, cancellation.Token).ConfigureAwait(true);
+        await ReadRecoveryDetailAsync(secondDetails.Reader, recoveryProjection, tenant, scope, metadata, cancellation.Token).ConfigureAwait(true);
+        first.ConnectionId.ShouldBe(firstConnectionId);
+        second.ConnectionId.ShouldBe(secondConnectionId);
+        bool[] deniedHints = await Task.WhenAll(
+            ReceivesWithinAsync(deniedFirstSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(deniedSecondSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(deniedFirstDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(deniedSecondDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
+        deniedHints.Any(static received => received).ShouldBeFalse();
+        ReadModelEntry<Dictionary<string, int>> final = await firstStore
+            .GetAsync<Dictionary<string, int>>("statestore", key, cancellation.Token).ConfigureAwait(true);
+        final.Value!["version"].ShouldBe(2);
+        final.ETag.ShouldBe(changed.ETag);
+
+        await fixture.CaptureEvidenceAsync("provider-network-outage", startedUtc, new
+        {
+            Tenant = tenant, OtherTenant = otherTenant, Topic = topic, RecoveryTopic = recoveryTopic,
+            FaultStartedUtc = faultStartedUtc, FaultRestoredUtc = faultRestoredUtc,
+            ProxyPort = network.Port, ActiveConnectionsBeforeFault = activeBefore,
+            network.DisconnectedConnections, network.RejectedConnections,
+            PublishFailure = publishFailure, PublishMilliseconds = publishMilliseconds,
+            FirstReadFailure = firstReadFailure, FirstReadMilliseconds = firstReadMilliseconds,
+            SecondReadFailure = secondReadFailure, SecondReadMilliseconds = secondReadMilliseconds,
+            CallCancellationBudgetMilliseconds = 2_000, CallOuterBoundMilliseconds = 5_000,
+            FirstConnectionId = first.ConnectionId, SecondConnectionId = second.ConnectionId,
+            BeforeVersion = before.Value!["version"], BeforeETag = before.ETag,
+            RestoredVersions = restored.Select(static entry => entry.Value!["version"]).ToArray(),
+            RestoredETags = restored.Select(static entry => entry.ETag).ToArray(),
+            FinalVersion = final.Value!["version"], FinalETag = final.ETag,
+            DeniedClientsReceivedHints = false, OutagePublicationDisposition = "unknown-until-reconciliation",
+            Limits = new[] { "synthetic-read-model-not-real-projection-completion", "no-canonical-ui-freshness-proof",
+                "connection-reset-fault-only-no-saturation-or-blackhole", "exact-topic-development-profile-only",
+                "no-production-issuer-or-profile", "no-transition-or-rollback-approval" },
+        }, cancellation.Token).ConfigureAwait(true);
+    }
 
     /// <summary>Checks replica restart, lost-hint reconciliation, and serialized-metadata rejection on both hosts.</summary>
     [Fact]
@@ -867,6 +1182,73 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             return false;
+        }
+    }
+
+    private static async Task<(string Failure, double Milliseconds)> ObserveBoundedProviderFailureAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken)
+    {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(TimeSpan.FromSeconds(2));
+        long started = Stopwatch.GetTimestamp();
+        Exception? observed = null;
+        try
+        {
+            await operation(budget.Token).WaitAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested
+            && exception is DaprException or OperationCanceledException)
+        {
+            observed = exception;
+        }
+
+        observed.ShouldNotBeNull("the unavailable provider cannot establish a successful publication or query");
+        return (observed.GetType().Name, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+    }
+
+    private static async Task ReadRecoveryDetailAsync(
+        ChannelReader<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)> reader,
+        string projection,
+        string tenant,
+        string scope,
+        IReadOnlyDictionary<string, string> metadata,
+        CancellationToken cancellationToken)
+    {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(s_positiveWait);
+        while (true)
+        {
+            var detail = await reader.ReadAsync(budget.Token).ConfigureAwait(false);
+            if (!string.Equals(detail.Projection, projection, StringComparison.Ordinal))
+            {
+                // A timed-out publication can remain uncertain; an old hint cannot prove recovery.
+                continue;
+            }
+
+            detail.Tenant.ShouldBe(tenant);
+            detail.Scope.ShouldBe(scope);
+            detail.Metadata.ShouldBe(metadata);
+            return;
+        }
+    }
+
+    private static async Task ReadFreshSignalAsync(
+        ChannelReader<(string Projection, string Tenant)> reader,
+        string projection,
+        string tenant,
+        CancellationToken cancellationToken)
+    {
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(s_positiveWait);
+        while (true)
+        {
+            var signal = await reader.ReadAsync(budget.Token).ConfigureAwait(false);
+            if (string.Equals(signal.Projection, projection, StringComparison.Ordinal))
+            {
+                signal.Tenant.ShouldBe(tenant);
+                return;
+            }
         }
     }
 

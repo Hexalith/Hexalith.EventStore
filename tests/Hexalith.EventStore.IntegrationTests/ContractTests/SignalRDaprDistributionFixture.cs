@@ -11,6 +11,7 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
 {
     private readonly string _componentsPath;
+    private int _subscriptionCount;
 
     private SignalRDaprDistributionFixture(string repositoryRoot)
     {
@@ -45,7 +46,8 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
         IReadOnlyList<string> topics,
         CancellationToken cancellationToken,
         bool enablePubSubProjectionTransport = false,
-        string? aggregateActorTypeName = null)
+        string? aggregateActorTypeName = null,
+        int redisPort = 6379)
     {
         ArgumentNullException.ThrowIfNull(topics);
         if (topics.Count == 0)
@@ -53,11 +55,14 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             throw new ArgumentException("At least one exact projection topic is required.", nameof(topics));
         }
 
+        ArgumentOutOfRangeException.ThrowIfLessThan(redisPort, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(redisPort, 65_535);
+
         string root = FindRepositoryRoot();
         var fixture = new SignalRDaprDistributionFixture(root);
         try
         {
-            await fixture.WriteComponentsAsync(topics, cancellationToken).ConfigureAwait(false);
+            await fixture.WriteComponentsAsync(topics, redisPort, cancellationToken).ConfigureAwait(false);
             await fixture.First.StartAsync(
                 root, fixture._componentsPath, cancellationToken,
                 enablePubSubProjectionTransport, aggregateActorTypeName).ConfigureAwait(false);
@@ -82,6 +87,24 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
     /// <summary>Restarts the second sidecar after a bounded outage.</summary>
     public Task RestartSecondSidecarAsync(CancellationToken cancellationToken)
         => Second.StartSidecarAsync(_componentsPath, cancellationToken);
+
+    /// <summary>Adds an exact topic to the disposable catalog; sidecars must reload it before delivery is claimed.</summary>
+    public async Task<int> AddExactTopicAsync(string topic, CancellationToken cancellationToken)
+    {
+        int index = _subscriptionCount;
+        await WriteSubscriptionAsync(topic, index, cancellationToken).ConfigureAwait(false);
+        _subscriptionCount++;
+        return index;
+    }
+
+    /// <summary>Reloads both fixture sidecars while leaving product hosts and their SignalR connections running.</summary>
+    public async Task ReloadSidecarsAsync(CancellationToken cancellationToken)
+    {
+        await Second.StopSidecarAsync().ConfigureAwait(false);
+        await First.StopSidecarAsync().ConfigureAwait(false);
+        await First.StartSidecarAsync(_componentsPath, cancellationToken).ConfigureAwait(false);
+        await Second.StartSidecarAsync(_componentsPath, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>Restarts the second complete replica with its original application and component configuration.</summary>
     public async Task RestartSecondAsync(CancellationToken cancellationToken)
@@ -125,6 +148,7 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
         string[] sources = [
             "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs",
             "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs",
+            "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprNetworkFaultProxy.cs",
             "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs",
             "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprProjectionDispatchProofTests.cs",
             "src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs",
@@ -208,9 +232,9 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
         }
     }
 
-    private async Task WriteComponentsAsync(IReadOnlyList<string> topics, CancellationToken cancellationToken)
+    private async Task WriteComponentsAsync(IReadOnlyList<string> topics, int redisPort, CancellationToken cancellationToken)
     {
-        const string state = """
+        string state = $"""
             apiVersion: dapr.io/v1alpha1
             kind: Component
             metadata:
@@ -220,7 +244,7 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
               version: v1
               metadata:
                 - name: redisHost
-                  value: "127.0.0.1:6379"
+                  value: "127.0.0.1:{redisPort}"
                 - name: redisPassword
                   value: ""
                 - name: actorStateStore
@@ -230,7 +254,7 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             scopes:
               - eventstore
             """;
-        const string pubsub = """
+        string pubsub = $$"""
             apiVersion: dapr.io/v1alpha1
             kind: Component
             metadata:
@@ -240,7 +264,7 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
               version: v1
               metadata:
                 - name: redisHost
-                  value: "127.0.0.1:6379"
+                  value: "127.0.0.1:{{redisPort}}"
                 - name: redisPassword
                   value: ""
                 - name: consumerID
@@ -252,13 +276,19 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
         await File.WriteAllTextAsync(Path.Combine(_componentsPath, "pubsub.yaml"), pubsub + "\n", Encoding.UTF8, cancellationToken).ConfigureAwait(false);
         for (int index = 0; index < topics.Count; index++)
         {
-            string topic = topics[index];
-            if (string.IsNullOrWhiteSpace(topic) || topic.Contains('"') || topic.Contains('\n'))
-            {
-                throw new ArgumentException("Topics must be nonempty YAML-safe exact names.", nameof(topics));
-            }
+            await WriteSubscriptionAsync(topics[index], index, cancellationToken).ConfigureAwait(false);
+        }
+        _subscriptionCount = topics.Count;
+    }
 
-            string subscription = $"""
+    private async Task WriteSubscriptionAsync(string topic, int index, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(topic) || topic.Contains('"') || topic.Contains('\n') || topic.Contains('\r'))
+        {
+            throw new ArgumentException("Topics must be nonempty YAML-safe exact names.", nameof(topic));
+        }
+
+        string subscription = $"""
                 apiVersion: dapr.io/v2alpha1
                 kind: Subscription
                 metadata:
@@ -271,10 +301,9 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
                 scopes:
                   - eventstore
                 """;
-            await File.WriteAllTextAsync(
-                Path.Combine(_componentsPath, $"subscription-{index}.yaml"),
-                subscription + "\n", Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-        }
+        await File.WriteAllTextAsync(
+            Path.Combine(_componentsPath, $"subscription-{index}.yaml"),
+            subscription + "\n", Encoding.UTF8, cancellationToken).ConfigureAwait(false);
     }
 
     private static string FindRepositoryRoot()

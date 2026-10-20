@@ -26,6 +26,7 @@ unresolved:
     qualification_packet: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md
     qualification_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md
     historical_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-19.md
+    network_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20-network.md
     observed_gap: >-
       Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
       but the shipped *.*.projection-changed wildcard subscribed to a literal Redis
@@ -38,6 +39,11 @@ unresolved:
       enforces the serialized contract across producer, receiver, and broadcaster;
       its continuation adds complete replica restart and Dapr reconciliation.
       Neither continuation grants a production profile or accepted exception.
+      A separate network-fault continuation exercises a fixture-only provider
+      connection-reset profile and Dapr reconciliation. The user-selected MVP
+      target is self-hosted Kubernetes at 192.168.1.30; Azure/AWS are comparison
+      only and outside MVP. Observed isolated cluster Dapr 1.18.1 is not the
+      locally tested 1.18.7 profile and does not meet the AD-26 runtime floor.
     required_evidence:
       - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
       - negotiation-group-membership-reconnect-rejoin-and-tenant-denial

@@ -130,3 +130,4 @@ _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/** -t
 # Story 2.13 continuation binds exact generated components, metadata, logs, and receipts.
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-19/** -text
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20/** -text -whitespace
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/** -text -whitespace
