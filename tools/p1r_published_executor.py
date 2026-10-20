@@ -11,10 +11,12 @@ import base64
 import datetime
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -165,6 +167,14 @@ class Measurements:
         return checks_counter(self.checks)
 
 
+class SeedFailure(InvalidPacket):
+    """Carry actual seed observations through case and paired-branch failures."""
+
+    def __init__(self, observations):
+        super().__init__("seed preconditions invalid; dependent operations unattempted")
+        self.observations = {"seed_preconditions": observations, "dependent_operations": "unattempted"}
+
+
 def reserve_port():
     # Stay below Linux's ephemeral client range: releasing an ephemeral listener
     # before Docker publishes it otherwise races ordinary outbound connections.
@@ -290,6 +300,101 @@ def semantic_observation(observation, outcome):
 def semantic_delta(package, source):
     return [{"field": key, "package": package.get(key), "source": source.get(key)}
             for key in sorted(set(package) | set(source)) if package.get(key) != source.get(key)]
+
+
+def persisted_preconditions(rows, raw):
+    """Keep exact domain bytes and declare each excluded dynamic field for comparison."""
+    state, semantics, excluded = {}, [], []
+    dynamic = {"event": {"messageId", "correlationId", "causationId", "timestamp"},
+               "metadata": {"lastModified", "eTag", "etag"}, "snapshot": {"createdAt"}}
+    for row in rows:
+        if row["kind"] == "bookkeeping":
+            continue
+        data = raw[row["key"]]
+        require(digest(data) == row["sha256"], "persisted precondition bytes differ from inventory")
+        value = json.loads(data)
+        state[row["key"]] = {"base64": base64.b64encode(data).decode(), "sha256": digest(data)}
+        normalized = dict(value) if isinstance(value, dict) else value
+        if isinstance(normalized, dict):
+            for field in sorted(dynamic.get(row["kind"], set())):
+                if field in normalized:
+                    excluded.append({"key": row["key"], "field": field, "value": normalized.pop(field)})
+            if isinstance(normalized.get("sourceProof"), dict):
+                normalized["sourceProof"] = dict(normalized["sourceProof"])
+                for field in ("sourceIncarnation", "headMessageId", "cumulativeDigest"):
+                    if field in normalized["sourceProof"]:
+                        excluded.append({"key": row["key"], "field": "sourceProof." + field,
+                                         "value": normalized["sourceProof"].pop(field)})
+        semantics.append({"key": row["key"], "tenant": row["tenant"], "kind": row["kind"],
+                          "sequence": row["sequence"], "floor": row["floor"], "value": normalized})
+    return {"inventory": rows, "state": state, "semantic": semantics, "dynamic_fields": excluded}
+
+
+def retained_metadata(values, floor):
+    """Refuse malformed positive inputs before changing any retention coordinate."""
+    metadata = [json.loads(data) for key, data in values.items() if "tenant-a" in key and key.endswith(":metadata")]
+    snapshots = [json.loads(data) for key, data in values.items() if "tenant-a" in key and key.endswith(":snapshot")]
+    events = {int(key.rsplit(":", 1)[1]): data for key, data in values.items() if "tenant-a" in key and ":events:" in key}
+    secondary = [json.loads(data) for key, data in values.items() if "tenant-b" in key and key.endswith(":metadata")]
+    require(len(metadata) == len(snapshots) == len(secondary) == 1 and metadata[0].get("currentSequence") == 12
+            and metadata[0].get("retainedFloor", 1) == floor and snapshots[0].get("sequenceNumber") == 9
+            and sorted(events) == list(range(floor, 13)) and secondary[0].get("currentSequence") == 3,
+            "malformed retained fixture coordinates")
+    value = metadata[0]
+    proof = value.get("sourceProof")
+    if proof is not None:
+        head = json.loads(events[12])
+        require(isinstance(proof, dict) and proof.get("codecVersion") == 1
+                and proof.get("tenantId") == "tenant-a" and proof.get("domain") == "counter"
+                and proof.get("aggregateId") == "fixture" and proof.get("headSequence") == 12
+                and proof.get("retainedFloor") == floor and proof.get("erased") is False
+                and re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", proof.get("sourceIncarnation", "")) is not None
+                and re.fullmatch(r"[0-9a-f]{64}", proof.get("cumulativeDigest", "")) is not None
+                and isinstance(proof.get("headMessageId"), str) and bool(proof["headMessageId"].strip())
+                and proof["headMessageId"] == head.get("messageId") and not value.get("sourceErasurePending", False),
+                "malformed retained fixture source proof")
+        if floor == 1:
+            require(source_proof_digest(events, proof) == proof["cumulativeDigest"],
+                    "retained fixture source proof digest differs from original event chain")
+    return value
+
+
+def source_proof_digest(events, proof):
+    """Recompute the source-v1 chain over the original complete stopped-writer fixture."""
+    def string(value):
+        data = None if value is None else value.encode()
+        return struct.pack("<i", -1 if data is None else len(data)) + (data or b"")
+    seed = b"".join(string(value) for value in ("hexalith.projection.source.seed.v1", proof["tenantId"],
+        proof["domain"], proof["aggregateId"], proof["sourceIncarnation"]))
+    chain = bytes.fromhex(digest(seed))
+    for sequence in sorted(events):
+        event = json.loads(events[sequence])
+        timestamp = event["timestamp"]
+        date = datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        utc = date.astimezone(datetime.timezone.utc)
+        elapsed = utc - datetime.datetime(1, 1, 1, tzinfo=datetime.timezone.utc)
+        fraction = re.search(r"\.(\d+)", timestamp)
+        ticks = ((elapsed.days * 86400 + elapsed.seconds) * 10_000_000
+                 + int(((fraction.group(1) if fraction else "") + "0000000")[:7]))
+        data = b"".join(string(value) for value in ("hexalith.projection.source.event.v1", event.get("messageId"),
+            event.get("aggregateId"), event.get("aggregateType"), event.get("tenantId"), event.get("domain")))
+        data += struct.pack("<qqqi", event["sequenceNumber"], event["globalPosition"], ticks,
+                            int(date.utcoffset().total_seconds() // 60))
+        data += b"".join(string(event.get(field)) for field in ("correlationId", "causationId", "userId",
+            "domainServiceVersion", "eventTypeName"))
+        data += struct.pack("<i", event["metadataVersion"]) + string(event.get("serializationFormat"))
+        payload = base64.b64decode(event["payload"], validate=True)
+        data += struct.pack("<i", len(payload)) + payload
+        extensions = event.get("extensions")
+        data += struct.pack("<i", -1 if extensions is None else len(extensions))
+        if extensions is not None:
+            data += b"".join(string(key) + string(extensions[key]) for key in sorted(extensions))
+        data += string(event.get("eventContractType"))
+        version = event.get("payloadVersion")
+        data += struct.pack("<i", int(version is not None)) + (b"" if version is None else struct.pack("<i", version))
+        data += string(event.get("applicationPayloadDigest"))
+        chain = bytes.fromhex(digest(string("hexalith.projection.source.step.v1") + chain + bytes.fromhex(digest(data))))
+    return chain.hex()
 
 
 class Executor:
@@ -980,6 +1085,11 @@ class Executor:
         """Bounded diagnostics modify only the stopped writer's invocation-owned test fixture."""
         require(not self.active, "fixture diagnostic refused while a writer is active")
         values = self.raw_state(self.redis)
+        if kind == "retained":
+            require(variant in (None, "mismatched-proof"), "unknown retained fixture control")
+            original = retained_metadata(values, 1)
+            require(variant != "mismatched-proof" or original.get("sourceProof") is not None,
+                    "mismatched-proof control requires an existing proof")
         for key, data in values.items():
             if "tenant-a" not in key:
                 continue
@@ -987,6 +1097,8 @@ class Executor:
             changed = False
             if key.endswith(":metadata") and kind in ("retained", "invalid-floor"):
                 value["retainedFloor"] = 5 if kind == "retained" else 0
+                if kind == "retained" and variant != "mismatched-proof" and value.get("sourceProof") is not None:
+                    value["sourceProof"]["retainedFloor"] = 5
                 changed = True
             if ":events:" in key:
                 sequence = int(key.rsplit(":", 1)[1])
@@ -1019,11 +1131,74 @@ class Executor:
                 changed = True
             if changed:
                 self.postgres_write(self.redis, key, value)
+        if kind == "retained":
+            after = self.raw_state(self.redis)
+            expected = dict(values)
+            for key in list(expected):
+                if "tenant-a" in key and ":events:" in key and int(key.rsplit(":", 1)[1]) < 5:
+                    del expected[key]
+                elif "tenant-a" in key and key.endswith(":metadata"):
+                    metadata = json.loads(expected[key])
+                    metadata["retainedFloor"] = 5
+                    if variant != "mismatched-proof" and metadata.get("sourceProof") is not None:
+                        metadata["sourceProof"]["retainedFloor"] = 5
+                    expected[key] = canonical(metadata)
+            require(after == expected, "retained fixture changed bytes outside retention coordinates")
+            if variant != "mismatched-proof":
+                retained_metadata(after, 5)
+            self.last_retained_fixture = {"variant": variant or "coherent", "before_metadata": original,
+                "after_metadata": next(json.loads(data) for key, data in after.items()
+                                       if "tenant-a" in key and key.endswith(":metadata")),
+                "before_hashes": {key: digest(data) for key, data in values.items()},
+                "after_hashes": {key: digest(data) for key, data in after.items()}}
 
     def actor(self, version, tenant, expected, kind, checks, prefix):
         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
 
     def seed(self, version, interval, checks, write_alias=None):
+        require(self.candidate in (CANDIDATE, *qualification.FOLDED_SNAPSHOT_VERSIONS)
+                and version in (self.candidate, "source", *qualification.COMPARISON_VERSIONS),
+                "snapshot fixture candidate or writer is not explicitly enabled")
+        start = len(checks.checks)
+        self.last_snapshot_creation, self.last_retained_fixture = None, None
+        self.last_seed = {"writer": version, "interval": interval, "tenants": {}, "valid": False}
+        try:
+            rows = self._seed(version, interval, checks, write_alias)
+            raw = self.raw_state(self.redis)
+            self.last_seed["persisted"] = persisted_preconditions(rows, raw)
+            primary, snapshot, events = runtime.stream(rows, "tenant-a")
+            secondary, _, second_events = runtime.stream(rows, "tenant-b")
+            checks.check("seed-primary-coordinates-exact", primary is not None and primary["sequence"] == 12
+                         and primary["floor"] == 1 and sorted(events) == list(range(1, 13)))
+            checks.check("seed-secondary-coordinates-exact", secondary is not None and secondary["sequence"] == 3
+                         and secondary["floor"] == 1 and sorted(second_events) == [1, 2, 3])
+            checks.check("seed-snapshot-coordinate-exact", (None if snapshot is None else snapshot["sequence"]) == (9 if interval == 10 else None))
+        except Exception as error:
+            # Preserve partial inventories even when startup/probe/byte binding fails.
+            self.last_seed["error"] = {"type": type(error).__name__, "reason": str(error)}
+            checks.check("seed-execution-completed", False)
+            self.stop_nodes()
+            try:
+                self.last_seed["inventory"] = self.inventory()
+            except Exception as inventory_error:
+                self.last_seed["inventory_error"] = str(inventory_error)
+        self.last_seed["checks"] = checks.checks[start:]
+        self.last_seed["unattempted_tenants"] = [tenant for tenant in ("tenant-a", "tenant-b") if tenant not in self.last_seed["tenants"]]
+        self.last_seed["valid"] = bool(self.last_seed["checks"]) and all(row["passed"] for row in self.last_seed["checks"])
+        if not self.last_seed["valid"]:
+            raise SeedFailure(self.last_seed)
+        return rows
+
+    def seed_probe(self, version, arguments, checks, prefix, tenant, stage):
+        try:
+            result = self.probe(version, arguments, checks, prefix)
+        except Exception as error:
+            checks.check(prefix + "execution-completed", False)
+            result = {"error": type(error).__name__, "reason": str(error)}
+        self.last_seed["tenants"].setdefault(tenant, {})[stage] = result
+        return result
+
+    def _seed(self, version, interval, checks, write_alias=None):
         require(self.candidate in (CANDIDATE, *qualification.FOLDED_SNAPSHOT_VERSIONS)
                 and version in (self.candidate, "source", *qualification.COMPARISON_VERSIONS),
                 "snapshot fixture candidate or writer is not explicitly enabled")
@@ -1044,8 +1219,12 @@ class Executor:
             checks.check("snapshot-canonical-event-parity", registration.get("canonical_event_parity") is True
                          and registration.get("canonical_event_sha256") == digest(b"{}"))
             checks.check("snapshot-detached-apply-parity", registration.get("detached_apply") is True and registration.get("applied_count") == 10)
-            nine = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "9"], checks, "tenant-a:prefix:")
+            if not all(row["passed"] for row in checks.checks):
+                return self.finish_seed(version, interval, checks, genuine)
+            nine = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "9"], checks, "tenant-a:prefix:", "tenant-a", "prefix")
             checks.check("snapshot-nine-events-committed", nine.get("committed") == 9 and nine.get("sequence") == 9)
+            if nine.get("committed") != 9 or nine.get("sequence") != 9:
+                return self.finish_seed(version, interval, checks, genuine)
             created = self.probe(version, ["manual-snapshot", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"], checks, "snapshot:")
             checks.check("qualified-snapshot-created-by-published-actor", created.get("outcome") == "Created" and created.get("sequence") == 9)
             self.stop_nodes()
@@ -1058,22 +1237,18 @@ class Executor:
             metadata, _, events = runtime.stream(before_tail, "tenant-a")
             checks.check("qualified-snapshot-prefix-coordinate-exact", metadata is not None
                          and metadata["sequence"] == 9 and sorted(events) == list(range(1, 10)))
+            if not all(row["passed"] for row in checks.checks):
+                self.start_nodes(version, interval=interval, write_alias=write_alias)
+                return self.finish_seed(version, interval, checks, genuine)
             self.start_nodes(version, interval=interval, write_alias=write_alias)
-            tail = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "3"], checks, "tenant-a:tail:")
+            tail = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "3"], checks, "tenant-a:tail:", "tenant-a", "tail")
             checks.check("tenant-a:committed-count", nine.get("committed") == 9 and tail.get("committed") == 3 and tail.get("sequence") == 12)
             self.last_snapshot_creation = {"registration": registration, "manual": created,
                 "persisted_snapshot": snapshot, "before_tail": before_tail, "tail": tail}
         else:
-            result = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "12"], checks, "tenant-a:")
+            result = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "12"], checks, "tenant-a:", "tenant-a", "seed")
             checks.check("tenant-a:committed-count", result.get("committed") == 12)
-        second = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-b", "fixture", "3"], checks, "tenant-b:")
-        checks.check("tenant-b:committed-count", second.get("committed") == 3)
-        self.stop_nodes()
-        if interval == 10 and not genuine:
-            # Historical fixtures retain their original diagnostic semantics.
-            self.mutate("snapshot-nine")
-        rows = self.inventory()
-        checks.check("seed-persisted-fifteen-events", len([row for row in rows if row["kind"] == "event"]) == 15)
+        rows = self.finish_seed(version, interval, checks, genuine)
         if genuine:
             metadata, _, events = runtime.stream(rows, "tenant-a")
             checks.check("qualified-snapshot-tail-coordinate-exact", metadata is not None
@@ -1084,7 +1259,18 @@ class Executor:
             self.last_snapshot_creation["after_tail"] = rows
         return rows
 
-    def live_case(self, lane, identifier, checks):
+    def finish_seed(self, version, interval, checks, genuine):
+        second = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-b", "fixture", "3"], checks, "tenant-b:", "tenant-b", "seed")
+        checks.check("tenant-b:committed-count", second.get("committed") == 3)
+        self.stop_nodes()
+        if interval == 10 and not genuine and all(row["passed"] for row in checks.checks):
+            # Preserve the historical diagnostic only after successful seeds.
+            self.mutate("snapshot-nine")
+        rows = self.inventory()
+        checks.check("seed-persisted-fifteen-events", len([row for row in rows if row["kind"] == "event"]) == 15)
+        return rows
+
+    def prepare_live_case(self, lane, identifier, checks):
         parts = identifier.split("-to-")
         writer, tail = parts
         reader, _, variant = tail.partition("-")
@@ -1098,6 +1284,17 @@ class Executor:
         if lane == "missing-event":
             self.mutate("missing", variant)
         before = self.inventory()
+        return {"before": before, "seed_snapshot": seed_snapshot,
+                "seed_preconditions": self.last_seed,
+                "persisted_preconditions": persisted_preconditions(before, self.raw_state(self.redis)),
+                "retained_fixture": getattr(self, "last_retained_fixture", None)}
+
+    def live_case(self, lane, identifier, checks, prepared=None):
+        writer, tail = identifier.split("-to-")
+        reader, _, variant = tail.partition("-")
+        interval = 10 if lane in ("snapshot-tail", "retained-covered", "metadata-write", "retained-uncovered") else 1000
+        prepared = self.prepare_live_case(lane, identifier, checks) if prepared is None else prepared
+        before, seed_snapshot = prepared["before"], prepared["seed_snapshot"]
         self.start_nodes(reader, interval=interval)
         negative = lane in ("retained-uncovered", "missing-event")
         result = self.actor(reader, "tenant-a", 12, "AssertCounter", checks, "primary:")
@@ -1142,9 +1339,10 @@ class Executor:
         checks.check("persisted-event-sequence-set-exact", sorted(events) == expected_sequences)
         checks.check("persisted-snapshot-coordinate-exact", (None if snapshot is None else snapshot["sequence"]) == expected_snapshot)
         disposition = "compatible" if all(check["passed"] for check in checks.checks) else "incompatible"
-        return {"before": before, "after": after, "primary": result, "secondary": second, "seed_snapshot": seed_snapshot,
-                "append": append, "replay": replay, "appended_inventory": appended,
-                "expected_coordinates": {"head": expected_head, "events": expected_sequences, "snapshot": expected_snapshot}},             "refusal" if result.get("accepted") is False else "effect", disposition
+        return dict(prepared, after=after, primary=result, secondary=second,
+                append=append, replay=replay, appended_inventory=appended,
+                expected_coordinates={"head": expected_head, "events": expected_sequences, "snapshot": expected_snapshot}), \
+            "refusal" if result.get("accepted") is False else "effect", disposition
 
     def metadata_case(self, lane, identifier, checks):
         version, style, _, floor = identifier.split("-")
@@ -1222,14 +1420,15 @@ class Executor:
             expected = "refusal"
         if getattr(self, "support_rules", {}).get((lane, identifier)) == "refused":
             expected = "refusal"
-        observed, outcome, disposition = {}, "error", "compatible"
+        observed, outcome, disposition = {}, "error", "unverified"
         try:
             self.check_sources()
             observed, outcome, disposition = action(checks)
             self.check_sources()
         except (Exception, KeyboardInterrupt) as error:
             checks.check("execution-completed", False)
-            observed = {"error": type(error).__name__, "reason": str(error)}
+            observed = dict(getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+            disposition = "unverified"
             self.errors.append(lane + "/" + identifier + ": " + str(error))
             if isinstance(error, KeyboardInterrupt):
                 interrupted = True
@@ -1322,11 +1521,18 @@ class Executor:
                           "assertions": receipt["assertions"]}), flush=True)
         return receipt
 
-    def invalid_case(self, identifier, checks):
+    def prepare_invalid_case(self, identifier, checks):
         version, _, mutation = identifier.partition("-")
         self.seed(version, 1000, checks)
         self.mutate(mutation)
         before = self.inventory()
+        return {"before": before, "seed_preconditions": self.last_seed,
+                "persisted_preconditions": persisted_preconditions(before, self.raw_state(self.redis))}
+
+    def invalid_case(self, identifier, checks, prepared=None):
+        version, _, mutation = identifier.partition("-")
+        prepared = self.prepare_invalid_case(identifier, checks) if prepared is None else prepared
+        before = prepared["before"]
         self.start_nodes(version)
         observed = self.actor(version, "tenant-a", 12, "AssertCounter", checks, "primary:")
         checks.check("invalid-evidence-refused", observed.get("accepted") is False)
@@ -1336,7 +1542,8 @@ class Executor:
         checks.check("invalid-evidence-domain-unchanged", [row for row in before if row["kind"] != "bookkeeping"]
                      == [row for row in after if row["kind"] != "bookkeeping"])
         checks.check("second-tenant-preserved", runtime.domain(before, "tenant-b") == runtime.domain(after, "tenant-b"))
-        return {"before": before, "after": after, "actor": observed}, "refusal" if observed.get("accepted") is False else "effect", "compatible" if observed.get("accepted") is False else "incompatible"
+        return dict(prepared, after=after, actor=observed), "refusal" if observed.get("accepted") is False else "effect", \
+            "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def provenance_case(self, identifier, checks):
         role = "candidate" if identifier == self.candidate else "comparison-" + identifier
@@ -1476,6 +1683,14 @@ class Executor:
                   "--clean", "--if-exists", "--no-owner", "/tmp/p1r-restore.dump"])
 
     def restore_case(self, identifier, checks):
+        self.restore_progress = {}
+        try:
+            return self._restore_case(identifier, checks)
+        except Exception as error:
+            error.observations = dict(self.restore_progress, **getattr(error, "observations", {}))
+            raise
+
+    def _restore_case(self, identifier, checks):
         self.seed(self.candidate, 10, checks)
         seed_snapshot = getattr(self, "last_snapshot_creation", None)
         self.mutate("retained")
@@ -1484,6 +1699,9 @@ class Executor:
         source = self.inventory()
         index = self.recovery_command(commands, "inventory", self.commands[-1], source_db)
         inventories["source"] = {"command": index, "rows": source, "sha256": digest(canonical(source))}
+        self.restore_progress.update(before=source, seed_snapshot=seed_snapshot)
+        source_raw = self.raw_state(self.redis)
+        source_metadata = retained_metadata(source_raw, 5)
         backup_path, backup_command_id = self.postgres_backup(self.redis)
         backup = regular(backup_path)
         backup_id = self.recovery_command(commands, "backup", backup_command_id, source_db, output_data=backup)
@@ -1496,18 +1714,32 @@ class Executor:
         copied = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["restored"] = {"command": index, "rows": copied, "sha256": digest(canonical(copied))}
+        self.restore_progress["restored_inventory"] = copied
+        copied_raw = self.raw_state(restored)
         checks.check("backup-nonempty", bool(backup))
         checks.check("fresh-restore-full-inventory-identical", source == copied)
+        source_hashes = {key: digest(data) for key, data in source_raw.items()}
+        copied_hashes = {key: digest(data) for key, data in copied_raw.items()}
+        checks.check("fresh-restore-original-bytes-and-proof-identical", source_hashes == copied_hashes)
         processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "start-writer", self.commands[-1], restored_db, processes)
         before = self.actor(self.candidate, "tenant-a", 12, "AssertCounter", checks, "restored:")
-        checks.check("fresh-restore-hydrates-twelve", before.get("accepted") is True)
+        self.restore_progress["primary"] = before
+        checks.check("fresh-restore-hydrates-twelve", before.get("accepted") is True
+                     and before.get("sequence") == 12 and before.get("event_count") == 0)
         append = self.actor(self.candidate, "tenant-a", 12, "IncrementCounter", checks, "append:")
+        self.restore_progress["append"] = append
         self.recovery_command(commands, "append", self.commands[-1], restored_db)
-        checks.check("fresh-restore-appends-thirteen", append.get("accepted") is True and append.get("event_count") == 1)
+        checks.check("fresh-restore-appends-thirteen", append.get("accepted") is True and append.get("event_count") == 1
+                     and append.get("sequence") == 13)
         appended = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["appended"] = {"command": index, "rows": appended, "sha256": digest(canonical(appended))}
+        self.restore_progress["appended_inventory"] = appended
+        appended_metadata, _, appended_events = runtime.stream(appended, "tenant-a")
+        checks.check("fresh-append-persisted-head-and-event-thirteen", appended_metadata is not None
+                     and appended_metadata["sequence"] == 13 and appended_metadata["floor"] == 5
+                     and sorted(appended_events) == list(range(5, 14)))
         self.stop_nodes()
         self.run([sys.executable, "-I", "-c",
                   "import sys,json;sys.path.insert(0,sys.argv[1]);import p1r_qualification as p;"
@@ -1516,19 +1748,31 @@ class Executor:
         self.recovery_command(commands, "stop-writer", self.commands[-1], restored_db)
         restarted_processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "restart", self.commands[-1], restored_db, restarted_processes)
+        checks.check("fresh-restart-processes-distinct", bool(processes) and bool(restarted_processes)
+                     and not {(item["pid"], item["start_ticks"]) for item in processes}
+                     & {(item["pid"], item["start_ticks"]) for item in restarted_processes})
         replay = self.actor(self.candidate, "tenant-a", 13, "AssertCounter", checks, "restart:")
+        self.restore_progress["replay"] = replay
         self.recovery_command(commands, "replay", self.commands[-1], restored_db)
-        checks.check("fresh-restart-reconstructs-thirteen", replay.get("accepted") is True)
+        checks.check("fresh-restart-reconstructs-thirteen", replay.get("accepted") is True
+                     and replay.get("sequence") == 13 and replay.get("event_count") == 0)
         second = self.actor(self.candidate, "tenant-b", 3, "AssertCounter", checks, "secondary:")
-        checks.check("restored-second-tenant-hydrates-three", second.get("accepted") is True)
+        checks.check("restored-second-tenant-hydrates-three", second.get("accepted") is True
+                     and second.get("sequence") == 3 and second.get("event_count") == 0)
         restarted = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["restarted"] = {"command": index, "rows": restarted, "sha256": digest(canonical(restarted))}
+        self.restore_progress["after"] = restarted
         self.stop_nodes()
         metadata, snapshot, events = runtime.stream(restarted, "tenant-a")
         checks.check("restored-floor-five", metadata is not None and metadata["floor"] == 5)
         checks.check("restored-head-thirteen", metadata is not None and metadata["sequence"] == 13)
         checks.check("restored-snapshot-nine", snapshot is not None and snapshot["sequence"] == 9)
+        checks.check("restored-event-sequence-set-exact", sorted(events) == list(range(5, 14)))
+        prior = {row["key"]: row["sha256"] for row in source if row["kind"] in ("event", "snapshot")}
+        checks.check("restore-prior-event-and-snapshot-bytes-preserved", all(
+            {row["key"]: row["sha256"] for row in rows}.get(key) == sha256
+            for rows in (copied, appended, restarted) for key, sha256 in prior.items()))
         checks.check("restore-second-tenant-unchanged", runtime.domain(source, "tenant-b") == runtime.domain(restarted, "tenant-b"))
         self.pending_restore = {"schema": runtime.RESTORE_SCHEMA, "id": uuid.uuid4().hex, "role": "candidate",
             "scope": "operational", "fixture": self.fixture, "inputs_sha256": self.inputs_sha256,
@@ -1536,10 +1780,21 @@ class Executor:
                 for package in self.inputs["candidate"]["packages"]}, "tenants": {"primary": "tenant-a", "secondary": "tenant-b"},
             "commands": commands, "databases": {"source": source_db, "restored": restored_db},
             "backup": {"command": backup_id, "sha256": digest(backup), "bytes": len(backup)}, "inventories": inventories,
-            "observations": {"state_before_append": 12 if before.get("accepted") else None,
-                "appended_sequence": 13 if append.get("accepted") else None, "state_after_restart": 13 if replay.get("accepted") else None}}
+            "observations": {"state_before_append": before.get("sequence") if before.get("accepted") is True else None,
+                "appended_sequence": append.get("sequence") if append.get("accepted") is True and append.get("event_count") == 1
+                    and appended_metadata is not None and appended_metadata["sequence"] == append.get("sequence")
+                    and append.get("sequence") in appended_events else None,
+                "state_after_restart": replay.get("sequence") if replay.get("accepted") is True else None}}
+        outcome = ("refusal" if before.get("accepted") is False or append.get("accepted") is False or replay.get("accepted") is False
+                   else "effect" if before.get("accepted") is True and append.get("accepted") is True
+                   and append.get("event_count") == 1 and replay.get("accepted") is True else "error")
+        if outcome == "error":
+            checks.check("execution-completed", False)
         return {"before": source, "after": restarted, "seed_snapshot": seed_snapshot, "backup_sha256": digest(backup), "backup_bytes": len(backup),
-                "restored_inventory": copied, "appended_inventory": appended}, "effect", "compatible"
+                "retained_fixture": getattr(self, "last_retained_fixture", None), "source_metadata": source_metadata,
+                "primary": before, "append": append, "replay": replay, "secondary": second,
+                "restored_inventory": copied, "appended_inventory": appended}, outcome, \
+            "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def containment_case(self, identifier, checks):
         self.seed("3.70.1", 1000, checks)
@@ -1735,10 +1990,10 @@ class Executor:
             action = lambda version_case, measurements: self.wire_case(lane, version_case, measurements)
         elif lane == "invalid-evidence":
             selected_case = self.candidate + "-unknown-version"
-            action = self.invalid_case
+            return self.checkout_live_case(lane, selected_case, checks)
         else:
             selected_case = next(case for case in cases if "-to-" + self.candidate in case)
-            action = lambda version_case, measurements: self.live_case(lane, version_case, measurements)
+            return self.checkout_live_case(lane, selected_case, checks)
         paired = {}
         outcomes = {}
         dispositions = {}
@@ -1747,13 +2002,18 @@ class Executor:
             try:
                 observation, outcome, disposition = action(case, measured)
                 paired[version], outcomes[version], dispositions[version] = observation, outcome, disposition
+            except Exception as error:
+                measured.check("execution-completed", False)
+                paired[version] = dict(getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+                outcomes[version], dispositions[version] = "error", "unverified"
             finally:
                 for check, witness in zip(measured.checks, measured.witnesses):
                     identity = version + ":" + check["id"]
                     checks.check(identity, check["passed"], dict(witness, id=identity))
         package_semantics = semantic_observation(paired["package"], outcomes["package"])
         source_semantics = semantic_observation(paired["source"], outcomes["source"])
-        checks.check("source-package-semantics-equivalent", package_semantics == source_semantics)
+        checks.check("source-package-semantics-equivalent", package_semantics == source_semantics
+                     and all(value != "error" for value in outcomes.values()))
         comparison = {"selected_version": self.candidate, "selected_case": selected_case,
                       "source_case": selected_case.replace(self.candidate, "source"),
                       "scope": "same fixture operations, domain outcomes and persisted coordinates; dynamic identities excluded",
@@ -1761,7 +2021,73 @@ class Executor:
                       "delta": semantic_delta(package_semantics, source_semantics)}
         disposition = ("compatible" if all(check["passed"] for check in checks.checks)
                        and all(value == "compatible" for value in dispositions.values()) else "incompatible")
-        return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, outcomes["source"], disposition
+        if "error" in outcomes.values():
+            checks.check("execution-completed", False)
+            disposition = "unverified"
+        return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, \
+            "error" if "error" in outcomes.values() else outcomes["source"], disposition
+
+    def checkout_live_case(self, lane, selected_case, checks):
+        """Seed both isolated branches before allowing either reader to run."""
+        original_database = self.redis, self.redis_port
+        paired, measured, databases, prepared, outcomes = {}, {}, {}, {}, {}
+        cases = {"package": selected_case, "source": selected_case.replace(self.candidate, "source")}
+        try:
+            for branch in ("package", "source"):
+                measured[branch] = Measurements()
+                try:
+                    self.stop_nodes()
+                    database, port, _ = self.postgres_container("checkout-" + branch + "-" + uuid.uuid4().hex)
+                    databases[branch] = database, port
+                    self.redis, self.redis_port = database, port
+                    prepared[branch] = (self.prepare_invalid_case(cases[branch], measured[branch]) if lane == "invalid-evidence"
+                                        else self.prepare_live_case(lane, cases[branch], measured[branch]))
+                    paired[branch] = prepared[branch]
+                except Exception as error:
+                    measured[branch].check("execution-completed", False)
+                    paired[branch] = dict(getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+                    outcomes[branch] = "error"
+                finally:
+                    self.stop_nodes()
+            valid = set(prepared) == {"package", "source"} and all(
+                row["passed"] for branch in measured.values() for row in branch.checks)
+            equal = valid and prepared["package"]["persisted_preconditions"]["semantic"] == prepared["source"]["persisted_preconditions"]["semantic"]
+            checks.check("source-package-seed-preconditions-successful", valid is True)
+            checks.check("source-package-seed-preconditions-equal", equal is True)
+            if equal:
+                for branch in ("package", "source"):
+                    self.redis, self.redis_port = databases[branch]
+                    try:
+                        paired[branch], outcomes[branch], _ = (self.invalid_case(cases[branch], measured[branch], prepared[branch])
+                            if lane == "invalid-evidence" else self.live_case(lane, cases[branch], measured[branch], prepared[branch]))
+                    except Exception as error:
+                        measured[branch].check("execution-completed", False)
+                        paired[branch] = dict(prepared[branch], error=type(error).__name__, reason=str(error))
+                        outcomes[branch] = "error"
+                    finally:
+                        self.stop_nodes()
+            else:
+                for branch in paired.values():
+                    branch["dependent_operations"] = "unattempted"
+                outcomes.update(package="error", source="error")
+        finally:
+            self.redis, self.redis_port = original_database
+            for branch, measurements in measured.items():
+                for check, witness in zip(measurements.checks, measurements.witnesses):
+                    identity = branch + ":" + check["id"]
+                    checks.check(identity, check["passed"], dict(witness, id=identity))
+        package_semantics = semantic_observation(paired["package"], outcomes["package"])
+        source_semantics = semantic_observation(paired["source"], outcomes["source"])
+        checks.check("source-package-semantics-equivalent", equal is True and package_semantics == source_semantics
+                     and all(value != "error" for value in outcomes.values()) and all(row["passed"] for row in checks.checks))
+        if "error" in outcomes.values():
+            checks.check("execution-completed", False)
+        comparison = {"selected_version": self.candidate, "selected_case": selected_case, "source_case": cases["source"],
+            "preconditions": {"successful": valid, "equal": equal},
+            "scope": "equal successful persisted fixtures; exact bytes retained and dynamic fields explicitly recorded",
+            "package": package_semantics, "source": source_semantics, "delta": semantic_delta(package_semantics, source_semantics)}
+        return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, \
+            outcomes["source"], "compatible" if all(row["passed"] for row in checks.checks) else "unverified" if not equal else "incompatible"
 
     def failure_case(self, identifier, checks):
         before_shared = self.shared()

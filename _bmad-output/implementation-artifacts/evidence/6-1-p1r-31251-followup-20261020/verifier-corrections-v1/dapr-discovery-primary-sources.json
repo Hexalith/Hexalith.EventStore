@@ -1,0 +1,26 @@
+{
+  "scope": "read-only official source inspection; no configuration changes",
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/dapr/components-contrib/v1.18.2/nameresolution/sqlite/sqlite.go",
+      "sha256": "d12f0bd7e8c6ea104d9d236acf07f2a133906d877bd704d6c56c7d655be7f160",
+      "bytes": 9118
+    },
+    {
+      "url": "https://raw.githubusercontent.com/dapr/components-contrib/v1.18.2/nameresolution/sqlite/sqlite_metadata.go",
+      "sha256": "b775d41ccdff1d9e75430a63617815ffa31fa4faf415f38040d5c5c6147c2588",
+      "bytes": 3778
+    },
+    {
+      "url": "https://raw.githubusercontent.com/dapr/components-contrib/v1.18.2/nameresolution/sqlite/sqlite_migrations.go",
+      "sha256": "4b1c095d0d02565440942ade15d2c3f9bdf174d70112d68ecd20153d800333af",
+      "bytes": 1964
+    }
+  ],
+  "defaults": {
+    "update_interval_seconds": 5,
+    "timeout_seconds": 1,
+    "busy_timeout_ms": 800
+  },
+  "limit": "Defaults and code establish possible mechanisms, not V4 host/lock causality."
+}

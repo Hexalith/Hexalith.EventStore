@@ -1,0 +1,32 @@
+{
+  "scope": "verifier V1\u2013V3 code and focused tooling regressions only; no runtime/container execution by implementation agent",
+  "final_results": {
+    "executor": {
+      "tests": 184,
+      "result": "passed"
+    },
+    "corrections": {
+      "tests": 12,
+      "result": "passed"
+    },
+    "qualification": {
+      "tests": 68,
+      "result": "passed"
+    }
+  },
+  "earlier_attempts": "All earlier captured logs and the exact uncaptured narrow-followup command/result are retained in this directory.",
+  "source_sha256": {
+    "tools/p1r_published_executor.py": "46d5d1faa368b24e60afaa14f42dbf42aeb73d82c4bfe3706741fd883ded7934",
+    "tools/p1r_check_witnesses.py": "25f51f04f80fc13be9991cb299e0bb2f61821ba4f9b5a7f4ac4e537531f81c97",
+    "tools/tests/test_p1r_published_executor.py": "e1a9827e101ba55e62f9255c3982a32ca01c5d8f1d469de5d3235e248d45efe9",
+    "tools/tests/test_p1r_verifier_corrections.py": "42314d96075f0085bcd8ebcbff332e6a2c2d98a4bf0e401e59c32dfefe0bdf5b"
+  },
+  "qualified": false,
+  "p1r_usable": false,
+  "owner_acceptance": "pending",
+  "conformance": "pending",
+  "runtime_controls": "coordinator-owned; no qualification or runtime result inferred here",
+  "warnings": [
+    "Final executor and qualification outputs include ResourceWarning for unclosed /proc/<pid>/environ file handles in existing process inspection."
+  ]
+}

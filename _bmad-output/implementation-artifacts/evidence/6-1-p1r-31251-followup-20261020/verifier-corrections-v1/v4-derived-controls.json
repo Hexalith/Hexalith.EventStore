@@ -1,0 +1,17 @@
+{
+  "controls": [
+    {
+      "name": "positive-retained-v4-bytes",
+      "proof_floor": 5,
+      "sha256": "5a97d10c1474eb283ca0d482602517edf6f498590f4d45e86f68e2224e52f66e"
+    },
+    {
+      "name": "original-mismatched-proof-refusal",
+      "proof_floor": 1,
+      "sha256": "e69413e3b503b5ea16eaf9660322a5664dfd6e9b41f2f0a56d209e18c9725eaa"
+    }
+  ],
+  "historical_commands_unchanged": true,
+  "p1r_usable": false,
+  "qualified": false
+}

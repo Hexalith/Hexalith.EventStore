@@ -534,6 +534,51 @@ def validate_reminder_windows(observation, successful_http, configurations, chec
     require(observation.get('due') == windows[-1]['due_utc'], 'reminder final due differs from retained intent')
 
 
+def validate_persisted_preconditions(record, inventories, commands):
+    """Bind future fixture prerequisites to exact provider bytes and explicit exclusions."""
+    import json
+    rows, state = record.get('inventory'), record.get('state')
+    require(rows in inventories and isinstance(state, dict), 'seed preconditions lack exact persisted inventory')
+    raw = {}
+    for key, item in state.items():
+        data = base64.b64decode(item['base64'], validate=True)
+        require(digest(data) == item['sha256'], 'seed precondition bytes changed')
+        raw[key] = data
+    require(set(raw) == {item['key'] for item in rows if item['kind'] != 'bookkeeping'}, 'seed preconditions omit domain bytes')
+    providers = []
+    for command in commands:
+        if command.get('exit_code') != 0 or command.get('output') is None:
+            continue
+        try:
+            value = json.loads(command['output'])
+            if isinstance(value, list) and all(isinstance(item, list) and len(item) == 2 for item in value):
+                providers.append({key: base64.b64decode(item, validate=True) if isinstance(item, str) else canonical(item)
+                                  for key, item in value})
+        except (ValueError, TypeError, binascii.Error):
+            pass
+    require(any(all(provider.get(key) == data for key, data in raw.items()) for provider in providers),
+            'seed preconditions differ from retained provider bytes')
+    semantic, dynamic = [], []
+    exclusions = {'event': ('causationId', 'correlationId', 'messageId', 'timestamp'),
+                  'metadata': ('eTag', 'etag', 'lastModified'), 'snapshot': ('createdAt',)}
+    for row in rows:
+        if row['kind'] == 'bookkeeping':
+            continue
+        require(digest(raw[row['key']]) == row['sha256'], 'seed preconditions contradict inventory hash')
+        value = json.loads(raw[row['key']])
+        if isinstance(value, dict):
+            for field in exclusions.get(row['kind'], ()):
+                if field in value:
+                    dynamic.append({'key': row['key'], 'field': field, 'value': value.pop(field)})
+            if isinstance(value.get('sourceProof'), dict):
+                for field in ('sourceIncarnation', 'headMessageId', 'cumulativeDigest'):
+                    if field in value['sourceProof']:
+                        dynamic.append({'key': row['key'], 'field': 'sourceProof.' + field, 'value': value['sourceProof'].pop(field)})
+        semantic.append(dict({key: row[key] for key in ('key', 'tenant', 'kind', 'sequence', 'floor')}, value=value))
+    require(record.get('semantic') == semantic and record.get('dynamic_fields') == dynamic,
+            'seed semantic normalization or dynamic exclusions substituted')
+
+
 def validate_case(row, evidence, binding, lane, retained_sources, candidate_version='3.119.0'):
     """Recompute check, probe, inventory and rendered-runtime consistency."""
     import json
@@ -635,6 +680,33 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
               'refusal-domain-preserved': lambda before,after: [item for item in before if item['kind'] != 'bookkeeping'] ==
                     [item for item in after if item['kind'] != 'bookkeeping']}
     observed_sets = [(observation, '')]
+    future_preconditions = observation.get('comparison', {}).get('preconditions')
+    require('source-package-seed-preconditions-successful' not in checks or isinstance(future_preconditions, dict),
+            'source comparison drops future seed prerequisites')
+    if lane == 'checkout' and future_preconditions is not None:
+        paired = observation.get('paired_observations')
+        require(isinstance(paired, dict) and set(paired) == {'package', 'source'}, 'source comparison loses failed branch observations')
+        for branch, observed in paired.items():
+            seed = observed.get('seed_preconditions', {})
+            for check in seed.get('checks', []):
+                require(checks.get(branch + ':' + check['id']) is check['passed'], 'seed drops an actual failed or attempted check')
+            if 'persisted' in seed:
+                validate_persisted_preconditions(seed['persisted'], inventories, evidence['commands'])
+            if 'persisted_preconditions' in observed:
+                validate_persisted_preconditions(observed['persisted_preconditions'], inventories, evidence['commands'])
+        successful = all(paired[branch].get('seed_preconditions', {}).get('valid') is True
+                         and bool(paired[branch]['seed_preconditions'].get('checks'))
+                         and all(check['passed'] for check in paired[branch]['seed_preconditions']['checks'])
+                         and 'persisted_preconditions' in paired[branch] for branch in paired)
+        equal = successful and paired['package']['persisted_preconditions']['semantic'] == paired['source']['persisted_preconditions']['semantic']
+        require(future_preconditions == {'successful': successful, 'equal': equal}
+                and checks.get('source-package-seed-preconditions-successful') is successful
+                and checks.get('source-package-seed-preconditions-equal') is equal, 'source/package seed prerequisites contradict persisted fixtures')
+        if not equal:
+            require(incomplete and row['disposition'] != 'compatible'
+                    and all(value.get('dependent_operations') == 'unattempted' for value in paired.values())
+                    and checks.get('source-package-semantics-equivalent') is False,
+                    'invalid or unequal seeds support source/package equivalence')
     if not incomplete and lane == 'checkout' and row['id'] != 'current-build':
         paired = observation.get('paired_observations')
         require(isinstance(paired, dict) and set(paired) == {'package','source'}, 'source comparison lacks both measured branches')
@@ -759,6 +831,9 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
         require(comparison.get('package') == normalize('package') and comparison.get('source') == normalize('source'),
                 'normalized source/package semantics contradict retained paired observations')
         equivalent = comparison.get('package') == comparison.get('source')
+        if future_preconditions is not None:
+            equivalent = equivalent and future_preconditions['successful'] and future_preconditions['equal'] and all(
+                check['passed'] for check in row['checks'] if check['id'] != 'source-package-semantics-equivalent')
         require(checks.get('source-package-semantics-equivalent') is equivalent, 'source/package equivalence contradicts retained normalized observations')
         require(not equivalent or comparison.get('delta') == [], 'equivalence carries contradictory semantic deltas')
 

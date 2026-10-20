@@ -26,6 +26,43 @@ import p1r_qualification_runtime as runtime
 from p1r_isolation_fixture import separate_inputs, separate_source_fixture
 
 
+def verifier_fixture(head=12, floor=1, snapshot=True, proof=False, suffix=""):
+    raw = {}
+    for tenant, end in (("tenant-a", head), ("tenant-b", 3)):
+        first = floor if tenant == "tenant-a" else 1
+        for sequence in range(first, end + 1):
+            event = {"messageId": f"message-{tenant}-{sequence}{suffix}", "sequenceNumber": sequence,
+                     "tenantId": tenant, "domain": "counter", "aggregateId": "fixture", "aggregateType": "Counter",
+                     "timestamp": "2026-01-01T00:00:00.1234567+00:00", "globalPosition": sequence,
+                     "eventTypeName": "CounterIncremented", "metadataVersion": 1, "serializationFormat": "json", "payload": "e30="}
+            raw[f"{tenant}:counter:fixture:events:{sequence}"] = executor.canonical(event)
+        metadata = {"currentSequence": end, "retainedFloor": first, "lastModified": "2026-01-01T00:00:00Z"}
+        if proof and tenant == "tenant-a":
+            source = {"codecVersion": 1, "tenantId": tenant, "domain": "counter", "aggregateId": "fixture",
+                "sourceIncarnation": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "headSequence": head,
+                "headMessageId": f"message-{tenant}-{head}{suffix}", "retainedFloor": first, "erased": False}
+            all_events = verifier_fixture(head=head, floor=1, snapshot=False, suffix=suffix)[0]
+            source["cumulativeDigest"] = executor.source_proof_digest({int(key.rsplit(':', 1)[1]): data
+                for key, data in all_events.items() if tenant in key and ':events:' in key}, source)
+            metadata["sourceProof"] = source
+        raw[f"{tenant}:counter:fixture:metadata"] = executor.canonical(metadata)
+    if snapshot:
+        raw["tenant-a:counter:fixture:snapshot"] = executor.canonical({"sequenceNumber": 9,
+            "snapshotEnvelopeVersion": 1, "state": {"count": 9}, "createdAt": "2026-01-01T00:00:00Z"})
+    return raw, verifier_rows(raw)
+
+
+def verifier_rows(raw):
+    rows = []
+    for key, data in sorted(raw.items()):
+        value = json.loads(data)
+        kind = "metadata" if key.endswith(':metadata') else "snapshot" if key.endswith(':snapshot') else "event"
+        rows.append({"key": key, "tenant": "tenant-a" if "tenant-a" in key else "tenant-b", "kind": kind,
+                     "sequence": value.get('currentSequence') if kind == 'metadata' else value.get('sequenceNumber'),
+                     "floor": value.get('retainedFloor', 1) if kind == 'metadata' else None, "sha256": executor.digest(data)})
+    return rows
+
+
 class SeparateRootExecutorTests(unittest.TestCase):
     def testSuccessfulObservationEmitsToolingPinsAndAdmitsTheSelectedReleaseRoots(self):
         with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
@@ -1355,7 +1392,8 @@ class MeasurementTests(unittest.TestCase):
                              {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
                 with self.subTest(candidate=candidate,version=version,snapshot=snapshot):
                     worker, checks = self.snapshotSeedWorker(snapshot,candidate=candidate)
-                    worker.seed(version, 10, checks)
+                    with self.assertRaises(executor.SeedFailure):
+                        worker.seed(version, 10, checks)
                     self.assertGreater(checks.counter["failed"], 0)
                     worker.mutate.assert_not_called()
 
@@ -1416,18 +1454,17 @@ class MeasurementTests(unittest.TestCase):
         worker, checks = self.snapshotSeedWorker(None)
         worker.mutate = mock.Mock()
         worker.probe = mock.Mock(side_effect=[{"committed": 12}, {"committed": 3}])
-        worker.inventory = mock.Mock(return_value=self.snapshotSeedRows(15))
+        raw, rows = verifier_fixture()
+        worker.inventory = mock.Mock(return_value=rows)
+        worker.raw_state = mock.Mock(return_value=raw)
         worker.seed("3.110.0", 10, checks)
         worker.mutate.assert_called_once_with("snapshot-nine")
-        worker.raw_state.assert_not_called()
+        worker.raw_state.assert_called_once()
         self.assertIsNone(worker.last_snapshot_creation)
 
     @staticmethod
     def snapshotSeedRows(count):
-        head = 9 if count == 9 else 12
-        return [{"key": "event-" + str(index), "kind": "event", "tenant": "tenant-a" if index < head else "tenant-b",
-                 "sequence": index + 1 if index < head else index - head + 1, "sha256": "a" * 64}
-                for index in range(count)] + [{"key": "metadata", "kind": "metadata", "tenant": "tenant-a", "sequence": head, "sha256": "b" * 64}]
+        return verifier_fixture(head=9 if count == 9 else 12)[1]
 
     def snapshotSeedWorker(self, snapshot, candidate="3.121.0"):
         worker = executor.Executor.__new__(executor.Executor)
@@ -1440,9 +1477,14 @@ class MeasurementTests(unittest.TestCase):
             "detached_apply": True, "applied_count": 10}})
         worker.probe = mock.Mock(side_effect=[{"committed": 9, "sequence": 9}, {"outcome": "Created", "sequence": 9},
             {"committed": 3, "sequence": 12}, {"committed": 3, "sequence": 3}])
-        worker.raw_state = mock.Mock(return_value={} if snapshot is None else
-            {"tenant-a:counter:fixture:snapshot": executor.canonical(snapshot)})
-        worker.inventory = mock.Mock(side_effect=[self.snapshotSeedRows(9), self.snapshotSeedRows(15)])
+        raw, _ = verifier_fixture(snapshot=False)
+        if snapshot is not None:
+            raw["tenant-a:counter:fixture:snapshot"] = executor.canonical(snapshot)
+        worker.raw_state = mock.Mock(return_value=raw)
+        prefix_raw, _ = verifier_fixture(head=9, snapshot=False)
+        if snapshot is not None:
+            prefix_raw["tenant-a:counter:fixture:snapshot"] = executor.canonical(snapshot)
+        worker.inventory = mock.Mock(side_effect=[verifier_rows(prefix_raw), verifier_rows(raw)])
         return worker, executor.Measurements()
 
     def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
@@ -1454,6 +1496,7 @@ class MeasurementTests(unittest.TestCase):
                     worker.redis = "source-id"
                     worker.postgres_password = "<TEST_PASSWORD>"
                     worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
+                    worker.raw_state = mock.Mock(return_value=verifier_fixture(floor=5)[0])
 
                     def run(argv, **kwargs):
                         output = b""
@@ -2463,10 +2506,11 @@ class CorrectionTests(unittest.TestCase):
                 return {'accepted':True,'event_count':1 if kind=='IncrementCounter' else 0,'sequence':expected}
             starts=[]
             with mock.patch.object(worker,'seed'),mock.patch.object(worker,'mutate'), \
-                 mock.patch.object(worker,'inventory',side_effect=[rows(12),rows(13),rows(13)]), \
+                 mock.patch.object(worker,'inventory',side_effect=[rows(13),rows(13)]), \
                  mock.patch.object(worker,'start_nodes',side_effect=lambda version,**kwargs:starts.append(version)), \
                  mock.patch.object(worker,'stop_nodes'),mock.patch.object(worker,'actor',side_effect=actor):
-                measured=executor.Measurements();observation,_,_=worker.live_case('metadata-write','3.110.0-to-3.119.0',measured)
+                measured=executor.Measurements();observation,_,_=worker.live_case('metadata-write','3.110.0-to-3.119.0',measured,
+                    prepared={'before':rows(12),'seed_snapshot':None})
             self.assertEqual(starts,['3.119.0','3.119.0'])
             self.assertEqual(observation['replay']['sequence'],13)
             self.assertIn({'id':'supported-append-restart-rehydrates-thirteen','passed':True},measured.checks)

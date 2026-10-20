@@ -2,7 +2,7 @@
 title: 'Story 3.21 Production Dapr Runtime and Durable Broker Qualification'
 type: 'chore'
 created: '2026-10-20'
-status: 'draft'
+status: 'ready-for-dev'
 route: 'dispatch'
 story_key: '3-21-production-dapr-runtime-pin-and-durable-broker-qualification'
 review_loop_iteration: 0
