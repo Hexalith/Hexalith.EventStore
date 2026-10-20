@@ -19,6 +19,39 @@ public sealed class SourcePublicationNamespaceTests
     private static readonly SourcePublicationScope Scope = new("tenant-a", "conversation", "approved-deletion-v1", "installation-1");
     private static readonly AggregateIdentity Existing = new("tenant-a", "conversation", "existing-source");
     private static readonly AggregateIdentity Created = new("tenant-a", "conversation", "new-source");
+    private static SourceProofInspection Proof(AggregateIdentity identity, long head)
+        => new(SourceProofInspectionStatus.Available, true, head, false,
+            new Hexalith.EventStore.Server.Events.SourceProof(1, identity.TenantId, identity.Domain,
+                identity.AggregateId, "native-incarnation", head, head == 0 ? null : "native-message", new string('a', 64), 1, false));
+
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("unsupported")]
+    [InlineData("erasure")]
+    [InlineData("incarnation")]
+    [InlineData("digest")]
+    [InlineData("retained-prefix")]
+    public async Task MissingOrChangedNativeProofCannotEstablishCompleteCut(string change)
+    {
+        var actor = Substitute.For<ISourcePublicationNamespaceActor>();
+        actor.ReadAsync(Scope).Returns(Installation());
+        var source = Substitute.For<IAggregateActor>();
+        SourceProofInspection original = Proof(Existing, 4);
+        SourceProofInspection changed = change switch
+        {
+            "absent" => new(SourceProofInspectionStatus.Unsupported, false, 0, false, null),
+            "unsupported" => original with { Status = SourceProofInspectionStatus.Unsupported, Proof = null },
+            "erasure" => original with { Erased = true },
+            "incarnation" => original with { Proof = original.Proof! with { SourceIncarnation = "replacement" } },
+            "digest" => original with { Proof = original.Proof! with { CumulativeDigest = new string('b', 64) } },
+            _ => original with { Proof = original.Proof! with { RetainedFloor = 2 } },
+        };
+        source.InspectSourceProofAsync().Returns(original, changed);
+        (await new DaprSourcePublicationNamespaceSource(Proxies(actor, source), Authority(), TimeProvider.System)
+            .ReadAsync(Scope, TestContext.Current.CancellationToken)).ShouldBeNull();
+        await source.DidNotReceive().GetStreamMetadataAsync();
+    }
+
     private static SourcePublicationNamespaceState Installation() => new(Scope, 1, "installation-authority-1",
         "synthetic-verified-legacy-coverage", "synthetic-verified-all-writers", [Existing]);
     private static SourcePublicationNamespaceActor Actor(IActorStateManager backend)
@@ -137,20 +170,20 @@ public sealed class SourcePublicationNamespaceTests
 
     /// <summary>Actual committed metadata produces a finite vector; an unused pre-registration contributes head zero.</summary>
     [Fact]
-    public async Task QualifiedRosterUsesCommittedHeadsIncludingUnusedRegistration()
+    public async Task QualifiedRosterUsesNativeProofIncludingPersistedEmptyStream()
     {
         var backend = new InMemoryStateManager(); var actor = Actor(backend); await actor.InstallAsync(Installation());
         await actor.RegisterAsync(Scope, 1, Created);
         var proxies = Substitute.For<IActorProxyFactory>();
         proxies.CreateActorProxy<ISourcePublicationNamespaceActor>(new ActorId(Scope.ActorId), SourcePublicationNamespaceActor.ActorTypeName).Returns(actor);
-        var existing = Substitute.For<IAggregateActor>(); existing.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 4));
-        var empty = Substitute.For<IAggregateActor>(); empty.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(false, 0));
+        var existing = Substitute.For<IAggregateActor>(); existing.InspectSourceProofAsync().Returns(Proof(Existing, 4));
+        var empty = Substitute.For<IAggregateActor>(); empty.InspectSourceProofAsync().Returns(Proof(Created, 0));
         proxies.CreateActorProxy<IAggregateActor>(new ActorId(Existing.ActorId), "AggregateActor").Returns(existing);
         proxies.CreateActorProxy<IAggregateActor>(new ActorId(Created.ActorId), "AggregateActor").Returns(empty);
         var cut = await new DaprSourcePublicationNamespaceSource(proxies, Authority(), TimeProvider.System).ReadAsync(Scope, TestContext.Current.CancellationToken);
         cut!.IsComplete.ShouldBeTrue(); cut.Sources.Single(h => h.Identity == Existing).Head.ShouldBe(4);
         cut.Sources.Single(h => h.Identity == Created).Head.ShouldBe(0); cut.AuthorityRevision.ShouldEndWith(":2");
-        await existing.Received(2).GetStreamMetadataAsync(); await empty.Received(2).GetStreamMetadataAsync();
+        await existing.Received(2).InspectSourceProofAsync(); await empty.Received(2).InspectSourceProofAsync();
     }
 
     /// <summary>Stored receipt strings alone cannot qualify an installation or expose source metadata.</summary>
@@ -162,7 +195,7 @@ public sealed class SourcePublicationNamespaceTests
         var authority = Substitute.For<ISourcePublicationNamespaceAuthority>();
         authority.AuthorizeAsync(Arg.Any<SourcePublicationNamespaceState>(), Arg.Any<CancellationToken>()).Returns((SourcePublicationNamespaceAuthorization?)null);
         (await new DaprSourcePublicationNamespaceSource(proxies, authority, TimeProvider.System).ReadAsync(Scope, TestContext.Current.CancellationToken)).ShouldBeNull();
-        await source.DidNotReceive().GetStreamMetadataAsync();
+        await source.DidNotReceive().InspectSourceProofAsync();
         await Should.ThrowAsync<InvalidOperationException>(() => new DaprSourcePublicationWriterRegistration([Scope], proxies, authority, TimeProvider.System)
             .RegisterBeforeWriteAsync(Created, TestContext.Current.CancellationToken));
         backend.CommittedState.Single().Value.ShouldBeOfType<SourcePublicationNamespaceState>().Sources.ShouldNotContain(Created);
@@ -179,7 +212,7 @@ public sealed class SourcePublicationNamespaceTests
         var initial = Installation();
         actor.ReadAsync(Scope).Returns(initial, vector == "roster" ? initial with { Revision = 2, Sources = [Existing, Created], InitialSources = [Existing] } : initial);
         var source = Substitute.For<IAggregateActor>();
-        source.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 4), new AggregateStreamMetadata(true, vector == "head" ? 5 : 4));
+        source.InspectSourceProofAsync().Returns(Proof(Existing, 4), Proof(Existing, vector == "head" ? 5 : 4));
         var authority = Authority();
         if (vector == "authority")
         {
@@ -249,7 +282,7 @@ public sealed class SourcePublicationNamespaceTests
             return vector.Contains("installation", StringComparison.Ordinal)
                 ? owned with { InitialSources = supplied } : owned with { Sources = supplied };
         });
-        var source = Substitute.For<IAggregateActor>(); source.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 1));
+        var source = Substitute.For<IAggregateActor>(); source.InspectSourceProofAsync().Returns(Proof(Existing, 1));
         var authority = Substitute.For<ISourcePublicationNamespaceAuthority>(); int authorizations = 0;
         authority.AuthorizeAsync(Arg.Any<SourcePublicationNamespaceState>(), Arg.Any<CancellationToken>()).Returns(_ =>
         {

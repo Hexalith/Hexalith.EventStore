@@ -80,8 +80,8 @@ PACKET_KEYS = ("schema", "invocation", "started_utc", "finished_utc", "source_bi
 ROW_KEYS = ("id", "execution", "compatibility", "scope", "assertions", "receipts", "reason")
 INPUT_KEYS = ("schema", "fixture", "authority", "candidate", "rollback", "operational_profile",
               "assertion_instrumentation", "selected_additions")
-FOLDED_SNAPSHOT_VERSIONS = ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
-ISOLATION_VERSIONS = ("3.122.1", "3.125.0", "3.125.1")
+FOLDED_SNAPSHOT_VERSIONS = ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")
+ISOLATION_VERSIONS = ("3.122.1", "3.125.0", "3.125.1", "3.126.0")
 SELECTED_SOURCE_COMMIT = "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
 SELECTED_TAG_BUILDS = "4629ff2d3bd66376b29a553663c241d3a7b87853"
 COMPARISON_VERSIONS = ("3.70.1", "3.110.0")
@@ -220,7 +220,7 @@ def validate_candidate_source(binding, selection):
     if candidate.get("tag") is None or "tooling" in selection:
         return
     source = binding.get("candidate_source")
-    require(source is not None or "runtime_source" in binding or candidate["version"] != "3.125.1",
+    require(source is not None or "runtime_source" in binding or candidate["version"] not in ("3.125.1", "3.126.0"),
             "selected candidate source closure missing")
     if source is None:
         return
@@ -239,6 +239,11 @@ def validate_candidate_source(binding, selection):
         require(head == SELECTED_SOURCE_COMMIT and tree[2] == SELECTED_TAG_BUILDS
                 and candidate["feed"] == "https://api.nuget.org/v3/index.json",
                 "selected 3.125.1 published source substituted")
+    if candidate["version"] == "3.126.0":
+        require(head == "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288"
+                and tree[2] == "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c"
+                and candidate["feed"] == "https://api.nuget.org/v3/index.json",
+                "selected 3.126.0 published source substituted")
 
 
 # Owner inputs and decisions -------------------------------------------------------------------------------------
@@ -1421,7 +1426,7 @@ def validate_final_isolation(receipt, context):
 
 def finalize_isolation_receipts(output, isolation_output, selection):
     """Attach new successful wrapper evidence after teardown, retaining old receipt schemas."""
-    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0", "3.125.1"):
+    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0", "3.125.1", "3.126.0"):
         return
     output, isolation_output = Path(output), Path(isolation_output)
     reference = {}

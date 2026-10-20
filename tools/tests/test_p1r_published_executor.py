@@ -358,7 +358,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-3.110.0'))
             for writer in ('3.110.0','3.70.1','3.122.2',
-                           *(version for version in ('3.121.0','3.122.1','3.125.0','3.125.1') if version != self.candidate_version)):
+                           *(version for version in ('3.121.0','3.122.1','3.125.0','3.125.1','3.126.0') if version != self.candidate_version)):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
         self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
@@ -617,7 +617,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                     'sha256':value} for entry in verified.values() for value in entry['dlls']]},
             'cases':[row],'execution_evidence':executed,'output_sha256':executor.digest(executor.canonical(executed)),
             'assertions':row['assertions'],'execution':'passed','compatibility':'compatible'}
-        if self.candidate_version in ('3.122.1','3.125.0','3.125.1'):
+        if self.candidate_version in ('3.122.1','3.125.0','3.125.1','3.126.0'):
             receipt = self.attach_isolation(receipt,context)
         return receipt,context
 
@@ -683,7 +683,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
     def testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory(self):
         fixture = self.fixture()
         for version in ('source','3.122.2',
-                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0','3.125.1') if candidate != self.candidate_version]):
+                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0','3.125.1','3.126.0') if candidate != self.candidate_version]):
             changed = copy.deepcopy(fixture)
             config = changed[1]['configurations'][0]
             config['version'] = version
@@ -1191,6 +1191,8 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
 
 class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
     candidate_version = '3.125.1'
+    source_commit = qualification.SELECTED_SOURCE_COMMIT
+    tag_builds_commit = qualification.SELECTED_TAG_BUILDS
 
     def setUp(self):
         super().setUp()
@@ -1209,8 +1211,8 @@ class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
         def git(root,*arguments):
             if Path(root) == self.tagged_root:
                 if arguments[0] == 'ls-tree':
-                    return ('160000 commit '+qualification.SELECTED_TAG_BUILDS+'\treferences/Hexalith.Builds\n').encode()
-                return qualification.SELECTED_SOURCE_COMMIT.encode()
+                    return ('160000 commit '+self.tag_builds_commit+'\treferences/Hexalith.Builds\n').encode()
+                return self.source_commit.encode()
             return original_git(root,*arguments)
         for patcher in (mock.patch.object(preparation,'source_binding',side_effect=bind),
                         mock.patch.object(preparation,'self_contained_checkout'),
@@ -1256,15 +1258,15 @@ class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
 
     def attach_isolation(self,receipt,context):
         binding = context['source_binding']
-        production = {'head':qualification.SELECTED_SOURCE_COMMIT,'diff_sha256':preparation.digest(b''),
+        production = {'head':self.source_commit,'diff_sha256':preparation.digest(b''),
             'files':[{'path':'src/Production.cs','sha256':'a'*64,'git_blob':'b'*40,'index_blob':'b'*40}],
-            'gitlinks':{'references/Hexalith.Builds':qualification.SELECTED_TAG_BUILDS}}
+            'gitlinks':{'references/Hexalith.Builds':self.tag_builds_commit}}
         binding['candidate_source'] = {'repository':str(self.tagged_root),'main':production,'retained_inputs':[],
             'python':binding['python'],'dependencies':[{'path':'references/Hexalith.Builds','initialized':True,
-                'binding':dict(copy.deepcopy(production),head=qualification.SELECTED_TAG_BUILDS)}]}
+                'binding':dict(copy.deepcopy(production),head=self.tag_builds_commit)}]}
         self.test_binding = binding
-        context['inputs']['value']['candidate'].update(tag='v3.125.1',tag_commit=qualification.SELECTED_SOURCE_COMMIT,
-            tag_builds_commit=qualification.SELECTED_TAG_BUILDS,feed='https://api.nuget.org/v3/index.json')
+        context['inputs']['value']['candidate'].update(tag='v'+self.candidate_version,tag_commit=self.source_commit,
+            tag_builds_commit=self.tag_builds_commit,feed='https://api.nuget.org/v3/index.json')
         source_path = Path(self.temporary.name)/'executor-source.json'
         executor.write_json(source_path,binding)
         execution_path = Path(self.temporary.name)/'execution.json'
@@ -1274,6 +1276,12 @@ class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
         receipt['execution_evidence'].update(executor_source=binding,executor_source_sha256=executor.digest(source_path.read_bytes()))
         receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
         return super().attach_isolation(receipt,context)
+
+
+class Published31260SnapshotWitnessTests(Published31251SnapshotWitnessTests):
+    candidate_version = '3.126.0'
+    source_commit = 'fcf78d6cafb6c0c9f52dc350a9a09aff54ded288'
+    tag_builds_commit = '1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c'
 
 
 class IndependentRecoverySelectionTests(unittest.TestCase):
@@ -1372,7 +1380,7 @@ class MeasurementTests(unittest.TestCase):
         worker.postgres_write.assert_not_called()
 
     def testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends(self):
-        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")]
+        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")]
         for candidate, version in writers + [("3.125.0", "source"), ("3.125.1", "source")]:
             with self.subTest(candidate=candidate, version=version):
                 worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}},
@@ -1386,7 +1394,7 @@ class MeasurementTests(unittest.TestCase):
                 self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
 
     def testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis(self):
-        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")]
+        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")]
         for candidate, version in writers + [("3.125.0", "source"), ("3.125.1", "source")]:
             for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
                              {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
@@ -1488,7 +1496,7 @@ class MeasurementTests(unittest.TestCase):
         return worker, executor.Measurements()
 
     def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
-        for candidate in ("3.125.0", "3.125.1"):
+        for candidate in ("3.125.0", "3.125.1", "3.126.0"):
             with self.subTest(candidate=candidate):
                 with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
                     worker = CleanupTests.worker(self, scratch)

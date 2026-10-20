@@ -221,7 +221,7 @@ def validate_execution_inputs(inputs, source_root=None, source_builds_root=None)
     if "tooling" in inputs:
         return
     selected_root = ROOT if source_root is None else Path(source_root)
-    if source_root is None and candidate["version"] == "3.125.1":
+    if source_root is None and candidate["version"] in ("3.125.1", "3.126.0"):
         binding = preparation.source_binding(ROOT, selected_root)
         qualification.validate_candidate_source(binding, inputs)
     tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
@@ -1309,7 +1309,7 @@ class Executor:
         genuine = interval == 10 and qualification.is_successor_selection(
             {"candidate": {"version": self.candidate if version == "source" else version}})
         if genuine:
-            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1")
+            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")
                     and version in (self.candidate, "source"), "successor snapshot fixture is not explicitly enabled")
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
@@ -1587,7 +1587,7 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
-        if self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1") and getattr(self, "last_snapshot_creation", None) is not None:
+        if self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0") and getattr(self, "last_snapshot_creation", None) is not None:
             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
             data = regular(path)
             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}
@@ -2034,12 +2034,12 @@ class Executor:
             time.sleep(max(0, (due - datetime.datetime.now(datetime.timezone.utc)).total_seconds()) + .2)
             natural = self.natural_reminder(checks)
         callback_url = f"http://127.0.0.1:{self.host_port}/reminder/callback/1"
-        if self.candidate == "3.125.1":
+        if self.candidate in ("3.125.1", "3.126.0"):
             require(registration.get("intent_due") == original_due and registration.get("intent_revision") == 1
                     and isinstance(registration.get("reminder_name"), str), "original armed reminder identity missing")
             callback_url += "?" + urllib.parse.urlencode({"due": original_due, "reminderName": registration["reminder_name"]})
         repeated = self.http("POST", callback_url, {})
-        if self.candidate == "3.125.1":
+        if self.candidate in ("3.125.1", "3.126.0"):
             checks.check("callback-actor-request-accepted", isinstance(repeated.get("callback_status"), int)
                          and not isinstance(repeated.get("callback_status"), bool)
                          and 200 <= repeated["callback_status"] < 300)

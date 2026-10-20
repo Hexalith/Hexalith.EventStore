@@ -130,7 +130,7 @@ def validate_shape(node, tree):
 
 def requires_qualified_snapshot(candidate_version, lane, identifier):
     """Derive the genuine successor seed requirement without trusting optional observations."""
-    return candidate_version in ('3.121.0','3.122.1','3.125.0','3.125.1') and (lane == 'post-upgrade-restore' or (
+    return candidate_version in ('3.121.0','3.122.1','3.125.0','3.125.1','3.126.0') and (lane == 'post-upgrade-restore' or (
         lane in ('snapshot-tail','retained-covered','retained-uncovered','metadata-write')
         and identifier.split('-to-',1)[0] in (candidate_version,'source')))
 
@@ -184,7 +184,7 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
             except (ValueError,TypeError):
                 pass
     role, configuration = ('source','Debug') if writer_version == 'source' else ('candidate','Release')
-    require(writer_version in ('3.121.0','3.122.1','3.125.0','3.125.1','source'), 'qualified snapshot writer is not the selected successor')
+    require(writer_version in ('3.121.0','3.122.1','3.125.0','3.125.1','3.126.0','source'), 'qualified snapshot writer is not the selected successor')
     def probe_command(check_prefix, operation):
         identities = {record.get('command') for record in evidence['check_witnesses']
                       if record.get('kind') == 'probe' and record.get('id','').startswith(prefix + check_prefix)}
@@ -932,7 +932,7 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
         require(not equivalent or comparison.get('delta') == [], 'equivalence carries contradictory semantic deltas')
 
     if not incomplete and lane == 'reminder-recovery':
-        if candidate_version == '3.125.1':
+        if candidate_version in ('3.125.1', '3.126.0'):
             validate_reminder_windows(observation, successful_http, configurations, checks, row['id'])
             validate_reminder_identity(observation, successful_http, checks, row['id'])
         for name, identity in (('registration','initial-convergence-no-direct-submission'), ('rearmed','restart-convergence-no-direct-submission')):

@@ -277,14 +277,6 @@ public static class EventStoreDomainServiceExtensions {
 
         ValidateDomainQueryHandlerRoutes(app.Services);
         app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
-        bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
-        bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
-        if (mapProjectionEndpoint) {
-            ValidateDomainProjectionHandlerRoutes(app.Services);
-        }
-
-        ValidateNamedDomainProjectionHandlerRoutes(app.Services);
-
         // Preserve the status-root contract without adding an anonymous endpoint (AD-16).
         _ = app.MapGet("/", () => "Hexalith EventStore domain service")
             .RequireAuthorization(EventStoreDomainServicePolicies.AnyWorkload);
@@ -345,6 +337,27 @@ public static class EventStoreDomainServiceExtensions {
                 }
             })
             .RequireEventStoreDomainServicePolicy("/query");
+
+        _ = app.MapEventStoreDomainProjectionEndpoints();
+        _ = app.MapEventStoreDomainProjectionMetadataEndpoint();
+
+        return app;
+    }
+
+    /// <summary>Maps the canonical projection, rebuild and source-guard routes while retaining routes already supplied by the host.</summary>
+    /// <param name="app">The domain host application.</param>
+    /// <returns>The application for chaining.</returns>
+    public static WebApplication MapEventStoreDomainProjectionEndpoints(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        app.Services.GetService<EventStoreDomainServiceEndpointSource>()?.Capture(app);
+        bool mapProjectionEndpoint = !IsRouteMapped(app, "/project", HttpMethods.Post);
+        bool mapNamedProjectionEndpoint = !IsRouteMapped(app, "/project/v2", HttpMethods.Post);
+        if (mapProjectionEndpoint)
+        {
+            ValidateDomainProjectionHandlerRoutes(app.Services);
+        }
+        ValidateNamedDomainProjectionHandlerRoutes(app.Services);
 
         // /project — the stateless full-replay projection endpoint (Model a). Dispatches to the matching
         // IDomainProjectionHandler. Skipped when the app already mapped its own /project so a domain with
@@ -462,6 +475,41 @@ public static class EventStoreDomainServiceExtensions {
         }
         MapSharedProjectionRebuildEndpoint(app);
 
+        if (!IsRouteMapped(app, "/project/source-guard/reconcile-applied-receipt/v1", HttpMethods.Post))
+        {
+            _ = app.MapPost("/project/source-guard/reconcile-applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
+                IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
+                    Results.Ok(await DomainProjectionOwnerProof.ReconcileAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
+                .RequireEventStoreDomainServicePolicy("/project/source-guard/reconcile-applied-receipt/v1");
+        }
+        if (!IsRouteMapped(app, "/project/source-guard/applied-receipt/v1", HttpMethods.Post))
+        {
+            _ = app.MapPost("/project/source-guard/applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
+                IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
+                    Results.Ok(await DomainProjectionOwnerProof.ReadAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
+                .RequireEventStoreDomainServicePolicy("/project/source-guard/applied-receipt/v1");
+        }
+        if (!IsRouteMapped(app, "/project/source-guard/owner-proof/v1", HttpMethods.Post))
+        {
+            _ = app.MapPost("/project/source-guard/owner-proof/v1", async (ProjectionOwnerProofRequest request,
+                IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken cancellationToken) =>
+                Results.Ok(await DomainProjectionOwnerProof.ReadAsync(services, request, catalog, cancellationToken).ConfigureAwait(false)))
+                .RequireEventStoreDomainServicePolicy("/project/source-guard/owner-proof/v1");
+        }
+
+        return app;
+    }
+
+    /// <summary>Maps the SDK projection catalog using the canonical metadata policy without replacing a host route.</summary>
+    /// <param name="app">The domain host application.</param>
+    /// <returns>The application for chaining.</returns>
+    public static WebApplication MapEventStoreDomainProjectionMetadataEndpoint(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        if (IsRouteMapped(app, "/admin/operational-index-metadata", HttpMethods.Post))
+        {
+            return app;
+        }
         _ = app.MapPost(
             "/admin/operational-index-metadata",
             (AdminOperationalIndexMetadata.Request request,
@@ -512,19 +560,6 @@ public static class EventStoreDomainServiceExtensions {
                 return Results.Ok(response);
             })
             .RequireEventStoreDomainServicePolicy("/admin/operational-index-metadata");
-
-        _ = app.MapPost("/project/source-guard/reconcile-applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
-            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
-                Results.Ok(await DomainProjectionOwnerProof.ReconcileAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
-            .RequireEventStoreDomainServicePolicy("/project/source-guard/reconcile-applied-receipt/v1");
-        _ = app.MapPost("/project/source-guard/applied-receipt/v1", async (ProjectionAppliedReceiptRequest request,
-            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken token) =>
-                Results.Ok(await DomainProjectionOwnerProof.ReadAppliedReceiptAsync(services, request, catalog, token).ConfigureAwait(false)))
-            .RequireEventStoreDomainServicePolicy("/project/source-guard/applied-receipt/v1");
-        _ = app.MapPost("/project/source-guard/owner-proof/v1", async (ProjectionOwnerProofRequest request,
-            IServiceProvider services, [FromServices] DomainProjectionCatalogRegistry catalog, CancellationToken cancellationToken) =>
-            Results.Ok(await DomainProjectionOwnerProof.ReadAsync(services, request, catalog, cancellationToken).ConfigureAwait(false)))
-            .RequireEventStoreDomainServicePolicy("/project/source-guard/owner-proof/v1");
 
         return app;
     }

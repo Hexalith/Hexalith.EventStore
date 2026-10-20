@@ -77,7 +77,7 @@ class FixtureSnapshotRegistrationTests(unittest.TestCase):
         }
         all_fixture_sources = set().union(*expected_sources.values())
         for version, enrolled in (('3.125.0', True), ('3.125.1', True),
-                                  ('3.125.2', False), ('3.126.0', False)):
+                                  ('3.126.0', True), ('3.125.2', False), ('3.126.1', False), ('3.127.0', False)):
             for role in ('host', 'domain', 'probe'):
                 with self.subTest(version=version, role=role):
                     project = FIXTURES / role / (role.title() + '.csproj')
