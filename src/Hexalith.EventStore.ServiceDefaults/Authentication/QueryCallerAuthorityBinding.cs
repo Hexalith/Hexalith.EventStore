@@ -16,21 +16,30 @@ public static class QueryCallerAuthorityBinding
     public static IReadOnlyDictionary<string, string> Bind(QueryEnvelope query)
     {
         ArgumentNullException.ThrowIfNull(query);
-        return new Dictionary<string, string>(StringComparer.Ordinal) { [DigestClaim] = Digest(query) };
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = query.TenantId,
+            [EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = query.Domain,
+            [DigestClaim] = Digest(query),
+        };
     }
     /// <summary>Validates the exact query against the minimal principal produced by workload authentication.</summary>
     public static bool Verify(QueryEnvelope query, ClaimsPrincipal workload, string gatewayWorkloadId)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(workload);
-        Claim[] binding = workload.FindAll(DigestClaim).ToArray();
         Claim[] callers = workload.FindAll(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType).ToArray();
+        Claim[] bindings = workload.Claims.Where(static claim => claim.Type.StartsWith(
+            EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix, StringComparison.Ordinal)).ToArray();
+        IReadOnlyDictionary<string, string> expected = Bind(query);
         return workload.Identity?.IsAuthenticated == true && callers.Length == 1 && callers[0].Value == gatewayWorkloadId
             && workload.HasClaim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, EventStoreWorkloadOperations.DomainServiceQuery)
-            && binding.Length == 1 && binding[0].Value == Digest(query)
+            && bindings.Length == expected.Count && expected.All(pair => bindings.Count(claim => claim.Type == pair.Key && claim.Value == pair.Value) == 1)
             && query.OriginalActorId == query.UserId && !string.IsNullOrWhiteSpace(query.UserId)
             && query.CallerAuthority is { Origin: "authenticated-caller" or "bound-owner-query" or "delegated-owner-query" } authority
             && Valid(authority.Roles) && Valid(authority.Permissions)
+            && (authority.OriginatingContext is null || authority.Origin == "delegated-owner-query"
+                && authority.OriginatingContext.OriginalActorId == query.UserId)
             && (authority.Origin != "delegated-owner-query" || authority.Roles.Count == 0 && query.IsDelegated)
             && (authority.Origin != "bound-owner-query" || authority.Roles.Count == 0 && authority.Permissions.Count == 0);
     }

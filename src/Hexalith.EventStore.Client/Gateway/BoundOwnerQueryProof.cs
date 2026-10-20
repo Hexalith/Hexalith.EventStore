@@ -37,7 +37,7 @@ public static class BoundOwnerQueryProof
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Query);
         if (string.IsNullOrWhiteSpace(request.PrincipalId) || request.PrincipalId.Length > 200 ||
-            string.IsNullOrWhiteSpace(request.Query.AggregateId) || request.Query.AggregateId.Length > 200 ||
+            string.IsNullOrWhiteSpace(request.Query.AggregateId) || request.Query.AggregateId.Length > 256 ||
             string.IsNullOrWhiteSpace(request.Query.QueryType) || request.Query.QueryType.Length > 300)
         {
             throw new ArgumentException("Invalid owner query binding.", nameof(request));

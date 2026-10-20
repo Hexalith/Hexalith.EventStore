@@ -22,6 +22,8 @@ public sealed class VerifiedQueryCaller
     public QueryEnvelope Query { get; }
     /// <summary>The original wire query whose exact digest was verified, before local administrator revalidation.</summary>
     public QueryEnvelope OriginalQuery { get; }
+    /// <summary>Gets originating actor/workload/delegation/scopes/audiences verified separately from the owner-hop fields in Query. Absent for legacy requests.</summary>
+    public OriginatingQueryContext? OriginatingContext => OriginalQuery.CallerAuthority?.OriginatingContext;
     /// <summary>Verified caller claims, separate from the transport workload principal.</summary>
     public ClaimsPrincipal Principal { get; }
     /// <summary>Gets the caller established by the SDK dispatcher for this request, or null.</summary>

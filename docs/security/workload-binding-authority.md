@@ -19,6 +19,60 @@ is denied. A request never chooses the issuing workload. Actor binding additiona
 in the server grant; caller claims do not establish it. No wildcard expansion is
 implemented. Grant revision and identity accompany the signed assertion.
 
+### Exact query authority capability
+
+The v1 profile also supports the explicit, default-off grant capability
+`AllowQueryAuthorityDigest`. For `domain-service:query`, an enabled grant requires
+exactly these request bindings: `eventstore:bound-tenant`,
+`eventstore:bound-domain`, and `eventstore:bound-query-authority-v1`. The first two
+must match the grant's exact allowlists. The digest is exactly 64 uppercase
+hexadecimal SHA-256 characters and covers the complete Web-JSON `QueryEnvelope`.
+The grant contains only the Tenant/domain allowlists; it does not pre-enumerate
+per-request digests. Unknown, additional, missing, wildcard or malformed query
+bindings fail closed. The capability cannot authorize a digest for any other
+operation. Other exact-value binding families retain their existing policy.
+`AllowUnbound` does not waive the digest requirement for the capability's query
+operation. The configured audience, workload and credentials remain independent
+checks. No client is enrolled by adding this capability to the source.
+
+The receiving SDK requires all three exact signed claims before exposing
+`VerifiedQueryCaller`. For an owner query, the gateway validates the nested
+originating assertion against the requesting workload's audience and the exact
+originating envelope before constructing
+`QueryCallerAuthority.OriginatingContext` (`OriginatingQueryContext`). This
+context is covered by the owner-query envelope digest and is available through
+`VerifiedQueryCaller.OriginatingContext` only after receiving SDK verification.
+Owner allowlists, requester proof checks and current actor/resource authorization
+still apply. A valid digest does not authorize a resource read.
+
+| Originating context field | Authenticated source on the original gateway query |
+| --- | --- |
+| `OriginalActorId` | `sub`, through `DualPrincipalClaimsHelper` / `OriginalActorId` |
+| `AuthenticatedWorkloadId` | Existing `azp`, then `client_id`, then first `aud` resolution |
+| `IsDelegated` | Existing `act` presence or differing `azp`/`client_id` rule |
+| `DelegationId` | Bounded, unambiguous RFC 8693 `act.sub` |
+| `Scopes` | Existing whitespace-split `scope`, then `scp` |
+| `Audience` | Existing authenticated `aud` values |
+
+Absent collections remain absent; context collections are defensively copied.
+The inherited `DualPrincipalClaimsHelper` extraction preserves at most 64 scope
+entries and 64 audience entries, truncating each retained value to 512 characters
+and discarding entries beyond the count limit. These existing routing-metadata
+rules are unchanged; originating context captures the resulting bounded values.
+Scopes and audiences do not become distinct permission authority.
+The owner-hop `Query.AuthenticatedWorkloadId` remains the requesting workload,
+while `Query.Audience` comes from the gateway's validated named receiver options.
+The transport principal at the owner remains the authenticated gateway workload
+and intentionally contains no copied user `aud` claims. Original delegation and
+scopes are kept in the separate context. Roles are not forwarded to the owner;
+the existing distinct permission claims still are. JSON and DataContract omit a
+null new context, preserving the legacy authority/proof bytes. Existing callers
+without a context retain their prior behavior.
+
+Owner-query and stream-read proofs accept aggregate IDs up to 256 characters.
+The independent 200-character principal and proof Tenant/domain limits, and the
+aggregate identity's 64-character Tenant/domain validation, remain unchanged.
+
 The host maps `/workload-authority/token`, `/workload-authority/jwks` and
 `/workload-authority/.well-known/openid-configuration` only when
 `Authentication:WorkloadAuthority:Enabled=true`. Its default is disabled.
