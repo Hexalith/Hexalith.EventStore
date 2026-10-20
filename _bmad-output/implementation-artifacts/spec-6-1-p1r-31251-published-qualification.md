@@ -137,3 +137,104 @@ context:
 - Run each of the six P1R Python discovery suites from `.github/workflows/p1r-qualification.yml` individually, plus optimized isolation hardening. Run actual Host/Domain/Probe project evaluations for enrolled and unenrolled versions.
 - Execute fresh Release/package lanes and distinct Debug/tagged-source comparisons, private failure/cleanup drills, independent audit and strict import attempts. Require zero executor errors for successful execution. Keep owner-disposition refusal explicit.
 - Run `git diff --check`; verify preservation of historical and unrelated inputs.
+
+## Retained V4 causal follow-up, 2026-10-20
+
+This is an additive diagnosis and proposal, with no new qualification invocation
+or runtime/tooling repair. The [read-only diagnostic](evidence/6-1-p1r-31251-followup-20261020/diagnosis.json)
+recounts all 19 lanes / 163 cases and verifies all 21 original receipt hashes:
+main **4,795/4,804, nine failed**, separate restore **10/12**, cleanup **7/7**.
+The recovery failures repeat the same failed append/restart observations; they
+are not two additional runtime incidents. Original results and labels remain
+unchanged. Command/audit exits zero establish completed measurement, not passing
+qualification. The diagnostic rehashes all five retained published archives and
+checks the exact tagged source against its recorded closure. Signature results
+remain retained observations; this pass performs no fresh signature verification.
+
+| Class | Evidence and causal finding | What remains unproven |
+| --- | --- | --- |
+| Verifier fixture defect | Command **4014** changes metadata floor to **5** while preserving `sourceProof.retainedFloor=1`. Decoded SQL hashes to `c03b45fefe2269d240c01e9b2aedf6763b1a63565a3f75b30037e6332f3e0538`, exactly the source/restored/appended/restarted metadata. Tagged `SourceProofCodec.IsValid` requires equal floors; tagged `EventPersister` rejects mismatches with `source_conflict`. Command **4038** refuses the append at `EventsStored`; restart **4055** still reports head 12. This invalid positive fixture explains three main and two recovery failures. | The raw exception message is redacted; the specific guard is a deduction from exact input and tagged code, not a newly captured exception. This does not establish a runtime defect or a successful valid-fixture append. |
+| Verifier reporting defect | The failed `fresh-backup-restore-append-restart` case returns `outcome=effect`, `disposition=compatible` despite three failed checks. Its enclosing receipt correctly remains `execution=failed`, `compatibility=unverified`; recovery remains failed/incompatible. | Case labels cannot override failed checks or grant acceptance. No historical label is corrected in place. |
+| Environmental seed failure | The source-comparison pair's failing command **3500** uses the **3.110.0 Release seeder**, before the tagged 3.125.1 Debug reader starts. Tenant B commits zero events. Sidecars **3501/3503** report SQLite name-registration `context deadline exceeded`; host **3502** records invocation HTTP 500. The later tagged hydration assertion at sequence zero follows that absent seed. These account for six main failures. Four later seed checks were never attempted. | Registration deadlines support a discovery/environment cause, but do not identify the underlying SQLite/host fault. The unequal seeds do not isolate a 3.125.1 source/package regression. Do not infer that a retry would pass. |
+| Shared-host preservation failure | Recomputed final outer delta is **13→9**, four removed, none added/changed; original delta is **5→9**, two removed, six added. The four final removals do not overlap the run's recorded owned-container set. | The retained capture does not identify the actor responsible. Owned cleanup and private audit cannot establish whole-host preservation or excuse the observed removals. |
+| Runtime defects | No production defect is isolated by these nine assertions. In particular, rejecting mismatched anchored metadata is the tagged writer's expected guard behavior. | Valid restore-plus-append and source equivalence remain unqualified. Other runtime defects are neither excluded nor repaired by this diagnosis. |
+
+The diagnostic reads frozen verifier text from the V4 receipt and production
+files from `55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b`, checking their recorded
+hashes. It does not substitute today's executor or production source. Historical
+SDK-selection and earlier import failures remain independent retained defects;
+they do not explain away this selected V4 result.
+
+### Proposed bounded next work
+
+The [explicit proposal](evidence/6-1-p1r-31251-followup-20261020/proposal.json)
+separates verifier preparation from candidate selection. First correct only the
+new verifier's positive retained fixture, preserving the existing source
+incarnation/head/message/digest and setting both retention coordinates coherently
+inside the stopped, owned disposable fixture. Keep mismatched-proof and
+invalid-floor negatives as refusals. Add checks before backup and after restore
+that bind both floors, snapshot 9, head 12, exact retained event hashes and both
+tenants. Correct future case outcome/disposition reporting from actual results;
+preserve execution and compatibility as separate dimensions. Never weaken the
+published writer's source-proof guard to admit this fixture.
+
+Investigate private discovery registration and capture both seed tenants before
+attempting source equivalence. Diagnose locks, registration and writer shutdown
+with task-owned controls; no shared host setting changes, silent retries, larger
+budgets or omitted checks. Establish an exclusive host window or separate host
+that can satisfy the unchanged outer preservation assertion. Keep attribution
+unknown unless new evidence identifies it. These are preparation proposals,
+not implemented repairs or a new run authorization/selection.
+
+Only after focused verifier controls and valid-fixture preparation pass should
+a separately named execution be considered. A 3.125.1 run must retain these same
+signed archives, `v3.125.1`, exact source and tagged Builds, with a separately bound
+new verifier; use Dapr **1.18.2**, PostgreSQL v1, comparison-only 3.70.1/3.110.0,
+both additions and rollback=null. Installed 1.18.7 supplies no replacement
+evidence. No runtime repair to 3.125.1 is proposed from V4. If a valid input
+isolates a runtime defect requiring source changes, prepare an explicit successor
+with new immutable package/tag/source/Builds coordinates; never rebuild 3.125.1
+or compare its published bytes with current production source.
+
+### Story 6.4 verified-origin API is a separate qualification target
+
+The tagged 3.125.1 `VerifiedQueryCaller` and `QueryCallerAuthority` lack
+`OriginatingContext`; the presence of the older verified-caller feature does not
+provide the newer API. The later implementation is retained in commit
+`6c56c27bc1a8d63c83f9631f7162cf79fdde0a1e` and the
+[separate prerequisite report](6-4-eventstore-query-authority-prerequisite-report.md).
+Its 422 focused Debug/source checks are bounded source evidence. They neither
+qualify 3.125.1 nor establish immutable published consumption or parent Story 6.4
+acceptance.
+
+The proposal therefore leaves the newer package version, tag/source binding,
+publication authority and owner decisions **unselected/pending**. Before its
+qualification, select and verify a new exact published family containing the
+query-binding signing repair, `OriginatingQueryContext`, gateway forwarding,
+SDK-verified origin separate from owner-hop identity, and the selected proof
+limits. Retain the full P1R envelope and add dedicated packaged origin/signature,
+serialization, tampering, scope/audience/resource, current-owner-denial and legacy
+compatibility checks. Passing the older P1R query-wire cases cannot establish
+this API. Any necessary publication remains separately authorized work.
+
+All four P1R owner decisions and same-baseline conformance remain pending.
+Qualification and P1R usability remain **false**; no support/readiness, consumer
+pin, Projects/sprint, owner acceptance or maintenance-cutover transition follows.
+
+### Follow-up verification boundary
+
+`python3 .../6-1-p1r-31251-followup-20261020/inspect_v4.py` and its `-O`
+invocation reproduce the same diagnostic bytes. The
+[closing preservation check](evidence/6-1-p1r-31251-followup-20261020/closing-verification.json)
+rechecks all **4,880** historical files (**1,852,650,799 bytes**), protected
+production/tool/test inputs, the frozen intent and original wrapper bytes.
+Only this appended wrapper text, a scoped byte-preservation attribute and the
+new sibling forensic packet were written. No historical entrypoint was executed.
+
+The [initial preservation check](evidence/6-1-p1r-31251-followup-20261020/verification.json)
+retains its failed whole-worktree equality result: one of 570 pre-existing dirty
+files, `evidence/story-3-21/qualification-2026-10-20/index.json`, changed during
+the capture window. The closing record preserves both hashes and leaves that
+unrelated file untouched; it does not claim whole-worktree equality. Local diff
+and text checks pass. These checks validate this forensic handoff only, with no
+new runtime, package-signature, owner or qualification result.

@@ -1,0 +1,43 @@
+{
+  "observedUtc": "2026-10-20T09:03:16.203744+00:00",
+  "argv": [
+    "kubectl",
+    "--context=jpiquot@local",
+    "--request-timeout=20s",
+    "get",
+    "cronjobs",
+    "-A",
+    "-o",
+    "json"
+  ],
+  "exitCode": 0,
+  "cronjobs": [
+    {
+      "namespace": "hexalith-memories",
+      "name": "postgresql-tls-reloader",
+      "schedule": "23 * * * *",
+      "suspend": false,
+      "images": [
+        "docker.io/alpine/k8s:1.34.9@sha256:72c921a10c53ab749674e828ad12b776d006481c852bba7dd89e149ceed666f3"
+      ]
+    },
+    {
+      "namespace": "openbao",
+      "name": "openbao-raft-snapshot",
+      "schedule": "30 0 * * *",
+      "suspend": false,
+      "images": [
+        "quay.io/openbao/openbao:2.6.2@sha256:11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641"
+      ]
+    },
+    {
+      "namespace": "stalwart",
+      "name": "stalwart-tls-reloader",
+      "schedule": "17 * * * *",
+      "suspend": false,
+      "images": [
+        "docker.io/alpine/k8s@sha256:72c921a10c53ab749674e828ad12b776d006481c852bba7dd89e149ceed666f3"
+      ]
+    }
+  ]
+}

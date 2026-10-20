@@ -1,0 +1,43 @@
+{
+  "observedUtc": "2026-10-20T08:03:34.552091+00:00",
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "result": "no whitespace errors"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "exitCode": 0,
+      "result": "no staged whitespace errors"
+    },
+    {
+      "command": [
+        "git",
+        "check-ignore",
+        "--stdin"
+      ],
+      "exitCode": 1,
+      "input": "all index artifacts",
+      "result": "no indexed artifact is ignored"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/markdownlint-cli2",
+        "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20-network.md"
+      ],
+      "exitCode": 127,
+      "result": "unavailable: /bin/bash: ./node_modules/.bin/markdownlint-cli2: No such file or directory",
+      "requiredGate": false
+    }
+  ]
+}

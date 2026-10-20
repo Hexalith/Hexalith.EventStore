@@ -127,6 +127,9 @@ docs/evidence/story-3-6/20261017t144520z-production-authority-review/verificatio
 # New P1R receipts bind literal bytes, command output and archive identities.
 _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/** -text -whitespace
 
+# Read-only P1R follow-up binds the original evidence and exact diagnostic bytes.
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/** -text -whitespace
+
 # Story 2.13 continuation binds exact generated components, metadata, logs, and receipts.
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-19/** -text
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20/** -text -whitespace

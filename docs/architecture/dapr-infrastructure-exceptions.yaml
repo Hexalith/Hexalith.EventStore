@@ -31,7 +31,7 @@ unresolved:
       Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
       but the shipped *.*.projection-changed wildcard subscribed to a literal Redis
       stream and delivered no concrete tenant-topic notification. Dynamic tenant
-      coverage, real scoped detail, production identity/profile gates, and Azure
+      enrollment, production identity/profile gates, and Azure
       SignalR equivalence remain unproven. A test-only exact-topic profile delivered
       a real projection signal to two hosts with matching readback. The October 19
       continuation records fresh profile-bound scenarios and the serialized versus
@@ -44,6 +44,12 @@ unresolved:
       target is self-hosted Kubernetes at 192.168.1.30; Azure/AWS are comparison
       only and outside MVP. Observed isolated cluster Dapr 1.18.1 is not the
       locally tested 1.18.7 profile and does not meet the AD-26 runtime floor.
+      Fixture-only exact-topic catalog rollout and optional legacy-projection
+      detail now have local evidence, including persisted actor hints, old/new
+      wire compatibility and real two-host signal/detail readback. Shipped
+      enrollment, canonical freshness/completion under faults, a selected
+      production durable broker/runtime/enrolled issuer and full transition,
+      rollback and disposition remain unresolved. No exception is accepted.
     required_evidence:
       - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
       - negotiation-group-membership-reconnect-rejoin-and-tenant-denial

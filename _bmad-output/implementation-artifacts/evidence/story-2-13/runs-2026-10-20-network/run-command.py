@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Retain local commands and exact qualification inputs, without asserting owner authority."""
 import datetime
+import fnmatch
 import hashlib
 import json
 import os
@@ -21,6 +22,14 @@ assert not receipt_path.exists(), "Receipts are immutable; use a distinct label 
 fixture = repository / "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs"
 sources = sorted(set(re.findall(r'"((?:src|tests|samples|deploy|_bmad-output|references)/[^"\n]+)"', fixture.read_text())))
 sources += ["global.json", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"]
+class_filters = [command[index + 1] for index, value in enumerate(command[:-1]) if value == "-class"]
+if class_filters:
+    tracked_tests = subprocess.check_output(["rg", "--files", "tests"], cwd=repository, text=True).splitlines()
+    sources += [relative for relative in tracked_tests if relative.endswith(".cs")
+                and any(fnmatch.fnmatchcase(Path(relative).name.split(".")[0], pattern) for pattern in class_filters)]
+sources = sorted(set(sources))
+# Component evidence lists also contain binary paths; retain their identities separately, never copy build output as source.
+sources = [relative for relative in sources if "/bin/" not in relative]
 snapshot = packet / "snapshots" / label
 for relative in sources:
     target = snapshot / relative
@@ -39,6 +48,16 @@ binaries = [
     "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
     "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
 ]
+for argument in command:
+    path = (repository / argument).resolve()
+    if path.is_relative_to(repository) and path.is_file() and path.suffix in (".dll", ".exe"):
+        binaries.append(str(path.relative_to(repository)))
+        for suffix in (".deps.json", ".runtimeconfig.json"):
+            companion = path.with_suffix(suffix)
+            if companion.exists():
+                binaries.append(str(companion.relative_to(repository)))
+        binaries += [str(dependency.relative_to(repository)) for dependency in path.parent.glob("Hexalith.EventStore*.dll")]
+binaries = sorted(set(binaries))
 def binary_identities():
     return {relative: digest(repository / relative) for relative in binaries if (repository / relative).exists()}
 

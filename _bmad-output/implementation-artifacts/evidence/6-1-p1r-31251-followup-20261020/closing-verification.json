@@ -1,0 +1,72 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "/usr/bin/python3",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/inspect_v4.py"
+      ],
+      "exit_code": 0,
+      "identical_to_diagnosis": true,
+      "stderr": "",
+      "stdout_sha256": "07a6e49f8f9f1233234a8adffdf8bb9e20a7521fe3734b4aa036b0011754b976"
+    },
+    {
+      "argv": [
+        "/usr/bin/python3",
+        "-O",
+        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/inspect_v4.py"
+      ],
+      "exit_code": 0,
+      "identical_to_diagnosis": true,
+      "stderr": "",
+      "stdout_sha256": "07a6e49f8f9f1233234a8adffdf8bb9e20a7521fe3734b4aa036b0011754b976"
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".gitattributes",
+        "_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "historical_additions": [],
+  "historical_bytes": 1852650799,
+  "historical_changes": [],
+  "historical_files": 4880,
+  "p1r_usable": false,
+  "preexisting_worktree_observation": {
+    "all_unchanged": false,
+    "changes": [
+      {
+        "after_sha256": "f8b69bf32f93da5a38385effe4bac9887d6e5d3bfd433791860517b87257487d",
+        "before_sha256": "a58a08f6d1400bca95d57ad61dd78c6c9fdc0d2738887f092ab2fced7ac9349f",
+        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.json"
+      }
+    ],
+    "count": 570,
+    "limit": "Unrelated files may change during this capture. No restoration or repair of them is performed; whole-worktree equality is reported literally."
+  },
+  "protected_changes": [],
+  "qualified": false,
+  "scope": "offline forensic reproducibility and task-scope preservation; no runtime qualification",
+  "scope_checks": {
+    "both_offline_replays_identical": true,
+    "diff_check": true,
+    "frozen_intent_unchanged": true,
+    "head_unchanged": true,
+    "historical_files_unchanged": true,
+    "index_unchanged": true,
+    "original_attributes_preserved": true,
+    "source_tools_tests_other_protected_inputs_unchanged": true,
+    "text_checks": true,
+    "wrapper_append_only": true,
+    "wrapper_original_bytes_match_entry": true
+  },
+  "text_errors": []
+}

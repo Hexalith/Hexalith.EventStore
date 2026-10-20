@@ -1,0 +1,14 @@
+66ec896a5310be725e3df79520a406496cd5dc87f1e0e61941b2c8b403021c40  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/closing-verification.json
+e9b974b28e7c94db99744da9110f5984255f83eb8fb33c1c802d8a1ddbee597c  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/diagnosis-attempt-1.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/diagnosis-attempt-1.stderr
+07a6e49f8f9f1233234a8adffdf8bb9e20a7521fe3734b4aa036b0011754b976  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/diagnosis-attempt-1.stdout
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/diagnosis-optimized.stderr
+07a6e49f8f9f1233234a8adffdf8bb9e20a7521fe3734b4aa036b0011754b976  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/diagnosis-optimized.stdout
+07a6e49f8f9f1233234a8adffdf8bb9e20a7521fe3734b4aa036b0011754b976  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/diagnosis.json
+6661fec6d61453f36ccd546c7bb3343c29edca93eae64e612a688a920ff347cc  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/entry.json
+45d7a6a9d6ea639fb9440a978a15da3b5f08eb7ab364155f118b038f2783826a  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/inspect_v4.py
+77fbc0878d58484e443010835241633c2e9421c69c4157b4b163888fab0adfce  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/proposal.json
+81e614a9052d3295266816c76f03d83e4c1d89bbf70413f7c9c4d55f13b5d9bc  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verification.json
+9524c81d2a13eb696030b8ae6a16f6ba103d84bab9ee1d1f3858a32a1dc59d80  _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verify_followup.py
+67ece3cbf22daf6ca09dccf20cbef864c42a9d5c3ea2156c67f74c63921ad429  .gitattributes
+e5baef9ea4b5b7f04fc21197ccdbdc05d7ecccf34b529d97f8f494ab02c5eaaa  _bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md
