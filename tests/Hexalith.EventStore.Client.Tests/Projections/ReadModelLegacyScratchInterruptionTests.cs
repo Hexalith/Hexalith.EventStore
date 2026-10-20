@@ -39,7 +39,7 @@ public sealed class ReadModelLegacyScratchInterruptionTests
         byte[] opened = client.ByteStoreValue(scope.StateKey);
         await new SharedProjectionEpochCoordinator(store, store).ReclaimScratchReceiptAsync(scope, batch.Scope.BatchId);
         client.ByteStoreContains(ReadModelBatchKeys.ScratchCompensationKey(batch.Scope.ComputeScopeHash())).ShouldBeFalse();
-        client.ByteStoreContains(batch.Scope.ComputeMarkerKey()).ShouldBeFalse();
+        client.ByteStoreContains(batch.Scope.ComputeMarkerKey()).ShouldBeTrue("the bounded legacy Aborted marker prevents provider ETag ABA");
         client.ByteStoreValue(scope.StateKey).ShouldBe(opened);
     }
     [Theory]
@@ -74,6 +74,51 @@ public sealed class ReadModelLegacyScratchInterruptionTests
         await new SharedProjectionEpochCoordinator(store, store).ReclaimScratchReceiptAsync(scope, batch.Scope.BatchId);
         client.ByteStoreValue(scope.StateKey).ShouldBe(opened);
         client.ByteStoreContains(ReadModelBatchKeys.ScratchCompensationKey(batch.Scope.ComputeScopeHash())).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task NearLimitOriginalLegacyManifestRetainsBoundedCompensationAcrossInterruptionAndCorruption()
+    {
+        using var client = new RecordingDaprClient { PersistTypedState = true };
+        var store = new DaprReadModelStore(client);
+        var scope = new SharedProjectionScope("statestore", "tenant", "widget", "index", ["writer"]);
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        _ = await coordinator.RegisterWriterAsync(scope, "writer");
+        _ = await coordinator.BeginAsync(scope, "legacy", "inventory", new Dictionary<string, long>());
+        ReadModelEntry<SharedProjectionEpochState> state = await store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey);
+        var batch = new ReadModelBatch(new(scope.StoreName, scope.TenantId, scope.Domain, scope.Family, scope.Family, "large-legacy"),
+            [ReadModelBatchOperation.Write("private", new JsonObject { ["payload"] = new string('x', 750_000) }, ReadModelBatchConcurrency.CreateOnly),
+                ReadModelBatchOperation.Write(scope.StateKey, state.Value!, ReadModelBatchConcurrency.Match(state.ETag!))]);
+        int originalSize = ReadModelBatchFingerprint.BuildCanonicalManifest(batch).Length;
+        originalSize.ShouldBeGreaterThan(990_000);
+        originalSize.ShouldBeLessThanOrEqualTo(ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes);
+        var protocol = new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, scope.StoreName), new(), NullLogger.Instance);
+        await Should.ThrowAsync<InvalidOperationException>(() => protocol.ExecuteAsync(batch,
+            new DelegatingBatchFaultInjector((phase, _, _) => phase == ReadModelBatchPhase.BeforeCommit ? throw new InvalidOperationException("stop") : Task.CompletedTask), default));
+        client.TryDeleteByteOverride = key => key == "private" ? false : null;
+        (await store.RecoverPendingAsync(batch.Scope, "private")).IsResolved.ShouldBeFalse();
+        string proofKey = ReadModelBatchKeys.ScratchCompensationKey(batch.Scope.ComputeScopeHash());
+        byte[] proof = client.ByteStoreValue(proofKey);
+        proof.Length.ShouldBeGreaterThan(ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes);
+        proof.Length.ShouldBeLessThanOrEqualTo(ReadModelLegacyScratchCompensation.MaxEncodedBytes);
+        byte[] scratch = client.ByteStoreValue("private");
+        client.SeedByteStore(proofKey, "{}"u8.ToArray());
+        (await new DaprReadModelStore(client).RecoverPendingAsync(batch.Scope, "private")).IsResolved.ShouldBeFalse();
+        client.ByteStoreValue("private").ShouldBe(scratch);
+        client.SeedByteStore(proofKey, new byte[ReadModelLegacyScratchCompensation.MaxEncodedBytes + 1]);
+        (await new DaprReadModelStore(client).RecoverPendingAsync(batch.Scope, "private")).IsResolved.ShouldBeFalse();
+        client.ByteStoreValue("private").ShouldBe(scratch);
+        JsonObject foreign = JsonNode.Parse(proof)!.AsObject();
+        foreign["scope"]!["tenantId"] = "other-tenant";
+        client.SeedByteStore(proofKey, System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(foreign));
+        (await new DaprReadModelStore(client).RecoverPendingAsync(batch.Scope, "private")).IsResolved.ShouldBeFalse();
+        client.ByteStoreValue("private").ShouldBe(scratch);
+        client.SeedByteStore(proofKey, proof);
+        client.TryDeleteByteOverride = null;
+        (await new DaprReadModelStore(client).RecoverPendingAsync(batch.Scope, "private")).IsResolved.ShouldBeTrue();
+        (await new DaprReadModelStore(client).RecoverPendingAsync(batch.Scope, "private")).IsResolved.ShouldBeTrue();
+        client.ByteStoreContains("private").ShouldBeFalse();
+        client.ByteStoreContains(proofKey).ShouldBeFalse();
     }
 
 }

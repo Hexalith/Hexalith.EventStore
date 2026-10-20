@@ -1,0 +1,152 @@
+[
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll",
+    "bytes": 239104,
+    "sha256": "19734f3302b3ce9fa6575747a90516ca417d8b652e33dcd41b149ad314982837"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.pdb",
+    "bytes": 56344,
+    "sha256": "aad6d421e6f72b3cd7d053124e0f127d56e5a261b1275cc499fb2ebfa8e241f4"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.xml",
+    "bytes": 377546,
+    "sha256": "e7ff19b7229467396976b8540e55b213ab3d3bac09a75d1393a7f96284076474"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+    "bytes": 1112576,
+    "sha256": "c76046c6be9adcf696b8b8ac10b9daf2325e20b695b189c443418945042d8e64"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+    "bytes": 280612,
+    "sha256": "7661e8dce533a6c5929ee3d83abcb2f7dc893be74acaec1e1073e6575aa6b92a"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.xml",
+    "bytes": 571912,
+    "sha256": "56b1b95da8f45832e4033ab563b52ed8c1e1d6613259cbc7dc1d7066d05d9d91"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+    "bytes": 706048,
+    "sha256": "2e1bdeb96279899e0f4577e3a8600a00550aab138e398580355aaa57add620c9"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+    "bytes": 175652,
+    "sha256": "6a7794aed9ce4ab093a3a107c086cac4e59c3c4a834a25dc4436de4d85f29275"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.xml",
+    "bytes": 921141,
+    "sha256": "a7f5d3d03e86c6ef64cdbe4d71d803121b577d269488f5e46d62618f3daf148c"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+    "bytes": 1124352,
+    "sha256": "8626e5e1373d471afa7ca990199b1d52d8eaf2d1500a7c8fc67a4585668a65d1"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+    "bytes": 265556,
+    "sha256": "70f3e8e5e8252912a15ef054157c6cb1965487747e1b97549c7ec26c62b52167"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+    "bytes": 881664,
+    "sha256": "a5a3fca8eb35405d5260e527bbf85a702b42f819a35b8de6df4378cb7a9856e9"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.pdb",
+    "bytes": 237172,
+    "sha256": "a230c78696c8ec4777fe7a26a02eb72562062ebeb4d8b3c5a4aea20be46f3cdd"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll",
+    "bytes": 11776,
+    "sha256": "0e56a77858f75245a90551504b5fae15450f3f75a85a27b8d576285bc7f2afbc"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.pdb",
+    "bytes": 13752,
+    "sha256": "da3737bda4574a350dff8a12be2d6f422abc10249b4c579757379344363965bb"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll",
+    "bytes": 23552,
+    "sha256": "66154a0bed361eda93de81ffcbb475a3e5f07ebbd8d6e800ef9569a1009eb119"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.pdb",
+    "bytes": 31316,
+    "sha256": "2a835320593c4c2ec49b929ebc2d6427d323bf91975fef3a7665c82bd514225a"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "bytes": 1233408,
+    "sha256": "9ecd0ad0e81e22a976e354c006f24db8a0585be8bf43de8093b7b615eece82b3"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+    "bytes": 233148,
+    "sha256": "a8f1b84a1bd583aaeffe13ee7ad56051e7bc4291a0ffb0b7c38755a033c9842d"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+    "bytes": 3469824,
+    "sha256": "53cf46565096cd601af97e89448b54fea43f92167f8dc88bedbd88ede50ff6e2"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.pdb",
+    "bytes": 803140,
+    "sha256": "cad29fa119b4d44fbffba1e6589f779e22f27e515ebd23e4d8b1938a31af9bde"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+    "bytes": 164864,
+    "sha256": "c85898c73210fda6ccc813711e5318295622b9dd4a7068f79137bf91fb6de5b3"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.pdb",
+    "bytes": 58784,
+    "sha256": "b771460c8ca36019d2b86a5d9d2542d4e41fbb348cea9f94feb33d8ac28c0f1d"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Integration.dll",
+    "bytes": 153600,
+    "sha256": "ac38ee3bf3fa34ff849083744d9167272ed9e6149289c9e184c8f290b6a08417"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Integration.pdb",
+    "bytes": 55968,
+    "sha256": "f2f5bea2c42f7323b043d20af4c7daaa7442971d7bd4aad4e8af55328686546b"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+    "bytes": 126976,
+    "sha256": "af2b194d3b0c41adf944aa983cff7dad5e9a543e11b3b64d988a6ff65b2255d5"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.pdb",
+    "bytes": 61780,
+    "sha256": "fb34c5dbf1dbf9b5668d9e5f5fbbdb106bb3c05e46d8bf2f1bb4c22f639eba87"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll",
+    "bytes": 12800,
+    "sha256": "1639e14d49e8cf58514f9d045e8415d295d3c6c8faa4db3415c33a7b9af9fa50"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.pdb",
+    "bytes": 27136,
+    "sha256": "031119da9025fd3232932e2d78cc959ee6d51d05943a4ae3f0e4852569121a05"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.xml",
+    "bytes": 316,
+    "sha256": "72a1d6692839dce08a6fef1f28aee8669de10ea3a62829d942724b3ea009ee15"
+  }
+]

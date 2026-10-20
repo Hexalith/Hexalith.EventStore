@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "ready-for-parent-independent-review",
+  "sealed_utc": "2026-10-20T10:42:41.922998+00:00",
+  "scope": "Approved EventStore source-deadline and interrupted scratch recovery prerequisites; review-two corrections",
+  "original_sdk_baseline": "d4d05f871991ec2af305267f59dcefeae3f127ed",
+  "effective_sdk_head": "b1237244f1ef15fcb5c3889c9787ad4ff9b3711b",
+  "effective_workspace_head": "eed43a86c94b49e030b233beb37fe6128456f649",
+  "spec": {
+    "path": "_bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md",
+    "sha256": "dad96eb38fa2c4dd0075121e6475a104cf65cd30fdd62342d7befb0d3bb7a8d4",
+    "snapshot": "owner-spec-at-handoff.md",
+    "status": "in-progress"
+  },
+  "results": {
+    "client_focused": 215,
+    "client_full": {
+      "passed": 1756,
+      "failed": 0,
+      "optional_skipped": 2
+    },
+    "domain_focused": 62,
+    "domain_full_default_parallel": {
+      "passed": 1056,
+      "failed": 1,
+      "skipped": 0,
+      "artifact": "domain-full.xml"
+    },
+    "domain_full_serialized_same_binary": {
+      "passed": 1057,
+      "failed": 0,
+      "skipped": 0,
+      "artifact": "domain-full-serial.xml"
+    },
+    "expiry_scratch_live_union": {
+      "unique_passed": 37,
+      "first_attempt": {
+        "passed": 34,
+        "failed": 3,
+        "skipped": 0
+      },
+      "affected_final_rerun": {
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      "single_all_37_case_pass_claim": false
+    },
+    "existing_batch_live": 6,
+    "existing_epoch_live": 8,
+    "unique_live_cases_qualified": 51,
+    "final_child_workers": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "owning_recovery_pairs": 6
+    }
+  },
+  "commands": "commands.json",
+  "source_groups": {
+    "client_domain_and_initial_live": "source-freeze.json",
+    "final_live_test_only": "source-freeze-final-live.json",
+    "final": "source-final.json",
+    "bounded_delta": "test-only-live-source-delta.json",
+    "file_count": 3751
+  },
+  "positive_reuse": "positive-snapshot-reuse.json",
+  "binary_groups": "binary-group-crosswalk.json",
+  "pdb_checks": "pdb-commands.json",
+  "test_matrix": "executed-cases.json",
+  "live_case_union": "live-expiry-case-union.json",
+  "raw_persistence": "raw-persisted-observations.json",
+  "worker_raw_state_and_commands": "final-process-workers.json",
+  "distinct_pids": "final-process-pairs.json",
+  "cleanup": "cleanup-summary.json",
+  "historical_packets": "historical-packets-unchanged.json",
+  "parent_historical_audit": "parent-historical-packet-audit.json",
+  "replacement_scope": "New clients/stores/coordinators and six distinct exited-owner/recovery OS-process pairs over the same fixture sidecar/state; no sidecar restart claim.",
+  "notes": [
+    "The failed parallel full Domain run is retained; isolated pass is diagnostic only, and complete serialized same-binary run passes all 1057. Fixture timeout and renewal coincide at ten seconds; scheduling cause is an inference from inspected code.",
+    "First full expiry/scratch live attempt is retained at34/37. Exact unavailable-exception assertion and raw process evidence are test-only changes; only affected COW/process cases were rerun. Case union qualifies37 unique cases, with no all37 single-pass claim.",
+    "Two optional Client skips are not acceptance evidence. Required selected live and final child runs have zero skips.",
+    "Distinct dependency build-graph binaries and both Live test binary groups are retained rather than equated. Client and Domain runtime source/binaries remain stable across final test-only evidence changes.",
+    "Production Redis remains Resumable. Forced TransactionQualified diagnostics prove partial provider writes and SDK completion refusal, not atomicity/rollback.",
+    "No Git mutation, Folders edit, dependency/package pin change, publication or deployment was performed by this phase. Parent review and Folders adoption remain required."
+  ],
+  "artifact_hash_manifest": "SHA256SUMS"
+}

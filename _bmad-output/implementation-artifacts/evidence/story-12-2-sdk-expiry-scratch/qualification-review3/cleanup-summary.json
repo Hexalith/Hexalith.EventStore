@@ -1,0 +1,110 @@
+[
+  {
+    "artifact": "live-expiry-scratch-cleanup.json",
+    "app_ids": [
+      "eventstore-live-2a9798005053420e921b1aff415d7602"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-read-model-batch-cleanup.json",
+    "app_ids": [
+      "eventstore-live-57b7193f4b234fb5b55d444f83cc7af6"
+    ],
+    "removed_keys": 19,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-retirement-focused-cleanup.json",
+    "app_ids": [
+      "eventstore-live-1468c2e7db624c4aaaefc7c56c246de7"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-review3-cleanup.json",
+    "app_ids": [
+      "eventstore-live-3e85283d0d2c45cb9d5c08762ec66fc7"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-shared-epoch-cleanup.json",
+    "app_ids": [
+      "eventstore-live-7aab7a21d6f64d39a2430ee102957f90"
+    ],
+    "removed_keys": 20755,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-transaction-diagnostic-focused-cleanup.json",
+    "app_ids": [
+      "eventstore-live-e014cf36c83c453bac7ce5b7d29ad432"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  }
+]

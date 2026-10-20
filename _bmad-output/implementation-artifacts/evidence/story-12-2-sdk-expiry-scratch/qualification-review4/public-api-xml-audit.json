@@ -1,0 +1,35 @@
+[
+  {
+    "project": "Hexalith.EventStore.Client.Tests",
+    "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.xml",
+    "sha256": "97015ea5490d6dc2e2e00852f6e4da1b0854255de00de8bc2758598565942e4b",
+    "verified_members": [
+      "M:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.Write``1(System.String,``0,Hexalith.EventStore.Client.Projections.ReadModelBatchConcurrency,System.Nullable{System.TimeSpan})",
+      "M:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.WriteExpiring``1(System.String,``0,Hexalith.EventStore.Client.Projections.ReadModelBatchConcurrency,System.DateTimeOffset)",
+      "P:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.ExpiresAtUtc",
+      "P:Hexalith.EventStore.Client.Projections.SharedProjectionMutation.ExpiresAtUtc"
+    ]
+  },
+  {
+    "project": "Hexalith.EventStore.DomainService.Tests",
+    "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.xml",
+    "sha256": "97015ea5490d6dc2e2e00852f6e4da1b0854255de00de8bc2758598565942e4b",
+    "verified_members": [
+      "M:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.Write``1(System.String,``0,Hexalith.EventStore.Client.Projections.ReadModelBatchConcurrency,System.Nullable{System.TimeSpan})",
+      "M:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.WriteExpiring``1(System.String,``0,Hexalith.EventStore.Client.Projections.ReadModelBatchConcurrency,System.DateTimeOffset)",
+      "P:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.ExpiresAtUtc",
+      "P:Hexalith.EventStore.Client.Projections.SharedProjectionMutation.ExpiresAtUtc"
+    ]
+  },
+  {
+    "project": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.xml",
+    "sha256": "97015ea5490d6dc2e2e00852f6e4da1b0854255de00de8bc2758598565942e4b",
+    "verified_members": [
+      "M:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.Write``1(System.String,``0,Hexalith.EventStore.Client.Projections.ReadModelBatchConcurrency,System.Nullable{System.TimeSpan})",
+      "M:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.WriteExpiring``1(System.String,``0,Hexalith.EventStore.Client.Projections.ReadModelBatchConcurrency,System.DateTimeOffset)",
+      "P:Hexalith.EventStore.Client.Projections.ReadModelBatchOperation.ExpiresAtUtc",
+      "P:Hexalith.EventStore.Client.Projections.SharedProjectionMutation.ExpiresAtUtc"
+    ]
+  }
+]

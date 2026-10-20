@@ -12,6 +12,10 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
 {
     [Theory]
+    [InlineData(ReadModelBatchPhase.MarkerPrepared, -1, false, false)]
+    [InlineData(ReadModelBatchPhase.MarkerPrepared, -1, true, true)]
+    [InlineData(ReadModelBatchPhase.BeforeInstallOperation, 0, false, true)]
+    [InlineData(ReadModelBatchPhase.BeforeInstallOperation, 0, true, false)]
     [InlineData(ReadModelBatchPhase.AfterInstallOperation, 0, false, false)]
     [InlineData(ReadModelBatchPhase.AfterInstallOperation, 0, true, true)]
     [InlineData(ReadModelBatchPhase.AfterInstallOperation, 1, false, true)]
@@ -53,7 +57,12 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
         string scratch = DomainSharedProjectionRebuildDispatcher.PartitionChunkKey(sessionKey, 0, 0);
         byte[] raw = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scratch), "data"))!;
         byte[] fenceRaw = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!;
-        (ReadModelBatchEnvelope.IsEnvelope(raw) || ReadModelBatchEnvelope.IsEnvelope(fenceRaw)).ShouldBeTrue("the interruption must retain actual pending SDK evidence");
+        if (phase is ReadModelBatchPhase.MarkerPrepared or ReadModelBatchPhase.BeforeInstallOperation)
+        {
+            raw.ShouldBeNull(); ReadModelBatchEnvelope.IsEnvelope(fenceRaw).ShouldBeFalse();
+            await AssertPreparedOwnerManifestAsync(originalClient, scope, identity);
+        }
+        else (ReadModelBatchEnvelope.IsEnvelope(raw) || ReadModelBatchEnvelope.IsEnvelope(fenceRaw)).ShouldBeTrue("the interruption must retain actual pending SDK evidence");
         ((await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value?["count"]?.GetValue<int>()).ShouldBe(populated ? 1 : null);
         (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-b")).Value.ShouldBeNull();
 
@@ -92,6 +101,26 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
         (await NamedFinish(provider, fresh, next)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
         (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-b")).Value!["count"]!.GetValue<int>().ShouldBe(9);
         TestContext.Current.TestOutputHelper!.WriteLine($"phase={phase}; ordinal={ordinal}; populated={populated}; retry={retryFirst}; production-dispatcher=true; private-cleaned=true; epoch=Open; ordinary-owners=2; fresh-rebuild=true; replaced-client-store-coordinator=true");
+    }
+
+    internal static ReadModelBatchScope OwnerScratchScope(SharedProjectionScope scope, DomainSharedProjectionRebuildIdentity identity)
+        => new(scope.StoreName, scope.TenantId, scope.Domain, scope.Family, scope.Family,
+            "owner-scratch:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(identity.OperationId))) + ":0:0");
+
+    internal static async Task AssertPreparedOwnerManifestAsync(DaprClient client, SharedProjectionScope scope,
+        DomainSharedProjectionRebuildIdentity identity)
+    {
+        ReadModelBatchScope batchScope = OwnerScratchScope(scope, identity);
+        var raw = new DaprReadModelBatchStateAccessor(client, scope.StoreName);
+        RawStateEntry bytes = await raw.ReadAsync(batchScope.ComputeMarkerKey(), CancellationToken.None);
+        ReadModelBatchMarker marker = ReadModelBatchMarker.ReadProof(bytes.Value).ShouldNotBeNull();
+        marker.Status.ShouldBe(ReadModelBatchMarkerStatus.Prepared); marker.ScopeHash.ShouldBe(batchScope.ComputeScopeHash());
+        ReadOnlyMemory<byte> manifest = marker.OriginalManifest;
+        if (marker.OriginalManifestKey is { } key) manifest = (await raw.ReadAsync(key, CancellationToken.None)).Value;
+        manifest.IsEmpty.ShouldBeFalse();
+        ReadModelBatchFingerprint.ComputeFromManifest(manifest.Span).ShouldBe(marker.Fingerprint);
+        TestContext.Current.TestOutputHelper!.WriteLine($"prepared-marker={System.Text.Encoding.UTF8.GetString(bytes.Value.Span)}; immutable-manifest={System.Text.Encoding.UTF8.GetString(manifest.Span)}; no-participant-envelope=true");
     }
 
     internal static ServiceProvider NamedProvider(DaprReadModelStore store, IReadModelBatchStore batches, SharedProjectionEpochCoordinator coordinator, LivePartitionedScratchHandler handler)

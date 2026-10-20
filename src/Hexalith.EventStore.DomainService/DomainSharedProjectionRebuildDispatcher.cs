@@ -1117,6 +1117,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
         SharedProjectionEpochCoordinator coordinator = serviceProvider.GetRequiredService<SharedProjectionEpochCoordinator>();
         SharedProjectionScope scope = FencedScope((IAsyncDomainSharedProjectionEpochHandler)handler, identity);
         string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        bool reconciledRetired = false;
         for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++)
         {
             ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
@@ -1127,6 +1128,13 @@ public static class DomainSharedProjectionRebuildDispatcher {
             if (state.Phase is not (DomainSharedProjectionRebuildPhase.Committed or DomainSharedProjectionRebuildPhase.Aborted))
             {
                 return;
+            }
+
+            if (!reconciledRetired)
+            {
+                await ReconcileRetiredPartitionOwnersAsync(sessionStore, coordinator, scope,
+                    (IAsyncDomainSharedProjectionEpochHandler)handler, identity, state, options, cancellationToken).ConfigureAwait(false);
+                reconciledRetired = true;
             }
 
             if (!state.ScratchIndexesCleaned)
@@ -1206,6 +1214,11 @@ public static class DomainSharedProjectionRebuildDispatcher {
                         string[] pendingKeys = [.. Enumerable.Range(first,
                             Math.Min(32, state.PendingScratchChunkCount - first))
                             .Select(chunk => PartitionChunkKey(sessionKey, pendingOrdinal, chunk))];
+                        // Retire the original terminal receipt before original-owner preflight. Its
+                        // immutable participant index keeps a delayed own envelope discoverable.
+                        for (int chunk = first; chunk < first + pendingKeys.Length; chunk++)
+                            await coordinator.ReclaimScratchReceiptAsync(scope,
+                                OwnerScratchBatchId(identity, pendingOrdinal, chunk), cancellationToken).ConfigureAwait(false);
                         await DeleteScratchKeysAsync(sessionStore, batches, identity, handler.RebuildStoreName,
                             "pending-chunks:" + pendingOrdinal + ":" + first, pendingKeys,
                             cancellationToken, scope).ConfigureAwait(false);
@@ -1234,6 +1247,19 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 .ConfigureAwait(false);
             DomainSharedProjectionStoredPartitionManifest value = manifest.Value
                 ?? throw new InvalidOperationException("A private owner manifest is missing before cleanup.");
+            string retirementKey = PartitionManifestKey(sessionKey, ordinal) + ":retired";
+            var retirement = new DomainSharedProjectionScratchRetirement(identity, ordinal, value.MaterializedChunkCount, value.TransportPartCount);
+            DomainSharedProjectionScratchRetirement? retained = (await sessionStore.GetAsync<DomainSharedProjectionScratchRetirement>(
+                handler.RebuildStoreName, retirementKey, cancellationToken).ConfigureAwait(false)).Value;
+            if (retained is null && !await sessionStore.TrySaveAsync(handler.RebuildStoreName, retirementKey, retirement,
+                    string.Empty, cancellationToken).ConfigureAwait(false))
+            {
+                retained = (await sessionStore.GetAsync<DomainSharedProjectionScratchRetirement>(handler.RebuildStoreName,
+                    retirementKey, cancellationToken).ConfigureAwait(false)).Value
+                    ?? throw new InvalidOperationException("Original private owner retirement inventory is unavailable.");
+            }
+            if (retained is not null && retained != retirement)
+                throw new InvalidOperationException("Original private owner retirement inventory conflicts.");
             for (int part = 0; part < value.TransportPartCount; part++)
             {
                 await DeleteTransportPartAsync(sessionStore, batches, coordinator, scope,
@@ -1250,6 +1276,9 @@ public static class DomainSharedProjectionRebuildDispatcher {
             {
                 string[] chunkKeys = [.. Enumerable.Range(first, Math.Min(32, value.MaterializedChunkCount - first))
                     .Select(chunk => PartitionChunkKey(sessionKey, ordinal, chunk))];
+                for (int chunk = first; chunk < first + chunkKeys.Length; chunk++)
+                    await coordinator.ReclaimScratchReceiptAsync(scope,
+                        OwnerScratchBatchId(identity, ordinal, chunk), cancellationToken).ConfigureAwait(false);
                 await DeleteScratchKeysAsync(sessionStore, batches, identity, handler.RebuildStoreName,
                     "chunks:" + ordinal + ":" + first, chunkKeys, cancellationToken, scope).ConfigureAwait(false);
                 for (int chunk = first; chunk < first + chunkKeys.Length; chunk++)
@@ -1314,23 +1343,6 @@ public static class DomainSharedProjectionRebuildDispatcher {
         CancellationToken cancellationToken,
         SharedProjectionScope? scratchScope = null)
     {
-        if (scratchScope is not null)
-        {
-            IReadModelPendingBatchRecoveryStore? recovery = batches as IReadModelPendingBatchRecoveryStore
-                ?? sessionStore as IReadModelPendingBatchRecoveryStore;
-            if (recovery is not null)
-            {
-                var originalScope = new ReadModelBatchScope(scratchScope.StoreName, scratchScope.TenantId,
-                    scratchScope.Domain, scratchScope.Family, scratchScope.Family, "scratch-cleanup-recovery");
-                foreach (string key in keys)
-                {
-                    ReadModelPendingBatchRecoveryResult recovered = await recovery.RecoverPendingAsync(originalScope,
-                        key, cancellationToken).ConfigureAwait(false);
-                    if (!recovered.IsResolved)
-                        throw new InvalidOperationException("Private rebuild scratch cleanup recovery is incomplete: " + recovered.Reason);
-                }
-            }
-        }
         var batch = new ReadModelBatch(
             new ReadModelBatchScope(storeName, identity.TenantId, identity.Domain,
                 "shared-" + identity.ProjectionType, identity.ProjectionType,
@@ -1338,6 +1350,39 @@ public static class DomainSharedProjectionRebuildDispatcher {
                     Encoding.UTF8.GetBytes(identity.OperationId))) + ":" + pageId),
             [.. keys.Select(static key => ReadModelBatchOperation.Delete(
                 key, ReadModelBatchConcurrency.IdempotentAbsent))]);
+        IReadModelStore markerStore = batches as IReadModelStore ?? sessionStore;
+        ReadModelBatchMarker? existing = (await markerStore.GetAsync<ReadModelBatchMarker>(storeName,
+            batch.Scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false)).Value;
+        bool ownCleanup = existing is not null && existing.ScopeHash == batch.Scope.ComputeScopeHash()
+            && existing.BatchId == batch.Scope.BatchId && existing.Fingerprint == ReadModelBatchFingerprint.Compute(batch)
+            && (existing.Operations is null && existing.Status is ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted
+                || existing.Operations is { } operations && operations.Count == batch.Operations.Count
+                    && operations.Select((operation, ordinal) => operation.Ordinal == ordinal && operation.IsDelete
+                        && operation.Key == batch.Operations[ordinal].Key).All(static matches => matches));
+        if (existing is not null && !ownCleanup)
+            throw new InvalidOperationException("Private rebuild scratch cleanup identity differs from its original batch.");
+        // A known deterministic cleanup already owns its pending deletes. Replay those same keys
+        // through ExecuteAsync before original-owner preflight, which must never help unrelated scopes.
+        if (!ownCleanup)
+        {
+            if (scratchScope is not null)
+            {
+                IReadModelPendingBatchRecoveryStore? recovery = batches as IReadModelPendingBatchRecoveryStore
+                    ?? sessionStore as IReadModelPendingBatchRecoveryStore;
+                if (recovery is not null)
+                {
+                    var originalScope = new ReadModelBatchScope(scratchScope.StoreName, scratchScope.TenantId,
+                        scratchScope.Domain, scratchScope.Family, scratchScope.Family, "scratch-cleanup-recovery");
+                    foreach (string key in keys)
+                    {
+                        ReadModelPendingBatchRecoveryResult recovered = await recovery.RecoverPendingAsync(originalScope,
+                            key, cancellationToken).ConfigureAwait(false);
+                        if (!recovered.IsResolved)
+                            throw new InvalidOperationException("Private rebuild scratch cleanup recovery is incomplete: " + recovered.Reason);
+                    }
+                }
+            }
+        }
         ReadModelBatchResult result = await batches.ExecuteAsync(batch, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess)
         {
@@ -2767,6 +2812,84 @@ public static class DomainSharedProjectionRebuildDispatcher {
         }
     }
 
+    /// <summary>Settles known original private preparation before advancing the owning epoch phase.</summary>
+    private static async Task ReconcileOriginalScratchBatchesAsync(IReadModelStore store,
+        SharedProjectionEpochCoordinator coordinator, SharedProjectionScope scope,
+        IAsyncDomainSharedProjectionEpochHandler handler, DomainSharedProjectionRebuildIdentity identity,
+        DomainSharedProjectionRebuildSessionState state, CancellationToken token)
+    {
+        if (!state.Partitioned) return;
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        for (long owner = state.ScratchCleanedOwnerCount; owner <= state.AcceptedAggregateCount; owner++)
+        {
+            bool pending = owner == state.AcceptedAggregateCount;
+            if (pending && state.PendingScratchChunkCount < 0) break;
+            await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, owner, -1), token)
+                .ConfigureAwait(false);
+            DomainSharedProjectionStoredPartitionManifest? manifest = (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(
+                handler.RebuildStoreName, PartitionManifestKey(sessionKey, owner), token).ConfigureAwait(false)).Value;
+            int chunks = pending ? state.PendingScratchChunkCount
+                : manifest?.MaterializedChunkCount ?? throw new InvalidOperationException("Original private owner manifest is unavailable.");
+            for (int chunk = 0; chunk < chunks; chunk++)
+                await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, owner, chunk), token).ConfigureAwait(false);
+            if (handler is IAsyncDomainSharedProjectionStreamedOwnerHandler)
+                for (int page = 0; page < ((long)chunks + ChunkHashesPerPage - 1) / ChunkHashesPerPage; page++)
+                    await coordinator.ReconcileScratchBatchAsync(scope, OwnerHashPageBatchId(identity, owner, page), token).ConfigureAwait(false);
+        }
+        for (int part = 0; part < state.TransportReservedPartCount; part++)
+        {
+            for (int fragment = 0; fragment < (part == state.TransportNextPart ? state.TransportReservedFragmentCount : 0); fragment++)
+                await coordinator.ReconcileScratchBatchAsync(scope,
+                    TransportFragmentBatchId(identity, state.TransportOwnerOrdinal, part, fragment), token).ConfigureAwait(false);
+            await coordinator.ReconcileScratchBatchAsync(scope,
+                TransportPartBatchId(identity, state.TransportOwnerOrdinal, part), token).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Revisits only original deterministic identities after payload manifests and cleanup flags are terminal.</summary>
+    private static async Task ReconcileRetiredPartitionOwnersAsync(IReadModelStore store,
+        SharedProjectionEpochCoordinator coordinator, SharedProjectionScope scope,
+        IAsyncDomainSharedProjectionEpochHandler handler, DomainSharedProjectionRebuildIdentity identity,
+        DomainSharedProjectionRebuildSessionState state, ProjectionDispatchOptions options, CancellationToken token)
+    {
+        if (!state.Partitioned) return;
+        string sessionKey = DomainSharedProjectionRebuildSessionKey.Compute(identity);
+        for (long owner = 0; owner < state.ScratchCleanedOwnerCount; owner++)
+        {
+            DomainSharedProjectionScratchRetirement? retired = (await store.GetAsync<DomainSharedProjectionScratchRetirement>(
+                handler.RebuildStoreName, PartitionManifestKey(sessionKey, owner) + ":retired", token).ConfigureAwait(false)).Value;
+            if (retired is null) continue; // Historical missing inventory is never inferred.
+            if (retired.Identity != identity || retired.OwnerOrdinal != owner || retired.ChunkCount < 0
+                || retired.ChunkCount > options.MaxRebuildEventCount || retired.TransportPartCount < 0
+                || retired.TransportPartCount > options.MaxRebuildEventCount)
+                throw new InvalidOperationException("Original private owner retirement inventory is invalid.");
+            await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, owner, -1), token).ConfigureAwait(false);
+            for (int chunk = 0; chunk < retired.ChunkCount; chunk++)
+                await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, owner, chunk), token).ConfigureAwait(false);
+            if (handler is IAsyncDomainSharedProjectionStreamedOwnerHandler)
+                for (int page = 0; page < ((long)retired.ChunkCount + ChunkHashesPerPage - 1) / ChunkHashesPerPage; page++)
+                    await coordinator.ReconcileScratchBatchAsync(scope, OwnerHashPageBatchId(identity, owner, page), token).ConfigureAwait(false);
+            for (int part = 0; part < retired.TransportPartCount; part++)
+            {
+                for (int fragment = 0; fragment < 16; fragment++)
+                    await coordinator.ReconcileScratchBatchAsync(scope, TransportFragmentBatchId(identity, owner, part, fragment), token).ConfigureAwait(false);
+                await coordinator.ReconcileScratchBatchAsync(scope, TransportPartBatchId(identity, owner, part), token).ConfigureAwait(false);
+            }
+        }
+        for (int part = 0; part < state.TransportReservedPartCount; part++)
+        {
+            for (int fragment = 0; fragment < 16; fragment++)
+                await coordinator.ReconcileScratchBatchAsync(scope, TransportFragmentBatchId(identity, state.TransportOwnerOrdinal, part, fragment), token).ConfigureAwait(false);
+            await coordinator.ReconcileScratchBatchAsync(scope, TransportPartBatchId(identity, state.TransportOwnerOrdinal, part), token).ConfigureAwait(false);
+        }
+        if (state.PendingScratchChunkCount >= 0)
+        {
+            for (int chunk = 0; chunk < state.PendingScratchChunkCount; chunk++)
+                await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, state.AcceptedAggregateCount, chunk), token).ConfigureAwait(false);
+            await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, state.AcceptedAggregateCount, -1), token).ConfigureAwait(false);
+        }
+    }
+
     private static async Task<DomainSharedProjectionRebuildResponse> FencedAbortAsync(
         IServiceProvider serviceProvider,
         IReadModelStore sessionStore,
@@ -2834,6 +2957,10 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 return failure!;
             }
 
+            if (state!.Phase == DomainSharedProjectionRebuildPhase.Aborted)
+                await ReconcileRetiredPartitionOwnersAsync(sessionStore, coordinator, scope, handler, identity, state,
+                    options, cancellationToken).ConfigureAwait(false);
+
             SharedProjectionEpochStatus selected = await coordinator.GetStatusAsync(scope, cancellationToken)
                 .ConfigureAwait(false);
             if (string.Equals(selected.OperationId, identity.OperationId, StringComparison.Ordinal)
@@ -2855,6 +2982,9 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
             }
 
+            if (selected.OperationId == identity.OperationId && (selected.IsBuilding || selected.IsAborting))
+                await ReconcileOriginalScratchBatchesAsync(sessionStore, coordinator, scope, handler, identity,
+                    state, cancellationToken).ConfigureAwait(false);
             try
             {
                 await coordinator.AbortAsync(

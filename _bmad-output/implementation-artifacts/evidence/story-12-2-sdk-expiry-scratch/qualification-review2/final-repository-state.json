@@ -1,0 +1,17 @@
+{
+  "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore": {
+    "rev-parse HEAD": "b1237244f1ef15fcb5c3889c9787ad4ff9b3711b\n",
+    "branch --show-current": "main\n",
+    "status --short": " M _bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md\n M src/Hexalith.EventStore.Client/Projections/IReadModelPendingBatchRecoveryStore.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchRecovery.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs\n M src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.ScratchRecovery.cs\n M src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs\n M src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs\n M tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs\n M tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ScratchRecovery.cs\n M tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.NamedDispatcher.cs\n M tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ProcessRestart.cs\n M tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionScratchProcessWorkerTests.cs\n?? _bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review2/\n?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewTwoRegressionTests.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionReviewTwoTests.cs\n?? tests/Hexalith.EventStore.DomainService.Tests/LegacyScratchBatchStore.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/InterruptedLegacyScratchLiveAccessor.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewTwo.cs\n",
+    "remote -v": "origin\thttps://github.com/Hexalith/Hexalith.EventStore.git (fetch)\norigin\thttps://github.com/Hexalith/Hexalith.EventStore.git (push)\n",
+    "log -3 --oneline": "b1237244f build: sync local changes via /pushall\n509dbe373 build: sync local changes via /pushall\nd4d05f871 build: sync local changes via /pushall\n"
+  },
+  "/home/administrator/projects/hexalith/folders": {
+    "rev-parse HEAD": "eed43a86c94b49e030b233beb37fe6128456f649\n",
+    "branch --show-current": "main\n",
+    "status --short": " M references/Hexalith.EventStore\n",
+    "remote -v": "origin\thttps://github.com/Hexalith/Hexalith.Folders.git (fetch)\norigin\thttps://github.com/Hexalith/Hexalith.Folders.git (push)\n",
+    "log -3 --oneline": "eed43a86 build: sync local changes via /pushall\nec3523ad build: sync local changes via /pushall\n2ed363b7 fix: story 12.2\n"
+  },
+  "root_recorded_sdk_gitlink": "160000 commit d4d05f871991ec2af305267f59dcefeae3f127ed\treferences/Hexalith.EventStore\n"
+}

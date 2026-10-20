@@ -1,0 +1,17 @@
+[
+  {
+    "packet": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-20261020",
+    "artifacts": 21,
+    "mismatches": []
+  },
+  {
+    "packet": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review1",
+    "artifacts": 137,
+    "mismatches": []
+  },
+  {
+    "packet": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-approved-sdk-source-qualification-20261020",
+    "artifacts": 37,
+    "mismatches": []
+  }
+]

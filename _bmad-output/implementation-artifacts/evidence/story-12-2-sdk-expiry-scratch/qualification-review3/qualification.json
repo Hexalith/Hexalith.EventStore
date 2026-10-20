@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "status": "ready-for-parent-independent-review",
+  "sealed_utc": "2026-10-20T12:19:31.064941+00:00",
+  "scope": "Approved EventStore source expiry and interrupted scratch recovery prerequisites; all review-three corrections",
+  "original_sdk_baseline": "d4d05f871991ec2af305267f59dcefeae3f127ed",
+  "effective_sdk_head": "b1237244f1ef15fcb5c3889c9787ad4ff9b3711b",
+  "effective_workspace_head": "eed43a86c94b49e030b233beb37fe6128456f649",
+  "spec": {
+    "path": "_bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md",
+    "sha256": "dee8acdc6fb9bd8b503390b40f29d8560729e83bbacaa0cdaa3f8f8e33d091df",
+    "snapshot": "owner-spec-at-handoff.md",
+    "status": "in-progress"
+  },
+  "results": {
+    "client-build": {
+      "build_exit_code": 0
+    },
+    "client-focused": {
+      "total": 294,
+      "passed": 294,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "client-full": {
+      "total": 1816,
+      "passed": 1814,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "not-run": 0
+    },
+    "domain-build": {
+      "build_exit_code": 0
+    },
+    "domain-focused": {
+      "total": 64,
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "domain-full": {
+      "total": 1059,
+      "passed": 1059,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-build": {
+      "build_exit_code": 0
+    },
+    "live-review3": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-expiry-scratch": {
+      "total": 42,
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-read-model-batch": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-shared-epoch": {
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    }
+  },
+  "unique_live_cases_qualified": 56,
+  "child_workers": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "distinct_exited_owner_recovery_pairs": 6
+  },
+  "commands": "commands.json",
+  "source_groups": {
+    "frozen": "source-freeze.json",
+    "final": "source-final.json",
+    "accepted_by_command": "accepted-command-source-groups.json",
+    "unchanged_client_domain_reuse": "source-group-reuse.json",
+    "file_count": 3761,
+    "drift": "source-drift.json",
+    "format": "format-audit.json"
+  },
+  "positive_reuse": "positive-snapshot-reuse.json",
+  "binary_groups": "binary-group-crosswalk.json",
+  "pdb_checks": "pdb-commands.json",
+  "generated_api_docs": "public-api-xml-audit.json",
+  "test_matrix": "executed-cases.json",
+  "raw_persistence": "raw-persisted-observations.json",
+  "worker_raw_state_and_commands": "final-process-workers.json",
+  "distinct_pids": "final-process-pairs.json",
+  "cleanup": "cleanup-summary.json",
+  "historical_packets": "historical-packets-unchanged.json",
+  "replacement_scope": "New clients/stores/coordinators and six distinct exited-owner/recovery OS-process pairs over one fixture sidecar/state; no sidecar restart claim.",
+  "notes": [
+    "All failed or interrupted intermediate attempts remain in diagnostics, including first-final-attempt stopped for the still-Aborted-marker boundary correction and pre-lf-final-attempt stopped for authoritative repository LF formatting. Neither interrupted full Domain run is acceptance.",
+    "Two optional Client isolated-endpoint skips are not acceptance evidence. All required selected live and child worker cases execute with zero skips.",
+    "Final affected projects are Debug/source; complete Domain uses -parallel none to avoid the previously documented unrelated default-parallel timer coincidence. Client/Domain accepted groups retain their earlier source freeze because only the Live forced-provider diagnostic changed; all 3,760 other source/config/guide files remain identical. Live is rebuilt and fully requalified under its separate final freeze.",
+    "Fully validated legacy Aborted markers remain at their original keys as bounded payload-free provider-ABA fences, alongside immutable version-1 fingerprint/digest proof. Replacement retained scratch uses a distinct bounded deterministic scope-hash identity; recovery/reclamation inspect both exact identities. Original legacy-marker absence is intentionally not claimed.",
+    "Production Redis remains Resumable. The forced TransactionQualified diagnostic sends an actual stale guarded participant to Redis: native rejection leaves a partial model and Completed physical marker, while SDK read-back refuses success as Indeterminate on both initial call and retry. Newer guard bytes and marker bytes remain exact; legacy and deadline retention are asserted. This is partial-write/refusal evidence, not atomicity or rollback qualification.",
+    "Redis accepted historical absent-key stale-CAS recreation; the post-await retirement guard settled it safely before compaction. A separate replacement-version ABA cut preserved exact newer marker/row bytes. The earlier failing provider gate remains diagnostic evidence.",
+    "Prior SDK and parent evidence, Folders source, Git state, pins, packages, deployments and retained events were not changed. Parent review, consumer restoration/adoption, package/PD10 and >10,000 identities remain separate."
+  ]
+}

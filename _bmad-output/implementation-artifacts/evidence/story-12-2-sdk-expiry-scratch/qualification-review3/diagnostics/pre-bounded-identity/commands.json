@@ -1,0 +1,73 @@
+[
+  {
+    "id": "client-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1",
+      "--no-restore"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:53:45.903811+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:53:56.861390+00:00",
+    "log": "client-build.log",
+    "log_sha256": "e5e50b49e9cf88f81006bbfbad8f69116786c2e44468650f7aa77e70c05a177b"
+  },
+  {
+    "id": "client-focused",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-class",
+      "*ReadModelReviewThree*",
+      "-class",
+      "*SharedProjectionReviewThreeMaintenanceTests",
+      "-class",
+      "*ReadModelReviewTwoRegressionTests",
+      "-class",
+      "*SharedProjectionReviewTwoTests",
+      "-class",
+      "*ReadModelBatchDeadlineTests",
+      "-class",
+      "*ReadModelExpiryReviewRegressionTests",
+      "-class",
+      "*ReadModelLegacyScratchInterruptionTests",
+      "-class",
+      "*SharedProjectionExpiryAndScratchTests",
+      "-class",
+      "*SharedProjectionCleanupOverlapTests",
+      "-class",
+      "*DaprReadModelBatchTests",
+      "-class",
+      "*DaprReadModelStoreTests",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/client-focused.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:53:56.861896+00:00",
+    "exit_code": 1,
+    "finished_utc": "2026-10-20T11:53:58.777042+00:00",
+    "log": "client-focused.log",
+    "log_sha256": "d1cbf7e274bb1bd7a2c8be42955331a52f8bc5e8f253b86c5365d628ed49ce5b",
+    "result": {
+      "total": 292,
+      "passed": 290,
+      "failed": 2,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "client-focused.xml",
+    "xml_sha256": "529d610263d38492595b83479670dfe36255cfacf0398d8d4beded5ba6a9518a",
+    "skips": [],
+    "binary_group": "client-focused-binary-group.json"
+  }
+]

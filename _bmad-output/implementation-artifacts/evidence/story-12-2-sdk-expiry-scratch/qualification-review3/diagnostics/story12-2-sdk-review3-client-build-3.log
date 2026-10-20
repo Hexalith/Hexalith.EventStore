@@ -1,0 +1,19 @@
+  Hexalith.Commons.UniqueIds -> /home/administrator/projects/hexalith/folders/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll
+  Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+  Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+  Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+  Hexalith.EventStore.ServiceDefaults -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+  Hexalith.EventStore.DomainService -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+  Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+  Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+  Hexalith.EventStore -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs(144,70): error CS1061: 'byte[]' does not contain a definition for 'Span' and no accessible extension method 'Span' accepting a first argument of type 'byte[]' could be found (are you missing a using directive or an assembly reference?) [/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj]
+  Hexalith.EventStore.Client.TestContracts -> /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Client.TestContracts/bin/Debug/net10.0/Hexalith.EventStore.Client.TestContracts.dll
+
+Build FAILED.
+
+/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs(144,70): error CS1061: 'byte[]' does not contain a definition for 'Span' and no accessible extension method 'Span' accepting a first argument of type 'byte[]' could be found (are you missing a using directive or an assembly reference?) [/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Testing/Hexalith.EventStore.Testing.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:02.50

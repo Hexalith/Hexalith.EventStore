@@ -139,9 +139,13 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         ArgumentNullException.ThrowIfNull(etag);
         cancellationToken.ThrowIfCancellationRequested();
 
+        string composite = Compose(storeName, key);
+        if (etag.Length == 0 && _entries.TryGetValue(composite, out Entry? observed)
+            && ReadModelBatchExpiringValue.IsExpiring(observed.Bytes.AsSpan())
+            && !ReadModelBatchExpiringValue.Resolve(new RawStateEntry(true, observed.Bytes, observed.ETag), BatchOptions.TimeProvider).Exists)
+            etag = observed.ETag;
         ConcurrentWriteBeforeTrySave?.Invoke();
 
-        string composite = Compose(storeName, key);
         lock (_gate) {
             bool exists = _entries.TryGetValue(composite, out Entry? current);
 
@@ -203,7 +207,7 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     }
 
     /// <inheritdoc/>
-    public Task<(bool Present, string Etag)> TryReadEtagAsync(
+    public async Task<(bool Present, string Etag)> TryReadEtagAsync(
         string storeName,
         string key,
         CancellationToken cancellationToken = default) {
@@ -211,10 +215,9 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Read the raw backing entry so the returned ETag matches the one TryEraseAsync compares against.
-        return _entries.TryGetValue(Compose(storeName, key), out Entry? entry)
-            ? Task.FromResult((true, entry.ETag))
-            : Task.FromResult((false, string.Empty));
+        RawStateEntry visible = await ReadModelBatchProtocol.ResolveVisibleAsync(
+            new InMemoryBatchAccessor(this, storeName), key, cancellationToken, BatchOptions.TimeProvider).ConfigureAwait(false);
+        return visible.Exists ? (true, visible.ETag) : (false, string.Empty);
     }
 
     /// <inheritdoc/>

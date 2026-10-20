@@ -1,0 +1,75 @@
+{
+  "client-build": {
+    "build_exit_code": 0
+  },
+  "client-focused": {
+    "total": 294,
+    "passed": 294,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "client-full": {
+    "total": 1816,
+    "passed": 1814,
+    "failed": 0,
+    "skipped": 2,
+    "errors": 0,
+    "not-run": 0
+  },
+  "domain-build": {
+    "build_exit_code": 0
+  },
+  "domain-focused": {
+    "total": 64,
+    "passed": 64,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "domain-full": {
+    "total": 1059,
+    "passed": 1059,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "live-build": {
+    "build_exit_code": 0
+  },
+  "live-review3": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "live-expiry-scratch": {
+    "total": 42,
+    "passed": 42,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "live-read-model-batch": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "live-shared-epoch": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  }
+}

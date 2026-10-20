@@ -1,0 +1,68 @@
+[
+  {
+    "command": "client-build",
+    "binary_group": null,
+    "source_freeze": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "client-focused",
+    "binary_group": "client-focused-binary-group.json",
+    "source_freeze": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "client-full",
+    "binary_group": "client-full-binary-group.json",
+    "source_freeze": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "domain-build",
+    "binary_group": null,
+    "source_freeze": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "domain-focused",
+    "binary_group": "domain-focused-binary-group.json",
+    "source_freeze": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "domain-full",
+    "binary_group": "domain-full-binary-group.json",
+    "source_freeze": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "live-build",
+    "binary_group": null,
+    "source_freeze": "source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "live-review3",
+    "binary_group": "live-review3-binary-group.json",
+    "source_freeze": "source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "live-expiry-scratch",
+    "binary_group": "live-expiry-scratch-binary-group.json",
+    "source_freeze": "source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "live-read-model-batch",
+    "binary_group": "live-read-model-batch-binary-group.json",
+    "source_freeze": "source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  },
+  {
+    "command": "live-shared-epoch",
+    "binary_group": "live-shared-epoch-binary-group.json",
+    "source_freeze": "source-freeze.json",
+    "all_current_owning_project_inputs_unchanged": true
+  }
+]

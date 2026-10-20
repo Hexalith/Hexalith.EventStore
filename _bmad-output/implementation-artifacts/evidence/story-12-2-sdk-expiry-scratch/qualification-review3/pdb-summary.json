@@ -1,0 +1,23 @@
+[
+  {
+    "artifact": "pdb-Hexalith.EventStore.Client.Tests.json",
+    "pdbs": 11,
+    "checked_sources": 1865,
+    "mismatches": 0,
+    "missing_sources": 0
+  },
+  {
+    "artifact": "pdb-Hexalith.EventStore.DomainService.Tests.json",
+    "pdbs": 7,
+    "checked_sources": 1549,
+    "mismatches": 0,
+    "missing_sources": 0
+  },
+  {
+    "artifact": "pdb-Hexalith.EventStore.Server.LiveSidecar.Tests.json",
+    "pdbs": 13,
+    "checked_sources": 1844,
+    "mismatches": 0,
+    "missing_sources": 0
+  }
+]

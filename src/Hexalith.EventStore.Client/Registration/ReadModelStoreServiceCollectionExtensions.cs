@@ -66,7 +66,8 @@ public static class ReadModelStoreServiceCollectionExtensions {
             ?? sp.GetRequiredService<DaprReadModelStore>());
         services.TryAddSingleton(static sp => new SharedProjectionEpochCoordinator(
             sp.GetRequiredService<IReadModelStore>(),
-            sp.GetRequiredService<IReadModelBatchStore>()));
+            sp.GetRequiredService<IReadModelBatchStore>(),
+            sp.GetRequiredService<IOptions<ReadModelBatchOptions>>().Value.TimeProvider));
         return services;
     }
 }

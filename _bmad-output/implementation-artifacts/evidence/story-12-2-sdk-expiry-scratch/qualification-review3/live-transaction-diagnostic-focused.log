@@ -1,0 +1,37 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:43727
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:9414e0fea288420e8c8187c88defa5cb. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:9414e0fea288420e8c8187c88defa5cb. New ETag prefix: d2FybXVw
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution [OUTPUT] fixture-app-id=eventstore-live-e014cf36c83c453bac7ce5b7d29ad432; disposable-namespace=eventstore-live-e014cf36c83c453bac7ce5b7d29ad432||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution [OUTPUT] forced-provider-observation;deadline=False;status=Indeterminate;reason=transaction-partial;marker=Completed;marker-base64=eyJiYXRjaCI6InByb3ZpZGVyLXByb2JlIiwiZnAiOiJ2MTphUXotb0ZEbDkyMnZlTVlJRlVUMnpoeVJ5QVd0b2tzZENiQXlKMDhtZ3ZJIiwib3BzIjpudWxsLCJzY29wZSI6ImcxU0ZvOU53Yl9ubjJIaEl0eGtwdS1sbWxaSGFmYUtVNHlzajBhbkVKWVUiLCJzdCI6NCwidGltZSI6IjIwMjYtMTAtMjBUMTI6MTE6MzAuMjk1MjI3MVx1MDAyQjAwOjAwIiwidiI6MX0=;model-base64=eyJjb3VudCI6MX0=;newer-guard-base64=eyJjb3VudCI6M30=
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution [OUTPUT] deadline=False; stale-guard-reached-provider=true; newer-guard-bytes-preserved=true; partial-model-persisted=true; marker=Completed; SDK-success=false; retry-success=false; native=Status(StatusCode="Internal", Detail="error while executing state transaction: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-e014cf36c83c453bac7ce5b7d29ad432||unqualified-transaction-6e90bab95d84421fb552e35a59a95a43:guarded")
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution [OUTPUT] forced-provider-observation;deadline=True;status=Indeterminate;reason=transaction-partial;marker=Completed;marker-base64=eyJiYXRjaCI6InByb3ZpZGVyLXByb2JlIiwiZnAiOiJ2Mjp4NlNONS16U1F5UWh4WjFUTDhseTJJZUQ1OU1TMnNIU3JzQndSY05IYjVvIiwib3BzIjpudWxsLCJzY29wZSI6IllFbUhoRm1Gb3NsSHRfOVpyMjY4WkVhamZEN2ptYUxnSHFTNFREVUNSLVUiLCJzdCI6NCwidGltZSI6IjIwMjYtMTAtMjBUMTI6MTE6MzAuMzQ0MzIzMlx1MDAyQjAwOjAwIiwidiI6MX0=;model-base64=eyIkaHhybWIiOjMsImV4cGlyZXMiOjYzOTI4MDk1MTIwMjQwMjQ4NywidmFsIjoiZXlKamIzVnVkQ0k2TVgwIn0=;newer-guard-base64=eyJjb3VudCI6M30=
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution [OUTPUT] deadline=True; stale-guard-reached-provider=true; newer-guard-bytes-preserved=true; partial-model-persisted=true; marker=Completed; SDK-success=false; retry-success=false; native=Status(StatusCode="Internal", Detail="error while executing state transaction: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-e014cf36c83c453bac7ce5b7d29ad432||unqualified-transaction-7694276119d64522adacfeb4f6c059cf:guarded")
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution [OUTPUT] fixture-app-id=eventstore-live-e014cf36c83c453bac7ce5b7d29ad432; newly-owned-keys-removed=6; newly-owned-keys-remaining=0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 4.651s

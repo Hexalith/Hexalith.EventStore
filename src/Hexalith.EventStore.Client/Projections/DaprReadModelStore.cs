@@ -32,6 +32,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
     private readonly ReadModelBatchOptions _options;
     private readonly ILogger _logger;
 
+    /// <summary>Gets the existing SDK budget for shared maintenance attempts.</summary>
+    internal TimeSpan ReconciliationTimeout => _options.ReconciliationTimeout;
+
     /// <summary>Initializes a new <see cref="DaprReadModelStore"/>.</summary>
     /// <param name="daprClient">The DAPR client used to access the state store.</param>
     /// <param name="options">The coordinated-batch options and per-store profiles.</param>
@@ -110,9 +113,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
 
             ReadOnlyMemory<byte> raw = JsonSerializer.SerializeToUtf8Bytes(item.Value);
             if (ReadModelBatchEnvelope.IsEnvelope(raw.Span) || ReadModelBatchExpiringValue.IsExpiring(raw.Span)) {
-                RawStateEntry visible = await ReadModelBatchProtocol
-                    .ResolveVisibleAsync(accessor, key, cancellationToken, _options.TimeProvider)
-                    .ConfigureAwait(false);
+                RawStateEntry visible = ReadModelBatchExpiringValue.IsExpiring(raw.Span)
+                    ? ReadModelBatchExpiringValue.Resolve(new RawStateEntry(true, raw, item.ETag), _options.TimeProvider)
+                    : await ReadModelBatchProtocol.ResolveVisibleAsync(accessor, key, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
                 TValue? visibleValue = visible.Exists
                     ? JsonSerializer.Deserialize<TValue>(visible.Value.Span, _daprClient.JsonSerializerOptions)
                     : null;
@@ -160,23 +163,7 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(etag);
 
-        RecordTypedMutation(value);
-        try {
-            return await _daprClient
-                .TrySaveStateAsync(
-                    storeName,
-                    key,
-                    value,
-                    etag,
-                    new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (Dapr.DaprException) when (etag.Length == 0 && !cancellationToken.IsCancellationRequested) {
-            if (await DaprReadModelCreateConflict.ExistsAsync(_daprClient, storeName, key, cancellationToken).ConfigureAwait(false))
-                return false;
-            throw;
-        }
+        return await TrySaveConditionalAsync(storeName, key, value, etag, null, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -194,26 +181,10 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         ArgumentNullException.ThrowIfNull(etag);
         long ttlSeconds = ToTtlSeconds(timeToLive);
 
-        RecordTypedMutation(value);
-        try {
-            return await _daprClient
-                .TrySaveStateAsync(
-                    storeName,
-                    key,
-                    value,
-                    etag,
-                    new StateOptions { Concurrency = ConcurrencyMode.FirstWrite },
-                    metadata: new Dictionary<string, string>(StringComparer.Ordinal) {
-                        ["ttlInSeconds"] = ttlSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (Dapr.DaprException) when (etag.Length == 0 && !cancellationToken.IsCancellationRequested) {
-            if (await DaprReadModelCreateConflict.ExistsAsync(_daprClient, storeName, key, cancellationToken).ConfigureAwait(false))
-                return false;
-            throw;
-        }
+        return await TrySaveConditionalAsync(storeName, key, value, etag,
+            new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["ttlInSeconds"] = ttlSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -305,6 +276,47 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         var accessor = new DaprReadModelBatchStateAccessor(_daprClient, batch.Scope.StoreName);
         var protocol = new ReadModelBatchProtocol(accessor, _options, _logger);
         return await protocol.VerifyStagedAsync(batch, injector: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<bool> TrySaveConditionalAsync<TValue>(string storeName, string key, TValue value,
+        string etag, IReadOnlyDictionary<string, string>? metadata, CancellationToken token) where TValue : class
+    {
+        async Task<bool> WriteAsync(string physicalETag)
+        {
+            RecordTypedMutation(value);
+            return await _daprClient.TrySaveStateAsync(storeName, key, value, physicalETag,
+                new StateOptions { Concurrency = ConcurrencyMode.FirstWrite }, metadata, token).ConfigureAwait(false);
+        }
+        Dapr.DaprException? failure = null;
+        try { if (await WriteAsync(etag).ConfigureAwait(false)) return true; }
+        catch (Dapr.DaprException exception) when (etag.Length == 0 && !token.IsCancellationRequested) { failure = exception; }
+        if (etag.Length != 0) return false;
+        RawStateEntry physical;
+        try
+        {
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReads);
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.StateRpcAttempts);
+            (ReadOnlyMemory<byte> bytes, string physicalETag) = await _daprClient.GetByteStateAndETagAsync(
+                storeName, key, consistencyMode: ConsistencyMode.Strong, cancellationToken: token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.MetadataReadBytes, bytes.Length);
+            physical = new(!string.IsNullOrEmpty(physicalETag), bytes, physicalETag);
+        }
+        catch (Exception) when (!token.IsCancellationRequested)
+        {
+            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+            return false;
+        }
+        if (!physical.Exists)
+        {
+            if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
+            return false;
+        }
+        // The rejected physical create and this observed CAS protect the logically absent wrapper.
+        // Pending envelopes and ordinary/unexpired rows remain conflicts; never delete before retry.
+        return ReadModelBatchExpiringValue.IsExpiring(physical.Value.Span)
+            && !ReadModelBatchExpiringValue.Resolve(physical, _options.TimeProvider).Exists
+            && await WriteAsync(physical.ETag).ConfigureAwait(false);
     }
 
     private static long ToTtlSeconds(TimeSpan timeToLive) {

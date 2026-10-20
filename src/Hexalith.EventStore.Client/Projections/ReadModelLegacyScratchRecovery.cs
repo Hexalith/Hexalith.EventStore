@@ -30,7 +30,7 @@ internal static class ReadModelLegacyScratchRecovery
         if (resumed)
         {
             RawStateEntry retained = await accessor.ReadAsync(evidenceKey, token).ConfigureAwait(false);
-            if (!retained.Exists || retained.Value.Length > options.MaxCanonicalManifestBytes) return new(false, "invalid-recovery-evidence");
+            if (!retained.Exists || retained.Value.Length > ReadModelLegacyScratchCompensation.MaxEncodedBytes) return new(false, "invalid-recovery-evidence");
             evidence = JsonSerializer.Deserialize<ReadModelLegacyScratchCompensation>(retained.Value.Span, JsonSerializerOptions.Web);
             if (evidence is null || !ReadModelBatchCanonicalJson.Serialize(evidence).Span.SequenceEqual(retained.Value.Span)
                 || evidence.Scope != expected with { BatchId = marker.BatchId }
@@ -53,6 +53,7 @@ internal static class ReadModelLegacyScratchRecovery
         SharedProjectionEpochState? state = JsonSerializer.Deserialize<SharedProjectionEpochState>(fence.CandidateBytes().Span, JsonSerializerOptions.Web);
         if (state is not { Version: 1, Phase: SharedProjectionEpochPhase.Building } || state.Epoch <= state.ActiveGeneration
             || string.IsNullOrWhiteSpace(state.OperationId) || state.RequiredWriters is not { Length: > 0 }) return null;
+        SharedProjectionEpochCoordinator.ValidateState(state);
         var scope = new SharedProjectionScope(expected.StoreName, expected.TenantId, expected.Domain, expected.ProjectionType, state.RequiredWriters);
         scope.Validate();
         if (scope.StateKey != operations[1].Key) return null;
@@ -64,7 +65,7 @@ internal static class ReadModelLegacyScratchRecovery
             evidence = new(expected with { BatchId = marker.BatchId }, marker.Fingerprint,
                 entries.Select(static entry => entry.Value.ToArray()).ToArray());
             ReadOnlyMemory<byte> bytes = ReadModelBatchCanonicalJson.Serialize(evidence);
-            if (bytes.Length > options.MaxCanonicalManifestBytes) return new(false, "legacy-scratch-evidence-too-large");
+            if (bytes.Length > ReadModelLegacyScratchCompensation.MaxEncodedBytes) return new(false, "legacy-scratch-evidence-too-large");
             if (!await accessor.TryWriteAsync(evidenceKey, bytes, string.Empty, token).ConfigureAwait(false))
             {
                 RawStateEntry existing = await accessor.ReadAsync(evidenceKey, token).ConfigureAwait(false);
@@ -85,6 +86,13 @@ internal static class ReadModelLegacyScratchRecovery
             if (!await accessor.TryWriteAsync(markerKey, ReadModelBatchCanonicalJson.Serialize(current), markerEntry.ETag, token).ConfigureAwait(false))
                 return new(false, "legacy-scratch-recovery-race");
         }
+        var terminalFence = new ReadModelBatchTerminalFence(expected with { BatchId = marker.BatchId }, marker.Fingerprint,
+            envelopes.Select((envelope, ordinal) => new ReadModelBatchRecoveryAnchor(
+                expected with { BatchId = marker.BatchId }, operations[ordinal].Key, ordinal, envelope.IsDelete,
+                ReadModelBatchRecoveryAnchor.Digest(envelope.CandidateBytes()),
+                envelope.PreviousBase64 is null ? null : ReadModelBatchRecoveryAnchor.Digest(envelope.PreviousBytes()), null)).ToArray());
+        if (!await terminalFence.SealAsync(accessor, token).ConfigureAwait(false))
+            return new(false, "legacy-scratch-recovery-race");
         // Keep the discoverable own fence until all private compensation has settled. A replacement
         // coordinator must reconcile that fence before advancing the epoch. Every write retains CAS.
         for (int ordinal = 0; ordinal < 2; ordinal++)

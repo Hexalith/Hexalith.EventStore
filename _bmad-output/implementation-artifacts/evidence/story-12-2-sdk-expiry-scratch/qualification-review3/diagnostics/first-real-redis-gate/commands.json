@@ -1,0 +1,270 @@
+[
+  {
+    "id": "client-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1",
+      "--no-restore"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:36:12.785539+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:36:20.280532+00:00",
+    "log": "client-build.log",
+    "log_sha256": "e4f45bff37c3867d85f7005dcc8a98abbd1356de179b9b4baa5fbeb13fc65143"
+  },
+  {
+    "id": "client-focused",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-class",
+      "*ReadModelReviewThree*",
+      "-class",
+      "*SharedProjectionReviewThreeMaintenanceTests",
+      "-class",
+      "*ReadModelReviewTwoRegressionTests",
+      "-class",
+      "*SharedProjectionReviewTwoTests",
+      "-class",
+      "*ReadModelBatchDeadlineTests",
+      "-class",
+      "*ReadModelExpiryReviewRegressionTests",
+      "-class",
+      "*ReadModelLegacyScratchInterruptionTests",
+      "-class",
+      "*SharedProjectionExpiryAndScratchTests",
+      "-class",
+      "*SharedProjectionCleanupOverlapTests",
+      "-class",
+      "*DaprReadModelBatchTests",
+      "-class",
+      "*DaprReadModelStoreTests",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/client-focused.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:36:20.281161+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:36:22.269572+00:00",
+    "log": "client-focused.log",
+    "log_sha256": "5a31c8e070c82456163b5449bc1daca07851ef0bb5f50f30668a7e7bc52f6d71",
+    "result": {
+      "total": 292,
+      "passed": 292,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "client-focused.xml",
+    "xml_sha256": "8084ba48e3562fbef2aee4e04f1fd5df9fa33792e3a8e20a0ea0e99de75aeb32",
+    "skips": [],
+    "binary_group": "client-focused-binary-group.json"
+  },
+  {
+    "id": "client-full",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/client-full.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:36:22.282816+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:36:33.120244+00:00",
+    "log": "client-full.log",
+    "log_sha256": "79759773aa378ba10f1f2dbca90306041d7307c932ef8a305b62c99ad29457f9",
+    "result": {
+      "total": 1814,
+      "passed": 1812,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "client-full.xml",
+    "xml_sha256": "6f62affa051a263a807c948584ef0e9c6501540caf94bfe9a6c86380bb166f7a",
+    "skips": [
+      {
+        "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: False)",
+        "reason": "Requires isolated Dapr endpoints."
+      },
+      {
+        "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: True)",
+        "reason": "Requires isolated Dapr endpoints."
+      }
+    ],
+    "binary_group": "client-full-binary-group.json"
+  },
+  {
+    "id": "domain-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1",
+      "--no-restore"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:36:33.153760+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:36:37.539640+00:00",
+    "log": "domain-build.log",
+    "log_sha256": "c2317a33c77d3e4d83d1429b3b3b5cf7637b83561f7716bc22488b306c3fad31"
+  },
+  {
+    "id": "domain-focused",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "-method",
+      "*ProductionLegacyScratchCompensationConvergesForSameActionRetryOrDirectAbort",
+      "-method",
+      "*InterruptedAccumulateRetryOrDirectAbortPreservesSelectionAndPermitsFreshRebuild",
+      "-method",
+      "*SupportedTransactionalScratchConflictSettlesBeforeNamedRetryOrAbort",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/domain-focused.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:36:37.540215+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:36:39.862236+00:00",
+    "log": "domain-focused.log",
+    "log_sha256": "17e6460b8930b16788f780142d6fef5a8c8eebccdb49e9088988f74b05741b98",
+    "result": {
+      "total": 64,
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "domain-focused.xml",
+    "xml_sha256": "7ad9cfa561f4b9bfc32d7aa6be12635319967a3ab73c1a6183aff7133c2a591c",
+    "skips": [],
+    "binary_group": "domain-focused-binary-group.json"
+  },
+  {
+    "id": "domain-full",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "-parallel",
+      "none",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/domain-full.xml"
+    ],
+    "environment": {
+      "HEXALITH_TENANTS_DOMAIN_ROOT": "/home/administrator/projects/hexalith/folders/references/Hexalith.Tenants/src/Hexalith.Tenants"
+    },
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:36:39.872171+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:39:55.437120+00:00",
+    "log": "domain-full.log",
+    "log_sha256": "9b1a455b3c0ec20a866b836d3bbfd9fa3bc4d4c79cba7a8a361921635ad3b5cd",
+    "result": {
+      "total": 1059,
+      "passed": 1059,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "domain-full.xml",
+    "xml_sha256": "ff88d866f0cadc4657d29e806c58cf4f0e198c8894e53bc9271b1668ea79a03e",
+    "skips": [],
+    "binary_group": "domain-full-binary-group.json"
+  },
+  {
+    "id": "live-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1",
+      "--no-restore"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:39:55.451166+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:40:04.933138+00:00",
+    "log": "live-build.log",
+    "log_sha256": "3271ff69c538759159391fe442a37aba648586a59a03b4a61acfa401231c9d86"
+  },
+  {
+    "id": "live-review3",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-method",
+      "*RetiredLegacyWorkerPreservesOpenEpochAfterDelayedPhysicalInstallOrCommitCas",
+      "-method",
+      "*ExternalManifestBeforeMarkerCrashRetiresOriginalPreparerAndReclaimsPhysicalPayload",
+      "-showliveoutput",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/live-review3.xml"
+    ],
+    "environment": {
+      "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false"
+    },
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:40:04.933715+00:00",
+    "exit_code": 1,
+    "finished_utc": "2026-10-20T11:40:11.513354+00:00",
+    "log": "live-review3.log",
+    "log_sha256": "f8cf6b44cf7c317584bf3c29b9742330396da9a6cb1b5d57b3110710c743d5c5",
+    "result": {
+      "total": 3,
+      "passed": 2,
+      "failed": 1,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "live-review3.xml",
+    "xml_sha256": "e41cccaabaac526ed88c37b98fc6ff59ca7edfe92b95f2dc328d0997287ff410",
+    "skips": [],
+    "cleanup": {
+      "app_ids": [
+        "eventstore-live-d91154d56a0845a1aaf8b40f6cc8b397"
+      ],
+      "removed_keys": 2,
+      "remaining_keys": 0,
+      "sidecars_stopped": true,
+      "command": [
+        "docker",
+        "exec",
+        "-i",
+        "dapr_redis",
+        "redis-cli",
+        "--pipe"
+      ],
+      "preserved_preexisting_app_ids": 9
+    },
+    "binary_group": "live-review3-binary-group.json"
+  }
+]

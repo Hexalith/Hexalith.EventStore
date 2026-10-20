@@ -1,0 +1,628 @@
+{
+  "Hexalith.EventStore.Admin.Abstractions.dll": [
+    {
+      "sha256": "1bcc586a65046eab0aa4cf62c22434b6eafe814077c4d7b4c57c784c103a71fa",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "19734f3302b3ce9fa6575747a90516ca417d8b652e33dcd41b149ad314982837",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Admin.Abstractions.pdb": [
+    {
+      "sha256": "b422d96d5954bf02cdd6f7491f4d1d68e4028b03e6525ddba5970a86c2a2cbf7",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "aad6d421e6f72b3cd7d053124e0f127d56e5a261b1275cc499fb2ebfa8e241f4",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Admin.Abstractions.xml": [
+    {
+      "sha256": "e7ff19b7229467396976b8540e55b213ab3d3bac09a75d1393a7f96284076474",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.TestContracts.dll": [
+    {
+      "sha256": "5590c09f327b7c9e20e8ac09503c7eab11bab688bc81069adc994262e96abdbc",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.TestContracts.pdb": [
+    {
+      "sha256": "cf0962481b3f5658b92755e1c9f0fb82f5289090ccf84d8d40987428aaed2f85",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.Tests.dll": [
+    {
+      "sha256": "f06f5a26acd94504af3639f9487aa156c7aae026f7656294bbfd59e41523432c",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.Tests.pdb": [
+    {
+      "sha256": "f85a1dd9f5b55137afb4d0499e9338f2a7286d9427d3541754bb89f5ffda64e8",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.dll": [
+    {
+      "sha256": "c76046c6be9adcf696b8b8ac10b9daf2325e20b695b189c443418945042d8e64",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.pdb": [
+    {
+      "sha256": "7661e8dce533a6c5929ee3d83abcb2f7dc893be74acaec1e1073e6575aa6b92a",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Client.xml": [
+    {
+      "sha256": "56b1b95da8f45832e4033ab563b52ed8c1e1d6613259cbc7dc1d7066d05d9d91",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Contracts.dll": [
+    {
+      "sha256": "a428bb929582845dcfebd7e9bd3f5e3b247c99f66a195ee64922adc0bb82e760",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "2e1bdeb96279899e0f4577e3a8600a00550aab138e398580355aaa57add620c9",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Contracts.pdb": [
+    {
+      "sha256": "c1abcb726b90f13fb9bb9fae12eb4b16de4eab413e857f3d8ebff81991c5d9bf",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "6a7794aed9ce4ab093a3a107c086cac4e59c3c4a834a25dc4436de4d85f29275",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Contracts.xml": [
+    {
+      "sha256": "a7f5d3d03e86c6ef64cdbe4d71d803121b577d269488f5e46d62618f3daf148c",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.DomainService.Tests.dll": [
+    {
+      "sha256": "1b7f721a54dd3f293ad7e0487c241be3b0f9e235064def6f224e04279bb15f44",
+      "groups": [
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.DomainService.Tests.pdb": [
+    {
+      "sha256": "e6f791c788dc33492002282efb88f2f497cb3e8c2960fa5b7d76808f585ce5d5",
+      "groups": [
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.DomainService.dll": [
+    {
+      "sha256": "8626e5e1373d471afa7ca990199b1d52d8eaf2d1500a7c8fc67a4585668a65d1",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.DomainService.pdb": [
+    {
+      "sha256": "70f3e8e5e8252912a15ef054157c6cb1965487747e1b97549c7ec26c62b52167",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Gateway.dll": [
+    {
+      "sha256": "27308cc78fb897eff38ef40e16f3fd9c7e780403c52e4aa27b712738feea7fb4",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "5e7e72a7616ef1cc2d54f2a456cf917ea878d6b14507c9476625f7487c084d89",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "a5a3fca8eb35405d5260e527bbf85a702b42f819a35b8de6df4378cb7a9856e9",
+      "groups": [
+        "live-retirement-focused-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "6a59b48049538263ddb07c4638ec01f0d4a8ca23e2f549724eb161889d9c127e",
+      "groups": [
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Gateway.pdb": [
+    {
+      "sha256": "6ed5755b330a598f08044f6db60830e5c9d3f3945aaeac7035334d8b80eb2c1d",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "12c51624cadd1d4baf3ff1b5d9a5bc562ca0024bfea6cedc4c9750110d531541",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "a230c78696c8ec4777fe7a26a02eb72562062ebeb4d8b3c5a4aea20be46f3cdd",
+      "groups": [
+        "live-retirement-focused-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "6309e7aa655c6ee936f1b547181fe4fd709e48fea36ab69475dc50ae9b0e1b04",
+      "groups": [
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Sample.Contracts.dll": [
+    {
+      "sha256": "0e56a77858f75245a90551504b5fae15450f3f75a85a27b8d576285bc7f2afbc",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Sample.Contracts.pdb": [
+    {
+      "sha256": "da3737bda4574a350dff8a12be2d6f422abc10249b4c579757379344363965bb",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Sample.dll": [
+    {
+      "sha256": "66154a0bed361eda93de81ffcbb475a3e5f07ebbd8d6e800ef9569a1009eb119",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Sample.pdb": [
+    {
+      "sha256": "2a835320593c4c2ec49b929ebc2d6427d323bf91975fef3a7665c82bd514225a",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Server.LiveSidecar.Tests.dll": [
+    {
+      "sha256": "6a6f4ad215c6d32edc5dc8fac0c5c4c5be762c153e7fd1a10c796bf29a79a929",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "9ecd0ad0e81e22a976e354c006f24db8a0585be8bf43de8093b7b615eece82b3",
+      "groups": [
+        "live-retirement-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Server.LiveSidecar.Tests.pdb": [
+    {
+      "sha256": "306fc54663a8c3bd25968dd90844ad52cc556072ad99ee490b978188aeae3c90",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "a8f1b84a1bd583aaeffe13ee7ad56051e7bc4291a0ffb0b7c38755a033c9842d",
+      "groups": [
+        "live-retirement-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Server.dll": [
+    {
+      "sha256": "12466eacb28ba6401d633501077edd4f44689452792afbd641baf4d0716690c5",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "1da1830e1c736d6db484a45d1e59abf31d27751d35ca54c26d043d77d76fc743",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "53cf46565096cd601af97e89448b54fea43f92167f8dc88bedbd88ede50ff6e2",
+      "groups": [
+        "live-retirement-focused-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "0e2daf1d88fb4c7a08b30c55fd08b137006655fed33d0c99637166cae564f36a",
+      "groups": [
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Server.pdb": [
+    {
+      "sha256": "383f4d89fff74be6d48c673221e2e6403f855a2951630c66814767fe5bdac7f5",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "973c6fc7bf43b57663671ed057f4e6a56f85647a08de85803309e7846f9048b1",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "cad29fa119b4d44fbffba1e6589f779e22f27e515ebd23e4d8b1938a31af9bde",
+      "groups": [
+        "live-retirement-focused-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "58195c21e7318734586c9aa32db8c815369f02acb471e9e33243664bbf6567e1",
+      "groups": [
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.ServiceDefaults.dll": [
+    {
+      "sha256": "c85898c73210fda6ccc813711e5318295622b9dd4a7068f79137bf91fb6de5b3",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.ServiceDefaults.pdb": [
+    {
+      "sha256": "b771460c8ca36019d2b86a5d9d2542d4e41fbb348cea9f94feb33d8ac28c0f1d",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Testing.Integration.dll": [
+    {
+      "sha256": "ac38ee3bf3fa34ff849083744d9167272ed9e6149289c9e184c8f290b6a08417",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Testing.Integration.pdb": [
+    {
+      "sha256": "f2f5bea2c42f7323b043d20af4c7daaa7442971d7bd4aad4e8af55328686546b",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Testing.dll": [
+    {
+      "sha256": "da475814fa96bd6031e24d2eb6c2ba6c8e9c9a1cf592054bbf696b718fc28212",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "af2b194d3b0c41adf944aa983cff7dad5e9a543e11b3b64d988a6ff65b2255d5",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.Testing.pdb": [
+    {
+      "sha256": "666527d200428def8b24ca44207cf0e9be0bc6548920e7dd45a84b98aead14fd",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "domain-focused-binary-group.json",
+        "domain-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "fb34c5dbf1dbf9b5668d9e5f5fbbdb106bb3c05e46d8bf2f1bb4c22f639eba87",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.dll": [
+    {
+      "sha256": "df970c484ced6ec78cf336a891602f4a21ef21acfe63731257eed009a042e7fb",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "1639e14d49e8cf58514f9d045e8415d295d3c6c8faa4db3415c33a7b9af9fa50",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.pdb": [
+    {
+      "sha256": "9a8ec163af9121fd7da06aed19d96499625b7e7df68b284e26ff5800366fc570",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json"
+      ]
+    },
+    {
+      "sha256": "031119da9025fd3232932e2d78cc959ee6d51d05943a4ae3f0e4852569121a05",
+      "groups": [
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ],
+  "Hexalith.EventStore.xml": [
+    {
+      "sha256": "72a1d6692839dce08a6fef1f28aee8669de10ea3a62829d942724b3ea009ee15",
+      "groups": [
+        "client-focused-binary-group.json",
+        "client-full-binary-group.json",
+        "live-expiry-scratch-binary-group.json",
+        "live-read-model-batch-binary-group.json",
+        "live-retirement-focused-binary-group.json",
+        "live-review3-binary-group.json",
+        "live-shared-epoch-binary-group.json",
+        "live-transaction-diagnostic-focused-binary-group.json"
+      ]
+    }
+  ]
+}

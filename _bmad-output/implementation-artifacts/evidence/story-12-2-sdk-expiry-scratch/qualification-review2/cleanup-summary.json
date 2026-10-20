@@ -1,0 +1,74 @@
+[
+  {
+    "artifact": "live-cow-process-final-cleanup.json",
+    "app_ids": [
+      "eventstore-live-fd6602c2da8f4e02bd74e0e1c445498c"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-expiry-scratch-cleanup.json",
+    "app_ids": [
+      "eventstore-live-04b0878f39ef423c9d1849acf6843dff"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-read-model-batch-cleanup.json",
+    "app_ids": [
+      "eventstore-live-81d0a773d08840898d5ff630202e3973"
+    ],
+    "removed_keys": 19,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  {
+    "artifact": "live-shared-epoch-cleanup.json",
+    "app_ids": [
+      "eventstore-live-ea9aa161cb8c4d599dcd407213e2900a"
+    ],
+    "removed_keys": 20756,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  }
+]

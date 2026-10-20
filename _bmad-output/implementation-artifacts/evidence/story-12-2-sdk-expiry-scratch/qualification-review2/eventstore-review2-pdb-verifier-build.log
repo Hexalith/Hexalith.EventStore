@@ -1,0 +1,9 @@
+  Determining projects to restore...
+  Restored /tmp/eventstore-review2-pdb-verifier/Verifier.csproj (in 49 ms).
+  Verifier -> /tmp/eventstore-review2-pdb-verifier/bin/Debug/net10.0/Verifier.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.82

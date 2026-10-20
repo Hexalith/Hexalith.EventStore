@@ -47,13 +47,25 @@ public sealed class ProjectionScratchProcessWorkerTests
                 (await Scenario.NamedFinish(provider, old, accepted)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
             }
             (await Scenario.NamedBegin(provider, identity, [("owner-a", first), ("owner-b", first)])).Status.ShouldBe(ProjectionDispatchStatus.Completed);
-            ReadModelBatchPhase stop = retry ? ReadModelBatchPhase.AfterInstallOperation : ReadModelBatchPhase.BeforeCommit;
-            var fault = new ScratchRecoveryLiveBatchStore(client, store, stop, retry ? 0 : -1, "owner-scratch:");
+            ReadModelBatchPhase stop = Enum.Parse<ReadModelBatchPhase>(Required("EXPIRY_SCRATCH_PROCESS_STOP"));
+            int ordinal = int.Parse(Required("EXPIRY_SCRATCH_PROCESS_ORDINAL"), System.Globalization.CultureInfo.InvariantCulture);
+            var fault = new ScratchRecoveryLiveBatchStore(client, store, stop, ordinal, "owner-scratch:");
             using ServiceProvider interrupted = Scenario.NamedProvider(store, fault, new SharedProjectionEpochCoordinator(store, fault), handler);
             (await Scenario.NamedAccumulate(interrupted, identity, "owner-a", first)).Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
             RawStateEntry scratchBytes = await raw.ReadAsync(scratch, CancellationToken.None);
             RawStateEntry fenceBytes = await raw.ReadAsync(scope.StateKey, CancellationToken.None);
-            (ReadModelBatchEnvelope.IsEnvelope(scratchBytes.Value.Span) || ReadModelBatchEnvelope.IsEnvelope(fenceBytes.Value.Span)).ShouldBeTrue();
+            if (stop is ReadModelBatchPhase.MarkerPrepared or ReadModelBatchPhase.BeforeInstallOperation)
+            {
+                scratchBytes.Exists.ShouldBeFalse(); ReadModelBatchEnvelope.IsEnvelope(fenceBytes.Value.Span).ShouldBeFalse();
+                await Scenario.AssertPreparedOwnerManifestAsync(client, scope, identity);
+            }
+            else (ReadModelBatchEnvelope.IsEnvelope(scratchBytes.Value.Span) || ReadModelBatchEnvelope.IsEnvelope(fenceBytes.Value.Span)).ShouldBeTrue();
+            TestContext.Current.TestOutputHelper!.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                observation = "worker-pending-before-exit", pid = Environment.ProcessId, stop, ordinal,
+                scratch_exists = scratchBytes.Exists, scratch_base64 = Convert.ToBase64String(scratchBytes.Value.Span),
+                fence_base64 = Convert.ToBase64String(fenceBytes.Value.Span),
+            }));
             TestContext.Current.TestOutputHelper!.WriteLine($"phase=persist; pid={Environment.ProcessId}; pending-original-owner-scratch=true; stop={stop}; exits-without-repair=true");
             return;
         }
@@ -73,6 +85,15 @@ public sealed class ProjectionScratchProcessWorkerTests
         ((await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value?["count"]?.GetValue<int>()).ShouldBe(populated ? 1 : null);
         (await raw.ReadAsync(scratch, CancellationToken.None)).Exists.ShouldBeFalse();
         (await raw.ReadAsync(DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0), CancellationToken.None)).Exists.ShouldBeFalse();
+        TestContext.Current.TestOutputHelper!.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            observation = "worker-cleaned-before-ordinary-delivery", pid = Environment.ProcessId,
+            epoch_base64 = Convert.ToBase64String((await raw.ReadAsync(scope.StateKey, CancellationToken.None)).Value.Span),
+            session_base64 = Convert.ToBase64String((await raw.ReadAsync(session, CancellationToken.None)).Value.Span),
+            scratch_exists = (await raw.ReadAsync(scratch, CancellationToken.None)).Exists,
+            manifest_exists = (await raw.ReadAsync(DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0), CancellationToken.None)).Exists,
+            original_marker_exists = (await raw.ReadAsync(Scenario.OwnerScratchScope(scope, identity).ComputeMarkerKey(), CancellationToken.None)).Exists,
+        }));
         foreach (string owner in new[] { "owner-a", "owner-b" })
         {
             ProjectionEventDto growth = Scenario.NamedEvent(9) with { GlobalPosition = 2, SequenceNumber = populated && owner == "owner-a" ? 2 : 1, MessageId = "growth-" + owner };

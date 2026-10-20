@@ -1,0 +1,165 @@
+[
+  {
+    "id": "client-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1",
+      "--no-restore"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:30:52.310782+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:31:10.940032+00:00",
+    "log": "client-build.log",
+    "log_sha256": "d05c260c2840322e83e3d3a002fef0d5a924746ef992358c2bdadfdc3b29c413"
+  },
+  {
+    "id": "client-focused",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-class",
+      "*ReadModelReviewThree*",
+      "-class",
+      "*SharedProjectionReviewThreeMaintenanceTests",
+      "-class",
+      "*ReadModelReviewTwoRegressionTests",
+      "-class",
+      "*SharedProjectionReviewTwoTests",
+      "-class",
+      "*ReadModelBatchDeadlineTests",
+      "-class",
+      "*ReadModelExpiryReviewRegressionTests",
+      "-class",
+      "*ReadModelLegacyScratchInterruptionTests",
+      "-class",
+      "*SharedProjectionExpiryAndScratchTests",
+      "-class",
+      "*SharedProjectionCleanupOverlapTests",
+      "-class",
+      "*DaprReadModelBatchTests",
+      "-class",
+      "*DaprReadModelStoreTests",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/client-focused.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:31:10.940353+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:31:13.312280+00:00",
+    "log": "client-focused.log",
+    "log_sha256": "16e49acfde1ec9e08f5598a1b38775e0f7beee65dad62ab8d582cfdb9ed8d267",
+    "result": {
+      "total": 291,
+      "passed": 291,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "client-focused.xml",
+    "xml_sha256": "b383001f1099d8d36a226a22bf5855687029b6ecbb28b0e414d95727f6dbc103",
+    "skips": [],
+    "binary_group": "client-focused-binary-group.json"
+  },
+  {
+    "id": "client-full",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/client-full.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:31:13.329130+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:31:23.223854+00:00",
+    "log": "client-full.log",
+    "log_sha256": "5bad069be9abc2d79579983f8a825848c83234992d5148520679dfb79e285a31",
+    "result": {
+      "total": 1813,
+      "passed": 1811,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "client-full.xml",
+    "xml_sha256": "7ea0a5c566c8715dcc22d4f8e21b2ea956627d0ee88a9c816bb332eda2d18f77",
+    "skips": [
+      {
+        "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: False)",
+        "reason": "Requires isolated Dapr endpoints."
+      },
+      {
+        "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: True)",
+        "reason": "Requires isolated Dapr endpoints."
+      }
+    ],
+    "binary_group": "client-full-binary-group.json"
+  },
+  {
+    "id": "domain-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1",
+      "--no-restore"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:31:23.244313+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:31:38.044020+00:00",
+    "log": "domain-build.log",
+    "log_sha256": "9408d2688098d8c469c022bfc282af7bc42840f7352b0f3bfe6236621cd7915a"
+  },
+  {
+    "id": "domain-focused",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "-method",
+      "*ProductionLegacyScratchCompensationConvergesForSameActionRetryOrDirectAbort",
+      "-method",
+      "*InterruptedAccumulateRetryOrDirectAbortPreservesSelectionAndPermitsFreshRebuild",
+      "-method",
+      "*SupportedTransactionalScratchConflictSettlesBeforeNamedRetryOrAbort",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/domain-focused.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T11:31:38.046965+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T11:31:43.662904+00:00",
+    "log": "domain-focused.log",
+    "log_sha256": "329944d03aaece7a75a8af4b3e275c5154390a20ab92dfc86fee9d5a2fe16263",
+    "result": {
+      "total": 64,
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "domain-focused.xml",
+    "xml_sha256": "0e059ba24a6f3440ccc9956481bf7d82aabbea19db2e7b2dacf521d29ad86540",
+    "skips": [],
+    "binary_group": "domain-focused-binary-group.json"
+  }
+]

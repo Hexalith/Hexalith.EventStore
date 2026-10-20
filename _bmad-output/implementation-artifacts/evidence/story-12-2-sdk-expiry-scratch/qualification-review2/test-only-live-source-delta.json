@@ -1,0 +1,9 @@
+{
+  "changed_files": [
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ProcessRestart.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewTwo.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionScratchProcessWorkerTests.cs"
+  ],
+  "runtime_and_client_domain_test_sources_unchanged": true,
+  "reason": "Correct exact public unavailable-exception assertion and record raw process pending/cleaned observations."
+}

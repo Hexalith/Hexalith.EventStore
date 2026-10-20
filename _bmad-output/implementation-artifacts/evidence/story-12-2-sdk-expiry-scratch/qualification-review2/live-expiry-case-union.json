@@ -1,0 +1,242 @@
+{
+  "initial_attempt": {
+    "total": 37,
+    "passed": 34,
+    "failed": 3,
+    "skipped": 0,
+    "xml": "live-expiry-scratch.xml"
+  },
+  "affected_final_rerun": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "xml": "live-cow-process-final.xml"
+  },
+  "accepted_unique_cases": 37,
+  "single_all_case_pass_claim": false,
+  "cases": [
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.AbortedReplacementRestoresOnlyOriginalRemainingPhysicalTtlThenExpires",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CowSelectedInheritedAndAbandonedPromotedPointerRemainTruthfulAfterPhysicalRedisExpiry(scenario: 0)",
+      "original_result": "Fail",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CowSelectedInheritedAndAbandonedPromotedPointerRemainTruthfulAfterPhysicalRedisExpiry(scenario: 1)",
+      "original_result": "Fail",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CowSelectedInheritedAndAbandonedPromotedPointerRemainTruthfulAfterPhysicalRedisExpiry(scenario: 2)",
+      "original_result": "Fail",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: Resumable)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.LegacyCompensationEvidenceSurvivesRealDeleteInterruptionAndReplacement(afterDelete: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.LegacyCompensationEvidenceSurvivesRealDeleteInterruptionAndReplacement(afterDelete: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.NearLimitPersistedOwnerProofKeepsTruthfulPhysicalBytesWithinProductionGatewayAdmission(padding: 'x')",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.NearLimitPersistedOwnerProofKeepsTruthfulPhysicalBytesWithinProductionGatewayAdmission(padding: '~')",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: False, retryFirst: False, stop: BeforeInstallOperation, ordinal: 0)",
+      "original_result": "Pass",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: False, retryFirst: True, stop: AfterInstallOperation, ordinal: 0)",
+      "original_result": "Pass",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: False, retryFirst: True, stop: MarkerPrepared, ordinal: -1)",
+      "original_result": "Pass",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: True, retryFirst: False, stop: BeforeCommit, ordinal: -1)",
+      "original_result": "Pass",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: True, retryFirst: False, stop: MarkerPrepared, ordinal: -1)",
+      "original_result": "Pass",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: True, retryFirst: True, stop: BeforeInstallOperation, ordinal: 0)",
+      "original_result": "Pass",
+      "final_rerun_result": "Pass",
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedAbortResumesItsOwnInterruptedCleanupWithReplacedProvider(phase: AfterInstallOperation, ordinal: 0)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedAbortResumesItsOwnInterruptedCleanupWithReplacedProvider(phase: BeforeCompaction, ordinal: 0)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterCommit, ordinal: -1, populated: False, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterCommit, ordinal: -1, populated: True, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 0, populated: False, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 0, populated: True, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 1, populated: False, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 1, populated: True, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCommit, ordinal: -1, populated: False, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCommit, ordinal: -1, populated: True, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCompaction, ordinal: 0, populated: False, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCompaction, ordinal: 0, populated: True, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeInstallOperation, ordinal: 0, populated: False, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeInstallOperation, ordinal: 0, populated: True, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: MarkerPrepared, ordinal: -1, populated: False, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: MarkerPrepared, ordinal: -1, populated: True, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: RecoveryManifestReclaimed, ordinal: 1, populated: False, retryFirst: True)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: RecoveryManifestReclaimed, ordinal: 1, populated: True, retryFirst: False)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ReplacedStoreRecoversOriginalManifestAfterDeadlineWithoutInstallingExpiredRows(phase: BeforeCommit)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ReplacedStoreRecoversOriginalManifestAfterDeadlineWithoutInstallingExpiredRows(phase: BeforeCompaction)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ReplacedStoreRecoversOriginalManifestAfterDeadlineWithoutInstallingExpiredRows(phase: RecoveryManifestReclaimed)",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    },
+    {
+      "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution",
+      "original_result": "Pass",
+      "final_rerun_result": null,
+      "accepted": true
+    }
+  ]
+}

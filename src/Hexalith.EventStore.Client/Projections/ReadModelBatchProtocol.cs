@@ -445,6 +445,7 @@ internal sealed partial class ReadModelBatchProtocol {
         ReadModelBatchMarker? existing,
         string existingEtag,
         CancellationToken cancellationToken) {
+        if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false)) throw new ReadModelBatchRaceException();
         var marker = new ReadModelBatchMarker {
             ScopeHash = _scopeHash,
             BatchId = _batch.Scope.BatchId,
@@ -473,9 +474,30 @@ internal sealed partial class ReadModelBatchProtocol {
                     throw new ArgumentException("The original immutable batch manifest conflicts with this identity.");
             }
         }
+        if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false))
+        {
+            _ = await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
+            throw new ReadModelBatchRaceException();
+        }
         bool ok = existing is null
             ? await _accessor.TryWriteAsync(_markerKey, bytes, string.Empty, cancellationToken).ConfigureAwait(false)
             : await _accessor.TryWriteAsync(_markerKey, bytes, existingEtag, cancellationToken).ConfigureAwait(false);
+        if (ok && await IsRetiredAsync(cancellationToken).ConfigureAwait(false))
+        {
+            (ReadModelBatchMarker? retiredMarker, string retiredETag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (retiredMarker?.Fingerprint == _fingerprint && retiredMarker.Status == ReadModelBatchMarkerStatus.Prepared)
+            {
+                ReadModelBatchTerminalFence? decision = await ReadModelBatchTerminalFence.ReadAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
+                retiredMarker.Status = decision?.Decision ?? ReadModelBatchMarkerStatus.Aborted;
+                retiredMarker.RetainedParticipantCount = decision?.Version == 2 ? decision.ParticipantCount : 0;
+                retiredMarker.OriginalManifest = null;
+                retiredMarker.OriginalManifestKey = null;
+                retiredMarker.Operations = null;
+                _ = await _accessor.TryWriteAsync(_markerKey, SerializeMarker(retiredMarker), retiredETag, cancellationToken).ConfigureAwait(false);
+            }
+            _ = await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
+            throw new ReadModelBatchRaceException();
+        }
         if (ok && existing is null)
             ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ManifestOperations, _batch.Operations.Count);
         if (!ok) {
@@ -506,7 +528,10 @@ internal sealed partial class ReadModelBatchProtocol {
             ReadModelBatchOperation operation = _batch.Operations[ordinal];
             RawStateEntry current = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
 
-            if (TryGetOwnEnvelope(current, ordinal, out _)) {
+            if (TryGetOwnEnvelope(current, ordinal, out ReadModelBatchEnvelope? originalEnvelope)) {
+                if (_batch.RetainManifestForRecovery && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
+                    _batch.Scope, _fingerprint, CreateRecoveryAnchor(ordinal, originalEnvelope!), operation.Concurrency,
+                    cancellationToken).ConfigureAwait(false)) return ReadModelBatchResult.Indeterminate(_fingerprint, "participant-proof-race");
                 // Already installed on a prior attempt (resume): leave as-is.
                 if (_injector is not null) {
                     await _injector.InjectAsync(ReadModelBatchPhase.AfterInstallOperation, ordinal, cancellationToken).ConfigureAwait(false);
@@ -515,7 +540,9 @@ internal sealed partial class ReadModelBatchProtocol {
                 continue;
             }
 
-            if (operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()) continue;
+            // An expired unconditional candidate has no participating value. Conditional
+            // candidates still install their own envelope to durably prove the original CAS.
+            if (IsOmittedExpired(operation)) continue;
 
             bool foreignEnvelope = current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span);
             if (foreignEnvelope || !SatisfiesConcurrency(operation, current)) {
@@ -539,6 +566,12 @@ internal sealed partial class ReadModelBatchProtocol {
                     : null,
             };
 
+            ReadModelBatchResult? retired = await CheckInstallerDecisionAsync(cancellationToken).ConfigureAwait(false);
+            if (retired is not null) return retired;
+            if (_batch.RetainManifestForRecovery
+                && !await ReadModelBatchParticipantProof.SealAsync(_accessor, _batch.Scope, _fingerprint,
+                    CreateRecoveryAnchor(ordinal, envelope), operation.Concurrency, cancellationToken).ConfigureAwait(false))
+                return ReadModelBatchResult.Indeterminate(_fingerprint, "participant-proof-race");
             string installEtag = current.Exists ? current.ETag : string.Empty;
             bool installed = await _accessor
                 .TryWriteAsync(operation.Key, envelope.ToBytes(), installEtag, cancellationToken)
@@ -551,12 +584,41 @@ internal sealed partial class ReadModelBatchProtocol {
                     : ReadModelBatchResult.Indeterminate(_fingerprint, "compensation-race");
             }
 
+            retired = await CheckInstallerDecisionAsync(cancellationToken).ConfigureAwait(false);
+            if (retired is not null)
+            {
+                RawStateEntry installedRow = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
+                if (installedRow.Exists && installedRow.Value.Span.SequenceEqual(envelope.ToBytes().Span))
+                {
+                    bool restored = envelope.PreviousBase64 is null
+                        ? await _accessor.TryDeleteAsync(operation.Key, installedRow.ETag, cancellationToken).ConfigureAwait(false)
+                        : await ReadModelBatchExpiringValue.RestoreAsync(_accessor, operation.Key, envelope.PreviousBytes(), installedRow.ETag,
+                            _options.TimeProvider, cancellationToken).ConfigureAwait(false);
+                    if (!restored) return ReadModelBatchResult.Indeterminate(_fingerprint, "retired-installer-race");
+                }
+                return retired;
+            }
             if (_injector is not null) {
                 await _injector.InjectAsync(ReadModelBatchPhase.AfterInstallOperation, ordinal, cancellationToken).ConfigureAwait(false);
             }
         }
 
         return null;
+    }
+
+    private bool MayHavePrivateFence => _batch.RetainManifestForRecovery
+        || _batch.Operations.Count == 2 && _batch.Scope.AggregateId == _batch.Scope.ProjectionType;
+
+    private async Task<bool> IsRetiredAsync(CancellationToken token) => MayHavePrivateFence
+        && await ReadModelBatchTerminalFence.ReadAsync(_accessor, _batch.Scope, _fingerprint, token).ConfigureAwait(false) is not null;
+
+    private async Task<ReadModelBatchResult?> CheckInstallerDecisionAsync(CancellationToken token)
+    {
+        (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(token).ConfigureAwait(false);
+        if (marker?.Fingerprint != _fingerprint) return ReadModelBatchResult.IdentityConflict(_fingerprint);
+        return marker.Status is ReadModelBatchMarkerStatus.Prepared or ReadModelBatchMarkerStatus.Committed or ReadModelBatchMarkerStatus.Completed
+            && !await IsRetiredAsync(token).ConfigureAwait(false) ? null
+            : ReadModelBatchResult.OptimisticConflict(_fingerprint, "retired-installer");
     }
 
     private async Task<ReadModelBatchResult?> CommitAsync(CancellationToken cancellationToken) {
@@ -568,6 +630,10 @@ internal sealed partial class ReadModelBatchProtocol {
         if (marker is null) {
             return ReadModelBatchResult.Indeterminate(_fingerprint, "marker-lost");
         }
+        if (marker.Fingerprint != _fingerprint)
+            return ReadModelBatchResult.IdentityConflict(_fingerprint);
+        if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false))
+            return ReadModelBatchResult.OptimisticConflict(_fingerprint, "retired-commit");
 
         if (marker.Status is ReadModelBatchMarkerStatus.Committed or ReadModelBatchMarkerStatus.Completed) {
             return null;
@@ -586,6 +652,8 @@ internal sealed partial class ReadModelBatchProtocol {
             .ConfigureAwait(false);
         if (!committed) {
             (ReadModelBatchMarker? reread, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (reread is not null && reread.Fingerprint != _fingerprint)
+                return ReadModelBatchResult.IdentityConflict(_fingerprint);
             if (reread is not null && reread.Status is ReadModelBatchMarkerStatus.Committed or ReadModelBatchMarkerStatus.Completed) {
                 return null;
             }
@@ -593,6 +661,24 @@ internal sealed partial class ReadModelBatchProtocol {
             return ReadModelBatchResult.Indeterminate(_fingerprint, "commit-race");
         }
 
+        // Some providers accept a stale nonempty ETag when an erased key is absent.
+        // Revalidate the immutable retirement decision after the awaited CAS, before any compaction.
+        if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false))
+        {
+            (ReadModelBatchMarker? retiredMarker, string retiredETag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (retiredMarker?.Fingerprint == _fingerprint)
+            {
+                ReadModelBatchTerminalFence? decision = await ReadModelBatchTerminalFence.ReadAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
+                retiredMarker.Status = decision?.Decision ?? ReadModelBatchMarkerStatus.Aborted;
+                retiredMarker.RetainedParticipantCount = decision?.Version == 2 ? decision.ParticipantCount : 0;
+                retiredMarker.OriginalManifest = null;
+                retiredMarker.OriginalManifestKey = null;
+                ReadModelBatchTerminalFence? proof = await ReadModelBatchTerminalFence.ReadAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
+                if (proof is { Anchors.Length: 2 }) retiredMarker.ScratchCompensationKey = ReadModelBatchKeys.ScratchCompensationKey(_scopeHash);
+                _ = await _accessor.TryWriteAsync(_markerKey, SerializeMarker(retiredMarker), retiredETag, cancellationToken).ConfigureAwait(false);
+            }
+            return ReadModelBatchResult.OptimisticConflict(_fingerprint, "retired-commit");
+        }
         ProjectionDeliveryCostDiagnostics.Record(ProjectionDeliveryCost.ModelMutations, _batch.Operations.Count);
 
         if (_injector is not null) {
@@ -613,6 +699,9 @@ internal sealed partial class ReadModelBatchProtocol {
             }
 
             if (TryGetOwnEnvelope(current, ordinal, out ReadModelBatchEnvelope? envelope)) {
+                if (_batch.RetainManifestForRecovery && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
+                    _batch.Scope, _fingerprint, CreateRecoveryAnchor(ordinal, envelope!), operation.Concurrency,
+                    cancellationToken).ConfigureAwait(false)) return false;
                 if (_batch.RetainManifestForRecovery && ordinal == _batch.Operations.Count - 1)
                 {
                     anchor = CreateRecoveryAnchor(ordinal, envelope!);
@@ -639,6 +728,9 @@ internal sealed partial class ReadModelBatchProtocol {
                 if (!IsCompacted(operation, verified)) {
                     return false;
                 }
+            }
+            else if (IsOmittedExpired(operation)) {
+                continue; // Never help or modify an unrelated envelope at an omitted key.
             }
             else if (!IsCompacted(operation, current)) {
                 // A guarded owner can have been replaced by a newer generation after this batch
@@ -703,6 +795,7 @@ internal sealed partial class ReadModelBatchProtocol {
             OwnerSelection = _ownerSelection,
             OwnerSelections = _ownerSelections,
             RecoveryAnchor = anchor,
+            RetainedParticipantCount = _batch.RetainManifestForRecovery ? _batch.Operations.Count : 0,
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
@@ -772,13 +865,18 @@ internal sealed partial class ReadModelBatchProtocol {
             ReadModelBatchOperation operation = _batch.Operations[ordinal];
             RawStateEntry current = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
             if (!TryGetOwnEnvelope(current, ordinal, out ReadModelBatchEnvelope? envelope)) {
-                if (requireInstalledPrefix) {
+                // Expired writes are deliberately omitted by InstallAsync. They cannot own an
+                // unresolved envelope at this point; preserve every foreign/newer physical value.
+                if (requireInstalledPrefix && !IsOmittedExpired(operation)) {
                     return false;
                 }
 
                 continue;
             }
 
+            if (_batch.RetainManifestForRecovery && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
+                _batch.Scope, _fingerprint, CreateRecoveryAnchor(ordinal, envelope!), operation.Concurrency,
+                cancellationToken).ConfigureAwait(false)) return false;
             if (_batch.RetainManifestForRecovery && ordinal == 0)
             {
                 anchor = CreateRecoveryAnchor(ordinal, envelope!);
@@ -817,6 +915,7 @@ internal sealed partial class ReadModelBatchProtocol {
         if (_batch.RetainManifestForRecovery)
         {
             aborting.RecoveryAnchor = anchor;
+            aborting.RetainedParticipantCount = _batch.Operations.Count;
             aborting.OriginalManifest = null;
             aborting.OriginalManifestKey = null;
             aborting.Operations = null;
@@ -861,6 +960,9 @@ internal sealed partial class ReadModelBatchProtocol {
             }
         }
 
+        if (marker?.Status is ReadModelBatchMarkerStatus.Aborting or ReadModelBatchMarkerStatus.Aborted)
+            return await SettleTransactionConflictAsync(cancellationToken).ConfigureAwait(false);
+
         // Write the prepared identity/fingerprint record, then issue exactly one transaction.
         _ = await PrepareMarkerAsync(marker, markerEtag, cancellationToken).ConfigureAwait(false);
         ReadModelBatchLog.Prepared(_logger, _scopeHash, _profileName, _batch.Operations.Count);
@@ -875,10 +977,14 @@ internal sealed partial class ReadModelBatchProtocol {
             if (operation.ExpiresAtUtc is not null || operation.Concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag
                     && operation.Concurrency.ExpectedETag.Length == 0)
                 physical.Add(operation.Key, await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false));
+        (ReadModelBatchMarker? prepared, string transactionMarkerETag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+        if (prepared?.Fingerprint != _fingerprint) return ReadModelBatchResult.IdentityConflict(_fingerprint);
+        if (prepared.Status != ReadModelBatchMarkerStatus.Prepared)
+            return ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-marker-race");
         var operations = new List<RawTransactionOperation>(_batch.Operations.Count + 1);
         foreach (ReadModelBatchOperation operation in _batch.Operations) {
             TimeSpan? retention = Retention(operation);
-            if (retention <= TimeSpan.Zero) continue;
+            if (retention <= TimeSpan.Zero && operation.Concurrency.Mode != ReadModelBatchConcurrencyMode.ExpectedETag) continue;
             bool firstWrite = operation.Concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag;
             string etag = firstWrite ? operation.Concurrency.ExpectedETag : string.Empty;
             if (physical.TryGetValue(operation.Key, out RawStateEntry current))
@@ -886,17 +992,17 @@ internal sealed partial class ReadModelBatchProtocol {
                 if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span))
                     return ReadModelBatchResult.Indeterminate(_fingerprint, "foreign-envelope");
                 if (!SatisfiesConcurrency(operation, current))
-                    return ReadModelBatchResult.OptimisticConflict(_fingerprint, "transaction-precondition");
+                    return await SettleTransactionConflictAsync(cancellationToken).ConfigureAwait(false);
                 firstWrite = true;
                 etag = current.ETag;
             }
             operations.Add(new RawTransactionOperation(
                 operation.Key,
                 FinalBytes(operation),
-                operation.Kind == ReadModelBatchOperationKind.Delete,
+                operation.Kind == ReadModelBatchOperationKind.Delete || retention <= TimeSpan.Zero,
                 etag,
                 firstWrite,
-                retention));
+                retention <= TimeSpan.Zero ? null : retention));
         }
 
         var receipt = new ReadModelBatchMarker {
@@ -909,7 +1015,7 @@ internal sealed partial class ReadModelBatchProtocol {
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
-        operations.Add(new RawTransactionOperation(_markerKey, SerializeMarker(receipt), false, string.Empty, false));
+        operations.Add(new RawTransactionOperation(_markerKey, SerializeMarker(receipt), false, transactionMarkerETag, true));
 
         try {
             await _accessor.ExecuteTransactionAsync(operations, cancellationToken).ConfigureAwait(false);
@@ -957,7 +1063,7 @@ internal sealed partial class ReadModelBatchProtocol {
             RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
             if (operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow())
             {
-                if (entry.Exists && ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)) return false;
+                if (!IsOmittedExpired(operation) && entry.Exists && ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)) return false;
                 continue;
             }
             if (operation.Kind == ReadModelBatchOperationKind.Delete) {
@@ -979,8 +1085,7 @@ internal sealed partial class ReadModelBatchProtocol {
                 .ReadAsync(_batch.Operations[ordinal].Key, cancellationToken)
                 .ConfigureAwait(false);
             if (!TryGetOwnEnvelope(entry, ordinal, out _)
-                && !(_batch.Operations[ordinal].ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()
-                    && (!entry.Exists || !ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)))) {
+                && !IsOmittedExpired(_batch.Operations[ordinal])) {
                 return false;
             }
         }
@@ -1020,13 +1125,16 @@ internal sealed partial class ReadModelBatchProtocol {
                     : ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-partial");
             }
 
+            if (marker.Status is ReadModelBatchMarkerStatus.Aborting or ReadModelBatchMarkerStatus.Aborted)
+                return await SettleTransactionConflictAsync(token).ConfigureAwait(false);
+
             // The marker is still Prepared: the atomic transaction did not commit (receipt not durable). If
             // any operation's optimistic precondition no longer holds, this is a truthful optimistic conflict
             // that converges by recomputing the whole batch under a new identity; otherwise it is ambiguous.
             foreach (ReadModelBatchOperation operation in _batch.Operations) {
                 RawStateEntry current = await _accessor.ReadAsync(operation.Key, token).ConfigureAwait(false);
                 if (!SatisfiesConcurrency(operation, current)) {
-                    return ReadModelBatchResult.OptimisticConflict(_fingerprint, "transaction-precondition");
+                    return await SettleTransactionConflictAsync(token).ConfigureAwait(false);
                 }
             }
 
@@ -1135,6 +1243,15 @@ internal sealed partial class ReadModelBatchProtocol {
         return (ParseMarker(entry.Value), entry.ETag, true);
     }
 
+    private async Task<ReadModelBatchResult> SettleTransactionConflictAsync(CancellationToken token)
+        => await CompensateAsync(0, false, token).ConfigureAwait(false)
+            ? ReadModelBatchResult.OptimisticConflict(_fingerprint, "transaction-precondition")
+            : ReadModelBatchResult.Indeterminate(_fingerprint, "transaction-conflict-unsettled");
+
+    private bool IsOmittedExpired(ReadModelBatchOperation operation)
+        => operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()
+            && operation.Concurrency.Mode != ReadModelBatchConcurrencyMode.ExpectedETag;
+
     private bool SatisfiesConcurrency(ReadModelBatchOperation operation, RawStateEntry current) {
         ReadModelBatchConcurrency concurrency = operation.Concurrency;
         return concurrency.Mode switch {
@@ -1158,6 +1275,7 @@ internal sealed partial class ReadModelBatchProtocol {
     private bool IsCompacted(ReadModelBatchOperation operation, RawStateEntry entry) =>
         operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()
             ? !entry.Exists || !ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)
+                || IsOmittedExpired(operation) && !IsOwnParticipant(operation, entry)
             : operation.Kind == ReadModelBatchOperationKind.Delete
                 ? !entry.Exists
                 : entry.Exists && (operation.ExpiresAtUtc is { } deadline
@@ -1165,6 +1283,14 @@ internal sealed partial class ReadModelBatchProtocol {
                         && ReadModelBatchExpiringValue.Decode(entry.Value) is var final
                         && final.Deadline == deadline && final.Value.Span.SequenceEqual(operation.CanonicalValue.Span)
                     : entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span));
+
+    private bool IsOwnParticipant(ReadModelBatchOperation operation, RawStateEntry entry)
+    {
+        ReadModelBatchEnvelope? envelope = ReadModelBatchEnvelope.FromBytes(entry.Value);
+        return envelope is not null && envelope.Ordinal >= 0 && envelope.Ordinal < _batch.Operations.Count
+            && _batch.Operations[envelope.Ordinal].Key == operation.Key
+            && TryGetOwnEnvelope(entry, envelope.Ordinal, out _);
+    }
 
     private bool IsPreviousValue(ReadModelBatchEnvelope envelope, RawStateEntry entry) =>
         envelope.PreviousBase64 is null
@@ -1193,6 +1319,10 @@ internal sealed partial class ReadModelBatchProtocol {
         if (_batch.RetainManifestForRecovery)
         {
             (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (marker?.Status is ReadModelBatchMarkerStatus.Aborted or ReadModelBatchMarkerStatus.Completed
+                && !await new ReadModelBatchTerminalFence(_batch.Scope, _fingerprint, [], 2,
+                    marker.Status, _batch.Operations.Count).SealAsync(_accessor, cancellationToken).ConfigureAwait(false))
+                return false;
             if (marker?.RecoveryAnchor is not null)
                 return await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
         }

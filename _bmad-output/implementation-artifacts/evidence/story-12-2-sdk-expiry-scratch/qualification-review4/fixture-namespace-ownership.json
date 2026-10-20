@@ -1,0 +1,66 @@
+[
+  {
+    "app_id": "eventstore-live-59e8c9db850141428138c75ea52c82f9",
+    "source_log": "live-read-model-batch.log",
+    "warmup_actor": "0740e589e4a5424a80a56f17244aac92",
+    "observed_key": "eventstore-live-59e8c9db850141428138c75ea52c82f9||ETagActor||warmup:0740e589e4a5424a80a56f17244aac92||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:0740e589e4a5424a80a56f17244aac92||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-fc3e43c25c0344a8a7b4ca9231ef2721",
+    "source_log": "live-shared-epoch.log",
+    "warmup_actor": "98d11d491a0b46379ce2f2aa2c05c63e",
+    "observed_key": "eventstore-live-fc3e43c25c0344a8a7b4ca9231ef2721||ETagActor||warmup:98d11d491a0b46379ce2f2aa2c05c63e||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:98d11d491a0b46379ce2f2aa2c05c63e||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-0b0450c6e4484f82a64c91774f21ebed",
+    "source_log": "diagnostics/pre-final-diff-cleanup/live-read-model-batch.log",
+    "warmup_actor": "fa615cb28767474e94f5946ffd9633b3",
+    "observed_key": "eventstore-live-0b0450c6e4484f82a64c91774f21ebed||ETagActor||warmup:fa615cb28767474e94f5946ffd9633b3||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:fa615cb28767474e94f5946ffd9633b3||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-aeb86ee17159468083b4379338052f96",
+    "source_log": "diagnostics/pre-final-diff-cleanup/live-shared-epoch.log",
+    "warmup_actor": "db0d2f54fc434acfab05a1aa9ba998c0",
+    "observed_key": "eventstore-live-aeb86ee17159468083b4379338052f96||ETagActor||warmup:db0d2f54fc434acfab05a1aa9ba998c0||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:db0d2f54fc434acfab05a1aa9ba998c0||*"
+    ]
+  }
+]

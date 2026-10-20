@@ -1,0 +1,6 @@
+{
+  "driver_pid": 899563,
+  "signal": "SIGTERM",
+  "at": "2026-10-20T11:32:40.001501+00:00",
+  "reason": "Add exact still-Aborted-marker delayed installer recovery cut before acceptance; no live fixture started. Running Domain child is allowed to finish and its output remains retained."
+}

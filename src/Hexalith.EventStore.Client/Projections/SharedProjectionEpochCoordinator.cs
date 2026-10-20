@@ -628,13 +628,17 @@ public sealed partial class SharedProjectionEpochCoordinator
             return false;
         }
 
-        if (await ReconcilePendingScratchAsync(scope, key, cancellationToken).ConfigureAwait(false)
+        ValidateState(state);
+        ValidateBoundary(state, scope);
+        if (await ReconcileScratchBatchAsync(scope, batchId, cancellationToken).ConfigureAwait(false)
+            || await ReconcilePendingScratchAsync(scope, key, cancellationToken).ConfigureAwait(false)
             || await ReconcilePendingScratchAsync(scope, scope.StateKey, cancellationToken).ConfigureAwait(false))
             return false; // Reload both scratch and the original fence after recovery; never re-plan that batch.
 
+        string retainedBatchId = await ScratchBatchIdentityAsync(scope, batchId, cancellationToken).ConfigureAwait(false);
         var batch = new ReadModelBatch(
             new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain, scope.Family,
-                scope.Family, batchId),
+                scope.Family, retainedBatchId),
             [
                 ReadModelBatchOperation.Write(key, value, concurrency),
                 ReadModelBatchOperation.Write(scope.StateKey, state,
@@ -649,13 +653,17 @@ public sealed partial class SharedProjectionEpochCoordinator
     }
 
     /// <summary>Reclaims a completed private scratch batch receipt after its keys are erased.</summary>
-    public Task ReclaimScratchReceiptAsync(SharedProjectionScope scope, string batchId,
+    public async Task ReclaimScratchReceiptAsync(SharedProjectionScope scope, string batchId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scope);
         scope.Validate();
         ArgumentException.ThrowIfNullOrWhiteSpace(batchId);
-        return EraseTerminalBatchMarkerAsync(scope, batchId, cancellationToken);
+        _ = await ReconcileScratchBatchAsync(scope, batchId, cancellationToken).ConfigureAwait(false);
+        string retainedBatchId = await ScratchBatchIdentityAsync(scope, batchId, cancellationToken).ConfigureAwait(false);
+        if (retainedBatchId != batchId)
+            await EraseTerminalBatchMarkerAsync(scope, retainedBatchId, cancellationToken).ConfigureAwait(false);
+        await EraseTerminalBatchMarkerAsync(scope, batchId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1585,6 +1593,9 @@ public sealed partial class SharedProjectionEpochCoordinator
         (bool present, string etag) = await eraser.TryReadEtagAsync(scope.StoreName, compensationKey, cancellationToken).ConfigureAwait(false);
         if (present && (string.IsNullOrEmpty(etag) || !await eraser.TryEraseAsync(scope.StoreName, compensationKey, etag, cancellationToken).ConfigureAwait(false)))
             throw new InvalidOperationException("Private scratch compensation cleanup is incomplete.");
+        // The original legacy key is itself a payload-free fence. Keeping its Aborted ETag
+        // prevents a delayed original CAS from recreating or replacing a later marker (provider ABA).
+        if (marker.Value is { Status: ReadModelBatchMarkerStatus.Aborted, ScratchCompensationKey: not null }) return;
         if (!await eraser.TryEraseAsync(scope.StoreName, markerKey, marker.ETag, cancellationToken)
                 .ConfigureAwait(false))
             throw new SharedProjectionWriteUnavailableException(
@@ -3506,7 +3517,8 @@ public sealed partial class SharedProjectionEpochCoordinator
             && (conflict.ResolvedByOwnerSequenceNumber is null || conflict.RequiredOwnerSequenceNumber is > 0
                 && conflict.ResolvedByOwnerSequenceNumber == conflict.RequiredOwnerSequenceNumber);
 
-    private static void ValidateState(SharedProjectionEpochState state)
+    /// <summary>Rejects invalid durable epoch evidence before reads, phase changes or legacy compensation.</summary>
+    internal static void ValidateState(SharedProjectionEpochState state)
     {
         if (state.Version != 1 || state.Epoch < 0 || state.ActiveGeneration < 0
             || state.ActiveGeneration > state.Epoch || !Enum.IsDefined(state.Phase)

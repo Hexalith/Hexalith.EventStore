@@ -1,0 +1,49 @@
+{
+  "id": "live-retirement-focused",
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-method",
+    "*RetiredLegacyWorkerPreservesOpenEpochAfterDelayedPhysicalInstallOrCommitCas",
+    "-method",
+    "*ExternalManifestBeforeMarkerCrashRetiresOriginalPreparerAndReclaimsPhysicalPayload",
+    "-showliveoutput",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review3/live-retirement-focused.xml"
+  ],
+  "environment": {
+    "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false"
+  },
+  "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+  "started_utc": "2026-10-20T11:58:16.057465+00:00",
+  "exit_code": 0,
+  "finished_utc": "2026-10-20T11:58:23.515547+00:00",
+  "log": "live-retirement-focused.log",
+  "log_sha256": "31916f19e260ded2cb44405c725a1d80afb8d823f811f1b23be73e1f0008c9cf",
+  "result": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "not-run": 0
+  },
+  "cleanup": {
+    "app_ids": [
+      "eventstore-live-1468c2e7db624c4aaaefc7c56c246de7"
+    ],
+    "removed_keys": 2,
+    "remaining_keys": 0,
+    "sidecars_stopped": true,
+    "command": [
+      "docker",
+      "exec",
+      "-i",
+      "dapr_redis",
+      "redis-cli",
+      "--pipe"
+    ],
+    "preserved_preexisting_app_ids": 9
+  },
+  "binary_group": "live-retirement-focused-binary-group.json"
+}

@@ -55,24 +55,33 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests(DaprTest
         {
             string tenant = "unqualified-transaction-" + Guid.NewGuid().ToString("N");
             string model = tenant + ":model";
+            string guarded = tenant + ":guarded";
+            await client.SaveStateAsync("statestore", guarded, Value(2));
+            (_, string staleETag) = await client.GetStateAndETagAsync<JsonObject>("statestore", guarded);
+            await client.SaveStateAsync("statestore", guarded, Value(3));
+            IDatabase db = _redis.GetDatabase();
+            byte[] newerGuard = (byte[])(await db.HashGetAsync(Key(guarded), "data"))!;
             ReadModelBatchOperation operation = deadlineBearing
                 ? ReadModelBatchOperation.WriteExpiring(model, Value(1), ReadModelBatchConcurrency.LastWrite, expiresAtUtc: deadline)
                 : ReadModelBatchOperation.Write(model, Value(1), ReadModelBatchConcurrency.LastWrite);
-            var batch = new ReadModelBatch(new("statestore", tenant, "widget", "owner", "detail", "provider-probe"), [operation]);
+            var batch = new ReadModelBatch(new("statestore", tenant, "widget", "owner", "detail", "provider-probe"),
+                [operation, ReadModelBatchOperation.Write(guarded, Value(9), ReadModelBatchConcurrency.Match(staleETag))]);
             Exception? nativeFailure = null;
             var observed = new ObservedTransactionLiveAccessor(new DaprReadModelBatchStateAccessor(client, "statestore"),
                 error => nativeFailure = error);
             ReadModelBatchResult result = await new ReadModelBatchProtocol(observed, options, NullLogger.Instance)
                 .ExecuteAsync(batch, null, CancellationToken.None);
+            byte[] markerBytes = (byte[])(await db.HashGetAsync(Key(batch.Scope.ComputeMarkerKey()), "data"))!;
+            ReadModelBatchMarker marker = ReadModelBatchMarker.ReadProof(markerBytes)!;
+            RedisValue persisted = await db.HashGetAsync(Key(model), "data");
+            TestContext.Current.TestOutputHelper!.WriteLine($"forced-provider-observation;deadline={deadlineBearing};status={result.Status};reason={result.RecoveryReason};marker={marker.Status};marker-base64={Convert.ToBase64String(markerBytes)};model-base64={Convert.ToBase64String((byte[])persisted!)};newer-guard-base64={Convert.ToBase64String(newerGuard)}");
             nativeFailure.ShouldBeOfType<Dapr.DaprException>();
             nativeFailure.ToString().ShouldContain("failed to set key");
             result.Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
             result.IsSuccess.ShouldBeFalse();
-            IDatabase db = _redis.GetDatabase();
-            ReadModelBatchMarker.ReadProof((byte[])(await db.HashGetAsync(Key(batch.Scope.ComputeMarkerKey()), "data"))!)!
-                .Status.ShouldBe(ReadModelBatchMarkerStatus.Prepared);
-            RedisValue persisted = await db.HashGetAsync(Key(model), "data");
-            persisted.IsNull.ShouldBeFalse("the fixture provider exposes a partial mutation before rejecting the marker update");
+            marker.Status.ShouldBe(ReadModelBatchMarkerStatus.Completed);
+            ((byte[])(await db.HashGetAsync(Key(guarded), "data"))!).ShouldBe(newerGuard);
+            persisted.IsNull.ShouldBeFalse("the fixture provider exposes a partial mutation before rejecting the stale guarded participant");
             (await new DaprReadModelStore(client, Options.Create(options)).GetAsync<JsonObject>("statestore", model))
                 .Value!["count"]!.GetValue<int>().ShouldBe(1); // A misqualified transaction can expose partial rows; refusal is completion-only.
             if (deadlineBearing)
@@ -82,7 +91,12 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests(DaprTest
                 ttl.ShouldBeGreaterThan(TimeSpan.Zero);
                 ttl.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(30));
             }
-            TestContext.Current.TestOutputHelper!.WriteLine($"deadline={deadlineBearing}; partial-model-persisted=true; marker=Prepared; SDK-success=false; native={nativeFailure.InnerException?.Message}");
+            else (await db.KeyTimeToLiveAsync(Key(model))).ShouldBeNull();
+            (await new ReadModelBatchProtocol(observed, options, NullLogger.Instance)
+                .ExecuteAsync(batch, null, CancellationToken.None)).Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
+            ((byte[])(await db.HashGetAsync(Key(batch.Scope.ComputeMarkerKey()), "data"))!).ShouldBe(markerBytes);
+            ((byte[])(await db.HashGetAsync(Key(guarded), "data"))!).ShouldBe(newerGuard);
+            TestContext.Current.TestOutputHelper!.WriteLine($"deadline={deadlineBearing}; stale-guard-reached-provider=true; newer-guard-bytes-preserved=true; partial-model-persisted=true; marker=Completed; SDK-success=false; retry-success=false; native={nativeFailure.InnerException?.Message}");
         }
     }
 

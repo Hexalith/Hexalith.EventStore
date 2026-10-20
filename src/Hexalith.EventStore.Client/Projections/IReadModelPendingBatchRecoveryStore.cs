@@ -4,7 +4,7 @@ namespace Hexalith.EventStore.Client.Projections;
 public interface IReadModelPendingBatchRecoveryStore
 {
     /// <summary>Reconciles only a pending batch owned by the supplied store/tenant/domain/aggregate/projection scope.
-    /// The scope's batch ID is ignored for discovery; the durable original identity and manifest are reused.
+    /// Logical-key discovery ignores the scope's batch ID; the durable original identity and manifest are reused.
     /// A resolved result permits reloading fresh values/ETags and recomputing after a compensated conflict.</summary>
     Task<ReadModelPendingBatchRecoveryResult> RecoverPendingAsync(ReadModelBatchScope scope, string key,
         CancellationToken cancellationToken = default);

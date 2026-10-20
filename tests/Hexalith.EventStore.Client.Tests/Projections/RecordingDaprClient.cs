@@ -24,6 +24,8 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public Action<string> BeforeReadByteState { get; set; }
 
+    public Func<string, CancellationToken, Task> BeforeReadByteStateAsync { get; set; }
+
     public Exception ExecuteStateTransactionException { get; init; }
 
     public int ExecuteStateTransactionCallCount { get; private set; }
@@ -169,7 +171,7 @@ internal sealed class RecordingDaprClient : DaprClient
             operation.Options?.Concurrency == ConcurrencyMode.FirstWrite
             && (_byteStore.TryGetValue(operation.Key, out var entry) ? entry.ETag : string.Empty) != (operation.ETag ?? string.Empty)))
         {
-            return Task.FromException(new InvalidOperationException("Conditional transaction conflict."));
+            return Task.FromException(new Dapr.DaprException("Conditional transaction conflict."));
         }
 
         // Apply the transaction to the stateful byte store so read-back verification can prove the persisted
@@ -225,13 +227,13 @@ internal sealed class RecordingDaprClient : DaprClient
         return Task.FromResult(items);
     }
 
-    public override Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    public override async Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         BeforeReadByteState?.Invoke(key);
+        if (BeforeReadByteStateAsync is not null) await BeforeReadByteStateAsync(key, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         return _byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
-            ? Task.FromResult<(ReadOnlyMemory<byte>, string)>((entry.Value, entry.ETag))
-            : Task.FromResult<(ReadOnlyMemory<byte>, string)>((ReadOnlyMemory<byte>.Empty, string.Empty));
+            ? (entry.Value, entry.ETag) : (ReadOnlyMemory<byte>.Empty, string.Empty);
     }
 
     public override Task<ReadOnlyMemory<byte>> GetByteStateAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();

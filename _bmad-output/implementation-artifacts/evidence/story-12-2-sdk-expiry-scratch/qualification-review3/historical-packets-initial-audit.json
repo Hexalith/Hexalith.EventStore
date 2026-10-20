@@ -1,0 +1,17 @@
+[
+  {
+    "packet": "qualification-20261020",
+    "verified_artifacts": 21,
+    "manifest_sha256": "0b6f4b15c02df3d70ded3875318b1cfc02fd1bfe2085cf8b47112f531b7715e8"
+  },
+  {
+    "packet": "qualification-review1",
+    "verified_artifacts": 137,
+    "manifest_sha256": "308499130d5ebd37f651760f5a8d0c9a877b885556a96eb3415de5db75847cba"
+  },
+  {
+    "packet": "qualification-review2",
+    "verified_artifacts": 171,
+    "manifest_sha256": "840cd82680b5e58ea3edf65a6906d4d78ba1775623f33bb18b79062fa3aa2e98"
+  }
+]

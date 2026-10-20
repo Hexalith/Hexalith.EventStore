@@ -147,3 +147,76 @@ Record the semantic-release-derived published version, source SHA, and successfu
 - `IReadModelBatchStore` and `ReadModelBatchProjectionResultMapper` — coordinated persistence and truthful outcome mapping
 - `IAsyncDomainSharedProjectionRebuildHandler` and `IAsyncDomainSharedProjectionRebuildCompletionHandler` — atomic shared-view replacement and durable post-commit reconciliation
 - `AddLegacyProjectionHandlerAdapter<THandler>` — explicit compatibility bridge for one legacy handler and one named route
+
+### Deadline format rollout and rollback
+
+Deploy compatible SDK readers to every read and recovery process before enabling `WriteExpiring`
+writes. Deadline batches use v2 manifests and pending envelopes; compacted values use the reserved
+`$hxrmb` v3 wrapper. Older readers can deserialize an unsupported wrapper as ordinary model JSON
+and return default-valued fields. Mixed reader versions therefore cannot safely consume deadline rows.
+
+Rollback requires compatible readers while any new-format row or recovery evidence remains. Stop
+deadline writers and settle or age out their original evidence using the compatible SDK before
+returning to an older reader. A writer rollback alone does not remove persisted new-format state;
+do not rewrite historical bytes or implement a domain-local decoder or recovery protocol.
+
+### Retained private recovery metadata and tenant offboarding
+
+Private retained batches keep payload-free terminal fences at
+`hxrmb:v1:marker:{scope-hash}:retired:{SHA256(fingerprint)}` (using the marker prefix defined by the SDK).
+Version 1 fences retain the two validated legacy participant digests; version 2 fences record the
+Completed or Aborted decision and original operation count. Version 2 participant proofs use the
+same fence key plus `:participant:{ordinal}`. Each proof is sealed before installation and retains
+original scope, key, ordinal, candidate/previous SHA-256 digests, retention and concurrency mode/ETag digest.
+Each version 2 record is bounded to 64 KiB to allow worst-case JSON escaping of valid scope/key inputs; historical version 1 fences retain their 16 KiB bound; the original batch still supports 100 operations and a one-MiB
+canonical manifest. The proofs survive manifest and receipt reclamation so an exited delayed
+installer's exact envelope can be conditionally compensated without republishing old private state.
+The separate legacy compensation payload has a 4,259,840-byte physical encoding bound to allow
+base64 expansion independently of the original one-MiB manifest limit; it is reclaimed after settlement.
+
+The original legacy Aborted marker is also intentionally retained at its original marker key to
+prevent provider ETag reuse. These terminal records contain no model or previous-value payload,
+but do retain tenant and owner scope, keys, identities, digests and conditional ETag digests. They are
+scope-identifying tenant operational metadata, not anonymous data. Inventory these deterministic
+keys with the owning state component and include them in the tenant's retention, backup/restore,
+and legal-hold decisions. The accountable data owner and operator own those decisions.
+`OffboardTenantAsync` does not enumerate or delete terminal fences, participant proofs or retained
+legacy Aborted markers. An owner-authorized provider-level purge requires every relevant original
+writer drained or terminated, stale-work recreation prevented, and retention/legal-hold obligations
+satisfied. Deleting these records while old work can resume removes the recovery guarantee; there
+is no automatic fence TTL or arbitrary safe live deletion procedure.
+
+Promoted cleanup runs with an SDK cancellation budget. A failed or budget-cancelled attempt keeps
+its durable cleanup intent and increments `eventstore.projection.cleanup.failures` on the existing
+`Hexalith.EventStore` meter. The closed `reason` tag is `failure` or `budget-expired`; `disposition`
+is `foreground-retry`. No scope, state key or payload is emitted. `BeginAsync` retries both chunk
+and streamed-metadata cleanup before starting another epoch; existing terminal phase operations
+also reconcile their corresponding durable cleanup. Waiting for background cleanup only drains the
+current attempt and does not prove payload removal. Cancelling a caller's wait leaves shared work
+running, and its singleton gate remains held until the worker exits. Operators should observe the
+counter and arrange a subsequent owning SDK operation when there is no foreground traffic.
+
+A version-2 terminal fence also retains an immutable exact-scope index at
+`hxrmb:v1:marker:{scope-hash}:retired`. This supplies the original fingerprint and bounded
+participant count for known-marker recovery after the receipt is gone; it is not a global scan.
+Named partitioned rebuilds retain a payload-free owner inventory at the original partition-manifest
+key plus `:retired`, recording exact rebuild identity, owner ordinal and chunk/transport counts.
+These records have the same tenant metadata, offboarding limitation and purge prerequisites above.
+Repeated named Abort reconciles the original pending and already-cleaned owner identities from this
+inventory, even after the session's cleanup flags have advanced. This is the supported production
+trigger for a late original scratch envelope after successful Abort. Original manifests that never
+had an inventory remain fail-closed rather than being reconstructed. Compatible readers/maintainers
+must retain these records while relevant original writers can still resume.
+
+The exact-scope index has the same 64 KiB canonical physical bound as its version-2 fence.
+Each accepted-owner inventory has a fixed shape: the original five-field rebuild identity, one
+owner ordinal and two integer counts; it contains no chunk hashes, domain state or payload arrays.
+Reconciliation checks its exact original identity/ordinal and bounds chunk/transport counts by
+`ProjectionDispatchOptions.MaxRebuildEventCount`; each transport part has at most 16 known fragment
+identities. There is one such inventory per accepted owner, under the existing accepted-owner limit.
+These inventories and indexes intentionally have no TTL. Restore their original immutable identities
+and matching fences/proofs with the owning epoch/session before relevant writers resume; restoring
+payload/session bytes without the matching terminal metadata can recreate stale work. The data owner
+must include the indexes and owner inventories in the same retention, legal-hold and ordered restore
+drill as the other tenant operational metadata. OffboardTenantAsync does not enumerate or delete them;
+provider-level purge uses the same owner-authorized, drained-writer prerequisites above.

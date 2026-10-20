@@ -18,12 +18,15 @@ public sealed partial class SharedProjectionEpochCoordinator
         {
             try
             {
-                await ReconcileChunkCleanupAsync(scope, CancellationToken.None).ConfigureAwait(false);
-                await ReconcileStreamMetadataCleanupAsync(scope, CancellationToken.None).ConfigureAwait(false);
+                using var budget = new CancellationTokenSource(
+                    (_batches as DaprReadModelStore)?.ReconciliationTimeout ?? TimeSpan.FromSeconds(30));
+                await ReconcileChunkCleanupAsync(scope, budget.Token).ConfigureAwait(false);
+                await ReconcileStreamMetadataCleanupAsync(scope, budget.Token).ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                // Durable cleanup intent remains available to the next foreground reconciliation.
+                // Begin and terminal phase operations retry the unchanged durable cleanup intent.
+                ProjectionDeliveryCostDiagnostics.RecordCleanupFailure(exception is OperationCanceledException);
             }
             finally
             {

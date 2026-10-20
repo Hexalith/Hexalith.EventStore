@@ -1,0 +1,25 @@
+{
+  "client_domain_source": "diagnostics/transaction-diagnostic-marker-cas/source-freeze.json",
+  "client_domain_commands": "diagnostics/transaction-diagnostic-marker-cas/commands.json",
+  "live_source": "source-freeze.json",
+  "changed_paths": [
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs"
+  ],
+  "unchanged_files": 3760,
+  "reason": "Only the forced Live transaction diagnostic changed. All Client/Domain source, runtime, guide, build configuration and test inputs remain identical; their accepted binary/PDB groups are retained separately from the rebuilt Live group.",
+  "changes": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs",
+      "before": {
+        "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs",
+        "bytes": 13264,
+        "sha256": "3420217af0be78f5eff51e7cfc430565a7e77f39fa211b3ceeb63060b49c0d06"
+      },
+      "after": {
+        "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs",
+        "bytes": 14891,
+        "sha256": "2b7fa4869b847cf0b7ecb6485942dab66ad1e98a6b1de4ad7192f266920a9be1"
+      }
+    }
+  ]
+}

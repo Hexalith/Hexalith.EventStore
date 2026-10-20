@@ -1,0 +1,37 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewTwoRegressionTests.DelayedLegacyWorkerCannotCommitTheFreshRetainedFingerprintOrRegressOpenedFence [FAIL]
+      Shouldly.ShouldAssertException : (await delayed.WaitAsync(TimeSpan.FromSeconds(10))).ConflictKind
+          should be
+      ReadModelBatchConflictKind.Identity
+          but was
+      ReadModelBatchConflictKind.Optimistic
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewTwoRegressionTests.cs(226,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewTwoRegressionTests.DelayedLegacyWorkerCannotCommitTheFreshRetainedFingerprintOrRegressOpenedFence()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewTwoRegressionTests.ValidatedLegacyCompensationAllowsRepeatedSameActionRetryWithoutChangingOldFingerprint [FAIL]
+      Shouldly.ShouldAssertException : await coordinator.TryWriteScratchAsync(scope, "legacy", "private", Value(1), "scratch", ReadModelBatchConcurrency.CreateOnly)
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewTwoRegressionTests.cs(189,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewTwoRegressionTests.ValidatedLegacyCompensationAllowsRepeatedSameActionRetryWithoutChangingOldFingerprint()
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '4f1d6939fccaf1749dc4922c46da25ab9a1187905c9fadc267fc8d41e46e233e')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 292, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 1.652s

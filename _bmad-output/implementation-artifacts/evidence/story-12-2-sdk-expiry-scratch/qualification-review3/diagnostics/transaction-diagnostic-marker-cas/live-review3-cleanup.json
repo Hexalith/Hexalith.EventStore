@@ -1,0 +1,17 @@
+{
+  "app_ids": [
+    "eventstore-live-034089c97ba946ca9017ac83e12558eb"
+  ],
+  "removed_keys": 2,
+  "remaining_keys": 0,
+  "sidecars_stopped": true,
+  "command": [
+    "docker",
+    "exec",
+    "-i",
+    "dapr_redis",
+    "redis-cli",
+    "--pipe"
+  ],
+  "preserved_preexisting_app_ids": 9
+}

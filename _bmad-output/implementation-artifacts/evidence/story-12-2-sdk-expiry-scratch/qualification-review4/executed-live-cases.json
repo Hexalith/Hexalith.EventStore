@@ -1,0 +1,332 @@
+[
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: False, retryFirst: True, stop: AfterInstallOperation, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: True, retryFirst: False, stop: BeforeCommit, ordinal: -1)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: False, retryFirst: True, stop: MarkerPrepared, ordinal: -1)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: True, retryFirst: False, stop: MarkerPrepared, ordinal: -1)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: False, retryFirst: False, stop: BeforeInstallOperation, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(populated: True, retryFirst: True, stop: BeforeInstallOperation, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredParticipantRecoversAfterLatePhysicalInstallerProcessExits(abort: False, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredParticipantRecoversAfterLatePhysicalInstallerProcessExits(abort: True, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredParticipantRecoversAfterLatePhysicalInstallerProcessExits(abort: False, ordinal: 1)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredParticipantRecoversAfterLatePhysicalInstallerProcessExits(abort: True, ordinal: 1)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.NearLimitLegacyOriginalRecoversWithLargerBoundedPhysicalProof",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.AbortedReplacementRestoresOnlyOriginalRemainingPhysicalTtlThenExpires",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CowSelectedInheritedAndAbandonedPromotedPointerRemainTruthfulAfterPhysicalRedisExpiry(scenario: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CowSelectedInheritedAndAbandonedPromotedPointerRemainTruthfulAfterPhysicalRedisExpiry(scenario: 1)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CowSelectedInheritedAndAbandonedPromotedPointerRemainTruthfulAfterPhysicalRedisExpiry(scenario: 2)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: MarkerPrepared, ordinal: -1, populated: False, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: MarkerPrepared, ordinal: -1, populated: True, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeInstallOperation, ordinal: 0, populated: False, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeInstallOperation, ordinal: 0, populated: True, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 0, populated: False, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 0, populated: True, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 1, populated: False, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterInstallOperation, ordinal: 1, populated: True, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCommit, ordinal: -1, populated: False, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCommit, ordinal: -1, populated: True, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterCommit, ordinal: -1, populated: False, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: AfterCommit, ordinal: -1, populated: True, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCompaction, ordinal: 0, populated: False, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: BeforeCompaction, ordinal: 0, populated: True, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: RecoveryManifestReclaimed, ordinal: 1, populated: False, retryFirst: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedDispatcherRetriesOrAbortsInterruptedScratchAndDeliversAfterRecovery(phase: RecoveryManifestReclaimed, ordinal: 1, populated: True, retryFirst: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredLegacyWorkerPreservesOpenEpochAfterDelayedPhysicalInstallOrCommitCas(commitCas: False, erasedByEarlierSdk: False, replacementPrepared: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredLegacyWorkerPreservesOpenEpochAfterDelayedPhysicalInstallOrCommitCas(commitCas: True, erasedByEarlierSdk: False, replacementPrepared: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredLegacyWorkerPreservesOpenEpochAfterDelayedPhysicalInstallOrCommitCas(commitCas: True, erasedByEarlierSdk: True, replacementPrepared: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.RetiredLegacyWorkerPreservesOpenEpochAfterDelayedPhysicalInstallOrCommitCas(commitCas: True, erasedByEarlierSdk: False, replacementPrepared: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.NearLimitPersistedOwnerProofKeepsTruthfulPhysicalBytesWithinProductionGatewayAdmission(padding: 'x')",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.NearLimitPersistedOwnerProofKeepsTruthfulPhysicalBytesWithinProductionGatewayAdmission(padding: '~')",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedAbortResumesItsOwnInterruptedCleanupWithReplacedProvider(phase: AfterInstallOperation, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ProductionNamedAbortResumesItsOwnInterruptedCleanupWithReplacedProvider(phase: BeforeCompaction, ordinal: 0)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.LegacyCompensationEvidenceSurvivesRealDeleteInterruptionAndReplacement(afterDelete: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.LegacyCompensationEvidenceSurvivesRealDeleteInterruptionAndReplacement(afterDelete: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ExpiredInstalledPayloadSettlesAfterProviderDeleteRefusalOrLostResponse(retained: False, afterDelete: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ExpiredInstalledPayloadSettlesAfterProviderDeleteRefusalOrLostResponse(retained: True, afterDelete: False)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ExpiredInstalledPayloadSettlesAfterProviderDeleteRefusalOrLostResponse(retained: False, afterDelete: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ExpiredInstalledPayloadSettlesAfterProviderDeleteRefusalOrLostResponse(retained: True, afterDelete: True)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.UnqualifiedRedisTransactionRefusesSuccessForBothDeadlineAndLegacyPartialExecution",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.NamedAbortReclaimsLateAcceptedOwnerAfterCleanupFlagsAndAllowsOrdinaryDeliveryAndFreshNamedRebuild",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ReplacedStoreRecoversOriginalManifestAfterDeadlineWithoutInstallingExpiredRows(phase: BeforeCommit)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ReplacedStoreRecoversOriginalManifestAfterDeadlineWithoutInstallingExpiredRows(phase: BeforeCompaction)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ReplacedStoreRecoversOriginalManifestAfterDeadlineWithoutInstallingExpiredRows(phase: RecoveryManifestReclaimed)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.ExternalManifestBeforeMarkerCrashRetiresOriginalPreparerAndReclaimsPhysicalPayload",
+    "result": "Pass"
+  },
+  {
+    "group": "live-expiry-scratch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: Resumable)",
+    "result": "Pass"
+  },
+  {
+    "group": "live-read-model-batch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.ResumableBatch_PersistsDetailIndexAndReceipt_AndLeavesCheckpointUnchanged",
+    "result": "Pass"
+  },
+  {
+    "group": "live-read-model-batch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.PostDispatchCancellation_ReconcilesCommittedBatchWithoutRollback",
+    "result": "Pass"
+  },
+  {
+    "group": "live-read-model-batch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.ConflictAfterPartialInstall_AbortsAndRestoresPreviousView",
+    "result": "Pass"
+  },
+  {
+    "group": "live-read-model-batch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.TransactionQualificationProbe_KeepsRedisResumable",
+    "result": "Pass"
+  },
+  {
+    "group": "live-read-model-batch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.IdentityReuse_DifferentFingerprint_ReturnsConflict_AndDoesNotMutate",
+    "result": "Pass"
+  },
+  {
+    "group": "live-read-model-batch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ReadModelBatchLiveSidecarTests.PartialPrefix_PreservesOldVisibleView_ThenSameIdentityConverges",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.InterruptedStage_RestartCanCommitCompleteRedisManifest",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.CorruptReservedManifestChunk_FailsClosedWithoutSelectingPartialGeneration",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.InterruptedChunkReservation_RedeliveryCompletesBeforeCheckpointAndPromotion",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.InterruptedCommitAbortAndOffboard_ReconcileSelectedRedisGeneration",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.ConcurrentCaptureAndDelivery_ResolveRedisCasRaceWithoutLosingAcknowledgedPosition",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.TenThousandCapturedStagedAndDeliveredMembersRemainExactInRedis",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.ConcurrentDeliveryAndRestart_PromoteOneGenerationWithPersistedCatchUp",
+    "result": "Pass"
+  },
+  {
+    "group": "live-shared-epoch",
+    "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.SharedProjectionEpochLiveSidecarTests.InterruptedCaptureAndCatchUp_ResumeFromRedisBeforeSelectingOrAcknowledging",
+    "result": "Pass"
+  }
+]

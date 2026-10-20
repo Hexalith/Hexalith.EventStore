@@ -9,6 +9,19 @@ internal static class ProjectionDeliveryCostDiagnostics
     internal const string CategoryTag = "projection.cost";
     private static readonly Meter _meter = new("Hexalith.EventStore");
     private static readonly Counter<long> _cost = _meter.CreateCounter<long>(CounterName);
+    private static readonly Counter<long> _cleanupFailures = _meter.CreateCounter<long>("eventstore.projection.cleanup.failures");
+
+    /// <summary>Reports bounded maintenance failure and durable retry disposition without source identifiers.</summary>
+    internal static void RecordCleanupFailure(bool timedOut)
+    {
+        try
+        {
+            _cleanupFailures.Add(1, new KeyValuePair<string, object?>("reason", timedOut ? "budget-expired" : "failure"),
+                new KeyValuePair<string, object?>("disposition", "foreground-retry"));
+        }
+        catch { /* Exporter failures never alter durable maintenance intent. */ }
+    }
+
     private static readonly AsyncLocal<ProjectionDeliveryCostScope?> _current = new();
 
     /// <summary>Observes actual production calls for one execution, without changing protocol behavior.</summary>

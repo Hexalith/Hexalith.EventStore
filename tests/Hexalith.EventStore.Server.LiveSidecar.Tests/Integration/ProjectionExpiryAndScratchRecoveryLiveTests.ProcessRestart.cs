@@ -12,12 +12,17 @@ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
 {
     [Theory]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(bool populated, bool retryFirst)
+    [InlineData(false, true, ReadModelBatchPhase.AfterInstallOperation, 0)]
+    [InlineData(true, false, ReadModelBatchPhase.BeforeCommit, -1)]
+    [InlineData(false, true, ReadModelBatchPhase.MarkerPrepared, -1)]
+    [InlineData(true, false, ReadModelBatchPhase.MarkerPrepared, -1)]
+    [InlineData(false, false, ReadModelBatchPhase.BeforeInstallOperation, 0)]
+    [InlineData(true, true, ReadModelBatchPhase.BeforeInstallOperation, 0)]
+    public async Task PendingNamedOwnerScratchRecoversAfterOwningOsProcessExits(bool populated, bool retryFirst,
+        ReadModelBatchPhase stop, int ordinal)
     {
         string tenant = "scratch-process-" + Guid.NewGuid().ToString("N");
-        int originalPid = await RunScratchProcessAsync("persist", tenant, populated, retryFirst);
+        int originalPid = await RunScratchProcessAsync("persist", tenant, populated, retryFirst, stop, ordinal);
         using DaprClient client = Client();
         var store = new DaprReadModelStore(client);
         var handler = new LivePartitionedScratchHandler();
@@ -27,11 +32,22 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
         string scratch = DomainSharedProjectionRebuildDispatcher.PartitionChunkKey(session, 0, 0);
         byte[] scratchRaw = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scratch), "data"))!;
         byte[] fenceRaw = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!;
-        (ReadModelBatchEnvelope.IsEnvelope(scratchRaw) || ReadModelBatchEnvelope.IsEnvelope(fenceRaw))
+        if (stop is ReadModelBatchPhase.MarkerPrepared or ReadModelBatchPhase.BeforeInstallOperation)
+        {
+            scratchRaw.ShouldBeNull(); ReadModelBatchEnvelope.IsEnvelope(fenceRaw).ShouldBeFalse();
+            await AssertPreparedOwnerManifestAsync(client, scope, identity);
+        }
+        else (ReadModelBatchEnvelope.IsEnvelope(scratchRaw) || ReadModelBatchEnvelope.IsEnvelope(fenceRaw))
             .ShouldBeTrue("pending original owner-scratch bytes must remain after the owning OS process has exited");
+        TestContext.Current.TestOutputHelper!.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            observation = "pending-after-owning-process-exit", originalPid, stop, ordinal,
+            scratch_base64 = scratchRaw is null ? null : Convert.ToBase64String(scratchRaw),
+            fence_base64 = Convert.ToBase64String(fenceRaw),
+        }));
         var coordinator = new SharedProjectionEpochCoordinator(store, store);
         ((await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value?["count"]?.GetValue<int>()).ShouldBe(populated ? 1 : null);
-        int resumedPid = await RunScratchProcessAsync("resume", tenant, populated, retryFirst);
+        int resumedPid = await RunScratchProcessAsync("resume", tenant, populated, retryFirst, stop, ordinal);
         resumedPid.ShouldNotBe(originalPid);
         resumedPid.ShouldNotBe(Environment.ProcessId);
         originalPid.ShouldNotBe(Environment.ProcessId);
@@ -39,11 +55,16 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
         (await _redis.GetDatabase().KeyExistsAsync(Key(DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0)))).ShouldBeFalse();
         byte[] persisted = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!;
         JsonSerializer.Deserialize<SharedProjectionEpochState>(persisted, JsonSerializerOptions.Web)!.Phase.ShouldBe(SharedProjectionEpochPhase.Open);
+        TestContext.Current.TestOutputHelper!.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        {
+            observation = "cleaned-after-distinct-recovery-process-exit", originalPid, resumedPid,
+            epoch_base64 = Convert.ToBase64String(persisted), scratch_redis_exists = false, manifest_redis_exists = false,
+        }));
         (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-b")).Value!["count"]!.GetValue<int>().ShouldBe(9);
         TestContext.Current.TestOutputHelper!.WriteLine($"owning-process-pid={originalPid}; recovery-process-pid={resumedPid}; controller-pid={Environment.ProcessId}; original-process-exited-before-recovery=true; populated={populated}; retry-first={retryFirst}; real-pending-evidence-after-exit=true; private-cleaned=true; persisted-epoch=Open; ordinary-owners=2; fresh-named-rebuild=true; same-fixture-sidecar=true");
     }
 
-    private async Task<int> RunScratchProcessAsync(string phase, string tenant, bool populated, bool retryFirst)
+    private async Task<int> RunScratchProcessAsync(string phase, string tenant, bool populated, bool retryFirst, ReadModelBatchPhase stop, int ordinal)
     {
         string directory = Environment.GetEnvironmentVariable("EVENTSTORE_SCRATCH_PROCESS_EVIDENCE_DIR")
             ?? Path.Combine(Path.GetTempPath(), "hexalith-scratch-process-" + Guid.NewGuid().ToString("N"));
@@ -59,6 +80,8 @@ public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
         var environment = new Dictionary<string, string>
         {
             ["EXPIRY_SCRATCH_PROCESS_PHASE"] = phase,
+            ["EXPIRY_SCRATCH_PROCESS_STOP"] = stop.ToString(),
+            ["EXPIRY_SCRATCH_PROCESS_ORDINAL"] = ordinal.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["EXPIRY_SCRATCH_PROCESS_ENDPOINT"] = fixture.DaprGrpcEndpoint,
             ["EXPIRY_SCRATCH_PROCESS_TENANT"] = tenant,
             ["EXPIRY_SCRATCH_PROCESS_POPULATED"] = populated.ToString(),

@@ -1,0 +1,98 @@
+[
+  {
+    "path": "docs/guides/named-projection-authoring.md",
+    "sha256": "e64943b094628d9ea47282a40b1c9fd0b3e80c0be3585dad092722b1898be721"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ProjectionDeliveryCostDiagnostics.cs",
+    "sha256": "d827c65b31b6ebb23545f9914192065c49ec2588ce5bbf366ef8df2576b06450"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs",
+    "sha256": "6d5836f74d52a21af24f055a404f006c552b7db0e616a89627f2743683ebd1a9"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchParticipantProof.cs",
+    "sha256": "1afe0d7918546fbe48d751eef7bc76eb74816252032b6192aa3f593b16f413af"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs",
+    "sha256": "3dd308194c25a574b5966a4b7c2bc82ff1f1e39eeb153f15956a958c4272ab38"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchTerminalFence.cs",
+    "sha256": "f7dbd475f8041dfd388d17202c6fcd0e8d158c45e4a2f84559d19075c89cfc8a"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchCompensation.cs",
+    "sha256": "8934dfb3fce5a73bd7026050950c99ee0e58e0df636efbf1e3d24b8ed1c28d98"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchRecovery.cs",
+    "sha256": "8f82ba15dc417aeab6a688f9516fa9d8ed7c22a56887bdbbb2fbb8cb77edb271"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.Markerless.cs",
+    "sha256": "f33922f4a78a045688dba446ecce92e6d755a52b1b0c2eb0dd3be330da0f1479"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs",
+    "sha256": "368dfe0a9cd2777285286785c7842ba1735e3345c0c8d4458e9ea918dfc6b0cc"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.PromotedCleanup.cs",
+    "sha256": "3b2107f631f8cf2a9f0af8f00d21a3a6b267cf763cd61f1ec88cc2e52c8fb78e"
+  },
+  {
+    "path": "src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs",
+    "sha256": "7ace5ed48f6098ec147e285e0490e0ab3b6c53783e0280b87bf95e9bd738431f"
+  },
+  {
+    "path": "src/Hexalith.EventStore.DomainService/DomainSharedProjectionScratchRetirement.cs",
+    "sha256": "3228aca8499f6316a6515ad17f913cf7a4c023f08dafdc5eb70b17df8f965c2a"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs",
+    "sha256": "931e264573c4f04633a8766c50c51164a11f93c057b291bd3cebe2c3625e5e32"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelLegacyScratchInterruptionTests.cs",
+    "sha256": "8eabdcd222738194302745eb1868630443efcb889885b3b9cf07dcf9b437b072"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFourRegressionTests.cs",
+    "sha256": "c604681154c2af0d5dec6e65de6370b6e88b91a5e2771319018a798e0c446ac0"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionReviewThreeMaintenanceTests.cs",
+    "sha256": "9589ddabdc727c7ea54d28ba61658a42c8b8fcaf7773ab9e762ca5ea8e014d83"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ReviewFour.cs",
+    "sha256": "0e362a4a2010f53eb21ad127f4e316481ac3ba12b4d3a284f18455e190884a7c"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/CapturingScratchLiveBatchStore.cs",
+    "sha256": "c99f2532b6adc51fa265249f0e95afe5bd109dfbc48b3d6a9adce142925e930f"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewFour.cs",
+    "sha256": "d08cb6f9537634baa817297fba557066700b1c4578c43d75f1bdb5f7f29afb4c"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionRetiredInstallerProcessWorkerTests.cs",
+    "sha256": "64d7b19c97c988d8dcd4d6e2c2b9fd0851cb428557eb63f6ea85b59c9756149d"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/RefusedExpiryDeleteLiveAccessor.cs",
+    "sha256": "93a95ad48f86d0d6964182b3446b1c80e321d8d763f5d078832077d97a0ffb13"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/RetainedDeadlineLiveFaultInjector.cs",
+    "sha256": "e42c7d7b8b3a286df061f3d485de760d8480a25041a7ea412bdfe5ee09da3c47"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReviewFourLateInstallerAccessor.cs",
+    "sha256": "fb10a89411297a43df331278b1d55de83bffe2f1e751d278f36f7837f52d8a2a"
+  }
+]
