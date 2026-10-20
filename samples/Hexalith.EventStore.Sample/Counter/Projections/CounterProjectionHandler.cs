@@ -35,7 +35,14 @@ public static class CounterProjectionHandler {
 
         return new ProjectionResponse(
             "counter",
-            JsonSerializer.SerializeToElement(new { count = state.Count }));
+            JsonSerializer.SerializeToElement(new { count = state.Count }))
+        {
+            NotificationGroupScope = "counter-status",
+            NotificationMetadata = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["change-kind"] = "counter-projection-updated",
+            },
+        };
     }
 
     private static void ApplyEvent(CounterState state, string eventTypeName) {

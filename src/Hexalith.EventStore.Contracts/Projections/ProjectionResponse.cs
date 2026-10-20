@@ -1,5 +1,6 @@
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Hexalith.EventStore.Contracts.Projections;
 
@@ -13,4 +14,17 @@ namespace Hexalith.EventStore.Contracts.Projections;
 /// <see cref="JsonDocument"/> alive — a disposed document invalidates this element.</param>
 public record ProjectionResponse(
     string ProjectionType,
-    JsonElement State);
+    JsonElement State)
+{
+    /// <summary>Gets optional sub-tenant notification scope; this filters a group and confers no authorization.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NotificationGroupScope { get; init; }
+
+    /// <summary>
+    /// Gets optional opaque hint metadata, bounded before persistence and publication. Values must contain
+    /// no domain payload, credential, ETag, cursor or authoritative completion/freshness evidence.
+    /// Null preserves the legacy signal-only response; an empty map explicitly requests detail.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? NotificationMetadata { get; init; }
+}

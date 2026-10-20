@@ -19,7 +19,7 @@ assert re.fullmatch(r"[a-z0-9-]+", label) and command
 receipt_path = packet / f"{label}.json"
 assert not receipt_path.exists(), "Receipts are immutable; use a distinct label for a retry."
 fixture = repository / "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs"
-sources = sorted(set(re.findall(r'"((?:src|tests|deploy|_bmad-output|references)/[^"\n]+)"', fixture.read_text())))
+sources = sorted(set(re.findall(r'"((?:src|tests|samples|deploy|_bmad-output|references)/[^"\n]+)"', fixture.read_text())))
 sources += ["global.json", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props"]
 snapshot = packet / "snapshots" / label
 for relative in sources:
@@ -44,6 +44,7 @@ def binary_identities():
 
 before = identities()
 binary_before = binary_identities()
+revision_before = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip()
 started = datetime.datetime.now(datetime.timezone.utc).isoformat()
 environment = os.environ.copy()
 environment["HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY"] = str(packet / "scenarios")
@@ -57,7 +58,8 @@ log.write_text(output)
 receipt = {
     "schemaVersion": 1, "label": label, "command": command,
     "startedUtc": started, "completedUtc": ended, "exitCode": result.returncode,
-    "runStartRevision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip(),
+    "runStartRevision": revision_before,
+    "revisionAfter": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repository, text=True).strip(),
     "sourcesBefore": before, "sourcesAfter": identities(),
     "binariesBefore": binary_before, "binariesAfter": binary_identities(),
     "outputSha256": digest(log), "snapshot": str(snapshot.relative_to(packet)),

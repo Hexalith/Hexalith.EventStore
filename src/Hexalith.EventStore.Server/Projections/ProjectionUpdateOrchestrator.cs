@@ -374,7 +374,7 @@ internal partial class ProjectionUpdateOrchestrator(
                     QueryRouter.ProjectionActorTypeName);
 
                 await writeProxy
-                    .UpdateProjectionAsync(ProjectionState.FromJsonElement(response.ProjectionType, identity.TenantId, response.State))
+                    .UpdateProjectionAsync(ProjectionState.FromProjectionResponse(response, identity.TenantId))
                     .ConfigureAwait(false);
 
                 await RegenerateProjectionETagAsync(identity, response.ProjectionType, cancellationToken)
@@ -1172,10 +1172,7 @@ internal partial class ProjectionUpdateOrchestrator(
             IProjectionWriteActor writeProxy = actorProxyFactory.CreateActorProxy<IProjectionWriteActor>(
                 projectionActor,
                 QueryRouter.ProjectionActorTypeName);
-            ProjectionState candidateState = ProjectionState.FromJsonElement(
-                response.ProjectionType,
-                identity.TenantId,
-                response.State);
+            ProjectionState candidateState = ProjectionState.FromProjectionResponse(response, identity.TenantId);
 
             // P19: re-check operator-scope lifecycle AND verify the operator is still the same one
             // (OperationId match) BEFORE writing the projection state. Without the OperationId
