@@ -1,5 +1,4 @@
 
-using System.Text;
 using System.Text.RegularExpressions;
 
 using FluentValidation;
@@ -45,7 +44,7 @@ public partial class ProjectionChangedNotificationValidator : AbstractValidator<
         _ = RuleFor(x => x.Metadata)
             .Must(HaveValidMetadataEntries).WithMessage("Metadata keys and values must be non-null")
             .Must(HaveMetadataWithinEntryLimit).WithMessage($"Metadata cannot exceed {_options.MaxDetailMetadataEntries} entries")
-            .Must(HaveMetadataWithinByteLimit).WithMessage($"Metadata cannot exceed {_options.MaxDetailMetadataBytes} UTF-8 bytes");
+            .Must(HaveMetadataWithinByteLimit).WithMessage($"Metadata cannot exceed {_options.MaxDetailMetadataBytes} serialized UTF-8 bytes");
     }
 
     private static bool HaveValidMetadataEntries(IReadOnlyDictionary<string, string>? metadata)
@@ -54,27 +53,10 @@ public partial class ProjectionChangedNotificationValidator : AbstractValidator<
 
     private bool HaveMetadataWithinEntryLimit(IReadOnlyDictionary<string, string>? metadata)
         => metadata is null
-            || metadata.Count <= _options.MaxDetailMetadataEntries;
+            || metadata.Count <= Math.Min(_options.MaxDetailMetadataEntries, ProjectionChangedMetadataLimits.MaximumEntries);
 
-    private bool HaveMetadataWithinByteLimit(IReadOnlyDictionary<string, string>? metadata) {
-        if (metadata is null) {
-            return true;
-        }
-
-        int totalBytes = 0;
-        foreach (KeyValuePair<string, string> entry in metadata) {
-            if (entry.Key is null || entry.Value is null) {
-                return false;
-            }
-
-            totalBytes += Encoding.UTF8.GetByteCount(entry.Key) + Encoding.UTF8.GetByteCount(entry.Value);
-            if (totalBytes > _options.MaxDetailMetadataBytes) {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    private bool HaveMetadataWithinByteLimit(IReadOnlyDictionary<string, string>? metadata)
+        => ProjectionChangedMetadataLimits.FitsSerializedByteLimit(metadata, _options.MaxDetailMetadataBytes);
 
     [GeneratedRegex(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", RegexOptions.Compiled)]
     private static partial Regex KebabCasePattern();

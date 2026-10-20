@@ -1,0 +1,9 @@
+{
+  "beforeWholeFileSha256": "380524e29e6544b96b5d4b20c63a07233946e5bb632b74d90cc739207ac9bf83",
+  "afterWholeFileSha256": "a4a970a6b0314c1112e15d19bb143c5c626206e48f46b9abd0145f052e90eff4",
+  "beforeSubjectSha256": "efd33e1ee81d2b988ae890400a2c3f6bb09a4a36ab884c812958fbc57a8b0a0e",
+  "afterSubjectSha256": "efd33e1ee81d2b988ae890400a2c3f6bb09a4a36ab884c812958fbc57a8b0a0e",
+  "subjectUnchanged": true,
+  "ownerDirection": "Enforce the serialized-byte limit in the approved story spec.",
+  "authority": "AD-8 alignment only; no ratification, profile, or promotion authority"
+}

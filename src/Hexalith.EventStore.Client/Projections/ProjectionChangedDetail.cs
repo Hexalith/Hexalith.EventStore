@@ -23,7 +23,8 @@ namespace Hexalith.EventStore.Client.Projections;
 /// </param>
 /// <param name="Metadata">
 /// Opaque, bounded metadata key/value pairs. Never authoritative content. Bounds (key count and
-/// total byte size) are enforced by the broadcaster at the framework boundary.
+/// compact JSON UTF-8 size, including punctuation and escaping) are enforced by the broadcaster
+/// at the framework boundary. The contract ceilings are 16 entries and 2,048 bytes.
 /// </param>
 public sealed record ProjectionChangedDetail(
     string ProjectionType,

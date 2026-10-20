@@ -1,0 +1,16 @@
+{
+  "command": [
+    "aspire",
+    "run",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--detach",
+    "--non-interactive"
+  ],
+  "environment": {
+    "EnableKeycloak": "false"
+  },
+  "startedUtc": "2026-10-20T02:30:52.692145+00:00",
+  "completedUtc": "2026-10-20T02:31:06.290568+00:00",
+  "exitCode": 0
+}

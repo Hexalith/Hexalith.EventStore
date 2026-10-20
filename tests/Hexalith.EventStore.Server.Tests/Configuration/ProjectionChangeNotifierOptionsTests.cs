@@ -161,6 +161,7 @@ public class ProjectionChangeNotifierOptionsTests {
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
+    [InlineData(17)]
     public void Validation_InvalidMetadataEntryLimit_Fails(int maxEntries) {
         var options = new ProjectionChangeNotifierOptions {
             MaxDetailMetadataEntries = maxEntries,
@@ -175,6 +176,8 @@ public class ProjectionChangeNotifierOptionsTests {
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
+    [InlineData(1)]
+    [InlineData(2_049)]
     public void Validation_InvalidMetadataByteLimit_Fails(int maxBytes) {
         var options = new ProjectionChangeNotifierOptions {
             MaxDetailMetadataBytes = maxBytes,

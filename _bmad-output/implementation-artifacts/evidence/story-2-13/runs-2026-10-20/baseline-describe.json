@@ -1,0 +1,14 @@
+{
+  "command": [
+    "aspire",
+    "describe",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--format",
+    "Json",
+    "--non-interactive"
+  ],
+  "startedUtc": "2026-10-20T02:31:40.591531+00:00",
+  "completedUtc": "2026-10-20T02:31:40.969303+00:00",
+  "exitCode": 0
+}

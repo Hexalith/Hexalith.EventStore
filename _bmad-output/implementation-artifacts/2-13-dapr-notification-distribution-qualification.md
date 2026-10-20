@@ -30,6 +30,10 @@ The current `ConfigureBackplane` in `src/Hexalith.EventStore/SignalRHub/SignalRS
 
 Dependencies: Story 2.8's delivered notification contracts and existing authorization/group semantics are the compatibility baseline. Story 3.17 is a coordination handoff for final inventory/guard disposition, not a cyclic execution prerequisite; do not require 3.17 conformance before collecting this story's qualification evidence. Existing production/profile/release gates and any external-service provisioning authority remain required.
 
+## Current Supporting Evidence
+
+The [October 20 qualification continuation](evidence/story-2-13/qualification-2026-10-20.md) records the user's clarification to enforce the approved serialized metadata ceiling, shared producer/receiver/broadcaster enforcement, and disposable two-host restart/rejoin/readback evidence. The retained Redis integration remains unresolved. Dynamic-topic distribution, real projection-triggered detail, the production issuer/profile, complete outage/freshness/rollback qualification, and authorized disposition remain open; this story stays backlog and supplies the unresolved Story 3.17 handoff.
+
 ## Required Comparison
 
 Compare the current self-hosted Redis topology with both candidates: Dapr pub/sub fan-out to every locally connected hub and `bindings.azure.signalr` output binding. Select no design by component name alone. Record exact runtime/client/component/provider versions, process topology, subscriptions, app IDs, scopes, authentication, and the supported operating envelope.

@@ -83,6 +83,13 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
     public Task RestartSecondSidecarAsync(CancellationToken cancellationToken)
         => Second.StartSidecarAsync(_componentsPath, cancellationToken);
 
+    /// <summary>Restarts the second complete replica with its original application and component configuration.</summary>
+    public async Task RestartSecondAsync(CancellationToken cancellationToken)
+    {
+        await Second.RestartApplicationAsync(cancellationToken).ConfigureAwait(false);
+        await Second.StartSidecarAsync(_componentsPath, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Retains exact component bytes, redacted process logs, and source/binary identities when requested.</summary>
     public async Task CaptureEvidenceAsync(
         string scenario,
@@ -123,7 +130,29 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             "src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs",
             "src/Hexalith.EventStore/Authentication/ProjectionNotificationProvenanceVerifier.cs",
             "src/Hexalith.EventStore/Validation/ProjectionChangedNotificationValidator.cs",
+            "src/Hexalith.EventStore/SignalRHub/ProjectionChangedHub.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalROptions.cs",
+            "src/Hexalith.EventStore/SignalRHub/ValidateSignalROptions.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofEndpoints.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofIdentity.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofBroadcastRequest.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofBroadcastResult.cs",
             "src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs",
+            "src/Hexalith.EventStore.Server/Projections/DaprProjectionChangeNotifier.cs",
+            "src/Hexalith.EventStore.Contracts/Projections/ProjectionChangedMetadataLimits.cs",
+            "src/Hexalith.EventStore.Server/Configuration/ProjectionChangeNotifierOptions.cs",
+            "src/Hexalith.EventStore.Server/Configuration/ValidateProjectionChangeNotifierOptions.cs",
+            "src/Hexalith.EventStore.Server/Configuration/ProjectionChangeTransport.cs",
+            "src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+            "src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj",
+            "src/Hexalith.EventStore.AppHost/Program.cs",
+            "src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml",
+            "deploy/dapr/subscription-projection-changed.yaml",
+            "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+            "_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md",
+            "_bmad-output/planning-artifacts/architecture.md",
+            "references/Hexalith.Builds/Props/Directory.Packages.props",
         ];
         string[] binaries = [
             "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
@@ -131,6 +160,13 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.deps.json",
             "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
         ];
+        foreach (string source in sources)
+        {
+            string retained = Path.Combine(directory, "sources", source);
+            Directory.CreateDirectory(Path.GetDirectoryName(retained)!);
+            File.Copy(Path.Combine(RepositoryRoot, source), retained, overwrite: false);
+        }
+
         var manifest = new
         {
             SchemaVersion = 1,
@@ -148,8 +184,8 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             SecondHostPort = Second.AppPort,
             Sources = sources.ToDictionary(path => path, path => HashFile(Path.Combine(RepositoryRoot, path)), StringComparer.Ordinal),
             Binaries = binaries.ToDictionary(path => path, path => HashFile(Path.Combine(RepositoryRoot, path)), StringComparer.Ordinal),
-            Artifacts = Directory.GetFiles(directory).Order(StringComparer.Ordinal)
-                .ToDictionary(path => Path.GetFileName(path), HashFile, StringComparer.Ordinal),
+            Artifacts = Directory.GetFiles(directory, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
+                .ToDictionary(path => Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/'), HashFile, StringComparer.Ordinal),
             Observations = observations,
         };
         await File.WriteAllTextAsync(

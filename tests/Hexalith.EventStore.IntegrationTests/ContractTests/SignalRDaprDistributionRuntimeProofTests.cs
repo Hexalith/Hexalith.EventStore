@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 
 using Dapr;
@@ -28,6 +29,225 @@ namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 public sealed class SignalRDaprDistributionRuntimeProofTests
 {
     private static readonly TimeSpan s_positiveWait = TimeSpan.FromSeconds(15);
+
+    /// <summary>Checks replica restart, lost-hint reconciliation, and serialized-metadata rejection on both hosts.</summary>
+    [Fact]
+    public async Task DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+    {
+        DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        string suffix = Guid.NewGuid().ToString("N")[..12];
+        string tenant = $"tenant-a-{suffix}";
+        string otherTenant = $"tenant-b-{suffix}";
+        string projection = $"restart-{suffix}";
+        string recoveryProjection = $"restored-{suffix}";
+        string scope = $"scope-{suffix}";
+        string topic = NamingConventionEngine.GetProjectionChangedTopic(projection, tenant);
+        string recoveryTopic = NamingConventionEngine.GetProjectionChangedTopic(recoveryProjection, tenant);
+        string readModelKey = $"story-2-13:{tenant}:{projection}";
+        await using SignalRDaprDistributionFixture fixture = await SignalRDaprDistributionFixture
+            .StartAsync([topic, recoveryTopic], cancellation.Token).ConfigureAwait(true);
+        int originalHostProcessId = fixture.Second.ApplicationProcessId;
+        int originalSidecarProcessId = fixture.Second.SidecarProcessId;
+        using DaprClient publisher = new DaprClientBuilder().UseGrpcEndpoint(fixture.First.DaprGrpcEndpoint).Build();
+        using DaprClient reader = new DaprClientBuilder().UseGrpcEndpoint(fixture.Second.DaprGrpcEndpoint).Build();
+        var writerStore = new DaprReadModelStore(publisher);
+        var readerStore = new DaprReadModelStore(reader);
+        await writerStore.SaveAsync("statestore", readModelKey,
+            new Dictionary<string, int> { ["version"] = 1 }, cancellation.Token).ConfigureAwait(true);
+        ReadModelEntry<Dictionary<string, int>> initial = await readerStore
+            .GetAsync<Dictionary<string, int>>("statestore", readModelKey, cancellation.Token).ConfigureAwait(true);
+        initial.Value!["version"].ShouldBe(1);
+
+        var firstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var secondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var firstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var secondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        await using HubConnection first = CreateConnection(fixture.First.AppEndpoint, tenant, firstSignals.Writer, firstDetails.Writer);
+        await using HubConnection second = CreateConnection(fixture.Second.AppEndpoint, tenant, secondSignals.Writer, secondDetails.Writer);
+        await first.StartAsync(cancellation.Token).ConfigureAwait(true);
+        await second.StartAsync(cancellation.Token).ConfigureAwait(true);
+        string? originalConnectionId = second.ConnectionId;
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        second.Closed += _ =>
+        {
+            closed.TrySetResult();
+            return Task.CompletedTask;
+        };
+        foreach (HubConnection connection in new[] { first, second })
+        {
+            await connection.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token).ConfigureAwait(true);
+        }
+
+        await publisher.PublishEventAsync("pubsub", topic,
+            new ProjectionChangedNotification(projection, tenant)
+            {
+                Provenance = CreateProvenance(projection, tenant, topic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        (await ReadAsync(secondSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+
+        await fixture.Second.StopAsync().ConfigureAwait(true);
+        await closed.Task.WaitAsync(s_positiveWait, cancellation.Token).ConfigureAwait(true);
+        using (var unavailable = CancellationTokenSource.CreateLinkedTokenSource(cancellation.Token))
+        {
+            unavailable.CancelAfter(TimeSpan.FromSeconds(3));
+            using var client = new HttpClient { BaseAddress = fixture.Second.AppEndpoint };
+            await Should.ThrowAsync<HttpRequestException>(() => client.GetAsync("/alive", unavailable.Token)).ConfigureAwait(true);
+        }
+
+        // The surviving host persists a newer value while the disconnected replica misses its hint.
+        await writerStore.SaveAsync("statestore", readModelKey,
+            new Dictionary<string, int> { ["version"] = 2 }, cancellation.Token).ConfigureAwait(true);
+        await publisher.PublishEventAsync("pubsub", topic,
+            new ProjectionChangedNotification(projection, tenant)
+            {
+                Provenance = CreateProvenance(projection, tenant, topic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        (await ReceivesWithinAsync(secondSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token).ConfigureAwait(true))
+            .ShouldBeFalse("the stopped replica cannot deliver the missed hint");
+
+        await fixture.RestartSecondAsync(cancellation.Token).ConfigureAwait(true);
+        fixture.Second.ApplicationProcessId.ShouldNotBe(originalHostProcessId);
+        fixture.Second.SidecarProcessId.ShouldNotBe(originalSidecarProcessId);
+        ReadModelEntry<Dictionary<string, int>> restored = await WaitForReadbackAsync(
+            readerStore, readModelKey, cancellation.Token).ConfigureAwait(true);
+        restored.Value!["version"].ShouldBe(2);
+        restored.ETag.ShouldNotBe(initial.ETag);
+
+        // A new authorized connection has no groups until it explicitly rejoins.
+        var restoredSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var restoredDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var deniedSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var deniedDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        await using HubConnection replacement = CreateConnection(fixture.Second.AppEndpoint, tenant, restoredSignals.Writer, restoredDetails.Writer);
+        await using HubConnection denied = CreateConnection(fixture.Second.AppEndpoint, otherTenant, deniedSignals.Writer, deniedDetails.Writer);
+        await replacement.StartAsync(cancellation.Token).ConfigureAwait(true);
+        replacement.ConnectionId.ShouldNotBe(originalConnectionId);
+        await denied.StartAsync(cancellation.Token).ConfigureAwait(true);
+        await Should.ThrowAsync<HubException>(() => denied.InvokeAsync(
+            "JoinGroup", recoveryProjection, tenant, cancellation.Token)).ConfigureAwait(true);
+        await Should.ThrowAsync<HubException>(() => denied.InvokeAsync(
+            "JoinGroupScoped", recoveryProjection, tenant, scope, cancellation.Token)).ConfigureAwait(true);
+        await denied.InvokeAsync("JoinGroup", recoveryProjection, otherTenant, cancellation.Token).ConfigureAwait(true);
+        await denied.InvokeAsync("JoinGroupScoped", recoveryProjection, otherTenant, scope, cancellation.Token).ConfigureAwait(true);
+
+        await publisher.PublishEventAsync("pubsub", topic,
+            new ProjectionChangedNotification(projection, tenant)
+            {
+                Provenance = CreateProvenance(projection, tenant, topic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        (await ReceivesWithinAsync(restoredSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token).ConfigureAwait(true))
+            .ShouldBeFalse("the old process's membership must not authorize the replacement connection");
+
+        // A previously unused topic excludes replayed outage messages from the recovery control.
+        foreach (HubConnection connection in new[] { first, replacement })
+        {
+            await connection.InvokeAsync("JoinGroup", recoveryProjection, tenant, cancellation.Token).ConfigureAwait(true);
+            await connection.InvokeAsync("JoinGroupScoped", recoveryProjection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+        }
+
+        await publisher.PublishEventAsync("pubsub", recoveryTopic,
+            new ProjectionChangedNotification(recoveryProjection, tenant)
+            {
+                Provenance = CreateProvenance(recoveryProjection, tenant, recoveryTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((recoveryProjection, tenant));
+        (await ReadAsync(restoredSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((recoveryProjection, tenant));
+        var validMetadata = new Dictionary<string, string> { ["opaque"] = "restart-control" };
+        await publisher.PublishEventAsync("pubsub", recoveryTopic,
+            new ProjectionChangedNotification(recoveryProjection, tenant, GroupScope: scope, Metadata: validMetadata)
+            {
+                Provenance = CreateProvenance(recoveryProjection, tenant, recoveryTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstDetails.Reader, cancellation.Token).ConfigureAwait(true)).Metadata.ShouldBe(validMetadata);
+        (await ReadAsync(restoredDetails.Reader, cancellation.Token).ConfigureAwait(true)).Metadata.ShouldBe(validMetadata);
+
+        // Inject a raw notice through Dapr to verify receiver rejection independently of producer clipping.
+        var oversizedJsonMetadata = Enumerable.Range(0, 16)
+            .ToDictionary(i => $"k{i:D2}", _ => new string('x', 124), StringComparer.Ordinal);
+        int keyValueBytes = Encoding.UTF8.GetByteCount(string.Concat(oversizedJsonMetadata.Select(entry => entry.Key + entry.Value)));
+        int serializedBytes = JsonSerializer.SerializeToUtf8Bytes(oversizedJsonMetadata).Length;
+        keyValueBytes.ShouldBe(2_032);
+        serializedBytes.ShouldBe(2_129);
+        IReadOnlyDictionary<string, string>[] oversizedVectors = [
+            oversizedJsonMetadata,
+            new Dictionary<string, string> { ["k"] = new string('\\', 1_021) },
+            new Dictionary<string, string> { ["k"] = new string('é', 342) },
+        ];
+        foreach (IReadOnlyDictionary<string, string> oversized in oversizedVectors)
+        {
+            JsonSerializer.SerializeToUtf8Bytes(oversized).Length.ShouldBeGreaterThan(2_048);
+            await publisher.PublishEventAsync("pubsub", recoveryTopic,
+                new ProjectionChangedNotification(recoveryProjection, tenant, GroupScope: scope, Metadata: oversized)
+                {
+                    Provenance = CreateProvenance(recoveryProjection, tenant, recoveryTopic),
+                }, cancellation.Token).ConfigureAwait(true);
+        }
+        (await ReceivesWithinAsync(firstDetails.Reader, TimeSpan.FromSeconds(2), cancellation.Token).ConfigureAwait(true))
+            .ShouldBeFalse("host A must reject JSON overhead beyond the serialized contract ceiling");
+        (await ReceivesWithinAsync(restoredDetails.Reader, TimeSpan.FromSeconds(2), cancellation.Token).ConfigureAwait(true))
+            .ShouldBeFalse("host B must reject the same oversized map after restart");
+        var boundaryMetadata = new Dictionary<string, string> { ["k"] = new string('x', 2_040) };
+        JsonSerializer.SerializeToUtf8Bytes(boundaryMetadata).Length.ShouldBe(2_048);
+        await publisher.PublishEventAsync("pubsub", recoveryTopic,
+            new ProjectionChangedNotification(recoveryProjection, tenant, GroupScope: scope, Metadata: boundaryMetadata)
+            {
+                Provenance = CreateProvenance(recoveryProjection, tenant, recoveryTopic),
+            }, cancellation.Token).ConfigureAwait(true);
+        (await ReadAsync(firstDetails.Reader, cancellation.Token).ConfigureAwait(true)).Metadata.ShouldBe(boundaryMetadata);
+        (await ReadAsync(restoredDetails.Reader, cancellation.Token).ConfigureAwait(true)).Metadata.ShouldBe(boundaryMetadata);
+        string[][] rejectedCallbackIds = await Task.WhenAll(
+            WaitForMetadataRejectionIdsAsync(fixture.First, recoveryTopic, oversizedVectors.Length, cancellation.Token),
+            WaitForMetadataRejectionIdsAsync(fixture.Second, recoveryTopic, oversizedVectors.Length, cancellation.Token)).ConfigureAwait(true);
+        rejectedCallbackIds[0].Length.ShouldBe(oversizedVectors.Length);
+        rejectedCallbackIds[1].ShouldBe(rejectedCallbackIds[0],
+            "both hosts must process and reject the same three injected callbacks; repeated log wrappers count once");
+        bool[] deniedDelivery = await Task.WhenAll(
+            ReceivesWithinAsync(deniedSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivesWithinAsync(deniedDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
+        deniedDelivery.Any(static received => received).ShouldBeFalse();
+        ReadModelEntry<Dictionary<string, int>> final = await readerStore
+            .GetAsync<Dictionary<string, int>>("statestore", readModelKey, cancellation.Token).ConfigureAwait(true);
+        final.Value!["version"].ShouldBe(2);
+        final.ETag.ShouldBe(restored.ETag, "replayed and oversized hints must not advance persisted state");
+        await fixture.CaptureEvidenceAsync("replica-restart-and-serialized-bounds", startedUtc, new
+        {
+            Tenant = tenant,
+            OtherTenant = otherTenant,
+            Topic = topic,
+            RecoveryTopic = recoveryTopic,
+            Scope = scope,
+            OriginalHostProcessId = originalHostProcessId,
+            OriginalSidecarProcessId = originalSidecarProcessId,
+            OriginalConnectionId = originalConnectionId,
+            ReplacementConnectionId = replacement.ConnectionId,
+            DeniedConnectionId = denied.ConnectionId,
+            ReadModelKey = readModelKey,
+            InitialVersion = initial.Value!["version"],
+            FinalVersion = final.Value["version"],
+            InitialETag = initial.ETag,
+            FinalETag = final.ETag,
+            MetadataEntries = oversizedJsonMetadata.Count,
+            MetadataKeyValueUtf8Bytes = keyValueBytes,
+            MetadataSerializedUtf8Bytes = serializedBytes,
+            RejectedSerializedVectorBytes = oversizedVectors.Select(vector => JsonSerializer.SerializeToUtf8Bytes(vector).Length).ToArray(),
+            FirstRejectedCallbackEventIds = rejectedCallbackIds[0],
+            SecondRejectedCallbackEventIds = rejectedCallbackIds[1],
+            SerializedMetadataCeilingQualified = true,
+            ExactBoundaryAcceptedOnBothHosts = 2_048,
+            QualificationDisposition = "unresolved-production-profile-and-disposition",
+            Scenarios = new[] { "complete-replica-stop-and-new-process-identity", "bounded-host-unavailable",
+                "missed-hint-reconciliation-through-dapr", "no-inherited-group-membership", "reauthorized-scoped-rejoin",
+                "fresh-unused-topic-signal-detail-control", "wrong-tenant-rejoin-denied",
+                "serialized-oversize-rejected-on-both-hosts-with-exact-boundary-control" },
+            Limits = new[] { "synthetic-state-not-real-projection",
+                "no-production-profile-or-disposition-approval", "no-provider-network-outage-or-transition-rollback",
+                "no-canonical-ui-freshness-proof" },
+        }, cancellation.Token).ConfigureAwait(true);
+    }
 
     /// <summary>Checks two real hosts, independent sidecars, scoped clients, and logical Dapr readback.</summary>
     [Fact]
@@ -420,7 +640,7 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
             logs.ShouldContain(WorkloadAuthenticationReasons.BindingMismatch);
             logs.ShouldContain(WorkloadAuthenticationReasons.AssertionExpired);
             logs.ShouldContain("Metadata cannot exceed 16 entries");
-            logs.ShouldContain("Metadata cannot exceed 2048 UTF-8 bytes");
+            logs.ShouldContain("Metadata cannot exceed 2048 serialized UTF-8 bytes");
         }
 
         string? evidencePath = Environment.GetEnvironmentVariable("HEXALITH_STORY_2_13_EVIDENCE_PATH");
@@ -522,6 +742,30 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
                 "JoinGroupScoped", projection, tenantA, "forged-scope", cancellationToken)).ConfigureAwait(true);
             await Should.ThrowAsync<HubException>(() => denied.InvokeAsync(
                 "JoinGroup", projection, "malformed:tenant", cancellationToken)).ConfigureAwait(true);
+        }
+    }
+
+    private static async Task<string[]> WaitForMetadataRejectionIdsAsync(
+        SignalRDaprDistributionNode node,
+        string topic,
+        int expectedCount,
+        CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        string pattern = @"processing pub/sub event (?<id>[^, ]+), topic: " + Regex.Escape(topic)
+            + @", body: .*Metadata cannot exceed 2048 serialized UTF-8 bytes";
+        while (true)
+        {
+            string[] rejected = Regex.Matches(node.SnapshotRedactedLogs(), pattern)
+                .Select(match => match.Groups["id"].Value)
+                .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            if (rejected.Length >= expectedCount)
+            {
+                return rejected;
+            }
+
+            await Task.Delay(50, timeout.Token).ConfigureAwait(false);
         }
     }
 

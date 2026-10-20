@@ -1,0 +1,31 @@
+{
+  "recordedUtc": "2026-10-20T03:03:23.417623+00:00",
+  "bindings": {
+    "Hexalith.EventStore.Contracts.dll": {
+      "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "d0e6d77cf98a66d37791b5af67c9881362f93cc7d2686efafe37f74c7c76fc37",
+      "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "d0e6d77cf98a66d37791b5af67c9881362f93cc7d2686efafe37f74c7c76fc37",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "d0e6d77cf98a66d37791b5af67c9881362f93cc7d2686efafe37f74c7c76fc37"
+    },
+    "Hexalith.EventStore.Server.dll": {
+      "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "90688b6be69d53cff5a473195728b6c69832ab244b93a5df7e347486671689e7",
+      "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "90688b6be69d53cff5a473195728b6c69832ab244b93a5df7e347486671689e7",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "90688b6be69d53cff5a473195728b6c69832ab244b93a5df7e347486671689e7"
+    },
+    "Hexalith.EventStore.Client.dll": {
+      "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "7bfb5587025c094c98d91e70833e5fe09ff8d66c8d28b9248d52ea2c01a3b316",
+      "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "7bfb5587025c094c98d91e70833e5fe09ff8d66c8d28b9248d52ea2c01a3b316",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "7bfb5587025c094c98d91e70833e5fe09ff8d66c8d28b9248d52ea2c01a3b316"
+    },
+    "Hexalith.EventStore.Gateway.dll": {
+      "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "7449d5cd7d262fa706b5f6103e4b3a26f7d1d2e91b4eefe4ed956ea987273607",
+      "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "7449d5cd7d262fa706b5f6103e4b3a26f7d1d2e91b4eefe4ed956ea987273607",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "7449d5cd7d262fa706b5f6103e4b3a26f7d1d2e91b4eefe4ed956ea987273607"
+    },
+    "Hexalith.EventStore.ServiceDefaults.dll": {
+      "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "4444876e008aeb720954308770027b80a9ae7cbcc587c62f3662773a9c4ccd01",
+      "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "4444876e008aeb720954308770027b80a9ae7cbcc587c62f3662773a9c4ccd01",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "4444876e008aeb720954308770027b80a9ae7cbcc587c62f3662773a9c4ccd01"
+    }
+  },
+  "scope": "host and both focused test executable directories contain identical runtime library bytes"
+}

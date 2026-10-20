@@ -7,7 +7,7 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: draft
 created: 2026-07-05
-updated: 2026-10-07
+updated: 2026-10-20
 binds:
   - FR1-FR37
   - NFR1-NFR19
@@ -165,7 +165,7 @@ flowchart LR
 
 - **Binds:** FR7, FR16, FR34, FR36, NFR5-NFR6, NFR12, NFR15-NFR16
 - **Prevents:** transport acknowledgement being presented as projection-confirmed success.
-- **Rule:** Domain-event pub/sub delivery is at-least-once and unordered. Consumers deduplicate by `MessageId`; sequence guards are scoped to tenant/domain/aggregate/projection. Completed duplicates are no-ops, in-progress duplicates retry, and gaps do not advance checkpoints. SignalR carries metadata-only freshness notifications whose detail metadata is limited to 16 entries and 2,048 total UTF-8 bytes of keys plus values, with opaque keys and values logged only at Debug or below. Those limits are `Contracts`-owned ceilings read by both notifier and hub; options may lower but never raise them, the receiver rejects an oversized notification, and the broadcaster clips. User-visible success requires read-model evidence.
+- **Rule:** Domain-event pub/sub delivery is at-least-once and unordered. Consumers deduplicate by `MessageId`; sequence guards are scoped to tenant/domain/aggregate/projection. Completed duplicates are no-ops, in-progress duplicates retry, and gaps do not advance checkpoints. SignalR carries metadata-only freshness notifications whose detail metadata is limited to 16 entries and 2,048 serialized UTF-8 bytes of the compact default System.Text.Json metadata object, including punctuation and escaping, with opaque keys and values logged only at Debug or below. Those limits are `Contracts`-owned ceilings read by both notifier and hub; options may lower but never raise them, the receiver rejects an oversized notification, and the broadcaster clips. User-visible success requires read-model evidence.
 
 **Freshness signals.** Projection-change signals (ETag-validator regeneration and SignalR notifications) are best-effort hints whose redelivery depends on transport. `Direct`, the default and today the only production-eligible transport (owner decision 2026-10-07), is one Dapr actor invocation plus broadcast from the replica that runs the projection actor, with no redelivery; `PubSub` is at-least-once and permitted only with AD-36 resource-bound provenance. `PubSub` and any Story 2.13 fan-out become production-eligible only through an AD-26 profile change that names a binding-capable issuer. Consumers tolerate lost, duplicated, and reordered signals; neither a signal nor its absence is completion or freshness evidence, and a forged, unbound, or mismatched callback changes no ETag, freshness, or broadcast state. A denied, expired, or unbound freshness signal follows this cataloged freshness-only policy: it is acknowledged and dropped with a bounded metric, never captured with its credential, and never replayed. Multi-replica distribution remains unresolved under Story 2.13, and the retained Redis backplane is not an accepted exception.
 

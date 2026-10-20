@@ -14,6 +14,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     private readonly ConcurrentQueue<string> _sidecarLog = new();
     private Process? _application;
     private Process? _sidecar;
+    private ProcessStartInfo? _applicationStartInfo;
 
     /// <summary>Initializes one isolated process pair.</summary>
     public SignalRDaprDistributionNode(string name)
@@ -117,6 +118,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         }
         _ = application.Environment.Remove("EVENTSTORE_SIGNALR_REDIS");
         _ = application.Environment.Remove("EventStore__SignalR__BackplaneRedisConnectionString");
+        _applicationStartInfo = application;
         _application = StartCapturedProcess(application, _applicationLog);
 
         await StartSidecarAsync(componentsPath, cancellationToken).ConfigureAwait(false);
@@ -128,6 +130,26 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     {
         await StopProcessAsync(_sidecar).ConfigureAwait(false);
         _sidecar = null;
+    }
+
+    /// <summary>Stops the owned replica and sidecar, leaving its configuration available for restart.</summary>
+    public async Task StopAsync()
+    {
+        await StopSidecarAsync().ConfigureAwait(false);
+        await StopProcessAsync(_application).ConfigureAwait(false);
+        _application = null;
+    }
+
+    /// <summary>Restarts the same application configuration without inheriting any old hub membership.</summary>
+    public async Task RestartApplicationAsync(CancellationToken cancellationToken)
+    {
+        if (_application is not null || _applicationStartInfo is null)
+        {
+            throw new InvalidOperationException("Stop a previously started application before restarting it.");
+        }
+
+        _application = StartCapturedProcess(_applicationStartInfo, _applicationLog);
+        await WaitForHealthyAsync(AppEndpoint, "/alive", _application, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Starts this node's sidecar after an outage.</summary>
@@ -241,8 +263,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        await StopProcessAsync(_sidecar).ConfigureAwait(false);
-        await StopProcessAsync(_application).ConfigureAwait(false);
+        await StopAsync().ConfigureAwait(false);
     }
 
     private static int ReservePort()

@@ -1,0 +1,129 @@
+{
+  "startedUtc": "2026-10-20T02:33:58.885689+00:00",
+  "sourceRevision": "b16be63521e8b784fc68828e0267f892b8e45924",
+  "frozenBaseline": "f2b480b68a8bd5369b3cdf550340e0fadfb2332b",
+  "inotifyMaxUserWatches": "8388608",
+  "tools": {
+    "sdk": {
+      "command": [
+        "dotnet",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "10.0.402\n"
+    },
+    "runtimes": {
+      "command": [
+        "dotnet",
+        "--list-runtimes"
+      ],
+      "exitCode": 0,
+      "output": "Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.AspNetCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.AspNetCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.AspNetCore.App 10.0.13 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\nMicrosoft.NETCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\nMicrosoft.NETCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\nMicrosoft.NETCore.App 10.0.13 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n"
+    },
+    "dapr": {
+      "command": [
+        "dapr",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "CLI version: 1.18.2 \nRuntime version: 1.18.7\n"
+    },
+    "daprd": {
+      "command": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "1.18.7\n"
+    },
+    "aspire": {
+      "command": [
+        "aspire",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8\n"
+    },
+    "containers": {
+      "command": [
+        "docker",
+        "ps",
+        "--format",
+        "{{json .}}"
+      ],
+      "exitCode": 0,
+      "output": "{\"Command\":\"\\\"./placement\\\"\",\"CreatedAt\":\"2026-10-18 22:51:46 +0200 CEST\",\"HealthStatus\":\"none\",\"ID\":\"f1e0a30a3a93\",\"Image\":\"daprio/dapr:1.18.7\",\"Labels\":\"desktop.docker.io/ports.scheme=v2,desktop.docker.io/ports/50005/tcp=:50005,desktop.docker.io/ports/8080/tcp=:58080,desktop.docker.io/ports/9090/tcp=:59090,desktop.docker.io/wsl-distro=Ubuntu-26.04\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Names\":\"dapr_placement\",\"Networks\":\"bridge\",\"Platform\":{\"architecture\":\"amd64\",\"os\":\"linux\"},\"Ports\":\"0.0.0.0:50005-\\u003e50005/tcp, [::]:50005-\\u003e50005/tcp, 0.0.0.0:58080-\\u003e8080/tcp, [::]:58080-\\u003e8080/tcp, 0.0.0.0:59090-\\u003e9090/tcp, [::]:59090-\\u003e9090/tcp\",\"RunningFor\":\"30 hours ago\",\"Size\":\"4.1kB (virtual 501MB)\",\"State\":\"running\",\"Status\":\"Up 11 hours\"}\n{\"Command\":\"\\\"./scheduler --etcd-\u2026\\\"\",\"CreatedAt\":\"2026-10-18 22:51:46 +0200 CEST\",\"HealthStatus\":\"none\",\"ID\":\"8623af8b7bbd\",\"Image\":\"daprio/dapr:1.18.7\",\"Labels\":\"desktop.docker.io/ports.scheme=v2,desktop.docker.io/ports/2379/tcp=:2379,desktop.docker.io/ports/50006/tcp=:50006,desktop.docker.io/ports/8080/tcp=:58081,desktop.docker.io/ports/9090/tcp=:59091,desktop.docker.io/wsl-distro=Ubuntu-26.04\",\"LocalVolumes\":\"1\",\"Mounts\":\"dapr_scheduler\",\"Names\":\"dapr_scheduler\",\"Networks\":\"bridge\",\"Platform\":{\"architecture\":\"amd64\",\"os\":\"linux\"},\"Ports\":\"0.0.0.0:2379-\\u003e2379/tcp, [::]:2379-\\u003e2379/tcp, 0.0.0.0:50006-\\u003e50006/tcp, [::]:50006-\\u003e50006/tcp, 0.0.0.0:58081-\\u003e8080/tcp, [::]:58081-\\u003e8080/tcp, 0.0.0.0:59091-\\u003e9090/tcp, [::]:59091-\\u003e9090/tcp\",\"RunningFor\":\"30 hours ago\",\"Size\":\"4.1kB (virtual 501MB)\",\"State\":\"running\",\"Status\":\"Up 11 hours\"}\n{\"Command\":\"\\\"docker-entrypoint.s\u2026\\\"\",\"CreatedAt\":\"2026-09-18 17:42:19 +0200 CEST\",\"HealthStatus\":\"none\",\"ID\":\"8d0788f8322f\",\"Image\":\"redis:6\",\"Labels\":\"desktop.docker.io/ports.scheme=v2,desktop.docker.io/ports/6379/tcp=:6379\",\"LocalVolumes\":\"1\",\"Mounts\":\"338a877d42c5b8\u2026\",\"Names\":\"dapr_redis\",\"Networks\":\"bridge\",\"Platform\":{\"architecture\":\"amd64\",\"os\":\"linux\"},\"Ports\":\"0.0.0.0:6379-\\u003e6379/tcp, [::]:6379-\\u003e6379/tcp\",\"RunningFor\":\"4 weeks ago\",\"Size\":\"12.3kB (virtual 117MB)\",\"State\":\"running\",\"Status\":\"Up 11 hours\"}\n{\"Command\":\"\\\"start-zipkin\\\"\",\"CreatedAt\":\"2026-09-18 17:42:19 +0200 CEST\",\"HealthStatus\":\"healthy\",\"ID\":\"cb7c12622c18\",\"Image\":\"openzipkin/zipkin\",\"Labels\":\"alpine-version=3.21.3,desktop.docker.io/ports.scheme=v2,desktop.docker.io/ports/9411/tcp=:9411,java-home=/usr/lib/jvm/java-21-openjdk,java-version=21.0.7_p6,maintainer=OpenZipkin https://gitter.im/openzipkin/zipkin,maven-version=3.9.9,org.opencontainers.image.authors=OpenZipkin https://gitter.im/openzipkin/zipkin,org.opencontainers.image.created=2025-04-27,org.opencontainers.image.description=Zipkin full distribution on OpenJDK and Alpine Linux,org.opencontainers.image.revision=b7e22588e\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Names\":\"dapr_zipkin\",\"Networks\":\"bridge\",\"Platform\":{\"architecture\":\"amd64\",\"os\":\"linux\"},\"Ports\":\"0.0.0.0:9411-\\u003e9411/tcp, [::]:9411-\\u003e9411/tcp\",\"RunningFor\":\"4 weeks ago\",\"Size\":\"23.6MB (virtual 253MB)\",\"State\":\"running\",\"Status\":\"Up 11 hours (healthy)\"}\n"
+    }
+  },
+  "retention": "diagnostic local identities; no production authority",
+  "sources": {
+    "global.json": "4d68d33fed8fe6c461c285b1e8c6db3c58c7cd951a61c0c8e26f60fc0da507c7",
+    "Directory.Packages.props": "db5d5fe58b48b384b9bd311e22cc29cccc4fdb41fe5bcb29ac39d5439f98a58e",
+    "references/Hexalith.Builds/Props/Directory.Packages.props": "806922385b3209e0f396ccb8478870bfca59a60ac9432fd6c97c63a22b34f337",
+    "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md": "40ee4466a02c213b620cd6d0e092314777b609b76b2303ceecb526326a874d6f",
+    "_bmad-output/planning-artifacts/architecture.md": "380524e29e6544b96b5d4b20c63a07233946e5bb632b74d90cc739207ac9bf83"
+  },
+  "evaluatedLibraries": {
+    "Aspire.Hosting/13.6.1": "package",
+    "Aspire.Hosting.AppHost/13.6.1": "package",
+    "Aspire.Hosting.Azure/13.6.1": "package",
+    "Aspire.Hosting.Azure.AppContainers/13.6.1": "package",
+    "Aspire.Hosting.Azure.ContainerRegistry/13.6.1": "package",
+    "Aspire.Hosting.Azure.OperationalInsights/13.6.1": "package",
+    "Aspire.Hosting.Docker/13.6.1": "package",
+    "Aspire.Hosting.Keycloak/13.6.1-preview.1.26506.6": "package",
+    "Aspire.Hosting.Kubernetes/13.6.1-preview.1.26506.6": "package",
+    "Aspire.Hosting.Redis/13.6.1": "package",
+    "Aspire.Hosting.Testing/13.6.1": "package",
+    "CommunityToolkit.Aspire.Hosting.Dapr/13.6.1-beta.935": "package",
+    "Dapr.Actors/1.18.10": "package",
+    "Dapr.Actors.AspNetCore/1.18.10": "package",
+    "Dapr.AspNetCore/1.18.10": "package",
+    "Dapr.Client/1.18.10": "package",
+    "Dapr.Common/1.18.10": "package",
+    "Dapr.Protos/1.18.10": "package",
+    "Microsoft.AspNetCore.SignalR.Client/10.0.13": "package",
+    "Microsoft.AspNetCore.SignalR.Client.Core/10.0.13": "package",
+    "Microsoft.AspNetCore.SignalR.StackExchangeRedis/10.0.13": "package",
+    "StackExchange.Redis/3.4.5": "package",
+    "xunit.v3/4.0.2": "package",
+    "xunit.v3.assert/4.0.2": "package",
+    "xunit.v3.common/4.0.2": "package",
+    "xunit.v3.core.mtp-v2/4.0.2": "package",
+    "xunit.v3.extensibility.core/4.0.2": "package",
+    "xunit.v3.mtp-v2/4.0.2": "package",
+    "xunit.v3.runner.common/4.0.2": "package",
+    "xunit.v3.runner.inproc.console/4.0.2": "package",
+    "Aspire.Hosting.Orchestration.linux-x64/13.6.1": "package"
+  },
+  "buildsGitlink": "160000 commit b435f2e3b3892e03f69322d24de6003b0baf7a7d\treferences/Hexalith.Builds",
+  "retainedInputs": {
+    "global.json": "profile-inputs/global.json",
+    "Directory.Packages.props": "profile-inputs/Directory.Packages.props",
+    "references/Hexalith.Builds/Props/Directory.Packages.props": "profile-inputs/references/Hexalith.Builds/Props/Directory.Packages.props",
+    "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md": "profile-inputs/_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+    "_bmad-output/planning-artifacts/architecture.md": "profile-inputs/_bmad-output/planning-artifacts/architecture.md"
+  },
+  "providerDiagnostics": [
+    {
+      "containerId": "f1e0a30a3a93",
+      "name": "dapr_placement",
+      "image": "daprio/dapr:1.18.7",
+      "localImageId": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc"
+    },
+    {
+      "containerId": "8623af8b7bbd",
+      "name": "dapr_scheduler",
+      "image": "daprio/dapr:1.18.7",
+      "localImageId": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc"
+    },
+    {
+      "containerId": "8d0788f8322f",
+      "name": "dapr_redis",
+      "image": "redis:6",
+      "localImageId": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "serverVersion": "6.2.21"
+    }
+  ],
+  "runtimeExecutableSha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+}
