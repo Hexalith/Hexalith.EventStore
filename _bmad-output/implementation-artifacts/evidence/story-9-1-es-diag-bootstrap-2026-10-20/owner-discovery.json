@@ -1,0 +1,28 @@
+{
+  "retrieved_at": "2026-10-20T12:54:43.291045+00:00",
+  "method": "read-only authenticated gh api",
+  "repository": "Hexalith/Hexalith.EventStore",
+  "human": {
+    "github_id": 6775094,
+    "github_login": "jpiquot",
+    "type": "User"
+  },
+  "verified_repository_permission": "admin",
+  "verified_organization_membership": {
+    "state": "active",
+    "role": "admin"
+  },
+  "historical_story_3_15_roster_reused": false,
+  "attestation_posted": false,
+  "authority_issue": 371,
+  "approvals_issue": 371,
+  "verified_issue_url": "https://github.com/Hexalith/Hexalith.EventStore/issues/371",
+  "issue_created_by_agent_with_user_permission": true,
+  "owner_role": "eventstore-owner",
+  "user_role_confirmation": "I am the owner and only contributor. I can approve.",
+  "owner_receipts_posted_by_agent": false,
+  "pre_creation_matching_story_9_1_authority_or_approval_issues": [],
+  "matching_story_9_1_authority_or_approval_issues": [
+    371
+  ]
+}

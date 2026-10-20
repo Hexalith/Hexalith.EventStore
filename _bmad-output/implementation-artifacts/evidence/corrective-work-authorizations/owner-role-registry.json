@@ -1,0 +1,1 @@
+{"approvals_issue":371,"authority_issue":371,"authority_owner":{"github_id":6775094,"github_login":"jpiquot"},"created_at":"2026-10-20T12:59:06Z","owners":[{"github_id":6775094,"github_login":"jpiquot","roles":["eventstore-owner"]}],"repository":"Hexalith/Hexalith.EventStore","schema":"hexalith.corrective-owner-registry.v1","version":1}
