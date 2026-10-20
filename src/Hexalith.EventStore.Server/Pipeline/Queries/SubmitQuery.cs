@@ -179,7 +179,8 @@ public record SubmitQuery(
             && StringSequenceEquals(Scopes, other.Scopes)
             && StringSequenceEquals(Audience, other.Audience)
             && DelegationId == other.DelegationId
-            && IdentityAdmissionProof == other.IdentityAdmissionProof;
+            && IdentityAdmissionProof == other.IdentityAdmissionProof
+            && CallerAuthority == other.CallerAuthority;
     }
 
     /// <inheritdoc/>
@@ -205,6 +206,7 @@ public record SubmitQuery(
         AddStringSequenceHash(ref hash, Audience);
         hash.Add(DelegationId);
         hash.Add(IdentityAdmissionProof);
+        hash.Add(CallerAuthority);
         return hash.ToHashCode();
     }
 

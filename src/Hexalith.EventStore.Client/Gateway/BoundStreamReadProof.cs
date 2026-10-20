@@ -82,7 +82,7 @@ public static class BoundStreamReadProof
     private static bool ValidScope(StreamReadRequest request)
         => !string.IsNullOrWhiteSpace(request.Tenant) && !string.IsNullOrWhiteSpace(request.Domain) &&
             !string.IsNullOrWhiteSpace(request.AggregateId) &&
-            request.Tenant.Length <= 200 && request.Domain.Length <= 200 && request.AggregateId.Length <= 200;
+            request.Tenant.Length <= 200 && request.Domain.Length <= 200 && request.AggregateId.Length <= 256;
 
     private static string Base64UrlEncode(byte[] bytes)
         => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');

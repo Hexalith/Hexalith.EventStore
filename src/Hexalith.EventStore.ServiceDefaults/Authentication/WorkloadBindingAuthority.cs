@@ -26,7 +26,8 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
         ArgumentNullException.ThrowIfNull(details);
         WorkloadAuthorityOptions current = options.CurrentValue;
         DateTimeOffset now = timeProvider.GetUtcNow();
-        if (!Usable(current) || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret)
+        if (!Usable(current) || details.Type != WorkloadAuthorizationDetails.Profile
+            || string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret)
             || clientSecret.Length < 32 || clientSecret.Length > 4096
             || scope != new WorkloadAssertionIssuerOptions().BuildScope(details.Audience, details.Operation)
             || WorkloadAuthorizationDetails.Decode(WorkloadAuthorizationDetails.Encode(new(details.Audience, details.Operation, details.Bindings))) is null)
@@ -36,9 +37,7 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
             && !string.IsNullOrWhiteSpace(grant.Workload) && now >= grant.NotBefore && now < grant.ExpiresAt
             && grant.Audience == details.Audience && grant.Operations is not null && grant.Bindings is not null
             && grant.Operations.Contains(details.Operation, StringComparer.Ordinal)
-            && (details.Bindings.Count > 0 ? details.Bindings.Count == grant.Bindings.Count : grant.AllowUnbound)
-            && details.Bindings.All(binding => grant.Bindings.TryGetValue(binding.Key, out string[]? allowed)
-                && allowed is not null && allowed.Contains(binding.Value, StringComparer.Ordinal)))];
+            && PermitsBindings(grant, details))];
         if (candidates.Length != 1 || !MatchesSecret(clientSecret, candidates[0].ClientSecretSha256)) return null;
         WorkloadAuthorityGrant approved = candidates[0];
         try
@@ -148,5 +147,22 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
         byte[] actual = SHA256.HashData(Encoding.UTF8.GetBytes(secret));
         try { return CryptographicOperations.FixedTimeEquals(actual, Convert.FromHexString(expected)); }
         finally { CryptographicOperations.ZeroMemory(actual); }
+    }
+
+    private static bool PermitsBindings(WorkloadAuthorityGrant grant, WorkloadAuthorizationDetails details)
+    {
+        bool queryDigest = details.Bindings.ContainsKey(QueryCallerAuthorityBinding.DigestClaim);
+        if (grant.AllowQueryAuthorityDigest && details.Operation == EventStoreWorkloadOperations.DomainServiceQuery && !queryDigest) return false;
+        if (details.Bindings.Count == 0) return grant.AllowUnbound;
+        if (queryDigest && (!grant.AllowQueryAuthorityDigest || details.Operation != EventStoreWorkloadOperations.DomainServiceQuery
+            || grant.Bindings.Count != 2
+            || !grant.Bindings.ContainsKey(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)
+            || !grant.Bindings.ContainsKey(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType)
+            || grant.Bindings.Any(static binding => binding.Value is null || binding.Value.Length == 0
+                || binding.Value.Any(static value => string.IsNullOrWhiteSpace(value) || value.Contains('*'))))) return false;
+        return details.Bindings.Count == grant.Bindings.Count + (queryDigest ? 1 : 0)
+            && details.Bindings.All(binding => queryDigest && binding.Key == QueryCallerAuthorityBinding.DigestClaim
+                || grant.Bindings.TryGetValue(binding.Key, out string[]? allowed)
+                    && allowed is not null && allowed.Contains(binding.Value, StringComparer.Ordinal));
     }
 }

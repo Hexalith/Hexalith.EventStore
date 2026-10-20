@@ -1,0 +1,78 @@
+{
+  "eventstore_baseline": "1eaabca4f8d3597a3a1f9fadf341be5cb9a3a8c0",
+  "source_state": "uncommitted working changes; no publication or deployment",
+  "changed_source_and_test_files": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Gateway/BoundOwnerQueryProof.cs",
+      "sha256": "6964294cca11da3847ddee133ef5c94678ff6f543b08aab12e845f0aef138ce2"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Client/Gateway/BoundStreamReadProof.cs",
+      "sha256": "1649b0f1e3ed3d47cd2c47f86d0e17a9c7f6c2f730c4e212a176b15ac6d4bd19"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Queries/OriginatingQueryContext.cs",
+      "sha256": "a69d7b497b9000b2b76c2a1c4046c65154b2ce5ce363c84c44e8731c88b709d1"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Contracts/Queries/QueryCallerAuthority.cs",
+      "sha256": "1729de65ba8e7e7c4851f3625dfbecdb2154fbbbfc275cfd392af4bfec86a93f"
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/VerifiedQueryCaller.cs",
+      "sha256": "b799b9b224ed6c9119608a0c79139f10b62e2460ee1f929c6c5140dc6fc8fa1a"
+    },
+    {
+      "path": "src/Hexalith.EventStore.Server/Pipeline/Queries/SubmitQuery.cs",
+      "sha256": "ac4eafb6a83093fbafdd0c8f58e288234d6fe6bd5f9356429bf09696869fad16"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/QueryCallerAuthorityBinding.cs",
+      "sha256": "8423c2eb21eb640ec5bbc96167ee54bf5ac0b063c3bf174551148bd14524e8e1"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorityGrant.cs",
+      "sha256": "02ccd06428728a8ba41f99e83af1c78e8e2738a7d7f642f71fc1c67714cdff5c"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadAuthorizationDetails.cs",
+      "sha256": "aad3d659d5334971074202cd5c67b7df5eb851c9523704ff1c691bd7a5787274"
+    },
+    {
+      "path": "src/Hexalith.EventStore.ServiceDefaults/Authentication/WorkloadBindingAuthority.cs",
+      "sha256": "33112e5f621780411eaae1edbdef7dc8e60aa9e0081e04547ff455210cfa0beb"
+    },
+    {
+      "path": "src/Hexalith.EventStore/Controllers/QueriesController.cs",
+      "sha256": "f7a3af72df388cfa42bc8d4105b8781884acffe67686f368209e1be572104bc8"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Client.Tests/Gateway/BoundOwnerQueryProofTests.cs",
+      "sha256": "9f8cc388e6dc746034bac114620b9c410cd115b31f0f8da36981511a6cbdfc05"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Contracts.Tests/Queries/QueryCallerAuthorityTests.cs",
+      "sha256": "b70e91e27e8dd676b7e6c7c8c4968bd0ca0308a4284f7813afded558ac5a7e2c"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/DomainServiceTrustBoundaryTests.QueryAuthority.cs",
+      "sha256": "cee15a6215845c2faad832ee4c055528e939cc57c3a6681434f000b874606456"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/QueryAuthorityCorrectionTests.cs",
+      "sha256": "daf4180b371b3676d07c673391ae7cce4a33ea90158b00f70b820ee9236577b3"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs",
+      "sha256": "67f3083928a7d19949802dce52134031888fcff7c67f1b47b8a252f601567b17"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.cs",
+      "sha256": "68ec67a284126dd0011ff83480c1a247749128f099b588cbbe7f19efe09872cd"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Controllers/BoundOwnerQueryAuthorityTests.cs",
+      "sha256": "00cb35b4c40b89c20dd4ee1912711d501061cc400b1a1e4df0742738ad9e545f"
+    }
+  ]
+}

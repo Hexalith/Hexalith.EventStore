@@ -33,10 +33,16 @@ public sealed record QueryCallerAuthority
     [DataMember]
     public IReadOnlyList<string> Permissions { get => _permissions.ToArray(); init => _permissions = value?.ToArray() ?? []; }
 
+    /// <summary>Gets the separately verified originating identity for an owner query. Null is omitted to preserve legacy signed bytes.</summary>
+    [DataMember(EmitDefaultValue = false)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public OriginatingQueryContext? OriginatingContext { get; init; }
+
     /// <summary>Compares captured authority by ordinal sequence content.</summary>
     public bool Equals(QueryCallerAuthority? other) => other is not null && Origin == other.Origin
         && _roles.SequenceEqual(other._roles, StringComparer.Ordinal)
-        && _permissions.SequenceEqual(other._permissions, StringComparer.Ordinal);
+        && _permissions.SequenceEqual(other._permissions, StringComparer.Ordinal)
+        && OriginatingContext == other.OriginatingContext;
     /// <inheritdoc/>
     public override int GetHashCode()
     {
@@ -46,6 +52,7 @@ public sealed record QueryCallerAuthority
         foreach (string role in _roles) hash.Add(role, StringComparer.Ordinal);
         hash.Add(_permissions.Length);
         foreach (string permission in _permissions) hash.Add(permission, StringComparer.Ordinal);
+        hash.Add(OriginatingContext);
         return hash.ToHashCode();
     }
 }

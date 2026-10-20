@@ -24,7 +24,7 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Authentication;
 
 /// <summary>Production-mode tests use a disposable synthetic RSA authority; they establish no real deployment or enrollment.</summary>
-public sealed class WorkloadBindingAuthorityTests : IDisposable
+public sealed partial class WorkloadBindingAuthorityTests : IDisposable
 {
     private readonly string _path = Path.Combine(Path.GetTempPath(), "workload-authority-" + Guid.NewGuid().ToString("N") + ".pfx");
     private readonly string _secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));

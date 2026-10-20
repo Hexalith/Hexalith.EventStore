@@ -67,7 +67,8 @@ public sealed partial class QueryAuthorityCorrectionTests
         QueryEnvelope query = Query() with { CallerAuthority = null };
         DefaultHttpContext context = Context(query);
         var identity = (ClaimsIdentity)context.User.Identity!;
-        identity.RemoveClaim(identity.FindFirst(QueryCallerAuthorityBinding.DigestClaim)!);
+        foreach (Claim binding in identity.Claims.Where(static claim => claim.Type.StartsWith(
+            EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix, StringComparison.Ordinal)).ToArray()) identity.RemoveClaim(binding);
         IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();
         handler.Domain.Returns(query.Domain); handler.QueryType.Returns(query.QueryType);
         handler.ExecuteAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(_ =>
@@ -88,6 +89,6 @@ public sealed partial class QueryAuthorityCorrectionTests
         User = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "eventstore"),
             new Claim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType, EventStoreWorkloadOperations.DomainServiceQuery),
-            new Claim(QueryCallerAuthorityBinding.DigestClaim, QueryCallerAuthorityBinding.Bind(query)[QueryCallerAuthorityBinding.DigestClaim])], "workload")),
+            .. QueryCallerAuthorityBinding.Bind(query).Select(static pair => new Claim(pair.Key, pair.Value))], "workload")),
     };
 }
