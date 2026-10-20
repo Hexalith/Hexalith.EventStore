@@ -1,0 +1,8 @@
+{
+  "fixture_app_id": "eventstore-live-0d0dcdd47eb6488e84c02ba807919bee",
+  "sidecar_stopped_before_cleanup": true,
+  "fixture_owned_keys_removed": 20772,
+  "remaining_fixture_owned_keys": 0,
+  "scope": "eventstore-live-0d0dcdd47eb6488e84c02ba807919bee||*",
+  "external_app_namespaces_untouched": true
+}

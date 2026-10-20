@@ -38,6 +38,8 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public Action<string, ReadOnlyMemory<byte>> BeforeTrySaveByteState { get; set; }
 
+    public Action<string, ReadOnlyMemory<byte>> AfterTrySaveByteState { get; set; }
+
     public IReadOnlyList<(string Key, byte[] Value, string ETag, ConcurrencyMode Concurrency)> TrySaveByteOperations => _trySaveByteOperations;
 
     public IReadOnlyList<(string Key, string ETag, ConcurrencyMode Concurrency)> TryDeleteByteOperations => _tryDeleteByteOperations;
@@ -380,6 +382,7 @@ internal sealed class RecordingDaprClient : DaprClient
         }
 
         _byteStore[key] = (binaryValue.ToArray(), NextByteETag());
+        AfterTrySaveByteState?.Invoke(key, binaryValue);
         return Task.FromResult(true);
     }
 

@@ -27,13 +27,21 @@ public sealed partial class SharedProjectionEpochCoordinator
     private const int ChunkedStageThresholdBytes = 16 * 1024;
     private const int ChunkedCaptureThresholdBytes = 16 * 1024;
 
+    private readonly TimeProvider _timeProvider;
     private readonly IReadModelStore _store;
     private readonly IReadModelBatchStore _batches;
     private readonly SharedProjectionControlIndexWriter _controlIndexes;
 
     /// <summary>Creates a coordinator over one durable read-model and batch-store pair.</summary>
     public SharedProjectionEpochCoordinator(IReadModelStore store, IReadModelBatchStore batches)
+        : this(store, batches, TimeProvider.System)
     {
+    }
+
+    /// <summary>Creates a coordinator with the same deadline clock as its read-model store.</summary>
+    public SharedProjectionEpochCoordinator(IReadModelStore store, IReadModelBatchStore batches, TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _batches = batches ?? throw new ArgumentNullException(nameof(batches));
         _controlIndexes = new SharedProjectionControlIndexWriter(store);
@@ -142,6 +150,7 @@ public sealed partial class SharedProjectionEpochCoordinator
 
         byte[] captureBytes = JsonSerializer.SerializeToUtf8Bytes(sortedCapture);
         string requestedOperationTenantId = operationTenantId ?? scope.TenantId;
+        await WaitForPromotedCleanupAsync(scope, cancellationToken).ConfigureAwait(false);
         await ReconcileChunkCleanupAsync(scope, cancellationToken).ConfigureAwait(false);
         await ReconcileStreamMetadataCleanupAsync(scope, cancellationToken).ConfigureAwait(false);
 
@@ -619,6 +628,10 @@ public sealed partial class SharedProjectionEpochCoordinator
             return false;
         }
 
+        if (await ReconcilePendingScratchAsync(scope, key, cancellationToken).ConfigureAwait(false)
+            || await ReconcilePendingScratchAsync(scope, scope.StateKey, cancellationToken).ConfigureAwait(false))
+            return false; // Reload both scratch and the original fence after recovery; never re-plan that batch.
+
         var batch = new ReadModelBatch(
             new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain, scope.Family,
                 scope.Family, batchId),
@@ -627,7 +640,7 @@ public sealed partial class SharedProjectionEpochCoordinator
                 ReadModelBatchOperation.Write(scope.StateKey, state,
                     ReadModelBatchConcurrency.Match(entry.ETag
                         ?? throw new InvalidOperationException("The shared rebuild fence has no ETag.")))
-            ]);
+            ]) { RetainManifestForRecovery = true };
         ReadModelBatchResult result = await _batches.ExecuteAsync(batch, cancellationToken).ConfigureAwait(false);
         if (result.IsSuccess) return true;
         if (result.Status == ReadModelBatchStatus.Conflict) return false;
@@ -1549,9 +1562,30 @@ public sealed partial class SharedProjectionEpochCoordinator
         ReadModelEntry<ReadModelBatchMarker> marker = await markerStore.GetAsync<ReadModelBatchMarker>(
             scope.StoreName, markerKey, cancellationToken).ConfigureAwait(false);
         if (marker.Value is null) return;
+        string compensationKey = ReadModelBatchKeys.ScratchCompensationKey(new ReadModelBatchScope(
+            scope.StoreName, scope.TenantId, scope.Domain, scope.Family, scope.Family, batchId).ComputeScopeHash());
+        if (marker.Value.ScratchCompensationKey is { } retainedCompensationKey)
+        {
+            string scopeHash = new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain,
+                scope.Family, scope.Family, batchId).ComputeScopeHash();
+            if (retainedCompensationKey != compensationKey
+                || marker.Value.ScopeHash != scopeHash || marker.Value.BatchId != batchId
+                || marker.Value.Status != ReadModelBatchMarkerStatus.Aborted
+                || marker.Value.Operations is not { Count: 2 } participants)
+                throw new InvalidOperationException("Private scratch compensation evidence is invalid.");
+            foreach (ReadModelBatchMarkerOperation participant in participants)
+                await ReconcilePendingScratchAsync(scope, participant.Key, cancellationToken).ConfigureAwait(false);
+            marker = await markerStore.GetAsync<ReadModelBatchMarker>(scope.StoreName, markerKey, cancellationToken).ConfigureAwait(false);
+            if (marker.Value is null) return;
+        }
         if (marker.Value.Status is not (ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)
-            || string.IsNullOrEmpty(marker.ETag)
-            || !await eraser.TryEraseAsync(scope.StoreName, markerKey, marker.ETag, cancellationToken)
+            || string.IsNullOrEmpty(marker.ETag))
+            throw new SharedProjectionWriteUnavailableException(new InvalidOperationException(
+                $"Private scratch marker cleanup is incomplete (status={marker.Value.Status}, etag-present={!string.IsNullOrEmpty(marker.ETag)})."));
+        (bool present, string etag) = await eraser.TryReadEtagAsync(scope.StoreName, compensationKey, cancellationToken).ConfigureAwait(false);
+        if (present && (string.IsNullOrEmpty(etag) || !await eraser.TryEraseAsync(scope.StoreName, compensationKey, etag, cancellationToken).ConfigureAwait(false)))
+            throw new InvalidOperationException("Private scratch compensation cleanup is incomplete.");
+        if (!await eraser.TryEraseAsync(scope.StoreName, markerKey, marker.ETag, cancellationToken)
                 .ConfigureAwait(false))
             throw new SharedProjectionWriteUnavailableException(
                 new InvalidOperationException("Private scratch marker cleanup is incomplete."));
@@ -1753,24 +1787,6 @@ public sealed partial class SharedProjectionEpochCoordinator
         }
 
         throw RetryExhausted();
-    }
-
-    private void SchedulePromotedCleanup(SharedProjectionScope scope)
-    {
-        // The selected generation and any required owner-sequence handoff are durable.
-        // Scratch cleanup is recoverable from the epoch state on the next Begin.
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await ReconcileChunkCleanupAsync(scope, CancellationToken.None).ConfigureAwait(false);
-                await ReconcileStreamMetadataCleanupAsync(scope, CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                // The cleanup intent remains durable for a later reconciliation.
-            }
-        });
     }
 
     /// <summary>Releases the promoted epoch after every verified owner checkpoint is seeded.</summary>
@@ -2805,7 +2821,8 @@ public sealed partial class SharedProjectionEpochCoordinator
         ReadModelEntry<SharedProjectionCopyOnWritePointer> pointer = await _store
             .GetAsync<SharedProjectionCopyOnWritePointer>(scope.StoreName,
                 scope.CopyOnWritePointerKey(logicalKey), cancellationToken).ConfigureAwait(false);
-        if (pointer.Value is { } marker && marker.LatestGeneration == generation && marker.LatestDeleted)
+        if (pointer.Value is { } marker && marker.LatestGeneration == generation
+            && (marker.LatestDeleted || marker.LatestExpiresAtUtc <= _timeProvider.GetUtcNow()))
             return new ReadModelEntry<TValue>(null, null);
 
         ReadModelEntry<TValue> direct = await _store.GetAsync<TValue>(scope.StoreName,
@@ -2814,6 +2831,7 @@ public sealed partial class SharedProjectionEpochCoordinator
 
         long? inherited = null;
         bool deleted = false;
+        DateTimeOffset? inheritedDeadline = null;
         if (pointer.Value is { } selected)
         {
             if (selected.LatestGeneration <= generation
@@ -2822,7 +2840,8 @@ public sealed partial class SharedProjectionEpochCoordinator
                         cancellationToken).ConfigureAwait(false)))
             {
                 inherited = selected.LatestGeneration;
-                deleted = selected.LatestDeleted;
+                inheritedDeadline = selected.LatestExpiresAtUtc;
+                deleted = selected.LatestDeleted || inheritedDeadline <= _timeProvider.GetUtcNow();
             }
             else if (selected.PreviousGeneration <= generation
                 && (selected.PreviousGeneration == generation
@@ -2830,17 +2849,22 @@ public sealed partial class SharedProjectionEpochCoordinator
                         cancellationToken).ConfigureAwait(false)))
             {
                 inherited = selected.PreviousGeneration;
-                deleted = selected.PreviousDeleted;
+                inheritedDeadline = selected.PreviousExpiresAtUtc;
+                deleted = selected.PreviousDeleted || inheritedDeadline <= _timeProvider.GetUtcNow();
             }
         }
         if (deleted) return new ReadModelEntry<TValue>(null, null);
         if (inherited is { } source)
         {
+            if (source == generation && inheritedDeadline <= _timeProvider.GetUtcNow())
+                return new ReadModelEntry<TValue>(null, null);
             if (source == generation)
                 throw new SharedProjectionReadUnavailableException(
                     new InvalidOperationException("A selected copy-on-write value is missing."));
             ReadModelEntry<TValue> inheritedValue = await _store.GetAsync<TValue>(scope.StoreName,
                 scope.PhysicalKey(source, logicalKey), cancellationToken).ConfigureAwait(false);
+            if (inheritedValue.Value is null && inheritedDeadline <= _timeProvider.GetUtcNow())
+                return new ReadModelEntry<TValue>(null, null);
             if (inheritedValue.Value is null)
                 throw new SharedProjectionReadUnavailableException(
                     new InvalidOperationException("An inherited copy-on-write value is missing."));
@@ -2926,11 +2950,13 @@ public sealed partial class SharedProjectionEpochCoordinator
                     scope.CopyOnWritePointerKey(mutation.Key), cancellationToken).ConfigureAwait(false);
             long priorGeneration;
             bool priorDeleted;
+            DateTimeOffset? priorDeadline = null;
             long? retiredGeneration = null;
             if (existing.Value is { } pointer && pointer.LatestGeneration == generation)
             {
                 priorGeneration = pointer.PreviousGeneration;
                 priorDeleted = pointer.PreviousDeleted;
+                priorDeadline = pointer.PreviousExpiresAtUtc;
                 retiredGeneration = pointer.RetiredGeneration;
             }
             else if (existing.Value is { } latest && latest.LatestGeneration <= selectedGeneration
@@ -2939,6 +2965,7 @@ public sealed partial class SharedProjectionEpochCoordinator
             {
                 priorGeneration = latest.LatestGeneration;
                 priorDeleted = latest.LatestDeleted;
+                priorDeadline = latest.LatestExpiresAtUtc;
                 if (!latest.PreviousDeleted && latest.PreviousGeneration < latest.LatestGeneration)
                     retiredGeneration = latest.PreviousGeneration;
             }
@@ -2948,6 +2975,7 @@ public sealed partial class SharedProjectionEpochCoordinator
             {
                 priorGeneration = pending.PreviousGeneration;
                 priorDeleted = pending.PreviousDeleted;
+                priorDeadline = pending.PreviousExpiresAtUtc;
             }
             else if (existing.Value is not null)
             {
@@ -2960,11 +2988,14 @@ public sealed partial class SharedProjectionEpochCoordinator
                 ReadModelEntry<object> anchorValue = await _store.GetAsync<object>(scope.StoreName,
                     scope.PhysicalKey(priorGeneration, mutation.Key), cancellationToken).ConfigureAwait(false);
                 priorDeleted = anchorValue.Value is null;
+                priorDeadline = anchorValue.ExpiresAtUtc;
             }
 
             var next = new SharedProjectionCopyOnWritePointer(generation,
                 mutation.Kind == ReadModelBatchOperationKind.Delete, priorGeneration, priorDeleted)
             {
+                LatestExpiresAtUtc = mutation.ExpiresAtUtc,
+                PreviousExpiresAtUtc = priorDeadline,
                 RetiredGeneration = retiredGeneration
             };
             operations.Add(mutation.ToOperation(scope.PhysicalKey(generation, mutation.Key)));
@@ -3424,7 +3455,7 @@ public sealed partial class SharedProjectionEpochCoordinator
         CancellationToken cancellationToken)
         => _store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey, cancellationToken);
 
-    private Task<bool> SaveAsync(
+    private async Task<bool> SaveAsync(
         SharedProjectionScope scope,
         SharedProjectionEpochState state,
         string? etag,
@@ -3436,7 +3467,16 @@ public sealed partial class SharedProjectionEpochCoordinator
             throw new InvalidOperationException("The shared projection epoch exceeds its bounded state-store limit or conflict reserve.");
         }
 
-        return _store.TrySaveAsync(scope.StoreName, scope.StateKey, state, etag ?? string.Empty, cancellationToken);
+        if (etag is { Length: 0 })
+        {
+            ReadModelEntry<SharedProjectionEpochState> current = await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false);
+            if (current.Value is not null)
+            {
+                _ = await ReconcilePendingScratchAsync(scope, scope.StateKey, cancellationToken).ConfigureAwait(false);
+                return false; // A pending fence must settle before a new CAS phase can be prepared.
+            }
+        }
+        return await _store.TrySaveAsync(scope.StoreName, scope.StateKey, state, etag ?? string.Empty, cancellationToken).ConfigureAwait(false);
     }
 
     private static bool IsConflictEvidenceCapacityLimited(SharedProjectionEpochState state)

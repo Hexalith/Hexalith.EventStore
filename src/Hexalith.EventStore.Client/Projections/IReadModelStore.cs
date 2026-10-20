@@ -69,12 +69,3 @@ public interface IReadModelStore {
         CancellationToken cancellationToken = default)
         where TValue : class;
 }
-
-/// <summary>
-/// A read-model value paired with the ETag under which it was read.
-/// </summary>
-/// <typeparam name="TValue">The read-model type.</typeparam>
-/// <param name="Value">The persisted value, or <see langword="null"/> when the key is absent.</param>
-/// <param name="ETag">The ETag of the read, or <see langword="null"/> when the key is absent.</param>
-public sealed record ReadModelEntry<TValue>(TValue? Value, string? ETag)
-    where TValue : class;

@@ -9,7 +9,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// fingerprint. Deletes carry no value. The logical <see cref="Key"/> and the serialized
 /// <see cref="CanonicalValue"/> participate in the batch fingerprint together with the ordinal position,
 /// <see cref="Kind"/>, <see cref="ValueTypeName"/>, <see cref="Concurrency"/> policy, and optional
-/// <see cref="TimeToLive"/>.
+/// <see cref="TimeToLive"/> or immutable <see cref="ExpiresAtUtc"/>.
 /// </remarks>
 public sealed class ReadModelBatchOperation {
     private ReadModelBatchOperation(
@@ -70,6 +70,22 @@ public sealed class ReadModelBatchOperation {
             CanonicalValue, concurrency, TimeToLive, ExpiresAtUtc);
     }
 
+    /// <summary>Creates a write with the historical relative-retention signature.</summary>
+    public static ReadModelBatchOperation Write<TValue>(string key, TValue value,
+        ReadModelBatchConcurrency concurrency, TimeSpan? timeToLive = null) where TValue : class
+        => WriteCore(key, value, concurrency, timeToLive, null);
+
+    /// <summary>Creates an immutable write with an inclusive source deadline that cannot refresh on recovery.</summary>
+    /// <typeparam name="TValue">The read-model value type.</typeparam>
+    /// <param name="key">The logical state key.</param>
+    /// <param name="value">The value to persist.</param>
+    /// <param name="concurrency">The write concurrency policy.</param>
+    /// <param name="expiresAtUtc">The original inclusive source deadline.</param>
+    /// <returns>The immutable write operation.</returns>
+    public static ReadModelBatchOperation WriteExpiring<TValue>(string key, TValue value,
+        ReadModelBatchConcurrency concurrency, DateTimeOffset expiresAtUtc) where TValue : class
+        => WriteCore(key, value, concurrency, null, expiresAtUtc);
+
     /// <summary>
     /// Creates a write operation, serializing <paramref name="value"/> immediately into immutable
     /// canonical bytes.
@@ -86,12 +102,12 @@ public sealed class ReadModelBatchOperation {
     /// <returns>An immutable write operation.</returns>
     /// <exception cref="ArgumentException">The key is null/whitespace or the concurrency mode is invalid for a write.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> or <paramref name="concurrency"/> is null.</exception>
-    public static ReadModelBatchOperation Write<TValue>(
+    private static ReadModelBatchOperation WriteCore<TValue>(
         string key,
         TValue value,
         ReadModelBatchConcurrency concurrency,
-        TimeSpan? timeToLive = null,
-        DateTimeOffset? expiresAtUtc = null)
+        TimeSpan? timeToLive,
+        DateTimeOffset? expiresAtUtc)
         where TValue : class {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
@@ -159,8 +175,8 @@ public sealed class ReadModelBatchOperation {
         string key,
         string valueTypeName,
         ReadOnlyMemory<byte> canonicalValue,
-        TimeSpan? timeToLive = null,
-        DateTimeOffset? expiresAtUtc = null) {
+        TimeSpan? timeToLive,
+        DateTimeOffset? expiresAtUtc) {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentException.ThrowIfNullOrWhiteSpace(valueTypeName);
         if (canonicalValue.IsEmpty) {

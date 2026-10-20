@@ -58,7 +58,9 @@ internal sealed class ReadModelBatchEnvelope {
         {
             while (reader.Read())
                 if (reader.TokenType == JsonTokenType.PropertyName && reader.CurrentDepth == 1
-                    && reader.ValueTextEquals(DiscriminatorPropertyName)) return true;
+                    && reader.ValueTextEquals(DiscriminatorPropertyName))
+                    return !(reader.Read() && reader.TokenType == JsonTokenType.Number
+                        && reader.TryGetInt32(out int version) && version == 3);
         }
         catch (JsonException) { return true; } // malformed envelope-like bytes remain fail-closed
         return false;
@@ -84,30 +86,37 @@ internal sealed class ReadModelBatchEnvelope {
                 return null;
             }
 
-            int version = document.RootElement.GetProperty(DiscriminatorPropertyName).GetInt32();
+            JsonElement discriminator = document.RootElement.GetProperty(DiscriminatorPropertyName);
+            if (discriminator.ValueKind != JsonValueKind.Number || !discriminator.TryGetInt32(out int version)
+                || version is not (1 or 2)) return null;
             string[] required = version == 2
                 ? [DiscriminatorPropertyName, "scope", "fp", "ord", "del", "prev", "cand", "expires"]
                 : [DiscriminatorPropertyName, "scope", "fp", "ord", "del", "prev", "cand"];
             JsonProperty[] properties = document.RootElement.EnumerateObject().ToArray();
             if (properties.Length != required.Length || required.Any(name => properties.Count(property => property.Name == name) != 1)) return null;
             ReadModelBatchEnvelope? envelope = JsonSerializer.Deserialize<ReadModelBatchEnvelope>(raw.Span, s_json);
-            if (envelope is null || envelope.EnvelopeVersion is not (1 or 2)
+            if (envelope is null || !ReadModelBatchFingerprint.IsCanonical(envelope.Fingerprint)
+                || envelope.ScopeHash is not { Length: 43 } || envelope.ScopeHash.Any(static ch => !char.IsAsciiLetterOrDigit(ch) && ch is not '-' and not '_')
+                || envelope.EnvelopeVersion is not (1 or 2)
                 || (envelope.EnvelopeVersion == 2) != (envelope.ExpiresAtUtc is not null)
+                || envelope.EnvelopeVersion == 2 && !envelope.Fingerprint.StartsWith("v2:", StringComparison.Ordinal)
                 || envelope.IsDelete && envelope.ExpiresAtUtc is not null || envelope.Ordinal < 0
                 || envelope.IsDelete != (envelope.CandidateBase64 is null)) return null;
             if (envelope.PreviousBase64 is not null)
             {
                 using JsonDocument previous = JsonDocument.Parse(envelope.PreviousBytes());
                 if (IsEnvelope(envelope.PreviousBytes().Span)) return null;
+                if (ReadModelBatchExpiringValue.IsExpiring(envelope.PreviousBytes().Span))
+                    _ = ReadModelBatchExpiringValue.Decode(envelope.PreviousBytes());
             }
             if (!envelope.IsDelete)
             {
                 using JsonDocument candidate = JsonDocument.Parse(envelope.CandidateBytes());
-                if (IsEnvelope(envelope.CandidateBytes().Span)) return null;
+                if (IsEnvelope(envelope.CandidateBytes().Span) || ReadModelBatchExpiringValue.IsExpiring(envelope.CandidateBytes().Span)) return null;
             }
             return envelope;
         }
-        catch (Exception exception) when (exception is JsonException or FormatException) {
+        catch (Exception exception) when (exception is JsonException or FormatException or InvalidOperationException or ArgumentException) {
             return null;
         }
     }

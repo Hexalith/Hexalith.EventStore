@@ -7,4 +7,8 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <param name="Exists">Whether the key is present.</param>
 /// <param name="Value">The raw value bytes (empty when absent).</param>
 /// <param name="ETag">The current ETag (empty when absent).</param>
-internal readonly record struct RawStateEntry(bool Exists, ReadOnlyMemory<byte> Value, string ETag);
+internal readonly record struct RawStateEntry(bool Exists, ReadOnlyMemory<byte> Value, string ETag)
+{
+    /// <summary>The validated original deadline, including logically absent values.</summary>
+    internal DateTimeOffset? ExpiresAtUtc { get; init; }
+}

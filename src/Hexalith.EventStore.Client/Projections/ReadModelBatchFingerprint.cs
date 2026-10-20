@@ -13,7 +13,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// DAPR-compatible JSON value bytes. A configured operation TTL participates as rounded-up whole seconds;
 /// an omitted TTL adds no field, preserving the original v1 golden vector. The scope components participate
 /// as well. The algorithm is frozen at v1 and covered by golden-vector tests; changing it is a versioned
-/// contract change.
+/// contract change. Deadline-bearing batches explicitly select v2 and bind UTC ticks; v1 bytes stay unchanged.
 /// </remarks>
 internal static class ReadModelBatchFingerprint {
     /// <summary>The frozen fingerprint algorithm version.</summary>
@@ -83,12 +83,12 @@ internal static class ReadModelBatchFingerprint {
 
     /// <summary>Computes the versioned fingerprint string for a batch.</summary>
     /// <param name="batch">The batch.</param>
-    /// <returns>A <c>v1:</c>-prefixed base64url SHA-256 digest of the canonical manifest.</returns>
+    /// <returns>A version-prefixed base64url SHA-256 digest of the canonical manifest.</returns>
     public static string Compute(ReadModelBatch batch) => ComputeFromManifest(BuildCanonicalManifest(batch));
 
     /// <summary>Computes the versioned fingerprint string from already-built canonical manifest bytes.</summary>
     /// <param name="manifest">The canonical manifest bytes.</param>
-    /// <returns>A <c>v1:</c>-prefixed base64url SHA-256 digest.</returns>
+    /// <returns>A manifest-version-prefixed base64url SHA-256 digest.</returns>
     public static string ComputeFromManifest(ReadOnlySpan<byte> manifest) {
         byte[] digest = SHA256.HashData(manifest);
         var reader = new Utf8JsonReader(manifest);

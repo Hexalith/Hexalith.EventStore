@@ -57,6 +57,43 @@ lifecycle. Do not put TTL on durable detail/index projections unless the product
 The domain should size dispatch-ledger TTL from `ProjectionDispatchOptions.RedeliveryWindow` so retries and
 ledger retention share one validated operational contract.
 
+For source-owned retention that must survive delayed staging, retries, or process replacement, supply
+an absolute deadline instead of a relative TTL:
+
+```csharp
+ReadModelBatchOperation.WriteExpiring(
+    logicalKey,
+    model,
+    ReadModelBatchConcurrency.LastWrite,
+    expiresAtUtc: sourceTimestamp.AddDays(retentionDays));
+```
+
+`ExpiresAtUtc` is immutable and inclusive: the value is absent at that UTC instant. Use the same
+deadline for related model, integrity, position, and message-receipt operations; keep independently
+durable checkpoints non-expiring. Relative `TimeToLive` and `ExpiresAtUtc` are mutually exclusive.
+Deadline-bearing batches use a versioned v2 manifest and fingerprint. Existing v1 manifests,
+fingerprints, relative TTL behavior, and the original write/record constructor signatures remain
+supported. `WriteExpiring` has a separate name so historical `Write(..., default)`, null and
+`TimeSpan` calls remain unambiguous. `WithConcurrency` and `SharedProjectionMutation.FromOperation` preserve the deadline through
+journaling, streamed staging, promotion, and inherited shared generations.
+
+The SDK stores deadline metadata with final values and computes physical retention from the remaining
+time at execution or recovery. Dapr/Redis TTL rounds up to whole seconds; SDK single, bulk, and selected
+generation reads still enforce the exact deadline. An expired candidate never reclaims a newer value.
+Final values use the existing reserved SDK envelope namespace; supported owner proofs retain the
+16,384-byte logical model limit and count actual physical bytes for admission. Use SDK readers to
+interpret persisted values. For controlled-clock tests, configure
+`ReadModelBatchOptions.TimeProvider` and pass the same clock to the three-argument
+`SharedProjectionEpochCoordinator` constructor. `InMemoryReadModelStore.Snapshot<T>` unwraps final values
+and enforces that clock while hiding pending batch envelopes; `SnapshotRaw` copies physical protocol
+bytes for assertions. The in-memory fake does not emulate provider TTL deletion; use the real sidecar
+lane to qualify physical retention.
+
+`TransactionQualified` still requires separate provider atomicity and CAS qualification. The live Redis
+profile remains `Resumable`: forcing the transactional profile can expose partially written rows before
+its marker update fails. An `Indeterminate` result refuses completion; it does not establish rollback or
+hidden-row safety for a misqualified provider.
+
 ## Compatibility and rebuild boundary
 
 `IDomainProjectionHandler.Project(ProjectionRequest)` remains the synchronous, domain-only full-replay compatibility seam used by the released `/project` endpoint. Existing handlers do not need to migrate.
@@ -74,6 +111,14 @@ For a tenant and projection family that has several writers, implement `IAsyncDo
 The shared journal admits at most 128 pending envelopes per tenant/family epoch. The next position returns `Backpressure` without acknowledgement; drain catch-up and retry that position before sending later envelopes.
 
 The handler's `FoldCatchUpAsync` receives one journaled envelope and the selected physical generation. It owns the domain fold and returns logical `ReadModelBatchOperation` values. Read existing values through `coordinator.ReadGenerationAsync` for that generation. Do not write a physical generation key, select a generation, or advance a checkpoint in the handler. EventStore stages the complete replacement behind bounded chunks, atomically changes the reader selector on Commit, then drains post-capture envelopes. Abort drains into the prior generation before removing staging. Readers must use `ReadAsync` or `ReadManyAsync` and honor `IsStale` and `IsAvailable`; a delivery acknowledgement is not a freshness guarantee.
+
+Private rebuild scratch writes retain their original immutable batch manifest. A retry or an epoch-phase
+CAS first settles a pending scratch fence through the SDK recovery seam; it cannot replace the sealed
+Building state with a newly planned fingerprint. Legacy pre-manifest scratch is compensated only when
+the complete two-key Prepared/Aborting batch and its unchanged Building fence remain provable. A legacy
+committed batch or incomplete legacy evidence stays unavailable for explicit owner disposition; the SDK
+neither reconstructs missing identity bytes nor rolls back a committed decision. Keep original manifests
+and receipts until the existing SDK reclamation protocol permits removal.
 
 Recovery and rebuild readers use `StreamReadPageValidator.ValidateAndGetNextSequence` on every page. `FromSequence` is exclusive: reuse `LastSequenceReturned` as the next cursor without adding one. Validate the canonical tenant, domain, aggregate, event order, and every decoded event before folding or checkpointing. A missing, malformed, or conflicting envelope leaves durable work unresolved; it must not be skipped. An interrupted chunk reservation is retried from the authoritative source before acknowledgement.
 

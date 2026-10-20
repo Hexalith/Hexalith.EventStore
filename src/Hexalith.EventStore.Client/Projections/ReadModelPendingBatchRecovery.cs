@@ -46,8 +46,10 @@ internal static class ReadModelPendingBatchRecovery
                 if (!original.Exists) return new(false, "invalid-recovery-evidence");
                 manifest = original.Value;
             }
-            if (manifest.IsEmpty || manifest.Length > options.MaxCanonicalManifestBytes)
-                return new(false, "recovery-manifest-unavailable");
+            if (manifest.IsEmpty)
+                return await ReadModelLegacyScratchRecovery.TryCompensateAsync(accessor, options, expected, marker, key, token).ConfigureAwait(false)
+                    ?? new(false, "recovery-manifest-unavailable");
+            if (manifest.Length > options.MaxCanonicalManifestBytes) return new(false, "recovery-manifest-unavailable");
             using JsonDocument document = JsonDocument.Parse(manifest);
             if (!document.RootElement.TryGetProperty("recoverable", out JsonElement optedIn) || !optedIn.GetBoolean())
                 return new(false, "recovery-manifest-unavailable");
@@ -79,7 +81,10 @@ internal static class ReadModelPendingBatchRecovery
                 if (installed.ScopeHash != marker.ScopeHash) continue; // foreign participant is handled as a conflict, never helped
                 if (installed.Fingerprint != marker.Fingerprint || installed.Ordinal != ordinal
                     || operation.Concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag
-                        && (operation.Concurrency.ExpectedETag.Length == 0) != (installed.PreviousBase64 is null)
+                        && (operation.Concurrency.ExpectedETag.Length == 0
+                            ? installed.PreviousBase64 is not null && (!ReadModelBatchExpiringValue.IsExpiring(installed.PreviousBytes().Span)
+                                || ReadModelBatchExpiringValue.Decode(installed.PreviousBytes()).Deadline > options.TimeProvider.GetUtcNow())
+                            : installed.PreviousBase64 is null)
                     || installed.ExpiresAtUtc != operation.ExpiresAtUtc
                     || installed.IsDelete != (operation.Kind == ReadModelBatchOperationKind.Delete)
                     || !installed.CandidateBytes().Span.SequenceEqual(operation.CanonicalValue.Span))

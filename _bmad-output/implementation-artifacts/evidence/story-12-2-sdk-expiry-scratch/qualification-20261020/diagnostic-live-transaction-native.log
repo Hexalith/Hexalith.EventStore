@@ -1,0 +1,69 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:46209
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:ad533c53fc734dd6bbace40dfd7f0451. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:ad533c53fc734dd6bbace40dfd7f0451. New ETag prefix: d2FybXVw
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: Resumable) [OUTPUT] profile=Resumable; remaining-ttl-ms=3982; physical-model-and-receipt-absent=true; checkpoint-retained=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT] Native transaction exception: Dapr.DaprException: State operation failed: the Dapr endpoint indicated a failure. See InnerException for details.
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]  ---> Grpc.Core.RpcException: Status(StatusCode="Internal", Detail="error while executing state transaction: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-5e23e3f5dacf44d1ada20d9f8996f93b||hxrmb:v1:marker:GTT8UQSBTfEaUH2ENoqMyD_YChJo5lawACixd56TFx0")
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]    at Dapr.Client.DaprClientGrpc.MakeExecuteStateTransactionCallAsync(String storeName, IReadOnlyList`1 states, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]    --- End of inner exception stack trace ---
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]    at Dapr.Client.DaprClientGrpc.MakeExecuteStateTransactionCallAsync(String storeName, IReadOnlyList`1 states, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]    at Dapr.Client.DaprClientGrpc.ExecuteStateTransactionAsync(String storeName, IReadOnlyList`1 operations, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]    at Hexalith.EventStore.Client.Projections.DaprReadModelBatchStateAccessor.ExecuteTransactionAsync(IReadOnlyList`1 operations, CancellationToken cancellationToken) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/DaprReadModelBatchStateAccessor.cs:line 107
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT]    at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ObservedTransactionLiveAccessor.ExecuteTransactionAsync(IReadOnlyList`1 operations, CancellationToken token) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ObservedTransactionLiveAccessor.cs:line 17
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [OUTPUT] transaction raw model={"$hxrme":1,"expires":639280798054249373,"val":"eyJjb3VudCI6MX0="}; marker={"batch":"expiry","fp":"v2:Kqk7b_eZgP2GXLShUSHovLGO-h74odi75JnIb8dVXwA","ops":[{"del":false,"key":"expiry-52d6516615924dbcb223c44a63661fcd:model","ord":0},{"del":false,"key":"expiry-52d6516615924dbcb223c44a63661fcd:receipt","ord":1},{"del":false,"key":"expiry-52d6516615924dbcb223c44a63661fcd:checkpoint","ord":2}],"scope":"GTT8UQSBTfEaUH2ENoqMyD_YChJo5lawACixd56TFx0","st":0,"time":null,"v":1}
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified) [FAIL]
+      Shouldly.ShouldAssertException : committed.IsSuccess
+          should be
+      True
+          but was
+      False
+      
+      Additional Info:
+          ReadModelBatchResult { Status = Indeterminate, Fingerprint = v2:Kqk7b_eZgP2GXLShUSHovLGO-h74odi75JnIb8dVXwA, ConflictKind = None, RecoveryReason = transaction-dispatch, IsSuccess = False }
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs(76,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(ReadModelBatchStoreProfile profile)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+      Output:
+        Native transaction exception: Dapr.DaprException: State operation failed: the Dapr endpoint indicated a failure. See InnerException for details.
+         ---> Grpc.Core.RpcException: Status(StatusCode="Internal", Detail="error while executing state transaction: ERR Error running script (call to f_d908b9553add63a82e03589b5c6d01a7654ef0f2): @user_script:14: user_script:14: failed to set key eventstore-live-5e23e3f5dacf44d1ada20d9f8996f93b||hxrmb:v1:marker:GTT8UQSBTfEaUH2ENoqMyD_YChJo5lawACixd56TFx0")
+           at Dapr.Client.DaprClientGrpc.MakeExecuteStateTransactionCallAsync(String storeName, IReadOnlyList`1 states, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+           --- End of inner exception stack trace ---
+           at Dapr.Client.DaprClientGrpc.MakeExecuteStateTransactionCallAsync(String storeName, IReadOnlyList`1 states, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+           at Dapr.Client.DaprClientGrpc.ExecuteStateTransactionAsync(String storeName, IReadOnlyList`1 operations, IReadOnlyDictionary`2 metadata, CancellationToken cancellationToken)
+           at Hexalith.EventStore.Client.Projections.DaprReadModelBatchStateAccessor.ExecuteTransactionAsync(IReadOnlyList`1 operations, CancellationToken cancellationToken) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/DaprReadModelBatchStateAccessor.cs:line 107
+           at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ObservedTransactionLiveAccessor.ExecuteTransactionAsync(IReadOnlyList`1 operations, CancellationToken token) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ObservedTransactionLiveAccessor.cs:line 17
+        transaction raw model={"$hxrme":1,"expires":639280798054249373,"val":"eyJjb3VudCI6MX0="}; marker={"batch":"expiry","fp":"v2:Kqk7b_eZgP2GXLShUSHovLGO-h74odi75JnIb8dVXwA","ops":[{"del":false,"key":"expiry-52d6516615924dbcb223c44a63661fcd:model","ord":0},{"del":false,"key":"expiry-52d6516615924dbcb223c44a63661fcd:receipt","ord":1},{"del":false,"key":"expiry-52d6516615924dbcb223c44a63661fcd:checkpoint","ord":2}],"scope":"GTT8UQSBTfEaUH2ENoqMyD_YChJo5lawACixd56TFx0","st":0,"time":null,"v":1}
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 10.083s

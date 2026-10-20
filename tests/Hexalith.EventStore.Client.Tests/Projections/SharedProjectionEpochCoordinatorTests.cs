@@ -621,6 +621,7 @@ public sealed class SharedProjectionEpochCoordinatorTests {
         _ = await coordinator.BeginAsync(s_scope, "selected-outage", "inventory-0", new Dictionary<string, long>());
         await coordinator.StageAsync(s_scope, "selected-outage", [Write(1)]);
         await coordinator.CommitAsync(s_scope, "selected-outage");
+        await coordinator.WaitForPromotedCleanupAsync(s_scope);
         intercepted.FailStateAfterPhysicalRead = true;
 
         _ = await Should.ThrowAsync<SharedProjectionReadUnavailableException>(() =>
@@ -637,6 +638,7 @@ public sealed class SharedProjectionEpochCoordinatorTests {
             new Dictionary<string, long>());
         await coordinator.StageAsync(s_scope, "selected-dapr-outage", [Write(1)]);
         await coordinator.CommitAsync(s_scope, "selected-dapr-outage");
+        await coordinator.WaitForPromotedCleanupAsync(s_scope);
         intercepted.FailDaprStateAfterPhysicalRead = true;
 
         _ = await Should.ThrowAsync<SharedProjectionReadUnavailableException>(() =>

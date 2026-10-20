@@ -298,19 +298,22 @@ internal sealed partial class ReadModelBatchProtocol {
     /// <param name="accessor">The state accessor.</param>
     /// <param name="key">The logical key.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
+    /// <param name="timeProvider">The clock enforcing immutable source deadlines.</param>
     /// <returns>The visible raw entry (existence, bytes, ETag).</returns>
     public static async Task<RawStateEntry> ResolveVisibleAsync(
         IReadModelBatchStateAccessor accessor,
         string key,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken,
+        TimeProvider? timeProvider = null) {
+        TimeProvider clock = timeProvider ?? TimeProvider.System;
         RawStateEntry entry = await accessor.ReadAsync(key, cancellationToken).ConfigureAwait(false);
         if (!entry.Exists || !ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)) {
-            return entry;
+            return ReadModelBatchExpiringValue.Resolve(entry, clock);
         }
 
         ReadModelBatchEnvelope? envelope = ReadModelBatchEnvelope.FromBytes(entry.Value);
         if (envelope is null) {
-            return entry;
+            throw new JsonException("Invalid read-model batch envelope.");
         }
 
         RawStateEntry markerEntry = await accessor
@@ -329,14 +332,14 @@ internal sealed partial class ReadModelBatchProtocol {
         // read: a consumer's `TrySaveAsync(value, thatETag)` then fails closed (create-only against an
         // existing key) instead of CAS-matching the envelope wrapper and clobbering the in-flight batch.
         if (committed) {
-            return envelope.IsDelete
-                ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty)
-                : new RawStateEntry(true, envelope.CandidateBytes(), string.Empty);
+            return envelope.IsDelete || envelope.ExpiresAtUtc <= clock.GetUtcNow()
+                ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty) { ExpiresAtUtc = envelope.ExpiresAtUtc }
+                : new RawStateEntry(true, envelope.CandidateBytes(), string.Empty) { ExpiresAtUtc = envelope.ExpiresAtUtc };
         }
 
         return envelope.PreviousBase64 is null
             ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty)
-            : new RawStateEntry(true, envelope.PreviousBytes(), string.Empty);
+            : ReadModelBatchExpiringValue.Resolve(new RawStateEntry(true, envelope.PreviousBytes(), string.Empty), clock);
     }
 
     private void ValidateLimits(ReadModelBatch batch) {
@@ -512,6 +515,8 @@ internal sealed partial class ReadModelBatchProtocol {
                 continue;
             }
 
+            if (operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()) continue;
+
             bool foreignEnvelope = current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span);
             if (foreignEnvelope || !SatisfiesConcurrency(operation, current)) {
                 bool compensated = await CompensateAsync(ordinal, true, cancellationToken).ConfigureAwait(false);
@@ -522,6 +527,8 @@ internal sealed partial class ReadModelBatchProtocol {
             }
 
             var envelope = new ReadModelBatchEnvelope {
+                EnvelopeVersion = operation.ExpiresAtUtc is null ? 1 : 2,
+                ExpiresAtUtc = operation.ExpiresAtUtc,
                 ScopeHash = _scopeHash,
                 Fingerprint = _fingerprint,
                 Ordinal = ordinal,
@@ -611,7 +618,8 @@ internal sealed partial class ReadModelBatchProtocol {
                     anchor = CreateRecoveryAnchor(ordinal, envelope!);
                     continue;
                 }
-                if (envelope!.IsDelete) {
+                TimeSpan? retention = Retention(operation);
+                if (envelope!.IsDelete || retention <= TimeSpan.Zero) {
                     _ = await _accessor
                         .TryDeleteAsync(operation.Key, current.ETag, cancellationToken)
                         .ConfigureAwait(false);
@@ -620,9 +628,9 @@ internal sealed partial class ReadModelBatchProtocol {
                     _ = await _accessor
                         .TryWriteAsync(
                             operation.Key,
-                            envelope.CandidateBytes(),
+                            FinalBytes(operation),
                             current.ETag,
-                            operation.TimeToLive,
+                            retention,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -635,6 +643,11 @@ internal sealed partial class ReadModelBatchProtocol {
             else if (!IsCompacted(operation, current)) {
                 // A guarded owner can have been replaced by a newer generation after this batch
                 // committed. Its original receipt is recoverable; it cannot reclaim newer live keys.
+                if (operation.ExpiresAtUtc is not null)
+                {
+                    if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) return false;
+                    continue; // This historical expiring candidate never reclaims a later writer.
+                }
                 if (_ownerSelection is not null || _ownerSelections is not null) return false;
                 if (_batch.RetainManifestForRecovery)
                 {
@@ -662,7 +675,7 @@ internal sealed partial class ReadModelBatchProtocol {
                             operation.Key,
                             operation.CanonicalValue,
                             current.ETag,
-                            operation.TimeToLive,
+                            Retention(operation),
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -777,9 +790,8 @@ internal sealed partial class ReadModelBatchProtocol {
                     .ConfigureAwait(false);
             }
             else {
-                _ = await _accessor
-                    .TryWriteAsync(operation.Key, envelope.PreviousBytes(), current.ETag, cancellationToken)
-                    .ConfigureAwait(false);
+                _ = await ReadModelBatchExpiringValue.RestoreAsync(_accessor, operation.Key,
+                    envelope.PreviousBytes(), current.ETag, _options.TimeProvider, cancellationToken).ConfigureAwait(false);
             }
 
             RawStateEntry verified = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
@@ -853,16 +865,38 @@ internal sealed partial class ReadModelBatchProtocol {
         _ = await PrepareMarkerAsync(marker, markerEtag, cancellationToken).ConfigureAwait(false);
         ReadModelBatchLog.Prepared(_logger, _scopeHash, _profileName, _batch.Operations.Count);
 
+        if (_injector is not null) {
+            await _injector.InjectAsync(ReadModelBatchPhase.BeforeCommit, -1, cancellationToken).ConfigureAwait(false);
+        }
+        // Complete every asynchronous physical-CAS preflight before assembling any final TTL.
+        // No SDK await may retain an earlier candidate's stale positive duration across its deadline.
+        var physical = new Dictionary<string, RawStateEntry>(StringComparer.Ordinal);
+        foreach (ReadModelBatchOperation operation in _batch.Operations)
+            if (operation.ExpiresAtUtc is not null || operation.Concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag
+                    && operation.Concurrency.ExpectedETag.Length == 0)
+                physical.Add(operation.Key, await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false));
         var operations = new List<RawTransactionOperation>(_batch.Operations.Count + 1);
         foreach (ReadModelBatchOperation operation in _batch.Operations) {
+            TimeSpan? retention = Retention(operation);
+            if (retention <= TimeSpan.Zero) continue;
             bool firstWrite = operation.Concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag;
+            string etag = firstWrite ? operation.Concurrency.ExpectedETag : string.Empty;
+            if (physical.TryGetValue(operation.Key, out RawStateEntry current))
+            {
+                if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span))
+                    return ReadModelBatchResult.Indeterminate(_fingerprint, "foreign-envelope");
+                if (!SatisfiesConcurrency(operation, current))
+                    return ReadModelBatchResult.OptimisticConflict(_fingerprint, "transaction-precondition");
+                firstWrite = true;
+                etag = current.ETag;
+            }
             operations.Add(new RawTransactionOperation(
                 operation.Key,
-                operation.CanonicalValue,
+                FinalBytes(operation),
                 operation.Kind == ReadModelBatchOperationKind.Delete,
-                firstWrite ? operation.Concurrency.ExpectedETag : string.Empty,
+                etag,
                 firstWrite,
-                operation.TimeToLive));
+                retention));
         }
 
         var receipt = new ReadModelBatchMarker {
@@ -876,10 +910,6 @@ internal sealed partial class ReadModelBatchProtocol {
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
         operations.Add(new RawTransactionOperation(_markerKey, SerializeMarker(receipt), false, string.Empty, false));
-
-        if (_injector is not null) {
-            await _injector.InjectAsync(ReadModelBatchPhase.BeforeCommit, -1, cancellationToken).ConfigureAwait(false);
-        }
 
         try {
             await _accessor.ExecuteTransactionAsync(operations, cancellationToken).ConfigureAwait(false);
@@ -925,12 +955,17 @@ internal sealed partial class ReadModelBatchProtocol {
     private async Task<bool> VerifyOperationKeysAsync(CancellationToken cancellationToken) {
         foreach (ReadModelBatchOperation operation in _batch.Operations) {
             RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
+            if (operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow())
+            {
+                if (entry.Exists && ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)) return false;
+                continue;
+            }
             if (operation.Kind == ReadModelBatchOperationKind.Delete) {
                 if (entry.Exists) {
                     return false;
                 }
             }
-            else if (!entry.Exists || !entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span)) {
+            else if (!entry.Exists || !entry.Value.Span.SequenceEqual(FinalBytes(operation).Span)) {
                 return false;
             }
         }
@@ -943,7 +978,9 @@ internal sealed partial class ReadModelBatchProtocol {
             RawStateEntry entry = await _accessor
                 .ReadAsync(_batch.Operations[ordinal].Key, cancellationToken)
                 .ConfigureAwait(false);
-            if (!TryGetOwnEnvelope(entry, ordinal, out _)) {
+            if (!TryGetOwnEnvelope(entry, ordinal, out _)
+                && !(_batch.Operations[ordinal].ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()
+                    && (!entry.Exists || !ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)))) {
                 return false;
             }
         }
@@ -1098,25 +1135,40 @@ internal sealed partial class ReadModelBatchProtocol {
         return (ParseMarker(entry.Value), entry.ETag, true);
     }
 
-    private static bool SatisfiesConcurrency(ReadModelBatchOperation operation, RawStateEntry current) {
+    private bool SatisfiesConcurrency(ReadModelBatchOperation operation, RawStateEntry current) {
         ReadModelBatchConcurrency concurrency = operation.Concurrency;
         return concurrency.Mode switch {
             ReadModelBatchConcurrencyMode.Unconditional => true,
             ReadModelBatchConcurrencyMode.IdempotentAbsent => true,
-            ReadModelBatchConcurrencyMode.ExpectedETag when concurrency.ExpectedETag.Length == 0 => !current.Exists,
+            ReadModelBatchConcurrencyMode.ExpectedETag when concurrency.ExpectedETag.Length == 0 =>
+                !ReadModelBatchExpiringValue.Resolve(current, _options.TimeProvider).Exists,
             ReadModelBatchConcurrencyMode.ExpectedETag =>
                 current.Exists && string.Equals(current.ETag, concurrency.ExpectedETag, StringComparison.Ordinal),
             _ => false,
         };
     }
 
-    private static bool IsCompacted(ReadModelBatchOperation operation, RawStateEntry entry) =>
-        operation.Kind == ReadModelBatchOperationKind.Delete
-            ? !entry.Exists
-            : entry.Exists && entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span);
+    private static ReadOnlyMemory<byte> FinalBytes(ReadModelBatchOperation operation)
+        => operation.ExpiresAtUtc is { } deadline
+            ? ReadModelBatchExpiringValue.Encode(operation.CanonicalValue, deadline) : operation.CanonicalValue;
 
-    private static bool IsPreviousValue(ReadModelBatchEnvelope envelope, RawStateEntry entry) =>
+    private TimeSpan? Retention(ReadModelBatchOperation operation)
+        => ReadModelBatchExpiringValue.Retention(operation.ExpiresAtUtc, operation.TimeToLive, _options.TimeProvider);
+
+    private bool IsCompacted(ReadModelBatchOperation operation, RawStateEntry entry) =>
+        operation.ExpiresAtUtc <= _options.TimeProvider.GetUtcNow()
+            ? !entry.Exists || !ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span)
+            : operation.Kind == ReadModelBatchOperationKind.Delete
+                ? !entry.Exists
+                : entry.Exists && (operation.ExpiresAtUtc is { } deadline
+                    ? ReadModelBatchExpiringValue.IsExpiring(entry.Value.Span)
+                        && ReadModelBatchExpiringValue.Decode(entry.Value) is var final
+                        && final.Deadline == deadline && final.Value.Span.SequenceEqual(operation.CanonicalValue.Span)
+                    : entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span));
+
+    private bool IsPreviousValue(ReadModelBatchEnvelope envelope, RawStateEntry entry) =>
         envelope.PreviousBase64 is null
+            || !ReadModelBatchExpiringValue.Resolve(new RawStateEntry(true, envelope.PreviousBytes(), string.Empty), _options.TimeProvider).Exists
             ? !entry.Exists
             : entry.Exists && entry.Value.Span.SequenceEqual(envelope.PreviousBytes().Span);
 
@@ -1142,7 +1194,7 @@ internal sealed partial class ReadModelBatchProtocol {
         {
             (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
             if (marker?.RecoveryAnchor is not null)
-                return await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken).ConfigureAwait(false);
+                return await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
         }
         return _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery
             || await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
@@ -1180,6 +1232,7 @@ internal sealed partial class ReadModelBatchProtocol {
         if (candidate is null
             || !string.Equals(candidate.ScopeHash, _scopeHash, StringComparison.Ordinal)
             || !string.Equals(candidate.Fingerprint, _fingerprint, StringComparison.Ordinal)
+            || candidate.ExpiresAtUtc != _batch.Operations[ordinal].ExpiresAtUtc
             || candidate.Ordinal != ordinal
             || candidate.IsDelete != (_batch.Operations[ordinal].Kind == ReadModelBatchOperationKind.Delete)
             || !candidate.CandidateBytes().Span.SequenceEqual(_batch.Operations[ordinal].CanonicalValue.Span)) {

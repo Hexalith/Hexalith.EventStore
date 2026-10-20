@@ -44,6 +44,10 @@ public sealed class SharedProjectionStreamedStageTests
                 + Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(
                     "large-stream\0" + page.Keys[0])));
             metadataKeys.Add((pageKey, marker));
+            string metadataReceiptKey = new ReadModelBatchScope(s_scope.StoreName, s_scope.TenantId,
+                s_scope.Domain, s_scope.Family, s_scope.Family, "stage-metadata:" + staged.Epoch + ":" + operationDigest + ":" + ordinal).ComputeMarkerKey();
+            store.Snapshot<ReadModelBatchMarker>(s_scope.StoreName, metadataReceiptKey)!.Status.ShouldBe(ReadModelBatchMarkerStatus.Completed,
+                "streamed metadata must be terminal before the selected generation can be promoted");
         }
 
         await coordinator.CommitAsync(s_scope, "large-stream");

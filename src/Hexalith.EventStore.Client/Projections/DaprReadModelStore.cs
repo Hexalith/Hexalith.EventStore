@@ -57,14 +57,14 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
 
         var accessor = new DaprReadModelBatchStateAccessor(_daprClient, storeName);
         RawStateEntry visible = await ReadModelBatchProtocol
-            .ResolveVisibleAsync(accessor, key, cancellationToken)
+            .ResolveVisibleAsync(accessor, key, cancellationToken, _options.TimeProvider)
             .ConfigureAwait(false);
         if (!visible.Exists) {
-            return new ReadModelEntry<TValue>(null, null);
+            return new ReadModelEntry<TValue>(null, null) { ExpiresAtUtc = visible.ExpiresAtUtc };
         }
 
         TValue? value = JsonSerializer.Deserialize<TValue>(visible.Value.Span, _daprClient.JsonSerializerOptions);
-        return new ReadModelEntry<TValue>(value, visible.ETag);
+        return new ReadModelEntry<TValue>(value, visible.ETag) { ExpiresAtUtc = visible.ExpiresAtUtc };
     }
 
     /// <inheritdoc/>
@@ -109,9 +109,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
             }
 
             ReadOnlyMemory<byte> raw = JsonSerializer.SerializeToUtf8Bytes(item.Value);
-            if (ReadModelBatchEnvelope.IsEnvelope(raw.Span)) {
+            if (ReadModelBatchEnvelope.IsEnvelope(raw.Span) || ReadModelBatchExpiringValue.IsExpiring(raw.Span)) {
                 RawStateEntry visible = await ReadModelBatchProtocol
-                    .ResolveVisibleAsync(accessor, key, cancellationToken)
+                    .ResolveVisibleAsync(accessor, key, cancellationToken, _options.TimeProvider)
                     .ConfigureAwait(false);
                 TValue? visibleValue = visible.Exists
                     ? JsonSerializer.Deserialize<TValue>(visible.Value.Span, _daprClient.JsonSerializerOptions)
@@ -251,7 +251,7 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
         // committed-delete envelope reports absent, exactly as the visible value would.
         var accessor = new DaprReadModelBatchStateAccessor(_daprClient, storeName);
         RawStateEntry visible = await ReadModelBatchProtocol
-            .ResolveVisibleAsync(accessor, key, cancellationToken)
+            .ResolveVisibleAsync(accessor, key, cancellationToken, _options.TimeProvider)
             .ConfigureAwait(false);
         return visible.Exists ? (true, visible.ETag) : (false, string.Empty);
     }

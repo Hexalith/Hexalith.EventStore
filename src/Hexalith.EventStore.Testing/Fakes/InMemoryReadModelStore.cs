@@ -78,11 +78,11 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
 
         var accessor = new InMemoryBatchAccessor(this, storeName);
         RawStateEntry visible = await ReadModelBatchProtocol
-            .ResolveVisibleAsync(accessor, key, cancellationToken)
+            .ResolveVisibleAsync(accessor, key, cancellationToken, BatchOptions.TimeProvider)
             .ConfigureAwait(false);
         return visible.Exists
-            ? new ReadModelEntry<TValue>(Deserialize<TValue>(visible.Value), visible.ETag)
-            : new ReadModelEntry<TValue>(null, null);
+            ? new ReadModelEntry<TValue>(Deserialize<TValue>(visible.Value), visible.ETag) { ExpiresAtUtc = visible.ExpiresAtUtc }
+            : new ReadModelEntry<TValue>(null, null) { ExpiresAtUtc = visible.ExpiresAtUtc };
     }
 
     /// <inheritdoc/>
@@ -297,9 +297,9 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     }
 
     /// <summary>
-    /// Returns the currently stored value for assertions, or <see langword="null"/> when absent. Reads the
-    /// raw stored bytes directly; a value hidden behind an uncommitted batch envelope is not decoded here
-    /// (use <see cref="GetAsync{TValue}"/> for the marker-gated visible value).
+    /// Returns the final logical value for assertions, or <see langword="null"/> when absent or expired.
+    /// Deadline wrappers use the configured batch clock. Pending batch envelopes remain hidden here;
+    /// use <see cref="GetAsync{TValue}"/> for marker-gated reads or <see cref="SnapshotRaw"/> for physical bytes.
     /// </summary>
     /// <typeparam name="TValue">The read-model type.</typeparam>
     /// <param name="storeName">The store name.</param>
@@ -308,8 +308,13 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     public TValue? Snapshot<TValue>(string storeName, string key)
         where TValue : class =>
         _entries.TryGetValue(Compose(storeName, key), out Entry? entry) && !ReadModelBatchEnvelope.IsEnvelope(entry.Bytes)
-            ? Deserialize<TValue>(entry.Bytes)
+            && ReadModelBatchExpiringValue.Resolve(new RawStateEntry(true, entry.Bytes, entry.ETag), BatchOptions.TimeProvider) is { Exists: true } visible
+            ? Deserialize<TValue>(visible.Value)
             : null;
+
+    /// <summary>Copies physical persisted bytes for protocol assertions, including deadline wrappers and pending envelopes.</summary>
+    public byte[]? SnapshotRaw(string storeName, string key)
+        => _entries.TryGetValue(Compose(storeName, key), out Entry? entry) ? entry.Bytes.ToArray() : null;
 
     /// <summary>Returns whether the raw stored bytes at a key are a pending batch envelope.</summary>
     /// <param name="storeName">The store name.</param>

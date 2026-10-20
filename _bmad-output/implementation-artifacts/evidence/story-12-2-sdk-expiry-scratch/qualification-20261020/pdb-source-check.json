@@ -1,0 +1,20 @@
+[
+  {
+    "project": "Hexalith.EventStore.Client.Tests",
+    "source_files": 270,
+    "unmatched_source_checksums": [],
+    "pdb_sha256": "49ad81b0110c4d4ec995ccddfc61aa114f8ee8fb632de7b582aa73dae6e070bc"
+  },
+  {
+    "project": "Hexalith.EventStore.DomainService.Tests",
+    "source_files": 270,
+    "unmatched_source_checksums": [],
+    "pdb_sha256": "49ad81b0110c4d4ec995ccddfc61aa114f8ee8fb632de7b582aa73dae6e070bc"
+  },
+  {
+    "project": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+    "source_files": 270,
+    "unmatched_source_checksums": [],
+    "pdb_sha256": "e9d2e0c3ace7898a285e8ffa440fc1d98c9946224abb551513f839776a397a6f"
+  }
+]

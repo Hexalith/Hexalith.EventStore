@@ -1,0 +1,50 @@
+ M _bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md
+ M docs/guides/named-projection-authoring.md
+ M src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.OwnerProof.cs
+ M src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs
+ M src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs
+ M src/Hexalith.EventStore.Client/Projections/RawStateEntry.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchEnvelope.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchExpiringValue.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchFingerprint.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchKeys.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchOperation.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.PendingRecovery.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelBatchRecoveryAnchor.cs
+ M src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs
+ M src/Hexalith.EventStore.Client/Projections/SharedProjectionCopyOnWritePointer.cs
+ M src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs
+ M src/Hexalith.EventStore.Client/Projections/SharedProjectionMutation.cs
+ M src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs
+ M src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs
+ M tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs
+ M tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionEpochCoordinatorTests.cs
+ M tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionStreamedStageTests.cs
+ M tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.cs
+?? _bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/
+?? src/Hexalith.EventStore.Client/Projections/ReadModelEntry.cs
+?? src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchCompensation.cs
+?? src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchRecovery.cs
+?? src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.PromotedCleanup.cs
+?? src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.ScratchRecovery.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelBatchTests.DeadlineOwnerProof.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/DelegatingBatchFaultInjector.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionDeadlineTimeProvider.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelBatchDeadlineTests.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelExpiryReviewRegressionTests.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelLegacyScratchInterruptionTests.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionCleanupOverlapTests.cs
+?? tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionExpiryAndScratchTests.cs
+?? tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ScratchRecovery.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/FixedOwnerProofLiveHttpHandler.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LivePartitionedScratchHandler.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ObservedTransactionLiveAccessor.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.NamedDispatcher.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.OwnerProof.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ProcessRestart.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionScratchProcessWorkerTests.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/RetainedBatchLiveFaultInjector.cs
+?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ScratchRecoveryLiveBatchStore.cs

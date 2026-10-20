@@ -13,7 +13,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
-public sealed class DomainPartitionedSharedProjectionRebuildTests
+public sealed partial class DomainPartitionedSharedProjectionRebuildTests
 {
     private const string StoreName = "statestore";
 
@@ -1682,6 +1682,7 @@ public sealed class DomainPartitionedSharedProjectionRebuildTests
         public string Domain => "widget";
         public string ProjectionType => "partitioned-widget";
         public string RebuildStoreName => StoreName;
+        public bool FoldOrdinaryRows { get; set; }
         public bool FailFinalize { get; set; }
         public bool FailBufferedOwnerFold { get; set; }
         public bool EmitOneChunkPerEvent { get; set; }
@@ -1777,7 +1778,13 @@ public sealed class DomainPartitionedSharedProjectionRebuildTests
             long generation,
             SharedProjectionEpochCoordinator coordinator,
             CancellationToken cancellationToken)
-            => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([]);
+        {
+            if (!FoldOrdinaryRows) return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([]);
+            ProjectionRequest request = JsonSerializer.Deserialize<ProjectionRequest>(delivery.CanonicalPayload, JsonSerializerOptions.Web)!;
+            return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
+                ReadModelBatchOperation.Write("row:" + request.AggregateId,
+                    new PayloadRow(Convert.ToHexString(SHA256.HashData(request.Events.Last().Payload))), ReadModelBatchConcurrency.LastWrite)]);
+        }
 
         public Task<DomainProjectionHandlerResult> ProjectAsync(
             ProjectionRequest request,

@@ -21,7 +21,9 @@ internal sealed class ReadModelBatchMarker {
             || !root.EnumerateObject().Any(static property => property.Name.Equals("st", StringComparison.OrdinalIgnoreCase)))
             return null;
         ReadModelBatchMarker? marker = root.Deserialize<ReadModelBatchMarker>(JsonSerializerOptions.Web);
-        return marker is { Version: 1 } && Enum.IsDefined(marker.Status) && (marker.Status != ReadModelBatchMarkerStatus.Completed
+        return marker is { Version: 1 } && Enum.IsDefined(marker.Status)
+            && (marker.ScratchCompensationKey is null || marker.Status is ReadModelBatchMarkerStatus.Aborting or ReadModelBatchMarkerStatus.Aborted)
+            && (marker.Status != ReadModelBatchMarkerStatus.Completed
             || IsUtcTerminalTime(marker.TerminalTimeUtc)) ? marker : null;
     }
 
@@ -46,6 +48,11 @@ internal sealed class ReadModelBatchMarker {
                 if (HasDuplicateProperties(item)) return true;
         return false;
     }
+
+    /// <summary>Immutable compensation evidence for a fully validated original legacy scratch batch.</summary>
+    [JsonPropertyName("scratchCompensationKey")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ScratchCompensationKey { get; set; }
 
     /// <summary>Bounded terminal proof keeping the final existing envelope recoverable until manifest reclamation.</summary>
     [JsonPropertyName("recoveryAnchor")]

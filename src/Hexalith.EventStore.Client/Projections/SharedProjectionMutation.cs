@@ -8,9 +8,12 @@ public sealed record SharedProjectionMutation(
     ReadModelBatchOperationKind Kind,
     string ValueTypeName,
     byte[] CanonicalValue,
-    TimeSpan? TimeToLive = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? ExpiresAtUtc = null)
+    TimeSpan? TimeToLive = null)
 {
+    /// <summary>Gets the original inclusive UTC deadline, when supplied by the source.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? ExpiresAtUtc { get; init; }
+
     /// <summary>Captures a batch operation before it is assigned a physical generation.</summary>
     public static SharedProjectionMutation FromOperation(ReadModelBatchOperation operation)
     {
@@ -20,8 +23,7 @@ public sealed record SharedProjectionMutation(
             operation.Kind,
             operation.ValueTypeName,
             operation.CanonicalValue.ToArray(),
-            operation.TimeToLive,
-            operation.ExpiresAtUtc);
+            operation.TimeToLive) { ExpiresAtUtc = operation.ExpiresAtUtc };
     }
 
     internal ReadModelBatchOperation ToOperation(string physicalKey) => Kind switch

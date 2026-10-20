@@ -26,7 +26,11 @@ public sealed partial class DaprReadModelStore : IReadModelOwnerProofStore
             RawStateEntry model = await accessor.ReadAsync(identity.ActorId + ":" + binding.SelectionSuffix, cancellationToken).ConfigureAwait(false);
             bytes += model.Value.Length;
             if (!model.Exists) return new(null, "delivery_rebuild_required", reads, bytes);
-            if (model.Value.Length > 16_384 || ReadModelBatchEnvelope.FromBytes(model.Value) is not null)
+            if (model.Value.Length > 22_016 || ReadModelBatchEnvelope.IsEnvelope(model.Value.Span))
+                return new(null, "delivery_reconciliation_required", reads, bytes);
+            model = ReadModelBatchExpiringValue.Resolve(model, _options.TimeProvider);
+            if (!model.Exists) return new(null, "delivery_rebuild_required", reads, bytes);
+            if (model.Value.Length > 16_384)
                 return new(null, "delivery_reconciliation_required", reads, bytes);
             ProjectionOwnerSelection? selection = ReadModelOwnerSelectionMetadata.Read(model.Value);
             if (selection is null || selection.TenantId != identity.TenantId || selection.Domain != identity.Domain
@@ -46,6 +50,8 @@ public sealed partial class DaprReadModelStore : IReadModelOwnerProofStore
                 || receipt.OriginalManifest is not null || receipt.OriginalManifestKey is not null
                 || !ReadModelBatchFingerprint.IsCanonical(receipt.Fingerprint) || string.IsNullOrWhiteSpace(receipt.TerminalTimeUtc))
                 return new(null, "delivery_reconciliation_required", reads, bytes);
+            if (model.ExpiresAtUtc is { } expiry && expiry <= _options.TimeProvider.GetUtcNow())
+                return new(null, "delivery_rebuild_required", reads, bytes);
             return new(new(selection, receipt.ScopeHash, receipt.Fingerprint), null, reads, bytes);
         }
         catch (OperationCanceledException) { throw; }

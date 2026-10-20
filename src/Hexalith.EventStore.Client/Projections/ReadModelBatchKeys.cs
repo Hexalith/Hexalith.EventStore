@@ -13,6 +13,9 @@ internal static class ReadModelBatchKeys {
     /// <returns>The marker key.</returns>
     public static string MarkerKey(string scopeHash) => MarkerPrefix + scopeHash;
 
+    /// <summary>Builds the private immutable legacy compensation evidence key in the owning batch namespace.</summary>
+    internal static string ScratchCompensationKey(string scopeHash) => MarkerKey(scopeHash) + ":scratch-compensation";
+
     /// <summary>Builds the private immutable manifest key within this same coordinated batch namespace.</summary>
     internal static string ManifestKey(string scopeHash) => MarkerKey(scopeHash) + ":manifest";
 }

@@ -1,0 +1,115 @@
+[
+  {
+    "command": [
+      "git",
+      "branch",
+      "--show-current"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": "main\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "status",
+      "--short"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": " M _bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md\n M docs/guides/named-projection-authoring.md\n M src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.OwnerProof.cs\n M src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.cs\n M src/Hexalith.EventStore.Client/Projections/IReadModelStore.cs\n M src/Hexalith.EventStore.Client/Projections/RawStateEntry.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchEnvelope.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchExpiringValue.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchFingerprint.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchKeys.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchOperation.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.PendingRecovery.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelBatchRecoveryAnchor.cs\n M src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs\n M src/Hexalith.EventStore.Client/Projections/SharedProjectionCopyOnWritePointer.cs\n M src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs\n M src/Hexalith.EventStore.Client/Projections/SharedProjectionMutation.cs\n M src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs\n M src/Hexalith.EventStore.Testing/Fakes/InMemoryReadModelStore.cs\n M tests/Hexalith.EventStore.Client.Tests/Projections/RecordingDaprClient.cs\n M tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionEpochCoordinatorTests.cs\n M tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionStreamedStageTests.cs\n M tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.cs\n?? _bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/\n?? src/Hexalith.EventStore.Client/Projections/ReadModelEntry.cs\n?? src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchCompensation.cs\n?? src/Hexalith.EventStore.Client/Projections/ReadModelLegacyScratchRecovery.cs\n?? src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.PromotedCleanup.cs\n?? src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.ScratchRecovery.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/DaprReadModelBatchTests.DeadlineOwnerProof.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/DelegatingBatchFaultInjector.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/ProjectionDeadlineTimeProvider.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelBatchDeadlineTests.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelExpiryReviewRegressionTests.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelLegacyScratchInterruptionTests.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionCleanupOverlapTests.cs\n?? tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionExpiryAndScratchTests.cs\n?? tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ScratchRecovery.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/FixedOwnerProofLiveHttpHandler.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LivePartitionedScratchHandler.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ObservedTransactionLiveAccessor.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.NamedDispatcher.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.OwnerProof.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/RetainedBatchLiveFaultInjector.cs\n?? tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ScratchRecoveryLiveBatchStore.cs\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "remote",
+      "-v"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": "origin\thttps://github.com/Hexalith/Hexalith.EventStore.git (fetch)\norigin\thttps://github.com/Hexalith/Hexalith.EventStore.git (push)\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "log",
+      "-3",
+      "--oneline"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": "509dbe373 build: sync local changes via /pushall\nd4d05f871 build: sync local changes via /pushall\n84bb115a0 build: record current root submodule commits\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": "509dbe3733956a86c2ee2fddfd9c0d0006bbfea3\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders",
+    "exit_code": 0,
+    "stdout": "ec3523ada1b32362bf9f31c555b95c312b8df4b1\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "ls-tree",
+      "HEAD",
+      "references/Hexalith.EventStore"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders",
+    "exit_code": 0,
+    "stdout": "160000 commit d4d05f871991ec2af305267f59dcefeae3f127ed\treferences/Hexalith.EventStore\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "dotnet",
+      "--info"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": ".NET SDK:\n Version:           10.0.402\n Commit:            a8dd0577c5\n Workload version:  10.0.400-manifests.da132f47\n MSBuild version:   18.9.15+a8dd0577c\n\nRuntime Environment:\n OS Name:     ubuntu\n OS Version:  26.04\n OS Platform: Linux\n RID:         linux-x64\n Base Path:   /home/administrator/.dotnet/sdk/10.0.402/\n\n.NET workloads installed:\nThere are no installed workloads to display.\nConfigured to use workload sets when installing new manifests.\nNo workload sets are installed. Run \"dotnet workload restore\" to install a workload set.\n\nHost:\n  Version:      10.0.13\n  Architecture: x64\n  Commit:       4099f83977\n\n.NET SDKs installed:\n  10.0.302 [/home/administrator/.dotnet/sdk]\n  10.0.400 [/home/administrator/.dotnet/sdk]\n  10.0.401 [/home/administrator/.dotnet/sdk]\n  10.0.402 [/home/administrator/.dotnet/sdk]\n\n.NET runtimes installed:\n  Microsoft.AspNetCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.AspNetCore.App 10.0.13 [/home/administrator/.dotnet/shared/Microsoft.AspNetCore.App]\n  Microsoft.NETCore.App 10.0.10 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.11 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.12 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n  Microsoft.NETCore.App 10.0.13 [/home/administrator/.dotnet/shared/Microsoft.NETCore.App]\n\nOther architectures found:\n  None\n\nEnvironment variables:\n  DOTNET_BUNDLE_EXTRACT_BASE_DIR           [/home/administrator/.cache/dotnet_bundle_extract]\n  DOTNET_ROOT                              [/home/administrator/.dotnet]\n\nglobal.json file:\n  /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/global.json\n\nLearn more:\n  https://aka.ms/dotnet/info\n\nDownload .NET:\n  https://aka.ms/dotnet/download\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--version"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": "1.18.7\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "INFO",
+      "server"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "exit_code": 0,
+    "stdout": "# Server\nredis_version:6.2.21\nredis_git_sha1:00000000\nredis_git_dirty:0\nredis_build_id:bfa2c172d6556ada\nredis_mode:standalone\nos:Linux 6.6.87.2-microsoft-standard-WSL2 x86_64\narch_bits:64\nmonotonic_clock:POSIX clock_gettime\nmultiplexing_api:epoll\natomicvar_api:c11-builtin\ngcc_version:12.2.0\nprocess_id:1\nprocess_supervised:no\nrun_id:207efe217f789d06d67bc85c70b61265f56f1967\ntcp_port:6379\nserver_time_usec:1792488532710030\nuptime_in_seconds:65204\nuptime_in_days:0\nhz:10\nconfigured_hz:10\nlru_clock:14103636\nexecutable:/data/redis-server\nconfig_file:\nio_threads_active:0\n",
+    "stderr": ""
+  }
+]

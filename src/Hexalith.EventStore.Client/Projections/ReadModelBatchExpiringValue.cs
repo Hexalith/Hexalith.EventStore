@@ -5,7 +5,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <summary>Preserves an inclusive source deadline after batch compaction and provider TTL rounding.</summary>
 internal static class ReadModelBatchExpiringValue
 {
-    private const string Discriminator = "$hxrme";
+    private const string Discriminator = ReadModelBatchEnvelope.DiscriminatorPropertyName;
 
     /// <summary>Identifies a platform-owned deadline wrapper, including malformed metadata that must fail closed.</summary>
     internal static bool IsExpiring(ReadOnlySpan<byte> bytes)
@@ -13,7 +13,8 @@ internal static class ReadModelBatchExpiringValue
         var reader = new Utf8JsonReader(bytes);
         while (reader.Read())
             if (reader.TokenType == JsonTokenType.PropertyName && reader.CurrentDepth == 1
-                && reader.ValueTextEquals(Discriminator)) return true;
+                && reader.ValueTextEquals(Discriminator))
+                return reader.Read() && reader.TokenType == JsonTokenType.Number && reader.TryGetInt32(out int version) && version == 3;
         return false;
     }
 
@@ -21,9 +22,9 @@ internal static class ReadModelBatchExpiringValue
     internal static ReadOnlyMemory<byte> Encode(ReadOnlyMemory<byte> value, DateTimeOffset deadline)
         => ReadModelBatchCanonicalJson.Serialize(new Dictionary<string, object>(StringComparer.Ordinal)
         {
-            [Discriminator] = 1,
+            [Discriminator] = 3,
             ["expires"] = deadline.UtcTicks,
-            ["val"] = Convert.ToBase64String(value.Span),
+            ["val"] = Convert.ToBase64String(value.Span).Replace('+', '-').Replace('/', '_').TrimEnd('='),
         });
 
     /// <summary>Validates the complete wrapper without mistaking invalid evidence for absence.</summary>
@@ -31,12 +32,27 @@ internal static class ReadModelBatchExpiringValue
     {
         using JsonDocument document = JsonDocument.Parse(bytes);
         JsonElement root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object) throw new JsonException("Invalid read-model expiry evidence.");
         string[] names = [Discriminator, "expires", "val"];
         JsonProperty[] properties = root.EnumerateObject().ToArray();
         if (properties.Length != names.Length || names.Any(name => properties.Count(property => property.Name == name) != 1)
-            || root.GetProperty(Discriminator).GetInt32() != 1) throw new JsonException("Invalid read-model expiry evidence.");
-        var deadline = new DateTimeOffset(root.GetProperty("expires").GetInt64(), TimeSpan.Zero);
-        ReadOnlyMemory<byte> value = root.GetProperty("val").GetBytesFromBase64();
+            || root.GetProperty(Discriminator).ValueKind != JsonValueKind.Number
+            || !root.GetProperty(Discriminator).TryGetInt32(out int version) || version != 3) throw new JsonException("Invalid read-model expiry evidence.");
+        JsonElement expiry = root.GetProperty("expires");
+        JsonElement payload = root.GetProperty("val");
+        if (expiry.ValueKind != JsonValueKind.Number || !expiry.TryGetInt64(out long ticks)
+            || ticks < DateTimeOffset.MinValue.UtcTicks || ticks > DateTimeOffset.MaxValue.UtcTicks
+            || payload.ValueKind != JsonValueKind.String)
+            throw new JsonException("Invalid read-model expiry evidence.");
+        var deadline = new DateTimeOffset(ticks, TimeSpan.Zero);
+        string encoded = payload.GetString()!;
+        // URL-safe payloads avoid default JSON escaping inflation; standard base64 remains readable.
+        string normalized = encoded.Replace('-', '+').Replace('_', '/');
+        normalized = normalized.PadRight(normalized.Length + (4 - normalized.Length % 4) % 4, '=');
+        byte[] decoded;
+        try { decoded = Convert.FromBase64String(normalized); }
+        catch (FormatException exception) { throw new JsonException("Invalid read-model expiry payload.", exception); }
+        ReadOnlyMemory<byte> value = decoded;
         using JsonDocument model = JsonDocument.Parse(value);
         if (ReadModelBatchEnvelope.IsEnvelope(value.Span) || IsExpiring(value.Span))
             throw new JsonException("Nested read-model expiry evidence.");
@@ -49,8 +65,8 @@ internal static class ReadModelBatchExpiringValue
         if (!entry.Exists || !IsExpiring(entry.Value.Span)) return entry;
         (DateTimeOffset deadline, ReadOnlyMemory<byte> value) = Decode(entry.Value);
         return deadline <= clock.GetUtcNow()
-            ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty)
-            : new RawStateEntry(true, value, entry.ETag);
+            ? new RawStateEntry(false, ReadOnlyMemory<byte>.Empty, string.Empty) { ExpiresAtUtc = deadline }
+            : new RawStateEntry(true, value, entry.ETag) { ExpiresAtUtc = deadline };
     }
 
     /// <summary>Computes retention from the original deadline at the last responsible moment.</summary>

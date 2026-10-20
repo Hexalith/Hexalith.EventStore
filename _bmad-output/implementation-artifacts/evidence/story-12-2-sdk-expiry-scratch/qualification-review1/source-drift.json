@@ -1,0 +1,12 @@
+{
+  "production_source_drift": [],
+  "test_only_process_extension_changed_existing_sources": [
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.NamedDispatcher.cs"
+  ],
+  "new_test_sources": [
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ProcessRestart.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionScratchProcessWorkerTests.cs"
+  ],
+  "earlier_test_source_snapshot": "pre-process-extension-test-source/ProjectionExpiryAndScratchRecoveryLiveTests.NamedDispatcher.cs",
+  "note": "All 902 other pre-extension scoped source/config files retain exact hashes. The spec task record is administrative and was excluded from the pre-run freeze."
+}

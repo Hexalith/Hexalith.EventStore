@@ -1,0 +1,440 @@
+{
+  "schema": "hexalith-sdk-expiry-scratch-qualification/v1",
+  "created_utc": "2026-10-20T08:07:56.447258+00:00",
+  "scope": "EventStore local source qualification; parent owns Folders consumption and independent review. No publication, deployment, package pin, Git or submodule mutation performed by this implementation.",
+  "history": {
+    "eventstore_baseline": "d4d05f871991ec2af305267f59dcefeae3f127ed",
+    "eventstore_head": "509dbe3733956a86c2ee2fddfd9c0d0006bbfea3",
+    "folders_head": "ec3523ada1b32362bf9f31c555b95c312b8df4b1",
+    "folders_recorded_eventstore_gitlink": "d4d05f871991ec2af305267f59dcefeae3f127ed",
+    "external_history_note": "A separate workspace process committed in-progress EventStore files in 509dbe3733956a86c2ee2fddfd9c0d0006bbfea3. Effective source is the HEAD plus current files enumerated here; the recorded root gitlink is preserved."
+  },
+  "runtime": {
+    "dotnet_sdk": "10.0.402",
+    "dotnet_runtime": "10.0.13",
+    "dapr_client": "1.18.4",
+    "daprd": "1.18.7",
+    "redis": "6.2.21",
+    "daprd_binary_sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+  },
+  "source": {
+    "inventory": "source-files.json",
+    "inventory_sha256": "821f157d432d6a167129ef2c3f4543d003607efe4cdc100dd34b538d53913388",
+    "files": 892,
+    "aggregate_sha256": "83d5a5150a97b7b5b3ad06ef88406b1bef0a16aa309753e806433e07fb5f0e83",
+    "scope": "Complete source/resources of affected Client, DomainService and Testing packages and all three affected test projects, plus repository build/config and context guides. Excludes build outputs and historical evidence.",
+    "post_run_drift": []
+  },
+  "binary_groups": [
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "sha256": "a442eb766850739cee2e7f4b2dc7415ffe153775159e4854a9019796f5ce650f",
+      "bytes": 2077184
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.pdb",
+      "sha256": "ef01e1e5c19cf486ee014852dc4eacac756f7f8e82af22b9a9b2ed8819bbe865",
+      "bytes": 428272
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.deps.json",
+      "sha256": "6d01cf52606dd2b89f60e09dc628edfda119561fc945ea8345ac2cddb675f869",
+      "bytes": 90062
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "772484ba329da764387669e3d5938a59c6f358cd7e9d5675367d0713e6df3c2d",
+      "bytes": 1059840
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+      "sha256": "49ad81b0110c4d4ec995ccddfc61aa114f8ee8fb632de7b582aa73dae6e070bc",
+      "bytes": 270008
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "edd724d8a5ecdb2bbefbd8ffd0f2cd8d701744f2d70edfc510ee7511a393baf0",
+      "bytes": 1119232
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Client.Tests",
+      "path": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+      "sha256": "7186e7179e80deed2525ae068e8e509bed1913ad19f5c318aeedf361e6aa78bb",
+      "bytes": 126976
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+      "sha256": "1869d48f3495602c06eddafa75505eb131a64cecfa427087e23acd5358d452cc",
+      "bytes": 1910784
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.pdb",
+      "sha256": "0258dea6374899cd6e8e73a10bfe74be3d76dd2dadb26a951f54234f8809e013",
+      "bytes": 378252
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.deps.json",
+      "sha256": "81169d2e93d2ddb217247d89ce90150de2ef905f66510527f7a0f77d84a4a605",
+      "bytes": 84144
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "772484ba329da764387669e3d5938a59c6f358cd7e9d5675367d0713e6df3c2d",
+      "bytes": 1059840
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+      "sha256": "49ad81b0110c4d4ec995ccddfc61aa114f8ee8fb632de7b582aa73dae6e070bc",
+      "bytes": 270008
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "edd724d8a5ecdb2bbefbd8ffd0f2cd8d701744f2d70edfc510ee7511a393baf0",
+      "bytes": 1119232
+    },
+    {
+      "project_graph": "Hexalith.EventStore.DomainService.Tests",
+      "path": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+      "sha256": "7186e7179e80deed2525ae068e8e509bed1913ad19f5c318aeedf361e6aa78bb",
+      "bytes": 126976
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "sha256": "e5e3d378bafcc65434196c07ebcbb09218a135d8f3dde4ab0ad2194c3d5ac6df",
+      "bytes": 1123840
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+      "sha256": "4f7605aea0195399d83dcfb2f51d70cdd8721d9a0a1b651a75c51e754a983c73",
+      "bytes": 216884
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+      "sha256": "afe8621f94075a7e05965890a7ba63bfe6485e90ab63f5c1516a648af81ad357",
+      "bytes": 251053
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "a54c0f90d1593137087ec2e8de23692ba20005b2be4f74606bc37e3512595d2e",
+      "bytes": 1059840
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+      "sha256": "e9d2e0c3ace7898a285e8ffa440fc1d98c9946224abb551513f839776a397a6f",
+      "bytes": 270008
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "829e4665e1e5db361f1c7ef79c141b60f1eea818359c901b120b4181aa0d668f",
+      "bytes": 1119232
+    },
+    {
+      "project_graph": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+      "sha256": "a5fc42b46d763ddab651c96a1c01333fd91a458e032644143b28877f8de34bcc",
+      "bytes": 126976
+    }
+  ],
+  "binary_provenance": {
+    "inspection": "pdb-source-check.json",
+    "inspection_sha256": "93c9440c4ed973623f85a569864335b1dd3549230beca7e3d41794604f7d2060",
+    "source_checks": "All 270 current Client C# SHA-256 byte sequences occur in each qualified portable PDB; no source checksum is missing. Informational versions match 3.126.0+509dbe3733956a86c2ee2fddfd9c0d0006bbfea3. Distinct PE/PDB groups from project graphs are retained, not normalized; this does not claim identical whole-assembly IL or a proven cause for every differing byte."
+  },
+  "builds": [
+    {
+      "project": "Hexalith.EventStore.Client.Tests",
+      "command": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false --no-restore",
+      "result": "succeeded",
+      "log": "client-build.log",
+      "log_sha256": "33e43c527dcca91b2023591ef6554b1a1bd464e1304b448f7bb394049c05355f"
+    },
+    {
+      "project": "Hexalith.EventStore.DomainService.Tests",
+      "command": "dotnet build tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false --no-restore",
+      "result": "succeeded",
+      "log": "domain-build.log",
+      "log_sha256": "a26730bcc67328bd6fbb6b193cf7757ddec0149a223033218931733824f47203"
+    },
+    {
+      "project": "Hexalith.EventStore.Server.LiveSidecar.Tests",
+      "command": "dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false --no-restore",
+      "result": "succeeded",
+      "log": "live-build.log",
+      "log_sha256": "b1fa13ac332a826120f288f125867b85b99e18025089be2fd606e1d2525e3294"
+    }
+  ],
+  "build_diagnostics": [
+    {
+      "log": "diagnostic-live-stale-assets-build.log",
+      "command": "dotnet build tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false --no-restore",
+      "blocker": "Stale assets/missing existing NuGet analyzer files and McpCli project.assets.json. Restored the existing pinned graph by running the same build without --no-restore; no package/version/submodule change. Final builds succeeded. Final live build retained one transient MSB3026 copy retry warning from concurrent workspace activity, with zero errors."
+    }
+  ],
+  "runs": [
+    {
+      "id": "client-full",
+      "command": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests -result-xml /tmp/eventstore-expiry-client-full.xml",
+      "xml": "client-full.xml",
+      "qualification": "Full affected Client assembly; 2 existing opt-in isolated-endpoint tests are explicitly not acceptance evidence.",
+      "result": {
+        "total": 1702,
+        "passed": 1700,
+        "failed": 0,
+        "skipped": 2,
+        "errors": 0,
+        "skips": [
+          {
+            "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: False)",
+            "reason": "Requires isolated Dapr endpoints."
+          },
+          {
+            "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: True)",
+            "reason": "Requires isolated Dapr endpoints."
+          }
+        ],
+        "failures": []
+      },
+      "result_sha256": "9185fa1500c2aefb5e89aba90ac95363d025511bb8289d21404f20d3ee707b41",
+      "working_directory": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore"
+    },
+    {
+      "id": "domain-full",
+      "environment": {
+        "HEXALITH_TENANTS_DOMAIN_ROOT": "/home/administrator/projects/hexalith/folders/references/Hexalith.Tenants/src/Hexalith.Tenants"
+      },
+      "command": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests -result-xml /tmp/eventstore-expiry-domain-full-root-tenants.xml",
+      "xml": "domain-full.xml",
+      "qualification": "Full affected DomainService assembly using its existing supported umbrella-layout override.",
+      "result": {
+        "total": 1005,
+        "passed": 1005,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": []
+      },
+      "result_sha256": "c581ea6eb472acf49fa041f7ea0f60d79c20ded5b40b6635cc64767c2fe33612",
+      "working_directory": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore"
+    },
+    {
+      "id": "live-final",
+      "environment": {
+        "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+        "RUN_TX_QUALIFICATION_PROBE": "1"
+      },
+      "command": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests -class '*ProjectionExpiryAndScratchRecoveryLiveTests' -class '*ReadModelBatchLiveSidecarTests' -class '*SharedProjectionEpochLiveSidecarTests' -showliveoutput -result-xml /tmp/eventstore-expiry-live-final.xml",
+      "xml": "live-final.xml",
+      "qualification": "9 new scenarios and 14 existing regressions; supported Resumable expiry/recovery, plus explicit unqualified-transaction partial-write/refusal evidence. No transaction atomicity qualification.",
+      "result": {
+        "total": 23,
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": []
+      },
+      "result_sha256": "a3db70f8bba63a611bf9dca1ac2733291f9ad898935c1c6429ff70bf69595eed",
+      "working_directory": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore"
+    },
+    {
+      "id": "client-focused",
+      "command": "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests -class '*ReadModelBatchDeadlineTests' -class '*SharedProjectionExpiryAndScratchTests' -class '*DaprReadModelBatchTests' -result-xml /tmp/eventstore-expiry-client-focused-final2.xml",
+      "xml": "client-focused.xml",
+      "result": {
+        "total": 159,
+        "passed": 159,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": []
+      },
+      "result_sha256": "55b4c9d6b5c8970b3c258a407a1b6e4a8d4ec5a8f3a868d802f715edc495969d",
+      "working_directory": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore"
+    },
+    {
+      "id": "domain-scratch",
+      "command": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests -method '*InterruptedAccumulateRetryOrDirectAbortPreservesSelectionAndPermitsFreshRebuild' -result-xml /tmp/eventstore-expiry-domain-scratch-final2.xml",
+      "xml": "domain-scratch.xml",
+      "result": {
+        "total": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": []
+      },
+      "result_sha256": "4fbdd2978bffc21798d583e9ea0288b3b5522352c90d7e6c714bb2a794cfdcbc",
+      "working_directory": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore"
+    },
+    {
+      "id": "domain-root-tenants",
+      "environment": {
+        "HEXALITH_TENANTS_DOMAIN_ROOT": "/home/administrator/projects/hexalith/folders/references/Hexalith.Tenants/src/Hexalith.Tenants"
+      },
+      "command": "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests -method '*TenantsDomainService_DoesNotReferenceGeneratedApiHostOrDeclarePerMessageControllers' -result-xml /tmp/eventstore-expiry-domain-root-tenants.xml",
+      "xml": "domain-root-tenants.xml",
+      "result": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": []
+      },
+      "result_sha256": "aa0520ea7b574ab7ac7dc26c1ab2afefaf7655cb5134e6bfd6e280ddd3e2ce90",
+      "working_directory": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore"
+    }
+  ],
+  "diagnostics": [
+    {
+      "xml": "diagnostic-live-initial.xml",
+      "sha256": "be09a8bf8c221ba607031a44a640d79f6c934c3c4e93222e6e0a32486deb178b",
+      "result": {
+        "total": 9,
+        "passed": 8,
+        "failed": 1,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": [
+          {
+            "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified)",
+            "message": "Shouldly.ShouldAssertException : else (await store.ExecuteAsync(batch)).IsSuccess\n    should be\nTrue\n    but was\nFalse"
+          }
+        ]
+      },
+      "disposition": "Initial forced TransactionQualified success assertion failed; default resumable and all scratch/recovery cases passed. Preserved exploration, not acceptance.",
+      "source_binding": "Intermediate diagnostic source; not asserted to equal the final source snapshot."
+    },
+    {
+      "xml": "diagnostic-live-transaction-native.xml",
+      "sha256": "2af5ceabbcae0af9b05b7677d5a8396182888f750e2b6075e4ae014f4efdf8b0",
+      "result": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": [
+          {
+            "name": "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.DelayedInstallationKeepsRemainingPhysicalTtlAndInclusiveDeadline(profile: TransactionQualified)",
+            "message": "Shouldly.ShouldAssertException : committed.IsSuccess\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    ReadModelBatchResult { Status = Indeterminate, Fingerprint = v2:Kqk7b_eZgP2GXLShUSHovLGO-h74odi75JnIb8dVXwA, ConflictKind = None, RecoveryReason = transaction-dispatch, IsSuccess = False }"
+          }
+        ]
+      },
+      "disposition": "Native Redis Lua rejection on the existing Prepared marker after partial visible model writes. Final strict control proves the same behavior for legacy v1 and deadline v2.",
+      "source_binding": "Intermediate diagnostic source; not asserted to equal the final source snapshot."
+    },
+    {
+      "xml": "diagnostic-domain-layout.xml",
+      "sha256": "b8eda26faa20bb8a03bb51abe0b8d9e69088f1693fc35fc3e968282f41be7835",
+      "result": {
+        "total": 1005,
+        "passed": 1004,
+        "failed": 1,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": [
+          {
+            "name": "Hexalith.EventStore.DomainService.Tests.DomainModuleAuthoringGuardrailTests.TenantsDomainService_DoesNotReferenceGeneratedApiHostOrDeclarePerMessageControllers",
+            "message": "Shouldly.ShouldAssertException : File.Exists(csproj)\n    should be\nTrue\n    but was\nFalse\n\nAdditional Info:\n    Expected the root-declared Tenants submodule project at /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj; boundary verification must not pass without its subject."
+          }
+        ]
+      },
+      "disposition": "Unpinned full DomainService run: sole failure required an uninitialized nested Tenants path. Existing HEXALITH_TENANTS_DOMAIN_ROOT override resolved it without initializing or altering submodules.",
+      "source_binding": "Intermediate diagnostic source; not asserted to equal the final source snapshot."
+    },
+    {
+      "xml": "diagnostic-domain-source-guard.xml",
+      "sha256": "783d8a5ba7d7dbce2d39d0a3861dc873ee9a71edc2454a1b3f936c20aebc587b",
+      "result": {
+        "total": 76,
+        "passed": 74,
+        "failed": 2,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": [
+          {
+            "name": "Hexalith.EventStore.DomainService.Tests.DomainFencedSharedProjectionIntegrationTests.RegistrationOrJournalingStoreReadOutageIsRetryable(failureRead: 2, daprFailure: False)",
+            "message": "System.InvalidOperationException : The shared projection has no epoch state."
+          },
+          {
+            "name": "Hexalith.EventStore.DomainService.Tests.DomainFencedSharedProjectionIntegrationTests.RegistrationOrJournalingStoreReadOutageIsRetryable(failureRead: 2, daprFailure: True)",
+            "message": "System.InvalidOperationException : The shared projection has no epoch state."
+          }
+        ]
+      },
+      "disposition": "Earlier relevant suite detected an extra fresh-registration read; repaired by distinguishing absent null ETags from pending empty ETags. Final full DomainService rerun passes all tests.",
+      "source_binding": "Intermediate diagnostic source; not asserted to equal the final source snapshot."
+    },
+    {
+      "xml": "diagnostic-client-empty-filter.xml",
+      "sha256": "78d04cde2985a014dcde8b20ae927cbe331a06fcd3ac5fb278f67763c4a819ce",
+      "result": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": 0,
+        "skips": [],
+        "failures": []
+      },
+      "disposition": "Mixed class and method filters intersected to zero tests. This is not acceptance; corrected focused and full runs are recorded.",
+      "source_binding": "Intermediate diagnostic source; not asserted to equal the final source snapshot."
+    }
+  ],
+  "live_observations": {
+    "new_tests": 9,
+    "remaining_redis_ttl_milliseconds": 3986,
+    "logical_boundary": "readable one tick before deadline; absent at the inclusive deadline",
+    "physical_expiry": "model and dependent receipt deleted by Redis after remaining TTL, checkpoint retained",
+    "replacement_scope": "New Dapr clients, DaprReadModelStore instances and SharedProjectionEpochCoordinator instances over unchanged real Redis state. These new tests do not claim a replaced test-runner OS process or a new sidecar process during recovery.",
+    "cleanup": {
+      "fixture_app_id": "eventstore-live-0d0dcdd47eb6488e84c02ba807919bee",
+      "sidecar_stopped_before_cleanup": true,
+      "fixture_owned_keys_removed": 20772,
+      "remaining_fixture_owned_keys": 0,
+      "scope": "eventstore-live-0d0dcdd47eb6488e84c02ba807919bee||*",
+      "external_app_namespaces_untouched": true
+    },
+    "transaction_boundary": "Pinned Redis remains Resumable. Forcing TransactionQualified partially persists rows visible via SDK reads, then fails to update the existing Prepared marker for both legacy v1 and deadline v2 controls. Indeterminate refuses completion only; it does not prove rollback, atomicity or hidden-row safety."
+  },
+  "remaining_limits": [
+    "Legacy fully installed Prepared/Aborting scratch may be compensated only when both matching own envelopes and the unchanged Building fence prove its exact bounded shape. Legacy committed/no-manifest or incomplete legacy evidence remains fail-closed for owner disposition.",
+    "Two existing optional Client PendingBatchRecoveryLiveTests cases were skipped without isolated endpoints; they are not acceptance evidence. The separate real-sidecar acceptance lane has zero skips.",
+    "No qualification of TransactionQualified for this Redis provider, public v2 exposure, >10000 identity vectors, release packages, Folders consumption, or whole-repository release gates."
+  ],
+  "result_authority": "Recorded XML counts, raw persisted-state assertions, source/PDB checks and hashes are authoritative. Shell output wrappers included tail commands; wrapper exit codes are not substituted for test results.",
+  "implementation_spec": {
+    "path": "_bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md",
+    "sha256": "4c18b4a2a355b46b299422c388c885dc12418abdc6fe58ddb76bb5c1511cf289",
+    "status": "ready-for-review",
+    "checked_tasks": 6
+  }
+}

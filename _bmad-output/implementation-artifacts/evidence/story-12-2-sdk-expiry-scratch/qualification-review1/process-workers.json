@@ -1,0 +1,54 @@
+[
+  {
+    "phase": "persist",
+    "tenant": "scratch-process-65729105f2124ba681454b884ab48f2b",
+    "pid": 2328699,
+    "command_record": "process-workers/scratch-process-65729105f2124ba681454b884ab48f2b-persist.json",
+    "xml": "process-workers/scratch-process-65729105f2124ba681454b884ab48f2b-persist.xml",
+    "result": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  {
+    "phase": "resume",
+    "tenant": "scratch-process-65729105f2124ba681454b884ab48f2b",
+    "pid": 2328831,
+    "command_record": "process-workers/scratch-process-65729105f2124ba681454b884ab48f2b-resume.json",
+    "xml": "process-workers/scratch-process-65729105f2124ba681454b884ab48f2b-resume.xml",
+    "result": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  {
+    "phase": "persist",
+    "tenant": "scratch-process-9771573be23d49169456229bfb240f9e",
+    "pid": 2327730,
+    "command_record": "process-workers/scratch-process-9771573be23d49169456229bfb240f9e-persist.json",
+    "xml": "process-workers/scratch-process-9771573be23d49169456229bfb240f9e-persist.xml",
+    "result": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  {
+    "phase": "resume",
+    "tenant": "scratch-process-9771573be23d49169456229bfb240f9e",
+    "pid": 2328206,
+    "command_record": "process-workers/scratch-process-9771573be23d49169456229bfb240f9e-resume.json",
+    "xml": "process-workers/scratch-process-9771573be23d49169456229bfb240f9e-resume.xml",
+    "result": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  }
+]
