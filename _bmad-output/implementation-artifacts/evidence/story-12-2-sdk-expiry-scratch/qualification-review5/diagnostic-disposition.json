@@ -1,0 +1,7 @@
+{
+  "acceptance": "Only the commands.json frozen final-source group qualifies acceptance.",
+  "first-frozen-attempt": "diagnostics/first-frozen-attempt retains543 passing and3 failing focused cases and its exact source/binary group.",
+  "earlier-probes": "Earlier fixture construction/assertion failures and the6-of7 live gate remain failures. The corrected live terminal stop explicitly asserts its injector exception.",
+  "zero-selection": "The initial mixed class/method-filter command selected zero tests; it is not acceptance. Final focused/full runs include every required regression.",
+  "unfrozen-exploration": "Earlier exploratory runs without source freezes are diagnostics only; exact source provenance is not claimed for them."
+}

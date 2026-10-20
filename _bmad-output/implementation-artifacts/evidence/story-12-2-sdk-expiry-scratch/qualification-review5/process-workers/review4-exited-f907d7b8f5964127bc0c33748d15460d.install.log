@@ -1,0 +1,8 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionRetiredInstallerProcessWorkerTests.InstallOrRecoverExactRetiredParticipant [OUTPUT] {"phase":"install","pid":2961125,"ordinal":0,"exists":true,"raw_base64":"eyIkaHhybWIiOjEsImNhbmQiOiJleUpqYjNWdWRDSTZNWDA9IiwiZGVsIjpmYWxzZSwiZnAiOiJ2MTo1WUtqS2ZuSGN5dDluM2g1bnFYUFFkZVR1U1piM1c2T0xPUDlTSGVqalRrIiwib3JkIjowLCJwcmV2IjpudWxsLCJzY29wZSI6IkxoQ2dyMmFHTHRwSTY5U2U5OHV3cXdkMjhDa3dwWTVpenFiMzJDcFVNNmMifQ=="}
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.411s

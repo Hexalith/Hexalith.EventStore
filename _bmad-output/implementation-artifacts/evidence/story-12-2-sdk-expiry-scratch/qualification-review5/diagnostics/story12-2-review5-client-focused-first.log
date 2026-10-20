@@ -1,0 +1,99 @@
+The '-parallel' switch has been deprecated in favor of '-parallelMode' and will be removed in the next major version
+
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Client.Tests
+  Discovered:  Hexalith.EventStore.Client.Tests
+  Starting:    Hexalith.EventStore.Client.Tests
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(component: "store") [FAIL]
+      Shouldly.ShouldAssertException : (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs(40,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(String component)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(component: "tenant") [FAIL]
+      Shouldly.ShouldAssertException : (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs(40,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(String component)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(component: "domain") [FAIL]
+      Shouldly.ShouldAssertException : (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs(40,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(String component)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(component: "owner") [FAIL]
+      Shouldly.ShouldAssertException : (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs(40,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(String component)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(component: "projection") [FAIL]
+      Shouldly.ShouldAssertException : (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs(40,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(String component)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(component: "batch") [FAIL]
+      Shouldly.ShouldAssertException : (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved
+          should be
+      False
+          but was
+      True
+      Stack Trace:
+        tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs(40,0): at Hexalith.EventStore.Client.Tests.Projections.ReadModelReviewFiveRegressionTests.TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(String component)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+  Finished:    Hexalith.EventStore.Client.Tests (ID = '4f1d6939fccaf1749dc4922c46da25ab9a1187905c9fadc267fc8d41e46e233e')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Client.Tests  Total: 14, Errors: 0, Failed: 6, Skipped: 0, Not Run: 0, Time: 1.494s

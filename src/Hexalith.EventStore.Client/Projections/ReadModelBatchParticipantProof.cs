@@ -40,9 +40,23 @@ internal sealed record ReadModelBatchParticipantProof(ReadModelBatchScope Scope,
         RawStateEntry row = await accessor.ReadAsync(Key(scope, fingerprint, anchor.Ordinal), token).ConfigureAwait(false);
         if (!row.Exists || row.Value.Length > MaxEncodedBytes) return false;
         ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(row.Value.Span, JsonSerializerOptions.Web);
-        return proof is not null && proof.Scope == scope && proof.Fingerprint == fingerprint
-            && ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(row.Value.Span)
+        return IsValid(proof, scope, fingerprint, row.Value)
             && ReadModelBatchCanonicalJson.Serialize(proof.Anchor).Span.SequenceEqual(ReadModelBatchCanonicalJson.Serialize(anchor).Span);
+    }
+
+    /// <summary>Rejects malformed existing participant proof before a terminal receipt can seal auxiliary retirement.</summary>
+    internal static async Task<bool> ValidateExistingAsync(IReadModelBatchStateAccessor accessor, ReadModelBatchScope scope,
+        string fingerprint, int participantCount, CancellationToken token)
+    {
+        for (int ordinal = 0; ordinal < participantCount; ordinal++)
+        {
+            RawStateEntry row = await accessor.ReadAsync(Key(scope, fingerprint, ordinal), token).ConfigureAwait(false);
+            if (!row.Exists) continue; // The original installer never reached this ordinal.
+            if (row.Value.Length > MaxEncodedBytes) return false;
+            ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(row.Value.Span, JsonSerializerOptions.Web);
+            if (!IsValid(proof, scope, fingerprint, row.Value) || proof.Anchor.Ordinal != ordinal) return false;
+        }
+        return true;
     }
 
     /// <summary>Reads bounded canonical proof for only the original participant and terminal identity.</summary>
@@ -55,12 +69,22 @@ internal sealed record ReadModelBatchParticipantProof(ReadModelBatchScope Scope,
         ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(row.Value.Span, JsonSerializerOptions.Web);
         var marker = new ReadModelBatchMarker { ScopeHash = fence.Scope.ComputeScopeHash(), BatchId = fence.Scope.BatchId,
             Fingerprint = fence.Fingerprint, Status = fence.Decision ?? ReadModelBatchMarkerStatus.Aborted };
-        return proof is not null && proof.Scope == fence.Scope && proof.Fingerprint == fence.Fingerprint
-            && proof.Anchor is not null && proof.Anchor.Key == key && proof.Anchor.Ordinal == envelope.Ordinal
+        return IsValid(proof, fence.Scope, fence.Fingerprint, row.Value)
+            && proof!.Anchor.Key == key && proof.Anchor.Ordinal == envelope.Ordinal
             && proof.Anchor.Matches(marker, fence.Scope) && proof.Anchor.Matches(marker, envelope)
+            ? proof.Anchor : null;
+    }
+
+    /// <summary>Applies the shared canonical typed proof guard before recovery can mutate evidence.</summary>
+    internal static bool IsValid([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] ReadModelBatchParticipantProof? proof,
+        ReadModelBatchScope scope, string fingerprint, ReadOnlyMemory<byte> bytes)
+    {
+        var marker = new ReadModelBatchMarker { ScopeHash = scope.ComputeScopeHash(), BatchId = scope.BatchId,
+            Fingerprint = fingerprint, Status = ReadModelBatchMarkerStatus.Aborted };
+        return proof is not null && proof.Scope == scope && proof.Fingerprint == fingerprint
+            && proof.Anchor?.Scope is not null && proof.Anchor.Matches(marker, scope)
             && Enum.IsDefined(proof.ConcurrencyMode) && proof.ExpectedETagDigest is { Length: 64 }
             && proof.ExpectedETagDigest.All(static character => char.IsAsciiHexDigitUpper(character))
-            && ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(row.Value.Span)
-            ? proof.Anchor : null;
+            && ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(bytes.Span);
     }
 }

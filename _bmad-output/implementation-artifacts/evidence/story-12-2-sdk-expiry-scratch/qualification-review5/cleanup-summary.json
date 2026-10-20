@@ -1,0 +1,101 @@
+{
+  "namespaces": [
+    {
+      "app_id": "eventstore-live-10af1ccb23b648c7a0292bb8f475ce86",
+      "sidecar_active": false,
+      "removed_keys": 2,
+      "remaining_keys": 0,
+      "scan_command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-cli",
+        "--raw",
+        "--scan",
+        "--pattern",
+        "eventstore-live-10af1ccb23b648c7a0292bb8f475ce86||*"
+      ]
+    },
+    {
+      "app_id": "eventstore-live-25fe7491ec2848f7b8c94a39c1c8ea4b",
+      "sidecar_active": false,
+      "removed_keys": 20756,
+      "remaining_keys": 0,
+      "scan_command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-cli",
+        "--raw",
+        "--scan",
+        "--pattern",
+        "eventstore-live-25fe7491ec2848f7b8c94a39c1c8ea4b||*"
+      ]
+    },
+    {
+      "app_id": "eventstore-live-34a6cb2246db4a99a0f3e067b29af28e",
+      "sidecar_active": false,
+      "removed_keys": 17,
+      "remaining_keys": 0,
+      "scan_command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-cli",
+        "--raw",
+        "--scan",
+        "--pattern",
+        "eventstore-live-34a6cb2246db4a99a0f3e067b29af28e||*"
+      ]
+    },
+    {
+      "app_id": "eventstore-live-3ea5a9100de54421bcbb9c262dbc06d4",
+      "sidecar_active": false,
+      "removed_keys": 2,
+      "remaining_keys": 0,
+      "scan_command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-cli",
+        "--raw",
+        "--scan",
+        "--pattern",
+        "eventstore-live-3ea5a9100de54421bcbb9c262dbc06d4||*"
+      ]
+    },
+    {
+      "app_id": "eventstore-live-83949387ce0041b79ee3a11090cf10f6",
+      "sidecar_active": false,
+      "removed_keys": 2,
+      "remaining_keys": 0,
+      "scan_command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-cli",
+        "--raw",
+        "--scan",
+        "--pattern",
+        "eventstore-live-83949387ce0041b79ee3a11090cf10f6||*"
+      ]
+    },
+    {
+      "app_id": "eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7",
+      "sidecar_active": false,
+      "removed_keys": 2,
+      "remaining_keys": 0,
+      "scan_command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-cli",
+        "--raw",
+        "--scan",
+        "--pattern",
+        "eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*"
+      ]
+    }
+  ],
+  "unrelated_apps_stopped": 0
+}

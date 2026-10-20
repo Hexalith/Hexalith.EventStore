@@ -1,0 +1,98 @@
+[
+  {
+    "app_id": "eventstore-live-10af1ccb23b648c7a0292bb8f475ce86",
+    "source_log": "live-expiry-scratch.log",
+    "warmup_actor": "6ae866b6ad924f529f5cd85fc3e2ce66",
+    "observed_key": "eventstore-live-10af1ccb23b648c7a0292bb8f475ce86||ETagActor||warmup:6ae866b6ad924f529f5cd85fc3e2ce66||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:6ae866b6ad924f529f5cd85fc3e2ce66||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-34a6cb2246db4a99a0f3e067b29af28e",
+    "source_log": "live-read-model-batch.log",
+    "warmup_actor": "24d3d5da20e64d3598fec5529c6787c2",
+    "observed_key": "eventstore-live-34a6cb2246db4a99a0f3e067b29af28e||ETagActor||warmup:24d3d5da20e64d3598fec5529c6787c2||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:24d3d5da20e64d3598fec5529c6787c2||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-25fe7491ec2848f7b8c94a39c1c8ea4b",
+    "source_log": "live-shared-epoch.log",
+    "warmup_actor": "ae5116f0fdd445219bb085c0a75b9af3",
+    "observed_key": "eventstore-live-25fe7491ec2848f7b8c94a39c1c8ea4b||ETagActor||warmup:ae5116f0fdd445219bb085c0a75b9af3||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:ae5116f0fdd445219bb085c0a75b9af3||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7",
+    "source_log": "diagnostics/story12-2-review5-live-focused-second.log",
+    "warmup_actor": "2da5e5d2cee44a2dbd529b1fc4f927b4",
+    "observed_key": "eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||ETagActor||warmup:2da5e5d2cee44a2dbd529b1fc4f927b4||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:2da5e5d2cee44a2dbd529b1fc4f927b4||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-83949387ce0041b79ee3a11090cf10f6",
+    "source_log": "diagnostics/story12-2-review5-live-focused-first.log",
+    "warmup_actor": "4bbc6fbbab2f4fd3a93c2af239fac9c8",
+    "observed_key": "eventstore-live-83949387ce0041b79ee3a11090cf10f6||ETagActor||warmup:4bbc6fbbab2f4fd3a93c2af239fac9c8||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:4bbc6fbbab2f4fd3a93c2af239fac9c8||*"
+    ]
+  },
+  {
+    "app_id": "eventstore-live-3ea5a9100de54421bcbb9c262dbc06d4",
+    "source_log": "diagnostics/story12-2-review5-live-terminal-final.log",
+    "warmup_actor": "c5fff2e082db4c108110bfff2c801504",
+    "observed_key": "eventstore-live-3ea5a9100de54421bcbb9c262dbc06d4||ETagActor||warmup:c5fff2e082db4c108110bfff2c801504||etag",
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-cli",
+      "--raw",
+      "--scan",
+      "--pattern",
+      "*||warmup:c5fff2e082db4c108110bfff2c801504||*"
+    ]
+  }
+]

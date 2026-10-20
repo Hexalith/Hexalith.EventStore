@@ -16,6 +16,16 @@ internal sealed record ReadModelBatchTerminalFence(ReadModelBatchScope Scope, st
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadModelBatchMarkerStatus? Decision = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int ParticipantCount = 0)
 {
+    /// <summary>
+    /// Bounds all accepted legacy evidence: three six-component scopes and two logical keys, each
+    /// UTF-8 byte escaping to at most six JSON bytes, plus 4096 bytes for digests and fixed fields.
+    /// Historical canonical v1 bytes remain unchanged.
+    /// </summary>
+    internal const int MaxLegacyEncodedBytes = 6 * (3 * 6 * ReadModelBatchScope.MaxComponentByteLength
+        + 2 * ReadModelBatchOptions.DefaultMaxKeyByteLength) + 4096;
+
+    private const int MaxEncodedBytes = MaxLegacyEncodedBytes > ReadModelBatchParticipantProof.MaxEncodedBytes
+        ? MaxLegacyEncodedBytes : ReadModelBatchParticipantProof.MaxEncodedBytes;
     /// <summary>Derives a separate bounded key without exposing scope or payload.</summary>
     internal static string Key(string scopeHash, string fingerprint) => ReadModelBatchKeys.MarkerKey(scopeHash)
         + ":retired:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint)));
@@ -26,11 +36,11 @@ internal sealed record ReadModelBatchTerminalFence(ReadModelBatchScope Scope, st
     {
         RawStateEntry row = await accessor.ReadAsync(Key(scope.ComputeScopeHash(), fingerprint), token).ConfigureAwait(false);
         if (!row.Exists) return null;
-        if (row.Value.Length > ReadModelBatchParticipantProof.MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
+        if (row.Value.Length > MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
         ReadModelBatchTerminalFence? fence = JsonSerializer.Deserialize<ReadModelBatchTerminalFence>(row.Value.Span, JsonSerializerOptions.Web);
         if (fence is null || fence.Version is not (1 or 2) || fence.Scope != scope || fence.Fingerprint != fingerprint || fence.Anchors is null
             || fence.Anchors.Length is not (0 or 2)
-            || (fence.Version == 1 ? row.Value.Length > 16_384 || fence.Decision is not null || fence.ParticipantCount != 0
+            || (fence.Version == 1 ? row.Value.Length > MaxLegacyEncodedBytes || fence.Decision is not null || fence.ParticipantCount != 0
                 : fence.Anchors.Length != 0 || fence.Decision is not (ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)
                     || fence.ParticipantCount is < 1 or > ReadModelBatchOptions.DefaultMaxOperations)
             || !ReadModelBatchCanonicalJson.Serialize(fence).Span.SequenceEqual(row.Value.Span))
@@ -49,7 +59,7 @@ internal sealed record ReadModelBatchTerminalFence(ReadModelBatchScope Scope, st
     {
         RawStateEntry row = await accessor.ReadAsync(Key(envelope.ScopeHash, envelope.Fingerprint), token).ConfigureAwait(false);
         if (!row.Exists) return null;
-        if (row.Value.Length > ReadModelBatchParticipantProof.MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
+        if (row.Value.Length > MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
         ReadModelBatchTerminalFence? fence = JsonSerializer.Deserialize<ReadModelBatchTerminalFence>(row.Value.Span, JsonSerializerOptions.Web);
         if (fence?.Scope is null || fence.Scope with { BatchId = expected.BatchId } != expected
             || fence.Scope.ComputeScopeHash() != envelope.ScopeHash) throw new JsonException("Invalid private terminal fence scope.");
@@ -60,7 +70,7 @@ internal sealed record ReadModelBatchTerminalFence(ReadModelBatchScope Scope, st
     internal async Task<bool> SealAsync(IReadModelBatchStateAccessor accessor, CancellationToken token)
     {
         ReadOnlyMemory<byte> bytes = ReadModelBatchCanonicalJson.Serialize(this);
-        if (bytes.Length > (Version == 1 ? 16_384 : ReadModelBatchParticipantProof.MaxEncodedBytes)) return false;
+        if (bytes.Length > (Version == 1 ? MaxLegacyEncodedBytes : ReadModelBatchParticipantProof.MaxEncodedBytes)) return false;
         bool sealedFence = await accessor.TryWriteAsync(Key(Scope.ComputeScopeHash(), Fingerprint), bytes, string.Empty, token).ConfigureAwait(false);
         if (!sealedFence)
         {

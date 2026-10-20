@@ -2,10 +2,10 @@
 title: 'Folders 12.2 prerequisite: source expiry and interrupted scratch recovery'
 type: feature
 created: '2026-10-20'
-status: in-review
+status: in-progress
 baseline_commit: 'd4d05f871991ec2af305267f59dcefeae3f127ed'
 route: dispatch
-review_loop_iteration: 4
+review_loop_iteration: 5
 context:
   - '/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/proposal-12-2-sdk-expiry-and-scratch-recovery.md'
   - 'docs/guides/named-projection-authoring.md'
@@ -411,6 +411,106 @@ Stage9 evidence, including both failed unchanged-binary consumer live attempts. 
 performance p95 observations exceed SM4 and remain open without attribution or redesign. The
 separate >10000 identity capability, package/PD10 and whole Story12.2 review remain open.
 
+## Review-five implementation corrections
+
+Parent classified all twelve final reports individually before grouping. Positively reuse every file in
+`/tmp/story12-2-sdk-review5-keep-79zyj2r0/approved-working-tree/references/Hexalith.EventStore` after SHA verification. Read its README and
+files.json first; all78 SDK files and14 parent-owned consumer files were preserved. Three incoming SDK
+hunks and one Folders file overlap an external user merge. Their external changes survive the ordinary
+three-way restoration; ALL unrelated merged source/config/tests remain untouched. Original frontmatter
+baseline d4d05 is an ownership origin, not permission to revert the incoming merged features. The
+parent's user-change preservation rule takes precedence over a blind baseline reset. Do not edit Folders.
+Use current owning guidance/configuration, including incoming globals/.gitattributes and current tests.
+Keep all prior successful behavior, metadata/compatibility decisions, typed owner guards and tests.
+
+- [x] Make same-action retained scratch retry converge after a benign competing owner advances the
+  shared fence ETag. The parent public-coordinator probe pauses A after ordinal0, completes distinct
+  owner/key/batch B, then A compensates false and every identical A retry stays false because its
+  retained Aborted deterministic identity cannot be reused. Reconcile only proven original terminal
+  work and derive/recover/reclaim any necessary bounded deterministic SDK attempt identity coherently.
+  Preserve immutable decisions, current operation/epoch/tenant, original concurrency, late old-worker
+  and provider ETag-ABA fences. No random per-retry IDs, deleted safety proof, public scratch API or
+  consumer protocol. Test original and replacement attempts, repeated competing conflicts, current
+  same-action retry, Abort and late original installers, including legacy replacement coexistence;
+  actual production named multi-owner Accumulate retry, subsequent ordinary delivery and fresh rebuild
+  must work. Qualify the relevant competing-writer race over real Dapr/Redis with zero required skips.
+- [x] Preserve lawful legacy retirement at maximum accepted scope/key escaping. A validated512-byte
+  component scope produces a56025-byte two-anchor version1 fence, above its16384-byte limit. Derive
+  bounded physical allowances from ALL accepted inputs and apply them coherently to seal/read/discovery
+  and compatibility. Keep original100-operation/one-MiB manifest, logical-model, participant-proof and
+  canonical validation limits. Add meaningful full legacy recovery regressions at the supported bound,
+  malformed/oversized refusal, repeated settlement and provider coverage, not only a private helper test.
+  Parent pre-handoff audit additionally proves the same legal-input requirement reaches terminal
+  receipts/anchors: retained WriteExpiring with StoreName=store and the other five components512 escaped
+  ASCII bytes creates a19002-byte terminal marker. Execute reports Completed, but exact-marker recovery
+  refuses invalid-recovery-evidence; interruption at RecoveryReceiptWritten is likewise stranded by
+  remaining16384-byte receipt checks. Correct the coherent bounded marker/anchor discovery and recovery
+  path as well, including every relevant reader, without widening decoded manifest/model limits or
+  accepting malformed proof. Execute full and interrupted retained deadline cases at maximal legal
+  scope/key capacity, both before and after terminal payload reclamation; preserve single-owner and
+  coordinated-owner guards, including incoming legitimate retained single-owner support. This is B1
+  acceptance follow-through during implementation, not a new frozen intent or post-review loop.
+- [x] Validate a logical-key discovery's original complete scope before writing terminal fence/index
+  metadata, including terminal receipts with no RecoveryAnchor. The foreign-tenant probe currently
+  writes two auxiliary keys then refuses. Keep exact-marker discovery and authentic same-boundary
+  discovery working; invalid tenant/store/domain/owner/projection/batch evidence must leave ALL original
+  payload, marker, manifest, participant proofs and auxiliary bytes unchanged. Reuse authoritative guards.
+- [x] Make participant-proof anchor matching reject invalid concurrency enum and ETag digest using the
+  same canonical typed validation as ReadAsync. Parent public recovery currently resolves a valid terminal
+  anchor with mode999/digest malformed. Validate BEFORE auxiliary writes, manifest reclamation or model
+  compaction. Preserve valid modes/original guards, digest shape, duplicates/canonical/scope/anchor bounds;
+  add actual recovery tests, including unchanged original/auxiliary bytes on malformed evidence.
+- [x] Apply the authoritative canonical ScratchCompensationKey(scopeHash) guard to terminal legacy
+  recovery before reading unrelated proof or mutating private data. Parent supplies unrelated-key with
+  matching terminal anchors and recovery currently resolves/deletes original envelopes. Keep valid
+  resumed legacy compensation, absent already-reclaimed proof and late-worker safety; malformed evidence
+  must fail closed without ANY original/foreign/auxiliary mutation.
+- [x] Missing retired owner inventory after cleanup flags advance must produce an explicit unavailable
+  or refused cleanup disposition when original evidence is insufficient. Parent production named
+  Begin/Accumulate/Abort then missing inventory plus captured late original chunk returns AlreadyCompleted
+  with physical scratch still present. Never infer unknown owner counts/chunks, enumerate unrelated keys,
+  delete arbitrary private data, or regress the exact Open/selected epoch. Preserve incoming/legacy
+  compatibility where provable original inventory remains; cover historical never-created and unavailable/
+  corrupt inventory, replacement coordinators, repeated Abort, valid late cleanup and subsequent growth.
+- [x] Extend terminal accepted-owner late-installer qualification to streamed transport fragments/parts
+  and the corresponding retained discovery counts, beyond the existing chunk-only case. Use actual named
+  production dispatch to accept owner, Abort through terminal cleanup flags, reinstate captured exact
+  authenticated original fragment (and relevant streamed/hash-page proof path), replace coordinator,
+  repeat Abort, assert PHYSICAL absence plus exact Open preservation, ordinary delivery and fresh named
+  rebuild without manual recovery/private-delete calls. Include meaningful component and real-provider
+  coverage so deleting the new terminal transport discovery loop fails executed acceptance.
+- [x] Report budget-expired only when the shared maintenance budget token actually cancelled. An
+  independent dependency OperationCanceledException at197ms under30000ms currently emits budget-expired.
+  Correct the existing closed diagnostic reason without changing budget/gate/retry semantics or public
+  surface. Execute separate dependency-cancel and actual budget-expiry cases, and assert emitted tags
+  outside exporter callbacks. Preserve bounded scheduled work, caller-only wait cancellation, safe
+  exporter failure and successful foreground cleanup/retry.
+  Parent pre-handoff gate-preservation audit also proves timed-budget setup must be within the
+  protected failure/finally path: existing options.Validate accepts100days, but runtime CTS construction
+  before try throws and leaves the scheduled gate pending after the worker exits. Resetting options to
+  healthy30s still blocks a later Begin. Keep original option validation/public behavior; setup failure
+  must emit the bounded failure disposition, retain durable cleanup, drain/remove the gate, and allow a
+  later healthy foreground operation. Execute that regression before final freeze, without a new public
+  surface or changing globals/dependencies. This is current B10 gate-preservation acceptance.
+
+B5's mixed explicit2020 business/default System store probe is rejected: use one coherently configured
+clock as documented; do not mutate opaque externally supplied stores or add public clock enforcement.
+B6's foreign Prepared refusal converges when its owner settles, as the parent same-profile Abort control
+proves. Preserve that refusal; do not help/delete/classify an undecided foreign envelope as final conflict.
+B8 requires no new capacity/progress/performance redesign; cooperative cancellation refuses success and
+later noncancelled work revisits all potentially late owners. B9 adds no generic maintenance-budget API:
+per-batch ambiguous-dispatch timeout and the bounded generic maintenance fallback remain distinct.
+
+Requalify CURRENT merged Debug/source with exact configured SDK/tool versions; record blockers rather
+than altering dependencies/globals. Run full affected Client and serialized Domain suites and all required
+live classes/process workers, preserve final-source/PE/PDB/API/XML/matrix provenance, raw TTL/private and
+session state, real named behavior and scoped cleanup. Derive counts from final XML, not historical totals.
+Keep all earlier failed attempts and every sealed packet; write additive `qualification-review5` only.
+All ten Folders canonical stages stay immutable; parent later restores all14 consumer files and qualifies
+integrated source, with public API/clock fix preserved. All external applications remain untouched; strip
+secret query parameters from CLI URLs before storing/printing. No Git, dependency/pin, release, nested
+submodule, public v2, content cleanup, admission/performance redesign or separate >10000 identity work.
+
 ## Verification
 
 Use `.slnx` only for solution build/restore and test projects individually. Local builds use `-c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false`; preserve dependencies and do not initialize nested submodules. Existing built xUnit runners accept `-class`/`-method` and `-result-xml`. Complete focused tests before broadening. If the full topology/build is blocked, record the exact command/output, then use available focused projects and real Dapr fixture lanes. Parent is establishing the required Aspire baseline before implementation dispatch; do not start a competing topology.
@@ -539,6 +639,42 @@ trigger this implementation loop. The three patch entries survive as explicit co
 is not independently patched on the invalidated pre-review implementation.
 
 ## Spec Change Log
+
+- 2026-10-20, loop5 pre-handoff B10 audit: moving timed CTS construction before try/finally strands
+  the shared cleanup gate if setup throws. Existing validated100day options reproduce worker exit,
+  a cancelled drain wait, and a still-blocked healthy Begin after resetting the budget. Clarified the
+  existing gate/retry-preservation requirement: setup failure stays within protected cleanup/finally,
+  retaining durable intent and accurate diagnostics while allowing later healthy progress. KEEP public
+  options/constructor compatibility and all prior liveness/cancellation/exporter cases; no extra loop,
+  approval, frozen change or new public budget API. Exact diagnostic source/log is under
+  /tmp/story12-2-review5-budget-setup-probe; final source must be requalified after this correction.
+
+- 2026-10-20, loop5 pre-handoff Tasks & Acceptance audit: the legal-input B1 check exposed a19002-byte
+  retained terminal receipt rejected by remaining16384-byte recovery gates, including after a fully
+  Completed write and an interrupted RecoveryReceiptWritten. Expanded the existing B1 requirement to
+  coherent bounded receipt/anchor read/recovery with complete/interrupted deadline cases. KEEP all
+  typed/canonical/scope/owner checks, original manifest/model limits, incoming single-owner support,
+  every existing14focused/3live passing case as predecessor evidence and all prior history. No new
+  intent, approval, review-loop increment or unrelated scope change is required. Parent diagnostic source
+  and logs remain at /tmp/story12-2-review5-boundary-audit; final source must be requalified after repair.
+
+- 2026-10-20, review loop5: all three final reports arrived before twelve individual verdicts. Added
+  retained CAS-conflict retry convergence, full lawful escaped legacy fence capacity and missing historical
+  owner-inventory refusal. Retained five direct corrections: pre-write original scope validation, typed
+  participant proof validation, canonical legacy compensation pointer, accurate cancellation diagnostics,
+  and terminal transport late-installer qualification. Known-bad states are permanently poisoned retry
+  identities, refused legal legacy recovery, cross-boundary auxiliary writes, malformed-proof success,
+  unsafe noncanonical recovery, false terminal cleanup and misclassified dependency cancellation.
+  B5/B6/B8/B9 are rejected on code/contracts and the independent controls; no frozen amendment or defer.
+  KEEP every earlier constraint and all92 current owned files in `/tmp/story12-2-sdk-review5-keep-79zyj2r0/README.md`.
+  Stage10/SDKreview4 are historical exact-source packets; ALL ten canonical stages and all previous raw
+  failures/packets remain unchanged. Concurrent external commits merged source after qualification:
+  preserve current incoming SDK authority/selection and Folders identity/query features. Only the78 SDK
+  and14 root owned files are ordinary-restored, using three-way blobs for four overlaps; do not blindly
+  restore d4d05/ec352 or unrelated files. Git/history/index, recorded gitlink, globals/dependencies and
+  external commits are preserved. Current integrated source must be freshly qualified with truthful counts.
+  Parent owns consumer adoption; SDK child must not edit Folders. Approval/scope exclusions remain unchanged.
+
 
 - 2026-10-20, review loop4: individually graded ten blind and two edge findings before grouping.
   B2/E1/E2 share Completed-retained evidence destruction; B3 is the distinct zero-anchor Aborted
@@ -1145,3 +1281,103 @@ unchanged optional skips, full opted-in live acceptance passes1/1 zero skips in
 334.315s, and source/binary/PDB inventories match. Status is now in-review
 for approved prerequisites and consumption, preserving owner loop4 and frozen intent. Separate identity,
 package/PD10, performance and whole-story gates stay open.
+
+
+## Review-five individual triage — 2026-10-20
+
+All three context-free layers returned final reports before any classification. Parent verified every
+non-gap claim against callers/guards and reran the preserved diagnostics. The verification gap is
+pre-verified. No exact unchanged claim is carried from a prior row. These twelve individual verdicts
+precede all grouping. Full reports and commands are retained in the Folders round-five record/diagnostics.
+
+| Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| R5-B1: Legacy terminal fence shrinks legal escaped scope capacity (`ReadModelBatchTerminalFence.cs:61`) | medium | bad_spec | Parent reran the preserved probe: six independently validated 512-byte escaped scope components produce a 56025-byte canonical legacy two-anchor fence; SealAsync returns false at the 16384-byte v1 cap. This is the fence bound, distinct from fixed R4-B4 compensation-payload capacity. |
+| R5-B2: Logical-key terminal recovery writes proof before original scope validation (`ReadModelPendingBatchRecovery.cs:62`) | medium | patch | Parent reran a terminal receipt without an anchor under a different caller tenant. Recovery returns unresolved but first writes two retirement fence/index keys derived from that caller tenant. The original discovered scope hash must be checked before auxiliary writes, as it already is for exact-marker discovery. |
+| R5-B3: Anchor matching accepts malformed participant concurrency proof (`ReadModelBatchParticipantProof.cs:37`) | medium | patch | Parent first reproduced MatchesAnchorAsync true for mode999 and malformed ETag digest, then supplied a fully valid Completed terminal time/anchor/count: public recovery resolves true with that malformed proof. ReadAsync already rejects the same fields; anchor matching must share that validation before auxiliary mutation or compaction. |
+| R5-B4: Terminal legacy recovery accepts a noncanonical compensation key (`ReadModelPendingBatchRecovery.cs:109`) | medium | patch | Parent rerun supplies an unrelated compensation key with otherwise matching terminal legacy anchors. Recovery resolves and deletes both original private envelopes. The terminal branch lacks the canonical ScratchCompensationKey(scopeHash) guard already required by original compensation; apply it before mutation. |
+| R5-B5: Manual business clock must silently reconfigure an independently supplied batch store (`Folders OperationalStatusProjectionWriter.cs:18`) | false | reject | The probe plans under a 2020 IUtcClock and externally executes the plan using an explicitly default System-clock store, for which the absolute2021 deadline is expired. Completion while omitting that expired candidate is the SDK contract. The SDK guide at lines85-87 explicitly requires one clock for options and coordinator; the corrected writer does use its supplied clock, while an opaque independently supplied store cannot be reconfigured by it. The six regressions intentionally satisfy that documented precondition. No ignored configured clock remains at this location. |
+| R5-B6: Transaction foreign-envelope refusal permanently poisons its own Prepared receipt (`ReadModelBatchProtocol.cs:985`) | false | reject | Parent reproduced Indeterminate while a different batch remains Prepared, then settled that foreign batch with its original Resumable profile and retried the unchanged transaction: Completed. The foreign envelope does not prove an eventual CreateOnly conflict because its owner can still Abort. Refusal preserves the foreign immutable decision; it is not permanent poisoning. The first parent control accidentally changed the foreign batch profile and was Indeterminate; the corrected same-profile control is retained separately. |
+| R5-B7: Terminal owner cleanup skips missing original retirement inventory (`DomainSharedProjectionRebuildDispatcher.cs:2859`) | medium | bad_spec | Parent drove real production named Begin/Accumulate/Abort using the existing compiled test handler, removed only the retired owner inventory to model unavailable historical evidence, and restored captured original scratch. A replaced coordinator repeated Abort and returned AlreadyCompleted while physical scratch remained. Open bytes stayed intact, but missing proof was silently treated as verified cleanup instead of explicit unavailable/refusal. |
+| R5-B8: Cancelled retirement scans require durable bounded-progress cursors (`DomainSharedProjectionRebuildDispatcher.cs:2855`) | false | reject | The cited scan is finite under validated owner/chunk/part/fragment counts and propagates caller cancellation instead of returning successful cleanup. A caller cancelling every attempt can prevent work in any cooperative operation; no noncancelled request livelock or fixed request deadline was demonstrated. A sufficiently-lived later call revisits every owner, which is necessary because a late installer can land behind any earlier cursor. Capacity/latency redesign is separately excluded by frozen intent; no incorrect terminal success under the cited cancellation condition was established. |
+| R5-B9: Decorated stores must inherit the batch ambiguous-dispatch timeout as maintenance budget (`SharedProjectionEpochCoordinator.PromotedCleanup.cs:22`) | false | reject | ReadModelBatchOptions.ReconciliationTimeout explicitly governs durable reconciliation after ambiguous batch dispatch; the generic batch interface exposes no maintenance budget. The scheduler has its own bounded thirty-second fallback and reuses the Dapr timeout where available. Its constructor does not promise to inspect options hidden by decorators or the fake. No unbounded task or violated per-batch timeout occurs at this location; adding a new generic budget surface is not required for the established guarantee. |
+| R5-B10: Dependency cancellation is mislabeled as maintenance budget expiry (`SharedProjectionEpochCoordinator.PromotedCleanup.cs:30`) | low | patch | Parent injected dependency OperationCanceledException through the real promoted-maintenance read seam. The failure counter emits budget-expired after197ms with a30000ms maintenance budget. This directly misclassifies a common dependency cancellation; derive the existing closed reason tag from actual maintenance-token cancellation and retain the foreground retry disposition. |
+| R5-E1: A competing owner CAS permanently poisons retained scratch retries (`SharedProjectionEpochCoordinator.ScratchRecovery.cs:46-54`) | medium | bad_spec | Parent independently ran the public coordinator interleaving: A pauses after installing private ordinal0, B writes a different owner/key/batch successfully and advances the shared fence ETag, then A compensates and returns false. Three unchanged A retries also return false with its scratch absent. ScratchBatchIdentityAsync only handles legacy Aborted markers with compensation proof, so a newly retained Aborted deterministic identity never converges. |
+| R5-V1: Late accepted transport-fragment cleanup lacks an executed regression (`DomainSharedProjectionRebuildDispatcher.cs:2872`) | medium | patch | Pre-verified regression gap accepted from the filed source/test searches: existing late terminal-owner tests restore only chunks; near-limit fragment tests either run normal cleanup or resume a live writer before absence. Removing the new terminal transport discovery loop survives those assertions. Add an accepted streamed-owner late original transport-fragment case after terminal flags with replacement coordinator, physical absence and exact Open preservation. |
+
+
+Root-cause groups after all twelve individual verdicts: eight distinct roots, one per surviving finding.
+B1/B7/E1 route bad_spec; B2/B3/B4/B10/V1 direct patches survive as explicit requirements in loop5.
+B5/B6/B8/B9 are rejected on their individual refutations. No intent gap, new approval or defer is needed.
+
+
+## Review-five implementation decisions
+
+- Hash-verified all 92 preserved SDK/Folders files and positively reused exactly 78 SDK files,
+  including the incoming merged overlap hunks. Folders, Git, package pins, globals, unrelated source
+  and all historical evidence remain untouched. Current configured SDK 10.0.402 is used for Debug/source.
+- Retained optimistic scratch conflicts now preserve each immutable Aborted decision and derive a
+  distinct bounded internal `scratch-retry-v1:` ID from SHA-256 of that original complete scope hash
+  and terminal fingerprint. Exact-marker recovery follows validated existing retirement indexes and
+  proofs, including legacy replacement coexistence, before another attempt or receipt cleanup. Each
+  settled attempt's reclaimable receipt is conditionally removed only after its terminal proof persists;
+  no mutable catalog, random retry identity, unavailable original manifest or public scratch API is used.
+- Logical-key discovery recomputes the complete original scope hash using the discovered BatchId
+  before any terminal fence/index write. Canonical compensation-key validation also precedes all legacy
+  terminal work. Participant anchor matching and markerless proof discovery reuse the same canonical
+  typed scope/anchor/concurrency-mode/ETag-digest guard before mutation.
+- Legacy v1 two-anchor fences retain unchanged canonical bytes with a 65,536-byte physical ceiling:
+  sixfold JSON expansion of three copies of all six 512-byte scope components and two 512-byte keys,
+  plus 4096 bytes for fixed fields/digests. Seal, read and envelope discovery share that bound. Terminal
+  anchor receipts separately allow 41,984 physical bytes: the original 16,384-byte control allowance
+  plus one maximally escaped original scope/key and 4096 anchor bytes. The bounded typed receipt reader
+  removes only SDK anchor/count overhead for the original control-size check, retaining unknown fields;
+  complete/interrupted recovery and read-only receipt proof use the same guard. Original logical model,
+  pending control, canonical manifest, participant-proof and operation-count limits are unchanged.
+- Terminal named Abort now refuses unavailable/corrupt owner retirement inventory when the original
+  accepted manifest cannot prove original counts. It never guesses counts, enumerates unrelated keys,
+  or changes the exact Open epoch/session on refusal. Existing original accepted manifests remain a
+  compatibility source for bounded original inventory. Actual named tests reinstate authenticated late
+  transport fragments, parts and hash-page envelopes after terminal flags, replace the coordinator,
+  and prove physical removal, exact Open preservation, subsequent ordinary growth and a fresh rebuild.
+- Promoted maintenance emits `budget-expired` only when its shared budget token is actually cancelled;
+  independent dependency OperationCanceledException emits `failure`. Existing bounded work, independent
+  caller waits, singleton gate lifetime, exporter safety and foreground retry semantics are preserved.
+  The guide includes these bounds and all per-attempt tenant metadata retention/restore/purge ownership.
+
+Final integrated-source qualification follows in the additive `qualification-review5` packet. Earlier
+fixture-construction/assertion failures and the initial six-of-seven live attempt remain diagnostic
+history; they do not qualify final source. Owner status remains in-progress for the parent handoff.
+
+
+## Review-five qualified SDK handoff
+
+All review-five SDK corrections, including the parent terminal-receipt capacity and maintenance-setup
+audit follow-through, are implemented and qualified against current merged source. Status remains
+**in-progress** for parent independent review and Folders consumption. Original baseline and frozen
+intent are unchanged. The additive [qualification packet](evidence/story-12-2-sdk-expiry-scratch/qualification-review5/qualification.json)
+preserves every historical packet and every failed or non-qualifying attempt.
+
+- Current SDK 10.0.402 Debug/source builds pass with zero warnings/errors. Focused Client
+  **548/548**, complete Client **1908 passed**, zero failed and the two unchanged optional
+  skips (not acceptance); serialized complete DomainService **1072/1072**, zero skips.
+- Real Dapr/Redis expiry/scratch **59/59**, batch **6/6**, and shared epoch
+  **8/8** pass: **73 distinct live cases**, no required skips. New live cases cover competing
+  named owners and retired original attempts, late accepted streamed fragments/parts/hash pages after
+  terminal flags, unavailable/corrupt inventory refusal, maximal legacy escaping and complete/interrupted
+  terminal anchors above 16 KiB. Physical private absence, original TTL/deadline and exact Open/session
+  preservation are asserted; named recovery is followed by ordinary growth and a fresh named rebuild.
+- All **20 exited-worker invocations** pass 1/1 without skips, with **20 distinct PIDs**: six
+  production named pending/recovery pairs and four separately labelled primitive late-installer controls.
+  Source freezes, runtime binary groups, PE/PDB identities, PDB source hashes, public API XML and matrix
+  coverage are audited. All fixture namespaces are inactive before ownership-scoped final cleanup and
+  report zero remaining keys; no unrelated application was stopped.
+- The first frozen focused attempt (543 pass/3 fail), earlier fixture/assertion failures and zero-case
+  filter are preserved as diagnostics. Corrected final-source complete suites are the acceptance group;
+  no failed/skipped/unfrozen attempt is promoted to qualification.
+
+Retained terminal/per-attempt metadata follows the documented tenant retention, legal-hold, ordered
+restore and drained-writer purge prerequisites. Production Redis remains Resumable; forced provider
+transaction controls do not qualify atomicity. No Folders file, Git/index/history, dependency/global/pin,
+publication, deployment or retained event was changed. Parent consumption/review, package/PD10, the
+separate >10000 identity work and performance/whole-story gates remain open.

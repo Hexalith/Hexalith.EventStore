@@ -34,20 +34,30 @@ internal static partial class ReadModelPendingBatchRecovery
             }
             RawStateEntry row = knownMarker ? current
                 : await accessor.ReadAsync(ReadModelBatchKeys.MarkerKey(envelope!.ScopeHash), token).ConfigureAwait(false);
-            if (!knownMarker && (!row.Exists || row.Value.Length > 16_384 || ReadModelBatchMarker.ReadProof(row.Value)?.Fingerprint != envelope!.Fingerprint))
+            if (row.Exists && row.Value.Length > ReadModelBatchMarker.MaxRecoveryEncodedBytes)
+                return new(false, "invalid-recovery-evidence");
+            ReadModelBatchMarker? discoveredMarker = row.Exists ? ReadModelBatchMarker.ReadProof(row.Value) : null;
+            if (row.Exists && discoveredMarker is null) return new(false, "invalid-recovery-evidence");
+            if (!knownMarker && (!row.Exists || discoveredMarker?.Fingerprint != envelope!.Fingerprint))
             {
                 ReadModelBatchTerminalFence? retired = await ReadModelBatchTerminalFence.ReadForEnvelopeAsync(accessor, expected, envelope!, token).ConfigureAwait(false);
                 return retired is not null && await retired.RestoreAsync(accessor, key, current, envelope!, options.TimeProvider, token).ConfigureAwait(false)
                     ? new(true, WasRecovered: true) : new(false, "invalid-recovery-evidence");
             }
-            if (!row.Exists || row.Value.Length > 16_384) return new(false, "invalid-recovery-evidence");
-            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadProof(row.Value);
+            if (!row.Exists) return new(false, "invalid-recovery-evidence");
+            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadBoundedProof(row.Value);
             if (marker is null || marker.Status is not (ReadModelBatchMarkerStatus.Prepared or ReadModelBatchMarkerStatus.Committed
                     or ReadModelBatchMarkerStatus.Aborting or ReadModelBatchMarkerStatus.Aborted or ReadModelBatchMarkerStatus.Completed)
                 || !ReadModelBatchFingerprint.IsCanonical(marker.Fingerprint)
                 || (knownMarker ? marker.ScopeHash != expected.ComputeScopeHash() || marker.BatchId != expected.BatchId
                     : marker.ScopeHash != envelope!.ScopeHash || marker.Fingerprint != envelope.Fingerprint)
                 || marker.OriginalManifest is not null && marker.OriginalManifestKey is not null)
+                return new(false, "invalid-recovery-evidence");
+            ReadModelBatchScope discoveredScope = expected with { BatchId = marker.BatchId };
+            discoveredScope.Validate();
+            if (discoveredScope.ComputeScopeHash() != marker.ScopeHash
+                || marker.ScratchCompensationKey is not null
+                    && marker.ScratchCompensationKey != ReadModelBatchKeys.ScratchCompensationKey(marker.ScopeHash))
                 return new(false, "invalid-recovery-evidence");
             // Validate existing terminal anchor evidence before any auxiliary proof write.
             if (marker.RecoveryAnchor is { } originalAnchor
@@ -62,6 +72,8 @@ internal static partial class ReadModelPendingBatchRecovery
             if (marker.RetainedParticipantCount > 0)
             {
                 var terminalScope = expected with { BatchId = marker.BatchId };
+                if (!await ReadModelBatchParticipantProof.ValidateExistingAsync(accessor, terminalScope, marker.Fingerprint,
+                    marker.RetainedParticipantCount, token).ConfigureAwait(false)) return new(false, "invalid-recovery-evidence");
                 var terminalFence = new ReadModelBatchTerminalFence(terminalScope, marker.Fingerprint, [], 2,
                     marker.Status, marker.RetainedParticipantCount);
                 if (marker.Status is not (ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)
@@ -79,8 +91,12 @@ internal static partial class ReadModelPendingBatchRecovery
                 if (marker.OriginalManifest is not null || marker.OriginalManifestKey is not null || marker.Operations is not null
                     || !knownMarker && (anchor.Key != key || !anchor.Matches(marker, envelope!)) || !anchor.Matches(marker, expected))
                     return new(false, "invalid-recovery-evidence");
+                RawStateEntry anchorRow = await accessor.ReadAsync(anchor.Key, token).ConfigureAwait(false);
+                ReadModelBatchEnvelope? pendingAnchor = anchorRow.Exists && ReadModelBatchEnvelope.IsEnvelope(anchorRow.Value.Span)
+                    ? ReadModelBatchEnvelope.FromBytes(anchorRow.Value) : null;
+                bool wasPending = pendingAnchor is not null && anchor.Matches(marker, pendingAnchor);
                 return await ReadModelBatchProtocol.FinishRecoveryAnchorAsync(accessor, marker, expected, injector, token, options.TimeProvider).ConfigureAwait(false)
-                    ? new(true, WasRecovered: true) : new(false, "recovery-incomplete");
+                    ? TerminalResult(marker, wasRecovered: wasPending) : new(false, "recovery-incomplete");
             }
             ReadOnlyMemory<byte> manifest = marker.OriginalManifest;
             if (marker.OriginalManifestKey is not null)
@@ -102,7 +118,7 @@ internal static partial class ReadModelPendingBatchRecovery
                         && !await new ReadModelBatchTerminalFence(expected, marker.Fingerprint, []).SealAsync(accessor, token).ConfigureAwait(false))
                         return new(false, "recovery-incomplete");
                     return await ReadModelBatchProtocol.ReclaimOriginalManifestAsync(accessor, marker.ScopeHash,
-                        marker.Fingerprint, token).ConfigureAwait(false) ? new(true) : new(false, "recovery-incomplete");
+                        marker.Fingerprint, token).ConfigureAwait(false) ? TerminalResult(marker) : new(false, "recovery-incomplete");
                 }
                 string participantKey = knownMarker && marker.Operations is { Count: > 0 } participants
                     ? participants[0].Key : key;
@@ -211,4 +227,11 @@ internal static partial class ReadModelPendingBatchRecovery
         }
         catch { return new(false, "recovery-unavailable"); }
     }
+
+    private static ReadModelPendingBatchRecoveryResult TerminalResult(ReadModelBatchMarker marker, bool wasRecovered = false)
+        => new(true, WasRecovered: wasRecovered)
+        {
+            RetiredAttemptFingerprint = marker is { Status: ReadModelBatchMarkerStatus.Aborted, RetainedParticipantCount: > 0 }
+                ? marker.Fingerprint : null,
+        };
 }

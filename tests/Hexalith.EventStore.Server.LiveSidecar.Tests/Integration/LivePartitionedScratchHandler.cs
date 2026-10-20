@@ -7,7 +7,7 @@ using Hexalith.EventStore.DomainService;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>Domain-only partitioned handler used to qualify the production named dispatcher over Dapr.</summary>
-internal sealed class LivePartitionedScratchHandler : IAsyncDomainSharedProjectionPartitionedRebuildHandler
+internal class LivePartitionedScratchHandler : IAsyncDomainSharedProjectionPartitionedRebuildHandler
 {
     public bool EpochEnabled => true;
     public string OrdinaryWriterId => "ordinary-dispatch";

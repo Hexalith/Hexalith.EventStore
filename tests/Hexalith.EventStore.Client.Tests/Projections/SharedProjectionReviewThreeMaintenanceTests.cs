@@ -11,9 +11,10 @@ namespace Hexalith.EventStore.Client.Tests.Projections;
 public sealed class SharedProjectionReviewThreeMaintenanceTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task StalledFirstMaintenanceReadUsesSdkBudgetWhileCancelledBeginWaitersLeaveSharedWorkAlone(bool failImmediately)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task StalledFirstMaintenanceReadUsesSdkBudgetWhileCancelledBeginWaitersLeaveSharedWorkAlone(bool failImmediately, bool dependencyCancelled)
     {
         var observations = new ConcurrentQueue<string>();
         using var listener = new MeterListener();
@@ -48,6 +49,7 @@ public sealed class SharedProjectionReviewThreeMaintenanceTests
                 paused.TrySetResult(token);
                 try
                 {
+                    if (dependencyCancelled) throw new OperationCanceledException("dependency cancelled independently");
                     if (failImmediately) throw new IOException("maintenance read failed");
                     await Task.Delay(Timeout.InfiniteTimeSpan, token);
                 }
@@ -83,4 +85,45 @@ public sealed class SharedProjectionReviewThreeMaintenanceTests
             await Task.Yield();
         }
     }
+    [Fact]
+    public async Task MaintenanceBudgetSetupFailureReleasesGateAndNextHealthyBeginReconcilesDurableCleanup()
+    {
+        var observations = new ConcurrentQueue<string>();
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, owner) =>
+        {
+            if (instrument.Name == "eventstore.projection.cleanup.failures") owner.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            observations.Enqueue("count=" + value);
+            foreach (var tag in tags) observations.Enqueue(tag.Key + "=" + tag.Value);
+        });
+        listener.Start();
+        using var client = new RecordingDaprClient { PersistTypedState = true };
+        var options = new ReadModelBatchOptions { ReconciliationTimeout = TimeSpan.FromDays(100) };
+        var store = new DaprReadModelStore(client, Options.Create(options));
+        var coordinator = new SharedProjectionEpochCoordinator(store, store);
+        var scope = new SharedProjectionScope("statestore", "tenant", "widget", "budget-setup", ["writer"]);
+        _ = await coordinator.RegisterWriterAsync(scope, "writer");
+        _ = await coordinator.BeginAsync(scope, "first", "inventory", new Dictionary<string, long>());
+        _ = await coordinator.StageStreamingAsync(scope, "first", Rows());
+        await coordinator.CommitAsync(scope, "first");
+        await coordinator.WaitForPromotedCleanupAsync(scope).WaitAsync(TimeSpan.FromSeconds(5));
+        observations.ShouldContain("count=1");
+        observations.ShouldContain("reason=failure");
+        observations.ShouldContain("disposition=foreground-retry");
+        observations.ShouldNotContain("reason=budget-expired");
+        (await store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey)).Value!.CleanupStreamPageCount.ShouldBeGreaterThan(0);
+        options.ReconciliationTimeout = TimeSpan.FromSeconds(30);
+        (await coordinator.BeginAsync(scope, "next", "next-inventory", new Dictionary<string, long>()).WaitAsync(TimeSpan.FromSeconds(5))).ShouldBe(2);
+        (await store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey)).Value!.CleanupStreamPageCount.ShouldBe(0);
+        (await coordinator.ReadAsync<JsonObject>(scope, "row")).Value!["count"]!.GetValue<int>().ShouldBe(1);
+        static async IAsyncEnumerable<ReadModelBatchOperation> Rows()
+        {
+            yield return ReadModelBatchOperation.Write("row", new JsonObject { ["count"] = 1 }, ReadModelBatchConcurrency.LastWrite);
+            await Task.Yield();
+        }
+    }
+
 }

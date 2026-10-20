@@ -1,0 +1,7 @@
+begin=DomainSharedProjectionRebuildResponse { Version = 1, Phase = Accumulating, Status = Completed, AcceptedAggregateCount = 0, InventoryFingerprint = v1:0GcKAntMxSP_tyB3TTG3JDU_JxGzg3ULa34UbcxiKJ4, BatchFingerprint = , ReasonCode =  }
+accumulate=DomainSharedProjectionRebuildResponse { Version = 1, Phase = Accumulating, Status = Completed, AcceptedAggregateCount = 1, InventoryFingerprint = v1:K-tZR1t6qoeiCRroWmC047254DiJ5IWb2VOdersBTgE, BatchFingerprint = , ReasonCode =  }
+abort=DomainSharedProjectionRebuildResponse { Version = 1, Phase = Aborted, Status = Completed, AcceptedAggregateCount = 1, InventoryFingerprint = v1:K-tZR1t6qoeiCRroWmC047254DiJ5IWb2VOdersBTgE, BatchFingerprint = , ReasonCode =  }
+retirement was present=True
+remove retirement=True
+repeated terminal abort=DomainSharedProjectionRebuildResponse { Version = 1, Phase = Aborted, Status = AlreadyCompleted, AcceptedAggregateCount = 1, InventoryFingerprint = v1:K-tZR1t6qoeiCRroWmC047254DiJ5IWb2VOdersBTgE, BatchFingerprint = , ReasonCode =  }
+private physical remains=True; exact open preserved=True

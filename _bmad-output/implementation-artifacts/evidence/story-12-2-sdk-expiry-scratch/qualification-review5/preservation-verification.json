@@ -1,0 +1,9 @@
+{
+  "preservation_manifest_sha256": "822e8467b338368fa55ffcdc965e944a1a1ba60df24a883e55631e764d3090eb",
+  "verified_files": 92,
+  "sdk_files_positively_reused": 78,
+  "all_snapshot_hashes_match": true,
+  "consumer_files_copied": 0,
+  "overlap_hunks_preserved": true,
+  "current_sdk_head": "c9c56cbc041d56b46721d35b933615e00591548e"
+}

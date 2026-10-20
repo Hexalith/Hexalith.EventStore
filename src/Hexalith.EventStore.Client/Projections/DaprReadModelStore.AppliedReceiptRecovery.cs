@@ -24,8 +24,8 @@ public sealed partial class DaprReadModelStore : IReadModelAppliedReceiptRecover
             RawStateEntry row = await accessor.ReadAsync(scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
             bytes = row.Value.Length;
             if (!row.Exists) return new(null, "delivery_rebuild_required", 1, bytes);
-            if (bytes > 16_384) return new(null, "delivery_proof_limit_exceeded", 1, bytes);
-            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadProof(row.Value);
+            if (bytes > ReadModelBatchMarker.MaxRecoveryEncodedBytes) return new(null, "delivery_proof_limit_exceeded", 1, bytes);
+            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadBoundedProof(row.Value);
             if (marker is not { Version: 1, OwnerSelection: { } selection }
                 || marker.ScopeHash != scope.ComputeScopeHash() || marker.BatchId != request.MessageId
                 || !ReadModelBatchFingerprint.IsCanonical(marker.Fingerprint)

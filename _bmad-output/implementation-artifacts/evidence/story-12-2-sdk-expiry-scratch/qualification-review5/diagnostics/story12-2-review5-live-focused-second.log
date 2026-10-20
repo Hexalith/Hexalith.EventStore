@@ -1,0 +1,67 @@
+The '-parallel' switch has been deprecated in favor of '-parallelMode' and will be removed in the next major version
+
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:46801
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+info: Hexalith.EventStore.Server.Actors.ETagActor[1053]
+      Cold start detected for ETag actor warmup:2da5e5d2cee44a2dbd529b1fc4f927b4. No prior state found.
+info: Hexalith.EventStore.Server.Actors.ETagActor[1050]
+      ETag regenerated for actor warmup:2da5e5d2cee44a2dbd529b1fc4f927b4. New ETag prefix: d2FybXVw
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.TerminalAcceptedStreamedTransportAndHashPageLateInstallersArePhysicallyRemovedByReplacementNamedAbort [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.TerminalAcceptedStreamedTransportAndHashPageLateInstallersArePhysicallyRemovedByReplacementNamedAbort [OUTPUT] review5-terminal-streamed;accepted-owner=true;terminal-flags=true;transport-parts=1;chunks=5;original-fragment-part-hash-page-physically-absent=true;exact-Open-preserved=true;ordinary-growth=true;fresh-named-rebuild=true;no-test-authored-recovery-or-private-delete=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.TerminalAcceptedStreamedTransportAndHashPageLateInstallersArePhysicallyRemovedByReplacementNamedAbort [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=96; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedLegacyScopeRecoversOverRedisAndRetainsCanonicalBoundedFence [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedLegacyScopeRecoversOverRedisAndRetainsCanonicalBoundedFence [OUTPUT] review5-legacy-escape;physical-fence-bytes=49941;bound=65536;replacement-repeated-recovery=true;private-physically-absent=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedLegacyScopeRecoversOverRedisAndRetainsCanonicalBoundedFence [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=3; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(corrupt: False) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(corrupt: False) [OUTPUT] review5-inventory;corrupt=False;repeated-refusal=true;late-private-unchanged=true;exact-Open-and-session-preserved=true;original-inventory-restored=true;subsequent-production-Abort-physically-cleaned=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(corrupt: False) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=11; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(corrupt: True) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(corrupt: True) [OUTPUT] review5-inventory;corrupt=True;repeated-refusal=true;late-private-unchanged=true;exact-Open-and-session-preserved=true;original-inventory-restored=true;subsequent-production-Abort-physically-cleaned=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(corrupt: True) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=11; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CompetingRetainedNamedOwnerRetriesOverRedisThenAbortsAndAllowsOrdinaryGrowthAndFreshNamedRebuild [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CompetingRetainedNamedOwnerRetriesOverRedisThenAbortsAndAllowsOrdinaryGrowthAndFreshNamedRebuild [OUTPUT] review5-competing-owners;conflicts=2;retained-attempts-distinct=true;late-original-attempts-reconciled-by-named-Abort=true;physical-private-absent=true;exact-Open-preserved=true;ordinary-growth=true;fresh-named-rebuild=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.CompetingRetainedNamedOwnerRetriesOverRedisThenAbortsAndAllowsOrdinaryGrowthAndFreshNamedRebuild [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=57; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(interrupted: False) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(interrupted: False) [OUTPUT] review5-terminal-anchor;interrupted=False;physical-receipt-bytes=22074;physical-bound=41984;unchanged-logical-control-bound=16384;replacement-repeated-recovery=true;original-deadline-and-positive-physical-TTL=true
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(interrupted: False) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=5; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(interrupted: True) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(interrupted: True) [OUTPUT] fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=6; newly-owned-keys-remaining=0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(interrupted: True) [FAIL]
+      System.InvalidOperationException : Fixture-owned batch process stop.
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/RetainedBatchLiveFaultInjector.cs(9,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.RetainedBatchLiveFaultInjector.InjectAsync(ReadModelBatchPhase phase, Int32 ordinal, CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.PendingRecovery.cs(23,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.FinishRecoveryAnchorAsync(IReadModelBatchStateAccessor accessor, ReadModelBatchMarker marker, ReadModelBatchScope expected, IReadModelBatchFaultInjector injector, CancellationToken token, TimeProvider timeProvider)
+        src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(1327,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.CleanupOriginalManifestAsync(CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(828,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.CompactAndCompleteAsync(CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(436,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.RunResumableAsync(CancellationToken cancellationToken)
+        src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(64,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.ExecuteAsync(ReadModelBatch batch, IReadModelBatchFaultInjector injector, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewFive.cs(232,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionExpiryAndScratchRecoveryLiveTests.MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(Boolean interrupted)
+        --- End of stack trace from previous location ---
+      Output:
+        fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; disposable-namespace=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7||*; replacement-scope=new-Dapr-clients-stores-coordinators
+        fixture-app-id=eventstore-live-b96e95ee47994db1bbcb3c8d41ee5df7; newly-owned-keys-removed=6; newly-owned-keys-remaining=0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 7, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 14.444s

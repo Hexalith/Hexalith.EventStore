@@ -1,0 +1,86 @@
+[
+  {
+    "path": "docs/guides/named-projection-authoring.md",
+    "sha256": "f51d1f11da0deb87d3f89fc35d01dafa52aec2a6d8aa41f0bd95215c8cb7efcd"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.AppliedReceipt.cs",
+    "sha256": "8764d2bfa93b0aef9f91b988d5777e442ef318270acfe848f302a3f8e74886fc"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.AppliedReceiptRecovery.cs",
+    "sha256": "749bc2fe0aad5e3d175dc0189547ef068d47693e9dddf01341a75925eb66c69f"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.OwnerProof.cs",
+    "sha256": "74e266bc14d9bc3fecb0cee716e24ade4f2eb9886ba968342c76c6cc466987ca"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs",
+    "sha256": "f175b034b02aa31de4971e348b373cda9f74fd787c129b4e5a1186f29bbbda37"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchParticipantProof.cs",
+    "sha256": "c87810a0de9ceb5205d608607204c1c2f7ff2b965fefb87f7fdd90d75ab4ee03"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchTerminalFence.cs",
+    "sha256": "8885ef9fcdb8cf9c740181508d2d59e966cd910e64e7d895e357c4cb681c7545"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.Markerless.cs",
+    "sha256": "1123153436f9b77e68ddf495f7e3c1defe5794c0b12a9ee602786ef8d30cc3ef"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs",
+    "sha256": "0376b5c421a7fe2a0925fc038154ab3485ea875925c16183b4886ddd7c182f5d"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecoveryResult.cs",
+    "sha256": "4410c3c60356bc71affaa000d7d98c22945da97ef013cfbe0a15d6fbe1ee51aa"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.PromotedCleanup.cs",
+    "sha256": "e0573012a49ade8bbf7d9b32a6e30a5812ee912cb2147e0b1c7933df911670a8"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.ScratchRecovery.cs",
+    "sha256": "ffba68bfb3e7329c60684bcf714a09ab9a2a1575b279925083b01a082661b49a"
+  },
+  {
+    "path": "src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs",
+    "sha256": "59f8dd50a85e8ce3ecf016bb4bc19a6093f8a94510a0f788006520fb94cb24d2"
+  },
+  {
+    "path": "src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs",
+    "sha256": "df6333abe45540de5d1d5a6a587e723890f79410eee02d24fd9c0530fb6e71de"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs",
+    "sha256": "5e407ed7d015d22ffa7b6d945a4c51110a614845711c64bdeec8c021e3497400"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionReviewThreeMaintenanceTests.cs",
+    "sha256": "af51b3bd0e3a4f9e62fb66aa982ed49f4898e1cb15bae8e3c579bba301920e17"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ReviewFive.cs",
+    "sha256": "8628479ee09e0ab1897e514f3e7cf3c77f11a032f32dc8983470f6a13781753c"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LivePartitionedScratchHandler.cs",
+    "sha256": "52dfe02182b6c44b2c6719d6b82370979ce229b9b3ee927b9d54fb2b53658fdc"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LiveStreamedPartitionedScratchHandler.cs",
+    "sha256": "e6abc912f70e9858d82241fef8c607e0752b3e861b08314e66582cee6e035ecd"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewFive.cs",
+    "sha256": "8310319d58b69e2107603d8e6e70e568cad15c8e98534423b316454cf0b5f57e"
+  },
+  {
+    "path": "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReviewFiveLiveBatchStore.cs",
+    "sha256": "29ffa3108e36e7e78e259e666a1003272acc81f2cbeeee1f58ba7ab2820def08"
+  }
+]

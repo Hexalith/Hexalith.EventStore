@@ -168,8 +168,9 @@ Version 1 fences retain the two validated legacy participant digests; version 2 
 Completed or Aborted decision and original operation count. Version 2 participant proofs use the
 same fence key plus `:participant:{ordinal}`. Each proof is sealed before installation and retains
 original scope, key, ordinal, candidate/previous SHA-256 digests, retention and concurrency mode/ETag digest.
-Each version 2 record is bounded to 64 KiB to allow worst-case JSON escaping of valid scope/key inputs; historical version 1 fences retain their 16 KiB bound; the original batch still supports 100 operations and a one-MiB
-canonical manifest. The proofs survive manifest and receipt reclamation so an exited delayed
+Each version 2 record is bounded to 64 KiB to allow worst-case JSON escaping of valid scope/key inputs; version 1 legacy fences also allow 64 KiB physical JSON without changing their canonical bytes; the original batch still supports 100 operations and a one-MiB
+canonical manifest. The legacy allowance covers all three copies of six 512-byte scope components,
+two 512-byte keys, their worst-case sixfold JSON escaping, and 4 KiB of fixed fields/digests. The proofs survive manifest and receipt reclamation so an exited delayed
 installer's exact envelope can be conditionally compensated without republishing old private state.
 The separate legacy compensation payload has a 4,259,840-byte physical encoding bound to allow
 base64 expansion independently of the original one-MiB manifest limit; it is reclaimed after settlement.
@@ -205,7 +206,9 @@ These records have the same tenant metadata, offboarding limitation and purge pr
 Repeated named Abort reconciles the original pending and already-cleaned owner identities from this
 inventory, even after the session's cleanup flags have advanced. This is the supported production
 trigger for a late original scratch envelope after successful Abort. Original manifests that never
-had an inventory remain fail-closed rather than being reconstructed. Compatible readers/maintainers
+had an inventory remain unavailable when neither the original accepted manifest nor the retained
+inventory proves the original owner counts. Missing or corrupt required inventory refuses successful
+terminal cleanup and leaves the exact Open epoch and private evidence unchanged. Compatible readers/maintainers
 must retain these records while relevant original writers can still resume.
 
 The exact-scope index has the same 64 KiB canonical physical bound as its version-2 fence.
@@ -220,3 +223,24 @@ payload/session bytes without the matching terminal metadata can recreate stale 
 must include the indexes and owner inventories in the same retention, legal-hold and ordered restore
 drill as the other tenant operational metadata. OffboardTenantAsync does not enumerate or delete them;
 provider-level purge uses the same owner-authorized, drained-writer prerequisites above.
+
+A compensated retained scratch attempt keeps its immutable Aborted decision. The SDK derives its
+next private batch ID as `scratch-retry-v1:` plus SHA-256 of the original complete scope hash and
+terminal fingerprint. Recovery follows those validated deterministic retirement links, including the
+separate legacy replacement identity, before retry or cleanup. Each ID remains bounded, no caller
+identity changes, and original fences/indexes/participant proofs survive; a late original installer
+cannot commit the replacement or reuse its provider ETag. These per-attempt records share the same
+tenant metadata retention, ordered restore, offboarding limitation and drained-writer purge rules.
+No retry TTL or mutable attempt catalog is introduced. Independent dependency cancellation emits
+`reason=failure`; `budget-expired` requires the shared maintenance budget token to be cancelled.
+
+Terminal receipts with a validated SDK recovery anchor have a separate 41,984-byte physical ceiling:
+the unchanged 16 KiB control allowance plus one maximally escaped six-component scope and logical key,
+and 4 KiB of anchor fields/digests. Removing only the SDK anchor/count fields must still leave a control
+record within its original 16 KiB bound; unknown fields remain charged. Complete/interrupted recovery,
+logical-key discovery and read-only receipt proof share this bounded typed reader. This allowance does
+not enlarge a model, manifest, pending control record or participant-proof limit.
+
+A maintenance budget setup failure is also a `failure`: it retains durable cleanup, releases the
+scheduling gate, and completes existing waits. A subsequent owning operation can retry cleanup after
+the configuration is corrected; budget setup never leaves a permanent gate entry.

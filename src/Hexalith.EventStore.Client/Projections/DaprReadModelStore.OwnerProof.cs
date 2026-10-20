@@ -41,9 +41,9 @@ public sealed partial class DaprReadModelStore : IReadModelOwnerProofStore
             reads++;
             RawStateEntry receiptRow = await accessor.ReadAsync(scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
             bytes += receiptRow.Value.Length;
-            if (!receiptRow.Exists || receiptRow.Value.Length > 16_384)
+            if (!receiptRow.Exists)
                 return new(null, "delivery_reconciliation_required", reads, bytes);
-            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadProof(receiptRow.Value);
+            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadBoundedProof(receiptRow.Value);
             if (receipt is null || receipt.Version != 1 || receipt.Status != ReadModelBatchMarkerStatus.Completed
                 || receipt.ScopeHash != scope.ComputeScopeHash() || receipt.BatchId != selection.BatchId
                 || !ReadModelOwnerSelectionMetadata.ReceiptContains(receipt, selection) || receipt.Operations is not null

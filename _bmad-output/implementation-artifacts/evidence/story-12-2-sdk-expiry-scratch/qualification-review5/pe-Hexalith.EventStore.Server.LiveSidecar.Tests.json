@@ -1,0 +1,178 @@
+[
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+    "pe_sha256": "4ccb647d9411da1c4f86d8c65a50f87672eb0af9e3f13fc19a58b8ee655ec119",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
+    "pdb_sha256": "2dfa8391c733b96e487b72f2c31eb35708ec7b4092ba2cdbbe470fdcf4fbb101",
+    "codeview_guid": "186f706e-3b61-4a1e-8e93-686550855ca5",
+    "pdb_guid": "186f706e-3b61-4a1e-8e93-686550855ca5",
+    "pe_stamp": 2982599011,
+    "pdb_stamp": 2982599011,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll",
+    "pe_sha256": "206109124b8842eecec983c043aaa0c0c34084b78c2d4fa0111f9cebb880cf1c",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.pdb",
+    "pdb_sha256": "8e6bb0aabca74b15a85f99cd8daa79e9015a5a4467ebba84137e4c3a59d40971",
+    "codeview_guid": "a3cdaf4c-684e-4fd5-934f-b44666d6cf2d",
+    "pdb_guid": "a3cdaf4c-684e-4fd5-934f-b44666d6cf2d",
+    "pe_stamp": 3924666462,
+    "pdb_stamp": 3924666462,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+    "pe_sha256": "a657ec82958839a5ba0be8e39307c70b5c00ace36bd4093f206b08f9287999c6",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+    "pdb_sha256": "e530d21dff3ef1265431f8ead55d297a18f302706e13080afd3d6e20bdcb780e",
+    "codeview_guid": "c4000193-7f94-41c7-99c3-42d9f37d8a88",
+    "pdb_guid": "c4000193-7f94-41c7-99c3-42d9f37d8a88",
+    "pe_stamp": 2608600664,
+    "pdb_stamp": 2608600664,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+    "pe_sha256": "286b1161156fdfe80e463895c8d3d268ba388e1f84f5a0385161e2ea27e5ce87",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+    "pdb_sha256": "23dba34c72532c7592d46f952bb375977a899faed29b4e808548dc65d41d6f06",
+    "codeview_guid": "cfca715b-11f6-4e10-9d7d-74ce213c6158",
+    "pdb_guid": "cfca715b-11f6-4e10-9d7d-74ce213c6158",
+    "pe_stamp": 2503708012,
+    "pdb_stamp": 2503708012,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+    "pe_sha256": "8be699327a0eafd648ba4a3e3fa0b20688043feffeb55d82f94187d09b1d8913",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+    "pdb_sha256": "7457f4d9b22b415581f4187ec836f9c41d0376f5fdc5ff7e70a30d2e3a076c26",
+    "codeview_guid": "91b9d5fe-0630-4d69-b98f-f61d2fa64c57",
+    "pdb_guid": "91b9d5fe-0630-4d69-b98f-f61d2fa64c57",
+    "pe_stamp": 2949781060,
+    "pdb_stamp": 2949781060,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+    "pe_sha256": "a669aff61e0d863456d39f3570ce438f04314a823640ed17754bb90ea4a432fb",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.pdb",
+    "pdb_sha256": "9b1427bb0f1afa1061eef5d8153d50831b58cb6e1333a947ff8384c0cdb7a7a8",
+    "codeview_guid": "6f3718c0-3287-45fc-80c8-158958b01ac0",
+    "pdb_guid": "6f3718c0-3287-45fc-80c8-158958b01ac0",
+    "pe_stamp": 3434751577,
+    "pdb_stamp": 3434751577,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll",
+    "pe_sha256": "592589bdd8cb140811faf775328a0cdcc02b61090ea118f4bdd9cc18795d1593",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.pdb",
+    "pdb_sha256": "9e7e93870f543fd637b95a9dfcc375476655ad7a714164b010ae8fbce844ac11",
+    "codeview_guid": "4cad7202-5306-4e8f-bd0d-75991b2e5901",
+    "pdb_guid": "4cad7202-5306-4e8f-bd0d-75991b2e5901",
+    "pe_stamp": 3901534413,
+    "pdb_stamp": 3901534413,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll",
+    "pe_sha256": "04d21ae4e9fad403c81fa4f22d11eb93de927d03ea5d4ee3f44aceda5c0dc078",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.pdb",
+    "pdb_sha256": "ae832f75d9c99708abc4bddec2a53b99dec1d0d76a167055de7c0b752ca2e2ec",
+    "codeview_guid": "258fd569-7ffc-40d6-9717-0d96f265844f",
+    "pdb_guid": "258fd569-7ffc-40d6-9717-0d96f265844f",
+    "pe_stamp": 3730501713,
+    "pdb_stamp": 3730501713,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "pe_sha256": "9094201340b025e64fe33581f8c7945bd2dccd13d998dd910fc8243bcc1e1ed5",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+    "pdb_sha256": "817b0ec5986710e0df03b8e7fb0dab213d51038a1707029b583e230a3bfeed7c",
+    "codeview_guid": "fa7517a8-0b6a-4a02-bbe6-cfa6eaf6bf66",
+    "pdb_guid": "fa7517a8-0b6a-4a02-bbe6-cfa6eaf6bf66",
+    "pe_stamp": 3575125516,
+    "pdb_stamp": 3575125516,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+    "pe_sha256": "2969f8f2a8f450388ad26ab3c30ffaa9f4dc03b0687ae521ac7d1e411f8c0806",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.pdb",
+    "pdb_sha256": "41e078f91785abeefd54ca95dc89d037557d0b3373b3b8f46d2956ac21d4a94f",
+    "codeview_guid": "8230675d-3410-4872-8e46-4c7a3b203f90",
+    "pdb_guid": "8230675d-3410-4872-8e46-4c7a3b203f90",
+    "pe_stamp": 2440122468,
+    "pdb_stamp": 2440122468,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+    "pe_sha256": "341b84be3d71f7679ec8679d08a96c1e82942dc7df39c0ee434646d94683a93b",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.pdb",
+    "pdb_sha256": "7895ba1e9b1a8dd4d56d6485fda60fa499f7532a49966fe48b5b4e7d744b5b44",
+    "codeview_guid": "3fea9062-359d-4bbf-9a9c-8740e0b8f1f2",
+    "pdb_guid": "3fea9062-359d-4bbf-9a9c-8740e0b8f1f2",
+    "pe_stamp": 3382657474,
+    "pdb_stamp": 3382657474,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Integration.dll",
+    "pe_sha256": "b6cb8430448973ec0c8fe0236cb1e22e9cb6d2138c250078cac6ab540d2a2156",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Integration.pdb",
+    "pdb_sha256": "75284f33d68d0108aaee9f4c4eeb54df556d6f744cb8e879069d26b607701276",
+    "codeview_guid": "1cc71f67-fd89-4c40-87d7-53b012e5b806",
+    "pdb_guid": "1cc71f67-fd89-4c40-87d7-53b012e5b806",
+    "pe_stamp": 3912747183,
+    "pdb_stamp": 3912747183,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+    "pe_sha256": "66b13ef17118b3dc93f4214ebf548650528ef904dae0311296fb6e439c001e61",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.pdb",
+    "pdb_sha256": "94046d4b2fa380909a42dc221ac52e0fba9c8778d7239a959cd4f5241003af6c",
+    "codeview_guid": "83ce931c-7f60-40c8-a454-71ac466b8c56",
+    "pdb_guid": "83ce931c-7f60-40c8-a454-71ac466b8c56",
+    "pe_stamp": 2660027833,
+    "pdb_stamp": 2660027833,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll",
+    "pe_sha256": "10ccb8db1c2af918ed434d316af9f83888ff680b680b5ff19be669e1e7b4c8a9",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.pdb",
+    "pdb_sha256": "7520510dc8f5450424be51aad04edb7d90a2c0784c4e2fea5cb7211053506326",
+    "codeview_guid": "12629206-7f07-405c-b8ff-0004a56c9ad1",
+    "pdb_guid": "12629206-7f07-405c-b8ff-0004a56c9ad1",
+    "pe_stamp": 2472507738,
+    "pdb_stamp": 2472507738,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.McpCli.Abstractions.dll",
+    "pe_sha256": "5304710a1e2faadc5089b197497cd20c95fc8b08ce9b0b5003c3f46e5060047b",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.McpCli.Abstractions.pdb",
+    "pdb_sha256": "e00c1da5108e9c4bb002e64531c31813b9d1d8de3eac953b1bc28ef3c4cb2841",
+    "codeview_guid": "2b5c8f92-9a6b-4e0c-b610-9cb736e66f70",
+    "pdb_guid": "2b5c8f92-9a6b-4e0c-b610-9cb736e66f70",
+    "pe_stamp": 3816708185,
+    "pdb_stamp": 3816708185,
+    "matches": true
+  },
+  {
+    "pe": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll",
+    "pe_sha256": "26f3ffc0889ff5badc8ae70a5d9d44e1823d173ac3500c1a136a0ed9cbfc55c0",
+    "pdb": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.pdb",
+    "pdb_sha256": "a0acc82dd3d708190366d64bac0b902f57cb34e16438307839bbb262038d5bc8",
+    "codeview_guid": "3a602b2a-673f-4e6d-8e6b-6afb0ada44e1",
+    "pdb_guid": "3a602b2a-673f-4e6d-8e6b-6afb0ada44e1",
+    "pe_stamp": 3261604081,
+    "pdb_stamp": 3261604081,
+    "matches": true
+  }
+]

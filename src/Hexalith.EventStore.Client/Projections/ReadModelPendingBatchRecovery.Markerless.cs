@@ -27,8 +27,8 @@ internal static partial class ReadModelPendingBatchRecovery
                 if (!proofRow.Exists) continue; // No installer reached this original ordinal.
                 if (proofRow.Value.Length > ReadModelBatchParticipantProof.MaxEncodedBytes) return new(false, "invalid-recovery-evidence");
                 ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(proofRow.Value.Span, JsonSerializerOptions.Web);
-                if (proof?.Anchor is null || proof.Scope != expected || proof.Fingerprint != retired.Fingerprint
-                    || proof.Anchor.Ordinal != ordinal || !ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(proofRow.Value.Span))
+                if (!ReadModelBatchParticipantProof.IsValid(proof, expected, retired.Fingerprint, proofRow.Value)
+                    || proof.Anchor.Ordinal != ordinal)
                     return new(false, "invalid-recovery-evidence");
                 RawStateEntry participant = await accessor.ReadAsync(proof.Anchor.Key, token).ConfigureAwait(false);
                 ReadModelBatchEnvelope? envelope = participant.Exists && ReadModelBatchEnvelope.IsEnvelope(participant.Value.Span)
@@ -41,7 +41,10 @@ internal static partial class ReadModelPendingBatchRecovery
                 recovered = true;
             }
             return await ReadModelBatchProtocol.ReclaimOriginalManifestAsync(accessor, expected.ComputeScopeHash(), retired.Fingerprint, token).ConfigureAwait(false)
-                ? new(true, WasRecovered: recovered) : new(false, "recovery-incomplete");
+                ? new(true, WasRecovered: recovered)
+                {
+                    RetiredAttemptFingerprint = retired.Decision == ReadModelBatchMarkerStatus.Aborted ? retired.Fingerprint : null,
+                } : new(false, "recovery-incomplete");
         }
         if (!original.Exists) return new(true);
         if (original.Value.Length > Math.Min(options.MaxCanonicalManifestBytes, ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes)) return new(false, "invalid-recovery-evidence");

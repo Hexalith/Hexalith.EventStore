@@ -1,0 +1,1361 @@
+--- preserved-or-current-head/docs/guides/named-projection-authoring.md
++++ review5/docs/guides/named-projection-authoring.md
+@@ -168,8 +168,9 @@
+ Completed or Aborted decision and original operation count. Version 2 participant proofs use the
+ same fence key plus `:participant:{ordinal}`. Each proof is sealed before installation and retains
+ original scope, key, ordinal, candidate/previous SHA-256 digests, retention and concurrency mode/ETag digest.
+-Each version 2 record is bounded to 64 KiB to allow worst-case JSON escaping of valid scope/key inputs; historical version 1 fences retain their 16 KiB bound; the original batch still supports 100 operations and a one-MiB
+-canonical manifest. The proofs survive manifest and receipt reclamation so an exited delayed
++Each version 2 record is bounded to 64 KiB to allow worst-case JSON escaping of valid scope/key inputs; version 1 legacy fences also allow 64 KiB physical JSON without changing their canonical bytes; the original batch still supports 100 operations and a one-MiB
++canonical manifest. The legacy allowance covers all three copies of six 512-byte scope components,
++two 512-byte keys, their worst-case sixfold JSON escaping, and 4 KiB of fixed fields/digests. The proofs survive manifest and receipt reclamation so an exited delayed
+ installer's exact envelope can be conditionally compensated without republishing old private state.
+ The separate legacy compensation payload has a 4,259,840-byte physical encoding bound to allow
+ base64 expansion independently of the original one-MiB manifest limit; it is reclaimed after settlement.
+@@ -205,7 +206,9 @@
+ Repeated named Abort reconciles the original pending and already-cleaned owner identities from this
+ inventory, even after the session's cleanup flags have advanced. This is the supported production
+ trigger for a late original scratch envelope after successful Abort. Original manifests that never
+-had an inventory remain fail-closed rather than being reconstructed. Compatible readers/maintainers
++had an inventory remain unavailable when neither the original accepted manifest nor the retained
++inventory proves the original owner counts. Missing or corrupt required inventory refuses successful
++terminal cleanup and leaves the exact Open epoch and private evidence unchanged. Compatible readers/maintainers
+ must retain these records while relevant original writers can still resume.
+ 
+ The exact-scope index has the same 64 KiB canonical physical bound as its version-2 fence.
+@@ -220,3 +223,24 @@
+ must include the indexes and owner inventories in the same retention, legal-hold and ordered restore
+ drill as the other tenant operational metadata. OffboardTenantAsync does not enumerate or delete them;
+ provider-level purge uses the same owner-authorized, drained-writer prerequisites above.
++
++A compensated retained scratch attempt keeps its immutable Aborted decision. The SDK derives its
++next private batch ID as `scratch-retry-v1:` plus SHA-256 of the original complete scope hash and
++terminal fingerprint. Recovery follows those validated deterministic retirement links, including the
++separate legacy replacement identity, before retry or cleanup. Each ID remains bounded, no caller
++identity changes, and original fences/indexes/participant proofs survive; a late original installer
++cannot commit the replacement or reuse its provider ETag. These per-attempt records share the same
++tenant metadata retention, ordered restore, offboarding limitation and drained-writer purge rules.
++No retry TTL or mutable attempt catalog is introduced. Independent dependency cancellation emits
++`reason=failure`; `budget-expired` requires the shared maintenance budget token to be cancelled.
++
++Terminal receipts with a validated SDK recovery anchor have a separate 41,984-byte physical ceiling:
++the unchanged 16 KiB control allowance plus one maximally escaped six-component scope and logical key,
++and 4 KiB of anchor fields/digests. Removing only the SDK anchor/count fields must still leave a control
++record within its original 16 KiB bound; unknown fields remain charged. Complete/interrupted recovery,
++logical-key discovery and read-only receipt proof share this bounded typed reader. This allowance does
++not enlarge a model, manifest, pending control record or participant-proof limit.
++
++A maintenance budget setup failure is also a `failure`: it retains durable cleanup, releases the
++scheduling gate, and completes existing waits. A subsequent owning operation can retry cleanup after
++the configuration is corrected; budget setup never leaves a permanent gate entry.
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.AppliedReceipt.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.AppliedReceipt.cs
+@@ -27,8 +27,8 @@
+         {
+             RawStateEntry row = await accessor.ReadAsync(scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
+             bytes = row.Value.Length;
+-            if (!row.Exists || bytes > 16_384) return new(null, "delivery_reconciliation_required", 1, bytes);
+-            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadProof(row.Value);
++            if (!row.Exists) return new(null, "delivery_reconciliation_required", 1, bytes);
++            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadBoundedProof(row.Value);
+             if (receipt is not { Version: 1, Status: ReadModelBatchMarkerStatus.Completed, Operations: null, OwnerSelection: { } selected }
+                 || receipt.OriginalManifest is not null || receipt.OriginalManifestKey is not null || receipt.OwnerSelections is not null
+                 || receipt.ScopeHash != scope.ComputeScopeHash() || receipt.BatchId != request.MessageId
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.AppliedReceiptRecovery.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.AppliedReceiptRecovery.cs
+@@ -24,8 +24,8 @@
+             RawStateEntry row = await accessor.ReadAsync(scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
+             bytes = row.Value.Length;
+             if (!row.Exists) return new(null, "delivery_rebuild_required", 1, bytes);
+-            if (bytes > 16_384) return new(null, "delivery_proof_limit_exceeded", 1, bytes);
+-            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadProof(row.Value);
++            if (bytes > ReadModelBatchMarker.MaxRecoveryEncodedBytes) return new(null, "delivery_proof_limit_exceeded", 1, bytes);
++            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadBoundedProof(row.Value);
+             if (marker is not { Version: 1, OwnerSelection: { } selection }
+                 || marker.ScopeHash != scope.ComputeScopeHash() || marker.BatchId != request.MessageId
+                 || !ReadModelBatchFingerprint.IsCanonical(marker.Fingerprint)
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.OwnerProof.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/DaprReadModelStore.OwnerProof.cs
+@@ -41,9 +41,9 @@
+             reads++;
+             RawStateEntry receiptRow = await accessor.ReadAsync(scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
+             bytes += receiptRow.Value.Length;
+-            if (!receiptRow.Exists || receiptRow.Value.Length > 16_384)
++            if (!receiptRow.Exists)
+                 return new(null, "delivery_reconciliation_required", reads, bytes);
+-            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadProof(receiptRow.Value);
++            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadBoundedProof(receiptRow.Value);
+             if (receipt is null || receipt.Version != 1 || receipt.Status != ReadModelBatchMarkerStatus.Completed
+                 || receipt.ScopeHash != scope.ComputeScopeHash() || receipt.BatchId != selection.BatchId
+                 || !ReadModelOwnerSelectionMetadata.ReceiptContains(receipt, selection) || receipt.Operations is not null
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/ReadModelBatchMarker.cs
+@@ -11,6 +11,38 @@
+ /// the scope hash, batch identity, fingerprint, terminal time, and protocol version.
+ /// </summary>
+ internal sealed class ReadModelBatchMarker {
++    /// <summary>The original logical control-record byte budget.</summary>
++    internal const int MaxControlBytes = 16_384;
++
++    /// <summary>Allows one bounded SDK anchor in addition to the unchanged logical control budget.</summary>
++    internal const int MaxRecoveryEncodedBytes = MaxControlBytes
++        + 6 * (6 * ReadModelBatchScope.MaxComponentByteLength + ReadModelBatchOptions.DefaultMaxKeyByteLength) + 4096;
++
++    /// <summary>Reads bounded recovery evidence without charging SDK anchor expansion to the original control budget.</summary>
++    internal static ReadModelBatchMarker? ReadBoundedProof(ReadOnlyMemory<byte> bytes)
++    {
++        if (bytes.Length > MaxRecoveryEncodedBytes) return null;
++        ReadModelBatchMarker? marker = ReadProof(bytes);
++        if (marker is null) return null;
++        if (marker.RecoveryAnchor is { } anchor && (anchor.Scope is null || !anchor.Matches(marker, anchor.Scope))) return null;
++        if (bytes.Length <= MaxControlBytes) return marker;
++        if (marker.RecoveryAnchor is null) return null;
++        // Preserve unknown control fields in the size check. Deserializing and reserializing only
++        // known fields could silently admit an oversized original control record.
++        using JsonDocument document = JsonDocument.Parse(bytes);
++        using var buffer = new MemoryStream();
++        using (var writer = new Utf8JsonWriter(buffer))
++        {
++            writer.WriteStartObject();
++            foreach (JsonProperty property in document.RootElement.EnumerateObject())
++                if (!property.Name.Equals("recoveryAnchor", StringComparison.OrdinalIgnoreCase)
++                    && !property.Name.Equals("retainedParticipantCount", StringComparison.OrdinalIgnoreCase))
++                    property.WriteTo(writer);
++            writer.WriteEndObject();
++        }
++        return buffer.Length <= MaxControlBytes ? marker : null;
++    }
++
+     /// <summary>Reads bounded receipt evidence while rejecting duplicate fields throughout its owner metadata.</summary>
+     internal static ReadModelBatchMarker? ReadProof(ReadOnlyMemory<byte> bytes)
+     {
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/ReadModelBatchParticipantProof.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/ReadModelBatchParticipantProof.cs
+@@ -40,9 +40,23 @@
+         RawStateEntry row = await accessor.ReadAsync(Key(scope, fingerprint, anchor.Ordinal), token).ConfigureAwait(false);
+         if (!row.Exists || row.Value.Length > MaxEncodedBytes) return false;
+         ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(row.Value.Span, JsonSerializerOptions.Web);
+-        return proof is not null && proof.Scope == scope && proof.Fingerprint == fingerprint
+-            && ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(row.Value.Span)
++        return IsValid(proof, scope, fingerprint, row.Value)
+             && ReadModelBatchCanonicalJson.Serialize(proof.Anchor).Span.SequenceEqual(ReadModelBatchCanonicalJson.Serialize(anchor).Span);
++    }
++
++    /// <summary>Rejects malformed existing participant proof before a terminal receipt can seal auxiliary retirement.</summary>
++    internal static async Task<bool> ValidateExistingAsync(IReadModelBatchStateAccessor accessor, ReadModelBatchScope scope,
++        string fingerprint, int participantCount, CancellationToken token)
++    {
++        for (int ordinal = 0; ordinal < participantCount; ordinal++)
++        {
++            RawStateEntry row = await accessor.ReadAsync(Key(scope, fingerprint, ordinal), token).ConfigureAwait(false);
++            if (!row.Exists) continue; // The original installer never reached this ordinal.
++            if (row.Value.Length > MaxEncodedBytes) return false;
++            ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(row.Value.Span, JsonSerializerOptions.Web);
++            if (!IsValid(proof, scope, fingerprint, row.Value) || proof.Anchor.Ordinal != ordinal) return false;
++        }
++        return true;
+     }
+ 
+     /// <summary>Reads bounded canonical proof for only the original participant and terminal identity.</summary>
+@@ -55,12 +69,22 @@
+         ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(row.Value.Span, JsonSerializerOptions.Web);
+         var marker = new ReadModelBatchMarker { ScopeHash = fence.Scope.ComputeScopeHash(), BatchId = fence.Scope.BatchId,
+             Fingerprint = fence.Fingerprint, Status = fence.Decision ?? ReadModelBatchMarkerStatus.Aborted };
+-        return proof is not null && proof.Scope == fence.Scope && proof.Fingerprint == fence.Fingerprint
+-            && proof.Anchor is not null && proof.Anchor.Key == key && proof.Anchor.Ordinal == envelope.Ordinal
++        return IsValid(proof, fence.Scope, fence.Fingerprint, row.Value)
++            && proof!.Anchor.Key == key && proof.Anchor.Ordinal == envelope.Ordinal
+             && proof.Anchor.Matches(marker, fence.Scope) && proof.Anchor.Matches(marker, envelope)
++            ? proof.Anchor : null;
++    }
++
++    /// <summary>Applies the shared canonical typed proof guard before recovery can mutate evidence.</summary>
++    internal static bool IsValid([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] ReadModelBatchParticipantProof? proof,
++        ReadModelBatchScope scope, string fingerprint, ReadOnlyMemory<byte> bytes)
++    {
++        var marker = new ReadModelBatchMarker { ScopeHash = scope.ComputeScopeHash(), BatchId = scope.BatchId,
++            Fingerprint = fingerprint, Status = ReadModelBatchMarkerStatus.Aborted };
++        return proof is not null && proof.Scope == scope && proof.Fingerprint == fingerprint
++            && proof.Anchor?.Scope is not null && proof.Anchor.Matches(marker, scope)
+             && Enum.IsDefined(proof.ConcurrencyMode) && proof.ExpectedETagDigest is { Length: 64 }
+             && proof.ExpectedETagDigest.All(static character => char.IsAsciiHexDigitUpper(character))
+-            && ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(row.Value.Span)
+-            ? proof.Anchor : null;
++            && ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(bytes.Span);
+     }
+ }
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/ReadModelBatchTerminalFence.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/ReadModelBatchTerminalFence.cs
+@@ -16,6 +16,16 @@
+     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReadModelBatchMarkerStatus? Decision = null,
+     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] int ParticipantCount = 0)
+ {
++    /// <summary>
++    /// Bounds all accepted legacy evidence: three six-component scopes and two logical keys, each
++    /// UTF-8 byte escaping to at most six JSON bytes, plus 4096 bytes for digests and fixed fields.
++    /// Historical canonical v1 bytes remain unchanged.
++    /// </summary>
++    internal const int MaxLegacyEncodedBytes = 6 * (3 * 6 * ReadModelBatchScope.MaxComponentByteLength
++        + 2 * ReadModelBatchOptions.DefaultMaxKeyByteLength) + 4096;
++
++    private const int MaxEncodedBytes = MaxLegacyEncodedBytes > ReadModelBatchParticipantProof.MaxEncodedBytes
++        ? MaxLegacyEncodedBytes : ReadModelBatchParticipantProof.MaxEncodedBytes;
+     /// <summary>Derives a separate bounded key without exposing scope or payload.</summary>
+     internal static string Key(string scopeHash, string fingerprint) => ReadModelBatchKeys.MarkerKey(scopeHash)
+         + ":retired:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint)));
+@@ -26,11 +36,11 @@
+     {
+         RawStateEntry row = await accessor.ReadAsync(Key(scope.ComputeScopeHash(), fingerprint), token).ConfigureAwait(false);
+         if (!row.Exists) return null;
+-        if (row.Value.Length > ReadModelBatchParticipantProof.MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
++        if (row.Value.Length > MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
+         ReadModelBatchTerminalFence? fence = JsonSerializer.Deserialize<ReadModelBatchTerminalFence>(row.Value.Span, JsonSerializerOptions.Web);
+         if (fence is null || fence.Version is not (1 or 2) || fence.Scope != scope || fence.Fingerprint != fingerprint || fence.Anchors is null
+             || fence.Anchors.Length is not (0 or 2)
+-            || (fence.Version == 1 ? row.Value.Length > 16_384 || fence.Decision is not null || fence.ParticipantCount != 0
++            || (fence.Version == 1 ? row.Value.Length > MaxLegacyEncodedBytes || fence.Decision is not null || fence.ParticipantCount != 0
+                 : fence.Anchors.Length != 0 || fence.Decision is not (ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)
+                     || fence.ParticipantCount is < 1 or > ReadModelBatchOptions.DefaultMaxOperations)
+             || !ReadModelBatchCanonicalJson.Serialize(fence).Span.SequenceEqual(row.Value.Span))
+@@ -49,7 +59,7 @@
+     {
+         RawStateEntry row = await accessor.ReadAsync(Key(envelope.ScopeHash, envelope.Fingerprint), token).ConfigureAwait(false);
+         if (!row.Exists) return null;
+-        if (row.Value.Length > ReadModelBatchParticipantProof.MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
++        if (row.Value.Length > MaxEncodedBytes) throw new JsonException("Invalid private terminal fence.");
+         ReadModelBatchTerminalFence? fence = JsonSerializer.Deserialize<ReadModelBatchTerminalFence>(row.Value.Span, JsonSerializerOptions.Web);
+         if (fence?.Scope is null || fence.Scope with { BatchId = expected.BatchId } != expected
+             || fence.Scope.ComputeScopeHash() != envelope.ScopeHash) throw new JsonException("Invalid private terminal fence scope.");
+@@ -60,7 +70,7 @@
+     internal async Task<bool> SealAsync(IReadModelBatchStateAccessor accessor, CancellationToken token)
+     {
+         ReadOnlyMemory<byte> bytes = ReadModelBatchCanonicalJson.Serialize(this);
+-        if (bytes.Length > (Version == 1 ? 16_384 : ReadModelBatchParticipantProof.MaxEncodedBytes)) return false;
++        if (bytes.Length > (Version == 1 ? MaxLegacyEncodedBytes : ReadModelBatchParticipantProof.MaxEncodedBytes)) return false;
+         bool sealedFence = await accessor.TryWriteAsync(Key(Scope.ComputeScopeHash(), Fingerprint), bytes, string.Empty, token).ConfigureAwait(false);
+         if (!sealedFence)
+         {
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.Markerless.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.Markerless.cs
+@@ -27,8 +27,8 @@
+                 if (!proofRow.Exists) continue; // No installer reached this original ordinal.
+                 if (proofRow.Value.Length > ReadModelBatchParticipantProof.MaxEncodedBytes) return new(false, "invalid-recovery-evidence");
+                 ReadModelBatchParticipantProof? proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(proofRow.Value.Span, JsonSerializerOptions.Web);
+-                if (proof?.Anchor is null || proof.Scope != expected || proof.Fingerprint != retired.Fingerprint
+-                    || proof.Anchor.Ordinal != ordinal || !ReadModelBatchCanonicalJson.Serialize(proof).Span.SequenceEqual(proofRow.Value.Span))
++                if (!ReadModelBatchParticipantProof.IsValid(proof, expected, retired.Fingerprint, proofRow.Value)
++                    || proof.Anchor.Ordinal != ordinal)
+                     return new(false, "invalid-recovery-evidence");
+                 RawStateEntry participant = await accessor.ReadAsync(proof.Anchor.Key, token).ConfigureAwait(false);
+                 ReadModelBatchEnvelope? envelope = participant.Exists && ReadModelBatchEnvelope.IsEnvelope(participant.Value.Span)
+@@ -41,7 +41,10 @@
+                 recovered = true;
+             }
+             return await ReadModelBatchProtocol.ReclaimOriginalManifestAsync(accessor, expected.ComputeScopeHash(), retired.Fingerprint, token).ConfigureAwait(false)
+-                ? new(true, WasRecovered: recovered) : new(false, "recovery-incomplete");
++                ? new(true, WasRecovered: recovered)
++                {
++                    RetiredAttemptFingerprint = retired.Decision == ReadModelBatchMarkerStatus.Aborted ? retired.Fingerprint : null,
++                } : new(false, "recovery-incomplete");
+         }
+         if (!original.Exists) return new(true);
+         if (original.Value.Length > Math.Min(options.MaxCanonicalManifestBytes, ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes)) return new(false, "invalid-recovery-evidence");
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecovery.cs
+@@ -34,20 +34,30 @@
+             }
+             RawStateEntry row = knownMarker ? current
+                 : await accessor.ReadAsync(ReadModelBatchKeys.MarkerKey(envelope!.ScopeHash), token).ConfigureAwait(false);
+-            if (!knownMarker && (!row.Exists || row.Value.Length > 16_384 || ReadModelBatchMarker.ReadProof(row.Value)?.Fingerprint != envelope!.Fingerprint))
++            if (row.Exists && row.Value.Length > ReadModelBatchMarker.MaxRecoveryEncodedBytes)
++                return new(false, "invalid-recovery-evidence");
++            ReadModelBatchMarker? discoveredMarker = row.Exists ? ReadModelBatchMarker.ReadProof(row.Value) : null;
++            if (row.Exists && discoveredMarker is null) return new(false, "invalid-recovery-evidence");
++            if (!knownMarker && (!row.Exists || discoveredMarker?.Fingerprint != envelope!.Fingerprint))
+             {
+                 ReadModelBatchTerminalFence? retired = await ReadModelBatchTerminalFence.ReadForEnvelopeAsync(accessor, expected, envelope!, token).ConfigureAwait(false);
+                 return retired is not null && await retired.RestoreAsync(accessor, key, current, envelope!, options.TimeProvider, token).ConfigureAwait(false)
+                     ? new(true, WasRecovered: true) : new(false, "invalid-recovery-evidence");
+             }
+-            if (!row.Exists || row.Value.Length > 16_384) return new(false, "invalid-recovery-evidence");
+-            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadProof(row.Value);
++            if (!row.Exists) return new(false, "invalid-recovery-evidence");
++            ReadModelBatchMarker? marker = ReadModelBatchMarker.ReadBoundedProof(row.Value);
+             if (marker is null || marker.Status is not (ReadModelBatchMarkerStatus.Prepared or ReadModelBatchMarkerStatus.Committed
+                     or ReadModelBatchMarkerStatus.Aborting or ReadModelBatchMarkerStatus.Aborted or ReadModelBatchMarkerStatus.Completed)
+                 || !ReadModelBatchFingerprint.IsCanonical(marker.Fingerprint)
+                 || (knownMarker ? marker.ScopeHash != expected.ComputeScopeHash() || marker.BatchId != expected.BatchId
+                     : marker.ScopeHash != envelope!.ScopeHash || marker.Fingerprint != envelope.Fingerprint)
+                 || marker.OriginalManifest is not null && marker.OriginalManifestKey is not null)
++                return new(false, "invalid-recovery-evidence");
++            ReadModelBatchScope discoveredScope = expected with { BatchId = marker.BatchId };
++            discoveredScope.Validate();
++            if (discoveredScope.ComputeScopeHash() != marker.ScopeHash
++                || marker.ScratchCompensationKey is not null
++                    && marker.ScratchCompensationKey != ReadModelBatchKeys.ScratchCompensationKey(marker.ScopeHash))
+                 return new(false, "invalid-recovery-evidence");
+             // Validate existing terminal anchor evidence before any auxiliary proof write.
+             if (marker.RecoveryAnchor is { } originalAnchor
+@@ -62,6 +72,8 @@
+             if (marker.RetainedParticipantCount > 0)
+             {
+                 var terminalScope = expected with { BatchId = marker.BatchId };
++                if (!await ReadModelBatchParticipantProof.ValidateExistingAsync(accessor, terminalScope, marker.Fingerprint,
++                    marker.RetainedParticipantCount, token).ConfigureAwait(false)) return new(false, "invalid-recovery-evidence");
+                 var terminalFence = new ReadModelBatchTerminalFence(terminalScope, marker.Fingerprint, [], 2,
+                     marker.Status, marker.RetainedParticipantCount);
+                 if (marker.Status is not (ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted)
+@@ -79,8 +91,12 @@
+                 if (marker.OriginalManifest is not null || marker.OriginalManifestKey is not null || marker.Operations is not null
+                     || !knownMarker && (anchor.Key != key || !anchor.Matches(marker, envelope!)) || !anchor.Matches(marker, expected))
+                     return new(false, "invalid-recovery-evidence");
++                RawStateEntry anchorRow = await accessor.ReadAsync(anchor.Key, token).ConfigureAwait(false);
++                ReadModelBatchEnvelope? pendingAnchor = anchorRow.Exists && ReadModelBatchEnvelope.IsEnvelope(anchorRow.Value.Span)
++                    ? ReadModelBatchEnvelope.FromBytes(anchorRow.Value) : null;
++                bool wasPending = pendingAnchor is not null && anchor.Matches(marker, pendingAnchor);
+                 return await ReadModelBatchProtocol.FinishRecoveryAnchorAsync(accessor, marker, expected, injector, token, options.TimeProvider).ConfigureAwait(false)
+-                    ? new(true, WasRecovered: true) : new(false, "recovery-incomplete");
++                    ? TerminalResult(marker, wasRecovered: wasPending) : new(false, "recovery-incomplete");
+             }
+             ReadOnlyMemory<byte> manifest = marker.OriginalManifest;
+             if (marker.OriginalManifestKey is not null)
+@@ -102,7 +118,7 @@
+                         && !await new ReadModelBatchTerminalFence(expected, marker.Fingerprint, []).SealAsync(accessor, token).ConfigureAwait(false))
+                         return new(false, "recovery-incomplete");
+                     return await ReadModelBatchProtocol.ReclaimOriginalManifestAsync(accessor, marker.ScopeHash,
+-                        marker.Fingerprint, token).ConfigureAwait(false) ? new(true) : new(false, "recovery-incomplete");
++                        marker.Fingerprint, token).ConfigureAwait(false) ? TerminalResult(marker) : new(false, "recovery-incomplete");
+                 }
+                 string participantKey = knownMarker && marker.Operations is { Count: > 0 } participants
+                     ? participants[0].Key : key;
+@@ -211,4 +227,11 @@
+         }
+         catch { return new(false, "recovery-unavailable"); }
+     }
++
++    private static ReadModelPendingBatchRecoveryResult TerminalResult(ReadModelBatchMarker marker, bool wasRecovered = false)
++        => new(true, WasRecovered: wasRecovered)
++        {
++            RetiredAttemptFingerprint = marker is { Status: ReadModelBatchMarkerStatus.Aborted, RetainedParticipantCount: > 0 }
++                ? marker.Fingerprint : null,
++        };
+ }
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecoveryResult.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/ReadModelPendingBatchRecoveryResult.cs
+@@ -4,4 +4,8 @@
+ /// <param name="IsResolved">True when no pending envelope remains, including a compensated optimistic conflict.</param>
+ /// <param name="Reason">A closed metadata-only failure reason; no stored payload or identity is exposed.</param>
+ /// <param name="WasRecovered">True when this call reconciled an original pending batch.</param>
+-public sealed record ReadModelPendingBatchRecoveryResult(bool IsResolved, string? Reason = null, bool WasRecovered = false);
++public sealed record ReadModelPendingBatchRecoveryResult(bool IsResolved, string? Reason = null, bool WasRecovered = false)
++{
++    /// <summary>Validated immutable retained retirement used only to derive the next private SDK attempt.</summary>
++    internal string? RetiredAttemptFingerprint { get; init; }
++}
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.PromotedCleanup.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.PromotedCleanup.cs
+@@ -16,20 +16,22 @@
+         }
+         _ = Task.Run(async () =>
+         {
++            CancellationTokenSource? budget = null;
+             try
+             {
+-                using var budget = new CancellationTokenSource(
++                budget = new CancellationTokenSource(
+                     (_batches as DaprReadModelStore)?.ReconciliationTimeout ?? TimeSpan.FromSeconds(30));
+                 await ReconcileChunkCleanupAsync(scope, budget.Token).ConfigureAwait(false);
+                 await ReconcileStreamMetadataCleanupAsync(scope, budget.Token).ConfigureAwait(false);
+             }
+-            catch (Exception exception)
++            catch (Exception)
+             {
+                 // Begin and terminal phase operations retry the unchanged durable cleanup intent.
+-                ProjectionDeliveryCostDiagnostics.RecordCleanupFailure(exception is OperationCanceledException);
++                ProjectionDeliveryCostDiagnostics.RecordCleanupFailure(budget?.IsCancellationRequested == true);
+             }
+             finally
+             {
++                budget?.Dispose();
+                 lock (_promotedCleanupGate) _promotedCleanupTasks.Remove(hash);
+                 completion.TrySetResult();
+             }
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.ScratchRecovery.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.ScratchRecovery.cs
+@@ -4,34 +4,55 @@
+ {
+     /// <summary>Replays the original retained private batch, including preparation without participants.</summary>
+     internal async Task<bool> ReconcileScratchBatchAsync(SharedProjectionScope scope, string batchId, CancellationToken token)
++        => (await ResolveScratchAttemptsAsync(scope, batchId, token).ConfigureAwait(false)).WasRecovered;
++
++    private async Task<(string BatchId, bool WasRecovered)> ResolveScratchAttemptsAsync(
++        SharedProjectionScope scope, string batchId, CancellationToken token)
+     {
+-        var batchScope = new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain,
+-            scope.Family, scope.Family, batchId);
+         IReadModelPendingBatchRecoveryStore? recovery = _batches as IReadModelPendingBatchRecoveryStore
+             ?? _store as IReadModelPendingBatchRecoveryStore;
+-        if (recovery is null) return false;
+-        ReadModelPendingBatchRecoveryResult result = await recovery.RecoverPendingAsync(batchScope,
+-            batchScope.ComputeMarkerKey(), token).ConfigureAwait(false);
+-        if (!result.IsResolved)
+-            throw new SharedProjectionWriteUnavailableException(new InvalidOperationException(
+-                "Private rebuild scratch recovery is incomplete: " + result.Reason));
+-        // Keep the original legacy terminal marker to prevent provider ETag ABA. Retained
+-        // replacement work uses a separate deterministic SDK identity, discovered here as well.
++        if (recovery is null) return (batchId, false);
+         IReadModelStore markerStore = _batches as IReadModelStore ?? _store;
+-        ReadModelBatchMarker? marker = (await markerStore.GetAsync<ReadModelBatchMarker>(scope.StoreName,
+-            batchScope.ComputeMarkerKey(), token).ConfigureAwait(false)).Value;
+-        if (marker is { Status: ReadModelBatchMarkerStatus.Aborted, ScratchCompensationKey: not null })
++        bool wasRecovered = false;
++        while (true)
+         {
+-            await EraseTerminalBatchMarkerAsync(scope, batchId, token).ConfigureAwait(false);
+-            ReadModelBatchScope retainedScope = batchScope with { BatchId = RetainedLegacyScratchBatchId(batchScope) };
+-            ReadModelPendingBatchRecoveryResult retained = await recovery.RecoverPendingAsync(retainedScope,
+-                retainedScope.ComputeMarkerKey(), token).ConfigureAwait(false);
+-            if (!retained.IsResolved)
++            token.ThrowIfCancellationRequested();
++            var batchScope = new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain,
++                scope.Family, scope.Family, batchId);
++            ReadModelPendingBatchRecoveryResult result = await recovery.RecoverPendingAsync(batchScope,
++                batchScope.ComputeMarkerKey(), token).ConfigureAwait(false);
++            if (!result.IsResolved)
+                 throw new SharedProjectionWriteUnavailableException(new InvalidOperationException(
+-                    "Private rebuild scratch recovery is incomplete: " + retained.Reason));
+-            return result.WasRecovered || retained.WasRecovered;
++                    "Private rebuild scratch recovery is incomplete: " + result.Reason));
++            wasRecovered |= result.WasRecovered;
++            // Every link is an immutable, validated original terminal decision. Never reuse that
++            // physical marker identity: a delayed installer can still hold its provider ETag.
++            if (result.RetiredAttemptFingerprint is { } fingerprint)
++            {
++                await EraseTerminalBatchMarkerAsync(scope, batchId, token).ConfigureAwait(false);
++                batchId = RetainedScratchRetryBatchId(batchScope, fingerprint);
++                continue;
++            }
++            ReadModelBatchMarker? marker = (await markerStore.GetAsync<ReadModelBatchMarker>(scope.StoreName,
++                batchScope.ComputeMarkerKey(), token).ConfigureAwait(false)).Value;
++            if (marker is { Status: ReadModelBatchMarkerStatus.Aborted, ScratchCompensationKey: not null })
++            {
++                await EraseTerminalBatchMarkerAsync(scope, batchId, token).ConfigureAwait(false);
++                batchId = RetainedLegacyScratchBatchId(batchScope);
++                continue;
++            }
++            return (batchId, wasRecovered);
+         }
+-        return result.WasRecovered;
++    }
++
++    /// <summary>Derives a bounded distinct attempt from the complete original immutable retirement.</summary>
++    internal static string RetainedScratchRetryBatchId(ReadModelBatchScope originalScope, string fingerprint)
++    {
++        originalScope.Validate();
++        if (!ReadModelBatchFingerprint.IsCanonical(fingerprint))
++            throw new ArgumentException("Invalid private scratch retirement identity.", nameof(fingerprint));
++        return "scratch-retry-v1:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
++            System.Text.Encoding.UTF8.GetBytes(originalScope.ComputeScopeHash() + ":" + fingerprint)));
+     }
+ 
+     /// <summary>Derives a distinct bounded replacement identity without extending public component limits.</summary>
+@@ -46,14 +67,7 @@
+     }
+ 
+     private async Task<string> ScratchBatchIdentityAsync(SharedProjectionScope scope, string batchId, CancellationToken token)
+-    {
+-        var batchScope = new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain, scope.Family, scope.Family, batchId);
+-        IReadModelStore markerStore = _batches as IReadModelStore ?? _store;
+-        ReadModelBatchMarker? marker = (await markerStore.GetAsync<ReadModelBatchMarker>(scope.StoreName,
+-            batchScope.ComputeMarkerKey(), token).ConfigureAwait(false)).Value;
+-        return marker is { Status: ReadModelBatchMarkerStatus.Aborted, ScratchCompensationKey: not null }
+-            ? RetainedLegacyScratchBatchId(batchScope) : batchId;
+-    }
++        => (await ResolveScratchAttemptsAsync(scope, batchId, token).ConfigureAwait(false)).BatchId;
+ 
+     /// <summary>Settles the original private batch before another scratch attempt or epoch CAS.</summary>
+     private async Task<bool> ReconcilePendingScratchAsync(SharedProjectionScope scope, string key, CancellationToken token)
+--- preserved-or-current-head/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs
++++ review5/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs
+@@ -636,6 +636,15 @@
+             return false; // Reload both scratch and the original fence after recovery; never re-plan that batch.
+ 
+         string retainedBatchId = await ScratchBatchIdentityAsync(scope, batchId, cancellationToken).ConfigureAwait(false);
++        // Retirement reconciliation can restore an original fence while discovering another
++        // attempt. Plan only against the current physical ETag after all such awaited work.
++        entry = await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false);
++        state = entry.Value ?? throw new InvalidOperationException("The shared projection has no rebuild epoch.");
++        ValidateState(state);
++        ValidateBoundary(state, scope);
++        if (state.Phase != SharedProjectionEpochPhase.Building
++            || !string.Equals(state.OperationId, operationId, StringComparison.Ordinal)
++            || string.IsNullOrEmpty(entry.ETag)) return false;
+         var batch = new ReadModelBatch(
+             new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain, scope.Family,
+                 scope.Family, retainedBatchId),
+--- preserved-or-current-head/src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs
++++ review5/src/Hexalith.EventStore.DomainService/DomainSharedProjectionRebuildDispatcher.cs
+@@ -2858,7 +2858,17 @@
+         {
+             DomainSharedProjectionScratchRetirement? retired = (await store.GetAsync<DomainSharedProjectionScratchRetirement>(
+                 handler.RebuildStoreName, PartitionManifestKey(sessionKey, owner) + ":retired", token).ConfigureAwait(false)).Value;
+-            if (retired is null) continue; // Historical missing inventory is never inferred.
++            if (retired is null)
++            {
++                // Historical cleanup can still have its original accepted manifest. Reuse only
++                // that known owner identity; absent inventory never authorizes guessed discovery.
++                DomainSharedProjectionStoredPartitionManifest? original = (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(
++                    handler.RebuildStoreName, PartitionManifestKey(sessionKey, owner), token).ConfigureAwait(false)).Value;
++                if (original is null || original.Ordinal != owner || string.IsNullOrWhiteSpace(original.AggregateId)
++                    || original.ChunkHashes is null || original.StreamedChunkCount < 0)
++                    throw new InvalidOperationException("Original private owner retirement inventory is unavailable.");
++                retired = new(identity, owner, original.MaterializedChunkCount, original.TransportPartCount);
++            }
+             if (retired.Identity != identity || retired.OwnerOrdinal != owner || retired.ChunkCount < 0
+                 || retired.ChunkCount > options.MaxRebuildEventCount || retired.TransportPartCount < 0
+                 || retired.TransportPartCount > options.MaxRebuildEventCount)
+--- preserved-or-current-head/tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs
++++ review5/tests/Hexalith.EventStore.Client.Tests/Projections/ReadModelReviewFiveRegressionTests.cs
+@@ -0,0 +1,268 @@
++using System.Text.Json;
++using System.Text.Json.Nodes;
++using Hexalith.EventStore.Client.Projections;
++using Microsoft.Extensions.Logging.Abstractions;
++using Shouldly;
++
++namespace Hexalith.EventStore.Client.Tests.Projections;
++
++public sealed class ReadModelReviewFiveRegressionTests
++{
++    [Theory]
++    [InlineData("store")]
++    [InlineData("tenant")]
++    [InlineData("domain")]
++    [InlineData("owner")]
++    [InlineData("projection")]
++    [InlineData("batch")]
++    public async Task TerminalLogicalDiscoveryValidatesCompleteOriginalScopeBeforeAnyAuxiliaryWrite(string component)
++    {
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var scope = new ReadModelBatchScope("statestore", "tenant", "domain", "owner", "projection", "original");
++        var batch = Batch(scope);
++        await StopAtTerminal(client, batch);
++        ReadModelBatchMarker marker = ReadModelBatchMarker.ReadProof(client.ByteStoreValue(scope.ComputeMarkerKey()))!;
++        marker.RecoveryAnchor = null;
++        var expected = component switch
++        {
++            "store" => scope with { StoreName = "foreign" },
++            "tenant" => scope with { TenantId = "foreign" },
++            "domain" => scope with { Domain = "foreign" },
++            "owner" => scope with { AggregateId = "foreign" },
++            "projection" => scope with { ProjectionType = "foreign" },
++            _ => scope,
++        };
++        if (component == "batch") marker.BatchId = "foreign";
++        client.SeedByteStore(scope.ComputeMarkerKey(), ReadModelBatchCanonicalJson.Serialize(marker));
++        var discovered = expected with { BatchId = marker.BatchId };
++        string[] keys = Keys(scope, marker.Fingerprint).Concat(Keys(discovered, marker.Fingerprint)).Distinct().ToArray();
++        byte[][] before = keys.Select(client.ByteStoreValue).ToArray();
++        (await new DaprReadModelStore(client).RecoverPendingAsync(expected, "first")).IsResolved.ShouldBeFalse();
++        for (int index = 0; index < keys.Length; index++) client.ByteStoreValue(keys[index]).ShouldBe(before[index], keys[index]);
++    }
++
++    [Theory]
++    [InlineData(true, true)]
++    [InlineData(false, true)]
++    [InlineData(true, false)]
++    [InlineData(false, false)]
++    public async Task TerminalAnchorRejectsMalformedParticipantConcurrencyBeforeAnyMutation(bool invalidMode, bool retainAnchor)
++    {
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var scope = new ReadModelBatchScope("statestore", "tenant", "domain", "owner", "projection", "original");
++        await StopAtTerminal(client, Batch(scope));
++        ReadModelBatchMarker marker = ReadModelBatchMarker.ReadProof(client.ByteStoreValue(scope.ComputeMarkerKey()))!;
++        string proofKey = ReadModelBatchParticipantProof.Key(scope, marker.Fingerprint, marker.RecoveryAnchor!.Ordinal);
++        if (!retainAnchor)
++        {
++            marker.RecoveryAnchor = null;
++            client.SeedByteStore(scope.ComputeMarkerKey(), ReadModelBatchCanonicalJson.Serialize(marker));
++        }
++        var proof = JsonSerializer.Deserialize<ReadModelBatchParticipantProof>(client.ByteStoreValue(proofKey), JsonSerializerOptions.Web)!;
++        proof = invalidMode ? proof with { ConcurrencyMode = (ReadModelBatchConcurrencyMode)999 }
++            : proof with { ExpectedETagDigest = "malformed" };
++        client.SeedByteStore(proofKey, ReadModelBatchCanonicalJson.Serialize(proof));
++        string[] keys = Keys(scope, marker.Fingerprint);
++        byte[][] before = keys.Select(client.ByteStoreValue).ToArray();
++        (await new DaprReadModelStore(client).RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeFalse();
++        for (int index = 0; index < keys.Length; index++) client.ByteStoreValue(keys[index]).ShouldBe(before[index], keys[index]);
++    }
++
++    [Fact]
++    public async Task TerminalLegacyCompensationRejectsNoncanonicalPointerWithoutTouchingLateOriginalOrForeignProof()
++    {
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var store = new DaprReadModelStore(client);
++        var shared = new SharedProjectionScope("statestore", "tenant", "domain", "family", ["writer"]);
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        _ = await coordinator.RegisterWriterAsync(shared, "writer");
++        _ = await coordinator.BeginAsync(shared, "operation", "inventory", new Dictionary<string, long>());
++        var state = await store.GetAsync<SharedProjectionEpochState>(shared.StoreName, shared.StateKey);
++        var batch = new ReadModelBatch(new(shared.StoreName, shared.TenantId, shared.Domain, shared.Family, shared.Family, "legacy"),
++            [ReadModelBatchOperation.Write("first", new { value = 1 }, ReadModelBatchConcurrency.CreateOnly),
++                ReadModelBatchOperation.Write(shared.StateKey, state.Value!, ReadModelBatchConcurrency.Match(state.ETag!))]);
++        await Should.ThrowAsync<InvalidOperationException>(() => new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, shared.StoreName), new(), NullLogger.Instance)
++            .ExecuteAsync(batch, new DelegatingBatchFaultInjector((phase, _, _) => phase == ReadModelBatchPhase.BeforeCommit
++                ? throw new InvalidOperationException("original stopped") : Task.CompletedTask), default));
++        byte[] late = client.ByteStoreValue("first");
++        (await store.RecoverPendingAsync(batch.Scope, "first")).IsResolved.ShouldBeTrue();
++        ReadModelBatchMarker marker = ReadModelBatchMarker.ReadProof(client.ByteStoreValue(batch.Scope.ComputeMarkerKey()))!;
++        marker.ScratchCompensationKey = "foreign-proof";
++        client.SeedByteStore(batch.Scope.ComputeMarkerKey(), ReadModelBatchCanonicalJson.Serialize(marker));
++        client.SeedByteStore("first", late);
++        client.SeedByteStore("foreign-proof", "{}"u8.ToArray());
++        string[] keys = Keys(batch.Scope, marker.Fingerprint).Concat([shared.StateKey, "foreign-proof"]).ToArray();
++        byte[][] before = keys.Select(client.ByteStoreValue).ToArray();
++        (await store.RecoverPendingAsync(batch.Scope, batch.Scope.ComputeMarkerKey())).IsResolved.ShouldBeFalse();
++        for (int index = 0; index < keys.Length; index++) client.ByteStoreValue(keys[index]).ShouldBe(before[index], keys[index]);
++    }
++
++    [Fact]
++    public async Task MaximumEscapedLegacyScopeAndKeyRecoverThroughPublicDiscoveryAndRepeatedSettlement()
++    {
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var store = new DaprReadModelStore(client);
++        string escaped = "x" + new string('\u0001', 511);
++        var shared = new SharedProjectionScope(escaped, escaped, escaped, escaped, ["writer"]);
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        _ = await coordinator.RegisterWriterAsync(shared, "writer");
++        _ = await coordinator.BeginAsync(shared, "operation", "inventory", new Dictionary<string, long>());
++        var state = await store.GetAsync<SharedProjectionEpochState>(shared.StoreName, shared.StateKey);
++        var batch = new ReadModelBatch(new(escaped, escaped, escaped, escaped, escaped, escaped),
++            [ReadModelBatchOperation.Write(escaped, new { value = 1 }, ReadModelBatchConcurrency.CreateOnly),
++                ReadModelBatchOperation.Write(shared.StateKey, state.Value!, ReadModelBatchConcurrency.Match(state.ETag!))]);
++        await Should.ThrowAsync<InvalidOperationException>(() => new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, shared.StoreName), new(), NullLogger.Instance)
++            .ExecuteAsync(batch, new DelegatingBatchFaultInjector((phase, _, _) => phase == ReadModelBatchPhase.BeforeCommit
++                ? throw new InvalidOperationException("original stopped") : Task.CompletedTask), default));
++        byte[] late = client.ByteStoreValue(escaped);
++        (await store.RecoverPendingAsync(batch.Scope, escaped)).IsResolved.ShouldBeTrue();
++        string fenceKey = ReadModelBatchTerminalFence.Key(batch.Scope.ComputeScopeHash(), ReadModelBatchFingerprint.Compute(batch));
++        byte[] fence = client.ByteStoreValue(fenceKey);
++        fence.Length.ShouldBeGreaterThan(55_000);
++        fence.Length.ShouldBeLessThanOrEqualTo(ReadModelBatchTerminalFence.MaxLegacyEncodedBytes);
++        client.SeedByteStore(escaped, late);
++        client.SeedByteStore(fenceKey, new byte[ReadModelBatchTerminalFence.MaxLegacyEncodedBytes + 1]);
++        (await store.RecoverPendingAsync(batch.Scope, escaped)).IsResolved.ShouldBeFalse();
++        client.ByteStoreValue(escaped).ShouldBe(late);
++        client.SeedByteStore(fenceKey, "{}"u8.ToArray());
++        (await store.RecoverPendingAsync(batch.Scope, escaped)).IsResolved.ShouldBeFalse();
++        client.ByteStoreValue(escaped).ShouldBe(late);
++        client.SeedByteStore(fenceKey, fence);
++        (await new DaprReadModelStore(client).RecoverPendingAsync(batch.Scope, escaped)).IsResolved.ShouldBeTrue();
++        (await store.RecoverPendingAsync(batch.Scope, batch.Scope.ComputeMarkerKey())).IsResolved.ShouldBeTrue();
++        client.ByteStoreContains(escaped).ShouldBeFalse();
++    }
++
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task CompetingOwnerFenceChangesRetireEachOriginalAttemptAndSameActionEventuallySucceeds(bool legacy)
++    {
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var store = new DaprReadModelStore(client);
++        var shared = new SharedProjectionScope("statestore", "tenant", "domain", "family", ["writer"]);
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        _ = await coordinator.RegisterWriterAsync(shared, "writer");
++        _ = await coordinator.BeginAsync(shared, "operation", "inventory", new Dictionary<string, long>());
++        var originals = new List<(ReadModelBatchScope Scope, byte[] Envelope)>();
++        (ReadModelBatchScope Scope, byte[] Envelope)? legacyOriginal = null;
++        if (legacy)
++        {
++            var epoch = await store.GetAsync<SharedProjectionEpochState>(shared.StoreName, shared.StateKey);
++            var old = new ReadModelBatch(new(shared.StoreName, shared.TenantId, shared.Domain, shared.Family, shared.Family, "same-action"),
++                [ReadModelBatchOperation.Write("first", new { value = 1 }, ReadModelBatchConcurrency.CreateOnly),
++                    ReadModelBatchOperation.Write(shared.StateKey, epoch.Value!, ReadModelBatchConcurrency.Match(epoch.ETag!))]);
++            await Should.ThrowAsync<InvalidOperationException>(() => new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, shared.StoreName), new(), NullLogger.Instance)
++                .ExecuteAsync(old, new DelegatingBatchFaultInjector((phase, _, _) => phase == ReadModelBatchPhase.BeforeCommit
++                    ? throw new InvalidOperationException("legacy original stopped") : Task.CompletedTask), default));
++            legacyOriginal = (old.Scope, client.ByteStoreValue("first"));
++            (await store.RecoverPendingAsync(old.Scope, "first")).IsResolved.ShouldBeTrue();
++            await coordinator.ReclaimScratchReceiptAsync(shared, "same-action");
++        }
++        for (int attempt = 0; attempt < 3; attempt++)
++        {
++            var reached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
++            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
++            client.AfterTrySaveByteState = (key, bytes) =>
++            {
++                if (key != "first" || !ReadModelBatchEnvelope.IsEnvelope(bytes.Span)) return;
++                ReadModelBatchEnvelope envelope = ReadModelBatchEnvelope.FromBytes(bytes)!;
++                var marker = ReadModelBatchMarker.ReadProof(client.ByteStoreValue(ReadModelBatchKeys.MarkerKey(envelope.ScopeHash)))!;
++                var original = new ReadModelBatchScope(shared.StoreName, shared.TenantId, shared.Domain, shared.Family, shared.Family, marker.BatchId);
++                originals.Add((original, bytes.ToArray()));
++                client.AfterTrySaveByteState = null;
++                reached.TrySetResult(); release.Task.GetAwaiter().GetResult();
++            };
++            Task<bool> first = Task.Run(() => coordinator.TryWriteScratchAsync(shared, "operation", "first", new { value = 1 }, "same-action", ReadModelBatchConcurrency.CreateOnly));
++            await reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
++            try
++            {
++                (await new SharedProjectionEpochCoordinator(store, store).TryWriteScratchAsync(shared, "operation", "competitor-" + attempt,
++                    new { value = 2 }, "competitor-" + attempt, ReadModelBatchConcurrency.CreateOnly)).ShouldBeTrue();
++            }
++            finally { release.TrySetResult(); }
++            (await first).ShouldBeFalse();
++            client.ByteStoreContains("first").ShouldBeFalse();
++        }
++        originals.Select(item => item.Scope.BatchId).Distinct().Count().ShouldBe(3);
++        coordinator = new SharedProjectionEpochCoordinator(store, store);
++        (await coordinator.TryWriteScratchAsync(shared, "operation", "first", new { value = 1 }, "same-action", ReadModelBatchConcurrency.CreateOnly)).ShouldBeTrue();
++        (await store.GetAsync<JsonObject>(shared.StoreName, "first")).Value!["value"]!.GetValue<int>().ShouldBe(1);
++        await coordinator.ReclaimScratchReceiptAsync(shared, "same-action");
++        await coordinator.AbortAsync(shared, "operation", (_, _, _) => Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([]));
++        byte[] open = client.ByteStoreValue(shared.StateKey);
++        var raw = new DaprReadModelBatchStateAccessor(client, shared.StoreName);
++        RawStateEntry firstRow = await raw.ReadAsync("first", default);
++        (await raw.TryDeleteAsync("first", firstRow.ETag, default)).ShouldBeTrue();
++        if (legacyOriginal is { } oldOriginal) originals.Add(oldOriginal);
++        foreach (var original in originals)
++        {
++            client.SeedByteStore("first", original.Envelope);
++            (await store.RecoverPendingAsync(original.Scope, "first")).IsResolved.ShouldBeTrue();
++            client.ByteStoreContains("first").ShouldBeFalse();
++            client.ByteStoreValue(shared.StateKey).ShouldBe(open);
++        }
++    }
++
++
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task MaximumEscapedTerminalAnchorRetainsOriginalControlBudgetAndRecoversCompletedOrInterruptedReceipt(bool interrupted)
++    {
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var store = new DaprReadModelStore(client);
++        string escaped = new('<', ReadModelBatchScope.MaxComponentByteLength);
++        var scope = new ReadModelBatchScope(escaped, escaped, escaped, escaped, escaped, escaped);
++        DateTimeOffset deadline = DateTimeOffset.UtcNow.AddMinutes(5);
++        var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.WriteExpiring(escaped, new { value = 1 }, ReadModelBatchConcurrency.CreateOnly, deadline)])
++            { RetainManifestForRecovery = true };
++        var protocol = new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, scope.StoreName), new(), NullLogger.Instance);
++        var result = await protocol.ExecuteAsync(batch, interrupted ? new DelegatingBatchFaultInjector((phase, _, _) => phase == ReadModelBatchPhase.RecoveryReceiptWritten
++            ? throw new IOException("terminal receipt stopped") : Task.CompletedTask) : null, default);
++        result.IsSuccess.ShouldBe(!interrupted);
++        byte[] original = client.ByteStoreValue(scope.ComputeMarkerKey());
++        original.Length.ShouldBeGreaterThan(ReadModelBatchMarker.MaxControlBytes);
++        original.Length.ShouldBeLessThanOrEqualTo(ReadModelBatchMarker.MaxRecoveryEncodedBytes);
++        var inflated = JsonNode.Parse(original)!.AsObject();
++        inflated["unknown-control"] = new string('x', ReadModelBatchMarker.MaxControlBytes);
++        byte[] invalidControl = ReadModelBatchCanonicalJson.Canonicalize(JsonSerializer.SerializeToUtf8Bytes(inflated));
++        invalidControl.Length.ShouldBeLessThanOrEqualTo(ReadModelBatchMarker.MaxRecoveryEncodedBytes);
++        client.SeedByteStore(scope.ComputeMarkerKey(), invalidControl);
++        byte[] participant = client.ByteStoreValue(escaped);
++        (await store.RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeFalse();
++        client.ByteStoreValue(scope.ComputeMarkerKey()).ShouldBe(invalidControl);
++        client.ByteStoreValue(escaped).ShouldBe(participant);
++        client.SeedByteStore(scope.ComputeMarkerKey(), new byte[ReadModelBatchMarker.MaxRecoveryEncodedBytes + 1]);
++        (await store.RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeFalse();
++        client.ByteStoreValue(escaped).ShouldBe(participant);
++        client.SeedByteStore(scope.ComputeMarkerKey(), original);
++        (await new DaprReadModelStore(client).RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeTrue();
++        (await store.RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeTrue();
++        ReadModelBatchExpiringValue.Decode(client.ByteStoreValue(escaped)).Deadline.ShouldBe(deadline);
++        (await store.GetAsync<JsonObject>(scope.StoreName, escaped)).Value!["value"]!.GetValue<int>().ShouldBe(1);
++    }
++
++    private static ReadModelBatch Batch(ReadModelBatchScope scope) => new(scope,
++        [ReadModelBatchOperation.Write("first", new { value = 1 }, ReadModelBatchConcurrency.CreateOnly),
++            ReadModelBatchOperation.Write("last", new { value = 2 }, ReadModelBatchConcurrency.CreateOnly)]) { RetainManifestForRecovery = true };
++
++    private static async Task StopAtTerminal(RecordingDaprClient client, ReadModelBatch batch)
++    {
++        byte[]? original = null;
++        client.BeforeTrySaveByteState = (key, bytes) =>
++        {
++            if (key == "first" && ReadModelBatchEnvelope.IsEnvelope(bytes.Span)) original = bytes.ToArray();
++        };
++        var protocol = new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, batch.Scope.StoreName), new(), NullLogger.Instance);
++        (await protocol.ExecuteAsync(batch, new DelegatingBatchFaultInjector((phase, _, _) => phase == ReadModelBatchPhase.RecoveryReceiptWritten
++            ? throw new IOException("terminal receipt stopped") : Task.CompletedTask), default)).IsSuccess.ShouldBeFalse();
++        client.BeforeTrySaveByteState = null;
++        client.SeedByteStore("first", original!);
++    }
++
++    private static string[] Keys(ReadModelBatchScope scope, string fingerprint) => ["first", "last", scope.ComputeMarkerKey(),
++        ReadModelBatchKeys.ManifestKey(scope.ComputeScopeHash()), ReadModelBatchKeys.ScratchCompensationKey(scope.ComputeScopeHash()),
++        ReadModelBatchTerminalFence.Key(scope.ComputeScopeHash(), fingerprint), scope.ComputeMarkerKey() + ":retired",
++        ReadModelBatchParticipantProof.Key(scope, fingerprint, 0), ReadModelBatchParticipantProof.Key(scope, fingerprint, 1)];
++}
+--- preserved-or-current-head/tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionReviewThreeMaintenanceTests.cs
++++ review5/tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionReviewThreeMaintenanceTests.cs
+@@ -11,9 +11,10 @@
+ public sealed class SharedProjectionReviewThreeMaintenanceTests
+ {
+     [Theory]
+-    [InlineData(false)]
+-    [InlineData(true)]
+-    public async Task StalledFirstMaintenanceReadUsesSdkBudgetWhileCancelledBeginWaitersLeaveSharedWorkAlone(bool failImmediately)
++    [InlineData(false, false)]
++    [InlineData(true, false)]
++    [InlineData(true, true)]
++    public async Task StalledFirstMaintenanceReadUsesSdkBudgetWhileCancelledBeginWaitersLeaveSharedWorkAlone(bool failImmediately, bool dependencyCancelled)
+     {
+         var observations = new ConcurrentQueue<string>();
+         using var listener = new MeterListener();
+@@ -48,6 +49,7 @@
+                 paused.TrySetResult(token);
+                 try
+                 {
++                    if (dependencyCancelled) throw new OperationCanceledException("dependency cancelled independently");
+                     if (failImmediately) throw new IOException("maintenance read failed");
+                     await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                 }
+@@ -83,4 +85,45 @@
+             await Task.Yield();
+         }
+     }
++    [Fact]
++    public async Task MaintenanceBudgetSetupFailureReleasesGateAndNextHealthyBeginReconcilesDurableCleanup()
++    {
++        var observations = new ConcurrentQueue<string>();
++        using var listener = new MeterListener();
++        listener.InstrumentPublished = (instrument, owner) =>
++        {
++            if (instrument.Name == "eventstore.projection.cleanup.failures") owner.EnableMeasurementEvents(instrument);
++        };
++        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
++        {
++            observations.Enqueue("count=" + value);
++            foreach (var tag in tags) observations.Enqueue(tag.Key + "=" + tag.Value);
++        });
++        listener.Start();
++        using var client = new RecordingDaprClient { PersistTypedState = true };
++        var options = new ReadModelBatchOptions { ReconciliationTimeout = TimeSpan.FromDays(100) };
++        var store = new DaprReadModelStore(client, Options.Create(options));
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        var scope = new SharedProjectionScope("statestore", "tenant", "widget", "budget-setup", ["writer"]);
++        _ = await coordinator.RegisterWriterAsync(scope, "writer");
++        _ = await coordinator.BeginAsync(scope, "first", "inventory", new Dictionary<string, long>());
++        _ = await coordinator.StageStreamingAsync(scope, "first", Rows());
++        await coordinator.CommitAsync(scope, "first");
++        await coordinator.WaitForPromotedCleanupAsync(scope).WaitAsync(TimeSpan.FromSeconds(5));
++        observations.ShouldContain("count=1");
++        observations.ShouldContain("reason=failure");
++        observations.ShouldContain("disposition=foreground-retry");
++        observations.ShouldNotContain("reason=budget-expired");
++        (await store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey)).Value!.CleanupStreamPageCount.ShouldBeGreaterThan(0);
++        options.ReconciliationTimeout = TimeSpan.FromSeconds(30);
++        (await coordinator.BeginAsync(scope, "next", "next-inventory", new Dictionary<string, long>()).WaitAsync(TimeSpan.FromSeconds(5))).ShouldBe(2);
++        (await store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey)).Value!.CleanupStreamPageCount.ShouldBe(0);
++        (await coordinator.ReadAsync<JsonObject>(scope, "row")).Value!["count"]!.GetValue<int>().ShouldBe(1);
++        static async IAsyncEnumerable<ReadModelBatchOperation> Rows()
++        {
++            yield return ReadModelBatchOperation.Write("row", new JsonObject { ["count"] = 1 }, ReadModelBatchConcurrency.LastWrite);
++            await Task.Yield();
++        }
++    }
++
+ }
+--- preserved-or-current-head/tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ReviewFive.cs
++++ review5/tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.ReviewFive.cs
+@@ -0,0 +1,179 @@
++using System.Security.Cryptography;
++using System.Text.Json.Nodes;
++using Hexalith.EventStore.Client.Projections;
++using Hexalith.EventStore.Contracts.Projections;
++using Hexalith.EventStore.Testing.Fakes;
++using Microsoft.Extensions.DependencyInjection;
++using Shouldly;
++
++namespace Hexalith.EventStore.DomainService.Tests;
++
++public sealed partial class DomainPartitionedSharedProjectionRebuildTests
++{
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task TerminalNamedAbortRefusesUnavailableOrCorruptOriginalOwnerInventoryAndPreservesOpen(bool corrupt)
++    {
++        var store = new InMemoryReadModelStore();
++        var handler = new PartitionedHandler { FoldOrdinaryRows = true };
++        var scope = handler.CreateScope("tenant-a");
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        using var provider = Provider(store, store, coordinator, handler);
++        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
++        var identity = Identity("unavailable-original-retirement");
++        var owner = ("owner-a", Event([1]) with { GlobalPosition = 1 });
++        _ = await BeginReviewFiveAsync(provider, identity, [owner]);
++        string session = DomainSharedProjectionRebuildSessionKey.Compute(identity);
++        string scratch = DomainSharedProjectionRebuildDispatcher.PartitionChunkKey(session, 0, 0);
++        byte[]? original = null;
++        store.BatchFaultHook = (phase, ordinal, _) =>
++        {
++            if (phase == ReadModelBatchPhase.AfterInstallOperation && ordinal == 0 && original is null)
++                original = store.SnapshotRaw(StoreName, scratch);
++            return Task.CompletedTask;
++        };
++        (await AccumulateAsync(provider, identity, 0, owner)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        store.BatchFaultHook = null;
++        var abort = Lifecycle(identity, DomainSharedProjectionRebuildAction.Abort);
++        (await RebuildAsync(provider, abort)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        string inventoryKey = DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0) + ":retired";
++        var inventory = await store.GetAsync<DomainSharedProjectionScratchRetirement>(StoreName, inventoryKey);
++        if (corrupt) await store.SaveAsync(StoreName, inventoryKey, inventory.Value! with { ChunkCount = -1 });
++        else (await store.TryEraseAsync(StoreName, inventoryKey, inventory.ETag!)).ShouldBeTrue();
++        store.SeedRaw(StoreName, scratch, JsonNode.Parse(original!)!);
++        byte[] open = store.SnapshotRaw(StoreName, ("shared-epoch:" + scope.ComputeHash()))!;
++        byte[] terminal = store.SnapshotRaw(StoreName, session)!;
++        using var replaced = Provider(store, store, new SharedProjectionEpochCoordinator(store, store), handler);
++        for (int attempt = 0; attempt < 2; attempt++)
++        {
++            (await RebuildAsync(replaced, abort)).Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
++            store.SnapshotRaw(StoreName, scratch).ShouldBe(original);
++            store.SnapshotRaw(StoreName, ("shared-epoch:" + scope.ComputeHash())).ShouldBe(open);
++            store.SnapshotRaw(StoreName, session).ShouldBe(terminal);
++        }
++        await store.SaveAsync(StoreName, inventoryKey, inventory.Value!);
++        (await RebuildAsync(replaced, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        store.SnapshotRaw(StoreName, scratch).ShouldBeNull();
++        store.SnapshotRaw(StoreName, ("shared-epoch:" + scope.ComputeHash())).ShouldBe(open);
++    }
++
++    [Fact]
++    public async Task TerminalAcceptedStreamedOwnerReconcilesLateFragmentPartAndHashPageAndAllowsFreshNamedGrowth()
++    {
++        var store = new InMemoryReadModelStore();
++        var handler = new StreamedPartitionedHandler { FoldOrdinaryRows = true, FailBufferedOwnerFold = true };
++        var scope = handler.CreateScope("tenant-a");
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        using var provider = Provider(store, store, coordinator, handler);
++        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
++        var identity = Identity("late-streamed-transport");
++        ProjectionEventDto item = Event(RandomNumberGenerator.GetBytes(1_048_576)) with { GlobalPosition = 1 };
++        _ = await BeginReviewFiveAsync(provider, identity, [("owner-a", item)]);
++        string session = DomainSharedProjectionRebuildSessionKey.Compute(identity);
++        string fragment = session + ":transport:0:0:fragment:0";
++        string part = session + ":transport:0:0";
++        string hashPage = DomainSharedProjectionRebuildDispatcher.PartitionHashPageKey(session, 0, 0);
++        var captured = new Dictionary<string, byte[]>();
++        store.BatchFaultHook = (phase, ordinal, _) =>
++        {
++            if (phase == ReadModelBatchPhase.AfterInstallOperation && ordinal == 0)
++                foreach (string key in new[] { fragment, part, hashPage })
++                    if (!captured.ContainsKey(key) && store.SnapshotRaw(StoreName, key) is { } bytes
++                        && JsonNode.Parse(bytes)?["$hxrmb"] is not null) captured.Add(key, bytes);
++            return Task.CompletedTask;
++        };
++        (await RebuildAsync(provider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.AccumulatePart,
++            identity, AggregateOrdinal: 0, AggregateId: "owner-a", Events: [item], PartOrdinal: 0))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await RebuildAsync(provider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.AccumulateComplete,
++            identity, AggregateOrdinal: 0, AggregateId: "owner-a", PartCount: 1,
++            ExpectedHistoryFingerprint: DomainSharedProjectionRebuildFingerprint.ComputeHistory("owner-a", false, [item])))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        store.BatchFaultHook = null;
++        captured.Count.ShouldBe(3);
++        var abort = Lifecycle(identity, DomainSharedProjectionRebuildAction.Abort);
++        (await RebuildAsync(provider, abort)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var terminal = (await store.GetAsync<DomainSharedProjectionRebuildSessionState>(StoreName, session)).Value!;
++        terminal.ScratchCleanedOwnerCount.ShouldBe(1); terminal.ScratchIndexesCleaned.ShouldBeTrue();
++        var inventory = (await store.GetAsync<DomainSharedProjectionScratchRetirement>(StoreName,
++            DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0) + ":retired")).Value!;
++        inventory.TransportPartCount.ShouldBe(1); inventory.ChunkCount.ShouldBe(5);
++        byte[] open = store.SnapshotRaw(StoreName, ("shared-epoch:" + scope.ComputeHash()))!;
++        foreach (var row in captured) store.SeedRaw(StoreName, row.Key, JsonNode.Parse(row.Value)!);
++        coordinator = new SharedProjectionEpochCoordinator(store, store);
++        using var replaced = Provider(store, store, coordinator, handler);
++        (await RebuildAsync(replaced, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        foreach (string key in captured.Keys) store.SnapshotRaw(StoreName, key).ShouldBeNull();
++        store.SnapshotRaw(StoreName, ("shared-epoch:" + scope.ComputeHash())).ShouldBe(open);
++        (await RebuildAsync(replaced, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        ProjectionEventDto growth = Event([9]) with { GlobalPosition = 2, MessageId = "after-late-transport" };
++        var delivered = await DomainProjectionDispatcher.DispatchAsync(replaced,
++            new ProjectionDispatchRequest(new ProjectionRequest("tenant-a", "widget", "owner-a", [growth]), [handler.ProjectionType], growth.MessageId, identity.CatalogFingerprint),
++            new ProjectionDispatchOptions(), new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" }, default);
++        delivered.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var fresh = Identity("fresh-after-late-transport");
++        _ = await BeginReviewFiveAsync(replaced, fresh, [("owner-a", growth)]);
++        handler.FailBufferedOwnerFold = false;
++        var accepted = await AccumulateAsync(replaced, fresh, 0, ("owner-a", growth));
++        (await FinishAsync(replaced, fresh, accepted)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        (await coordinator.ReadAsync<PayloadRow>(scope, "row:owner-a")).Value.ShouldNotBeNull();
++    }
++    [Fact]
++    public async Task NamedMultiOwnerAccumulateRetriesRetainedFenceConflictAndKeepsOrdinaryGrowthAndFreshRebuild()
++    {
++        var store = new InMemoryReadModelStore();
++        var handler = new PartitionedHandler { FoldOrdinaryRows = true };
++        var scope = handler.CreateScope("tenant-a");
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        using var provider = Provider(store, store, coordinator, handler);
++        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
++        var identity = Identity("competing-retained-owners");
++        var first = ("owner-a", Event([1]) with { GlobalPosition = 1 });
++        var second = ("owner-b", Event([2]) with { GlobalPosition = 2 });
++        _ = await BeginReviewFiveAsync(provider, identity, [first, second]);
++        string scratch = DomainSharedProjectionRebuildDispatcher.PartitionChunkKey(DomainSharedProjectionRebuildSessionKey.Compute(identity), 0, 0);
++        int conflicts = 0;
++        bool competing = false;
++        store.BatchFaultHook = async (phase, ordinal, token) =>
++        {
++            if (phase != ReadModelBatchPhase.AfterInstallOperation || ordinal != 0 || competing || conflicts >= 2
++                || store.SnapshotRaw(StoreName, scratch) is not { } bytes || JsonNode.Parse(bytes)?["$hxrmb"] is null) return;
++            int competitor = conflicts++;
++            competing = true;
++            (await new SharedProjectionEpochCoordinator(store, store).TryWriteScratchAsync(scope, identity.OperationId,
++                "competing-private-" + competitor, new { value = competitor }, "competing-batch-" + competitor,
++                ReadModelBatchConcurrency.CreateOnly, token)).ShouldBeTrue();
++            competing = false;
++        };
++        DomainSharedProjectionRebuildResponse accepted = await AccumulateAsync(provider, identity, 0, first);
++        for (int retry = 0; accepted.Status is not (ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted) && retry < 5; retry++)
++            accepted = await AccumulateAsync(provider, identity, 0, first);
++        accepted.Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        conflicts.ShouldBe(2); store.BatchFaultHook = null;
++        (await AccumulateAsync(provider, identity, 1, second)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var abort = Lifecycle(identity, DomainSharedProjectionRebuildAction.Abort);
++        (await RebuildAsync(provider, abort)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        ProjectionEventDto growth = Event([9]) with { GlobalPosition = 3, MessageId = "after-competing-owners" };
++        using var replaced = Provider(store, store, new SharedProjectionEpochCoordinator(store, store), handler);
++        var delivered = await DomainProjectionDispatcher.DispatchAsync(replaced,
++            new ProjectionDispatchRequest(new ProjectionRequest("tenant-a", "widget", "owner-a", [growth]), [handler.ProjectionType], growth.MessageId, identity.CatalogFingerprint),
++            new ProjectionDispatchOptions(), new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" }, default);
++        delivered.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var fresh = Identity("fresh-after-competing-owners");
++        _ = await BeginReviewFiveAsync(replaced, fresh, [("owner-a", growth)]);
++        var current = await AccumulateAsync(replaced, fresh, 0, ("owner-a", growth));
++        (await FinishAsync(replaced, fresh, current)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++    }
++
++    private static Task<DomainSharedProjectionRebuildResponse> BeginReviewFiveAsync(IServiceProvider provider,
++        DomainSharedProjectionRebuildIdentity identity, IReadOnlyList<(string Owner, ProjectionEventDto Event)> histories)
++    {
++        string inventory = DomainSharedProjectionRebuildFingerprint.EmptyInventory;
++        for (int ordinal = 0; ordinal < histories.Count; ordinal++)
++            inventory = DomainSharedProjectionRebuildFingerprint.AppendInventory(inventory, ordinal,
++                DomainSharedProjectionRebuildFingerprint.ComputeHistory(histories[ordinal].Owner, false, [histories[ordinal].Event]));
++        return RebuildAsync(provider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Begin,
++            identity, CaptureInventoryFingerprint: inventory,
++            SourceHighWatermarks: histories.ToDictionary(item => item.Owner, item => item.Event.GlobalPosition)));
++    }
++
++}
+--- preserved-or-current-head/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LivePartitionedScratchHandler.cs
++++ review5/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LivePartitionedScratchHandler.cs
+@@ -7,7 +7,7 @@
+ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
+ 
+ /// <summary>Domain-only partitioned handler used to qualify the production named dispatcher over Dapr.</summary>
+-internal sealed class LivePartitionedScratchHandler : IAsyncDomainSharedProjectionPartitionedRebuildHandler
++internal class LivePartitionedScratchHandler : IAsyncDomainSharedProjectionPartitionedRebuildHandler
+ {
+     public bool EpochEnabled => true;
+     public string OrdinaryWriterId => "ordinary-dispatch";
+--- preserved-or-current-head/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LiveStreamedPartitionedScratchHandler.cs
++++ review5/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/LiveStreamedPartitionedScratchHandler.cs
+@@ -0,0 +1,34 @@
++using System.Text.Json.Nodes;
++using Hexalith.EventStore.Client.Projections;
++using Hexalith.EventStore.Contracts.Projections;
++using Hexalith.EventStore.DomainService;
++
++namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
++
++/// <summary>Uses the production streamed-owner transport and hash-page paths over the live store.</summary>
++internal sealed class LiveStreamedPartitionedScratchHandler : LivePartitionedScratchHandler, IAsyncDomainSharedProjectionStreamedOwnerHandler
++{
++    public async IAsyncEnumerable<ReadOnlyMemory<byte>> StreamPartitionChunksAsync(DomainSharedProjectionRebuildIdentity identity,
++        string aggregateId, IAsyncEnumerable<ProjectionEventDto> events,
++        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
++    {
++        byte[]? last = null;
++        await foreach (var item in events.WithCancellation(token)) last = item.Payload;
++        if (last is null) throw new InvalidOperationException("Missing original owner events.");
++        for (int offset = 0; offset < last.Length; offset += 256_000)
++            yield return last.AsMemory(offset, Math.Min(256_000, last.Length - offset));
++    }
++
++    public async IAsyncEnumerable<ReadModelBatchOperation> StreamFinalizedOperationsAsync(DomainSharedProjectionRebuildIdentity identity,
++        IDomainSharedProjectionPartitionCursor partitions,
++        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
++    {
++        string? owner = null;
++        await foreach (var chunk in partitions.ReadAllAsync(token))
++        {
++            if (chunk.AggregateId == owner) continue;
++            owner = chunk.AggregateId;
++            yield return ReadModelBatchOperation.Write("row:" + owner, new JsonObject { ["count"] = (int)chunk.State.Span[0] }, ReadModelBatchConcurrency.LastWrite);
++        }
++    }
++}
+--- preserved-or-current-head/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewFive.cs
++++ review5/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionExpiryAndScratchRecoveryLiveTests.ReviewFive.cs
+@@ -0,0 +1,251 @@
++using System.Security.Cryptography;
++using System.Text.Json;
++using System.Text.Json.Nodes;
++using Dapr.Client;
++using Hexalith.EventStore.Client.Projections;
++using Hexalith.EventStore.Contracts.Projections;
++using Hexalith.EventStore.DomainService;
++using Microsoft.Extensions.Logging.Abstractions;
++using Shouldly;
++
++namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
++
++public sealed partial class ProjectionExpiryAndScratchRecoveryLiveTests
++{
++    [Fact]
++    public async Task CompetingRetainedNamedOwnerRetriesOverRedisThenAbortsAndAllowsOrdinaryGrowthAndFreshNamedRebuild()
++    {
++        string tenant = "review5-competing-" + Guid.NewGuid().ToString("N");
++        using DaprClient client = Client();
++        var store = new DaprReadModelStore(client);
++        var handler = new LivePartitionedScratchHandler();
++        var scope = handler.CreateScope(tenant);
++        var identity = NamedIdentity(tenant, "competing-retained-owners");
++        string scratch = DomainSharedProjectionRebuildDispatcher.PartitionChunkKey(DomainSharedProjectionRebuildSessionKey.Compute(identity), 0, 0);
++        int conflicts = 0;
++        var originals = new List<(ReadModelBatchScope Scope, byte[] Envelope)>();
++        var interleaved = new ReviewFiveLiveBatchStore(client, store, async (key, bytes, token) =>
++        {
++            if (key == scratch && ReadModelBatchEnvelope.IsEnvelope(bytes.Span))
++            {
++                ReadModelBatchEnvelope original = ReadModelBatchEnvelope.FromBytes(bytes)!;
++                ReadModelBatchMarker marker = (await store.GetAsync<ReadModelBatchMarker>(scope.StoreName,
++                    ReadModelBatchKeys.MarkerKey(original.ScopeHash), token)).Value!;
++                originals.Add((new(scope.StoreName, tenant, scope.Domain, scope.Family, scope.Family, marker.BatchId), bytes.ToArray()));
++            }
++            if (key != scope.StateKey || !ReadModelBatchEnvelope.IsEnvelope(bytes.Span) || conflicts >= 2) return;
++            int competitor = conflicts++;
++            (await new SharedProjectionEpochCoordinator(store, store).TryWriteScratchAsync(scope, identity.OperationId,
++                tenant + ":competing-private:" + competitor, Value(2), "competing-batch-" + competitor,
++                ReadModelBatchConcurrency.CreateOnly, token)).ShouldBeTrue();
++        });
++        var coordinator = new SharedProjectionEpochCoordinator(store, interleaved);
++        using var originalProvider = NamedProvider(store, interleaved, coordinator, handler);
++        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
++        var first = NamedEvent(1);
++        var second = NamedEvent(2) with { GlobalPosition = 2, MessageId = "owner-b" };
++        (await NamedBegin(originalProvider, identity, [("owner-a", first), ("owner-b", second)])).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        DomainSharedProjectionRebuildResponse accepted = await NamedAccumulate(originalProvider, identity, "owner-a", first);
++        for (int retry = 0; accepted.Status is not (ProjectionDispatchStatus.Completed or ProjectionDispatchStatus.AlreadyCompleted) && retry < 5; retry++)
++            accepted = await NamedAccumulate(originalProvider, identity, "owner-a", first);
++        accepted.Status.ShouldBe(ProjectionDispatchStatus.Completed); conflicts.ShouldBe(2);
++        (await NamedDispatch(originalProvider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Accumulate,
++            identity, AggregateOrdinal: 1, AggregateId: "owner-b", Events: [second]))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var abort = new DomainSharedProjectionRebuildRequest(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Abort, identity);
++        (await NamedDispatch(originalProvider, abort)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        byte[] opened = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!;
++        using DaprClient replacement = Client();
++        store = new DaprReadModelStore(replacement); coordinator = new SharedProjectionEpochCoordinator(store, store);
++        using var resumed = NamedProvider(store, store, coordinator, handler);
++        var raw = new DaprReadModelBatchStateAccessor(replacement, scope.StoreName);
++        foreach (var original in originals.Take(2))
++        {
++            (await raw.TryWriteAsync(scratch, original.Envelope, string.Empty, default)).ShouldBeTrue();
++            (await NamedDispatch(resumed, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++            (await _redis.GetDatabase().KeyExistsAsync(Key(scratch))).ShouldBeFalse();
++            ((byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!).ShouldBe(opened);
++        }
++        var growth = NamedEvent(9) with { GlobalPosition = 3, MessageId = "growth-after-competing-owners" };
++        var delivered = await DomainProjectionDispatcher.DispatchAsync(resumed,
++            new ProjectionDispatchRequest(new ProjectionRequest(tenant, "widget", "owner-a", [growth]), [handler.ProjectionType], growth.MessageId, identity.CatalogFingerprint),
++            new ProjectionDispatchOptions(), new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" }, default);
++        delivered.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var fresh = NamedIdentity(tenant, "fresh-after-competing-owners");
++        (await NamedBegin(resumed, fresh, [("owner-a", growth)])).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var current = await NamedAccumulate(resumed, fresh, "owner-a", growth);
++        (await NamedFinish(resumed, fresh, current)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value!["count"]!.GetValue<int>().ShouldBe(9);
++        TestContext.Current.TestOutputHelper!.WriteLine("review5-competing-owners;conflicts=2;retained-attempts-distinct=true;late-original-attempts-reconciled-by-named-Abort=true;physical-private-absent=true;exact-Open-preserved=true;ordinary-growth=true;fresh-named-rebuild=true");
++    }
++
++    [Fact]
++    public async Task TerminalAcceptedStreamedTransportAndHashPageLateInstallersArePhysicallyRemovedByReplacementNamedAbort()
++    {
++        string tenant = "review5-streamed-" + Guid.NewGuid().ToString("N");
++        using DaprClient client = Client();
++        var store = new DaprReadModelStore(client);
++        var handler = new LiveStreamedPartitionedScratchHandler();
++        var scope = handler.CreateScope(tenant);
++        var identity = NamedIdentity(tenant, "late-streamed-owner");
++        string session = DomainSharedProjectionRebuildSessionKey.Compute(identity);
++        string fragment = session + ":transport:0:0:fragment:0", part = session + ":transport:0:0";
++        string hashPage = DomainSharedProjectionRebuildDispatcher.PartitionHashPageKey(session, 0, 0);
++        var captured = new Dictionary<string, byte[]>();
++        var capturing = new ReviewFiveLiveBatchStore(client, store, (key, bytes, _) =>
++        {
++            if ((key == fragment || key == part || key == hashPage) && ReadModelBatchEnvelope.IsEnvelope(bytes.Span)) captured.TryAdd(key, bytes.ToArray());
++            return Task.CompletedTask;
++        });
++        var coordinator = new SharedProjectionEpochCoordinator(store, capturing);
++        using var provider = NamedProvider(store, capturing, coordinator, handler);
++        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
++        var source = NamedEvent(1) with { Payload = RandomNumberGenerator.GetBytes(1_048_576) };
++        (await NamedBegin(provider, identity, [("owner-a", source)])).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await NamedDispatch(provider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.AccumulatePart,
++            identity, AggregateOrdinal: 0, AggregateId: "owner-a", Events: [source], PartOrdinal: 0))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await NamedDispatch(provider, new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.AccumulateComplete,
++            identity, AggregateOrdinal: 0, AggregateId: "owner-a", PartCount: 1,
++            ExpectedHistoryFingerprint: DomainSharedProjectionRebuildFingerprint.ComputeHistory("owner-a", false, [source])))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        captured.Count.ShouldBe(3);
++        var abort = new DomainSharedProjectionRebuildRequest(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Abort, identity);
++        (await NamedDispatch(provider, abort)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var terminal = (await store.GetAsync<DomainSharedProjectionRebuildSessionState>(scope.StoreName, session)).Value!;
++        terminal.ScratchCleanedOwnerCount.ShouldBe(1); terminal.ScratchIndexesCleaned.ShouldBeTrue();
++        var retired = (await store.GetAsync<DomainSharedProjectionScratchRetirement>(scope.StoreName,
++            DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0) + ":retired")).Value!;
++        retired.TransportPartCount.ShouldBe(1); retired.ChunkCount.ShouldBe(5);
++        byte[] open = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!;
++        var raw = new DaprReadModelBatchStateAccessor(client, scope.StoreName);
++        foreach (var row in captured) (await raw.TryWriteAsync(row.Key, row.Value, string.Empty, default)).ShouldBeTrue();
++        using DaprClient replacement = Client();
++        store = new DaprReadModelStore(replacement); coordinator = new SharedProjectionEpochCoordinator(store, store);
++        using var resumed = NamedProvider(store, store, coordinator, handler);
++        (await NamedDispatch(resumed, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        foreach (string key in captured.Keys) (await _redis.GetDatabase().KeyExistsAsync(Key(key))).ShouldBeFalse();
++        ((byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!).ShouldBe(open);
++        (await NamedDispatch(resumed, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        var growth = NamedEvent(9) with { GlobalPosition = 2, MessageId = "after-late-transport" };
++        var delivered = await DomainProjectionDispatcher.DispatchAsync(resumed,
++            new ProjectionDispatchRequest(new ProjectionRequest(tenant, "widget", "owner-a", [growth]), [handler.ProjectionType], growth.MessageId, identity.CatalogFingerprint),
++            new ProjectionDispatchOptions(), new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" }, default);
++        delivered.Outcomes.Single().Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var fresh = NamedIdentity(tenant, "fresh-after-streamed-retirement");
++        (await NamedBegin(resumed, fresh, [("owner-a", growth)])).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var current = await NamedAccumulate(resumed, fresh, "owner-a", growth);
++        (await NamedFinish(resumed, fresh, current)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        TestContext.Current.TestOutputHelper!.WriteLine("review5-terminal-streamed;accepted-owner=true;terminal-flags=true;transport-parts=1;chunks=5;original-fragment-part-hash-page-physically-absent=true;exact-Open-preserved=true;ordinary-growth=true;fresh-named-rebuild=true;no-test-authored-recovery-or-private-delete=true");
++    }
++
++    [Fact]
++    public async Task MaximumEscapedLegacyScopeRecoversOverRedisAndRetainsCanonicalBoundedFence()
++    {
++        using DaprClient client = Client();
++        var store = new DaprReadModelStore(client);
++        string escaped = "x" + new string('\u0001', 511);
++        // Component names are configured provider resources. All five identity components and the
++        // original logical key use the full lawful escaping bound under the actual statestore.
++        var scope = new SharedProjectionScope("statestore", escaped, escaped, escaped, ["writer"]);
++        var coordinator = new SharedProjectionEpochCoordinator(store, store);
++        _ = await coordinator.RegisterWriterAsync(scope, "writer");
++        _ = await coordinator.BeginAsync(scope, "operation", "inventory", new Dictionary<string, long>());
++        var state = await store.GetAsync<SharedProjectionEpochState>(scope.StoreName, scope.StateKey);
++        var batch = new ReadModelBatch(new(scope.StoreName, escaped, escaped, escaped, escaped, escaped),
++            [ReadModelBatchOperation.Write(escaped, Value(1), ReadModelBatchConcurrency.CreateOnly),
++                ReadModelBatchOperation.Write(scope.StateKey, state.Value!, ReadModelBatchConcurrency.Match(state.ETag!))]);
++        var raw = new DaprReadModelBatchStateAccessor(client, scope.StoreName);
++        await Should.ThrowAsync<InvalidOperationException>(() => new ReadModelBatchProtocol(raw, new(), NullLogger.Instance)
++            .ExecuteAsync(batch, new RetainedBatchLiveFaultInjector(ReadModelBatchPhase.BeforeCommit, -1), default));
++        (await store.RecoverPendingAsync(batch.Scope, escaped)).IsResolved.ShouldBeTrue();
++        using DaprClient replacement = Client();
++        (await new DaprReadModelStore(replacement).RecoverPendingAsync(batch.Scope, batch.Scope.ComputeMarkerKey())).IsResolved.ShouldBeTrue();
++        RawStateEntry fence = await raw.ReadAsync(ReadModelBatchTerminalFence.Key(batch.Scope.ComputeScopeHash(), ReadModelBatchFingerprint.Compute(batch)), default);
++        fence.Value.Length.ShouldBeGreaterThan(40_000); fence.Value.Length.ShouldBeLessThanOrEqualTo(ReadModelBatchTerminalFence.MaxLegacyEncodedBytes);
++        (await _redis.GetDatabase().KeyExistsAsync(Key(escaped))).ShouldBeFalse();
++        TestContext.Current.TestOutputHelper!.WriteLine($"review5-legacy-escape;physical-fence-bytes={fence.Value.Length};bound={ReadModelBatchTerminalFence.MaxLegacyEncodedBytes};replacement-repeated-recovery=true;private-physically-absent=true");
++    }
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task MissingHistoricalOrCorruptRetiredOwnerInventoryRefusesNamedSuccessOverRedis(bool corrupt)
++    {
++        string tenant = "review5-missing-inventory-" + Guid.NewGuid().ToString("N");
++        using DaprClient client = Client();
++        var store = new DaprReadModelStore(client);
++        var handler = new LivePartitionedScratchHandler();
++        var scope = handler.CreateScope(tenant);
++        var identity = NamedIdentity(tenant, "unavailable-original-inventory");
++        string session = DomainSharedProjectionRebuildSessionKey.Compute(identity);
++        string scratch = DomainSharedProjectionRebuildDispatcher.PartitionChunkKey(session, 0, 0);
++        var capturing = new CapturingScratchLiveBatchStore(client, store, scratch);
++        var coordinator = new SharedProjectionEpochCoordinator(store, capturing);
++        using var provider = NamedProvider(store, capturing, coordinator, handler);
++        _ = await coordinator.RegisterWriterAsync(scope, handler.OrdinaryWriterId);
++        var source = NamedEvent(1);
++        (await NamedBegin(provider, identity, [("owner-a", source)])).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await NamedAccumulate(provider, identity, "owner-a", source)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var abort = new DomainSharedProjectionRebuildRequest(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Abort, identity);
++        (await NamedDispatch(provider, abort)).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        var raw = new DaprReadModelBatchStateAccessor(client, scope.StoreName);
++        string retiredKey = DomainSharedProjectionRebuildDispatcher.PartitionManifestKey(session, 0) + ":retired";
++        RawStateEntry inventory = await raw.ReadAsync(retiredKey, default);
++        if (corrupt)
++        {
++            var invalid = JsonSerializer.Deserialize<DomainSharedProjectionScratchRetirement>(inventory.Value.Span, JsonSerializerOptions.Web)! with { ChunkCount = -1 };
++            (await raw.TryWriteAsync(retiredKey, ReadModelBatchCanonicalJson.Serialize(invalid), inventory.ETag, default)).ShouldBeTrue();
++        }
++        else (await raw.TryDeleteAsync(retiredKey, inventory.ETag, default)).ShouldBeTrue();
++        (await raw.TryWriteAsync(scratch, capturing.OriginalEnvelope, string.Empty, default)).ShouldBeTrue();
++        byte[] open = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!;
++        byte[] terminal = (byte[])(await _redis.GetDatabase().HashGetAsync(Key(session), "data"))!;
++        using DaprClient replacement = Client();
++        store = new DaprReadModelStore(replacement);
++        using var resumed = NamedProvider(store, store, new SharedProjectionEpochCoordinator(store, store), handler);
++        for (int attempt = 0; attempt < 2; attempt++)
++        {
++            (await NamedDispatch(resumed, abort)).Status.ShouldBe(ProjectionDispatchStatus.Indeterminate);
++            ((byte[])(await _redis.GetDatabase().HashGetAsync(Key(scratch), "data"))!).ShouldBe(capturing.OriginalEnvelope.ToArray());
++            ((byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!).ShouldBe(open);
++            ((byte[])(await _redis.GetDatabase().HashGetAsync(Key(session), "data"))!).ShouldBe(terminal);
++        }
++        RawStateEntry invalidInventory = await raw.ReadAsync(retiredKey, default);
++        (await raw.TryWriteAsync(retiredKey, inventory.Value, invalidInventory.ETag, default)).ShouldBeTrue();
++        (await NamedDispatch(resumed, abort)).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        (await _redis.GetDatabase().KeyExistsAsync(Key(scratch))).ShouldBeFalse();
++        ((byte[])(await _redis.GetDatabase().HashGetAsync(Key(scope.StateKey), "data"))!).ShouldBe(open);
++        TestContext.Current.TestOutputHelper!.WriteLine($"review5-inventory;corrupt={corrupt};repeated-refusal=true;late-private-unchanged=true;exact-Open-and-session-preserved=true;original-inventory-restored=true;subsequent-production-Abort-physically-cleaned=true");
++    }
++
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public async Task MaximumEscapedTerminalAnchorRecoversCompletedAndInterruptedReceiptOverRedis(bool interrupted)
++    {
++        using DaprClient client = Client();
++        var store = new DaprReadModelStore(client);
++        string escaped = new('<', ReadModelBatchScope.MaxComponentByteLength);
++        var scope = new ReadModelBatchScope("statestore", escaped, escaped, escaped, escaped, escaped);
++        DateTimeOffset deadline = DateTimeOffset.UtcNow.AddMinutes(5);
++        var batch = new ReadModelBatch(scope,
++            [ReadModelBatchOperation.WriteExpiring(escaped, Value(1), ReadModelBatchConcurrency.CreateOnly, deadline)])
++            { RetainManifestForRecovery = true };
++        var raw = new DaprReadModelBatchStateAccessor(client, scope.StoreName);
++        var protocol = new ReadModelBatchProtocol(raw, new(), NullLogger.Instance);
++        if (interrupted)
++            await Should.ThrowAsync<InvalidOperationException>(() => protocol.ExecuteAsync(batch,
++                new RetainedBatchLiveFaultInjector(ReadModelBatchPhase.RecoveryReceiptWritten, 0), default));
++        else (await protocol.ExecuteAsync(batch, null, default)).IsSuccess.ShouldBeTrue();
++        RawStateEntry receipt = await raw.ReadAsync(scope.ComputeMarkerKey(), default);
++        receipt.Value.Length.ShouldBeGreaterThan(ReadModelBatchMarker.MaxControlBytes);
++        receipt.Value.Length.ShouldBeLessThanOrEqualTo(ReadModelBatchMarker.MaxRecoveryEncodedBytes);
++        using DaprClient replacement = Client();
++        store = new DaprReadModelStore(replacement);
++        (await store.RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeTrue();
++        (await store.RecoverPendingAsync(scope, scope.ComputeMarkerKey())).IsResolved.ShouldBeTrue();
++        RawStateEntry model = await raw.ReadAsync(escaped, default);
++        ReadModelBatchExpiringValue.Decode(model.Value).Deadline.ShouldBe(deadline);
++        TimeSpan ttl = (await _redis.GetDatabase().KeyTimeToLiveAsync(Key(escaped))).ShouldNotBeNull();
++        ttl.ShouldBeGreaterThan(TimeSpan.Zero); ttl.ShouldBeLessThanOrEqualTo(TimeSpan.FromMinutes(5));
++        TestContext.Current.TestOutputHelper!.WriteLine($"review5-terminal-anchor;interrupted={interrupted};physical-receipt-bytes={receipt.Value.Length};physical-bound={ReadModelBatchMarker.MaxRecoveryEncodedBytes};unchanged-logical-control-bound={ReadModelBatchMarker.MaxControlBytes};replacement-repeated-recovery=true;original-deadline-and-positive-physical-TTL=true");
++    }
++
++}
+--- preserved-or-current-head/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReviewFiveLiveBatchStore.cs
++++ review5/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ReviewFiveLiveBatchStore.cs
+@@ -0,0 +1,17 @@
++using Dapr.Client;
++using Hexalith.EventStore.Client.Projections;
++using Microsoft.Extensions.Logging.Abstractions;
++
++namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
++
++/// <summary>Observes and interleaves original production persistence while retaining actual provider CAS.</summary>
++internal sealed class ReviewFiveLiveBatchStore(DaprClient client, DaprReadModelStore inner,
++    Func<string, ReadOnlyMemory<byte>, CancellationToken, Task> beforeWrite) : IReadModelBatchStore, IReadModelPendingBatchRecoveryStore
++{
++    public Task<ReadModelBatchResult> ExecuteAsync(ReadModelBatch batch, CancellationToken token = default)
++        => new ReadModelBatchProtocol(new DelayedScratchLiveAccessor(new DaprReadModelBatchStateAccessor(client, batch.Scope.StoreName), beforeWrite),
++            new(), NullLogger.Instance).ExecuteAsync(batch, null, token);
++
++    public Task<ReadModelPendingBatchRecoveryResult> RecoverPendingAsync(ReadModelBatchScope scope, string key, CancellationToken token = default)
++        => inner.RecoverPendingAsync(scope, key, token);
++}

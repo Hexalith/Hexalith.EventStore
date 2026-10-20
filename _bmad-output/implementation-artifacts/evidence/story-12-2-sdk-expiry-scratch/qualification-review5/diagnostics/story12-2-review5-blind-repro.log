@@ -1,0 +1,11 @@
+Legacy fence bytes=56025, seal=False
+Malformed proof anchor accepted=True
+Foreign recovery result=False/recovery-manifest-unavailable; writes=2
+Foreign recovery wrote hxrmb:v1:marker:pBQ_E2wPwYJ57dmPSqYGO9GCept9qCsjzktKjAoZHtA:retired:7146C3EC3B68C58364755D2A023FB4BF53C1D81E1D0720EC4C77535CEEA3CB40
+Foreign recovery wrote hxrmb:v1:marker:pBQ_E2wPwYJ57dmPSqYGO9GCept9qCsjzktKjAoZHtA:retired
+Foreign stage=Prepared
+Tx attempt 0=Indeterminate/foreign-envelope
+Tx attempt 1=Indeterminate/foreign-envelope
+Tx marker={"batch":"tx","fp":"v2:uFHaFFSyFy-XxGSSFVgrTx-h3EkwNALIu-Kpk6xcyE0","ops":[{"del":false,"key":"busy","ord":0}],"scope":"MZGiTF_CoDd6fnbjlsi1lpdyVd8YXLGUAI9b5R-AC9A","st":0,"time":null,"v":1}
+Noncanonical legacy compensation key accepted=True/; private row remains=False
+Manual consumer clock=2020-01-01T00:00:00.0000000+00:00; result=Completed; fresh emitted model present=False

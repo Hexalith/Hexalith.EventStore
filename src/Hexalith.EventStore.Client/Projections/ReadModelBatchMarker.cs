@@ -11,6 +11,38 @@ namespace Hexalith.EventStore.Client.Projections;
 /// the scope hash, batch identity, fingerprint, terminal time, and protocol version.
 /// </summary>
 internal sealed class ReadModelBatchMarker {
+    /// <summary>The original logical control-record byte budget.</summary>
+    internal const int MaxControlBytes = 16_384;
+
+    /// <summary>Allows one bounded SDK anchor in addition to the unchanged logical control budget.</summary>
+    internal const int MaxRecoveryEncodedBytes = MaxControlBytes
+        + 6 * (6 * ReadModelBatchScope.MaxComponentByteLength + ReadModelBatchOptions.DefaultMaxKeyByteLength) + 4096;
+
+    /// <summary>Reads bounded recovery evidence without charging SDK anchor expansion to the original control budget.</summary>
+    internal static ReadModelBatchMarker? ReadBoundedProof(ReadOnlyMemory<byte> bytes)
+    {
+        if (bytes.Length > MaxRecoveryEncodedBytes) return null;
+        ReadModelBatchMarker? marker = ReadProof(bytes);
+        if (marker is null) return null;
+        if (marker.RecoveryAnchor is { } anchor && (anchor.Scope is null || !anchor.Matches(marker, anchor.Scope))) return null;
+        if (bytes.Length <= MaxControlBytes) return marker;
+        if (marker.RecoveryAnchor is null) return null;
+        // Preserve unknown control fields in the size check. Deserializing and reserializing only
+        // known fields could silently admit an oversized original control record.
+        using JsonDocument document = JsonDocument.Parse(bytes);
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            foreach (JsonProperty property in document.RootElement.EnumerateObject())
+                if (!property.Name.Equals("recoveryAnchor", StringComparison.OrdinalIgnoreCase)
+                    && !property.Name.Equals("retainedParticipantCount", StringComparison.OrdinalIgnoreCase))
+                    property.WriteTo(writer);
+            writer.WriteEndObject();
+        }
+        return buffer.Length <= MaxControlBytes ? marker : null;
+    }
+
     /// <summary>Reads bounded receipt evidence while rejecting duplicate fields throughout its owner metadata.</summary>
     internal static ReadModelBatchMarker? ReadProof(ReadOnlyMemory<byte> bytes)
     {

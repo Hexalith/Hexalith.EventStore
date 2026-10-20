@@ -1,0 +1,19 @@
+START client-build
+END client-build 0 
+START client-focused
+END client-focused 0 {'total': 548, 'passed': 548, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
+START client-full
+END client-full 0 {'total': 1910, 'passed': 1908, 'failed': 0, 'skipped': 2, 'errors': 0, 'not-run': 0}
+START domain-build
+END domain-build 0 
+START domain-full
+END domain-full 0 {'total': 1072, 'passed': 1072, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
+START live-build
+END live-build 0 
+START live-expiry-scratch
+END live-expiry-scratch 0 {'total': 59, 'passed': 59, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
+START live-read-model-batch
+END live-read-model-batch 0 {'total': 6, 'passed': 6, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
+START live-shared-epoch
+END live-shared-epoch 0 {'total': 8, 'passed': 8, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
+ALL QUALIFICATION LANES PASSED

@@ -636,6 +636,15 @@ public sealed partial class SharedProjectionEpochCoordinator
             return false; // Reload both scratch and the original fence after recovery; never re-plan that batch.
 
         string retainedBatchId = await ScratchBatchIdentityAsync(scope, batchId, cancellationToken).ConfigureAwait(false);
+        // Retirement reconciliation can restore an original fence while discovering another
+        // attempt. Plan only against the current physical ETag after all such awaited work.
+        entry = await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false);
+        state = entry.Value ?? throw new InvalidOperationException("The shared projection has no rebuild epoch.");
+        ValidateState(state);
+        ValidateBoundary(state, scope);
+        if (state.Phase != SharedProjectionEpochPhase.Building
+            || !string.Equals(state.OperationId, operationId, StringComparison.Ordinal)
+            || string.IsNullOrEmpty(entry.ETag)) return false;
         var batch = new ReadModelBatch(
             new ReadModelBatchScope(scope.StoreName, scope.TenantId, scope.Domain, scope.Family,
                 scope.Family, retainedBatchId),

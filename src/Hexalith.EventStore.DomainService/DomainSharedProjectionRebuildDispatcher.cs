@@ -2858,7 +2858,17 @@ public static class DomainSharedProjectionRebuildDispatcher {
         {
             DomainSharedProjectionScratchRetirement? retired = (await store.GetAsync<DomainSharedProjectionScratchRetirement>(
                 handler.RebuildStoreName, PartitionManifestKey(sessionKey, owner) + ":retired", token).ConfigureAwait(false)).Value;
-            if (retired is null) continue; // Historical missing inventory is never inferred.
+            if (retired is null)
+            {
+                // Historical cleanup can still have its original accepted manifest. Reuse only
+                // that known owner identity; absent inventory never authorizes guessed discovery.
+                DomainSharedProjectionStoredPartitionManifest? original = (await store.GetAsync<DomainSharedProjectionStoredPartitionManifest>(
+                    handler.RebuildStoreName, PartitionManifestKey(sessionKey, owner), token).ConfigureAwait(false)).Value;
+                if (original is null || original.Ordinal != owner || string.IsNullOrWhiteSpace(original.AggregateId)
+                    || original.ChunkHashes is null || original.StreamedChunkCount < 0)
+                    throw new InvalidOperationException("Original private owner retirement inventory is unavailable.");
+                retired = new(identity, owner, original.MaterializedChunkCount, original.TransportPartCount);
+            }
             if (retired.Identity != identity || retired.OwnerOrdinal != owner || retired.ChunkCount < 0
                 || retired.ChunkCount > options.MaxRebuildEventCount || retired.TransportPartCount < 0
                 || retired.TransportPartCount > options.MaxRebuildEventCount)

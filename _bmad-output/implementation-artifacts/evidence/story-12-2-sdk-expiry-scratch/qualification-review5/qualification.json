@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "status": "ready-for-parent-independent-review",
+  "sealed_utc": "2026-10-20T15:39:23.355927+00:00",
+  "scope": "Approved source expiry and interrupted scratch recovery; all review-five SDK corrections and in-scope parent acceptance audits",
+  "original_sdk_baseline": "d4d05f871991ec2af305267f59dcefeae3f127ed",
+  "effective_sdk_head": "c9c56cbc041d56b46721d35b933615e00591548e",
+  "results": {
+    "client-build": {
+      "build_exit_code": 0
+    },
+    "client-focused": {
+      "total": 548,
+      "passed": 548,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "client-full": {
+      "total": 1910,
+      "passed": 1908,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "not-run": 0
+    },
+    "domain-build": {
+      "build_exit_code": 0
+    },
+    "domain-full": {
+      "total": 1072,
+      "passed": 1072,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-build": {
+      "build_exit_code": 0
+    },
+    "live-expiry-scratch": {
+      "total": 59,
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-read-model-batch": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "live-shared-epoch": {
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    }
+  },
+  "source_inputs": 3881,
+  "unique_live_cases": 73,
+  "worker_invocations": 20,
+  "distinct_worker_pids": 20,
+  "exited_worker_pairs": 10,
+  "production_named_pairs": 6,
+  "primitive_late_installer_pairs": 4,
+  "commands": "commands.json",
+  "source_freeze": "source-freeze.json",
+  "source_final": "source-final.json",
+  "source_drift": "source-drift.json",
+  "pdb": "pdb-commands.json",
+  "pe": "pe-commands.json",
+  "api": "public-api-xml-audit.json",
+  "workers": "process-workers.json",
+  "raw_persistence": "raw-persistence-observations.json",
+  "matrix": "matrix-audit.json",
+  "cleanup": "cleanup-summary.json",
+  "historical": "historical-packets-unchanged.json",
+  "diagnostics": "diagnostic-disposition.json",
+  "spec": {
+    "path": "_bmad-output/implementation-artifacts/spec-folders-12-2-expiry-and-scratch-recovery.md",
+    "sha256": "4c1ec9afd819138908b6fbbb0d0b240292510d42f23740ce68cf9e35d575c52a",
+    "snapshot": "owner-spec-at-handoff.md",
+    "status": "in-progress"
+  },
+  "notes": [
+    "Two unchanged optional Client skips are not acceptance; all required live and worker cases execute with zero skips.",
+    "Production Redis remains Resumable; forced transactions remain unsupported diagnostic controls.",
+    "All old sealed packets and failed/non-qualifying attempts remain preserved.",
+    "Folders adoption, parent independent review, package/PD10, >10000 identities and performance/whole-story gates remain open."
+  ]
+}

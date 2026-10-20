@@ -16,20 +16,22 @@ public sealed partial class SharedProjectionEpochCoordinator
         }
         _ = Task.Run(async () =>
         {
+            CancellationTokenSource? budget = null;
             try
             {
-                using var budget = new CancellationTokenSource(
+                budget = new CancellationTokenSource(
                     (_batches as DaprReadModelStore)?.ReconciliationTimeout ?? TimeSpan.FromSeconds(30));
                 await ReconcileChunkCleanupAsync(scope, budget.Token).ConfigureAwait(false);
                 await ReconcileStreamMetadataCleanupAsync(scope, budget.Token).ConfigureAwait(false);
             }
-            catch (Exception exception)
+            catch (Exception)
             {
                 // Begin and terminal phase operations retry the unchanged durable cleanup intent.
-                ProjectionDeliveryCostDiagnostics.RecordCleanupFailure(exception is OperationCanceledException);
+                ProjectionDeliveryCostDiagnostics.RecordCleanupFailure(budget?.IsCancellationRequested == true);
             }
             finally
             {
+                budget?.Dispose();
                 lock (_promotedCleanupGate) _promotedCleanupTasks.Remove(hash);
                 completion.TrySetResult();
             }

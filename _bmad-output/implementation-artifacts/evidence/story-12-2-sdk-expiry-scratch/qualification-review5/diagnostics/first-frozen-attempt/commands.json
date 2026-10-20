@@ -1,0 +1,57 @@
+[
+  {
+    "id": "client-build",
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-p:UseNuGetDeps=false",
+      "-m:1"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T15:23:55.907021+00:00",
+    "exit_code": 0,
+    "finished_utc": "2026-10-20T15:23:59.638405+00:00",
+    "log": "client-build.log",
+    "log_sha256": "d6a1723839f5d8f78401cb989230f9d76cde6b6160a8fadd0f8d254535e8fb2c"
+  },
+  {
+    "id": "client-focused",
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-class",
+      "*ReadModel*",
+      "-class",
+      "*SharedProjection*",
+      "-class",
+      "*DaprReadModelBatchTests",
+      "-parallel",
+      "none",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/story-12-2-sdk-expiry-scratch/qualification-review5/client-focused.xml"
+    ],
+    "environment": {},
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "started_utc": "2026-10-20T15:23:59.639025+00:00",
+    "exit_code": 1,
+    "finished_utc": "2026-10-20T15:24:12.630208+00:00",
+    "log": "client-focused.log",
+    "log_sha256": "dd3637b3e6c40150c9ed0ac11ee325ebfe179718ab9c5967c63136d682a8f110",
+    "result": {
+      "total": 546,
+      "passed": 543,
+      "failed": 3,
+      "skipped": 0,
+      "errors": 0,
+      "not-run": 0
+    },
+    "xml": "client-focused.xml",
+    "xml_sha256": "0e17aca57688326d24a704ba0b9bf76203edf003e5f53e0d36c6200352194536",
+    "binary_group": "client-focused-binary-group.json"
+  }
+]
