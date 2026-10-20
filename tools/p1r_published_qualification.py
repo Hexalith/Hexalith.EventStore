@@ -80,6 +80,10 @@ PACKET_KEYS = ("schema", "invocation", "started_utc", "finished_utc", "source_bi
 ROW_KEYS = ("id", "execution", "compatibility", "scope", "assertions", "receipts", "reason")
 INPUT_KEYS = ("schema", "fixture", "authority", "candidate", "rollback", "operational_profile",
               "assertion_instrumentation", "selected_additions")
+FOLDED_SNAPSHOT_VERSIONS = ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")
+ISOLATION_VERSIONS = ("3.122.1", "3.125.0", "3.125.1", "3.126.0")
+SELECTED_SOURCE_COMMIT = "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+SELECTED_TAG_BUILDS = "4629ff2d3bd66376b29a553663c241d3a7b87853"
 COMPARISON_VERSIONS = ("3.70.1", "3.110.0")
 SUCCESSOR_PACKAGE_IDS = tuple("Hexalith.EventStore." + name for name in
                               ("Client", "Contracts", "DomainService", "Server", "ServiceDefaults"))
@@ -106,13 +110,13 @@ SUPPORT_BASELINE = (ROOT / "_bmad-output/implementation-artifacts/evidence/6-1-p
 text, pattern = runtime.text, runtime.pattern
 
 
-def validate_postgresql_component(file):
+def validate_postgresql_component(file, root=ROOT):
     require(file.get("credential_redacted") is True
             and isinstance(file.get("rendered_sha256"), str)
             and re.fullmatch(r"[0-9a-f]{64}", file["rendered_sha256"]) is not None
             and "type: state.postgresql" in file["content"] and "version: v1" in file["content"]
             and "{env:POSTGRES_CONNECTION_STRING}" in file["content"]
-            and file["content"].encode() == regular(ROOT / "deploy/dapr/statestore-postgresql.yaml"),
+            and file["content"].encode() == regular(Path(root) / "deploy/dapr/statestore-postgresql.yaml"),
             "PostgreSQL component template or private rendering binding missing")
 
 
@@ -152,6 +156,96 @@ def is_successor_selection(selection):
         tuple(int(part) for part in version.split(".")) > (3, 120, 0))
 
 
+def source_consumer_binding(root, binding):
+    """Reconstruct Debug project graphs, locks and loaded physical source assemblies."""
+    root = Path(root)
+    source = binding["candidate_source"]
+    source_root = Path(source["repository"])
+    manifest = parse_json(regular(root / "evidence.json"))
+    require(manifest.get("role") == "source" and manifest.get("configuration") == "Debug"
+            and [row.get("name") for row in manifest.get("projects", [])] == ["Host", "Domain", "Probe"],
+            "distinct Debug source consumer inventory missing")
+    sdk = root / "global.json"
+    declared = next((row["sha256"] for row in source["main"]["files"] if row["path"] == "global.json"), None)
+    require(digest(regular(sdk)) == declared, "consumer SDK pin differs from tagged source")
+    files = [{"path": str(sdk), "sha256": declared}, {"path": str(root / "evidence.json"), "sha256": digest(regular(root / "evidence.json"))}]
+    for project in manifest["projects"]:
+        assets = parse_json(regular(root / relative(project["assets"])))
+        restore = assets.get("project", {}).get("restore", {})
+        project_path = root / project["name"].lower() / (project["name"] + ".csproj")
+        require(restore.get("projectPath") == str(project_path), "Debug source assets consumer project path differs")
+        files.append({"path": str(project_path), "sha256": digest(regular(project_path))})
+        references = {Path(path) for framework in restore.get("frameworks", {}).values()
+                      for path in framework.get("projectReferences", {})}
+        expected = {source_root / "src" / name / (name + ".csproj") for name in SUCCESSOR_PACKAGE_IDS}
+        require(references == expected, "Debug source project references differ from selected tagged root")
+        for name, library in assets.get("libraries", {}).items():
+            if library.get("type") == "project":
+                path = (project_path.parent / library["path"]).resolve()
+                require(path.is_relative_to(source_root), "Debug source graph escapes selected source closure")
+                files.append({"path": str(path), "sha256": digest(regular(path))})
+        loaded = parse_json(regular(root / relative(project["loaded"])))
+        require({row["name"] for row in loaded.get("assemblies", [])} == set(SUCCESSOR_PACKAGE_IDS),
+                "Debug source loaded package inventory differs")
+        for row in loaded["assemblies"]:
+            path = Path(row["path"])
+            require(path == root / project["output"] / (row["name"] + ".dll")
+                    and digest(regular(path)) == row["sha256"], "Debug source loaded physical assembly differs")
+            built = source_root / "src" / row["name"] / "bin/Debug/net10.0" / (row["name"] + ".dll")
+            require(digest(regular(built)) == row["sha256"], "Debug loaded assembly differs from selected source build output")
+            files.extend([{"path": str(path), "sha256": row["sha256"]},
+                          {"path": str(built), "sha256": row["sha256"]}])
+        for name in ("assets", "lock", "loaded"):
+            path = root / relative(project[name])
+            files.append({"path": str(path), "sha256": digest(regular(path))})
+    return {"source_root": str(source_root), "source_binding_sha256": digest(preparation.canonical(source)), "files": files}
+
+
+def validate_source_consumer(evidence, binding):
+    """Refuse relabelled or rehashed current-source comparison evidence."""
+    reference = evidence.get("source_consumer")
+    require(isinstance(reference, dict) and set(reference) == {"path", "sha256", "content"},
+            "selected tagged Debug source consumer proof missing")
+    path = Path(reference["path"])
+    data = regular(path)
+    require(path.is_absolute() and path.name == "source-evidence.json"
+            and reference["content"].encode() == data and digest(data) == reference["sha256"]
+            and parse_json(data) == source_consumer_binding(path.parent, binding),
+            "selected tagged Debug source consumer proof substituted")
+
+
+def validate_candidate_source(binding, selection):
+    """Independently bind production source to the selected tag, never verifier HEAD."""
+    candidate = selection["candidate"]
+    if candidate.get("tag") is None or "tooling" in selection:
+        return
+    source = binding.get("candidate_source")
+    require(source is not None or "runtime_source" in binding or candidate["version"] not in ("3.125.1", "3.126.0"),
+            "selected candidate source closure missing")
+    if source is None:
+        return
+    preparation.require_clean_source(source)
+    root = Path(source["repository"])
+    preparation.self_contained_checkout(Path(binding["repository"]))
+    preparation.self_contained_checkout(root)
+    head = preparation.git(root, "rev-parse", "HEAD").decode().strip()
+    tag = preparation.git(root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+    tree = preparation.git(root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    require(head == tag == source["main"]["head"] == candidate["tag_commit"]
+            and len(tree) == 4 and tree[:2] == ["160000", "commit"]
+            and tree[2] == candidate.get("tag_builds_commit"),
+            "candidate tag, exact source, or tag Builds identity substituted")
+    if candidate["version"] == "3.125.1":
+        require(head == SELECTED_SOURCE_COMMIT and tree[2] == SELECTED_TAG_BUILDS
+                and candidate["feed"] == "https://api.nuget.org/v3/index.json",
+                "selected 3.125.1 published source substituted")
+    if candidate["version"] == "3.126.0":
+        require(head == "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288"
+                and tree[2] == "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c"
+                and candidate["feed"] == "https://api.nuget.org/v3/index.json",
+                "selected 3.126.0 published source substituted")
+
+
 # Owner inputs and decisions -------------------------------------------------------------------------------------
 
 def validate_selection(value, role):
@@ -180,7 +274,8 @@ def validate_selection(value, role):
 
 def validate_inputs(value):
     """Validate owner execution inputs; returns their scope. Synthetic fixtures select no published tuple."""
-    members(value, INPUT_KEYS + (("comparisons",) if "comparisons" in value else ()),
+    members(value, INPUT_KEYS + (("comparisons",) if "comparisons" in value else ())
+            + (("tooling",) if "tooling" in value else ()),
             "owner input members differ from contract")
     require(value["schema"] == INPUTS_SCHEMA, "unsupported owner input contract")
     require(value["fixture"] in (None, SYNTHETIC), "unknown fixture marker")
@@ -190,6 +285,14 @@ def validate_inputs(value):
     date(value["authority"]["date"], "invalid execution authority")
     require(value["candidate"] is not None, "candidate selection missing")
     validate_selection(value["candidate"], "candidate")
+    if "tooling" in value:
+        members(value["tooling"], ("commit", "builds_commit"), "invalid tooling pins")
+        for commit in value["tooling"].values():
+            pattern(commit, HEX40, "invalid tooling pins")
+        require(value["fixture"] is None and value["candidate"]["version"] == preparation.RUNTIME_VERSION
+                and value["candidate"]["tag_commit"] == preparation.RUNTIME_COMMIT
+                and value["candidate"].get("tag_builds_commit") == preparation.RUNTIME_BUILDS_COMMIT,
+                "separate runtime roots require exact 3.125.1")
     if value["fixture"] is None:
         version = value["candidate"]["version"]
         require(version != "3.120.0", "3.120.0 lacks the stale-fence and logical-alias repairs")
@@ -1153,6 +1256,7 @@ def require_owner_binding(receipt, context, reason):
 def validate_final_isolation(receipt, context):
     """Bind proposed-successor imports to completed private and outer cleanup evidence."""
     import p1r_isolation as isolation
+    preparation.validate_selected_source(context["inputs"]["value"], context["source_binding"])
     reference = receipt.get("execution_evidence", {}).get("isolation")
     require(isinstance(reference, dict) and set(reference) == {"wrapper", "private", "execution"},
             "proposed successor lacks final isolation evidence")
@@ -1238,12 +1342,24 @@ def validate_final_isolation(receipt, context):
     runner = wrapper.get("runner_proof", {})
     sdk, daemon = wrapper.get("sdk"), wrapper.get("daemon")
     destinations = {item.get("Destination") for item in runner.get("Mounts", [])}
+    source = context["source_binding"].get("candidate_source")
+    source_root = Path(source["repository"]) if source is not None else None
+    if source is not None:
+        require(wrapper.get("source_root") == str(source_root)
+                and isolation.command_source_root(command) == source_root,
+                "final isolation selected tagged source root substituted")
+        validate_candidate_source(context["source_binding"], context["inputs"]["value"])
+    verifier_mounts = [Path(item["Destination"]) for item in runner.get("Mounts", [])
+                       if item.get("Type") == "bind" and Path(context["source_binding"]["repository"]).is_relative_to(Path(item["Destination"]))]
+    expected_mount_count = 2 + int(source_root is not None and not any(source_root.is_relative_to(path) for path in verifier_mounts))
     require(owned.get(sdk, {}).get("role") == "sdk" and owned[sdk].get("image") == isolation.SDK_IMAGE
             and owned.get(daemon, {}).get("role") == "daemon" and owned[daemon].get("image") == isolation.DAEMON_IMAGE
             and runner.get("Id") == sdk and runner.get("Labels", {}).get(isolation.LABEL) == wrapper["invocation"]
             and runner.get("NetworkMode") == runner.get("PidMode") == "container:"+str(daemon)
             and runner.get("Ports") == {} and runner.get("Privileged") is False
-            and len(destinations) == 2 and "/var/lib/docker" in destinations
+            and len(destinations) == expected_mount_count and "/var/lib/docker" in destinations
+            and (source_root is None or any(source_root.is_relative_to(Path(destination)) for destination in destinations
+                                           if destination != "/var/lib/docker"))
             and any(Path(context["source_binding"]["repository"]).is_relative_to(Path(destination))
                     for destination in destinations if destination != "/var/lib/docker"),
             "final isolation runner ownership, mounts or namespace binding differs")
@@ -1305,11 +1421,12 @@ def validate_final_isolation(receipt, context):
         if isinstance(error, InvalidPacket):
             raise
         raise InvalidPacket("incomplete or malformed isolation lifecycle evidence") from error
+    return run_root
 
 
 def finalize_isolation_receipts(output, isolation_output, selection):
     """Attach new successful wrapper evidence after teardown, retaining old receipt schemas."""
-    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0"):
+    if selection["candidate"]["version"] not in ("3.122.1", "3.125.0", "3.125.1", "3.126.0"):
         return
     output, isolation_output = Path(output), Path(isolation_output)
     reference = {}
@@ -1321,15 +1438,18 @@ def finalize_isolation_receipts(output, isolation_output, selection):
     private = parse_json(reference["private"]["content"].encode())
     context = {"source_binding":private.get("source_binding"),
                "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
+    if "candidate_source" in context["source_binding"]:
+        preparation.check_current_source(context["source_binding"], check_python=False)
+    validate_candidate_source(context.get("source_binding", {}), selection)
     pending = []
     for name in execution["receipts"]:
         path = Path(name)
         require(path.parent == output/"receipts", "isolation receipt escaped executor output")
         receipt = parse_json(regular(path))
-        if receipt.get("schema") not in (LANE_RECEIPT_SCHEMA, runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA):
+        if receipt.get("schema") not in (LANE_RECEIPT_SCHEMA, runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2, runtime.CLEANUP_SCHEMA):
             continue
         receipt.setdefault("execution_evidence", {})["isolation"] = reference
-        if receipt["schema"] == runtime.RESTORE_SCHEMA:
+        if receipt["schema"] in (runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2):
             receipt["cleanup"].setdefault("execution_evidence", {})["isolation"] = reference
         if receipt["schema"] == LANE_RECEIPT_SCHEMA:
             receipt["output_sha256"] = digest(preparation.canonical(receipt["execution_evidence"]))
@@ -1341,16 +1461,94 @@ def finalize_isolation_receipts(output, isolation_output, selection):
         write_json(path,receipt)
 
 
+def validate_source_evaluation(measured, binding, consumer_root):
+    """Check evaluated source references and actual preprocessor import paths, before restore and on import."""
+    runtime = binding["runtime_source"]
+    source, builds = Path(runtime["repository"]), Path(runtime["builds"]["path"])
+    tooling = Path(binding["repository"])
+    project = Path(measured["project"])
+    require(project.is_absolute() and project == project.resolve()
+            and (project.is_relative_to(source / "src") or project.is_relative_to(consumer_root)),
+            "evaluated source project redirected")
+    for kind in ("imports", "evaluation"):
+        command = measured[kind]
+        require(command.get("exit_code") == 0
+                and command.get("argv") == preparation.source_evaluation_arguments(project, binding, kind)
+                and isinstance(command.get("output"), str)
+                and digest(command["output"].encode()) == command.get("output_sha256"),
+                "source evaluation command substituted")
+    observed = parse_json(measured["evaluation"]["output"].encode())
+    properties = observed["Properties"]
+    require(properties.get("MSBuildProjectFullPath") == str(project)
+            and all(properties.get(name) == preparation.RUNTIME_VERSION for name in
+                    ("EventStoreVersion", "HexalithEventStoreVersion", "Version")),
+            "effective source version substituted")
+    references = observed["Items"]["ProjectReference"]
+    require(isinstance(references, list)
+            and all(Path(row["FullPath"]).is_relative_to(source / "src")
+                    and Path(row["FullPath"]) == Path(row["FullPath"]).resolve() for row in references),
+            "source ProjectReference redirected")
+    imported = {Path(path) for path in re.findall(r"(?m)^(/[^\r\n]+\.(?:props|targets|csproj))\r?$",
+                                                 measured["imports"]["output"])}
+    catalog = builds / "Props/Directory.Packages.props"
+    from p1r_isolation_evidence import PINNED_EXECUTABLES
+    sdk = Path(PINNED_EXECUTABLES["dotnet"]["path"]).parent
+    require(all(path == path.resolve() and any(path.is_relative_to(root) for root in
+                                              (source, builds, consumer_root, consumer_root / "packages", sdk))
+                for path in imported), "unexpected external source import")
+    require(catalog in imported and all(path == catalog for path in imported
+                                      if "Hexalith.Builds" in path.parts and path.name == "Directory.Packages.props"),
+            "unexpected imported Builds catalog")
+    require(all(not path.is_relative_to(tooling) or path.is_relative_to(consumer_root)
+                or path.is_relative_to(source) or path.is_relative_to(builds) for path in imported),
+            "source import redirected to tooling")
+    require(all(path in (consumer_root / "Directory.Packages.props", source / "Directory.Packages.props", catalog)
+                for path in imported if path.name == "Directory.Packages.props"),
+            "unexpected imported package catalog")
+    return {row["FullPath"] for row in references}
+
+
+def validate_source_evaluations(evidence, binding, consumer_root):
+    values = evidence.get("source_evaluations")
+    require(isinstance(values, list) and bool(values), "source evaluation evidence missing")
+    root = Path(consumer_root)
+    require(root.name == "source" and root.parent.name == "consumers", "source consumer path substituted")
+    consumers = {str(root / name.lower() / (name + ".csproj")) for name in ("Host", "Domain", "Probe")}
+    source = Path(binding["runtime_source"]["repository"])
+    required = {str(source / "src" / name / (name + ".csproj")) for name in SUCCESSOR_PACKAGE_IDS}
+    graph = {}
+    for value in values:
+        require(value["project"] not in graph, "duplicate source evaluation")
+        graph[value["project"]] = validate_source_evaluation(value, binding, root)
+    require(consumers | required <= graph.keys()
+            and all(graph[consumer] for consumer in consumers), "required source ProjectReferences missing")
+    reached, pending = set(), list(consumers)
+    while pending:
+        project = pending.pop()
+        require(project in graph, "source evaluation closure incomplete or substituted")
+        if project not in reached:
+            reached.add(project)
+            pending.extend(graph[project])
+    require(reached == graph.keys(), "source evaluation closure disconnected or substituted")
+
+
 def bind_lane(receipt, outcome, context):
     selection = context["inputs"]["value"] if context["inputs"] else None
+    if selection is not None and context.get("inputs", {}).get("scope") == "owner-selected":
+        validate_candidate_source(context.get("source_binding", {}), selection)
+    preparation.validate_selected_source(selection, context.get("source_binding", {}))
+    if selection is not None and "tooling" in selection:
+        preparation.check_current_source(context["source_binding"])
     if receipt["lane"] in ADDITIONS:
         require(selection is not None and receipt["lane"] in selection["selected_additions"], R_NOT_SELECTED)
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "published or operational evidence lacks owner-selected inputs")
-    if selection["candidate"]["version"] in ("3.122.1", "3.125.0") and (outcome["scope"] == "operational"
+    run_root = None
+    if selection["candidate"]["version"] in ISOLATION_VERSIONS and (outcome["scope"] == "operational"
+            or ("runtime_source" in context["source_binding"] and receipt["lane"] == "checkout")
             or any(case.get("configurations") for case in receipt.get("execution_evidence", {}).get("cases", []))):
-        validate_final_isolation(receipt,context)
+        run_root = validate_final_isolation(receipt,context)
     instrumentation = selection["assertion_instrumentation"]
     require(instrumentation is not None and receipt["instrumentation"] == instrumentation["mechanism"],
             "lane assertions lack the accepted instrumentation")
@@ -1365,6 +1563,11 @@ def bind_lane(receipt, outcome, context):
         expected_source_bytes = json.dumps(context["source_binding"], indent=2, sort_keys=True, allow_nan=False).encode() + b"\n"
         require(evidence.get("executor_source_sha256") == digest(expected_source_bytes),
                 "executor source file hash differs from the independently bound closure")
+        if "runtime_source" in context["source_binding"] and receipt["lane"] == "checkout":
+            require(run_root is not None, "source consumer output lacks validated isolation")
+            validate_source_evaluations(evidence, context["source_binding"], run_root / "consumers/source")
+        if "candidate_source" in context["source_binding"] and receipt["lane"] == "checkout":
+            validate_source_consumer(evidence, context["source_binding"])
         require([row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
                 "measured executor lacks the selected historical directions")
         require([case["id"] for case in receipt["cases"]] == list(executed_case_inventory(selection)[receipt["lane"]]),
@@ -1383,7 +1586,8 @@ def bind_lane(receipt, outcome, context):
                             and digest(file["content"].encode()) == file.get("sha256"),
                             "executed configuration content differs from its hash")
                     if file.get("name") == "state.yaml" and selection["operational_profile"]["backend"] == "state.postgresql":
-                        validate_postgresql_component(file)
+                        source = context["source_binding"].get("runtime_source", context["source_binding"].get("candidate_source", {}))
+                        validate_postgresql_component(file, source.get("repository", ROOT))
             require(isinstance(case.get("commands"), list) and bool(case["commands"]),
                     "executed case lacks literal command evidence")
             for command in case["commands"]:
@@ -1427,12 +1631,14 @@ def bind_lane(receipt, outcome, context):
 
 def bind_recovery(receipt, outcome, lane, context):
     selection = context["inputs"]["value"] if context["inputs"] else None
+    if selection is not None and context.get("inputs", {}).get("scope") == "owner-selected":
+        validate_candidate_source(context.get("source_binding", {}), selection)
     if lane == "rollback-restore":
         require(selection is not None and selection["rollback"] is not None, R_NO_ROLLBACK)
     if outcome["scope"] == "tooling-synthetic":
         return
     require_owner_binding(receipt, context, "operational evidence lacks owner-selected inputs")
-    if selection["candidate"]["version"] in ("3.122.1", "3.125.0"):
+    if selection["candidate"]["version"] in ISOLATION_VERSIONS:
         validate_final_isolation(receipt,context)
     runtime.require_operational_profile(selection)
     require(receipt["profile"] == selection["operational_profile"], "operational evidence lacks the selected profile")
@@ -1447,18 +1653,22 @@ def bind_recovery(receipt, outcome, lane, context):
 
 
 def receipt_outcome(receipt, context):
-    """Return (group, lane, outcome) for any importable receipt after contract and binding validation."""
+    """Return (group, lane, outcome) after selected source and receipt validation."""
+    selection = context["inputs"]["value"] if context.get("inputs") else None
+    preparation.validate_selected_source(selection, context.get("source_binding", {}))
+    if selection is not None and "tooling" in selection:
+        preparation.check_current_source(context["source_binding"])
     schema = receipt.get("schema")
     if schema == LANE_RECEIPT_SCHEMA:
         outcome = lane_outcome(receipt)
         bind_lane(receipt, outcome, context)
         return ("scenarios" if receipt["lane"] in SCENARIOS else "additions"), receipt["lane"], outcome
-    if schema in (runtime.RESTORE_SCHEMA, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
+    if schema in (runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2, runtime.CLEANUP_SCHEMA) and "execution_evidence" in receipt:
         selection = (context.get("inputs") or {}).get("value", {})
-        require(selection.get("candidate", {}).get("version") in ("3.122.1", "3.125.0")
+        require(selection.get("candidate", {}).get("version") in ISOLATION_VERSIONS
                 and isinstance(receipt["execution_evidence"],dict)
                 and set(receipt["execution_evidence"]) == {"isolation"}, "recovery isolation extension differs from contract")
-    if schema == runtime.RESTORE_SCHEMA:
+    if schema in (runtime.RESTORE_SCHEMA, runtime.RESTORE_SCHEMA_V2):
         if "execution_evidence" in receipt.get("cleanup", {}):
             require(receipt.get("execution_evidence") == receipt["cleanup"]["execution_evidence"],
                     "restore isolation reference differs from contributing cleanup")
@@ -1503,7 +1713,8 @@ def public(record):
 
 
 def create_packet(directory, inputs=None, decisions=None, candidate_evidence=None, rollback_evidence=None, receipts=(),
-                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None):
+                  process_controls=False, root=ROOT, verifier=None, comparison_evidence=(), support_boundary=None,
+                  source_root=None, source_builds_root=None):
     """Create a new sealed packet; refusals and interruptions are retained rather than defaulted."""
     directory = Path(directory).absolute()
     require(not directory.exists() and not directory.is_symlink(), "output path already exists")
@@ -1522,13 +1733,21 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
         dependent = (candidate_evidence, rollback_evidence, decisions, support_boundary, *receipts, *comparison_evidence)
         require(inputs is not None or all(value is None for value in dependent),
                 "dependent execution refused: " + R_INPUTS)
-        binding = preparation.source_binding(root)
+        selected = load_document(inputs, validate_inputs) if inputs is not None else None
+        if selected is not None and "tooling" in selected[0]:
+            binding = preparation.source_binding(root, selected[0]["tooling"], source_root, source_builds_root)
+        else:
+            require(source_builds_root is None, "source builds path requires selected tooling pins")
+            binding = preparation.source_binding(root, source_root) if source_root is not None else preparation.source_binding(root)
+        preparation.validate_selected_source(selected[0] if selected else None, binding)
         write_json(directory / "source-binding.json", binding)
         packet["source_binding_sha256"] = digest(regular(directory / "source-binding.json"))
         if inputs is not None:
-            value, data, scope = load_document(inputs, validate_inputs)
+            value, data, scope = selected
             inputs_record = bound_document(directory, value, data, scope, "inputs.json")
             packet["inputs"] = public(inputs_record)
+            if scope == "owner-selected":
+                validate_candidate_source(binding, value)
             packet["lanes"] = lanes = initial_lanes(value)
             if scope == "tooling-synthetic" or not is_successor_selection(value):
                 require(support_boundary is None, "sealed 3.119.0 boundary cannot be replaced")
@@ -1648,6 +1867,9 @@ def validate_packet(directory):
     require(decisions is None or inputs is not None, "owner decisions lack execution inputs")
     require(packet["refusals"] == refusals(inputs, decisions), "refusals differ from bound inputs")
     selection = inputs["value"] if inputs is not None else None
+    preparation.validate_selected_source(selection, binding)
+    if inputs is not None and inputs["scope"] == "owner-selected":
+        validate_candidate_source(binding, selection)
     support_value = None
     if selection is not None and inputs["scope"] == "owner-selected" and is_successor_selection(selection):
         record = packet.get("support_boundary")
@@ -1708,6 +1930,8 @@ def validate_packet(directory):
     evaluation = evaluate(lanes, inputs, decisions, boundary)
     require(packet["evaluation"] == evaluation, "invented or stale qualification evaluation")
     require(actual == allowed, "unbound or extra packet input")
+    if "runtime_source" in binding:
+        preparation.check_current_source(binding)
     package_assertions = sum(row["assertions"]["attempted"] for row in lanes["packages"] if row["assertions"])
     scopes = sorted({row["scope"] for group in INVENTORIES for row in lanes[group] if row["scope"]})
     return {"valid": True, **{key: evaluation[key] for key in ("technically_qualified", "decisions_complete", "qualified",

@@ -1,0 +1,20 @@
+{
+  "scope": "fresh host read-only rederivation of completed tagged Debug consumer; no qualification",
+  "source_consumer": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/source",
+  "source_evidence_sha256": "16f41fa42b8a6d0b88a76073a5df6cd3cb69712961ab280cf381d1cb60fab9cf",
+  "independently_recomputed_equal": true,
+  "source_evidence_keys": [
+    "files",
+    "source_binding_sha256",
+    "source_root"
+  ],
+  "physical_file_count": 62,
+  "producer_binding": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/executor-source.json",
+    "sha256": "12a1bcb7ed02df5c63b17d2501717eec00c29d83262e9d4b894fbe3d6a111803"
+  },
+  "source_root": "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+  "tag_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b",
+  "qualified": false,
+  "p1r_usable": false
+}

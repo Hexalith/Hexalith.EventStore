@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_dapr_broker_qualification.py"
+  ],
+  "endedUtc": "2026-10-20T11:09:20.779544+00:00",
+  "exitCode": 0,
+  "startedUtc": "2026-10-20T11:09:19.995170+00:00",
+  "stderr": ".........................\n----------------------------------------------------------------------\nRan 25 tests in 0.743s\n\nOK\n",
+  "stdout": ""
+}

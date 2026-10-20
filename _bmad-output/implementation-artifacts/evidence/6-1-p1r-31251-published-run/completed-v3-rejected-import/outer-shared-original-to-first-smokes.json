@@ -1,0 +1,60 @@
+{
+  "before": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-shared-before.json",
+  "before_sha256": "5cff579df04dfc8ac9099f31d0ef8309725e0efe38f23d9be482a0f9edd13584",
+  "after": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-shared-after-first-smokes.json",
+  "after_sha256": "ad75fca249ddb428932897d3b6e0911b8398f7a8a123a1ce86f548710b817d97",
+  "entire_set_unchanged": false,
+  "original_identities_preserved": true,
+  "added": [
+    {
+      "id": "0444aa21ac74322fb9294e715574b49dec03c947ba46965ede16a7edba302269",
+      "image": "sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+      "started": "2026-10-18T19:18:59.799044016Z",
+      "running": true
+    },
+    {
+      "id": "6533ea1b762fd5b16c2c03292ea8523a30cca1bd544d5fee772e64401cdf655c",
+      "image": "sha256:53f5cb311eb8c3a79936e4ac0bfe55dadddd6001334eb041dda00cd439b43df6",
+      "started": "2026-10-18T17:37:47.890053635Z",
+      "running": true
+    },
+    {
+      "id": "6dae3d0919bc817d1629feb8f735bb3d5c3e9b0931c4c180a34025a822fd1533",
+      "image": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "started": "2026-10-18T19:19:04.598982271Z",
+      "running": true
+    },
+    {
+      "id": "88d9922f30ed3c6fcfa7dd8ed641afff2d80324ff689665aa4cd4e27df6756a0",
+      "image": "sha256:d61be0c43eb7556c476efedd3e3f4f7c668d2bf0df9d05f6c95a2f3d1255c559",
+      "started": "2026-10-18T17:37:47.195963003Z",
+      "running": true
+    },
+    {
+      "id": "98c19d4e578dac3a7387a24418bd06b28f78bab10bee58b7d21cfbe0a6dcd7d3",
+      "image": "sha256:5d5154123426693540ea6c1d9e638eae2bf2024879c839db6fcfdd7717e817c7",
+      "started": "2026-10-18T17:37:47.148209936Z",
+      "running": true
+    },
+    {
+      "id": "b8a46d397bb17b8984790e4ebe98bea10154b033d02537c98e79eea64b1fea19",
+      "image": "sha256:542ebe822d18d9ee1019d2b20960e2fbd533235bc0140e8c2a550f09fdd0a9a7",
+      "started": "2026-10-18T19:19:02.932545332Z",
+      "running": true
+    },
+    {
+      "id": "c95511abd74845d34b53604446858010e3bd024d9658a514fb462cb265acefce",
+      "image": "sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "started": "2026-10-18T19:19:04.614564117Z",
+      "running": true
+    },
+    {
+      "id": "d758028f3025e51356e9759f376ca67ecb677b3e3e523e74b7af9eb1384e64ce",
+      "image": "sha256:f9ba7b2af90db8dc749a57ca9aedca51e840cb9224441ab546a968da941da900",
+      "started": "2026-10-18T17:37:50.439486656Z",
+      "running": true
+    }
+  ],
+  "removed": [],
+  "changed": []
+}

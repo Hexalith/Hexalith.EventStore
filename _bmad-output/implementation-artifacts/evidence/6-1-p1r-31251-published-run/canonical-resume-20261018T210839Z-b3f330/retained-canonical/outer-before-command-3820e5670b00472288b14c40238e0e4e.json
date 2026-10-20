@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/capture-outer-identities.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-shared-before-canonical-final.json",
+    "--before",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-shared-before-v3-smoke.json",
+    "--before",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-shared-before.json"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "started_utc": "2026-10-18T19:37:19.750139+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/outer-before-command-3820e5670b00472288b14c40238e0e4e.log",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T19:37:20.100811+00:00"
+}

@@ -1,6 +1,4 @@
-using Hexalith.EventStore.ServiceDefaults.Authentication;
-
-using Microsoft.Extensions.Options;
+using Hexalith.EventStore.Contracts.Projections;
 
 namespace Hexalith.EventStore.Server.Configuration;
 
@@ -16,12 +14,12 @@ public class ProjectionChangeNotifierOptions {
     /// <summary>
     /// The default maximum number of metadata entries in a detail notification.
     /// </summary>
-    public const int DefaultMaxDetailMetadataEntries = 16;
+    public const int DefaultMaxDetailMetadataEntries = ProjectionChangedMetadataLimits.MaximumEntries;
 
     /// <summary>
-    /// The default maximum total UTF-8 byte size of detail notification metadata.
+    /// The default maximum serialized UTF-8 byte size of detail notification metadata.
     /// </summary>
-    public const int DefaultMaxDetailMetadataBytes = 2048;
+    public const int DefaultMaxDetailMetadataBytes = ProjectionChangedMetadataLimits.MaximumSerializedUtf8Bytes;
 
     /// <summary>
     /// Gets or sets the DAPR pub/sub component name used for projection change notifications.
@@ -37,12 +35,13 @@ public class ProjectionChangeNotifierOptions {
     public ProjectionChangeTransport Transport { get; init; } = ProjectionChangeTransport.Direct;
 
     /// <summary>
-    /// Gets or sets the maximum number of metadata entries carried by a detail notification.
+    /// Gets or sets the maximum number of metadata entries carried by a detail notification, at most 16.
     /// </summary>
     public int MaxDetailMetadataEntries { get; init; } = DefaultMaxDetailMetadataEntries;
 
     /// <summary>
-    /// Gets or sets the maximum total UTF-8 byte size carried by detail notification metadata.
+    /// Gets or sets the maximum compact JSON UTF-8 size of detail metadata, including punctuation
+    /// and escaping. The supported range is 2 through 2,048 bytes; options may only lower the ceiling.
     /// </summary>
     public int MaxDetailMetadataBytes { get; init; } = DefaultMaxDetailMetadataBytes;
 
@@ -71,63 +70,4 @@ public class ProjectionChangeNotifierOptions {
         => AllowedPublishers is { Count: > 0 }
             ? [.. AllowedPublishers.Where(static publisher => !string.IsNullOrWhiteSpace(publisher)).Select(static publisher => publisher.Trim())]
             : [DefaultProvenanceAudience];
-}
-
-/// <summary>
-/// Transport options for projection change notifications.
-/// </summary>
-public enum ProjectionChangeTransport {
-    /// <summary>
-    /// Publish a notification to DAPR pub/sub and let the EventStore subscriber regenerate the ETag.
-    /// </summary>
-    PubSub,
-
-    /// <summary>
-    /// Invoke the ETag actor directly via actor proxy in the local process.
-    /// </summary>
-    Direct,
-}
-
-/// <summary>
-/// Validates projection change notifier configuration.
-/// </summary>
-/// <param name="provenanceIssuer">
-/// The issuer of notification provenance. The pub/sub transport is valid only when it can bind provenance to the
-/// notification's tenant, projection type, and topic.
-/// </param>
-public sealed class ValidateProjectionChangeNotifierOptions(IWorkloadAssertionIssuer? provenanceIssuer = null)
-    : IValidateOptions<ProjectionChangeNotifierOptions> {
-    /// <inheritdoc/>
-    public ValidateOptionsResult Validate(string? name, ProjectionChangeNotifierOptions options) {
-        ArgumentNullException.ThrowIfNull(options);
-
-        if (string.IsNullOrWhiteSpace(options.PubSubName)) {
-            return ValidateOptionsResult.Fail("Projection change pub/sub component name must not be empty.");
-        }
-
-        if (!Enum.IsDefined(typeof(ProjectionChangeTransport), options.Transport)) {
-            return ValidateOptionsResult.Fail("Projection change transport must be a defined value.");
-        }
-
-        // Story 5.5: the receiver denies unbound provenance, so pub/sub without a binding issuer would silently drop
-        // every notification. Refuse it before the host starts.
-        if (options.Transport == ProjectionChangeTransport.PubSub && provenanceIssuer?.CanBindResources != true) {
-            return ValidateOptionsResult.Fail(
-                "Projection change pub/sub transport requires a provenance issuer that binds each notification to its tenant, projection type, and topic. An OIDC authority cannot bind them; use Transport=Direct.");
-        }
-
-        if (options.MaxDetailMetadataEntries <= 0) {
-            return ValidateOptionsResult.Fail("Projection change MaxDetailMetadataEntries must be greater than zero.");
-        }
-
-        if (options.MaxDetailMetadataBytes <= 0) {
-            return ValidateOptionsResult.Fail("Projection change MaxDetailMetadataBytes must be greater than zero.");
-        }
-
-        if (string.IsNullOrWhiteSpace(options.ProvenanceAudience)) {
-            return ValidateOptionsResult.Fail("Projection change ProvenanceAudience must not be empty.");
-        }
-
-        return ValidateOptionsResult.Success;
-    }
 }

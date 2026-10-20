@@ -18,7 +18,7 @@ prd_finalize_assessed: 2026-09-10
 prd_finalize_reviewed_head: dd55a6d1e128989777ae6c47459da0f746e84e53
 prd_finalize_baseline_status: examined-dirty-unapproved
 created: 2026-07-05
-updated: 2026-10-15
+updated: 2026-10-20
 project: eventstore
 source_artifacts:
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
@@ -475,7 +475,7 @@ Suitability is evaluated against the required operation and its correctness, sec
 
 If Dapr cannot provide a required operation, record the missing guarantee and evidence, alternatives considered, the narrowly isolated adapter, its owner, exact allowed paths, and review/removal trigger in an architecture exception. Obtain the architecture owner's decision before introducing that dependency. Unknown suitability requires qualification. Never silently fall back to direct infrastructure after a Dapr failure.
 
-Provider-specific provisioning, Dapr component configuration, and deployment/backup administration remain platform operations. Local pure computation and deliberately scoped test doubles/diagnostics are not runtime infrastructure adapters. Neither category may expose a bypass to application code. Approved exceptions are exact-purpose and exact-path, not blanket permissions. Public HTTP/browser SignalR and governed telemetry exports are distinct transport edges; classify them explicitly rather than inventing provider-adapter authority.
+Provider-specific provisioning, Dapr component configuration, and deployment/backup administration remain platform operations. Hexalith.Platform owns shared host composition and hosted self-managed Kubernetes rehearsal; EventStore owns reusable runtime semantics and Dapr operation/component qualification, and Hexalith.Builds owns shared tool/runtime/catalog pins. Own-repository fixtures and AppHosts establish no Platform or production-path authority. Every composed artifact and resolved profile retains its own exact subject, issuer and existing acceptance gates. Local pure computation and deliberately scoped test doubles/diagnostics are not runtime infrastructure adapters. Neither category may expose a bypass to application code. Approved exceptions are exact-purpose and exact-path, not blanket permissions. Public HTTP/browser SignalR and governed telemetry exports are distinct transport edges; classify them explicitly rather than inventing provider-adapter authority.
 
 Acceptance requires every runtime infrastructure operation to map to a qualified Dapr API/component or a documented, accepted exception, with the required guarantees, exact runtime/component versions, and observed evidence. Story 3.17 owns the evaluated inventory and deterministic guard; changed operations must pass their relevant live Dapr, security, and compatibility tests. Retained Redis notification distribution is unresolved under Story 2.13, and crypto key-operation suitability remains unresolved under Story 8.6 and the detached draft amendment. This policy accepts no exception or qualification and changes no readiness verdict.
 

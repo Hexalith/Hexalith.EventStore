@@ -1,6 +1,4 @@
 
-using System.Collections.ObjectModel;
-using System.Text;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
@@ -33,9 +31,6 @@ public partial class DaprProjectionChangeNotifier(
     ILogger<DaprProjectionChangeNotifier> logger,
     IWorkloadAssertionIssuer? provenanceIssuer = null) : IProjectionChangeNotifier {
     private const int MaxGroupScopeLength = 64;
-
-    private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
-        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
     /// <inheritdoc/>
     public async Task NotifyProjectionChangedAsync(
@@ -202,35 +197,10 @@ public partial class DaprProjectionChangeNotifier(
     private static (IReadOnlyDictionary<string, string> Bounded, bool Clipped, int OriginalCount) BoundMetadata(
         IReadOnlyDictionary<string, string>? metadata,
         ProjectionChangeNotifierOptions options) {
-        if (metadata is null || metadata.Count == 0) {
-            return (EmptyMetadata, false, 0);
-        }
-
-        var bounded = new Dictionary<string, string>(StringComparer.Ordinal);
-        int totalBytes = 0;
-        bool clipped = false;
-
-        foreach (KeyValuePair<string, string> entry in metadata.OrderBy(e => e.Key, StringComparer.Ordinal)) {
-            if (entry.Key is null || entry.Value is null) {
-                throw new ArgumentException("Metadata keys and values must be non-null.", nameof(metadata));
-            }
-
-            if (bounded.Count >= options.MaxDetailMetadataEntries) {
-                clipped = true;
-                break;
-            }
-
-            int entryBytes = Encoding.UTF8.GetByteCount(entry.Key) + Encoding.UTF8.GetByteCount(entry.Value);
-            if (totalBytes + entryBytes > options.MaxDetailMetadataBytes) {
-                clipped = true;
-                break;
-            }
-
-            totalBytes += entryBytes;
-            bounded[entry.Key] = entry.Value;
-        }
-
-        return (bounded, clipped, metadata.Count);
+        IReadOnlyDictionary<string, string> bounded = ProjectionChangedMetadataLimits.Bound(
+            metadata, options.MaxDetailMetadataEntries, options.MaxDetailMetadataBytes);
+        int originalCount = metadata?.Count ?? 0;
+        return (bounded, bounded.Count != originalCount, originalCount);
     }
 
     private static partial class Log {

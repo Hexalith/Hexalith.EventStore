@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a1512a-0655-7812-92a8-76425ad63169",
+  "call_id": "call_02ad4d8b256f48c7a4e076442318f8d9",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.1 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"2a88a8\",\"wall_time_seconds\":0.000013617,\"exit_code\":0,\"original_token_count\":468,\"output\":\"{\\\"name\\\": \\\"isolation_hardening\\\", \\\"argv\\\": [\\\"/usr/bin/python3\\\", \\\"-m\\\", \\\"unittest\\\", \\\"discover\\\", \\\"-s\\\", \\\"tools/tests\\\", \\\"-p\\\", \\\"test_p1r_isolation_hardening.py\\\"], \\\"cwd\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31\\\", \\\"started_utc\\\": \\\"2026-10-18T22:35:36.476740+00:00\\\", \\\"finished_utc\\\": \\\"2026-10-18T22:36:20.052602+00:00\\\", \\\"exit_code\\\": 0, \\\"log\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-808f9ea3a0554df29969db4dedb2698f/isolation_hardening.log\\\", \\\"log_sha256\\\": \\\"10d3c54b40a5a368245485822955b24cb534fbffd4f74ef0d480ab102a3013f7\\\", \\\"tests\\\": 28, \\\"ok\\\": true, \\\"skips\\\": false, \\\"source_unchanged\\\": true}\\n{\\\"started\\\": \\\"isolation_hardening_optimized\\\", \\\"argv\\\": [\\\"/usr/bin/python3\\\", \\\"-O\\\", \\\"-m\\\", \\\"unittest\\\", \\\"discover\\\", \\\"-s\\\", \\\"tools/tests\\\", \\\"-p\\\", \\\"test_p1r_isolation_hardening.py\\\"]}\\n{\\\"name\\\": \\\"isolation_hardening_optimized\\\", \\\"argv\\\": [\\\"/usr/bin/python3\\\", \\\"-O\\\", \\\"-m\\\", \\\"unittest\\\", \\\"discover\\\", \\\"-s\\\", \\\"tools/tests\\\", \\\"-p\\\", \\\"test_p1r_isolation_hardening.py\\\"], \\\"cwd\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31\\\", \\\"started_utc\\\": \\\"2026-10-18T22:36:20.057497+00:00\\\", \\\"finished_utc\\\": \\\"2026-10-18T22:37:03.479595+00:00\\\", \\\"exit_code\\\": 0, \\\"log\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-808f9ea3a0554df29969db4dedb2698f/isolation_hardening_optimized.log\\\", \\\"log_sha256\\\": \\\"90e616cc72d675c50a75beb787adaae5b160c1f3fbd397563817398f2a3d4b31\\\", \\\"tests\\\": 28, \\\"ok\\\": true, \\\"skips\\\": false, \\\"source_unchanged\\\": true}\\n{\\\"out\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-808f9ea3a0554df29969db4dedb2698f\\\", \\\"all_passed\\\": true}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"c116aa\",\"wall_time_seconds\":0.000016582,\"exit_code\":0,\"original_token_count\":193,\"output\":\"{\\n  \\\"scope\\\": \\\"literal parent tool-call and output copies from this qualification thread only; no user messages or analysis exported; archived without re-execution\\\"\\n}\\ncalls 67 {'call_id': 'call_b1440feb02f0487082107d9772923cf5', 'timestamp': '2026-10-18T21:42:03.082Z', 'session': '/home/administrator/.codex/sessions/2026/10/18/rollout-2026-10-18T18-18-43-01a14fce-eaf3-7902-959b-2fa847834a3a.jsonl', 'line': 4877, 'input': 'call_b1440feb02f0487082107d9772923cf5.exec.js', 'input_sha256': '92c5b2941c5c73c930a70f6a88f98b0834689cb3da94ec77112e7c7fc0596cb3', 'outputs': [{'path': 'call_b1440feb02f0487082107d9772923cf5.output-4880.json', 'sha256': '151da1539cd0e0ea130aff322cb90fbdf58d584cdda566ed95a11bbfa1940481', 'line': 4880, 'timestamp': '2026-10-18T21:42:03.871Z'}]}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792363071.0616791
+  }
+}

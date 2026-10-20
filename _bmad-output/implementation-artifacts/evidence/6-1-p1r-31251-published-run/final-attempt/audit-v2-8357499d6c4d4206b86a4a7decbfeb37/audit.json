@@ -1,0 +1,622 @@
+{
+  "audit_script": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251-v2.py",
+    "sha256": "8e4cc5a5fb4d5080af431229928d4852f61865947b462437769e2e38ff4fcb97"
+  },
+  "audit_sdk_pin_sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+  "case_count": 163,
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/tools/p1r-published-qualification.py",
+        "measure-boundary",
+        "--inputs",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/owner-inputs.json",
+        "--out",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37/successor-support-boundary.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json"
+      ],
+      "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37",
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T23:53:15.842439+00:00",
+      "label": "measure-boundary",
+      "started_utc": "2026-10-18T23:53:13.922434+00:00",
+      "stderr": "",
+      "stdout": "{\"candidate\": \"3.125.1\", \"case_count\": 163, \"out\": \"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37/successor-support-boundary.json\", \"p1r_usable\": false, \"status\": \"measured-pending-disposition\"}\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/tools/p1r-published-qualification.py",
+        "prepare",
+        "--out",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37/strict-packet",
+        "--source-root",
+        "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+        "--inputs",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/owner-inputs.json",
+        "--decisions",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/owner-decisions.json",
+        "--support-boundary",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37/successor-support-boundary.json",
+        "--candidate-evidence",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/candidate",
+        "--process-controls",
+        "--comparison-evidence",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/comparison-3.70.1",
+        "--comparison-evidence",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/comparison-3.110.0",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f480a83b124a4117b6df06ebe3f1d37e.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c6f3543e8b5b497fb519314f6b6cf0fe.json"
+      ],
+      "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37",
+      "exit_code": 2,
+      "finished_utc": "2026-10-18T23:53:19.363019+00:00",
+      "label": "strict-prepare",
+      "started_utc": "2026-10-18T23:53:15.843671+00:00",
+      "stderr": "{\"errors\": [\"successor support boundary lacks measured owner disposition\"], \"out\": \"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37/strict-packet\", \"p1r_usable\": false, \"qualified\": false, \"reason\": \"refused or incomplete invocation\", \"refusals\": [\"capable rollback not selected; mutation freeze and forward recovery retained\", \"owner decisions and same-baseline conformance missing\"], \"valid\": false}\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/tools/p1r-published-qualification.py",
+        "validate",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37/strict-packet"
+      ],
+      "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37",
+      "exit_code": 2,
+      "finished_utc": "2026-10-18T23:53:19.405206+00:00",
+      "label": "strict-validate",
+      "started_utc": "2026-10-18T23:53:19.363771+00:00",
+      "stderr": "{\"valid\": false, \"qualified\": false, \"p1r_usable\": false, \"reason\": \"refused or incomplete invocation\"}\n",
+      "stdout": ""
+    }
+  ],
+  "decisions": {
+    "conformance": {
+      "baseline": null,
+      "reference": null,
+      "status": "pending"
+    },
+    "decisions": [
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "eventstore-owner"
+      },
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "builds-owner"
+      },
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "solution-owner"
+      },
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "test-owner"
+      }
+    ],
+    "fixture": null,
+    "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+    "schema": "hexalith.p1r.owner-decisions.v1"
+  },
+  "errors": [],
+  "finished_utc": "2026-10-18T23:53:22.206988+00:00",
+  "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+  "invocation": "00eb18f0d3c745ea9eba1d2a702562bb",
+  "lane_assertions": {
+    "attempted": 4804,
+    "failed": 9,
+    "passed": 4795
+  },
+  "lanes": {
+    "checkout": {
+      "assertions": {
+        "attempted": 700,
+        "failed": 6,
+        "passed": 694
+      },
+      "compatibility": "incompatible",
+      "execution": "failed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+      "scope": "operational",
+      "sha256": "75e8c1e0a5f3476c456ff74ed3cf0f620c86cdb912cfed6b8fb6be1caff5d7d4"
+    },
+    "failure-cleanup": {
+      "assertions": {
+        "attempted": 115,
+        "failed": 0,
+        "passed": 115
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json",
+      "scope": "operational",
+      "sha256": "9dca3630645f11b68f3c08f69c00d359b64a3f4267d7864d42fe34dd08a1eee9"
+    },
+    "full-replay": {
+      "assertions": {
+        "attempted": 270,
+        "failed": 0,
+        "passed": 270
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json",
+      "scope": "operational",
+      "sha256": "0cf130498b22be821f5965a0378823b85e792e3f704b7f1373ec05af73a10aee"
+    },
+    "invalid-evidence": {
+      "assertions": {
+        "attempted": 354,
+        "failed": 0,
+        "passed": 354
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json",
+      "scope": "operational",
+      "sha256": "8bac78c60e6bfe1f5292b7a2b852aaf26df8c0886a888139daba05dc0d21bd92"
+    },
+    "legacy-metadata": {
+      "assertions": {
+        "attempted": 20,
+        "failed": 0,
+        "passed": 20
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json",
+      "scope": "published-package",
+      "sha256": "5dcdcdadaf11bcca74020d1594f2b29d66fd552ce9fd88074ea75dd872d0aef3"
+    },
+    "logical-event-evolution": {
+      "assertions": {
+        "attempted": 193,
+        "failed": 0,
+        "passed": 193
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json",
+      "scope": "operational",
+      "sha256": "bb44b4b3b090a05becb1e71dfc503a22b5b8a6bda22c9dae91a6eaceed151637"
+    },
+    "metadata-read": {
+      "assertions": {
+        "attempted": 40,
+        "failed": 0,
+        "passed": 40
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json",
+      "scope": "published-package",
+      "sha256": "8c15e7b5dd582af45fe7c00d7bed08ac98194d23286fa96034ef6da73f6ce0c4"
+    },
+    "metadata-write": {
+      "assertions": {
+        "attempted": 226,
+        "failed": 0,
+        "passed": 226
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json",
+      "scope": "operational",
+      "sha256": "05ffd96b3b15672a1a5cfcef27e46297150b9f1994d2eb56f0f944bbedd8030a"
+    },
+    "missing-event": {
+      "assertions": {
+        "attempted": 540,
+        "failed": 0,
+        "passed": 540
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json",
+      "scope": "operational",
+      "sha256": "ac50e90d8e2bc976ca0c7e1989cd1471eeb5fc2851bfc7db40222d820000c555"
+    },
+    "mixed-api": {
+      "assertions": {
+        "attempted": 641,
+        "failed": 0,
+        "passed": 641
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json",
+      "scope": "operational",
+      "sha256": "5684e99f99905a806915650ad24689c645cb21ee06576a95a48ede45935579db"
+    },
+    "post-upgrade-restore": {
+      "assertions": {
+        "attempted": 61,
+        "failed": 3,
+        "passed": 58
+      },
+      "compatibility": "unverified",
+      "execution": "failed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json",
+      "scope": "operational",
+      "sha256": "a0417027b54d5f5924e0560d9657eb985581895a322ba2c2a2267318d85859ac"
+    },
+    "pre-upgrade-restore": {
+      "assertions": {
+        "attempted": 44,
+        "failed": 0,
+        "passed": 44
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json",
+      "scope": "operational",
+      "sha256": "c5569c61b2e1cdbbf00de56d80789fedd0c3b7b97fb99090c1fb10924ac934c5"
+    },
+    "projection-wire": {
+      "assertions": {
+        "attempted": 34,
+        "failed": 0,
+        "passed": 34
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json",
+      "scope": "published-package",
+      "sha256": "02ac282b585fbab91d997ba68eef726bca8641e9e0ded0c0d6fb8688a3e76b1a"
+    },
+    "provenance": {
+      "assertions": {
+        "attempted": 33,
+        "failed": 0,
+        "passed": 33
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json",
+      "scope": "published-package",
+      "sha256": "a56b6336cd86fee69516e1d0ccd46f6a8a0166cac8b0229ae09c41a39a78e4e1"
+    },
+    "query-wire": {
+      "assertions": {
+        "attempted": 192,
+        "failed": 0,
+        "passed": 192
+      },
+      "compatibility": "incompatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json",
+      "scope": "published-package",
+      "sha256": "f228787f35a02b17bccc3a66f78c29e1938145bf2d2856592ad71fe82efcd724"
+    },
+    "reminder-recovery": {
+      "assertions": {
+        "attempted": 149,
+        "failed": 0,
+        "passed": 149
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json",
+      "scope": "operational",
+      "sha256": "bb42ca581797fb5f8c33250bd6d952eefa90c594256daa9cc3c47e902a496009"
+    },
+    "retained-covered": {
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json",
+      "scope": "operational",
+      "sha256": "3539284c90aa8bfd3926102f6c0f081b886d34eae626f6c22a904667834d1793"
+    },
+    "retained-uncovered": {
+      "assertions": {
+        "attempted": 596,
+        "failed": 0,
+        "passed": 596
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json",
+      "scope": "operational",
+      "sha256": "68ed0ef5e1b61014e34fa0cdad3128a4e2763aaa9a127f66ccf4f5b3fea2b9a8"
+    },
+    "snapshot-tail": {
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json",
+      "scope": "operational",
+      "sha256": "c822b83b34d80c410311a43f19170833aa7ff6f8adca24000576b378a8f14995"
+    }
+  },
+  "p1r_usable": false,
+  "packages": {
+    "candidate": {
+      "assertions": {
+        "attempted": 89,
+        "failed": 0,
+        "passed": 89
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "candidate-packages",
+      "reason": null,
+      "receipts": [
+        "receipts/292f74d2a4bd49be96df17bb092fe623.json"
+      ],
+      "scope": "published-package"
+    },
+    "comparison-3.110.0": {
+      "assertions": {
+        "attempted": 89,
+        "failed": 0,
+        "passed": 89
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "comparison-3.110.0-packages",
+      "reason": null,
+      "receipts": [
+        "receipts/6b4f7dbc32884d8283eee48bed7d2d41.json"
+      ],
+      "scope": "published-package"
+    },
+    "comparison-3.70.1": {
+      "assertions": {
+        "attempted": 89,
+        "failed": 0,
+        "passed": 89
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "id": "comparison-3.70.1-packages",
+      "reason": null,
+      "receipts": [
+        "receipts/be6c1c3971f14380927681ae3b840a3c.json"
+      ],
+      "scope": "published-package"
+    }
+  },
+  "process_control_assertions": 38,
+  "process_control_files": [
+    "receipts/20b2f4bd65ad4886986ddfaeb8c5f70e.json",
+    "receipts/20b2f4bd65ad4886986ddfaeb8c5f70e.txt",
+    "receipts/72943f95a0944c25888c1b713ccadbaa.json",
+    "receipts/72943f95a0944c25888c1b713ccadbaa.txt",
+    "receipts/794fc4754bfe42c99aa6945ae82ccaa3.json",
+    "receipts/794fc4754bfe42c99aa6945ae82ccaa3.txt",
+    "receipts/ddd32d53f0bc48dd86e065ba73746b4c.json",
+    "receipts/ddd32d53f0bc48dd86e065ba73746b4c.txt",
+    "receipts/f13a2ecba5554cfdb4d0bb2f26959adf.json",
+    "receipts/f13a2ecba5554cfdb4d0bb2f26959adf.txt",
+    "receipts/f20b97e81c104333a0b8ae919020d3b8.json",
+    "receipts/f20b97e81c104333a0b8ae919020d3b8.txt"
+  ],
+  "process_controls": {
+    "rows": [
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "startup-failure",
+        "receipt": "receipts/72943f95a0944c25888c1b713ccadbaa.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "success",
+        "receipt": "receipts/794fc4754bfe42c99aa6945ae82ccaa3.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "timeout",
+        "receipt": "receipts/ddd32d53f0bc48dd86e065ba73746b4c.json"
+      },
+      {
+        "assertions": {
+          "attempted": 6,
+          "failed": 0,
+          "passed": 6
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "cancellation",
+        "receipt": "receipts/20b2f4bd65ad4886986ddfaeb8c5f70e.json"
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "descendants",
+        "receipt": "receipts/f13a2ecba5554cfdb4d0bb2f26959adf.json"
+      },
+      {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "unverified",
+        "execution": "passed",
+        "id": "repeated-cleanup",
+        "receipt": "receipts/f20b97e81c104333a0b8ae919020d3b8.json"
+      }
+    ],
+    "scope": "local-process-control",
+    "sentinel": {
+      "after_controls": {
+        "pgid": 3482,
+        "pid": 3482,
+        "running": true,
+        "session": 3482,
+        "start_ticks": 23120193
+      },
+      "after_release": null,
+      "before": {
+        "pgid": 3482,
+        "pid": 3482,
+        "running": true,
+        "session": 3482,
+        "start_ticks": 23120193
+      },
+      "identity": {
+        "pgid": 3482,
+        "pid": 3482,
+        "session": 3482,
+        "start_ticks": 23120193
+      },
+      "released": true
+    }
+  },
+  "qualified": false,
+  "recovery": {
+    "candidate-restore": {
+      "assertions": {
+        "attempted": 12,
+        "failed": 2,
+        "passed": 10
+      },
+      "compatibility": "incompatible",
+      "execution": "failed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c6f3543e8b5b497fb519314f6b6cf0fe.json",
+      "scope": "operational",
+      "sha256": "acb1320e2ba81e79f6a4d9a88227a5038fd0b35a35195881dee2f40cc4e8debc"
+    },
+    "container-cleanup": {
+      "assertions": {
+        "attempted": 7,
+        "failed": 0,
+        "passed": 7
+      },
+      "compatibility": "compatible",
+      "execution": "passed",
+      "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f480a83b124a4117b6df06ebe3f1d37e.json",
+      "scope": "operational",
+      "sha256": "55ed9b4d0bf7f6b85c8487f287e24548c8565e5da9daee1e06b2520cd6e0495c"
+    }
+  },
+  "schema": "hexalith.p1r.fresh-independent-audit.v1",
+  "source_checked_after_all_commands": true,
+  "started_utc": "2026-10-18T23:52:05.230376+00:00",
+  "valid_evidence": true
+}

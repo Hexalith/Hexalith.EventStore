@@ -11,15 +11,18 @@ import base64
 import datetime
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -42,6 +45,8 @@ BUILDS_COMMIT = "2cf00028bbe563d80d4d12b5fb2054914f14fcb6"
 TAG_BUILDS_COMMIT = "468fdbba04e2d9a27d251298875125b57fa6d836"
 PROJECTS = ("Host", "Domain", "Probe")
 STATUS_RETRYABILITY = (None, False, True)
+REMINDER_STARTUP_LEAD_SECONDS = 120
+REMINDER_MINIMUM_WINDOW_SECONDS = 5
 DOCKER_FORMAT = ('{"Id":{{json .Id}},"Image":{{json .Image}},"Name":{{json .Name}},'
                  '"State":{"Running":{{json .State.Running}},"StartedAt":{{json .State.StartedAt}}},'
                  '"Config":{"Labels":{"hexalith.p1r.invocation":{{json (index .Config.Labels "hexalith.p1r.invocation")}}}}}')
@@ -50,6 +55,7 @@ PACKAGE_IDS = tuple("Hexalith.EventStore." + name for name in ("Client", "Contra
 REDIS_DIAGNOSTIC = ("local rows={} for _,key in ipairs(redis.call('KEYS','*')) do "
                     "if redis.call('TYPE',key).ok=='hash' then local data=redis.call('HGET',key,'data') "
                     "if data then table.insert(rows,{key,data}) end end end return cjson.encode(rows)")
+PRECONDITION_QUERY = "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state"
 
 
 def write_json(path, value):
@@ -162,6 +168,14 @@ class Measurements:
         return checks_counter(self.checks)
 
 
+class SeedFailure(InvalidPacket):
+    """Carry actual seed observations through case and paired-branch failures."""
+
+    def __init__(self, observations):
+        super().__init__("seed preconditions invalid; dependent operations unattempted")
+        self.observations = {"seed_preconditions": observations, "dependent_operations": "unattempted"}
+
+
 def reserve_port():
     # Stay below Linux's ephemeral client range: releasing an ephemeral listener
     # before Docker publishes it otherwise races ordinary outbound connections.
@@ -179,10 +193,19 @@ def reserve_port():
     raise InvalidPacket("invocation loopback port unavailable")
 
 
-def validate_execution_inputs(inputs):
+def validate_execution_inputs(inputs, source_root=None, source_builds_root=None):
     """Refuse a substituted approved tuple before any consumer or operational resource starts."""
     require(qualification.validate_inputs(inputs) == "owner-selected", "synthetic inputs cannot execute published operations")
     candidate, profile = inputs["candidate"], inputs["operational_profile"]
+    if "tooling" in inputs:
+        binding = preparation.source_binding(ROOT, inputs["tooling"], source_root, source_builds_root)
+        preparation.validate_selected_source(inputs, binding)
+    elif source_root is not None:
+        require(source_builds_root is None, "source builds path requires selected tooling pins")
+        binding = preparation.source_binding(ROOT, source_root)
+        qualification.validate_candidate_source(binding, inputs)
+    else:
+        require(source_root is None and source_builds_root is None, "source paths require selected tooling pins")
     require(inputs["rollback"] is None and inputs["assertion_instrumentation"]["mechanism"] == MECHANISM
             and [row["version"] for row in inputs.get("comparisons", [])] == list(qualification.COMPARISON_VERSIONS)
             and profile["runtime"] == "dapr" and profile["runtime_version"] == "1.18.2"
@@ -195,13 +218,51 @@ def validate_execution_inputs(inputs):
         return
     require(qualification.is_successor_selection(inputs) and candidate["tag_builds_commit"],
             "unrepaired or unbound successor selection")
-    tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
-    source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
-    tag_builds = preparation.git(ROOT, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    if "tooling" in inputs:
+        return
+    selected_root = ROOT if source_root is None else Path(source_root)
+    if source_root is None and candidate["version"] in ("3.125.1", "3.126.0"):
+        binding = preparation.source_binding(ROOT, selected_root)
+        qualification.validate_candidate_source(binding, inputs)
+    tag_commit = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+    source_commit = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
+    tag_builds = preparation.git(selected_root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
     require(tag_commit == source_commit == candidate["tag_commit"]
             and len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
             and tag_builds[2] == candidate["tag_builds_commit"],
             "successor tag, exact source, or tag Builds identity substituted")
+
+
+def validate_observation_inputs(planning, source_root=None, source_builds_root=None):
+    """Apply observation admission before restore, daemon creation or executor initialization."""
+    candidate = planning["candidate_proposed"]
+    if "tooling" in planning:
+        qualification.validate_selection(candidate, "candidate")
+        binding = preparation.source_binding(ROOT, planning["tooling"], source_root, source_builds_root)
+        preparation.validate_selected_source({"candidate": candidate, "tooling": planning["tooling"]}, binding)
+        require([row["id"] for row in candidate["packages"]] == list(PACKAGE_IDS)
+                and all(row["repository_commit"] == preparation.RUNTIME_COMMIT for row in candidate["packages"]),
+                "successor observation lacks exact source-bound packages")
+        return binding
+    require(source_builds_root is None, "source builds path requires selected tooling pins")
+    selected_root = ROOT if source_root is None else Path(source_root)
+    if source_root is not None:
+        binding = preparation.source_binding(ROOT, source_root)
+        qualification.validate_candidate_source(binding, {"candidate": candidate})
+    if candidate["version"] == CANDIDATE:
+        require(candidate["tag_commit"] == TAG_COMMIT and candidate["builds"]["commit"] == BUILDS_COMMIT,
+                "candidate selection substituted")
+        expected_builds = TAG_BUILDS_COMMIT
+    else:
+        require(qualification.is_successor_selection({"candidate": candidate}), "unrepaired or unbound successor selection")
+        qualification.validate_selection(candidate, "candidate")
+        tag = preparation.git(selected_root, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+        head = preparation.git(selected_root, "rev-parse", "HEAD").decode().strip()
+        require(tag == head == candidate["tag_commit"], "successor observation source or tag substituted")
+        expected_builds = candidate.get("tag_builds_commit")
+    tree = preparation.git(selected_root, "ls-tree", candidate["tag"], "references/Hexalith.Builds").decode().split()
+    require(len(tree) == 4 and tree[:2] == ["160000", "commit"] and tree[2] == expected_builds,
+            "candidate tag Builds provenance substituted")
 
 
 def provisional_successor_execution_policy(selection):
@@ -242,6 +303,183 @@ def semantic_delta(package, source):
             for key in sorted(set(package) | set(source)) if package.get(key) != source.get(key)]
 
 
+def persisted_preconditions(rows, raw):
+    """Keep exact domain bytes and declare each excluded dynamic field for comparison."""
+    derived = fixture_domain_rows(raw)
+    require([row for row in rows if row["kind"] != "bookkeeping"] == derived,
+            "persisted precondition coordinates differ from raw domain bytes")
+    state, semantics, excluded = {}, [], []
+    dynamic = {"event": {"messageId", "correlationId", "causationId", "timestamp"},
+               "metadata": {"lastModified", "eTag", "etag"}, "snapshot": {"createdAt"}}
+    for row in rows:
+        if row["kind"] == "bookkeeping":
+            continue
+        data = raw[row["key"]]
+        require(digest(data) == row["sha256"], "persisted precondition bytes differ from inventory")
+        value = json.loads(data)
+        state[row["key"]] = {"base64": base64.b64encode(data).decode(), "sha256": digest(data)}
+        normalized = dict(value) if isinstance(value, dict) else value
+        if isinstance(normalized, dict):
+            for field in sorted(dynamic.get(row["kind"], set())):
+                if field in normalized:
+                    excluded.append({"key": row["key"], "field": field, "value": normalized.pop(field)})
+            if isinstance(normalized.get("sourceProof"), dict):
+                normalized["sourceProof"] = dict(normalized["sourceProof"])
+                for field in ("sourceIncarnation", "headMessageId", "cumulativeDigest"):
+                    if field in normalized["sourceProof"]:
+                        excluded.append({"key": row["key"], "field": "sourceProof." + field,
+                                         "value": normalized["sourceProof"].pop(field)})
+        semantics.append({"key": row["key"], "tenant": row["tenant"], "kind": row["kind"],
+                          "sequence": row["sequence"], "floor": row["floor"], "value": normalized})
+    return {"inventory": rows, "state": state, "semantic": semantics, "dynamic_fields": excluded}
+
+
+def fixture_domain_rows(raw):
+    """Derive fixture inventory coordinates from literal keys and persisted contents."""
+    rows = []
+    for key, data in sorted(raw.items()):
+        kind = "metadata" if key.endswith(":metadata") else "snapshot" if key.endswith(":snapshot") else "event" if ":events:" in key else None
+        if kind is None:
+            continue
+        match = re.fullmatch(r"(?:eventstore\|\|(?:AggregateActor\|\|(?P<actor_tenant>tenant-[ab]):counter:fixture\|\|)?)?"
+                             r"(?P<tenant>tenant-[ab]):counter:fixture:(?:metadata|snapshot|events:(?P<sequence>[1-9][0-9]*))", key)
+        require(match is not None, "unexpected persisted fixture domain key")
+        tenant = match['tenant']
+        require(match['actor_tenant'] is None or match['actor_tenant'] == tenant,
+                "persisted actor and state-key tenant differ")
+        value = json.loads(data)
+        if isinstance(value, dict):
+            require(all(value.get(field, expected) == expected for field, expected in
+                        (("tenantId", tenant), ("domain", "counter"), ("aggregateId", "fixture"))),
+                    "persisted payload and state-key identity differ")
+            if 'identity' in value:
+                identity = value['identity']
+                require(isinstance(identity, dict) and all(identity.get(field, expected) == expected for field, expected in
+                            (("tenantId", tenant), ("domain", "counter"), ("aggregateId", "fixture"),
+                             ("actorId", tenant + ":counter:fixture"))), "persisted nested identity and state key differ")
+        sequence = int(match['sequence']) if kind == "event" else value.get("currentSequence" if kind == "metadata" else "sequenceNumber")
+        floor = value.get("retainedFloor", 1) if kind == "metadata" else None
+        require(type(sequence) is int and sequence >= 0 and (kind != "metadata" or type(floor) is int),
+                "persisted fixture coordinates require exact integer types")
+        if kind == "event" and isinstance(value, dict):
+            require(type(value.get("sequenceNumber")) is int and value["sequenceNumber"] == sequence,
+                    "persisted event key and sequence differ")
+        rows.append({"key": key, "tenant": tenant, "kind": kind, "sequence": sequence,
+                     "floor": floor, "sha256": digest(data)})
+    return rows
+
+
+def validate_seed_proofs(rows, raw):
+    """Validate each complete seed proof before discarding any dynamic comparison fields."""
+    require([row for row in rows if row["kind"] != "bookkeeping"] == fixture_domain_rows(raw),
+            "seed coordinates contradict persisted bytes")
+    for tenant, head in (("tenant-a", 12), ("tenant-b", 3)):
+        metadata = [json.loads(raw[row["key"]]) for row in rows if row["tenant"] == tenant and row["kind"] == "metadata"]
+        require(len(metadata) == 1 and type(metadata[0].get("currentSequence")) is int
+                and metadata[0]["currentSequence"] == head and type(metadata[0].get("retainedFloor", 1)) is int
+                and metadata[0].get("retainedFloor", 1) == 1 and metadata[0].get("sourceErasurePending", False) is False,
+                "invalid complete seed metadata")
+        proof = metadata[0].get("sourceProof")
+        if proof is None:
+            continue
+        events = {row["sequence"]: raw[row["key"]] for row in rows if row["tenant"] == tenant and row["kind"] == "event"}
+        require(isinstance(proof, dict) and type(proof.get("codecVersion")) is int and proof["codecVersion"] == 1
+                and proof.get("tenantId") == tenant and proof.get("domain") == "counter" and proof.get("aggregateId") == "fixture"
+                and type(proof.get("headSequence")) is int and proof["headSequence"] == head
+                and type(proof.get("retainedFloor")) is int and proof["retainedFloor"] == 1 and proof.get("erased") is False
+                and isinstance(proof.get("sourceIncarnation"), str)
+                and re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", proof["sourceIncarnation"]) is not None
+                and isinstance(proof.get("cumulativeDigest"), str)
+                and re.fullmatch(r"[0-9a-f]{64}", proof["cumulativeDigest"]) is not None
+                and sorted(events) == list(range(1, head + 1)) and isinstance(proof.get("headMessageId"), str)
+                and bool(proof["headMessageId"].strip()) and proof["headMessageId"] == json.loads(events[head]).get("messageId"),
+                "malformed complete seed source proof")
+        require(all(json.loads(data).get("tenantId") == tenant and json.loads(data).get("domain") == "counter"
+                    and json.loads(data).get("aggregateId") == "fixture" for data in events.values())
+                and source_proof_digest(events, proof) == proof["cumulativeDigest"], "complete seed source proof digest or identity differs")
+
+
+def retained_metadata(values, floor):
+    """Refuse malformed positive inputs before changing any retention coordinate."""
+    rows = fixture_domain_rows(values)
+    if floor == 1:
+        validate_seed_proofs(rows, values)
+    metadata = [json.loads(data) for key, data in values.items() if "tenant-a" in key and key.endswith(":metadata")]
+    snapshots = [json.loads(data) for key, data in values.items() if "tenant-a" in key and key.endswith(":snapshot")]
+    events = {int(key.rsplit(":", 1)[1]): data for key, data in values.items() if "tenant-a" in key and ":events:" in key}
+    secondary = [json.loads(data) for key, data in values.items() if "tenant-b" in key and key.endswith(":metadata")]
+    require(len(metadata) == len(snapshots) == len(secondary) == 1 and metadata[0].get("currentSequence") == 12
+            and metadata[0].get("retainedFloor", 1) == floor and snapshots[0].get("sequenceNumber") == 9
+            and sorted(events) == list(range(floor, 13)) and secondary[0].get("currentSequence") == 3,
+            "malformed retained fixture coordinates")
+    snapshot = snapshots[0]
+    require(type(snapshot.get("sequenceNumber")) is int and type(snapshot.get("snapshotEnvelopeVersion", 0)) is int
+            and snapshot.get("snapshotEnvelopeVersion", 0) in (0, 1) and snapshot.get("state") == {"count": 9}
+            and type(snapshot["state"].get("count")) is int
+            and all(snapshot.get(key, expected) == expected for key, expected in
+                    (("tenantId", "tenant-a"), ("domain", "counter"), ("aggregateId", "fixture")))
+            and ("protectionMetadata" not in snapshot or snapshot["protectionMetadata"].get("state") in (0, "Unprotected")),
+            "malformed retained Counter snapshot envelope or folded state")
+    value = metadata[0]
+    proof = value.get("sourceProof")
+    if proof is not None:
+        head = json.loads(events[12])
+        require(isinstance(proof, dict) and proof.get("codecVersion") == 1
+                and proof.get("tenantId") == "tenant-a" and proof.get("domain") == "counter"
+                and proof.get("aggregateId") == "fixture" and proof.get("headSequence") == 12
+                and proof.get("retainedFloor") == floor and proof.get("erased") is False
+                and re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", proof.get("sourceIncarnation", "")) is not None
+                and re.fullmatch(r"[0-9a-f]{64}", proof.get("cumulativeDigest", "")) is not None
+                and isinstance(proof.get("headMessageId"), str) and bool(proof["headMessageId"].strip())
+                and proof["headMessageId"] == head.get("messageId") and not value.get("sourceErasurePending", False),
+                "malformed retained fixture source proof")
+        if floor == 1:
+            require(source_proof_digest(events, proof) == proof["cumulativeDigest"],
+                    "retained fixture source proof digest differs from original event chain")
+    return value
+
+
+def source_proof_digest(events, proof):
+    """Recompute the source-v1 chain over the original complete stopped-writer fixture."""
+    def string(value):
+        data = None if value is None else value.encode()
+        return struct.pack("<i", -1 if data is None else len(data)) + (data or b"")
+    seed = b"".join(string(value) for value in ("hexalith.projection.source.seed.v1", proof["tenantId"],
+        proof["domain"], proof["aggregateId"], proof["sourceIncarnation"]))
+    chain = bytes.fromhex(digest(seed))
+    for sequence in sorted(events):
+        event = json.loads(events[sequence])
+        require(all(type(event.get(field)) is int for field in ("sequenceNumber", "globalPosition", "metadataVersion"))
+                and (event.get("payloadVersion") is None or type(event["payloadVersion"]) is int),
+                "source proof event coordinates require exact integer types")
+        timestamp = event["timestamp"]
+        date = datetime.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        utc = date.astimezone(datetime.timezone.utc)
+        elapsed = utc - datetime.datetime(1, 1, 1, tzinfo=datetime.timezone.utc)
+        fraction = re.search(r"\.(\d+)", timestamp)
+        ticks = ((elapsed.days * 86400 + elapsed.seconds) * 10_000_000
+                 + int(((fraction.group(1) if fraction else "") + "0000000")[:7]))
+        data = b"".join(string(value) for value in ("hexalith.projection.source.event.v1", event.get("messageId"),
+            event.get("aggregateId"), event.get("aggregateType"), event.get("tenantId"), event.get("domain")))
+        data += struct.pack("<qqqi", event["sequenceNumber"], event["globalPosition"], ticks,
+                            int(date.utcoffset().total_seconds() // 60))
+        data += b"".join(string(event.get(field)) for field in ("correlationId", "causationId", "userId",
+            "domainServiceVersion", "eventTypeName"))
+        data += struct.pack("<i", event["metadataVersion"]) + string(event.get("serializationFormat"))
+        payload = base64.b64decode(event["payload"], validate=True)
+        data += struct.pack("<i", len(payload)) + payload
+        extensions = event.get("extensions")
+        data += struct.pack("<i", -1 if extensions is None else len(extensions))
+        if extensions is not None:
+            data += b"".join(string(key) + string(extensions[key]) for key in sorted(extensions))
+        data += string(event.get("eventContractType"))
+        version = event.get("payloadVersion")
+        data += struct.pack("<i", int(version is not None)) + (b"" if version is None else struct.pack("<i", version))
+        data += string(event.get("applicationPayloadDigest"))
+        chain = bytes.fromhex(digest(string("hexalith.projection.source.step.v1") + chain + bytes.fromhex(digest(data))))
+    return chain.hex()
+
+
 class Executor:
     """Own all resources by exact identity and retain partial progress on interruption."""
 
@@ -261,13 +499,23 @@ class Executor:
     def versions(self, value):
         self._versions = value
 
-    def __init__(self, output, inputs=None):
+    def __init__(self, output, inputs=None, source_root=None, source_builds_root=None, tooling=None):
+        selected_tooling = inputs.get("tooling") if inputs is not None else tooling
+        if selected_tooling is not None:
+            initial_binding = preparation.source_binding(ROOT, selected_tooling, source_root, source_builds_root)
+            if inputs is not None:
+                preparation.validate_selected_source(inputs, initial_binding)
+        else:
+            require(source_builds_root is None, "source builds path requires selected tooling pins")
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "output exists or is substituted")
         self.output.mkdir(parents=True)
         self.invocation = uuid.uuid4().hex
         self.scratch = Path(tempfile.mkdtemp(prefix="p1r-published-" + self.invocation + "-"))
         self.inputs = inputs
+        self.source_root = Path(source_root).absolute() if source_root is not None else ROOT
+        self.explicit_source_root = source_root is not None and selected_tooling is None
+        self.source_builds_root = Path(source_builds_root).absolute() if source_builds_root is not None else None
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
         self.inputs_sha256 = digest(canonical(inputs)) if inputs else None
@@ -296,7 +544,9 @@ class Executor:
                        "inputs_sha256": self.inputs_sha256, "receipts": [], "errors": [], "p1r_usable": False}
         self.save()
         try:
-            self.source_binding = preparation.source_binding()
+            self.source_binding = (initial_binding if selected_tooling is not None else
+                                   preparation.source_binding(ROOT, self.source_root) if self.explicit_source_root else
+                                   preparation.source_binding())
             write_json(self.output / "executor-source.json", self.source_binding)
             self.result["executor_source_sha256"] = digest(regular(self.output / "executor-source.json"))
             self.shared_before = self.shared()
@@ -495,20 +745,58 @@ class Executor:
         self.active = [item for item in self.active if item["process"].poll() is None]
         require(not errors, "owned node cleanup failed: " + ",".join(errors))
 
+    def check_sources(self):
+        """Recheck both roles after waits and before retaining dependent measurements."""
+        binding = getattr(self, "source_binding", None)
+        if binding is None:
+            return
+        preparation.check_current_source(binding)
+        selected = getattr(self, "inputs", None) or ({"candidate": self.selected_candidate} if hasattr(self, "selected_candidate") else None)
+        if selected is not None and hasattr(qualification, "validate_candidate_source"):
+            qualification.validate_candidate_source(binding, selected)
+
     def wait(self, url, item):
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             require(item["process"].poll() is None, "owned application exited during startup")
             try:
-                return self.http("GET", url, timeout=1)
+                observed = self.http("GET", url, timeout=1)
             except (OSError, urllib.error.URLError, InvalidPacket):
                 time.sleep(.15)
+                continue
+            self.check_sources()
+            return observed
         raise TimeoutError("owned endpoint startup timeout")
 
+    def evaluate_source_consumers(self, root, environment):
+        """Measure the connected source graph and the imports effective at this build boundary."""
+        measured = []
+        pending = [root / project.lower() / (project + ".csproj") for project in PROJECTS]
+        visited = set()
+        while pending:
+            project = pending.pop(0)
+            if project in visited:
+                continue
+            visited.add(project)
+            self.run(preparation.source_evaluation_arguments(project, self.source_binding, "imports"),
+                     cwd=root, env=environment)
+            imports = self.commands[-1]
+            data = self.run(preparation.source_evaluation_arguments(project, self.source_binding, "evaluation"),
+                            cwd=root, env=environment)
+            value = {"project": str(project), "imports": imports, "evaluation": self.commands[-1]}
+            qualification.validate_source_evaluation(value, self.source_binding, root)
+            measured.append(value)
+            pending.extend(Path(row["FullPath"]) for row in json.loads(data)["Items"]["ProjectReference"])
+        qualification.validate_source_evaluations({"source_evaluations": measured}, self.source_binding, root)
+        return measured
+
     def build_consumers(self, version, source=False):
+        self.check_sources()
         role = "source" if source else "candidate" if version == self.candidate else "comparison-" + version
         root = self.output / "consumers" / role
         shutil.copytree(CONSUMERS, root)
+        if getattr(self, "explicit_source_root", False) or "runtime_source" in getattr(self, "source_binding", {}):
+            shutil.copyfile(self.source_root / "global.json", root / "global.json")
         packages = root / "packages"
         environment = dict(os.environ, CI="true", NUGET_PACKAGES=str(packages), DOTNET_NOLOGO="true",
                            DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE="false", DOTNET_USE_POLLING_FILE_WATCHER="1")
@@ -516,13 +804,26 @@ class Executor:
         props = ["-p:EventStoreVersion=" + version, "-p:NuGetAudit=false"]
         if source:
             environment.pop("CI", None)
-            props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true", "-p:EventStoreSourceRoot=" + str(ROOT)]
+            props += ["-p:UseCurrentSource=true", "-p:UseHexalithProjectReferences=true",
+                      "-p:EventStoreSourceRoot=" + str(getattr(self, "source_root", ROOT))]
+            if "runtime_source" in getattr(self, "source_binding", {}):
+                require(version == preparation.RUNTIME_VERSION, "runtime source version substituted")
+                props = ["-p:NuGetAudit=false", *("-p:" + name + "=" + value for name, value in
+                                                preparation.runtime_source_properties(self.source_binding).items())]
+                self.source_evaluations = self.evaluate_source_consumers(root, environment)
+                for project in PROJECTS:
+                    self.run(["dotnet", "restore", root / project.lower() / (project + ".csproj"), *props],
+                             cwd=root, env=environment, timeout=300)
+                # Restore writes NuGet imports. Retain and validate the graph that
+                # the following --no-restore Debug builds actually consume.
+                self.source_evaluations = self.evaluate_source_consumers(root, environment)
         manifest = {"schema": qualification.EVIDENCE_SCHEMA, "role": role, "fixture": None,
                     "packages_root": "packages", "configuration": configuration, "projects": []}
         serving_binaries = {}
         for project in PROJECTS:
             csproj = root / project.lower() / (project + ".csproj")
-            self.run(["dotnet", "restore", csproj, *props], cwd=root, env=environment, timeout=300)
+            if not (source and "runtime_source" in getattr(self, "source_binding", {})):
+                self.run(["dotnet", "restore", csproj, *props], cwd=root, env=environment, timeout=300)
             self.run(["dotnet", "build", csproj, "--no-restore", "-c", configuration, "-m:1", *props],
                      cwd=root, env=environment, timeout=300)
             output = project.lower() + "/bin/" + configuration + "/net10.0"
@@ -558,7 +859,12 @@ class Executor:
             manifest["projects"].append({"name": project, "assets": project.lower() + "/obj/project.assets.json",
                                          "lock": project.lower() + "/packages.lock.json", "loaded": loaded, "output": output})
             self.identities.setdefault(version if not source else "source", []).extend(identity["assemblies"])
+            if "runtime_source" in getattr(self, "source_binding", {}):
+                preparation.check_current_source(self.source_binding)
         write_json(root / "evidence.json", manifest)
+        if source and "candidate_source" in getattr(self, "source_binding", {}):
+            write_json(root / "source-evidence.json", qualification.source_consumer_binding(root, self.source_binding))
+        self.check_sources()
         self.evidence[role] = root
         return root
 
@@ -589,6 +895,13 @@ class Executor:
     def observe_inputs(self, planning, reference):
         """Observe the already approved six selections; verify downloads rather than reuse preflight passes."""
         candidate = planning["candidate_proposed"]
+        self.selected_candidate = candidate
+        self.check_sources()
+        tooling = planning.get("tooling")
+        if tooling is not None:
+            binding = validate_observation_inputs(planning, getattr(self, "source_root", None),
+                                                  getattr(self, "source_builds_root", None))
+            require(binding == self.source_binding, "observation tooling or runtime source binding differs")
         self.candidate = candidate["version"]
         self.versions = ("3.110.0", "3.70.1", self.candidate)
         if self.candidate == CANDIDATE:
@@ -604,18 +917,21 @@ class Executor:
                             for package in candidate["packages"])
                     and "tag_builds_commit" in candidate,
                     "successor observation lacks exact source-bound packages or tag Builds identity")
-            tag_commit = preparation.git(ROOT, "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
-            source_commit = preparation.git(ROOT, "rev-parse", "HEAD").decode().strip()
-            require(tag_commit == source_commit == candidate["tag_commit"],
-                    "successor observation source or tag substituted")
+            if tooling is None:
+                tag_commit = preparation.git(getattr(self, "source_root", ROOT), "rev-parse", candidate["tag"] + "^{commit}").decode().strip()
+                source_commit = preparation.git(getattr(self, "source_root", ROOT), "rev-parse", "HEAD").decode().strip()
+                require(tag_commit == source_commit == candidate["tag_commit"],
+                        "successor observation source or tag substituted")
             expected_tag_builds = candidate["tag_builds_commit"]
-        tag_builds = preparation.git(ROOT, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
+        runtime_root = getattr(self, "source_root", ROOT)
+        tag_builds = preparation.git(runtime_root, "ls-tree", "v" + self.candidate, "references/Hexalith.Builds").decode().split()
         require(len(tag_builds) == 4 and tag_builds[:2] == ["160000", "commit"]
                 and tag_builds[2] == expected_tag_builds, "candidate tag Builds provenance substituted")
         selections = {}
         for version in self.versions:
             root = self.build_consumers(version)
-            tag_commit = preparation.git(ROOT, "rev-parse", "v" + version + "^{commit}").decode().strip()
+            tag_commit = preparation.git(runtime_root if version == self.candidate else ROOT,
+                                         "rev-parse", "v" + version + "^{commit}").decode().strip()
             if version == self.candidate:
                 builds = {key: candidate["builds"][key] for key in ("version", "commit")}
                 require(tag_commit == candidate["tag_commit"], "candidate tag substituted")
@@ -661,7 +977,11 @@ class Executor:
                                           "backend_image": POSTGRES, "selected_by": "user", "reference": reference},
                   "assertion_instrumentation": {"mechanism": MECHANISM, "accepted_by": "test-owner", "reference": reference},
                   "selected_additions": list(qualification.ADDITIONS)}
+        if tooling is not None:
+            inputs["tooling"] = dict(tooling)
+            preparation.check_current_source(self.source_binding)
         qualification.validate_inputs(inputs)
+        self.check_sources()
         self.inputs = inputs
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
@@ -719,7 +1039,7 @@ class Executor:
         resources = self.scratch / "resources"
         resources.mkdir(exist_ok=True)
         redis, port = redis or self.redis, port or self.redis_port
-        tracked_state = regular(ROOT / "deploy/dapr/statestore-postgresql.yaml")
+        tracked_state = regular(getattr(self, "source_root", ROOT) / "deploy/dapr/statestore-postgresql.yaml")
         require(b'type: state.postgresql' in tracked_state and b'version: v1' in tracked_state
                 and b'{env:POSTGRES_CONNECTION_STRING}' in tracked_state, "tracked PostgreSQL v1 component substituted")
         connection = (f"host=127.0.0.1 port={port} user=postgres password={self.postgres_password} "
@@ -735,6 +1055,7 @@ class Executor:
             "observed_utc": stamp(),
             "source_workload_authority": "private Development symmetric JWT; production identity and P2 acceptance pending" if version in ("source", self.candidate) else None,
             "dotnet_reload_config_on_change": False, "dotnet_polling_file_watcher": True,
+            "reminder_due": getattr(self, "reminder_due", None),
             "files": [{"name": path.name, "path": str(path),
                        "sha256": digest(tracked_state) if path.name == "state.yaml" else digest(regular(path)),
                        "content": tracked_state.decode() if path.name == "state.yaml" else path.read_text(),
@@ -805,7 +1126,7 @@ class Executor:
                          "-At", "-v", "ON_ERROR_STOP=1", "-f", "-"], input_bytes=query.encode(), retain=retain)
 
     def postgres_state(self, container):
-        data = self.postgres_query(container, "SELECT coalesce(json_agg(json_build_array(key,value) ORDER BY key)::text,'[]') FROM state")
+        data = self.postgres_query(container, PRECONDITION_QUERY)
         return {key: postgres_value(value) for key, value in json.loads(data)}
 
     def postgres_audits(self, container):
@@ -843,10 +1164,32 @@ class Executor:
                                    "--container", container, "--invocation", self.invocation,
                                    "--backend", self.inputs["operational_profile"]["backend"]]))
 
+    def capture_preconditions(self, rows=None, complete_seed=False):
+        rows = self.inventory() if rows is None else rows
+        inventory_command = self.commands[-1]["id"] if getattr(self, "commands", []) else None
+        raw = self.raw_state(self.redis)
+        provider_command = self.commands[-1]["id"] if getattr(self, "commands", []) else None
+        if complete_seed:
+            domain_keys = {row["key"] for row in rows if row["kind"] != "bookkeeping"}
+            self.last_seed["captured_input"] = {"inventory": rows, "database": self.redis, "invocation": getattr(self, "invocation", None),
+                "commands": {"inventory": inventory_command, "provider": provider_command},
+                "state": {key: {"base64": base64.b64encode(data).decode(), "sha256": digest(data)}
+                          for key, data in raw.items() if key in domain_keys}}
+            validate_seed_proofs(rows, raw)
+        record = persisted_preconditions(rows, raw)
+        record.update(database=self.redis, invocation=getattr(self, "invocation", None),
+                      commands={"inventory": inventory_command, "provider": provider_command})
+        return record, raw
+
     def mutate(self, kind, variant=None):
         """Bounded diagnostics modify only the stopped writer's invocation-owned test fixture."""
         require(not self.active, "fixture diagnostic refused while a writer is active")
         values = self.raw_state(self.redis)
+        if kind == "retained":
+            require(variant in (None, "mismatched-proof"), "unknown retained fixture control")
+            original = retained_metadata(values, 1)
+            require(variant != "mismatched-proof" or original.get("sourceProof") is not None,
+                    "mismatched-proof control requires an existing proof")
         for key, data in values.items():
             if "tenant-a" not in key:
                 continue
@@ -854,6 +1197,8 @@ class Executor:
             changed = False
             if key.endswith(":metadata") and kind in ("retained", "invalid-floor"):
                 value["retainedFloor"] = 5 if kind == "retained" else 0
+                if kind == "retained" and variant != "mismatched-proof" and value.get("sourceProof") is not None:
+                    value["sourceProof"]["retainedFloor"] = 5
                 changed = True
             if ":events:" in key:
                 sequence = int(key.rsplit(":", 1)[1])
@@ -886,15 +1231,85 @@ class Executor:
                 changed = True
             if changed:
                 self.postgres_write(self.redis, key, value)
+        if kind == "retained":
+            after = self.raw_state(self.redis)
+            expected = dict(values)
+            for key in list(expected):
+                if "tenant-a" in key and ":events:" in key and int(key.rsplit(":", 1)[1]) < 5:
+                    del expected[key]
+                elif "tenant-a" in key and key.endswith(":metadata"):
+                    metadata = json.loads(expected[key])
+                    metadata["retainedFloor"] = 5
+                    if variant != "mismatched-proof" and metadata.get("sourceProof") is not None:
+                        metadata["sourceProof"]["retainedFloor"] = 5
+                    expected[key] = canonical(metadata)
+            require(after == expected, "retained fixture changed bytes outside retention coordinates")
+            if variant != "mismatched-proof":
+                retained_metadata(after, 5)
+            self.last_retained_fixture = {"variant": variant or "coherent", "before_metadata": original,
+                "after_metadata": next(json.loads(data) for key, data in after.items()
+                                       if "tenant-a" in key and key.endswith(":metadata")),
+                "before_hashes": {key: digest(data) for key, data in values.items()},
+                "after_hashes": {key: digest(data) for key, data in after.items()}}
 
     def actor(self, version, tenant, expected, kind, checks, prefix):
         return self.probe(version, ["actor", f"http://127.0.0.1:{self.sidecar_port}", tenant, "fixture", str(expected), kind], checks, prefix)
 
     def seed(self, version, interval, checks, write_alias=None):
+        require(self.candidate in (CANDIDATE, *qualification.FOLDED_SNAPSHOT_VERSIONS)
+                and version in (self.candidate, "source", *qualification.COMPARISON_VERSIONS),
+                "snapshot fixture candidate or writer is not explicitly enabled")
+        start = len(checks.checks)
+        self.last_snapshot_creation, self.last_retained_fixture = None, None
+        self.last_seed = {"writer": version, "interval": interval, "tenants": {}, "valid": False}
+        try:
+            rows = self._seed(version, interval, checks, write_alias)
+            record, raw = self.capture_preconditions(rows, complete_seed=True)
+            self.last_seed["persisted"] = record
+            primary, snapshot, events = runtime.stream(rows, "tenant-a")
+            secondary, _, second_events = runtime.stream(rows, "tenant-b")
+            checks.check("seed-primary-coordinates-exact", primary is not None and primary["sequence"] == 12
+                         and primary["floor"] == 1 and sorted(events) == list(range(1, 13)))
+            checks.check("seed-secondary-coordinates-exact", secondary is not None and secondary["sequence"] == 3
+                         and secondary["floor"] == 1 and sorted(second_events) == [1, 2, 3])
+            checks.check("seed-snapshot-coordinate-exact", (None if snapshot is None else snapshot["sequence"]) == (9 if interval == 10 else None))
+            primary_snapshots = [row for row in rows if row["tenant"] == "tenant-a" and row["kind"] == "snapshot"]
+            secondary_snapshots = [row for row in rows if row["tenant"] == "tenant-b" and row["kind"] == "snapshot"]
+            checks.check("seed-snapshot-cardinality-exact", len(primary_snapshots) == (1 if interval == 10 else 0)
+                         and len(secondary_snapshots) == 0)
+        except Exception as error:
+            # Preserve partial inventories even when startup/probe/byte binding fails.
+            self.last_seed["error"] = {"type": type(error).__name__, "reason": str(error)}
+            checks.check("seed-execution-completed", False)
+            self.stop_nodes()
+            try:
+                self.last_seed["inventory"] = self.inventory()
+            except Exception as inventory_error:
+                self.last_seed["inventory_error"] = str(inventory_error)
+        self.last_seed["checks"] = checks.checks[start:]
+        self.last_seed["unattempted_tenants"] = [tenant for tenant in ("tenant-a", "tenant-b") if tenant not in self.last_seed["tenants"]]
+        self.last_seed["valid"] = bool(self.last_seed["checks"]) and all(row["passed"] for row in self.last_seed["checks"])
+        if not self.last_seed["valid"]:
+            raise SeedFailure(self.last_seed)
+        return rows
+
+    def seed_probe(self, version, arguments, checks, prefix, tenant, stage):
+        try:
+            result = self.probe(version, arguments, checks, prefix)
+        except Exception as error:
+            checks.check(prefix + "execution-completed", False)
+            result = {"error": type(error).__name__, "reason": str(error)}
+        self.last_seed["tenants"].setdefault(tenant, {})[stage] = result
+        return result
+
+    def _seed(self, version, interval, checks, write_alias=None):
+        require(self.candidate in (CANDIDATE, *qualification.FOLDED_SNAPSHOT_VERSIONS)
+                and version in (self.candidate, "source", *qualification.COMPARISON_VERSIONS),
+                "snapshot fixture candidate or writer is not explicitly enabled")
         genuine = interval == 10 and qualification.is_successor_selection(
             {"candidate": {"version": self.candidate if version == "source" else version}})
         if genuine:
-            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0")
+            require(self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")
                     and version in (self.candidate, "source"), "successor snapshot fixture is not explicitly enabled")
         self.stop_nodes()
         self.postgres_query(self.redis, "DO $$ BEGIN IF to_regclass('public.state') IS NOT NULL THEN TRUNCATE TABLE state; END IF; END $$;")
@@ -908,8 +1323,12 @@ class Executor:
             checks.check("snapshot-canonical-event-parity", registration.get("canonical_event_parity") is True
                          and registration.get("canonical_event_sha256") == digest(b"{}"))
             checks.check("snapshot-detached-apply-parity", registration.get("detached_apply") is True and registration.get("applied_count") == 10)
-            nine = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "9"], checks, "tenant-a:prefix:")
+            if not all(row["passed"] for row in checks.checks):
+                return self.finish_seed(version, interval, checks, genuine)
+            nine = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "9"], checks, "tenant-a:prefix:", "tenant-a", "prefix")
             checks.check("snapshot-nine-events-committed", nine.get("committed") == 9 and nine.get("sequence") == 9)
+            if nine.get("committed") != 9 or nine.get("sequence") != 9:
+                return self.finish_seed(version, interval, checks, genuine)
             created = self.probe(version, ["manual-snapshot", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture"], checks, "snapshot:")
             checks.check("qualified-snapshot-created-by-published-actor", created.get("outcome") == "Created" and created.get("sequence") == 9)
             self.stop_nodes()
@@ -922,22 +1341,18 @@ class Executor:
             metadata, _, events = runtime.stream(before_tail, "tenant-a")
             checks.check("qualified-snapshot-prefix-coordinate-exact", metadata is not None
                          and metadata["sequence"] == 9 and sorted(events) == list(range(1, 10)))
+            if not all(row["passed"] for row in checks.checks):
+                self.start_nodes(version, interval=interval, write_alias=write_alias)
+                return self.finish_seed(version, interval, checks, genuine)
             self.start_nodes(version, interval=interval, write_alias=write_alias)
-            tail = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "3"], checks, "tenant-a:tail:")
+            tail = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "3"], checks, "tenant-a:tail:", "tenant-a", "tail")
             checks.check("tenant-a:committed-count", nine.get("committed") == 9 and tail.get("committed") == 3 and tail.get("sequence") == 12)
             self.last_snapshot_creation = {"registration": registration, "manual": created,
                 "persisted_snapshot": snapshot, "before_tail": before_tail, "tail": tail}
         else:
-            result = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "12"], checks, "tenant-a:")
+            result = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-a", "fixture", "12"], checks, "tenant-a:", "tenant-a", "seed")
             checks.check("tenant-a:committed-count", result.get("committed") == 12)
-        second = self.probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-b", "fixture", "3"], checks, "tenant-b:")
-        checks.check("tenant-b:committed-count", second.get("committed") == 3)
-        self.stop_nodes()
-        if interval == 10 and not genuine:
-            # Historical fixtures retain their original diagnostic semantics.
-            self.mutate("snapshot-nine")
-        rows = self.inventory()
-        checks.check("seed-persisted-fifteen-events", len([row for row in rows if row["kind"] == "event"]) == 15)
+        rows = self.finish_seed(version, interval, checks, genuine)
         if genuine:
             metadata, _, events = runtime.stream(rows, "tenant-a")
             checks.check("qualified-snapshot-tail-coordinate-exact", metadata is not None
@@ -948,7 +1363,18 @@ class Executor:
             self.last_snapshot_creation["after_tail"] = rows
         return rows
 
-    def live_case(self, lane, identifier, checks):
+    def finish_seed(self, version, interval, checks, genuine):
+        second = self.seed_probe(version, ["seed", f"http://127.0.0.1:{self.sidecar_port}", "tenant-b", "fixture", "3"], checks, "tenant-b:", "tenant-b", "seed")
+        checks.check("tenant-b:committed-count", second.get("committed") == 3)
+        self.stop_nodes()
+        if interval == 10 and not genuine and all(row["passed"] for row in checks.checks):
+            # Preserve the historical diagnostic only after successful seeds.
+            self.mutate("snapshot-nine")
+        rows = self.inventory()
+        checks.check("seed-persisted-fifteen-events", len([row for row in rows if row["kind"] == "event"]) == 15)
+        return rows
+
+    def prepare_live_case(self, lane, identifier, checks):
         parts = identifier.split("-to-")
         writer, tail = parts
         reader, _, variant = tail.partition("-")
@@ -962,28 +1388,55 @@ class Executor:
         if lane == "missing-event":
             self.mutate("missing", variant)
         before = self.inventory()
+        preconditions, _ = self.capture_preconditions(before)
+        return {"before": before, "seed_snapshot": seed_snapshot,
+                "seed_preconditions": self.last_seed,
+                "persisted_preconditions": preconditions,
+                "retained_fixture": getattr(self, "last_retained_fixture", None)}
+
+    def live_case(self, lane, identifier, checks, prepared=None):
+        self.live_progress = dict(prepared or {})
+        try:
+            return self._live_case(lane, identifier, checks, prepared)
+        except Exception as error:
+            error.observations = dict(self.live_progress, **getattr(error, "observations", {}))
+            raise
+
+    def _live_case(self, lane, identifier, checks, prepared=None):
+        writer, tail = identifier.split("-to-")
+        reader, _, variant = tail.partition("-")
+        interval = 10 if lane in ("snapshot-tail", "retained-covered", "metadata-write", "retained-uncovered") else 1000
+        prepared = self.prepare_live_case(lane, identifier, checks) if prepared is None else prepared
+        self.live_progress.update(prepared)
+        before, seed_snapshot = prepared["before"], prepared["seed_snapshot"]
         self.start_nodes(reader, interval=interval)
         negative = lane in ("retained-uncovered", "missing-event")
         result = self.actor(reader, "tenant-a", 12, "AssertCounter", checks, "primary:")
+        self.live_progress["primary"] = result
         checks.check("primary-expected-hydration", result.get("accepted") is (not negative))
         checks.check("hydration-no-events", result.get("event_count") == 0)
         checks.check("primary-sequence-twelve", result.get("sequence") == 12)
         second = self.actor(reader, "tenant-b", 3, "AssertCounter", checks, "secondary:")
+        self.live_progress["secondary"] = second
         checks.check("second-tenant-hydrates", second.get("accepted") is True)
         append, replay, appended = None, None, None
         if lane == "metadata-write":
             append = self.actor(reader, "tenant-a", 12, "IncrementCounter", checks, "append:")
+            self.live_progress["append"] = append
             checks.check("append-effect-accepted", append.get("accepted") is True and append.get("event_count") == 1)
         self.stop_nodes()
         if lane == "metadata-write" and append.get("accepted") is True and append.get("event_count") == 1:
             appended = self.inventory()
+            self.live_progress["appended_inventory"] = appended
             self.start_nodes(reader, interval=interval)
             replay = self.actor(reader, "tenant-a", 13, "AssertCounter", checks, "restart:")
+            self.live_progress["replay"] = replay
             checks.check("supported-append-restart-rehydrates-thirteen", replay.get("accepted") is True and replay.get("sequence") == 13)
             restarted_second = self.actor(reader, "tenant-b", 3, "AssertCounter", checks, "restart-secondary:")
             checks.check("supported-append-restart-second-tenant-hydrates", restarted_second.get("accepted") is True and restarted_second.get("sequence") == 3)
             self.stop_nodes()
         after = self.inventory()
+        self.live_progress["after"] = after
         before_domain = [row for row in before if row["kind"] != "bookkeeping"]
         after_domain = [row for row in after if row["kind"] != "bookkeeping"]
         prior = {row["key"]: row["sha256"] for row in before if row["kind"] in ("event", "snapshot")}
@@ -1006,9 +1459,10 @@ class Executor:
         checks.check("persisted-event-sequence-set-exact", sorted(events) == expected_sequences)
         checks.check("persisted-snapshot-coordinate-exact", (None if snapshot is None else snapshot["sequence"]) == expected_snapshot)
         disposition = "compatible" if all(check["passed"] for check in checks.checks) else "incompatible"
-        return {"before": before, "after": after, "primary": result, "secondary": second, "seed_snapshot": seed_snapshot,
-                "append": append, "replay": replay, "appended_inventory": appended,
-                "expected_coordinates": {"head": expected_head, "events": expected_sequences, "snapshot": expected_snapshot}},             "refusal" if result.get("accepted") is False else "effect", disposition
+        return dict(prepared, after=after, primary=result, secondary=second,
+                append=append, replay=replay, appended_inventory=appended,
+                expected_coordinates={"head": expected_head, "events": expected_sequences, "snapshot": expected_snapshot}), \
+            "refusal" if result.get("accepted") is False else "effect", disposition
 
     def metadata_case(self, lane, identifier, checks):
         version, style, _, floor = identifier.split("-")
@@ -1086,12 +1540,21 @@ class Executor:
             expected = "refusal"
         if getattr(self, "support_rules", {}).get((lane, identifier)) == "refused":
             expected = "refusal"
-        observed, outcome, disposition = {}, "error", "compatible"
+        observed, outcome, disposition = {}, "error", "unverified"
+        source_guard_phase = "before-action"
         try:
+            self.check_sources()
+            source_guard_phase = "action"
             observed, outcome, disposition = action(checks)
+            source_guard_phase = "after-action"
+            self.check_sources()
         except (Exception, KeyboardInterrupt) as error:
             checks.check("execution-completed", False)
-            observed = {"error": type(error).__name__, "reason": str(error)}
+            observed = dict(observed, **getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+            if source_guard_phase != "action":
+                observed["source_guard_failure"] = source_guard_phase
+            outcome = "error"
+            disposition = "unverified"
             self.errors.append(lane + "/" + identifier + ": " + str(error))
             if isinstance(error, KeyboardInterrupt):
                 interrupted = True
@@ -1124,7 +1587,7 @@ class Executor:
         evidence = {"id": identifier, "commands": self.commands[start_index:], "observations": observed,
                     "configurations": getattr(self, "configurations", [])[start_configuration:],
                     "check_witnesses": checks.witnesses}
-        if self.candidate in ("3.121.0", "3.122.1", "3.125.0") and getattr(self, "last_snapshot_creation", None) is not None:
+        if self.candidate in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0") and getattr(self, "last_snapshot_creation", None) is not None:
             path = ROOT / "tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
             data = regular(path)
             evidence["snapshot_fixture_source"] = {"path": str(path), "sha256": digest(data), "content": data.decode()}
@@ -1154,6 +1617,12 @@ class Executor:
                               "executor_source": self.source_binding, "cases": evidence,
                               "predicate_sources": [self.witness_sources[path] for path in sorted({
                                   witness["source"] for case in evidence for witness in case["check_witnesses"] if witness["kind"] == "predicate"})]}
+        if name == "checkout" and "runtime_source" in self.source_binding:
+            execution_evidence["source_evaluations"] = getattr(self, "source_evaluations", [])
+        if name == "checkout" and "candidate_source" in self.source_binding and "source" in self.evidence:
+            source_manifest = self.evidence["source"] / "source-evidence.json"
+            execution_evidence["source_consumer"] = {"path": str(source_manifest), "sha256": digest(regular(source_manifest)),
+                                                      "content": regular(source_manifest).decode()}
         counter = {key: sum(case["assertions"][key] for case in cases) for key in ("attempted", "passed", "failed")}
         passed = (counter["attempted"] > 0 and counter["failed"] == 0
                   and all(case["expected"] == case["outcome"] and (case["outcome"] != "refusal" or
@@ -1178,11 +1647,19 @@ class Executor:
                           "assertions": receipt["assertions"]}), flush=True)
         return receipt
 
-    def invalid_case(self, identifier, checks):
+    def prepare_invalid_case(self, identifier, checks):
         version, _, mutation = identifier.partition("-")
         self.seed(version, 1000, checks)
         self.mutate(mutation)
         before = self.inventory()
+        preconditions, _ = self.capture_preconditions(before)
+        return {"before": before, "seed_preconditions": self.last_seed,
+                "persisted_preconditions": preconditions}
+
+    def invalid_case(self, identifier, checks, prepared=None):
+        version, _, mutation = identifier.partition("-")
+        prepared = self.prepare_invalid_case(identifier, checks) if prepared is None else prepared
+        before = prepared["before"]
         self.start_nodes(version)
         observed = self.actor(version, "tenant-a", 12, "AssertCounter", checks, "primary:")
         checks.check("invalid-evidence-refused", observed.get("accepted") is False)
@@ -1192,7 +1669,8 @@ class Executor:
         checks.check("invalid-evidence-domain-unchanged", [row for row in before if row["kind"] != "bookkeeping"]
                      == [row for row in after if row["kind"] != "bookkeeping"])
         checks.check("second-tenant-preserved", runtime.domain(before, "tenant-b") == runtime.domain(after, "tenant-b"))
-        return {"before": before, "after": after, "actor": observed}, "refusal" if observed.get("accepted") is False else "effect", "compatible" if observed.get("accepted") is False else "incompatible"
+        return dict(prepared, after=after, actor=observed), "refusal" if observed.get("accepted") is False else "effect", \
+            "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def provenance_case(self, identifier, checks):
         role = "candidate" if identifier == self.candidate else "comparison-" + identifier
@@ -1332,6 +1810,14 @@ class Executor:
                   "--clean", "--if-exists", "--no-owner", "/tmp/p1r-restore.dump"])
 
     def restore_case(self, identifier, checks):
+        self.restore_progress = {}
+        try:
+            return self._restore_case(identifier, checks)
+        except Exception as error:
+            error.observations = dict(self.restore_progress, **getattr(error, "observations", {}))
+            raise
+
+    def _restore_case(self, identifier, checks):
         self.seed(self.candidate, 10, checks)
         seed_snapshot = getattr(self, "last_snapshot_creation", None)
         self.mutate("retained")
@@ -1340,6 +1826,9 @@ class Executor:
         source = self.inventory()
         index = self.recovery_command(commands, "inventory", self.commands[-1], source_db)
         inventories["source"] = {"command": index, "rows": source, "sha256": digest(canonical(source))}
+        self.restore_progress.update(before=source, seed_snapshot=seed_snapshot)
+        source_raw = self.raw_state(self.redis)
+        source_metadata = retained_metadata(source_raw, 5)
         backup_path, backup_command_id = self.postgres_backup(self.redis)
         backup = regular(backup_path)
         backup_id = self.recovery_command(commands, "backup", backup_command_id, source_db, output_data=backup)
@@ -1352,18 +1841,35 @@ class Executor:
         copied = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["restored"] = {"command": index, "rows": copied, "sha256": digest(canonical(copied))}
+        self.restore_progress["restored_inventory"] = copied
+        copied_raw = self.raw_state(restored)
         checks.check("backup-nonempty", bool(backup))
         checks.check("fresh-restore-full-inventory-identical", source == copied)
+        source_hashes = {key: digest(data) for key, data in source_raw.items()}
+        copied_hashes = {key: digest(data) for key, data in copied_raw.items()}
+        checks.check("fresh-restore-original-bytes-and-proof-identical", source_hashes == copied_hashes)
         processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "start-writer", self.commands[-1], restored_db, processes)
         before = self.actor(self.candidate, "tenant-a", 12, "AssertCounter", checks, "restored:")
-        checks.check("fresh-restore-hydrates-twelve", before.get("accepted") is True)
+        primary_command = self.commands[-1]
+        primary_id = self.recovery_command(commands, "replay", primary_command, restored_db)
+        self.restore_progress["primary"] = before
+        checks.check("fresh-restore-hydrates-twelve", before.get("accepted") is True
+                     and before.get("sequence") == 12 and before.get("event_count") == 0)
         append = self.actor(self.candidate, "tenant-a", 12, "IncrementCounter", checks, "append:")
-        self.recovery_command(commands, "append", self.commands[-1], restored_db)
-        checks.check("fresh-restore-appends-thirteen", append.get("accepted") is True and append.get("event_count") == 1)
+        self.restore_progress["append"] = append
+        append_command = self.commands[-1]
+        append_id = self.recovery_command(commands, "append", append_command, restored_db)
+        checks.check("fresh-restore-appends-thirteen", append.get("accepted") is True and append.get("event_count") == 1
+                     and append.get("sequence") == 13)
         appended = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["appended"] = {"command": index, "rows": appended, "sha256": digest(canonical(appended))}
+        self.restore_progress["appended_inventory"] = appended
+        appended_metadata, _, appended_events = runtime.stream(appended, "tenant-a")
+        checks.check("fresh-append-persisted-head-and-event-thirteen", appended_metadata is not None
+                     and appended_metadata["sequence"] == 13 and appended_metadata["floor"] == 5
+                     and sorted(appended_events) == list(range(5, 14)))
         self.stop_nodes()
         self.run([sys.executable, "-I", "-c",
                   "import sys,json;sys.path.insert(0,sys.argv[1]);import p1r_qualification as p;"
@@ -1372,30 +1878,62 @@ class Executor:
         self.recovery_command(commands, "stop-writer", self.commands[-1], restored_db)
         restarted_processes = self.start_nodes(self.candidate, restored, port, interval=1000)
         self.recovery_command(commands, "restart", self.commands[-1], restored_db, restarted_processes)
+        checks.check("fresh-restart-processes-distinct", bool(processes) and bool(restarted_processes)
+                     and not {(item["pid"], item["start_ticks"]) for item in processes}
+                     & {(item["pid"], item["start_ticks"]) for item in restarted_processes})
         replay = self.actor(self.candidate, "tenant-a", 13, "AssertCounter", checks, "restart:")
-        self.recovery_command(commands, "replay", self.commands[-1], restored_db)
-        checks.check("fresh-restart-reconstructs-thirteen", replay.get("accepted") is True)
+        self.restore_progress["replay"] = replay
+        replay_command = self.commands[-1]
+        replay_id = self.recovery_command(commands, "replay", replay_command, restored_db)
+        checks.check("fresh-restart-reconstructs-thirteen", replay.get("accepted") is True
+                     and replay.get("sequence") == 13 and replay.get("event_count") == 0)
         second = self.actor(self.candidate, "tenant-b", 3, "AssertCounter", checks, "secondary:")
-        checks.check("restored-second-tenant-hydrates-three", second.get("accepted") is True)
+        secondary_command = self.commands[-1]
+        secondary_id = self.recovery_command(commands, "replay", secondary_command, restored_db)
+        self.restore_progress["secondary"] = second
+        checks.check("restored-second-tenant-hydrates-three", second.get("accepted") is True
+                     and second.get("sequence") == 3 and second.get("event_count") == 0)
         restarted = self.inventory(restored)
         index = self.recovery_command(commands, "inventory", self.commands[-1], restored_db)
         inventories["restarted"] = {"command": index, "rows": restarted, "sha256": digest(canonical(restarted))}
+        self.restore_progress["after"] = restarted
         self.stop_nodes()
         metadata, snapshot, events = runtime.stream(restarted, "tenant-a")
         checks.check("restored-floor-five", metadata is not None and metadata["floor"] == 5)
         checks.check("restored-head-thirteen", metadata is not None and metadata["sequence"] == 13)
         checks.check("restored-snapshot-nine", snapshot is not None and snapshot["sequence"] == 9)
+        checks.check("restored-event-sequence-set-exact", sorted(events) == list(range(5, 14)))
+        prior = {row["key"]: row["sha256"] for row in source if row["kind"] in ("event", "snapshot")}
+        checks.check("restore-prior-event-and-snapshot-bytes-preserved", all(
+            {row["key"]: row["sha256"] for row in rows}.get(key) == sha256
+            for rows in (copied, appended, restarted) for key, sha256 in prior.items()))
         checks.check("restore-second-tenant-unchanged", runtime.domain(source, "tenant-b") == runtime.domain(restarted, "tenant-b"))
-        self.pending_restore = {"schema": runtime.RESTORE_SCHEMA, "id": uuid.uuid4().hex, "role": "candidate",
+        self.pending_restore = {"schema": runtime.RESTORE_SCHEMA_V2, "id": uuid.uuid4().hex, "role": "candidate",
             "scope": "operational", "fixture": self.fixture, "inputs_sha256": self.inputs_sha256,
             "profile": self.inputs["operational_profile"], "packages": {package["id"]: package["archive_sha256"]
                 for package in self.inputs["candidate"]["packages"]}, "tenants": {"primary": "tenant-a", "secondary": "tenant-b"},
             "commands": commands, "databases": {"source": source_db, "restored": restored_db},
             "backup": {"command": backup_id, "sha256": digest(backup), "bytes": len(backup)}, "inventories": inventories,
-            "observations": {"state_before_append": 12 if before.get("accepted") else None,
-                "appended_sequence": 13 if append.get("accepted") else None, "state_after_restart": 13 if replay.get("accepted") else None}}
+            "observations": {"state_before_append": before.get("sequence") if before.get("accepted") is True else None,
+                "appended_sequence": append.get("sequence") if append.get("accepted") is True and append.get("event_count") == 1
+                    and appended_metadata is not None and appended_metadata["sequence"] == append.get("sequence")
+                    and append.get("sequence") in appended_events else None,
+                "state_after_restart": replay.get("sequence") if replay.get("accepted") is True else None,
+                "restore_checks": checks.checks,
+                "responses": {name: {"command": identity, "output": command.get("output", ""), "observation": observation}
+                    for name, identity, command, observation in (("primary", primary_id, primary_command, before),
+                        ("append", append_id, append_command, append), ("replay", replay_id, replay_command, replay),
+                        ("secondary", secondary_id, secondary_command, second))}}}
+        outcome = ("refusal" if before.get("accepted") is False or append.get("accepted") is False or replay.get("accepted") is False
+                   else "effect" if before.get("accepted") is True and append.get("accepted") is True
+                   and append.get("event_count") == 1 and replay.get("accepted") is True else "error")
+        if outcome == "error":
+            checks.check("execution-completed", False)
         return {"before": source, "after": restarted, "seed_snapshot": seed_snapshot, "backup_sha256": digest(backup), "backup_bytes": len(backup),
-                "restored_inventory": copied, "appended_inventory": appended}, "effect", "compatible"
+                "retained_fixture": getattr(self, "last_retained_fixture", None), "source_metadata": source_metadata,
+                "primary": before, "append": append, "replay": replay, "secondary": second,
+                "restored_inventory": copied, "appended_inventory": appended}, outcome, \
+            "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def containment_case(self, identifier, checks):
         self.seed("3.70.1", 1000, checks)
@@ -1447,13 +1985,28 @@ class Executor:
         return {"completed": completed, "observations": observations, "manual_callback_sent_before_observation": False,
                 "started_utc": started_utc, "deadline_utc": deadline_utc, "budget_seconds": 30}
 
+    def reminder_window(self, due, selected_utc, phase, checks):
+        observed_utc = stamp()
+        remaining = (due - datetime.datetime.fromisoformat(observed_utc)).total_seconds()
+        checks.check("reminder-" + phase + "-deadline-future", remaining >= REMINDER_MINIMUM_WINDOW_SECONDS)
+        require(remaining >= REMINDER_MINIMUM_WINDOW_SECONDS,
+                "reminder fixture future deadline missed before dependent operation")
+        return {"phase": phase, "selected_utc": selected_utc, "due_utc": due.isoformat(),
+                "observed_utc": observed_utc, "remaining_seconds": remaining,
+                "startup_lead_seconds": REMINDER_STARTUP_LEAD_SECONDS,
+                "minimum_remaining_seconds": REMINDER_MINIMUM_WINDOW_SECONDS}
+
     def reminder_case(self, identifier, checks):
         self.seed(self.candidate, 1000, checks)
         before = self.inventory()
-        due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=12)
+        selected_utc = stamp()
+        due = datetime.datetime.fromisoformat(selected_utc) + datetime.timedelta(seconds=REMINDER_STARTUP_LEAD_SECONDS)
         self.reminder_due = due.isoformat()
         self.start_nodes(self.candidate)
+        windows = [self.reminder_window(due, selected_utc, "initial-before-register", checks)]
         registration = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/1", {})
+        windows.append(self.reminder_window(due, selected_utc, "initial-after-register", checks))
+        original_due = self.reminder_due
         checks.check("reminder-armed", registration.get("armed") == 1 and registration.get("unresolved") == 0)
         checks.check("initial-convergence-no-direct-submission", registration.get("submitted") == 0)
         natural = None
@@ -1468,15 +2021,30 @@ class Executor:
         restart_before = self.inventory()
         revision = 2 if identifier == "stale-generation-refusal" else 1
         if revision == 2:
-            self.reminder_due = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=30)).isoformat()
+            selected_utc = stamp()
+            due = datetime.datetime.fromisoformat(selected_utc) + datetime.timedelta(seconds=REMINDER_STARTUP_LEAD_SECONDS)
+            self.reminder_due = due.isoformat()
         self.start_nodes(self.candidate)
+        windows.append(self.reminder_window(due, selected_utc, "restart-before-register", checks))
         rearmed = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/register/{revision}", {})
+        windows.append(self.reminder_window(due, selected_utc, "restart-after-register", checks))
         checks.check("reminder-converges-after-restart", rearmed.get("unresolved") == 0 and rearmed.get("quarantined") == 0)
         checks.check("restart-convergence-no-direct-submission", rearmed.get("submitted") == 0)
         if revision == 1:
             time.sleep(max(0, (due - datetime.datetime.now(datetime.timezone.utc)).total_seconds()) + .2)
             natural = self.natural_reminder(checks)
-        repeated = self.http("POST", f"http://127.0.0.1:{self.host_port}/reminder/callback/1", {})
+        callback_url = f"http://127.0.0.1:{self.host_port}/reminder/callback/1"
+        if self.candidate in ("3.125.1", "3.126.0"):
+            require(registration.get("intent_due") == original_due and registration.get("intent_revision") == 1
+                    and isinstance(registration.get("reminder_name"), str), "original armed reminder identity missing")
+            callback_url += "?" + urllib.parse.urlencode({"due": original_due, "reminderName": registration["reminder_name"]})
+        repeated = self.http("POST", callback_url, {})
+        if self.candidate in ("3.125.1", "3.126.0"):
+            checks.check("callback-actor-request-accepted", isinstance(repeated.get("callback_status"), int)
+                         and not isinstance(repeated.get("callback_status"), bool)
+                         and 200 <= repeated["callback_status"] < 300)
+            checks.check("callback-replays-original-armed-identity", repeated.get("intent_due") == original_due
+                         and repeated.get("intent_revision") == 1 and repeated.get("reminder_name") == registration["reminder_name"])
         checks.check("restart-or-stale-callback-no-second-effect", repeated.get("sequence") == 13)
         self.stop_nodes()
         after = self.inventory()
@@ -1485,7 +2053,7 @@ class Executor:
         if revision == 2:
             checks.check("stale-generation-domain-preserved", runtime.domain(restart_before, "tenant-a") == runtime.domain(after, "tenant-a"))
         return {"before": restart_before if revision == 2 else before, "after": after,
-                "due": self.reminder_due, "registration": registration, "rearmed": rearmed,
+                "due": self.reminder_due, "deadline_windows": windows, "registration": registration, "rearmed": rearmed,
                 "natural_scheduler_effect": natural, "repeated_or_stale": repeated,
                 "fixture_authority": "bounded Test authority; P2 acceptance pending"}, "refusal" if revision == 2 else "effect", "compatible"
 
@@ -1561,10 +2129,10 @@ class Executor:
             action = lambda version_case, measurements: self.wire_case(lane, version_case, measurements)
         elif lane == "invalid-evidence":
             selected_case = self.candidate + "-unknown-version"
-            action = self.invalid_case
+            return self.checkout_live_case(lane, selected_case, checks)
         else:
             selected_case = next(case for case in cases if "-to-" + self.candidate in case)
-            action = lambda version_case, measurements: self.live_case(lane, version_case, measurements)
+            return self.checkout_live_case(lane, selected_case, checks)
         paired = {}
         outcomes = {}
         dispositions = {}
@@ -1573,13 +2141,18 @@ class Executor:
             try:
                 observation, outcome, disposition = action(case, measured)
                 paired[version], outcomes[version], dispositions[version] = observation, outcome, disposition
+            except Exception as error:
+                measured.check("execution-completed", False)
+                paired[version] = dict(getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+                outcomes[version], dispositions[version] = "error", "unverified"
             finally:
                 for check, witness in zip(measured.checks, measured.witnesses):
                     identity = version + ":" + check["id"]
                     checks.check(identity, check["passed"], dict(witness, id=identity))
         package_semantics = semantic_observation(paired["package"], outcomes["package"])
         source_semantics = semantic_observation(paired["source"], outcomes["source"])
-        checks.check("source-package-semantics-equivalent", package_semantics == source_semantics)
+        checks.check("source-package-semantics-equivalent", package_semantics == source_semantics
+                     and all(value != "error" for value in outcomes.values()))
         comparison = {"selected_version": self.candidate, "selected_case": selected_case,
                       "source_case": selected_case.replace(self.candidate, "source"),
                       "scope": "same fixture operations, domain outcomes and persisted coordinates; dynamic identities excluded",
@@ -1587,7 +2160,76 @@ class Executor:
                       "delta": semantic_delta(package_semantics, source_semantics)}
         disposition = ("compatible" if all(check["passed"] for check in checks.checks)
                        and all(value == "compatible" for value in dispositions.values()) else "incompatible")
-        return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, outcomes["source"], disposition
+        if "error" in outcomes.values():
+            checks.check("execution-completed", False)
+            disposition = "unverified"
+        return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, \
+            "error" if "error" in outcomes.values() else outcomes["source"], disposition
+
+    def checkout_live_case(self, lane, selected_case, checks):
+        """Seed both isolated branches before allowing either reader to run."""
+        original_database = self.redis, self.redis_port
+        paired, measured, databases, prepared, outcomes = {}, {}, {}, {}, {}
+        cases = {"package": selected_case, "source": selected_case.replace(self.candidate, "source")}
+        try:
+            for branch in ("package", "source"):
+                measured[branch] = Measurements()
+                try:
+                    self.stop_nodes()
+                    database, port, _ = self.postgres_container("checkout-" + branch + "-" + uuid.uuid4().hex)
+                    databases[branch] = database, port
+                    self.redis, self.redis_port = database, port
+                    prepared[branch] = (self.prepare_invalid_case(cases[branch], measured[branch]) if lane == "invalid-evidence"
+                                        else self.prepare_live_case(lane, cases[branch], measured[branch]))
+                    paired[branch] = prepared[branch]
+                except Exception as error:
+                    measured[branch].check("execution-completed", False)
+                    paired[branch] = dict(getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+                    outcomes[branch] = "error"
+                finally:
+                    self.stop_nodes()
+            valid = set(prepared) == {"package", "source"} and all(
+                row["passed"] for branch in measured.values() for row in branch.checks)
+            equal = valid and prepared["package"]["persisted_preconditions"]["semantic"] == prepared["source"]["persisted_preconditions"]["semantic"]
+            checks.check("source-package-seed-preconditions-successful", valid is True)
+            checks.check("source-package-seed-preconditions-equal", equal is True)
+            if equal:
+                for branch in ("package", "source"):
+                    self.redis, self.redis_port = databases[branch]
+                    reader_start = len(getattr(self, "commands", []))
+                    try:
+                        paired[branch], outcomes[branch], _ = (self.invalid_case(cases[branch], measured[branch], prepared[branch])
+                            if lane == "invalid-evidence" else self.live_case(lane, cases[branch], measured[branch], prepared[branch]))
+                    except Exception as error:
+                        measured[branch].check("execution-completed", False)
+                        paired[branch] = dict(prepared[branch], **getattr(error, "observations", {}), error=type(error).__name__, reason=str(error))
+                        outcomes[branch] = "error"
+                    finally:
+                        self.stop_nodes()
+                        paired[branch]["reader_commands"] = [command["id"] for command in getattr(self, "commands", [])[reader_start:]]
+            else:
+                for branch in paired.values():
+                    branch["dependent_operations"] = "unattempted"
+                outcomes.update(package="error", source="error")
+        finally:
+            self.redis, self.redis_port = original_database
+            for branch, measurements in measured.items():
+                for check, witness in zip(measurements.checks, measurements.witnesses):
+                    identity = branch + ":" + check["id"]
+                    checks.check(identity, check["passed"], dict(witness, id=identity))
+        package_semantics = semantic_observation(paired["package"], outcomes["package"])
+        source_semantics = semantic_observation(paired["source"], outcomes["source"])
+        checks.check("source-package-semantics-equivalent", equal is True and package_semantics == source_semantics
+                     and all(value != "error" for value in outcomes.values()) and all(row["passed"] for row in checks.checks))
+        if "error" in outcomes.values():
+            checks.check("execution-completed", False)
+        comparison = {"selected_version": self.candidate, "selected_case": selected_case, "source_case": cases["source"],
+            "preconditions": {"successful": valid, "equal": equal},
+            "scope": "equal successful persisted fixtures; exact bytes retained and dynamic fields explicitly recorded",
+            "package": package_semantics, "source": source_semantics, "delta": semantic_delta(package_semantics, source_semantics)}
+        return {"scope": "source-comparison-only", "comparison": comparison, "paired_observations": paired}, \
+            "error" if "error" in outcomes.values() else outcomes["source"], \
+            "unverified" if "error" in outcomes.values() or not equal else "compatible" if all(row["passed"] for row in checks.checks) else "incompatible"
 
     def failure_case(self, identifier, checks):
         before_shared = self.shared()
@@ -1626,7 +2268,10 @@ class Executor:
         return {"before": before, "after": after, "owned_processes": identities}, "effect", "compatible"
 
     def execute(self):
-        validate_execution_inputs(self.inputs)
+        selected_root = getattr(self, "source_root", None) if (
+            "tooling" in self.inputs or getattr(self, "explicit_source_root", False)) else None
+        validate_execution_inputs(self.inputs, selected_root,
+                                  getattr(self, "source_builds_root", None))
         if self.candidate == CANDIDATE:
             policy = qualification.load_support_table(self.inputs)
             self.support_rules = {(lane, rule["id"]): rule["treatment"] for lane, entry in policy["lanes"].items()
@@ -1639,7 +2284,7 @@ class Executor:
             self.verify_selected_candidate_archives()
             self.topology()
             for lane in qualification.SCENARIOS:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 if lane == "provenance":
                     action, operational = self.provenance_case, False
                 elif lane in ("legacy-metadata", "metadata-read"):
@@ -1666,12 +2311,12 @@ class Executor:
                     action, operational = lambda identifier, checks, lane=lane: self.live_case(lane, identifier, checks), True
                 self.lane(lane, action, operational)
             if "reminder-recovery" in self.inputs["selected_additions"]:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 self.lane("reminder-recovery", self.reminder_case, True)
             if "logical-event-evolution" in self.inputs["selected_additions"]:
-                preparation.check_current_source(self.source_binding)
+                self.check_sources()
                 self.lane("logical-event-evolution", self.evolution_case, True)
-            preparation.check_current_source(self.source_binding)
+            self.check_sources()
         finally:
             cleanup = self.cleanup()
             if self.pending_restore is not None:
@@ -1775,6 +2420,10 @@ class Executor:
             self.receipts.append(str(path))
         else:
             self.result["consumer_cleanup"] = str(path)
+        try:
+            self.check_sources()
+        except (Exception, KeyboardInterrupt) as error:
+            self.errors.append("final source check: " + str(error))
         self.result["finished_utc"] = stamp()
         self.save()
         return receipt

@@ -1,0 +1,1 @@
+const r=await tools.exec_command({cmd:"cat _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/grammar-repair.patch",workdir:"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",max_output_tokens:12500});text(r.output);

@@ -24,7 +24,13 @@ internal sealed record ReadModelBatchRecoveryAnchor([property: JsonRequired] Rea
     internal bool Matches(ReadModelBatchMarker marker, ReadModelBatchScope expected)
     {
         Scope.Validate();
-        return marker.Version == 1 && marker.ScratchCompensationKey is null && marker.OwnerSelection is null && marker.OwnerSelections is null
+        return marker.Version == 1 && marker.ScratchCompensationKey is null && marker.OwnerSelections is null
+            && (marker.OwnerSelection is null || marker.OwnerSelection is { Version: 1, ReceiptProjectionName: null } selected
+                && selected.TenantId == Scope.TenantId && selected.Domain == Scope.Domain
+                && selected.AggregateId == Scope.AggregateId && selected.ProjectionName == Scope.ProjectionType
+                && selected.BatchId == Scope.BatchId && selected.AppliedSequence > 0
+                && !string.IsNullOrWhiteSpace(selected.MessageId) && !string.IsNullOrWhiteSpace(selected.OwnerIdentity)
+                && !string.IsNullOrWhiteSpace(selected.OwnerGeneration) && !string.IsNullOrWhiteSpace(selected.FreshnessVersion))
             && marker.OriginalManifest is null && marker.OriginalManifestKey is null && marker.Operations is null
             && marker.Status is ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted
             && Scope.StoreName == expected.StoreName && Scope.TenantId == expected.TenantId && Scope.Domain == expected.Domain

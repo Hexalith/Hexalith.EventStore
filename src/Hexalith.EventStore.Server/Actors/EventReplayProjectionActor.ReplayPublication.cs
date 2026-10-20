@@ -41,6 +41,7 @@ public partial class EventReplayProjectionActor
     public async Task<ProjectionRebuildInspection> StageReplayAsync(ProjectionReplayPublicationRequest request)
     {
         AggregateIdentity identity = ValidatePublication(request);
+        if (request.State is not null) request = request with { State = request.State.WithBoundedNotification() };
         await ClearPublicationCacheAsync().ConfigureAwait(false);
         if (!await OwnsPublicationAsync(identity, request).ConfigureAwait(false)) return PublicationConflict(request);
         ProjectionReplayPublicationBinding binding = request.Binding;
@@ -111,7 +112,7 @@ public partial class EventReplayProjectionActor
         }
         try
         {
-            await projectionChangeNotifier.NotifyProjectionChangedAsync(selected.ProjectionType, selected.TenantId).ConfigureAwait(false);
+            await NotifyProjectionHintsAsync(selected).ConfigureAwait(false);
         }
         catch
         {

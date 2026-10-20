@@ -51,7 +51,8 @@ public sealed class SourceNamespaceSnapshotReader(ISourcePublicationNamespaceSou
                 {
                     deadline.ThrowIfCancellationRequested();
                     // The authenticated namespace owner certifies the actual committed head.
-                    // An uncreated registration has no source bytes to read; gateway NotFound is not a hole.
+                    // Native producers require an actor-owned persisted empty proof for zero.
+                    // Legacy carriers expose no native proof and cannot establish native completeness.
                     if (head.Head == 0) { continue; }
                     var read = await deadline.ReadAsync(token => streams.ReadAsync(head.Identity, token)).ConfigureAwait(false);
                     // Capture uses only a local byte counter; abandoned worker progress never changes this operation's retained state.
@@ -87,6 +88,7 @@ public sealed class SourceNamespaceSnapshotReader(ISourcePublicationNamespaceSou
             || source.Head < head.Head || source.Events is null || source.Events.Count < head.Head || source.Head > 10000 || source.Events.Count > 10000
             || source.ObservedAt == default || source.ObservedAt > clock.GetUtcNow()
             || string.IsNullOrWhiteSpace(source.ObservationId)) { return null; }
+        if (!NativeSourcePrefix.Matches(source, head, deadline)) return null;
         var events = new List<StreamReadEvent>(); long payloadBytes = 0;
         foreach (var item in source.Events)
         {
@@ -100,7 +102,8 @@ public sealed class SourceNamespaceSnapshotReader(ISourcePublicationNamespaceSou
             events.Add(item with { Payload = payload, ProtectionMetadata = CaptureProtection(item.ProtectionMetadata, deadline) });
         }
         deadline.ThrowIfCancellationRequested();
-        return events.Count == head.Head ? (source with { Head = head.Head, Events = events.AsReadOnly() }, payloadBytes) : null;
+        return events.Count == head.Head
+            ? (source with { Head = head.Head, Events = events.AsReadOnly(), NativeProof = head.NativeProof }, payloadBytes) : null;
     }
 
     private SourcePublicationCut? CaptureCut(SourcePublicationCut? cut, SourcePublicationScope scope, AuthoritativeStreamReadDeadline deadline)
@@ -116,7 +119,7 @@ public sealed class SourceNamespaceSnapshotReader(ISourcePublicationNamespaceSou
         {
             deadline.ThrowIfCancellationRequested();
             if (heads.Count >= 1000 || head is null || head.Identity is null || head.Head is < 0 or > 10000
-                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain
+                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain || !head.HasConsistentNativeProof
                 || heads.Any(h => h.Identity == head.Identity)) { return null; }
             heads.Add(head);
         }

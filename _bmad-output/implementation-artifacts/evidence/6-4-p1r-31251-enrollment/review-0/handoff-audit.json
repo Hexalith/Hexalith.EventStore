@@ -1,0 +1,59 @@
+{
+  "handoff": "/home/administrator/projects/hexalith/projects/_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification-handoff.md",
+  "sha256": "8c71bdea786add56a6f9b37d53ac193f21f07d9bae3c7bbdc30e12f530ff23b4",
+  "coordinates": {
+    "Hexalith.EventStore.Contracts": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.Client": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.Server": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.ServiceDefaults": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    },
+    "Hexalith.EventStore.DomainService": {
+      "archive_sha256_present": true,
+      "signed_zip_sha512_present": true,
+      "repository_commit_present": true
+    }
+  },
+  "gates": {
+    "owner_selection_pending": true,
+    "graph_pending": true,
+    "binding_strategy_pending": true,
+    "rollback_null_preserved": true,
+    "AD17_recovery_preserved": true,
+    "no_executable_qualification_command": true,
+    "draft_status": true,
+    "package_construction_unbound": true
+  },
+  "local_links": [
+    {
+      "target": "spec-6-1-p1r-31250-published-qualification-handoff.md",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/release-source-identities.json",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/package-provenance.json",
+      "exists": true
+    },
+    {
+      "target": "evidence/6-4-p1r-31251-enrollment-20261018/nuget-signature-verification.json",
+      "exists": true
+    }
+  ]
+}

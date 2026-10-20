@@ -1,0 +1,27 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15133-a3ff-7311-9a18-15eb11f51c63",
+  "call_id": "call_2fb215e983064140af5fd5afdd2258cd",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 6.2 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"e37fcb\",\"wall_time_seconds\":1.001585785,\"session_id\":70847,\"original_token_count\":0,\"output\":\"\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"31c71f\",\"wall_time_seconds\":5.000862659,\"session_id\":72175,\"original_token_count\":0,\"output\":\"\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"current_time\":\"2026-10-18 22:48:21 UTC\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792363701.2475617
+  }
+}

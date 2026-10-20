@@ -1,0 +1,61 @@
+{
+  "observedUtc": "2026-10-20T07:26:31.809955+00:00",
+  "dotnet": {
+    "command": [
+      "dotnet",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "10.0.402"
+  },
+  "dapr": {
+    "command": [
+      "dapr",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "CLI version: 1.18.2 \nRuntime version: 1.18.7"
+  },
+  "daprd": {
+    "command": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "1.18.7"
+  },
+  "aspire": {
+    "command": [
+      "aspire",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8"
+  },
+  "dependencies": [
+    "Dapr.Client/1.18.10",
+    "Microsoft.AspNetCore.SignalR.StackExchangeRedis/10.0.13",
+    "StackExchange.Redis/3.4.5"
+  ],
+  "gitRevision": {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exitCode": 0,
+    "output": "5d140359cc4021156ef32e8cb5e7bfa763a1f00c"
+  },
+  "buildsGitlink": {
+    "command": [
+      "git",
+      "ls-tree",
+      "HEAD",
+      "references/Hexalith.Builds"
+    ],
+    "exitCode": 0,
+    "output": "160000 commit b435f2e3b3892e03f69322d24de6003b0baf7a7d\treferences/Hexalith.Builds"
+  },
+  "inotifyMaxUserInstances": "16384",
+  "targetClarification": "User: production is on local 192.168.1.30 kubernetes server. Azure or AWS is not MVP. Local disposable qualification does not qualify that cluster."
+}

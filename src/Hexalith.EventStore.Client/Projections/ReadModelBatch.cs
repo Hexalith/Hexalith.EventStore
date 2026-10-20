@@ -15,7 +15,7 @@ namespace Hexalith.EventStore.Client.Projections;
 /// </remarks>
 public sealed class ReadModelBatch {
     /// <summary>Retains this immutable manifest until completion so its pending envelopes can be recovered by scope.
-    /// This opt-in cannot be combined with OwnerSelection or OwnerSelections; their existing guarded recovery remains separate.</summary>
+    /// This opt-in supports one exact OwnerSelection through the same bounded recovery anchor. Coordinated OwnerSelections retain their separate guarded recovery.</summary>
     public bool RetainManifestForRecovery { get; init; }
 
     /// <summary>Gets optional selection evidence explicitly carried by a fingerprint-bound model operation.</summary>

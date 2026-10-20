@@ -185,6 +185,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
         bool owned = false;
         string? incompleteReason = null;
         var freshness = new Dictionary<string, string>(StringComparer.Ordinal);
+        var owners = new Dictionary<string, ProjectionOwnerProof>(StringComparer.Ordinal);
         var tails = new List<ProjectionSourceGuardRouteObservation>();
         var completedSiblings = new List<ProjectionSourceGuardRouteObservation>();
         var compatibleRoutes = new List<string>();
@@ -323,6 +324,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
                 || evidence.OwnerProof != selected.Proof || evidence.IdleLifecycleRevision != before.Revision)
                 return new(true, false, selected.ReasonCode ?? "delivery_reconciliation_required");
             freshness[projection] = selected.Proof.Selection.FreshnessVersion;
+            owners[projection] = selected.Proof;
             completedSiblings.Add(new(projection, state, before, selected));
             telemetry.Terminal(projection, "current", "already_completed", "delivery_already_completed",
                 sourceProof.HeadSequence, state.LastDeliveredSequence);
@@ -359,6 +361,8 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
             ObservedHeadMessageId = observedSource?.Proof?.HeadMessageId,
             CatalogFingerprint = entry.CatalogFingerprint,
             ProvenFreshnessVersions = freshness,
+            ProvenOwners = owners,
+            ProvenSource = observedSource?.Proof,
         };
     }
 

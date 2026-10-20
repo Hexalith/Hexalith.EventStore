@@ -1,0 +1,117 @@
+{
+  "snapshot": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/final-verifier-sources-11abdc21e21e441da600d8713662d6af",
+  "isolated_checkout": "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc",
+  "files": [
+    {
+      "path": ".github/workflows/p1r-qualification.yml",
+      "sha256": "7c460e8f77e5acc23a9f96056770ba31f385e9cd51b3d9e7e7c71907cc82dbf5",
+      "bytes": 2885
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/run_seed_controls.py",
+      "sha256": "04aaf4c33a6022c335d63a3d3e2d70e0c916198a58bcd5c4e800df0bbfdd5f02",
+      "bytes": 2998
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/seed_controls.py",
+      "sha256": "e094c1f00809ee80f9ef388e27d4ae8f303e7fc7b63eb76888b2157ab087c5e4",
+      "bytes": 18187
+    },
+    {
+      "path": "tools/p1r-isolated-runner.py",
+      "sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a",
+      "bytes": 298
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "sha256": "9198795b1e1cb659e8628024840dd2b23c4a0d4221b7888f555ea28397346863",
+      "bytes": 6341
+    },
+    {
+      "path": "tools/p1r-published-qualification.py",
+      "sha256": "c9c8f464629bea75163bbe6d3a243ba61ae99b1adff19a10d372315bc4b95027",
+      "bytes": 5815
+    },
+    {
+      "path": "tools/p1r-qualification.py",
+      "sha256": "8c39d7e14157f298305e862f50a6722153ed7422b80dc50cf12a48046c22f999",
+      "bytes": 1564
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "sha256": "b686e3886a36a06028e6c9163738a36085285face713db2bb81ff7d5e22eb6f7",
+      "bytes": 87294
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "sha256": "fcbf80c17726328ba60db1a50552c1a7b1495c15c0e1be8c3782e787595b787c",
+      "bytes": 50937
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "sha256": "d69e5ade06b14ed9f34a7fa3c75840eee9d13adb61ec06ff6ad976b5182a7d4f",
+      "bytes": 21081
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "sha256": "99eb3de223963b92b8205fc2a41e167bb0d155b553f539502ffd394beb426d01",
+      "bytes": 164402
+    },
+    {
+      "path": "tools/p1r_published_qualification.py",
+      "sha256": "f69aae74d8c8204ec4c3e5e1b1ef6bbaeb79b64444898fb257747b5008912b64",
+      "bytes": 126250
+    },
+    {
+      "path": "tools/p1r_qualification.py",
+      "sha256": "6332bbdd449fd4db46b19ee3603ce4451751c57c803244b7d297f2aebb20088d",
+      "bytes": 60690
+    },
+    {
+      "path": "tools/p1r_qualification_runtime.py",
+      "sha256": "a6734257ffb3d363157d5ea3be59a149ddf565adbea72a3a8fdc051766f5231e",
+      "bytes": 29016
+    },
+    {
+      "path": "tools/tests/fixtures/p1r-source-proof/source-v1-v4-vector.json",
+      "sha256": "a99f2d4dfdbea239293f2886ffcfcd4c7cd309a49e467db5152ce63353b12bbe",
+      "bytes": 18126
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "sha256": "5e67cf99c8023dd2ff32c8a65563107276c7b2448d96221f62c2d185e4a4ec35",
+      "bytes": 57387
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "sha256": "d92404221b06b83225da2756663ec83719477fc92f8a33950c0aae67ffcec8f7",
+      "bytes": 46978
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "sha256": "e1a9827e101ba55e62f9255c3982a32ca01c5d8f1d469de5d3235e248d45efe9",
+      "bytes": 208144
+    },
+    {
+      "path": "tools/tests/test_p1r_published_qualification.py",
+      "sha256": "5fb315c0b125e1700bee61f89e5df7d8d31cd41d7ab0ea10cd278ac3e1b5f8c8",
+      "bytes": 129282
+    },
+    {
+      "path": "tools/tests/test_p1r_qualification.py",
+      "sha256": "385b14908b035d695e0ec65aef83de16503205968e7c52ec585c3515adffb29f",
+      "bytes": 60663
+    },
+    {
+      "path": "tools/tests/test_p1r_snapshot_registration.py",
+      "sha256": "ed31709bb7c3a3e728a1ac123effceb7f8745db60eafe449d4fa90f3d5577ffa",
+      "bytes": 10867
+    },
+    {
+      "path": "tools/tests/test_p1r_verifier_corrections.py",
+      "sha256": "41f97dc0775f11b2227c43760f4876beae399cd85333419796ac6bd07e4e6548",
+      "bytes": 48139
+    }
+  ],
+  "scope": "bounded retained controls only; no VCS mutation"
+}

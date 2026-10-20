@@ -1,0 +1,636 @@
+{
+  "verifier_root": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "parent_verifier": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+        "rev-parse",
+        "HEAD"
+      ],
+      "started_unix": 1792346020.8892884,
+      "finished_unix": 1792346020.8908632,
+      "exit_code": 0,
+      "stdout": "9b66153515687463fc1b1e929f8b0e73d8145e2c\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--quiet",
+        "--no-hardlinks",
+        "--no-checkout",
+        "--no-recurse-submodules",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf"
+      ],
+      "started_unix": 1792346020.8910294,
+      "finished_unix": 1792346024.661365,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "checkout",
+        "--quiet",
+        "--detach",
+        "9b66153515687463fc1b1e929f8b0e73d8145e2c"
+      ],
+      "started_unix": 1792346024.6615663,
+      "finished_unix": 1792346032.4363124,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/references/Hexalith.AI.Tools",
+        "rev-parse",
+        "HEAD"
+      ],
+      "started_unix": 1792346032.4365745,
+      "finished_unix": 1792346032.4380558,
+      "exit_code": 0,
+      "stdout": "3f194e17174994d308ec84af9ee2b5aa68674d0d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--quiet",
+        "--no-hardlinks",
+        "--no-checkout",
+        "--no-recurse-submodules",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/references/Hexalith.AI.Tools",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/references/Hexalith.AI.Tools"
+      ],
+      "started_unix": 1792346032.4382207,
+      "finished_unix": 1792346032.6180208,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/references/Hexalith.AI.Tools",
+        "checkout",
+        "--quiet",
+        "--detach",
+        "3f194e17174994d308ec84af9ee2b5aa68674d0d"
+      ],
+      "started_unix": 1792346032.618189,
+      "finished_unix": 1792346032.6238413,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/references/Hexalith.Builds",
+        "rev-parse",
+        "HEAD"
+      ],
+      "started_unix": 1792346032.6240005,
+      "finished_unix": 1792346032.6255503,
+      "exit_code": 0,
+      "stdout": "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--quiet",
+        "--no-hardlinks",
+        "--no-checkout",
+        "--no-recurse-submodules",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/references/Hexalith.Builds",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/references/Hexalith.Builds"
+      ],
+      "started_unix": 1792346032.6256664,
+      "finished_unix": 1792346034.5625677,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/references/Hexalith.Builds",
+        "checkout",
+        "--quiet",
+        "--detach",
+        "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c"
+      ],
+      "started_unix": 1792346034.5627668,
+      "finished_unix": 1792346034.8871922,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/references/Hexalith.Commons",
+        "rev-parse",
+        "HEAD"
+      ],
+      "started_unix": 1792346034.8874311,
+      "finished_unix": 1792346034.8892286,
+      "exit_code": 0,
+      "stdout": "5c23c818f639c5bb3175f964c5549440bd5b876d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--quiet",
+        "--no-hardlinks",
+        "--no-checkout",
+        "--no-recurse-submodules",
+        "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/references/Hexalith.Commons",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/references/Hexalith.Commons"
+      ],
+      "started_unix": 1792346034.889458,
+      "finished_unix": 1792346035.254629,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/references/Hexalith.Commons",
+        "checkout",
+        "--quiet",
+        "--detach",
+        "5c23c818f639c5bb3175f964c5549440bd5b876d"
+      ],
+      "started_unix": 1792346035.254873,
+      "finished_unix": 1792346035.27255,
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+        "status",
+        "--porcelain=1"
+      ],
+      "started_unix": 1792346035.2833905,
+      "finished_unix": 1792346035.7709696,
+      "exit_code": 0,
+      "stdout": " M .gitattributes\n M _bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md\n M tools/p1r-published-consumers/README.md\n M tools/p1r-published-executor.py\n M tools/p1r-published-qualification.py\n M tools/p1r_isolation.py\n M tools/p1r_isolation_evidence.py\n M tools/p1r_published_executor.py\n M tools/p1r_published_qualification.py\n M tools/p1r_qualification.py\n M tools/tests/p1r_isolation_fixture.py\n M tools/tests/test_p1r_isolation.py\n M tools/tests/test_p1r_isolation_hardening.py\n M tools/tests/test_p1r_published_executor.py\n M tools/tests/test_p1r_published_qualification.py\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/\n",
+      "stderr": ""
+    }
+  ],
+  "copied_files": [
+    {
+      "path": "tools/p1r_published_executor.py",
+      "sha256": "c6632e00532697f90f20b26109495e26b348948ab0e5787d5299c60c2c491a86"
+    },
+    {
+      "path": "tools/release_evidence_codec.py",
+      "sha256": "25ab9bac602e9f798990d46961a21c701273c2f444fa98bdf3a0686e9f370a61"
+    },
+    {
+      "path": "tools/release-publication-identity.py",
+      "sha256": "f466a12adec0cdfea3812ba10b2dd071ebf1c40b7e310733e61cee7d209027a8"
+    },
+    {
+      "path": "tools/release-packages.json",
+      "sha256": "6b0b70b856839d4117bcd969f6a2de0093c477c109cb79f3f2882b1f05effcae"
+    },
+    {
+      "path": "tools/p1r_qualification_runtime.py",
+      "sha256": "4a63c2b18e049077a675c52ee0dec2724d55886f67b0744ec99e06bdf29d1f4a"
+    },
+    {
+      "path": "tools/oq8-v5-packet.py",
+      "sha256": "b0acde5c6cfa2654822ab7cd749f452fe60c3dc4a3c47d6b0e9713ac695c665b"
+    },
+    {
+      "path": "tools/prepare-oq8-v5-candidate.py",
+      "sha256": "21d43bb0fbfd2a1d3b8c0e5cbff2833b0c9694b7081475195ce02889895c4370"
+    },
+    {
+      "path": "tools/ext_protection_1.py",
+      "sha256": "1f6e3ad441d6f4e8fbc455c827a32a3ac279dca8d754b25b046ac06fbaff2963"
+    },
+    {
+      "path": "tools/validate-corrective-work-authorization.py",
+      "sha256": "b34fe37745bdfde72e7d243e4413d3406da9193cbd8a275d11136e3af23b5062"
+    },
+    {
+      "path": "tools/p1r-qualification.py",
+      "sha256": "8c39d7e14157f298305e862f50a6722153ed7422b80dc50cf12a48046c22f999"
+    },
+    {
+      "path": "tools/p1r_qualification.py",
+      "sha256": "d9b93d652529b0c06792e15139dc8b99036ee5539d529bccddbb2f2a734c276e"
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "sha256": "d49795d648424eb9c0fd4b942fb44e209ec5de324d93edc7049298e4c3f5db52"
+    },
+    {
+      "path": "tools/p1r-published-qualification.py",
+      "sha256": "e379708345d445161fa88b094f69eef3bfc7c06cf35203ac11133b99cebe8f35"
+    },
+    {
+      "path": "tools/validate-oq8-platform-evidence.py",
+      "sha256": "87c7e5289fad892d3008ad70923c3be63b7c2fb0ac5492392e65b686812ad9c7"
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "sha256": "d727f84eb5a5eccad1109908cafac8050d9b506ed7100efde1a4a969fd81aba1"
+    },
+    {
+      "path": "tools/verify-ext-protection-1.py",
+      "sha256": "6810d3ede10d42c2e5fdd63b031d1de6bc2f3eb0e6f0ab2d5d24f762f052624d"
+    },
+    {
+      "path": "tools/validate-corrective-release-evidence.py",
+      "sha256": "0a89fe21dbda773c2cdb62e54ff5c3cb37ab5a18c47121a189722c3662b7f9ce"
+    },
+    {
+      "path": "tools/validate-release-packages.py",
+      "sha256": "c04bcea6193015f0e4c191814d5b59c4b588a503ecce46bc8d8e1c3a22034171"
+    },
+    {
+      "path": "tools/p1r_successor_support_boundary.json",
+      "sha256": "2f2b2fd8a5efa41fc9e58d123682af54e52394896972bccb7f81d83518910f0f"
+    },
+    {
+      "path": "tools/p1r-isolated-runner.py",
+      "sha256": "6859be5f57735587561765e1175b0bb63ffb9b03f493341f36bddea07512e79a"
+    },
+    {
+      "path": "tools/p1r_support_boundary.json",
+      "sha256": "19892532995447336389fe98daaef19c44636942b3a33b791e13b2f534aab7e3"
+    },
+    {
+      "path": "tools/capture-corrected-deployed-runtime-parity-smokes.py",
+      "sha256": "7d134165963877d7633295bdb00504b4ea6b7424f26142cc6e3495b18ef48236"
+    },
+    {
+      "path": "tools/release_package_contract.py",
+      "sha256": "bd91c97e7723372299a8c894c4a6238330c5a0023a2c036e8bcb1f1e668ddf40"
+    },
+    {
+      "path": "tools/p1r_published_qualification.py",
+      "sha256": "6773f904cf19d0f5dab11f59ddbf2ec667d68eb9d23a271626d607a7a09df2ff"
+    },
+    {
+      "path": "tools/assemble-corrected-deployed-runtime-parity.py",
+      "sha256": "30328249592d11ab580a401b136c2c25d83d6c023b8cfcfb85497ac241b31ec2"
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "sha256": "8d8637eaeecd9acc85485ea651ace0e58e3aa3263f890d586252cf6298c6aefb"
+    },
+    {
+      "path": "tools/pack-release-packages.py",
+      "sha256": "97c0ff7ac4fddd219f4a1e66d0b0cd808e3e54d09eb5bf347e434025d87be62b"
+    },
+    {
+      "path": "tools/corrective-work-authorization.schema.json",
+      "sha256": "e3650beeb2c754be557c2fd4f73b9f0f1c40ec8154148c514f76d31b1b59c110"
+    },
+    {
+      "path": "tools/validate-corrected-deployed-runtime-parity.py",
+      "sha256": "0a768dda6de7b9c76d4c3aecabbab046c5e284ff0ebe605883e3d22e90b36613"
+    },
+    {
+      "path": "tools/oq8-v5-packet.schema.json",
+      "sha256": "db4d0c99ba53fd440af8e3193e42e4ca6eab894353ce26c3bb34f42b4f61bb17"
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "sha256": "c8d41a21030d299b21aafdc94cf6978e532dfc5c54c2276c4a3e750f7e258dcf"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "sha256": "e36a3ae93b32568ca2c61524c2680980bb8c3e463c2669fa15b80b7af3769c4d"
+    },
+    {
+      "path": "tools/tests/test_ext_protection_1.py",
+      "sha256": "b5e3fadd18939b773d1f42091f7e820620f21408d875d0a7b87edd12e2c59dbd"
+    },
+    {
+      "path": "tools/tests/test_p1r_snapshot_registration.py",
+      "sha256": "7703191bf5fdde2d0ce8f9c2ff6be13fc7503f3da773afadcd933a4ee4a4efc1"
+    },
+    {
+      "path": "tools/tests/test_ext_protection_1_cross_language.py",
+      "sha256": "4796f085a45138dceb5b4a414d274beff080d663b2df9dd7578bc22c8f5b0161"
+    },
+    {
+      "path": "tools/tests/p1r_isolation_fixture.py",
+      "sha256": "6f810e791cd4cc4664cf399df0ed1c26327f3a3dca30e5914e8ce5211ffd6d77"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_qualification.py",
+      "sha256": "b217ebee1c637d6e5cc55ba3e22e146a60421d367800fa2ab71ca97336763186"
+    },
+    {
+      "path": "tools/tests/test_release_publication_authority.py",
+      "sha256": "9a7c0150a79877555507ea832da522a7df403eaae1933f6392419bb384bff38d"
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "sha256": "d401b40eea124538269a2c8cf7a6ff02da8ca404654ddbcfe3bf6f2df0b095c0"
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "sha256": "f2bcdae48f43117e60f37b775298f6c1f6d8aeaa7dd50285626f41b5211114ca"
+    },
+    {
+      "path": "tools/tests/test_p1r_qualification.py",
+      "sha256": "acce23d9378111c8a9852550abc649ccbd88ba12701192dd5f6731304f563a9f"
+    },
+    {
+      "path": "tools/tests/test_corrective_work_authorization.py",
+      "sha256": "df94292c0c41911a6c9f8c7a24978c6489186e2d5cd7e1750ac12308e68a48eb"
+    },
+    {
+      "path": "tools/tests/release_publication_fixture.py",
+      "sha256": "a558fd274b4f3228d9c0d28276bf0043d420105dc11d845486f6372b1b8f8a1a"
+    },
+    {
+      "path": "tools/evidence-provider-adapters/azure-immutable-blob-v1.sh",
+      "sha256": "29076f2b06726fa634373908ed5a9f9709114b0e528e10458cec9cfec389dc50"
+    },
+    {
+      "path": "tools/p1r-published-consumers/.editorconfig",
+      "sha256": "22f38a465ac14711e46056e4c7909138fade7d8488b520591955afddd8c636c2"
+    },
+    {
+      "path": "tools/p1r-published-consumers/Directory.Packages.props",
+      "sha256": "9402d8e36d276d3934f544050200c4d38120a089f6749eec53b795fda32d3042"
+    },
+    {
+      "path": "tools/p1r-published-consumers/Directory.Build.props",
+      "sha256": "72312901a22cc5c8fdddc062a37af3670c895e10a2fd806abe9e3ebceb91bfdf"
+    },
+    {
+      "path": "tools/p1r-published-consumers/PublishedIdentity.cs",
+      "sha256": "be1680ab3d4f4f5f039d32bee4052efaa04f94c444db56b291a604971cec1fc9"
+    },
+    {
+      "path": "tools/p1r-published-consumers/NuGet.Config",
+      "sha256": "a5f3ea8b4b503e083562f77913dd6ca96a234bee174b15014db695b454cc5a2e"
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "sha256": "aaf730b65e463a3210d56ade189cc602c6968e8a112a02beb138c7020c8ab6ea"
+    },
+    {
+      "path": "tools/p1r-published-consumers/FixtureSnapshotQualification.cs",
+      "sha256": "b8e1e4e85a22688cb04ed321244d15c9a359689786c522844a7999b4fc588fd2"
+    },
+    {
+      "path": "tools/p1r-published-consumers/Directory.Build.targets",
+      "sha256": "17284cb74605517cbec8a8153505da71a685b28694b67b5ef80608cd79b1c0ea"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacyInvoker.cs",
+      "sha256": "122f0986bdf1c765cd5aa66c0b3f6e2d27ff6b52c5b03b2a1dd3982078632de7"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/run.sh",
+      "sha256": "90276beede0bea0bd73db9ebb55cc93190293ccef340f0c540f08a1f27260a57"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacySnapshotManager.cs",
+      "sha256": "e9a800add1f21951e09731abacf95e7543a04318181e6ffcad91513d16e25d37"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/CurrentConsumer.cs",
+      "sha256": "528b956d93e82d2f4d89c4b2c777ba81efcb636ab32785708282ada76ca9861d"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacyProcessor.cs",
+      "sha256": "e4c25672cea785b1ba395a1d30b3a1a5c1f058b95c82563691e090003fead248"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/README.md",
+      "sha256": "8a50a1fc2c54f91854350d5f35c4165046588e8f0ab6bc7400808cc8c6d549be"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacyRejectionEvent.cs",
+      "sha256": "ec7dc289626563fe5bca9e214969745d7066cad147f4b2d5ff3f8499f833febf"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacyEventfulResult.cs",
+      "sha256": "807bf112b256823dc68dc2da8b4724a025a71a19df68851adbdbe7914fbd9b2b"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacyConsumer.cs",
+      "sha256": "f2bb3ebb44bc4b8038ebd8fcb6e286310833b380a5decc74317b125f3ab811f3"
+    },
+    {
+      "path": "tools/folded-snapshot-compatibility/LegacySuccessEvent.cs",
+      "sha256": "4905de38f11637a570c0ab2cd881a363ff5bab7df03f787c5468520437774ece"
+    },
+    {
+      "path": "tools/ext-protection-1/plan.json",
+      "sha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c"
+    },
+    {
+      "path": "tools/deployed_runtime_parity_handlers/__init__.py",
+      "sha256": "39efb6d37ba6ff98a791d5af4cdc5e099824f7f210258efd917776c8135c613d"
+    },
+    {
+      "path": "tools/deployed_runtime_parity_handlers/v1.py",
+      "sha256": "b2b550794dc27ad7c33a9c221c594d0f456f1b90879477d3432df81336a9e6c0"
+    },
+    {
+      "path": "tools/release_evidence_handlers/__init__.py",
+      "sha256": "a33b53f823fa36b822395aee2d01597091b37c26248995c2629b0a9e30c70625"
+    },
+    {
+      "path": "tools/release_evidence_handlers/v3.py",
+      "sha256": "20fcb7d024f4c1cb024f8d2c87bc1d5d47c2bb242a9126098ded025603f1204a"
+    },
+    {
+      "path": "tools/p1r-published-consumers/registration-probe/RegistrationProbe.csproj",
+      "sha256": "70572a81d192e8b2ff41d042f5f98f36b597b33ed6c226e6b506b3ab6a4d8e82"
+    },
+    {
+      "path": "tools/p1r-published-consumers/registration-probe/StartupHook.cs",
+      "sha256": "74579e7f33c55d533d4a306dec8db9e1e75219af6606a2e3c874ca02c6d16c98"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/IncrementCounter.cs",
+      "sha256": "1e09edc3d4723aaa4d4f23755954ed5031d6c4ed0a49e552ebc996297d5370ed"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterAggregate.cs",
+      "sha256": "d501129e720329f99f8e5e64c721665523a2ae462d5288f25d72b9b8dc56ce15"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterIncremented.cs",
+      "sha256": "c7277b87f7a71d611f94e1673937bfc38afa21dd3dbeaf8dfd1d0efa8656237e"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/AssertCounter.cs",
+      "sha256": "d3aa3fb89458a680ea6b485666ffdf06e993d002ccae90889c7cfef2dc01359e"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterSnapshotParity.cs",
+      "sha256": "9a561db3d5a08e7a8af7885d36127f2dfebe118ac6b2953c78d1467fe5e10f45"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/CounterState.cs",
+      "sha256": "81dde09fef9edfa307aadab207ecacf91e81d8bfb86a26af1f0a3b829569db8a"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Domain.csproj",
+      "sha256": "4f73ad75948dac648d8bd5c551e7a2f7a21e7bebb5a7956301b3b6afa7c02913"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/Program.cs",
+      "sha256": "92877d1b1d06431ec4695d071e42e2e52983883e0cd5456fa0873b7bf28d5728"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/FixtureEvolutionManifest.cs",
+      "sha256": "97a62d70f1da7c7c0e0538a6df652293e2b00ce8089148a3fcb443266a49592a"
+    },
+    {
+      "path": "tools/p1r-published-consumers/domain/fixture-evolution-manifest.json",
+      "sha256": "643a7b5adfc7f387f3500c8b2b94f02deceaf7bbc91ec9306e284ca2b9883dfb"
+    },
+    {
+      "path": "tools/p1r-published-consumers/probe/Probe.csproj",
+      "sha256": "1a20f9509e2b4ac00e979694815ebe7057d6a963c788d84a252abe855cf6b2b6"
+    },
+    {
+      "path": "tools/p1r-published-consumers/probe/ExecutedChecks.cs",
+      "sha256": "980b5a66270ac096db0b44b953a670bb0dc1e50f98ea1d1f05f1e33988028244"
+    },
+    {
+      "path": "tools/p1r-published-consumers/probe/Program.cs",
+      "sha256": "7c778a5d66518a38ef57b344d478b3449e61d2c19e558515012f25abb65a55eb"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureEffectAdmission.cs",
+      "sha256": "35f3bbd367fb5f488181cff63db592d28c6c09b59dba46934906c3af42bffeec"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/ExpectedDenial.cs",
+      "sha256": "f3a64f1678781293e151437bebe0187dd12d330f4de2120fb25de9fa446a3052"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs",
+      "sha256": "fd686bd3aae7906b9f66083a93b8ec34fb5179618ae03c1343d7b1009912c110"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureIntentAdapter.cs",
+      "sha256": "41e1de3b6e3281030d20756537233cd1dd51427a0249d53b789ce2f7315aa757"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureEffectSubmitter.cs",
+      "sha256": "abb8e92b7c54139765cbf12a79c9953610db4f3c178c75169f801fdbd7fc78c3"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureTrustedEffectAuditSink.cs",
+      "sha256": "fa882dcf0a842959fdbc60dd0d7e891739b296d84b58b54030b7ed12823d7a09"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Program.cs",
+      "sha256": "844ff841be18df53814e210f0cf6809b55cb2b35759878e049fde6dc339d0ee0"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/QualificationCapabilities.cs",
+      "sha256": "60d4cc11ff36df3bfc88283e570d6b880abd9b4714207f3dc2424350c1fd35b3"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureReminderDelegation.cs",
+      "sha256": "1a3174f53ba6ea7034d8d2e5462471dae6f11803e82a0fdfe8835ab62ebd8590"
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/Host.csproj",
+      "sha256": "afeb1b31ab660ec2c7bba45e90dbc4a29cd169b13fd17996d8c064f0a413bdf7"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/malformed-records.json",
+      "sha256": "375881dfdd07e7184109ea4c005049db4346e10a741d0ff7fdcfbb794fe29856"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/rejections.json",
+      "sha256": "ef47cfe7668c199398dad8bd5d51012a3239b58dbf3a749b71d5345196b40a34"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/README.md",
+      "sha256": "6f5e5c0eac2c559a0bb01291622ba34b75c57495118ac28a2aa1051a8a06f7bf"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/verification.json",
+      "sha256": "2d7d638b9bde8e0964d841ba223615f71244c5d30e105114116dbbe5e4276f39"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/authority_cli.py",
+      "sha256": "a03a6c4ebf2bf335417846a1276a9f49ab0450977e7379b0b180ae1b4b2686a0"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/observed-rejections.json",
+      "sha256": "7b6b5f190ae888f16cb3ad4a8e4f89270188ccc1eb43418ff73d276cd99c4272"
+    },
+    {
+      "path": "tools/tests/fixtures/corrective-work-authorization/subject-vectors.json",
+      "sha256": "7e6df62ef837b992e80251429ca1ba06b5c1c9554dca998803f16eead73fbb7c"
+    },
+    {
+      "path": "tools/tests/fixtures/ext-protection-1/capability-vectors.json",
+      "sha256": "e0308fd6218c0a4951d50c748679cba2194410148e92a9dafd207e097de01b34"
+    },
+    {
+      "path": "tools/tests/fixtures/ext-protection-1/CapabilityInterop.cs",
+      "sha256": "d5a7a1df1689aaca448bec454f3b2ab53f2f4b9e2be71a42f67aebef6607aaaf"
+    },
+    {
+      "path": ".gitattributes",
+      "sha256": "78b4794113dd05a276174e0906a631c40462459598133a391c16a509a0d9856c"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md",
+      "sha256": "0a072ca2ee75901b1d6003bcca5afbc3d9bfac4eb9c91e71b84cdec86261a1ec"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251.py",
+      "sha256": "7be0e3939ce3471858f39cdcc9ab3ebab08c1648f5f3440e7c523a9125e4bedb"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations.json",
+      "sha256": "e8b4b4719a5cc90a30d104b803efb7ab13b5e1fe76d769dce3b6d2657720ba66"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-copy.json",
+      "sha256": "38760bbe2a3b038267c924a09974ce5cac31c14ffbd6d86eab4d8b488a78e1f9"
+    }
+  ],
+  "head": "9b66153515687463fc1b1e929f8b0e73d8145e2c",
+  "status": " M .gitattributes\n M _bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md\n M tools/p1r-published-consumers/README.md\n M tools/p1r-published-executor.py\n M tools/p1r-published-qualification.py\n M tools/p1r_isolation.py\n M tools/p1r_isolation_evidence.py\n M tools/p1r_published_executor.py\n M tools/p1r_published_qualification.py\n M tools/p1r_qualification.py\n M tools/tests/p1r_isolation_fixture.py\n M tools/tests/test_p1r_isolation.py\n M tools/tests/test_p1r_isolation_hardening.py\n M tools/tests/test_p1r_published_executor.py\n M tools/tests/test_p1r_published_qualification.py\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/\n"
+}

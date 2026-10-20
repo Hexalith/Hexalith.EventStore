@@ -9,6 +9,17 @@ namespace Hexalith.EventStore.Server.Tests.SignalR;
 public class SignalROptionsValidationTests {
     private readonly ValidateSignalROptions _validator = new();
 
+    [Theory]
+    [InlineData(17, 2_048)]
+    [InlineData(16, 2_049)]
+    [InlineData(16, 1)]
+    public void Validation_WithUnrepresentableOrRaisedContractCaps_Fails(int entries, int bytes) {
+        _validator.Validate(null, new SignalROptions {
+            MaxDetailMetadataEntries = entries,
+            MaxDetailMetadataBytes = bytes,
+        }).Failed.ShouldBeTrue();
+    }
+
     [Fact]
     public void DefaultValues_AreCorrect() {
         var options = new SignalROptions();

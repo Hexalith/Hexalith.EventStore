@@ -1,0 +1,104 @@
+{
+  "argv": [
+    "/opt/python/bin/python3.12",
+    "-I",
+    "-u",
+    "-c",
+    "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-I','-u','-c','import time; time.sleep(30)'],start_new_session=True); print('p1r-owned-descendant='+str(p.pid),flush=True); time.sleep(30)"
+  ],
+  "assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "detached-descendant-observed",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [
+        {
+          "pgid": 4462,
+          "pid": 4462,
+          "session": 4462,
+          "start_ticks": 23121988
+        },
+        {
+          "pgid": 4463,
+          "pid": 4463,
+          "session": 4463,
+          "start_ticks": 23121989
+        }
+      ],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "repeated-cleanup",
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-8357499d6c4d4206b86a4a7decbfeb37",
+  "execution": "passed",
+  "exit_code": -15,
+  "finished_utc": "2026-10-18T23:53:13.919164+00:00",
+  "id": "f20b97e81c104333a0b8ae919020d3b8",
+  "invocation": "00eb18f0d3c745ea9eba1d2a702562bb",
+  "launch_error": null,
+  "output": {
+    "path": "receipts/f20b97e81c104333a0b8ae919020d3b8.txt",
+    "sha256": "e3d72280b10ea974b59e0298eee92f5ac8dee233f197b41a946c68b8b86dc57d"
+  },
+  "owned_processes": [
+    {
+      "pgid": 4462,
+      "pid": 4462,
+      "session": 4462,
+      "start_ticks": 23121988
+    },
+    {
+      "pgid": 4463,
+      "pid": 4463,
+      "session": 4463,
+      "start_ticks": 23121989
+    }
+  ],
+  "root_process": {
+    "pgid": 4462,
+    "pid": 4462,
+    "session": 4462,
+    "start_ticks": 23121988
+  },
+  "started_utc": "2026-10-18T23:53:13.500048+00:00",
+  "timed_out": true
+}

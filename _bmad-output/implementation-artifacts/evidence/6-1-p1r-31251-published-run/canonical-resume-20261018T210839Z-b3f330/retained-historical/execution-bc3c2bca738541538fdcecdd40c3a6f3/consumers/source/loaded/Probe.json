@@ -1,0 +1,34 @@
+{
+  "assemblies": [
+    {
+      "name": "Hexalith.EventStore.Client",
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "sha256": "521b13601827ca68de00927db8a634beaf9b5a1632be2717b0560db87fba183e",
+      "version": "3.124.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts",
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "sha256": "768d5df0e95fd1db287932427191e6d73ca7de64bc29b980ca27322403184569",
+      "version": "3.124.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.Server",
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "sha256": "756929cea57d040eb4309255faf64c7762b900d104462bc7e6ffa8af21bf0541",
+      "version": "3.124.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.DomainService",
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "sha256": "40d2ba51b996d073016fad924dbcb9beba05b48dd9124ecf3f6b5f12784b18ab",
+      "version": "3.124.0.0"
+    },
+    {
+      "name": "Hexalith.EventStore.ServiceDefaults",
+      "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3/consumers/source/probe/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "sha256": "aba57ff94baf95e1ca89070857b3e1d28c31c7fbf765a5dd2ef0d6e7390d5719",
+      "version": "3.124.0.0"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "scope": "read-only diagnosis of private-runner admission failure",
+  "walk_errors": [],
+  "sudo_probe": {
+    "argv": [
+      "sudo",
+      "-n",
+      "id"
+    ],
+    "exit_code": 0,
+    "stdout": "uid=0(root) gid=0(root) groups=0(root)\n",
+    "stderr": ""
+  }
+}

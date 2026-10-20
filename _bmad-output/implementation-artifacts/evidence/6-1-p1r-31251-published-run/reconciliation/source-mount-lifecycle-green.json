@@ -1,0 +1,74 @@
+[
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_executor.py",
+      "-v",
+      "-k",
+      "testActualImportAcceptsSibling"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:38:24.139253+00:00",
+    "finished_utc": "2026-10-18T22:38:25.547737+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-green-0.log",
+    "log_sha256": "1df6a8cb8721a7d719975cc65f23581a1efce0f6616fbeab948429731d054e6e"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation_hardening.py",
+      "-v",
+      "-k",
+      "testControllerRechecks"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:38:25.547827+00:00",
+    "finished_utc": "2026-10-18T22:38:26.079363+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-green-1.log",
+    "log_sha256": "ab6dd7dab11445eefbe87a8dcf6b08617cdb82de403aa3ee72062314030545c8"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "py_compile",
+      "tools/p1r_isolation.py",
+      "tools/p1r_published_qualification.py",
+      "tools/tests/test_p1r_published_executor.py",
+      "tools/tests/test_p1r_isolation_hardening.py"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:38:26.079406+00:00",
+    "finished_utc": "2026-10-18T22:38:26.178086+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-green-2.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:38:26.178133+00:00",
+    "finished_utc": "2026-10-18T22:38:26.215134+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-green-3.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

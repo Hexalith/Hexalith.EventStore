@@ -222,8 +222,8 @@ internal sealed partial class ReadModelBatchProtocol {
         _batch = batch;
         _ownerSelection = ReadModelOwnerSelectionMetadata.FromBatch(batch);
         _ownerSelections = ReadModelOwnerSelectionMetadata.FromCoordinatedBatch(batch);
-        if (batch.RetainManifestForRecovery && (_ownerSelection is not null || _ownerSelections is not null))
-            throw new ArgumentException("Pending-key recovery cannot be combined with guarded owner selection.", nameof(batch));
+        if (batch.RetainManifestForRecovery && _ownerSelections is not null)
+            throw new ArgumentException("Pending-key recovery cannot be combined with coordinated owner selections.", nameof(batch));
         _injector = injector;
         byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
         if ((_ownerSelection is not null || _ownerSelections is not null) && manifest.Length > 1_048_576)

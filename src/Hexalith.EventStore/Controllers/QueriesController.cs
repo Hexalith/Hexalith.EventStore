@@ -20,6 +20,7 @@ using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.EventStore.Controllers;
 
@@ -36,7 +37,8 @@ public partial class QueriesController(
     ILogger<QueriesController> logger,
     IIdentityGatewayAdmission? identityAdmission = null,
     IConfiguration? configuration = null,
-    WorkloadAssertionValidator? assertionValidator = null) : ControllerBase {
+    WorkloadAssertionValidator? assertionValidator = null,
+    IOptionsMonitor<WorkloadAuthenticationOptions>? workloadOptions = null) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
 
     private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
@@ -71,7 +73,7 @@ public partial class QueriesController(
         QueryCallerAuthority? ownerAuthority = null;
         if (request.OriginatingQuery is not null || request.OriginatingAssertion is not null)
         {
-            if (request.OriginatingQuery is not { CallerAuthority.Origin: "authenticated-caller" } original
+            if (request.OriginatingQuery is not { CallerAuthority.Origin: "authenticated-caller" or "delegated-owner-query" } original
                 || original.TenantId != query.Tenant || original.UserId != request.PrincipalId || assertionValidator is null)
                 return Forbid();
             string gatewayWorkload = configuration?["Authentication:QueryAuthority:GatewayWorkloadId"] ?? "eventstore";
@@ -79,7 +81,18 @@ public partial class QueriesController(
                 DaprInternalAuthenticationOptions.SchemeName, request.OriginatingAssertion,
                 EventStoreWorkloadOperations.DomainServiceQuery, [gatewayWorkload], caller, cancellationToken).ConfigureAwait(false);
             if (!origin.Succeeded || origin.Principal is null || !QueryCallerAuthorityBinding.Verify(original, origin.Principal, gatewayWorkload)) return Forbid();
-            ownerAuthority = new("delegated-owner-query", [], original.CallerAuthority.Permissions);
+            if (original.CallerAuthority.Origin == "delegated-owner-query"
+                && (original.CallerAuthority.OriginatingContext is not { } inherited
+                    || inherited.OriginalActorId != request.PrincipalId || !original.IsDelegated
+                    || inherited.IsDelegated && string.IsNullOrWhiteSpace(inherited.DelegationId)
+                    || !inherited.IsDelegated && inherited.DelegationId is not null)) return Forbid();
+            ownerAuthority = new("delegated-owner-query", [], original.CallerAuthority.Permissions)
+            {
+                OriginatingContext = original.CallerAuthority.Origin == "delegated-owner-query"
+                    ? original.CallerAuthority.OriginatingContext
+                    : new(original.OriginalActorId!, original.AuthenticatedWorkloadId,
+                        original.IsDelegated, original.DelegationId, original.Scopes, original.Audience),
+            };
         }
 
         string correlationId = HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString()
@@ -90,7 +103,11 @@ public partial class QueriesController(
         var submitted = new SubmitQuery(query.Tenant, query.Domain, query.AggregateId, query.QueryType,
             payload, correlationId, request.PrincipalId, EntityId: query.AggregateId,
             ProjectionType: query.Domain, AuthenticatedWorkloadId: caller,
-            OriginalActorId: request.PrincipalId, IsDelegated: true) { CallerAuthority = ownerAuthority };
+            OriginalActorId: request.PrincipalId, IsDelegated: true,
+            Audience: ownerAuthority is not null && workloadOptions?.Get(DaprInternalAuthenticationOptions.SchemeName).Audience is { Length: > 0 } audience
+                ? [audience.Trim()] : null) { CallerAuthority = ownerAuthority };
+        if (query.QueryType == Hexalith.EventStore.Contracts.Projections.InspectProjectionCurrentQuery.QueryType)
+            return await InspectProjectionCurrentAsync(request, ownerAuthority, correlationId, cancellationToken).ConfigureAwait(false);
         SubmitQueryResult result = await mediator.Send(submitted, cancellationToken).ConfigureAwait(false);
         Response.Headers.CacheControl = "no-store";
         return Ok(new SubmitQueryResponse(result.CorrelationId, result.Payload,

@@ -1,0 +1,10 @@
+{
+  "beforeRestartReceiptCount": 3,
+  "broker": "kafka",
+  "denialObserved": true,
+  "messageId": "303cc965498b08b0f013cfe8",
+  "quarantineEffects": 0,
+  "restartReceipt": 349,
+  "scenario": "failed-diversion",
+  "sourceRecoveredAfterRestart": true
+}

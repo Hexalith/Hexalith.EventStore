@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/run-seven-suites.py"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+  "started_utc": "2026-10-18T21:43:34.969243+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/seven-suites-driver.log",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T21:53:03.461664+00:00"
+}

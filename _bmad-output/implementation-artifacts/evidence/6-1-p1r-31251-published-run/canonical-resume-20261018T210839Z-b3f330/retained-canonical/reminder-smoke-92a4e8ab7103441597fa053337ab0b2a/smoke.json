@@ -1,0 +1,50 @@
+{
+  "cases": [
+    {
+      "assertions": {
+        "attempted": 48,
+        "failed": 0,
+        "passed": 48
+      },
+      "id": "scheduled-restart-effect",
+      "outcome": "effect",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json",
+      "sha256": "467cb709680b7f44bb0f3841b53c9f6cd70f03fe2176ba6f1a1f50678dfb2023"
+    },
+    {
+      "assertions": {
+        "attempted": 47,
+        "failed": 0,
+        "passed": 47
+      },
+      "id": "stale-generation-refusal",
+      "outcome": "refusal",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json",
+      "sha256": "8e3761248b94741db81987274b1afbd27de015c618a96d5b4b5a8da691ecda9d"
+    },
+    {
+      "assertions": {
+        "attempted": 48,
+        "failed": 0,
+        "passed": 48
+      },
+      "id": "tenant-preservation",
+      "outcome": "effect",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json",
+      "sha256": "70920f67223769f1819a520991a5aa22618dab2eefcb840222220bc381112e66"
+    }
+  ],
+  "cleanup_assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "errors": [],
+  "executor_errors": [],
+  "finished_utc": "2026-10-18T19:13:50.255595+00:00",
+  "mode": "reminder",
+  "p1r_usable": false,
+  "scope": "bounded private control; not full qualification",
+  "script_sha256": "f10a24e70879068c5c32c7a4d9f8d2b3b374077c11b154669a5af499f797d2bf",
+  "started_utc": "2026-10-18T19:04:35.080565+00:00"
+}

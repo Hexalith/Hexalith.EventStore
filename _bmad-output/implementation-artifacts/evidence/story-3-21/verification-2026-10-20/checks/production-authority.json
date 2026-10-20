@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/validate-dapr-broker-qualification.py",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run",
+    "--require-production-authority"
+  ],
+  "endedUtc": "2026-10-20T11:09:21.028365+00:00",
+  "exitCode": 1,
+  "startedUtc": "2026-10-20T11:09:20.957265+00:00",
+  "stderr": "",
+  "stdout": "FAIL: artifacts: unlisted or missing retained files\n"
+}

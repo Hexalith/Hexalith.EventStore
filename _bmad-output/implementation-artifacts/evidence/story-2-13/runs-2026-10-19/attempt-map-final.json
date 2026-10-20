@@ -1,0 +1,146 @@
+{
+  "SchemaVersion": 1,
+  "CapturedUtc": "2026-10-19T16:02:52.053050+00:00",
+  "RunStartRevision": "dfe963ffd44c4df1d3b43891234e30231a9a28e8",
+  "SpecBaselineCommit": "f2b480b68a8bd5369b3cdf550340e0fadfb2332b",
+  "SupersedesForFinalBinarySelection": "attempt-map.json",
+  "Attempts": [
+    {
+      "Manifest": "real-projection-distribution-20261019T1550089359725Z-a31f454413a046d28117ea11ea81a0c5/manifest.json",
+      "ManifestSha256": "0aceb5b65828261a8924dd12d0a1a996ee52425d1d577ca0fcc850e443fee65a",
+      "Scenario": "real-projection-distribution",
+      "StartedUtc": "2026-10-19T15:50:08.9359725+00:00",
+      "CompletedUtc": "2026-10-19T15:50:13.1392865+00:00",
+      "SourceMatchesCurrent": true,
+      "BinariesMatchCurrent": false,
+      "CommandReceipt": "real-projection-current-source-command.json",
+      "CommandReceiptSha256": "abfc0eb427840283005a5dac67b44bc8f5d6fae306958d2e2b8b1af4d80ed564",
+      "Disposition": "pre-solution-build-binary-pass-not-final-binary-coverage",
+      "Limitations": [
+        "exact-topic-development-profile-only",
+        "no-real-projection-scoped-detail",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-transition-or-rollback-approval"
+      ]
+    },
+    {
+      "Manifest": "real-projection-distribution-20261019T1600417069432Z-6e3f2abe3ad542a7b2071db197716455/manifest.json",
+      "ManifestSha256": "b05fb6b6f2798af293dc6fcb6f23346463fa64dd036b35e6746c98d346ed562e",
+      "Scenario": "real-projection-distribution",
+      "StartedUtc": "2026-10-19T16:00:41.7069432+00:00",
+      "CompletedUtc": "2026-10-19T16:00:45.9636102+00:00",
+      "SourceMatchesCurrent": true,
+      "BinariesMatchCurrent": true,
+      "CommandReceipt": "real-projection-post-solution-build-command.json",
+      "CommandReceiptSha256": "319e902bdb71a3676a73d3a7229643b55161596161f953bbac39bf7232010419",
+      "Disposition": "final-built-binary-local-scenario-pass-not-approved-production",
+      "Limitations": [
+        "exact-topic-development-profile-only",
+        "no-real-projection-scoped-detail",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-transition-or-rollback-approval"
+      ]
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1533404182690Z-b9f7dc324a3a4748b8be0c66c4008882/manifest.json",
+      "ManifestSha256": "ba7fb2d37ab491d9aa4908a13c149057ba4526d979adf130014449c6933e3bf6",
+      "Scenario": "synthetic-distribution",
+      "StartedUtc": "2026-10-19T15:33:40.418269+00:00",
+      "CompletedUtc": "2026-10-19T15:35:45.5536883+00:00",
+      "SourceMatchesCurrent": false,
+      "BinariesMatchCurrent": false,
+      "CommandReceipt": null,
+      "CommandReceiptSha256": null,
+      "Disposition": "superseded-source-development-pass-not-current-coverage",
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1537149433262Z-6d406b5b61134754a68cc5e404cd6f74/manifest.json",
+      "ManifestSha256": "09f26954b0f8aa6e5199cd7b25be2324670a579b5003bf67f78fe85cc41b93df",
+      "Scenario": "synthetic-distribution",
+      "StartedUtc": "2026-10-19T15:37:14.9433262+00:00",
+      "CompletedUtc": "2026-10-19T15:39:29.361568+00:00",
+      "SourceMatchesCurrent": false,
+      "BinariesMatchCurrent": false,
+      "CommandReceipt": null,
+      "CommandReceiptSha256": null,
+      "Disposition": "superseded-source-development-pass-not-current-coverage",
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1547368108854Z-a16dc3a87e974680853222d8065139d8/manifest.json",
+      "ManifestSha256": "d1f25d5d20d4feb88200b1516ff8c8808722076e40f37e93619a86806ba980bc",
+      "Scenario": "synthetic-distribution",
+      "StartedUtc": "2026-10-19T15:47:36.8108854+00:00",
+      "CompletedUtc": "2026-10-19T15:49:50.258442+00:00",
+      "SourceMatchesCurrent": true,
+      "BinariesMatchCurrent": false,
+      "CommandReceipt": "synthetic-current-source-command.json",
+      "CommandReceiptSha256": "fffc442f82e2992a2a0e8eb2ed2163bc3572b13885285208c8931472c7bda07f",
+      "Disposition": "pre-solution-build-binary-pass-not-final-binary-coverage",
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1558084979342Z-03013efdef8e4a0698aba33b613b8207/manifest.json",
+      "ManifestSha256": "f2242dbe8e0c6ae81a12de78b9928acb0844aaec4a5f7f6b6d86a3990ea65b90",
+      "Scenario": "synthetic-distribution",
+      "StartedUtc": "2026-10-19T15:58:08.4979342+00:00",
+      "CompletedUtc": "2026-10-19T16:00:17.1991176+00:00",
+      "SourceMatchesCurrent": true,
+      "BinariesMatchCurrent": true,
+      "CommandReceipt": "synthetic-post-solution-build-command.json",
+      "CommandReceiptSha256": "25cd490fe0ac331658ce54f8d0f1711a6f71343923e0cb8af157a7fcc0b80d17",
+      "Disposition": "final-built-binary-local-scenario-pass-not-approved-production",
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "Manifest": null,
+      "CommandReceipt": "synthetic-command.json",
+      "CommandReceiptSha256": "0c1a4de0cddf743d782ea05131b0fd3ec8da770e691d3bf0c677cb1c1e7fff17",
+      "Disposition": "failed-unscoped-recovery-observer-no-qualification",
+      "SourceSnapshotRetained": false,
+      "StartedUtc": "2026-10-19T15:45:09.897964+00:00",
+      "CompletedUtc": "2026-10-19T15:45:34.656692+00:00"
+    }
+  ],
+  "FinalBuiltBinaryManifests": [
+    "real-projection-distribution-20261019T1600417069432Z-6e3f2abe3ad542a7b2071db197716455/manifest.json",
+    "synthetic-distribution-20261019T1558084979342Z-03013efdef8e4a0698aba33b613b8207/manifest.json"
+  ],
+  "OwnerApprovals": {
+    "SignalRTransport": "pending",
+    "Architecture": "pending",
+    "Security": "pending",
+    "Operations": "pending",
+    "Test": "pending"
+  },
+  "ProductionProfileApproved": false,
+  "AcceptedException": null,
+  "StoryCompletionAuthorized": false
+}

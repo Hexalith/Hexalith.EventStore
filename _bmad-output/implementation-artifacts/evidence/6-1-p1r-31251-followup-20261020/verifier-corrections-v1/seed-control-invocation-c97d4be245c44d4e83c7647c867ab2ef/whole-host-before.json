@@ -1,0 +1,138 @@
+{
+  "containers": [
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "6b67beda5906151471fe42db1f8068345f7000409a11a9a902394ba1817e029e",
+      "Image": "sha256:11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641",
+      "Name": "/story-3-21-3e8d96883762f06d-openbao",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-20T10:35:11.418549679Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "73825492ea2ebeba0461f578f7cee505ffe6fd124a9fe91328680dbaab8a040c",
+      "Image": "sha256:2cc2da2f7c4ece604041e6a420de04a297afb24cea8b3c9394bd0e126a334444",
+      "Name": "/story-3-21-3e8d96883762f06d-scheduler",
+      "State": {
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "8623af8b7bbd8ebd3d73221af72615162475f3f8a7190432e09e64e51befc826",
+      "Image": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "Name": "/dapr_scheduler",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-19T15:22:08.450688315Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+      "Image": "sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "Name": "/dapr_redis",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-19T15:22:08.435874046Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "bc4790752c19e94e647c695dfdb4719f0560dbb59a625548fdce0fbe5ad90586",
+      "Image": "sha256:c9da106eddcbb625c94baea31af4ed576d32750741b442c99f51518c420e76cc",
+      "Name": "/story-3-21-3e8d96883762f06d-placement",
+      "State": {
+        "Running": false,
+        "StartedAt": "0001-01-01T00:00:00Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "c2e3aa8d3a062474b7c644e1ba7c4eb1fe4b6aa4a0c8bbbf59e879adfc3877d9",
+      "Image": "sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58",
+      "Name": "/story-3-21-3e8d96883762f06d-rabbitmq",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-20T10:35:23.052029476Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488",
+      "Image": "sha256:bb570eb45c2994eaf32da783cc098b3d51d1095b73ec92919863d73d0a9eaafb",
+      "Name": "/dapr_zipkin",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-19T15:22:08.445118114Z"
+      }
+    },
+    {
+      "Config": {
+        "Labels": {
+          "hexalith.p1r.invocation": null
+        }
+      },
+      "Id": "f1e0a30a3a93a1542ee5ad74856e44d483a94f7a8e5ef769f398827815cc1da6",
+      "Image": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "Name": "/dapr_placement",
+      "State": {
+        "Running": true,
+        "StartedAt": "2026-10-19T15:22:08.452373149Z"
+      }
+    }
+  ],
+  "inspect_argv": [
+    "docker",
+    "inspect",
+    "--format",
+    "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Name\":{{json .Name}},\"State\":{\"Running\":{{json .State.Running}},\"StartedAt\":{{json .State.StartedAt}}},\"Config\":{\"Labels\":{\"hexalith.p1r.invocation\":{{json (index .Config.Labels \"hexalith.p1r.invocation\")}}}}}",
+    "c2e3aa8d3a062474b7c644e1ba7c4eb1fe4b6aa4a0c8bbbf59e879adfc3877d9",
+    "73825492ea2ebeba0461f578f7cee505ffe6fd124a9fe91328680dbaab8a040c",
+    "bc4790752c19e94e647c695dfdb4719f0560dbb59a625548fdce0fbe5ad90586",
+    "6b67beda5906151471fe42db1f8068345f7000409a11a9a902394ba1817e029e",
+    "f1e0a30a3a93a1542ee5ad74856e44d483a94f7a8e5ef769f398827815cc1da6",
+    "8623af8b7bbd8ebd3d73221af72615162475f3f8a7190432e09e64e51befc826",
+    "8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922",
+    "cb7c12622c180c9a16d24a67fc57115f8aeb0d038fed8793d6c9d49e11d1e488"
+  ],
+  "list_argv": [
+    "docker",
+    "ps",
+    "-aq",
+    "--no-trunc"
+  ],
+  "scope": "all containers; no exclusions",
+  "utc": "2026-10-20T10:35:38.904115+00:00"
+}

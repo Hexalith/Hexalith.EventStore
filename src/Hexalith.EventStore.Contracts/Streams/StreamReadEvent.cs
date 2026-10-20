@@ -29,6 +29,9 @@ public sealed record StreamReadEvent(
     string? UserId,
     EventStorePayloadProtectionMetadata? ProtectionMetadata = null)
 {
+    /// <summary>Gets the existing source-v1 raw-envelope digest supplied by the authenticated native workload route.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? NativeEventDigest { get; init; }
     /// <summary>Gets the persisted cross-aggregate position when the source retains one.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public long GlobalPosition { get; init; }

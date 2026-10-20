@@ -1,0 +1,44 @@
+{
+  "acknowledgedLoss": 0,
+  "boundedSeconds": 1.001573454006575,
+  "broker": "kafka",
+  "cancelled": true,
+  "cancelledEffects": 1,
+  "cancelledMessageId": "c505aea3a988676c3a8f6a0e",
+  "negativeConfirmRejected": false,
+  "publishResults": [
+    {
+      "id": "41a9e7441f0070a55875a2f0",
+      "status": 204
+    },
+    {
+      "id": "972baae75b4ff2d867cfba5d",
+      "status": 204
+    },
+    {
+      "id": "6610ebc66e096bcddee17b32",
+      "status": 204
+    },
+    {
+      "id": "869b4c206f9391371f777a4a",
+      "status": 204
+    },
+    {
+      "id": "8521aab6f518fa204b6a3022",
+      "status": 204
+    },
+    {
+      "id": "9ea6e697c07d824a332eff98",
+      "status": 204
+    },
+    {
+      "id": "c276b74f3cab7dc4a5d47d4e",
+      "status": 204
+    },
+    {
+      "id": "3b4e13ba1b05d4e03598f123",
+      "status": 204
+    }
+  ],
+  "scenario": "cancellation-backpressure"
+}

@@ -1,0 +1,6 @@
+{
+  "scope": "development diagnostic only",
+  "counts_as_final_verification": false,
+  "reason": "Integration source was edited during this command; imported modules and physical files do not represent one frozen source closure. The literal successful 181-test result is retained without promoting it to final proof.",
+  "required_next": "Run fresh complete required suites after all compatibility edits stop."
+}

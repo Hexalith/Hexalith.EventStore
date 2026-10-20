@@ -1,0 +1,3 @@
+text(await tools.exec_command({cmd:"cat _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/run-seven-suites.py",workdir:"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",max_output_tokens:4000}));
+text(await tools.exec_command({cmd:"sed -n '1902,1919p' tools/p1r_published_qualification.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:2200}));
+text(await tools.exec_command({cmd:"sed -n '330,365p' tools/p1r_qualification.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:3000}));

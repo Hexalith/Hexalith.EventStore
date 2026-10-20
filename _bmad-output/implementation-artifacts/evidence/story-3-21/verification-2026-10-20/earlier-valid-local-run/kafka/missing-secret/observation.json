@@ -1,0 +1,11 @@
+{
+  "allowedEffects": 1,
+  "broker": "kafka",
+  "diagnosticMatched": true,
+  "messageId": "1196471b3a18a079c8858b5f",
+  "negativeExitCode": 1,
+  "negativeExitedNaturally": true,
+  "negativeReady": false,
+  "negativeResourceDirectory": "/tmp/story-3-21-private-dzcbwbf2/work/kafka-qualification-publisher-10bfdf96",
+  "scenario": "missing-secret"
+}

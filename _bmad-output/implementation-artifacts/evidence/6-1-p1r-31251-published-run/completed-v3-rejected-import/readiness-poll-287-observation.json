@@ -1,0 +1,64 @@
+{
+  "source": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/commands.json",
+  "scope": "Readiness retry observation; lane receipts remain authoritative",
+  "commands": [
+    {
+      "id": 287,
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27216/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "started_utc": "2026-10-18T19:47:51.153917+00:00",
+      "finished_utc": "2026-10-18T19:47:51.154139+00:00",
+      "exit_code": 124,
+      "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+      "transport_error": "URLError"
+    },
+    {
+      "id": 288,
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27216/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "started_utc": "2026-10-18T19:47:51.312696+00:00",
+      "finished_utc": "2026-10-18T19:47:51.312996+00:00",
+      "exit_code": 124,
+      "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+      "transport_error": "URLError"
+    },
+    {
+      "id": 289,
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27216/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "started_utc": "2026-10-18T19:47:51.472121+00:00",
+      "finished_utc": "2026-10-18T19:47:51.472443+00:00",
+      "exit_code": 124,
+      "output_sha256": "e34e569775072811cb4c470a0c4d22f1142a959156959124b8fdbeb3bb3fdfbd",
+      "transport_error": "URLError"
+    },
+    {
+      "id": 290,
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27216/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "started_utc": "2026-10-18T19:47:51.631404+00:00",
+      "finished_utc": "2026-10-18T19:47:51.683835+00:00",
+      "exit_code": 0,
+      "output_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+      "transport_error": null
+    }
+  ],
+  "observed": "Immediate URLError retry records287-289 followed by successful same-endpoint readiness290; not an exhausted startup deadline.",
+  "executor_errors_at_observation": []
+}

@@ -1,0 +1,36 @@
+rabbitmq/crash-redelivery: PASS
+rabbitmq/broker-restart: PASS
+rabbitmq/durable-quarantine: PASS
+rabbitmq/failed-diversion: PASS
+rabbitmq/retention-expiry: PASS
+rabbitmq/stable-id-deduplication: PASS
+rabbitmq/app-topic-scopes: PASS
+rabbitmq/tls-negative: PASS
+rabbitmq/missing-secret: PASS
+rabbitmq/secret-rotation: FAIL
+rabbitmq/cancellation-backpressure: FAIL
+rabbitmq/missing-bindings: FAIL
+kafka/crash-redelivery: PASS
+kafka/broker-restart: PASS
+kafka/durable-quarantine: PASS
+kafka/failed-diversion: PASS
+kafka/retention-expiry: PASS
+kafka/stable-id-deduplication: PASS
+kafka/app-topic-scopes: PASS
+kafka/tls-negative: PASS
+kafka/missing-secret: PASS
+kafka/secret-rotation: FAIL
+kafka/cancellation-backpressure: PASS
+kafka/missing-bindings: PASS
+{
+  "packet": "/tmp/story-3-21-integration-f208c22a82774536a2f25388f1c6e21c",
+  "technicalQualification": "FAIL",
+  "failedScenarios": [
+    "rabbitmq/secret-rotation",
+    "rabbitmq/cancellation-backpressure",
+    "rabbitmq/missing-bindings",
+    "kafka/secret-rotation"
+  ],
+  "productionEligibility": "FAIL",
+  "selectedBroker": null
+}

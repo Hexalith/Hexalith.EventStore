@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_verifier_corrections.py",
+    "-v"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-20T10:24:35.459135+00:00",
+  "test_sha256": "ff9b5248580d45b2660afa7642311461c4012316daa3076609d386e05d0f34fb",
+  "exit_code": 0,
+  "finished_utc": "2026-10-20T10:24:40.062149+00:00"
+}

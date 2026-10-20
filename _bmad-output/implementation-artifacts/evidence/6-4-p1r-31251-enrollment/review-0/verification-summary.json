@@ -1,0 +1,55 @@
+{
+  "scope": "Finite 3.125.1 tooling enrollment verification only; no published operational qualification.",
+  "source_checkout": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+  "temporary_build_and_output_staging": "/dev/shm/p1r-31251-verification-w90ywzqf",
+  "source_view_copy_used": false,
+  "suites": [
+    {
+      "suite": "test_p1r_snapshot_registration.py",
+      "tests": 2,
+      "seconds": 85.223,
+      "exit_code": 0,
+      "log": "final/test_p1r_snapshot_registration.log"
+    },
+    {
+      "suite": "test_p1r_published_executor.py",
+      "tests": 151,
+      "seconds": 94.582,
+      "exit_code": 0,
+      "log": "final/test_p1r_published_executor.log"
+    },
+    {
+      "suite": "test_p1r_published_qualification.py",
+      "tests": 62,
+      "seconds": 44.236,
+      "exit_code": 0,
+      "log": "final/test_p1r_published_qualification.log"
+    },
+    {
+      "suite": "test_p1r_isolation.py",
+      "tests": 31,
+      "seconds": 1.649,
+      "exit_code": 0,
+      "log": "final/test_p1r_isolation.log"
+    },
+    {
+      "suite": "test_p1r_isolation_hardening.py",
+      "tests": 24,
+      "seconds": 30.097,
+      "exit_code": 0,
+      "log": "final/test_p1r_isolation_hardening.log"
+    }
+  ],
+  "total_tests": 270,
+  "all_passed": true,
+  "initial_failures_preserved": true,
+  "aspire_baseline": "Environment-blocked after successful build: nested Tenants host projects absent. See aspire-baseline.json.",
+  "immutable_binding": "Both guards unchanged. The 3.125.1 mismatched tooling HEAD control refuses before consumers. Operational execution remains blocked pending separate binding approval.",
+  "pending_execution_gates": [
+    "actual package-construction Builds attribution",
+    "named exact-tuple owner selection",
+    "restored/locked/loaded graph agreement",
+    "separately approved tooling/source binding strategy"
+  ],
+  "qualification_performed": false
+}

@@ -1,0 +1,50 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+    "-c",
+    "Debug",
+    "-m:1",
+    "-p:UseHexalithProjectReferences=true",
+    "-p:UseSharedCompilation=false",
+    "--disable-build-servers",
+    "-v:q"
+  ],
+  "environment": {
+    "HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY": "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20"
+  },
+  "startedUtc": "2026-10-20T02:43:23.316316+00:00",
+  "completedUtc": "2026-10-20T02:44:04.926913+00:00",
+  "exitCode": 0,
+  "outputSha256": "81cd36104cf8158fd23a7282defce6910db6c4ebf2df585eaf8ce8f2136cca76",
+  "sourceRevision": "b16be63521e8b784fc68828e0267f892b8e45924",
+  "sourcesBefore": {
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs": "ffd48b6c2c7794abb06770bacada246d1a6f4162b34393746a4da3b31649318f",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs": "c810e492e294a24d249a73a86957b3bda3db38e45b1b2012fe8784eebe601d46",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs": "197f3333a41a2456861c64cfab101f4f0759eb0b20410d0b69f4fc775f4e15ff",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprProjectionDispatchProofTests.cs": "89440563f2c3b29b774f3cde2ee36ca6feff5819a5c55804ae901b1189fe851a",
+    "src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs": "fa7e06d7d18c3aea9592865c5603efa718f48866d7aa0899af9612bd85ebb153",
+    "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md": "68d275e18fd5c9767e911c0f6b91334872b2aaf7afa308b831aa0b8f5357a390"
+  },
+  "sourcesAfter": {
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs": "ffd48b6c2c7794abb06770bacada246d1a6f4162b34393746a4da3b31649318f",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs": "c810e492e294a24d249a73a86957b3bda3db38e45b1b2012fe8784eebe601d46",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs": "197f3333a41a2456861c64cfab101f4f0759eb0b20410d0b69f4fc775f4e15ff",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprProjectionDispatchProofTests.cs": "89440563f2c3b29b774f3cde2ee36ca6feff5819a5c55804ae901b1189fe851a",
+    "src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs": "fa7e06d7d18c3aea9592865c5603efa718f48866d7aa0899af9612bd85ebb153",
+    "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md": "68d275e18fd5c9767e911c0f6b91334872b2aaf7afa308b831aa0b8f5357a390"
+  },
+  "binariesBefore": {
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll": "3433d0785765f822c08a973821ebfd4114d2c576f1242b37b6656d035fd973b6",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "743738c02af50251ed6d049fd8694251c98f518fb07592f1d6af2cc658404246",
+    "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll": "b380c3100b62764f64daf8cb691e7c4ad1004243ab2dc1b4e1921f74db3dca3f"
+  },
+  "binariesAfter": {
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll": "14e3237be5d204ae71de449788f51e78de681db6f0abe839b02d7da1f56a18bb",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "208f074897d0bab140685b7f935ef709029911f3cdd7451e809bbf731ab7457d",
+    "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll": "b380c3100b62764f64daf8cb691e7c4ad1004243ab2dc1b4e1921f74db3dca3f"
+  },
+  "scenarioManifests": [],
+  "authority": "local evidence; no owner approval or AD-12 seal"
+}

@@ -21,4 +21,9 @@ public sealed record StreamReadRequest(
     ProjectionRebuildCheckpoint? Checkpoint = null,
     ReplayContinuationToken? ContinuationToken = null,
     int PageSize = 100,
-    string? ProjectionName = null);
+    string? ProjectionName = null)
+{
+    /// <summary>Requires native source-v1 metadata and raw-envelope digests on the authenticated workload route.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RequireNativeProof { get; init; }
+}

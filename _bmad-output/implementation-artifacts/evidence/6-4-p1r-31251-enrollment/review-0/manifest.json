@@ -1,0 +1,110 @@
+{
+  "files": {
+    ".gitattributes": {
+      "bytes": 8,
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+    },
+    "README.md": {
+      "bytes": 6293,
+      "sha256": "2e7f121ede46c384560f4e909573660e43fa82bd076214f3b119c1ace401648f"
+    },
+    "aspire-baseline.json": {
+      "bytes": 1642,
+      "sha256": "6561ca3fad093b9eef0ae16d1102d73af3d56b4be49620a14aa63160c9361a23"
+    },
+    "changed-file-identities.json": {
+      "bytes": 1820,
+      "sha256": "abff53a807480d6b1962a35961a0307c3b5b06900c8fafc6c484ce8a24fcac07"
+    },
+    "commands-results.json": {
+      "bytes": 1801,
+      "sha256": "60db6246ced42e214cfda1a2f83bc0034190bf1d04cd8a19e9db7443d62d6924"
+    },
+    "coverage.json": {
+      "bytes": 2719,
+      "sha256": "37e85bff3f84e453bedc575b6258e0d582b07a96d58b6a4ac318234bed357542"
+    },
+    "diff-check.json": {
+      "bytes": 412,
+      "sha256": "690c69e6484b9a989deabc15b6a665db98ef6d3dc68e83fa87379b24c7ec5d96"
+    },
+    "enrollment.diff": {
+      "bytes": 32302,
+      "sha256": "71254bcd5c641eb8f8579f4f4ce4d532947a706c868f1ae4ed2fcdd695b8a9d2"
+    },
+    "final/commands-results.json": {
+      "bytes": 2948,
+      "sha256": "b02469af3769c8a45a8a7031a7fb5ab824595800d19953a9930edad52eaaf100"
+    },
+    "final/test_p1r_isolation.log": {
+      "bytes": 130,
+      "sha256": "9e19503fdd8ed6be971bc541ff0a8ab65ae743cd40fd355655208aa5a7dcb3c0"
+    },
+    "final/test_p1r_isolation_hardening.log": {
+      "bytes": 124,
+      "sha256": "861a331b5caba14377faed639f8ffcd7d470878001733639b610b4ea218a7efb"
+    },
+    "final/test_p1r_published_executor.log": {
+      "bytes": 252,
+      "sha256": "50061a51d1baaf8457c1fed79d097655b7d4ba69d455af61be41c9c6321f8ccd"
+    },
+    "final/test_p1r_published_qualification.log": {
+      "bytes": 162,
+      "sha256": "d883b2ce4ae1b77d03adc6c5cc7b73eb9e8265625959ef6f0f48cca0634034b5"
+    },
+    "final/test_p1r_snapshot_registration.log": {
+      "bytes": 101,
+      "sha256": "4bc5f6b6090f1aec4539562d05ca1b05af65c711efc3da2b9c8d28553c9fdeae"
+    },
+    "handoff-audit.json": {
+      "bytes": 1907,
+      "sha256": "2a169f5db2f694d88a37b1a9b95fd5b13b8858b82a2e2666f16d8da7f1619841"
+    },
+    "initial-attempt-disposition.json": {
+      "bytes": 1244,
+      "sha256": "f8408217a7465b02384c38d8b35bef5930b32e5d3064aed444d0cf5b137ab05a"
+    },
+    "preservation-before.json": {
+      "bytes": 5569633,
+      "sha256": "7949d8dfbae4584fc871417f671dc0a66f7e8a3c2a6cabc73c7d030e09d1a7b5"
+    },
+    "preservation-result.json": {
+      "bytes": 1556,
+      "sha256": "97589e1d205db158090a12aa95f4dd8c4d4887211a558488b39a4dafa50646a4"
+    },
+    "prior-scratch-relocation.json": {
+      "bytes": 12691,
+      "sha256": "efd0ba394eb535c693a22fbb3c6e3de559477a12205ba3f5ec222fb0a6fc3326"
+    },
+    "projects-handoff.diff": {
+      "bytes": 9444,
+      "sha256": "d05dacbda96b062ad334243eee27a3b0a11d41ff22d6c9c2ad7d3ca4f3145002"
+    },
+    "test_p1r_isolation.log": {
+      "bytes": 130,
+      "sha256": "cc27050445dfda83c6324b538fb4423ee665bab5a2e34c1e379dc96bedc5281d"
+    },
+    "test_p1r_isolation_hardening.log": {
+      "bytes": 90112,
+      "sha256": "6f0e0082c7ec4086fcba76a0cb9c2585224c118a42d3e27b059a4d9e330f6009"
+    },
+    "test_p1r_published_executor.log": {
+      "bytes": 9641,
+      "sha256": "db0fafb7ed2bc488c0067fdb0d54dceb03443c7b377d5686a23ac2be0fce6586"
+    },
+    "test_p1r_published_qualification.log": {
+      "bytes": 162,
+      "sha256": "152ea98484bb303a032874a73cec2658d3b2ff69ff0a9bc95a35935d0d3d96b6"
+    },
+    "test_p1r_snapshot_registration.log": {
+      "bytes": 48564,
+      "sha256": "c0e4bd45d04c9e3fd9431fa48d206a26dc7040f87a0b45a9f5b152750beaf741"
+    },
+    "verification-summary.json": {
+      "bytes": 1928,
+      "sha256": "16011f25a69f4ad555b1029a5932210355a3e03ecf1b771cd7528232fd71a692"
+    }
+  },
+  "schema": "hexalith.p1r-enrollment-evidence.v1",
+  "scope": "Finite 3.125.1 tooling enrollment verification only; no published operational qualification."
+}

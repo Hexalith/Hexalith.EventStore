@@ -1,0 +1,10 @@
+{
+  "broker": "rabbitmq",
+  "captureBlockedBeforeBrokerRestart": true,
+  "messageId": "4454772a0dac17d01533094f",
+  "poisonReceipts": 3,
+  "quarantineEffects": 1,
+  "restartReceipt": 93,
+  "scenario": "durable-quarantine",
+  "survivedRestart": true
+}

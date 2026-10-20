@@ -68,6 +68,7 @@ public partial class EventReplayProjectionActor(
         ArgumentNullException.ThrowIfNull(state);
         ArgumentException.ThrowIfNullOrWhiteSpace(state.ProjectionType);
         ArgumentException.ThrowIfNullOrWhiteSpace(state.TenantId);
+        state = state.WithBoundedNotification();
 
         // 1. Persist to DAPR actor state
         await SetPublicationStateAsync(ProjectionStateKey, state, cancellationToken).ConfigureAwait(false);
@@ -78,11 +79,7 @@ public partial class EventReplayProjectionActor(
 
         // 2. Regenerate ETag + broadcast SignalR (fail-open on notifier path)
         try {
-            await projectionChangeNotifier.NotifyProjectionChangedAsync(
-                state.ProjectionType,
-                state.TenantId,
-                cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            await NotifyProjectionHintsAsync(state, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             // Bare OperationCanceledException is rethrown so cancellation is not converted into a
@@ -101,6 +98,8 @@ public partial class EventReplayProjectionActor(
     public async Task StageProjectionAsync(ProjectionRebuildCandidate request) {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.OperationId);
+        ArgumentNullException.ThrowIfNull(request.State);
+        request = request with { State = request.State.WithBoundedNotification() };
         ValidateState(request.State);
         await ClearPublicationCacheAsync().ConfigureAwait(false);
 
@@ -167,10 +166,7 @@ public partial class EventReplayProjectionActor(
             candidate.Value.State.ProjectionType,
             candidate.Value.State.TenantId);
         try {
-            await projectionChangeNotifier.NotifyProjectionChangedAsync(
-                    candidate.Value.State.ProjectionType,
-                    candidate.Value.State.TenantId)
-                .ConfigureAwait(false);
+            await NotifyProjectionHintsAsync(candidate.Value.State).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             throw;

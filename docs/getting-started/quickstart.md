@@ -35,6 +35,8 @@ domain service, Redis, and Keycloak:
 $ aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
 ```
 
+`src/Hexalith.EventStore.AppHost` serves only this repository's own tests and walkthroughs such as this one, and a run of it is never Platform evidence; running and debugging EventStore as a module happens from the Platform workspace (see [Run and Debug in the Platform Workspace](../../README.md#run-and-debug-in-the-platform-workspace)).
+
 > **Note:** The first run takes longer than usual because .NET restores NuGet packages and Docker pulls container images for Redis, Keycloak, and the DAPR sidecar.
 >
 Local Keycloak identities and passwords are generated for each AppHost run, so persistent Keycloak

@@ -1,0 +1,11 @@
+{
+  "allowedEffects": 1,
+  "broker": "rabbitmq",
+  "forbiddenAppMessageId": "b6603613c66f8eb32820550a",
+  "forbiddenAppStatus": 404,
+  "forbiddenSubscriptions": 0,
+  "forbiddenTopicMessageId": "b86ade2f22b675047bfada21",
+  "forbiddenTopicStatus": 403,
+  "messageId": "56e2a7cc65feb2c04af93636",
+  "scenario": "app-topic-scopes"
+}

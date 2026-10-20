@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Contracts.Projections;
 /// <param name="TenantId">The tenant identifier (kebab-case).</param>
 /// <param name="EntityId">Optional entity identifier for future fine-grained invalidation (FR58).</param>
 /// <param name="GroupScope">Optional sub-tenant SignalR group scope for detail notifications.</param>
-/// <param name="Metadata">Optional opaque metadata for detail notifications.</param>
+/// <param name="Metadata">Optional opaque metadata, at most 16 entries and 2,048 compact JSON UTF-8 bytes including punctuation and escaping.</param>
 [method: JsonConstructor]
 public record ProjectionChangedNotification(
     string ProjectionType,

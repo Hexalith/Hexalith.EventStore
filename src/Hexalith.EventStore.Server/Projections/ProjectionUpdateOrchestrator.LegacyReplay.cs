@@ -132,7 +132,7 @@ internal partial class ProjectionUpdateOrchestrator
                 if (prepared is null || string.IsNullOrWhiteSpace(prepared.ProjectionType)
                     || prepared.State.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
                     || prepared.State.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(prepared.State.GetString())) return true;
-                candidate = ProjectionState.FromJsonElement(prepared.ProjectionType, identity.TenantId, prepared.State);
+                candidate = ProjectionState.FromProjectionResponse(prepared, identity.TenantId);
                 actorId = QueryActorIdHelper.DeriveActorId(prepared.ProjectionType, identity.TenantId, identity.AggregateId, []);
             }
             string candidateDigest = Convert.ToHexStringLower(SHA256.HashData(candidate.StateBytes));

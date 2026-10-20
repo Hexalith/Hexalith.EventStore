@@ -1,0 +1,29 @@
+{
+  "Kind": "baseline-only-not-distribution-qualification",
+  "AppHostProfileOverrides": {
+    "EnableKeycloak": "false"
+  },
+  "ObservedResources": [
+    {
+      "displayName": "eventstore-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "eventstore",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample-dapr-cli",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "displayName": "sample",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    }
+  ],
+  "ObservationFileLastModifiedUtc": "2026-10-19T15:29:19.557023+00:00"
+}

@@ -1,0 +1,1 @@
+{"audit_valid_evidence": true, "canonical_host_binding_sha256": "1782c66728aab9c6f99d810ca188b7a173aaaee34122f659e04f9e30fc06f1b5", "completed_utc": "2026-10-18T23:58:02.193229+00:00", "main_assertions": {"attempted": 4804, "failed": 9, "passed": 4795}, "p1r_usable": false, "qualified": false}

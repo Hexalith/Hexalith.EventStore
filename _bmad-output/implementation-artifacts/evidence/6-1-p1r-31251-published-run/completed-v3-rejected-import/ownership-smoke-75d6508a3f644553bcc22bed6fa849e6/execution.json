@@ -1,0 +1,11 @@
+{
+  "executor_source_sha256": "12cce793b03ad6882c9babe3857b17bb8068c31aea8d740c8f83c0f59e5b1cef",
+  "finished_utc": "2026-10-18T19:03:12.699046+00:00",
+  "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+  "invocation": "c17153b647ec49afa0d921cdd9b92001",
+  "receipts": [
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/ownership-smoke-75d6508a3f644553bcc22bed6fa849e6/receipts/control.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "scope": "controlled ownership metadata; canonical run vector is not executed"
+}

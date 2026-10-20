@@ -1,0 +1,33 @@
+{
+  "observed_utc": "2026-10-18T22:53:36.984312+00:00",
+  "scope": "owning repository preservation after verified source application; new task evidence excluded from prior tracked-file membership by its original snapshot",
+  "protected_regular_files_checked": 23046,
+  "changed": [],
+  "missing": [],
+  "expected_task_paths": [
+    ".gitattributes",
+    "_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md",
+    "tools/p1r-published-consumers/README.md",
+    "tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs",
+    "tools/p1r-published-consumers/host/QualificationCapabilities.cs",
+    "tools/p1r-published-executor.py",
+    "tools/p1r_check_witnesses.py",
+    "tools/p1r_isolation.py",
+    "tools/p1r_isolation_evidence.py",
+    "tools/p1r_published_executor.py",
+    "tools/p1r_published_qualification.py",
+    "tools/p1r_qualification.py",
+    "tools/tests/p1r_isolation_fixture.py",
+    "tools/tests/test_p1r_isolation.py",
+    "tools/tests/test_p1r_isolation_hardening.py",
+    "tools/tests/test_p1r_published_executor.py",
+    "tools/tests/test_p1r_published_qualification.py",
+    "tools/tests/test_p1r_qualification.py"
+  ],
+  "head": "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288",
+  "head_unchanged": true,
+  "index_unchanged": true,
+  "all_gitlinks_unchanged": true,
+  "verified_tooling_bytes_match_integration": true,
+  "passed": true
+}

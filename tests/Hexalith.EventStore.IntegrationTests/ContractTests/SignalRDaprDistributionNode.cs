@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
@@ -12,6 +14,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     private readonly ConcurrentQueue<string> _sidecarLog = new();
     private Process? _application;
     private Process? _sidecar;
+    private ProcessStartInfo? _applicationStartInfo;
 
     /// <summary>Initializes one isolated process pair.</summary>
     public SignalRDaprDistributionNode(string name)
@@ -106,6 +109,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         application.Environment["Authentication__JwtBearer__AllowInsecureSymmetricKey"] = "true";
         application.Environment["EventStore__SignalR__Enabled"] = "true";
         application.Environment["EventStore__OpenApi__Enabled"] = "false";
+        application.Environment["Logging__LogLevel__Default"] = "Information";
         if (enablePubSubProjectionTransport)
         {
             application.Environment["EventStore__ProjectionChanges__Transport"] = "PubSub";
@@ -114,6 +118,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         }
         _ = application.Environment.Remove("EVENTSTORE_SIGNALR_REDIS");
         _ = application.Environment.Remove("EventStore__SignalR__BackplaneRedisConnectionString");
+        _applicationStartInfo = application;
         _application = StartCapturedProcess(application, _applicationLog);
 
         await StartSidecarAsync(componentsPath, cancellationToken).ConfigureAwait(false);
@@ -125,6 +130,26 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     {
         await StopProcessAsync(_sidecar).ConfigureAwait(false);
         _sidecar = null;
+    }
+
+    /// <summary>Stops the owned replica and sidecar, leaving its configuration available for restart.</summary>
+    public async Task StopAsync()
+    {
+        await StopSidecarAsync().ConfigureAwait(false);
+        await StopProcessAsync(_application).ConfigureAwait(false);
+        _application = null;
+    }
+
+    /// <summary>Restarts the same application configuration without inheriting any old hub membership.</summary>
+    public async Task RestartApplicationAsync(CancellationToken cancellationToken)
+    {
+        if (_application is not null || _applicationStartInfo is null)
+        {
+            throw new InvalidOperationException("Stop a previously started application before restarting it.");
+        }
+
+        _application = StartCapturedProcess(_applicationStartInfo, _applicationLog);
+        await WaitForHealthyAsync(AppEndpoint, "/alive", _application, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Starts this node's sidecar after an outage.</summary>
@@ -200,11 +225,45 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
             .Replace(AppChannelToken, "[redacted]", StringComparison.Ordinal)
             .Replace(Helpers.TestJwtTokenGenerator.SigningKey, "[redacted]", StringComparison.Ordinal);
 
+    /// <summary>Returns bounded captured process logs with test keys and JWT credentials removed.</summary>
+    public string SnapshotRedactedLogs()
+    {
+        string combined = string.Join('\n', _applicationLog.Concat(_sidecarLog))
+            .Replace(AppChannelToken, "[redacted]", StringComparison.Ordinal)
+            .Replace(Helpers.TestJwtTokenGenerator.SigningKey, "[redacted]", StringComparison.Ordinal);
+        return Regex.Replace(combined, @"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b", "[redacted-jwt]") + "\n";
+    }
+
+    /// <summary>Reads value-free runtime/component/subscription identities through the Dapr metadata API.</summary>
+    public async Task<JsonElement> GetRuntimeMetadataAsync(CancellationToken cancellationToken)
+    {
+        using var client = new HttpClient { BaseAddress = DaprHttpEndpoint, Timeout = TimeSpan.FromSeconds(5) };
+        string json = await client.GetStringAsync("/v1.0/metadata", cancellationToken).ConfigureAwait(false);
+        using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement root = document.RootElement;
+        return JsonSerializer.SerializeToElement(new
+        {
+            id = root.GetProperty("id").GetString(),
+            runtimeVersion = root.GetProperty("runtimeVersion").GetString(),
+            components = root.GetProperty("components").EnumerateArray().Select(component => new
+            {
+                name = component.GetProperty("name").GetString(),
+                type = component.GetProperty("type").GetString(),
+                version = component.GetProperty("version").GetString(),
+            }).ToArray(),
+            subscriptions = root.GetProperty("subscriptions").EnumerateArray().Select(subscription => new
+            {
+                pubsubname = subscription.GetProperty("pubsubname").GetString(),
+                topic = subscription.GetProperty("topic").GetString(),
+                type = subscription.GetProperty("type").GetString(),
+            }).ToArray(),
+        });
+    }
+
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        await StopProcessAsync(_sidecar).ConfigureAwait(false);
-        await StopProcessAsync(_application).ConfigureAwait(false);
+        await StopAsync().ConfigureAwait(false);
     }
 
     private static int ReservePort()
@@ -222,6 +281,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
             if (args.Data is not null)
             {
                 log.Enqueue(args.Data);
+                TrimLog(log);
             }
         };
         process.ErrorDataReceived += (_, args) =>
@@ -229,11 +289,20 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
             if (args.Data is not null)
             {
                 log.Enqueue(args.Data);
+                TrimLog(log);
             }
         };
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         return process;
+    }
+
+    private static void TrimLog(ConcurrentQueue<string> log)
+    {
+        while (log.Count > 2_000)
+        {
+            _ = log.TryDequeue(out _);
+        }
     }
 
     private static async Task WaitForHealthyAsync(Uri endpoint, string path, Process? process, CancellationToken cancellationToken)

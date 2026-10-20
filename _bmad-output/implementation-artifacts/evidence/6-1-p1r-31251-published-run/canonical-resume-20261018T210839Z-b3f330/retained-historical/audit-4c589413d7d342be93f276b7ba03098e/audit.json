@@ -1,0 +1,65 @@
+{
+  "audit_script": {
+    "path": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251.py",
+    "sha256": "78d90d1afb8cd1bfbea0301f45845ab4c3f4c3a07a19f6031e033d75b94c4aad"
+  },
+  "audit_sdk_pin_sha256": "75eb0b352fe66139782d7d635e60a74b66a51ea2cd2a483e93f0e0d35f6da654",
+  "commands": [],
+  "decisions": {
+    "conformance": {
+      "baseline": null,
+      "reference": null,
+      "status": "pending"
+    },
+    "decisions": [
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "eventstore-owner"
+      },
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "builds-owner"
+      },
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "solution-owner"
+      },
+      {
+        "date": null,
+        "decision": "pending",
+        "owner": null,
+        "reference": null,
+        "role": "test-owner"
+      }
+    ],
+    "fixture": null,
+    "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+    "schema": "hexalith.p1r.owner-decisions.v1"
+  },
+  "errors": [
+    {
+      "message": "'<=' not supported between instances of 'str' and 'datetime.datetime'",
+      "type": "TypeError"
+    }
+  ],
+  "finished_utc": "2026-10-18T18:44:15.920592+00:00",
+  "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+  "invocation": "6da7c99ec1bc44ac80b6259384ca09ab",
+  "lanes": {},
+  "p1r_usable": false,
+  "packages": {},
+  "qualified": false,
+  "recovery": {},
+  "schema": "hexalith.p1r.fresh-independent-audit.v1",
+  "started_utc": "2026-10-18T18:44:10.197045+00:00",
+  "valid_evidence": false
+}

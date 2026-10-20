@@ -13,4 +13,9 @@ public sealed record AuthoritativeEventStream(
     long Head,
     DateTimeOffset ObservedAt,
     IReadOnlyList<StreamReadEvent> Events,
-    string ObservationId);
+    string ObservationId)
+{
+    /// <summary>Gets the native prefix that was verified from the exact returned ordered event digests.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public NativeSourceProof? NativeProof { get; init; }
+}

@@ -9,6 +9,11 @@
 # same CRLF drift silently invalidates the canonical subject on a clean worktree. Python sources
 # carried only `text=auto`, which leaves the working-tree ending to the editor.
 *.py text eol=lf
+# Story 3.21 binds candidate and retained packet bytes by SHA-256.
+deploy/dapr/qualification/** text eol=lf
+.github/workflows/dapr-broker-qualification.yml text eol=lf
+_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/** -text
+_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/** -text
 commitlint.config.mjs text eol=lf
 # Husky hooks execute through /bin/sh and must not acquire CRLF line endings.
 .husky/* text eol=lf
@@ -123,3 +128,14 @@ docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/verifi
 docs/evidence/story-3-6/20261017t144520z-production-authority-review/pre-review-sources.json -text
 docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification-final.json -text
 docs/evidence/story-3-6/20261017t144520z-production-authority-review/verification.json -text
+
+# New P1R receipts bind literal bytes, command output and archive identities.
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/** -text -whitespace
+
+# Read-only P1R follow-up binds the original evidence and exact diagnostic bytes.
+_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/** -text -whitespace
+
+# Story 2.13 continuation binds exact generated components, metadata, logs, and receipts.
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-19/** -text
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20/** -text -whitespace
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/** -text -whitespace

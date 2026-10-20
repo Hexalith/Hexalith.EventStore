@@ -27,6 +27,7 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
         DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
         string tenant = $"tenant-a-{Guid.NewGuid():N}";
         const string projection = "counter";
+        const string scope = "counter-status";
         string aggregateId = $"distribution-projection-{Guid.NewGuid():N}";
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         await using SignalRDaprDistributionFixture distribution = await SignalRDaprDistributionFixture
@@ -38,17 +39,31 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
 
         var firstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
         var secondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
-        var otherTenantSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
-        await using HubConnection first = CreateConnection(distribution.First.AppEndpoint, tenant, firstSignals.Writer);
-        await using HubConnection second = CreateConnection(distribution.Second.AppEndpoint, tenant, secondSignals.Writer);
-        await using HubConnection otherTenant = CreateConnection(distribution.Second.AppEndpoint, "tenant-b", otherTenantSignals.Writer);
+        var otherTenantFirstSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var otherTenantSecondSignals = Channel.CreateUnbounded<(string Projection, string Tenant)>();
+        var firstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var secondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var otherTenantFirstDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        var otherTenantSecondDetails = Channel.CreateUnbounded<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)>();
+        await using HubConnection first = CreateConnection(distribution.First.AppEndpoint, tenant, firstSignals.Writer, firstDetails.Writer);
+        await using HubConnection second = CreateConnection(distribution.Second.AppEndpoint, tenant, secondSignals.Writer, secondDetails.Writer);
+        await using HubConnection otherTenantFirst = CreateConnection(distribution.First.AppEndpoint, "tenant-b", otherTenantFirstSignals.Writer, otherTenantFirstDetails.Writer);
+        await using HubConnection otherTenantSecond = CreateConnection(distribution.Second.AppEndpoint, "tenant-b", otherTenantSecondSignals.Writer, otherTenantSecondDetails.Writer);
         await first.StartAsync(cancellation.Token).ConfigureAwait(true);
         await second.StartAsync(cancellation.Token).ConfigureAwait(true);
-        await otherTenant.StartAsync(cancellation.Token).ConfigureAwait(true);
+        await otherTenantFirst.StartAsync(cancellation.Token).ConfigureAwait(true);
+        await otherTenantSecond.StartAsync(cancellation.Token).ConfigureAwait(true);
         await first.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token).ConfigureAwait(true);
         await second.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token).ConfigureAwait(true);
-        await otherTenant.InvokeAsync("JoinGroup", projection, "tenant-b", cancellation.Token).ConfigureAwait(true);
-        await Should.ThrowAsync<HubException>(() => otherTenant.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token)).ConfigureAwait(true);
+        await first.InvokeAsync("JoinGroupScoped", projection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+        await second.InvokeAsync("JoinGroupScoped", projection, tenant, scope, cancellation.Token).ConfigureAwait(true);
+        foreach (HubConnection otherTenant in new[] { otherTenantFirst, otherTenantSecond })
+        {
+            await otherTenant.InvokeAsync("JoinGroup", projection, "tenant-b", cancellation.Token).ConfigureAwait(true);
+            await otherTenant.InvokeAsync("JoinGroupScoped", projection, "tenant-b", scope, cancellation.Token).ConfigureAwait(true);
+            await Should.ThrowAsync<HubException>(() => otherTenant.InvokeAsync("JoinGroup", projection, tenant, cancellation.Token)).ConfigureAwait(true);
+            await Should.ThrowAsync<HubException>(() => otherTenant.InvokeAsync("JoinGroupScoped", projection, tenant, scope, cancellation.Token)).ConfigureAwait(true);
+        }
 
         string correlationId;
         try
@@ -68,12 +83,28 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
         status.GetProperty("status").GetString().ShouldBe("Completed", status.ToString());
         status.GetProperty("eventCount").GetInt32().ShouldBeGreaterThan(0);
 
-        (await ReadSignalAsync(firstSignals.Reader, distribution, cancellation.Token).ConfigureAwait(true))
+        (await ReadNoticeAsync(firstSignals.Reader, distribution, cancellation.Token).ConfigureAwait(true))
             .ShouldBe((projection, tenant));
-        (await ReadSignalAsync(secondSignals.Reader, distribution, cancellation.Token).ConfigureAwait(true))
+        (await ReadNoticeAsync(secondSignals.Reader, distribution, cancellation.Token).ConfigureAwait(true))
             .ShouldBe((projection, tenant));
-        (await ReceivedWithinAsync(otherTenantSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token).ConfigureAwait(true))
-            .ShouldBeFalse("tenant B must not receive tenant A's projection dispatch");
+        var firstDetail = await ReadNoticeAsync(firstDetails.Reader, distribution, cancellation.Token).ConfigureAwait(true);
+        var secondDetail = await ReadNoticeAsync(secondDetails.Reader, distribution, cancellation.Token).ConfigureAwait(true);
+        foreach (var detail in new[] { firstDetail, secondDetail })
+        {
+            detail.Projection.ShouldBe(projection);
+            detail.Tenant.ShouldBe(tenant);
+            detail.Scope.ShouldBe(scope);
+            detail.Metadata.Count.ShouldBe(1);
+            detail.Metadata["change-kind"].ShouldBe("counter-projection-updated");
+            JsonSerializer.SerializeToUtf8Bytes(detail.Metadata).Length.ShouldBeLessThanOrEqualTo(2_048);
+        }
+        bool[] deniedDelivery = await Task.WhenAll(
+            ReceivedWithinAsync(otherTenantFirstSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivedWithinAsync(otherTenantSecondSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivedWithinAsync(otherTenantFirstDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
+            ReceivedWithinAsync(otherTenantSecondDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
+        deniedDelivery.Any(static received => received)
+            .ShouldBeFalse("tenant B must not receive tenant A's projection dispatch on either host");
 
         using var firstClient = new HttpClient { BaseAddress = distribution.First.AppEndpoint };
         using var secondClient = new HttpClient { BaseAddress = distribution.Second.AppEndpoint };
@@ -84,6 +115,34 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
         firstETag.ShouldNotBeNullOrWhiteSpace();
         secondETag.ShouldNotBeNullOrWhiteSpace();
         secondETag.ShouldBe(firstETag, "both hosts must read the same authoritative projection version");
+
+        await distribution.CaptureEvidenceAsync("real-projection-distribution", startedUtc, new
+        {
+            Tenant = tenant,
+            Projection = projection,
+            Topic = $"{tenant}.counter.projection-changed",
+            AggregateId = aggregateId,
+            CorrelationId = correlationId,
+            CommandStatus = status.GetProperty("status").GetString(),
+            EventCount = status.GetProperty("eventCount").GetInt32(),
+            FirstConnectionId = first.ConnectionId,
+            SecondConnectionId = second.ConnectionId,
+            TenantBFirstConnectionId = otherTenantFirst.ConnectionId,
+            TenantBSecondConnectionId = otherTenantSecond.ConnectionId,
+            FirstQueryCount = firstCount,
+            SecondQueryCount = secondCount,
+            FirstQueryETag = firstETag,
+            SecondQueryETag = secondETag,
+            QueryProvenance = "ProjectionBacked",
+            RealProjectionScopedDetail = true,
+            GroupScope = scope,
+            FirstDetailMetadata = firstDetail.Metadata,
+            SecondDetailMetadata = secondDetail.Metadata,
+            OtherTenantReceivedSignalOnEitherHost = false,
+            OtherTenantReceivedDetailOnEitherHost = false,
+            Limits = new[] { "exact-topic-development-profile-only", "optional-legacy-projection-response-detail-only",
+                "no-production-issuer-or-profile", "no-dynamic-topic-coverage", "no-transition-or-rollback-approval" },
+        }, cancellation.Token).ConfigureAwait(true);
 
         string? evidencePath = Environment.GetEnvironmentVariable("HEXALITH_STORY_2_13_COMPOSED_EVIDENCE_PATH");
         if (!string.IsNullOrWhiteSpace(evidencePath))
@@ -121,7 +180,8 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
         }
     }
 
-    private static HubConnection CreateConnection(Uri endpoint, string tenant, ChannelWriter<(string Projection, string Tenant)> sink)
+    private static HubConnection CreateConnection(Uri endpoint, string tenant, ChannelWriter<(string Projection, string Tenant)> sink,
+        ChannelWriter<(string Projection, string Tenant, string? Scope, IReadOnlyDictionary<string, string> Metadata)> details)
     {
         string token = TestJwtTokenGenerator.GenerateToken(tenants: [tenant], permissions: ["query:read"]);
         HubConnection connection = new HubConnectionBuilder()
@@ -129,11 +189,13 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
                 options => options.AccessTokenProvider = () => Task.FromResult<string?>(token))
             .Build();
         connection.On<string, string>("ProjectionChanged", (projection, tenant) => sink.TryWrite((projection, tenant)));
+        connection.On<string, string, string?, IReadOnlyDictionary<string, string>>("ProjectionChangedDetail",
+            (projection, tenant, scope, metadata) => details.TryWrite((projection, tenant, scope, metadata)));
         return connection;
     }
 
-    private static async Task<(string Projection, string Tenant)> ReadSignalAsync(
-        ChannelReader<(string Projection, string Tenant)> reader,
+    private static async Task<T> ReadNoticeAsync<T>(
+        ChannelReader<T> reader,
         SignalRDaprDistributionFixture distribution,
         CancellationToken cancellationToken)
     {
@@ -151,8 +213,8 @@ public sealed class SignalRDaprProjectionDispatchProofTests(AspirePubSubProjecti
         }
     }
 
-    private static async Task<bool> ReceivedWithinAsync(
-        ChannelReader<(string Projection, string Tenant)> reader,
+    private static async Task<bool> ReceivedWithinAsync<T>(
+        ChannelReader<T> reader,
         TimeSpan window,
         CancellationToken cancellationToken)
     {

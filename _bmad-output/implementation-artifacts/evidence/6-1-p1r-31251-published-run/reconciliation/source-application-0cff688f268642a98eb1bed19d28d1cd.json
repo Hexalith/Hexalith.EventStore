@@ -1,0 +1,206 @@
+{
+  "scope": "compare-before-write reconciliation of verified tooling; preserve concurrent shared work",
+  "started_utc": "2026-10-18T22:46:21.592497+00:00",
+  "source": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "target": "/home/administrator/projects/hexalith/eventstore",
+  "suite": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-ce6d5948928243f8a44978c7d1fef11a",
+  "script_sha256": "b90418487ee1cd84af691f7a62955db95c302a9ca7147f8fdc18db0e2b490c87",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exit_code": 0,
+      "stdout": "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "status",
+        "--short",
+        "--branch"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exit_code": 0,
+      "stdout": "## main...origin/main [behind 4]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "remote",
+        "-v"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exit_code": 0,
+      "stdout": "origin\thttps://github.com/Hexalith/Hexalith.EventStore.git (fetch)\norigin\thttps://github.com/Hexalith/Hexalith.EventStore.git (push)\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "log",
+        "-5",
+        "--format=%H"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exit_code": 0,
+      "stdout": "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288\n2817c2cc510adf39a45994d4b9d2e8dbdf48b8a0\nbb315b1f3379e816cd63f270264518228551746a\n119c8619d608d8f2049d381e7f60f4e4c4a847d5\n9b66153515687463fc1b1e929f8b0e73d8145e2c\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--name-only",
+        "--",
+        ".gitattributes",
+        "tools"
+      ],
+      "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+      "exit_code": 0,
+      "stdout": ".gitattributes\ntools/p1r-published-consumers/README.md\ntools/p1r-published-consumers/host/FixtureReminderIntentSource.cs\ntools/p1r-published-consumers/host/QualificationCapabilities.cs\ntools/p1r-published-executor.py\ntools/p1r_check_witnesses.py\ntools/p1r_isolation.py\ntools/p1r_isolation_evidence.py\ntools/p1r_published_executor.py\ntools/p1r_published_qualification.py\ntools/p1r_qualification.py\ntools/tests/p1r_isolation_fixture.py\ntools/tests/test_p1r_isolation.py\ntools/tests/test_p1r_isolation_hardening.py\ntools/tests/test_p1r_published_executor.py\ntools/tests/test_p1r_published_qualification.py\ntools/tests/test_p1r_qualification.py\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/home/administrator/projects/hexalith/eventstore",
+      "exit_code": 0,
+      "stdout": "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288\n",
+      "stderr": ""
+    }
+  ],
+  "files": [
+    {
+      "path": ".gitattributes",
+      "before_sha256": "514f1fb3b188984b90d5369b2c09720f1ede77042ca85562bef72d8596e82c00",
+      "after_sha256": "78b4794113dd05a276174e0906a631c40462459598133a391c16a509a0d9856c",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/README.md",
+      "before_sha256": "3d5be935c7aadf3dc39ff6a15ecd322e1467248b6403b73f1102190ed202f2b8",
+      "after_sha256": "efe9a5a51de76815e3105adbe7c6a926230b939b489c639c47084b2be3ceaa69",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/FixtureReminderIntentSource.cs",
+      "before_sha256": "fd686bd3aae7906b9f66083a93b8ec34fb5179618ae03c1343d7b1009912c110",
+      "after_sha256": "a80a85ceb7d5708633e50b6551340a1c8ee7e0f80e96832443dfc00f73a4ae31",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r-published-consumers/host/QualificationCapabilities.cs",
+      "before_sha256": "60d4cc11ff36df3bfc88283e570d6b880abd9b4714207f3dc2424350c1fd35b3",
+      "after_sha256": "7626216da7d9ba70e4ed041b83076803a7bfd144c7da697f424fffdbacd0e32c",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r-published-executor.py",
+      "before_sha256": "52e3009a24775b81aaba34683abafe3eedf0fc2dc90cdd4c613a0630d704d417",
+      "after_sha256": "9198795b1e1cb659e8628024840dd2b23c4a0d4221b7888f555ea28397346863",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r_check_witnesses.py",
+      "before_sha256": "d727f84eb5a5eccad1109908cafac8050d9b506ed7100efde1a4a969fd81aba1",
+      "after_sha256": "586c6bfd4dddf84ba7d4aa698dd960440508f0827a28df47af2f7a7be38a1a02",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r_isolation.py",
+      "before_sha256": "29189ce89d7306e9c3c8681c018db94de5b0c73ad3467c8c940478bb06619c9c",
+      "after_sha256": "fcbf80c17726328ba60db1a50552c1a7b1495c15c0e1be8c3782e787595b787c",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r_isolation_evidence.py",
+      "before_sha256": "6dd108b9844019eb170a768e4e379384941dfd58f5ef0256b5e37eda1719518e",
+      "after_sha256": "d69e5ade06b14ed9f34a7fa3c75840eee9d13adb61ec06ff6ad976b5182a7d4f",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r_published_executor.py",
+      "before_sha256": "d80774f1838c7ec5321fea08020d42ce08a1fd7c2f6a18de8940b12552c28a72",
+      "after_sha256": "00fea01d55ea23f41a0cbe6fae6a9f96c06862402fee0428920ee1453a658067",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r_published_qualification.py",
+      "before_sha256": "3af4fc407f591738f3d7c11c5a609c04123bb2d5b33d3a697dfb7d578d4b5334",
+      "after_sha256": "7ac31ff38612f2dd56357003c59c03cfc541559857c588ed27e45ac41226ada7",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/p1r_qualification.py",
+      "before_sha256": "1d59118a278c963f59bb918a900268830afda15c6238b2f00b8854a0b0941c0e",
+      "after_sha256": "6332bbdd449fd4db46b19ee3603ce4451751c57c803244b7d297f2aebb20088d",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/tests/p1r_isolation_fixture.py",
+      "before_sha256": "b4bac4afecde73280e70d984f54bb580fee594049158bf4f24ef9a16c66a46e7",
+      "after_sha256": "40e9ccb4615a9bfc9f9291d182a4ddff439814843a8e666bac5b5a1b3ee03c2e",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation.py",
+      "before_sha256": "bd4f3154592b38dcc6914ce6f162845d52344383d7cd5656f1f44afdbe08ef3b",
+      "after_sha256": "5e67cf99c8023dd2ff32c8a65563107276c7b2448d96221f62c2d185e4a4ec35",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/tests/test_p1r_isolation_hardening.py",
+      "before_sha256": "88509e229c0470abbd623f4df3d0c41f3ff1c73646a20f7e17fff93c859ee08c",
+      "after_sha256": "d92404221b06b83225da2756663ec83719477fc92f8a33950c0aae67ffcec8f7",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/tests/test_p1r_published_executor.py",
+      "before_sha256": "f5866c542788ab92ab38ae854a57ff470f99e7fcf06f1234f28c44112acf6064",
+      "after_sha256": "6ec18ebb7ec0140339b3fee89d2c958296b2ef10709a68efdab878df765e75ae",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/tests/test_p1r_published_qualification.py",
+      "before_sha256": "e3b9f981781fb98bc4101e08b9405d1edcd816a0bf63c87abaeb41e55851b8c0",
+      "after_sha256": "5fb315c0b125e1700bee61f89e5df7d8d31cd41d7ab0ea10cd278ac3e1b5f8c8",
+      "mode": 420,
+      "matches_verified_source": true
+    },
+    {
+      "path": "tools/tests/test_p1r_qualification.py",
+      "before_sha256": "a57f47d06b5e6136960e5554b94cd8fb4deea9a1aeea326abb2575ff7c5eb293",
+      "after_sha256": "385b14908b035d695e0ec65aef83de16503205968e7c52ec585c3515adffb29f",
+      "mode": 420,
+      "matches_verified_source": true
+    }
+  ],
+  "errors": [],
+  "finished_utc": "2026-10-18T22:46:21.832022+00:00",
+  "index_unchanged": true,
+  "head_unchanged": true
+}

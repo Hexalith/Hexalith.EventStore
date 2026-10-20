@@ -23,7 +23,7 @@ public sealed partial class DaprReadModelStore : IReadModelOwnerProofStore
         try
         {
             reads++;
-            RawStateEntry model = await accessor.ReadAsync(identity.ActorId + ":" + binding.SelectionSuffix, cancellationToken).ConfigureAwait(false);
+            RawStateEntry model = await accessor.ReadAsync(binding.SelectionKey?.Invoke(request) ?? identity.ActorId + ":" + binding.SelectionSuffix, cancellationToken).ConfigureAwait(false);
             bytes += model.Value.Length;
             if (!model.Exists) return new(null, "delivery_rebuild_required", reads, bytes);
             if (model.Value.Length > 22_016 || ReadModelBatchEnvelope.IsEnvelope(model.Value.Span))

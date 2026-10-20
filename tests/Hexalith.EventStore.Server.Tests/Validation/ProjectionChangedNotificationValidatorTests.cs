@@ -1,4 +1,7 @@
 
+using System.Text;
+using System.Text.Json;
+
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Validation;
@@ -11,6 +14,49 @@ namespace Hexalith.EventStore.Server.Tests.Validation;
 
 public class ProjectionChangedNotificationValidatorTests {
     private readonly ProjectionChangedNotificationValidator _validator = new();
+
+    [Theory]
+    [InlineData(2_040, true)]
+    [InlineData(2_041, false)]
+    public void MetadataSerializedByteBoundary_IncludesJsonOverhead(int valueLength, bool accepted) {
+        var metadata = new Dictionary<string, string> { ["k"] = new string('x', valueLength) };
+        JsonSerializer.SerializeToUtf8Bytes(metadata).Length.ShouldBe(valueLength + 8);
+        _validator.Validate(new ProjectionChangedNotification("order-list", "acme", Metadata: metadata))
+            .IsValid.ShouldBe(accepted);
+    }
+
+    [Theory]
+    [InlineData("\\", 1_021)]
+    [InlineData("\"", 400)]
+    [InlineData("é", 342)]
+    [InlineData("😀", 200)]
+    public void MetadataEscapingAndMultibyteExpansion_RejectsSerializedOversize(string value, int repetitions) {
+        var metadata = new Dictionary<string, string> { ["k"] = string.Concat(Enumerable.Repeat(value, repetitions)) };
+        Encoding.UTF8.GetByteCount("k" + metadata["k"]).ShouldBeLessThan(2_048);
+        JsonSerializer.SerializeToUtf8Bytes(metadata).Length.ShouldBeGreaterThan(2_048);
+        _validator.Validate(new ProjectionChangedNotification("order-list", "acme", Metadata: metadata))
+            .IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void EscapedMetadataKey_RejectsSerializedOversize() {
+        var metadata = new Dictionary<string, string> { [new string('"', 400)] = "x" };
+        JsonSerializer.SerializeToUtf8Bytes(metadata).Length.ShouldBeGreaterThan(2_048);
+        _validator.Validate(new ProjectionChangedNotification("order-list", "acme", Metadata: metadata))
+            .IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ConfiguredCapsCannotRaiseContractCeilings() {
+        var validator = new ProjectionChangedNotificationValidator(Options.Create(new ProjectionChangeNotifierOptions {
+            MaxDetailMetadataEntries = 100,
+            MaxDetailMetadataBytes = 100_000,
+        }));
+        var byteOversize = new Dictionary<string, string> { ["k"] = new string('x', 2_041) };
+        validator.Validate(new ProjectionChangedNotification("order-list", "acme", Metadata: byteOversize)).IsValid.ShouldBeFalse();
+        var entryOversize = Enumerable.Range(0, 17).ToDictionary(index => $"k{index}", _ => "v");
+        validator.Validate(new ProjectionChangedNotification("order-list", "acme", Metadata: entryOversize)).IsValid.ShouldBeFalse();
+    }
 
     [Fact]
     public void ValidNotification_Passes() {

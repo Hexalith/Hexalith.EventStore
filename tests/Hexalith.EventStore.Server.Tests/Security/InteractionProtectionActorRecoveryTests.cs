@@ -36,6 +36,85 @@ namespace Hexalith.EventStore.Server.Tests.Security;
 /// <summary>Actual engine/actor coordination tests with independently inspected in-memory committed source state.</summary>
 public sealed class InteractionProtectionActorRecoveryTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TimedOutWriterProofQuiescesBeforeCommandReentryAndRuntimeCleanup(bool failedMethod)
+    {
+        var fixture = Fixture();
+        var state = new FaultInjectingActorStateManager();
+        var scheduler = new RegisteredReminderHarness();
+        var clock = new FakeTimeProvider();
+        ConfigureWriterProof(fixture, state, static () => false);
+        ActorTestContext actor = Actor(fixture, state, scheduler: scheduler.Manager, clock: clock);
+        CommandEnvelope command = Command(fixture, "unfinished-writer");
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => actor.Actor.ProcessCommandAsync(command));
+        var original = state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>();
+        byte[] ciphertext = fixture.Occurrences.Record!.Sealed!.PayloadBytes.ToArray();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int completions = 0;
+        fixture.Occurrences.Registry.CompleteWriterAsync(Arg.Any<InteractionOccurrenceIdentity>(), Arg.Any<string>(),
+            Arg.Any<string>(), true, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            entered.TrySetResult();
+            await release.Task; // An independently committing writer may not acknowledge cancellation.
+            completions++;
+            fixture.Occurrences.Record = fixture.Occurrences.Record! with
+            {
+                WriterState = InteractionOccurrenceWriterState.Active,
+                WriterProofId = call.ArgAt<string>(2),
+            };
+            return new InteractionOccurrenceReservationResult(InteractionOccurrenceReservationStatus.Sealed, fixture.Occurrences.Record);
+        });
+
+        Task delivery = scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(5));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        clock.Advance(TimeSpan.FromSeconds(30));
+        await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => delivery.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        int operationsBefore = state.Trace.Count;
+        int proofsBefore = fixture.Occurrences.Registry.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(IInteractionOccurrenceRegistry.CompleteWriterAsync));
+        try
+        {
+            await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => actor.Actor.ProcessCommandAsync(command)
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            await Should.ThrowAsync<PayloadProtectionRecoveryException>(() => actor.Actor.ReceiveReminderAsync(
+                PayloadProtectionCompletionJournal.ReminderName, [], TimeSpan.Zero, TimeSpan.Zero));
+            state.Trace.Count.ShouldBe(operationsBefore);
+            fixture.Occurrences.Registry.ReceivedCalls().Count(call => call.GetMethodInfo().Name == nameof(IInteractionOccurrenceRegistry.CompleteWriterAsync))
+                .ShouldBe(proofsBefore);
+            state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBe(original);
+            completions.ShouldBe(0);
+
+            MethodInfo method = typeof(Dapr.Actors.Runtime.Actor).GetMethod(failedMethod ? "OnActorMethodFailedInternalAsync" : "OnPostActorMethodAsyncInternal",
+                BindingFlags.Instance | BindingFlags.NonPublic)!;
+            var cleanup = (Task)method.Invoke(actor.Actor, failedMethod
+                ? [default(ActorMethodContext), new OperationCanceledException()]
+                : [default(ActorMethodContext)])!;
+            cleanup.IsCompleted.ShouldBeFalse();
+            state.Trace.Count.ShouldBe(operationsBefore);
+            release.SetResult();
+            if (failedMethod) { await cleanup.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken); }
+            else
+            {
+                await Should.ThrowAsync<OperationCanceledException>(() => cleanup.WaitAsync(
+                    TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            }
+            completions.ShouldBe(1);
+            scheduler.RegisteredNames.ShouldContain(PayloadProtectionCompletionJournal.ReminderName);
+            await scheduler.AdvanceAsync(actor.Actor, TimeSpan.FromSeconds(30));
+
+            var completed = state.CreateCommittedView()[PayloadProtectionCompletionJournal.StateName].ShouldBeOfType<PayloadProtectionCompletionJournal>();
+            completed.Completed.ShouldBeTrue();
+            completed.Originals.ShouldBe(original.Originals);
+            fixture.Occurrences.Record!.Sealed!.PayloadBytes.ShouldBe(ciphertext);
+            fixture.Occurrences.Keys.Leases.ShouldBe(1);
+            scheduler.RegisteredNames.ShouldBeEmpty();
+            await actor.EventPublisher.DidNotReceiveWithAnyArgs().PublishEventsAsync(default!, default!, default!, default, default);
+        }
+        finally { release.TrySetResult(); }
+    }
+
     [Fact]
     public async Task IdleReadAndWriterProofShareOneElapsedDeadline()
     {

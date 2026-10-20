@@ -1,0 +1,161 @@
+{
+  "setup_marker_created": true,
+  "marker_reset_before_strict_call": true,
+  "strict_refusal": {
+    "type": "InvalidPacket",
+    "message": "physical tagged source differs from canonical committed bytes"
+  },
+  "strict_marker_created": false,
+  "setup_trace": [
+    {
+      "argv": [
+        "git",
+        "config",
+        "filter.hide.clean",
+        "/usr/bin/python3 /tmp/p1r-tagged-bytes-3qpl934u/filter.py"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "update-index",
+        "--assume-unchanged",
+        "--",
+        ".gitattributes"
+      ],
+      "exit_code": 0,
+      "marker_after": true
+    }
+  ],
+  "strict_trace": [
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "ls-tree",
+        "-rz",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "ls-files",
+        "--stage",
+        "-z"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+        "-z"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "ls-files",
+        "--others",
+        "-z"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "--no-pager",
+        "rev-parse",
+        "--git-path",
+        "info/attributes"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "-c",
+        "core.attributesFile=/dev/null",
+        "check-attr",
+        "--cached",
+        "-z",
+        "text",
+        "eol",
+        "filter",
+        "working-tree-encoding",
+        "ident",
+        "--",
+        ".editorconfig",
+        ".gitattributes",
+        "global.json",
+        "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    },
+    {
+      "argv": [
+        "git",
+        "--no-replace-objects",
+        "check-attr",
+        "--cached",
+        "-z",
+        "text",
+        "eol",
+        "filter",
+        "working-tree-encoding",
+        "ident",
+        "--",
+        ".editorconfig",
+        ".gitattributes",
+        "global.json",
+        "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs"
+      ],
+      "exit_code": 0,
+      "marker_after": false
+    }
+  ]
+}

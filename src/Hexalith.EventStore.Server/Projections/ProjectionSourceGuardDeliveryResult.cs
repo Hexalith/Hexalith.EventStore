@@ -3,6 +3,13 @@ namespace Hexalith.EventStore.Server.Projections;
 /// <summary>Classifies ownership of a guarded probe without authorizing cleanup.</summary>
 internal sealed record ProjectionSourceGuardDeliveryResult(bool Owned, bool AlreadyCurrent, string? ReasonCode)
 {
+    /// <summary>Retains only the original content-free owner proofs established by current inspection.</summary>
+    internal IReadOnlyDictionary<string, Hexalith.EventStore.Contracts.Projections.ProjectionOwnerProof> ProvenOwners { get; init; }
+        = new Dictionary<string, Hexalith.EventStore.Contracts.Projections.ProjectionOwnerProof>();
+
+    /// <summary>Retains the exact native proof whose prefix was compared to the completion binding.</summary>
+    internal Hexalith.EventStore.Server.Events.SourceProof? ProvenSource { get; init; }
+
     /// <summary>Indicates that exact conditional completion was read back, independently of newer source/lifecycle freshness.</summary>
     internal bool CompletionProven { get; init; }
 

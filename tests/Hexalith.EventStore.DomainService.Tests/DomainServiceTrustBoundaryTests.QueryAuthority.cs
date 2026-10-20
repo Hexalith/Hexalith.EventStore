@@ -16,6 +16,64 @@ public sealed partial class DomainServiceTrustBoundaryTests
 {
     [Theory]
     [InlineData("valid")]
+    [InlineData("current-owner-denial")]
+    [InlineData("forged-context")]
+    [InlineData("forged-header")]
+    [InlineData("absent-context")]
+    public async Task OwnerSdkSeparatelyExposesVerifiedOriginAndStillRunsCurrentOwnerAuthorization(string scenario)
+    {
+        var origin = new OriginatingQueryContext("actor-1", "original-client", true, "delegation-1", ["read", "resolve"], ["public-gateway"]);
+        var query = new QueryEnvelope("tenant-a", "widget", "widget-1", "owner-probe", "{}"u8.ToArray(), "corr", "actor-1")
+        {
+            OriginalActorId = "actor-1", AuthenticatedWorkloadId = "projects", IsDelegated = true, Audience = ["eventstore"],
+            CallerAuthority = new("delegated-owner-query", [], ["read_metadata"])
+                { OriginatingContext = scenario == "absent-context" ? null : origin },
+        };
+        int protectedCalls = 0;
+        IHttpContextAccessor? accessor = null;
+        IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();
+        handler.Domain.Returns("widget"); handler.QueryType.Returns("owner-probe");
+        handler.ExecuteAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            protectedCalls++;
+            VerifiedQueryCaller verified = VerifiedQueryCaller.Get(accessor!.HttpContext).ShouldNotBeNull();
+            verified.Query.AuthenticatedWorkloadId.ShouldBe("projects"); verified.Query.Audience.ShouldBe(["eventstore"]);
+            verified.Query.DelegationId.ShouldBeNull(); verified.Query.Scopes.ShouldBeNull();
+            accessor.HttpContext!.User.HasClaim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, "eventstore").ShouldBeTrue();
+            accessor.HttpContext.User.HasClaim("aud", "public-gateway").ShouldBeFalse();
+            verified.Principal.HasClaim("eventstore:permission", "read_metadata").ShouldBeTrue();
+            if (scenario == "absent-context") verified.OriginatingContext.ShouldBeNull();
+            else verified.OriginatingContext.ShouldBe(origin);
+            // A verified delegation provides evidence only: the owner still decides current actor/resource access.
+            return scenario == "current-owner-denial" ? QueryResult.Failure("safe-denial")
+                : QueryResult.FromPayload(JsonSerializer.SerializeToElement(new { allowed = true }));
+        });
+        await using WebApplication app = await StartAsync(configureServices: services => services.AddSingleton(handler));
+        accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+        Dictionary<string, object> bindings = QueryCallerAuthorityBinding.Bind(query).ToDictionary(pair => pair.Key, pair => (object)pair.Value);
+        string assertion = Assertion([EventStoreWorkloadOperations.DomainServiceQuery], extraClaims: bindings);
+        QueryEnvelope sent = scenario == "forged-context"
+            ? query with { CallerAuthority = query.CallerAuthority with { OriginatingContext = origin with { DelegationId = "forged" } } }
+            : query;
+        if (scenario == "forged-header")
+        {
+            sent = query with { CallerAuthority = query.CallerAuthority with { OriginatingContext = null } };
+            assertion = Assertion([EventStoreWorkloadOperations.DomainServiceQuery]);
+        }
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/query") { Content = JsonContent.Create(sent) };
+        request.Headers.Add("X-Hexalith-Originating-Context", JsonSerializer.Serialize(origin));
+        AddInternalHeaders(request, assertion, [ChannelToken]);
+        using HttpResponseMessage response = await app.GetTestClient().SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        QueryResult result = (await response.Content.ReadFromJsonAsync<QueryResult>(TestContext.Current.CancellationToken))!;
+        bool forged = scenario is "forged-context" or "forged-header";
+        result.Success.ShouldBe(!forged && scenario != "current-owner-denial");
+        if (!result.Success) result.ErrorMessage.ShouldBe("safe-denial");
+        protectedCalls.ShouldBe(forged ? 0 : 1);
+    }
+
+    [Theory]
+    [InlineData("valid")]
     [InlineData("actor")]
     [InlineData("stripped")]
     [InlineData("tenant")]
@@ -45,9 +103,10 @@ public sealed partial class DomainServiceTrustBoundaryTests
         });
         await using WebApplication app = await StartAsync(configureServices: services => services.AddSingleton(handler));
         accessor = app.Services.GetRequiredService<IHttpContextAccessor>();
-        string digest = QueryCallerAuthorityBinding.Bind(query)[QueryCallerAuthorityBinding.DigestClaim];
+        Dictionary<string, object> bindings = QueryCallerAuthorityBinding.Bind(query).ToDictionary(pair => pair.Key, pair => (object)pair.Value);
+        if (mutation == "duplicate-binding") bindings[QueryCallerAuthorityBinding.DigestClaim] = new[] { bindings[QueryCallerAuthorityBinding.DigestClaim], bindings[QueryCallerAuthorityBinding.DigestClaim] };
         string assertion = Assertion([EventStoreWorkloadOperations.DomainServiceQuery], extraClaims: new Dictionary<string, object>
-        { [QueryCallerAuthorityBinding.DigestClaim] = mutation == "duplicate-binding" ? new[] { digest, digest } : digest });
+            (bindings));
         QueryEnvelope sent = mutation switch
         {
             "stripped" => query with { CallerAuthority = null },

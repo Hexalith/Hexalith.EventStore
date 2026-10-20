@@ -1,0 +1,107 @@
+{
+  "started_utc": "2026-10-18T21:36:01.660855+00:00",
+  "repositories": {
+    "projects": {
+      "root": "/home/administrator/projects/hexalith/projects",
+      "head": "349129039314c87725a032d0e5668fecc6ad7954",
+      "head_unchanged": false,
+      "index_sha256": "62c96c19b6222963ec19e8b2d07195d851457a67f366746417226af467f09e0f",
+      "index_unchanged": false,
+      "tracked_files_checked": 5983,
+      "tracked_changes": [
+        {
+          "path": "tests/tools/test_g6_qualification_runner.py",
+          "before": "ea1f396c440ea6e3a22176b8af97dfa963890dd34e2409f10715d898d256cb1a",
+          "after": "363cda412a97cac957cd06c1b7598a439e9154837fe63d518b2d42f44cd5d946"
+        }
+      ],
+      "status": "## main...origin/main\n ? references/Hexalith.EventStore\n",
+      "checks": [
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--cached",
+            "--check"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ]
+    },
+    "eventstore": {
+      "root": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+      "head": "6fccf5f235cebdcb2ae412fc03ee019904e611a7",
+      "head_unchanged": false,
+      "index_sha256": "29cbebcefce67f1e8ba6736328aa0d6173f4c71428b7888acf8131993d7abc80",
+      "index_unchanged": false,
+      "tracked_files_checked": 23065,
+      "tracked_changes": [],
+      "status": "## main...origin/main\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/frozen-verifier-changes.patch\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/frozen-verifier-retention.json\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/frozen-verifier-tooling/\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/owning-checkout-test-reuse.json\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retain-evidence.py\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/snapshot-command-refusal-diagnostic.json\n?? _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/story-6-4-guard.json\n",
+      "checks": [
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        {
+          "argv": [
+            "git",
+            "diff",
+            "--cached",
+            "--check"
+          ],
+          "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      ]
+    }
+  },
+  "frozen_binding": {
+    "expected": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c",
+    "actual": "a009558d5bd76ee0e17a7a0efcd3740d4985f50561fc8e9d34c039715636834c",
+    "unchanged": true
+  },
+  "frozen_owner_documents": [
+    {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze-v3.json",
+      "before": "690a297d8037d3fef528b9a146ea7e3ab588f043bd6fde4a9a79df33b866a690",
+      "after": "690a297d8037d3fef528b9a146ea7e3ab588f043bd6fde4a9a79df33b866a690",
+      "unchanged": true
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+      "before": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+      "after": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+      "unchanged": true
+    },
+    {
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-decisions.json",
+      "before": "b296ef0751287a1af00cfa278db023002f9d133b09e73067c71c6c03ca02537f",
+      "after": "b296ef0751287a1af00cfa278db023002f9d133b09e73067c71c6c03ca02537f",
+      "unchanged": true
+    }
+  ],
+  "finished_utc": "2026-10-18T21:36:33.713423+00:00"
+}

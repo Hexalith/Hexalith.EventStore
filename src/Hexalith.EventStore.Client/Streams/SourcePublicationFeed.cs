@@ -59,6 +59,11 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
             if (initial is null) { deadline.ThrowIfCancellationRequested(); return new(null, "publication-namespace-unavailable"); }
             SourcePublicationIndexState? prior = await ReadStateAsync(scope, deadline).ConfigureAwait(false);
             if (prior?.PoisonCode is not null) { deadline.ThrowIfCancellationRequested(); return new(null, prior.PoisonCode); }
+            // Enrollment is not an authorized migration of retained legacy offsets or anchored work.
+            if (prior is not null && initial.Sources.Any(target => target.NativeProof is not null
+                && prior.Sources.Concat(prior.ReconciliationProgress?.Sources ?? [])
+                    .Any(previous => previous.Identity == target.Identity && previous.NativeProof is null)))
+            { return new(null, "publication-source-upgrade-required"); }
             var retained = await deadline.ReadAsync(async token =>
             {
                 var progress = await store.ReadReconciliationProgressAsync(initial, token).ConfigureAwait(false);
@@ -89,6 +94,7 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
                 deadline.ThrowIfCancellationRequested();
                 SourcePublicationHead? previous = prior?.Sources.FirstOrDefault(h => h.Identity == target.Identity);
                 if (previous is not null && previous.Head > target.Head) { conflict = "publication-source-regressed"; break; }
+                if (previous is not null && !previous.CanAdvanceUnder(target)) { conflict = "publication-source-incompatible"; break; }
                 if (sourceIndex++ < verified) { continue; }
                 var result = target.Head == 0 ? (Publications: (IReadOnlyList<SourcePublicationDescriptor>?)Array.Empty<SourcePublicationDescriptor>(), ObservationId: "empty-certified-cut", Head: 0L, Failure: (string?)null)
                     : await ReadSourceAsync(target, deadline).ConfigureAwait(false);
@@ -238,6 +244,7 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
                 || source.Events is null || source.Events.Count != source.Head || source.ObservedAt == default || source.ObservedAt > timeProvider.GetUtcNow()
                 || string.IsNullOrWhiteSpace(source.ObservationId) || source.ObservationId.Length > 256)
             { return ((IReadOnlyList<SourcePublicationDescriptor>?)null, "", 0L, "publication-source-hole"); }
+            if (!NativeSourcePrefix.Matches(source, target, deadline)) return (null, "", 0L, "publication-source-hole");
             var prefix = new List<StreamReadEvent>(); long bytes = 0;
             foreach (var item in source.Events)
             {
@@ -250,9 +257,10 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
                     || captured.MetadataVersion <= 0 || string.IsNullOrWhiteSpace(captured.SerializationFormat)) { return (null, "", 0L, "publication-source-hole"); }
                 prefix.Add(captured);
             }
-            if (prefix.Count != target.Head) { return (null, "", 0L, "publication-source-hole"); }
+            if (prefix.Count != target.Head)
+            { return (null, "", 0L, "publication-source-hole"); }
             IReadOnlyList<SourcePublicationDescriptor> candidates;
-            try { candidates = projector.Project(source with { Head = target.Head, Events = prefix.AsReadOnly() }, token); }
+            try { candidates = projector.Project(source with { Head = target.Head, Events = prefix.AsReadOnly(), NativeProof = target.NativeProof }, token); }
             catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or System.Text.Json.JsonException)
             { return (null, "", 0L, "publication-source-incompatible"); }
             if (candidates is null || candidates.Count is < 0 or > MaxEntries) { return (null, "", 0L, "publication-source-incompatible"); }
@@ -290,7 +298,8 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
         {
             deadline.ThrowIfCancellationRequested();
             if (owned.Count >= MaxSources || head is null || head.Identity is null || head.Head < 0 || head.Head > MaxEntries
-                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain || owned.Any(h => h.Identity == head.Identity)) { return null; }
+                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain || !head.HasConsistentNativeProof
+                || owned.Any(h => h.Identity == head.Identity)) { return null; }
             owned.Add(head);
         }
         deadline.ThrowIfCancellationRequested();
@@ -352,7 +361,8 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
         {
             deadline.ThrowIfCancellationRequested();
             if (heads.Count >= MaxSources || head is null || head.Identity is null || head.Head < 0 || head.Head > MaxEntries
-                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain || heads.Any(h => h.Identity == head.Identity))
+                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain || !head.HasConsistentNativeProof
+                || heads.Any(h => h.Identity == head.Identity))
             { throw new InvalidOperationException("Malformed publication source vector."); }
             heads.Add(head);
         }

@@ -17,4 +17,9 @@ public sealed record StreamReadMetadata(
     long LatestSequence,
     int EventCount,
     bool IsTruncated,
-    ReplayContinuationToken? NextContinuationToken);
+    ReplayContinuationToken? NextContinuationToken)
+{
+    /// <summary>Gets the exact stable actor-owned source evidence, only for an explicitly requested native workload read.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public NativeSourceProof? NativeProof { get; init; }
+}

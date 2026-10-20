@@ -1,0 +1,71 @@
+testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem (test_p1r_qualification.CleanSourceFilterBoundaryTests.testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem) ... ok
+testExplicitInterpreterDiagnosticStillRechecksEveryPhysicalSourceRole (test_p1r_qualification.InterpreterSourceCheckTests.testExplicitInterpreterDiagnosticStillRechecksEveryPhysicalSourceRole) ... ok
+testDuplicateJsonAndChecksumInputsRefused (test_p1r_qualification.PacketTests.testDuplicateJsonAndChecksumInputsRefused) ... ok
+testExistingOutputRefusedWithoutChangingBytes (test_p1r_qualification.PacketTests.testExistingOutputRefusedWithoutChangingBytes) ... ok
+testFailedInitialSentinelObservationIsSealedAndReleased (test_p1r_qualification.PacketTests.testFailedInitialSentinelObservationIsSealedAndReleased) ... ok
+testInventedQualificationRefusedEvenWithNewChecksums (test_p1r_qualification.PacketTests.testInventedQualificationRefusedEvenWithNewChecksums) ... ok
+testMalformedChecksAreSafeLibraryRefusals (test_p1r_qualification.PacketTests.testMalformedChecksAreSafeLibraryRefusals) ... ok
+testMalformedJsonRootsAndChecksAreStructuredCliRefusals (test_p1r_qualification.PacketTests.testMalformedJsonRootsAndChecksAreStructuredCliRefusals) ... ok
+testMissingAndDuplicateRequiredCasesRefused (test_p1r_qualification.PacketTests.testMissingAndDuplicateRequiredCasesRefused) ... ok
+testMissingReceiptAndExtraInputRefused (test_p1r_qualification.PacketTests.testMissingReceiptAndExtraInputRefused) ... ok
+testMissingRequiredEvidenceRefusesExecutionAndRetainsFailure (test_p1r_qualification.PacketTests.testMissingRequiredEvidenceRefusesExecutionAndRetainsFailure) ... ok
+testNestedChecksumNamedInputCannotDisappear (test_p1r_qualification.PacketTests.testNestedChecksumNamedInputCannotDisappear) ... ok
+testOmittedExecutedAssertionsRefused (test_p1r_qualification.PacketTests.testOmittedExecutedAssertionsRefused) ... ok
+testPreparationCannotQualifyExistingSourceEvidence (test_p1r_qualification.PacketTests.testPreparationCannotQualifyExistingSourceEvidence) ... ok
+testReadOnlyValidationDoesNotModifyPacket (test_p1r_qualification.PacketTests.testReadOnlyValidationDoesNotModifyPacket) ... ok
+testRealControlsRetainCountersAndActualProcessEndState (test_p1r_qualification.PacketTests.testRealControlsRetainCountersAndActualProcessEndState) ... ok
+testRequiredFailedSkippedUnmeasuredIncompatibleLanesCannotPass (test_p1r_qualification.PacketTests.testRequiredFailedSkippedUnmeasuredIncompatibleLanesCannotPass) ... ok
+testResealedOwnershipAndCleanupOmissionsRefused (test_p1r_qualification.PacketTests.testResealedOwnershipAndCleanupOmissionsRefused) ... ok
+testResealedReceiptIntervalsMustBeInsideInvocationAndOrdered (test_p1r_qualification.PacketTests.testResealedReceiptIntervalsMustBeInsideInvocationAndOrdered) ... ok
+testResealedSentinelNullSuspensionAndReleaseClaimsRefused (test_p1r_qualification.PacketTests.testResealedSentinelNullSuspensionAndReleaseClaimsRefused) ... ok
+testResealedSourceHashesAndDuplicateInputsRefused (test_p1r_qualification.PacketTests.testResealedSourceHashesAndDuplicateInputsRefused) ... ok
+testResealedTypedAndConsistentOutcomesRequired (test_p1r_qualification.PacketTests.testResealedTypedAndConsistentOutcomesRequired) ... ok
+testSlowSourceVerificationDoesNotExpireSharedSentinel (test_p1r_qualification.PacketTests.testSlowSourceVerificationDoesNotExpireSharedSentinel) ... /usr/lib/python3.14/pathlib/__init__.py:772: ResourceWarning: unclosed file <_io.FileIO name='/proc/30328/environ' mode='rb' closefd=True>
+  return io.open(self, mode, buffering, encoding, errors, newline)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+testTamperedFileHashAndSourceInputRefused (test_p1r_qualification.PacketTests.testTamperedFileHashAndSourceInputRefused) ... ok
+testUnmeasuredZeroAndInventedCountsRefused (test_p1r_qualification.PacketTests.testUnmeasuredZeroAndInventedCountsRefused) ... ok
+testDirtyStagedAndUntrackedInputsRefuseForEveryRole (test_p1r_qualification.SeparateRuntimeBindingTests.testDirtyStagedAndUntrackedInputsRefuseForEveryRole) ... ok
+testDistinctCleanRootsRetainBothInventoriesAndBuildsRoles (test_p1r_qualification.SeparateRuntimeBindingTests.testDistinctCleanRootsRetainBothInventoriesAndBuildsRoles) ... ok
+testIgnoredGeneratedOutputsAreNotSourceInputs (test_p1r_qualification.SeparateRuntimeBindingTests.testIgnoredGeneratedOutputsAreNotSourceInputs) ... ok
+testIndexFlagsCannotHidePhysicalTrackedChanges (test_p1r_qualification.SeparateRuntimeBindingTests.testIndexFlagsCannotHidePhysicalTrackedChanges) ... ok
+testInvocationEvidenceCopiesDoNotBecomeNewSourceInputs (test_p1r_qualification.SeparateRuntimeBindingTests.testInvocationEvidenceCopiesDoNotBecomeNewSourceInputs) ... ok
+testNativeSourcelessAndEmbeddedRepositoryInputsRefuse (test_p1r_qualification.SeparateRuntimeBindingTests.testNativeSourcelessAndEmbeddedRepositoryInputsRefuse) ... ok
+testPhysicalTrackedComparisonPreservesGitNewlineConversion (test_p1r_qualification.SeparateRuntimeBindingTests.testPhysicalTrackedComparisonPreservesGitNewlineConversion) ... ok
+testPinPathAndTagSubstitutionsRefuse (test_p1r_qualification.SeparateRuntimeBindingTests.testPinPathAndTagSubstitutionsRefuse) ... ok
+testRuntimeOmissionAndPostBindingDriftRefuse (test_p1r_qualification.SeparateRuntimeBindingTests.testRuntimeOmissionAndPostBindingDriftRefuse) ... ok
+testCleanupAttemptsEveryIdentityAfterOneFailure (test_p1r_qualification.SourceAndProcessTests.testCleanupAttemptsEveryIdentityAfterOneFailure) ... ok
+testDirtyUntrackedAndStagedNewSourcesHaveIndependentBindings (test_p1r_qualification.SourceAndProcessTests.testDirtyUntrackedAndStagedNewSourcesHaveIndependentBindings) ... ok
+testDisappearingProcStatIsAbsentButOtherReadErrorsRemainFailures (test_p1r_qualification.SourceAndProcessTests.testDisappearingProcStatIsAbsentButOtherReadErrorsRemainFailures) ... ok
+testExternalSigintPreservesReceiptAndCleansActualDescendants (test_p1r_qualification.SourceAndProcessTests.testExternalSigintPreservesReceiptAndCleansActualDescendants) ... FAIL
+testNestedBuildsObservationKeepsOwningRepositoryRoute (test_p1r_qualification.SourceAndProcessTests.testNestedBuildsObservationKeepsOwningRepositoryRoute) ... ok
+testPidfdErrorsAreSkippedOnlyForDisappearedOrReusedOwnedIdentity (test_p1r_qualification.SourceAndProcessTests.testPidfdErrorsAreSkippedOnlyForDisappearedOrReusedOwnedIdentity) ... ok
+testPrivateRegistrationFindsDetachedChildAfterEarlyParentExit (test_p1r_qualification.SourceAndProcessTests.testPrivateRegistrationFindsDetachedChildAfterEarlyParentExit) ... ok
+testRealSuspendedSentinelIsNotRunning (test_p1r_qualification.SourceAndProcessTests.testRealSuspendedSentinelIsNotRunning) ... ok
+testSecondSigintDuringTimerJoinCannotBypassCleanup (test_p1r_qualification.SourceAndProcessTests.testSecondSigintDuringTimerJoinCannotBypassCleanup) ... ok
+testSharedSentinelExitsWhenParentDisconnects (test_p1r_qualification.SourceAndProcessTests.testSharedSentinelExitsWhenParentDisconnects) ... ok
+testStaleParentAndSessionIdsNeverAdoptUnrelatedProcess (test_p1r_qualification.SourceAndProcessTests.testStaleParentAndSessionIdsNeverAdoptUnrelatedProcess) ... ok
+testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused (test_p1r_qualification.SourceAndProcessTests.testWorkspaceBuildsSubstitutionAndUndeclaredFallbackAreRefused) ... ok
+testWorkspaceRootBuildsIsObservedWithoutNestedInitialization (test_p1r_qualification.SourceAndProcessTests.testWorkspaceRootBuildsIsObservedWithoutNestedInitialization) ... ok
+testDeclaredCrLfIsAcceptedAndUnexpectedCrLfForLfSourceIsRefused (test_p1r_qualification.TaggedPhysicalSourceTests.testDeclaredCrLfIsAcceptedAndUnexpectedCrLfForLfSourceIsRefused) ... ok
+testExternalCleanFilterAndAttributesCannotHidePhysicalChanges (test_p1r_qualification.TaggedPhysicalSourceTests.testExternalCleanFilterAndAttributesCannotHidePhysicalChanges) ... ok
+testIgnoredSourceInjectionIsRefusedWhileGeneratedOutputsRemainAllowed (test_p1r_qualification.TaggedPhysicalSourceTests.testIgnoredSourceInjectionIsRefusedWhileGeneratedOutputsRemainAllowed) ... ok
+testIndexFlagsCannotHidePhysicalProductionOrBuildChanges (test_p1r_qualification.TaggedPhysicalSourceTests.testIndexFlagsCannotHidePhysicalProductionOrBuildChanges) ... ok
+testReplacementTreeCannotSubstituteCanonicalTaggedObjects (test_p1r_qualification.TaggedPhysicalSourceTests.testReplacementTreeCannotSubstituteCanonicalTaggedObjects) ... ok
+testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff (test_p1r_qualification.TaggedPhysicalSourceTests.testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff) ... ok
+testUtcStampKeepsAllEvidencePairsOrderedAcrossClockReversals (test_p1r_qualification.TimestampTests.testUtcStampKeepsAllEvidencePairsOrderedAcrossClockReversals) ... ok
+
+======================================================================
+FAIL: testExternalSigintPreservesReceiptAndCleansActualDescendants (test_p1r_qualification.SourceAndProcessTests.testExternalSigintPreservesReceiptAndCleansActualDescendants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_qualification.py", line 686, in testExternalSigintPreservesReceiptAndCleansActualDescendants
+    self.assertTrue(interrupted, (process.returncode, stdout, stderr))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : (2, b'', b'{"valid": false, "qualified": false, "p1r_usable": false, "reason": "preparation observation incomplete"}\n')
+
+----------------------------------------------------------------------
+Ran 54 tests in 101.730s
+
+FAILED (failures=1)

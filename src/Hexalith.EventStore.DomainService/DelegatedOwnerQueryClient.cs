@@ -21,7 +21,7 @@ public sealed class DelegatedOwnerQueryClient(DaprClient dapr, IHttpClientFactor
         VerifiedQueryCaller? caller = VerifiedQueryCaller.Get(context);
         string? workload = configuration["Authentication:WorkloadIssuer:Workload"];
         string? key = configuration["Authentication:BoundStreamRead:PrivateKey"];
-        if (caller?.Query.CallerAuthority?.Origin != "authenticated-caller" || query.Tenant != caller.Query.TenantId
+        if (caller?.Query.CallerAuthority?.Origin is not ("authenticated-caller" or "delegated-owner-query") || query.Tenant != caller.Query.TenantId
             || context!.Request.Headers[EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName].Count != 1)
             return QueryResult.Failure("safe-denial");
         if (string.IsNullOrWhiteSpace(workload) || string.IsNullOrWhiteSpace(key))

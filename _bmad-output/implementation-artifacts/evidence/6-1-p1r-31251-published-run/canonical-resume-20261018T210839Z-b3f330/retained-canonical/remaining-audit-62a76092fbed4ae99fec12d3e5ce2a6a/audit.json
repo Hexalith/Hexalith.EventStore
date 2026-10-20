@@ -1,0 +1,2542 @@
+{
+  "audit_completed": true,
+  "case_count": 163,
+  "case_witnesses": [
+    {
+      "assertions": {
+        "attempted": 11,
+        "failed": 0,
+        "passed": 11
+      },
+      "id": "3.110.0",
+      "lane": "provenance",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 11,
+        "failed": 0,
+        "passed": 11
+      },
+      "id": "3.70.1",
+      "lane": "provenance",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 11,
+        "failed": 0,
+        "passed": 11
+      },
+      "id": "3.125.1",
+      "lane": "provenance",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.110.0-pascal-floor-None",
+      "lane": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.110.0-web-floor-None",
+      "lane": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-pascal-floor-None",
+      "lane": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-web-floor-None",
+      "lane": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.125.1-pascal-floor-None",
+      "lane": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.125.1-web-floor-None",
+      "lane": "legacy-metadata",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.110.0-pascal-floor-1",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.110.0-pascal-floor-5",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.110.0-web-floor-1",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.110.0-web-floor-5",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-pascal-floor-1",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-pascal-floor-5",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-web-floor-1",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-web-floor-5",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.125.1-pascal-floor-1",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.125.1-pascal-floor-5",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.125.1-web-floor-1",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 4,
+        "failed": 0,
+        "passed": 4
+      },
+      "id": "3.125.1-web-floor-5",
+      "lane": "metadata-read",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-to-3.70.1",
+      "lane": "metadata-write",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 52,
+        "failed": 0,
+        "passed": 52
+      },
+      "id": "3.110.0-to-3.125.1",
+      "lane": "metadata-write",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 52,
+        "failed": 0,
+        "passed": 52
+      },
+      "id": "3.70.1-to-3.110.0",
+      "lane": "metadata-write",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 52,
+        "failed": 0,
+        "passed": 52
+      },
+      "id": "3.70.1-to-3.125.1",
+      "lane": "metadata-write",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 66,
+        "failed": 0,
+        "passed": 66
+      },
+      "id": "3.125.1-to-3.110.0",
+      "lane": "metadata-write",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-to-3.70.1",
+      "lane": "metadata-write",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1",
+      "lane": "full-replay",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1",
+      "lane": "full-replay",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0",
+      "lane": "full-replay",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1",
+      "lane": "full-replay",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.125.1-to-3.110.0",
+      "lane": "full-replay",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.125.1-to-3.70.1",
+      "lane": "full-replay",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1",
+      "lane": "snapshot-tail",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1",
+      "lane": "snapshot-tail",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0",
+      "lane": "snapshot-tail",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1",
+      "lane": "snapshot-tail",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.110.0",
+      "lane": "snapshot-tail",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.70.1",
+      "lane": "snapshot-tail",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1",
+      "lane": "retained-covered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1",
+      "lane": "retained-covered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0",
+      "lane": "retained-covered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1",
+      "lane": "retained-covered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.110.0",
+      "lane": "retained-covered",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.70.1",
+      "lane": "retained-covered",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1-absent",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1-non-covering",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1-absent",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1-non-covering",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0-absent",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0-non-covering",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1-absent",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1-non-covering",
+      "lane": "retained-uncovered",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.110.0-absent",
+      "lane": "retained-uncovered",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.110.0-non-covering",
+      "lane": "retained-uncovered",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.70.1-absent",
+      "lane": "retained-uncovered",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 59,
+        "failed": 0,
+        "passed": 59
+      },
+      "id": "3.125.1-to-3.70.1-non-covering",
+      "lane": "retained-uncovered",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1-interior",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.70.1-tail",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1-interior",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.110.0-to-3.125.1-tail",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0-interior",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.110.0-tail",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1-interior",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.70.1-to-3.125.1-tail",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.125.1-to-3.110.0-interior",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.125.1-to-3.110.0-tail",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.125.1-to-3.70.1-interior",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 45,
+        "failed": 0,
+        "passed": 45
+      },
+      "id": "3.125.1-to-3.70.1-tail",
+      "lane": "missing-event",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-invalid-floor",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.110.0-unreadable",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-protected",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.110.0-unknown-type",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-unknown-version",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-invalid-floor",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.70.1-unreadable",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-protected",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.70.1-unknown-type",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-unknown-version",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.125.1-invalid-floor",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.125.1-unreadable",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.125.1-protected",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.125.1-unknown-type",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.125.1-unknown-version",
+      "lane": "invalid-evidence",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.110.0-3.70.1-json-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-3.70.1-json-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.110.0-3.70.1-xml-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-3.70.1-xml-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.110.0-3.125.1-json-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-3.125.1-json-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.110.0-3.125.1-xml-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-3.125.1-xml-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.70.1-3.110.0-json-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-3.110.0-json-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.70.1-3.110.0-xml-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-3.110.0-xml-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.70.1-3.125.1-json-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-3.125.1-json-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.70.1-3.125.1-xml-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-3.125.1-xml-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.125.1-3.110.0-json-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-3.110.0-json-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.125.1-3.110.0-xml-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-3.110.0-xml-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.125.1-3.70.1-json-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-3.70.1-json-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 14,
+        "failed": 0,
+        "passed": 14
+      },
+      "id": "3.125.1-3.70.1-xml-legacy",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-3.70.1-xml-dual",
+      "lane": "query-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-3.70.1-json-positive",
+      "lane": "projection-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 13,
+        "failed": 0,
+        "passed": 13
+      },
+      "id": "3.110.0-3.125.1-json-positive",
+      "lane": "projection-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-3.110.0-json-positive",
+      "lane": "projection-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-3.125.1-json-positive",
+      "lane": "projection-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 13,
+        "failed": 0,
+        "passed": 13
+      },
+      "id": "3.125.1-3.110.0-json-positive",
+      "lane": "projection-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-3.70.1-json-positive",
+      "lane": "projection-wire",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 36,
+        "failed": 0,
+        "passed": 36
+      },
+      "id": "3.110.0-client-3.70.1-host",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 36,
+        "failed": 0,
+        "passed": 36
+      },
+      "id": "3.110.0-client-3.125.1-host",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 36,
+        "failed": 0,
+        "passed": 36
+      },
+      "id": "3.70.1-client-3.110.0-host",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 36,
+        "failed": 0,
+        "passed": 36
+      },
+      "id": "3.70.1-client-3.125.1-host",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 36,
+        "failed": 0,
+        "passed": 36
+      },
+      "id": "3.125.1-client-3.110.0-host",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 36,
+        "failed": 0,
+        "passed": 36
+      },
+      "id": "3.125.1-client-3.70.1-host",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-status",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-cursor-scope",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 37,
+        "failed": 0,
+        "passed": 37
+      },
+      "id": "3.110.0-fenced-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.110.0-stale-fence",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 38,
+        "failed": 0,
+        "passed": 38
+      },
+      "id": "3.110.0-trusted-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 40,
+        "failed": 0,
+        "passed": 40
+      },
+      "id": "3.110.0-unauthorized-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 37,
+        "failed": 0,
+        "passed": 37
+      },
+      "id": "3.110.0-retained-floor",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-status",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-cursor-scope",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-fenced-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-stale-fence",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-trusted-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-unauthorized-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.70.1-retained-floor",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 56,
+        "failed": 0,
+        "passed": 56
+      },
+      "id": "3.125.1-status",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "3.125.1-cursor-scope",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 37,
+        "failed": 0,
+        "passed": 37
+      },
+      "id": "3.125.1-fenced-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 41,
+        "failed": 0,
+        "passed": 41
+      },
+      "id": "3.125.1-stale-fence",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 39,
+        "failed": 0,
+        "passed": 39
+      },
+      "id": "3.125.1-trusted-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 41,
+        "failed": 0,
+        "passed": 41
+      },
+      "id": "3.125.1-unauthorized-effect",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 37,
+        "failed": 0,
+        "passed": 37
+      },
+      "id": "3.125.1-retained-floor",
+      "lane": "mixed-api",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 2,
+        "failed": 0,
+        "passed": 2
+      },
+      "id": "current-build",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 9,
+        "failed": 0,
+        "passed": 9
+      },
+      "id": "legacy-metadata",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29
+      },
+      "id": "query-wire",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 27,
+        "failed": 0,
+        "passed": 27
+      },
+      "id": "projection-wire",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 91,
+        "failed": 0,
+        "passed": 91
+      },
+      "id": "full-replay",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 91,
+        "failed": 0,
+        "passed": 91
+      },
+      "id": "snapshot-tail",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 91,
+        "failed": 0,
+        "passed": 91
+      },
+      "id": "retained-covered",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 91,
+        "failed": 0,
+        "passed": 91
+      },
+      "id": "retained-uncovered",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 91,
+        "failed": 0,
+        "passed": 91
+      },
+      "id": "missing-event",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 105,
+        "failed": 0,
+        "passed": 105
+      },
+      "id": "metadata-write",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 77,
+        "failed": 0,
+        "passed": 77
+      },
+      "id": "invalid-evidence",
+      "lane": "checkout",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 61,
+        "failed": 3,
+        "passed": 58
+      },
+      "id": "fresh-backup-restore-append-restart",
+      "lane": "post-upgrade-restore",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 44,
+        "failed": 0,
+        "passed": 44
+      },
+      "id": "containment-only-backup-restore",
+      "lane": "pre-upgrade-restore",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 37,
+        "failed": 0,
+        "passed": 37
+      },
+      "id": "startup-failure",
+      "lane": "failure-cleanup",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 39,
+        "failed": 0,
+        "passed": 39
+      },
+      "id": "timeout",
+      "lane": "failure-cleanup",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 39,
+        "failed": 0,
+        "passed": 39
+      },
+      "id": "cancellation",
+      "lane": "failure-cleanup",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 50,
+        "failed": 0,
+        "passed": 50
+      },
+      "id": "scheduled-restart-effect",
+      "lane": "reminder-recovery",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 49,
+        "failed": 0,
+        "passed": 49
+      },
+      "id": "stale-generation-refusal",
+      "lane": "reminder-recovery",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 50,
+        "failed": 0,
+        "passed": 50
+      },
+      "id": "tenant-preservation",
+      "lane": "reminder-recovery",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 64,
+        "failed": 0,
+        "passed": 64
+      },
+      "id": "logical-alias-replay",
+      "lane": "logical-event-evolution",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 65,
+        "failed": 0,
+        "passed": 65
+      },
+      "id": "unknown-version-refusal",
+      "lane": "logical-event-evolution",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 64,
+        "failed": 0,
+        "passed": 64
+      },
+      "id": "original-envelope-preserved",
+      "lane": "logical-event-evolution",
+      "validated": true
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-qualification.py",
+        "measure-boundary",
+        "--inputs",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+        "--out",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/successor-support-boundary.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json"
+      ],
+      "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a",
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:34:29.663119+00:00",
+      "label": "measure-boundary",
+      "started_utc": "2026-10-18T21:34:27.055598+00:00",
+      "stderr": "",
+      "stdout": "{\"candidate\": \"3.125.1\", \"case_count\": 163, \"out\": \"/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/successor-support-boundary.json\", \"p1r_usable\": false, \"status\": \"measured-pending-disposition\"}\n"
+    },
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-qualification.py",
+        "prepare",
+        "--out",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/strict-packet",
+        "--source-root",
+        "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+        "--inputs",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
+        "--decisions",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-decisions.json",
+        "--support-boundary",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/successor-support-boundary.json",
+        "--candidate-evidence",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/candidate",
+        "--process-controls",
+        "--comparison-evidence",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/comparison-3.70.1",
+        "--comparison-evidence",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/consumers/comparison-3.110.0",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/a8e6ddab048147d49f25fb405954aa85.json",
+        "--receipt",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6e394b952a734152ad72fbab44f599b8.json"
+      ],
+      "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a",
+      "exit_code": 2,
+      "finished_utc": "2026-10-18T21:34:34.378197+00:00",
+      "label": "strict-prepare",
+      "started_utc": "2026-10-18T21:34:29.669691+00:00",
+      "stderr": "{\"errors\": [\"successor support boundary lacks measured owner disposition\"], \"out\": \"/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/strict-packet\", \"p1r_usable\": false, \"qualified\": false, \"reason\": \"refused or incomplete invocation\", \"refusals\": [\"capable rollback not selected; mutation freeze and forward recovery retained\", \"owner decisions and same-baseline conformance missing\"], \"valid\": false}\n",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "python3",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-published-qualification.py",
+        "validate",
+        "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/strict-packet"
+      ],
+      "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a",
+      "exit_code": 2,
+      "finished_utc": "2026-10-18T21:34:34.451140+00:00",
+      "label": "strict-validate",
+      "started_utc": "2026-10-18T21:34:34.381595+00:00",
+      "stderr": "{\"valid\": false, \"qualified\": false, \"p1r_usable\": false, \"reason\": \"refused or incomplete invocation\"}\n",
+      "stdout": ""
+    }
+  ],
+  "decisions_sha256": "b296ef0751287a1af00cfa278db023002f9d133b09e73067c71c6c03ca02537f",
+  "errors": [
+    {
+      "lane": "metadata-write",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+      "stage": "receipt",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.110.0",
+      "lane": "metadata-write",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "lane": "snapshot-tail",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+      "stage": "receipt",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.110.0",
+      "lane": "snapshot-tail",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.70.1",
+      "lane": "snapshot-tail",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "lane": "retained-covered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+      "stage": "receipt",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.110.0",
+      "lane": "retained-covered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.70.1",
+      "lane": "retained-covered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "lane": "retained-uncovered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+      "stage": "receipt",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.110.0-absent",
+      "lane": "retained-uncovered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.110.0-non-covering",
+      "lane": "retained-uncovered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.70.1-absent",
+      "lane": "retained-uncovered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "3.125.1-to-3.70.1-non-covering",
+      "lane": "retained-uncovered",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "lane": "post-upgrade-restore",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+      "stage": "receipt",
+      "type": "InvalidPacket"
+    },
+    {
+      "case": "fresh-backup-restore-append-restart",
+      "lane": "post-upgrade-restore",
+      "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+      "stage": "case-witness",
+      "type": "InvalidPacket"
+    },
+    {
+      "message": "[Errno 2] No such file or directory: '/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/remaining-audit-62a76092fbed4ae99fec12d3e5ce2a6a/receipts/9d29ce3db8bd477ba3806ce0a26e0c5c.json.writing'",
+      "stage": "process-controls",
+      "type": "FileNotFoundError"
+    }
+  ],
+  "finished_utc": "2026-10-18T21:34:38.384726+00:00",
+  "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+  "invocation": "27f51a5d288a4e4f9e66ca3f1e7173ee",
+  "p1r_usable": false,
+  "packages_reused": {
+    "candidate": {
+      "outcome": {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "receipt_path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-7d5330fd2e104e65a572ada0e43f4e44/receipts/dba6ee09d4b04e029f96aea9ea2e6644.json",
+      "receipt_sha256": "58fd34adc2e91cd30ce86244962bb2644c3c15c5414fcc91aba35db410e5d01f",
+      "retained_files": [
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Domain/loaded.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Domain/packages.lock.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Domain/project.assets.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Host/loaded.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Host/packages.lock.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Host/project.assets.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Probe/loaded.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Probe/packages.lock.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/Probe/project.assets.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/evidence.json",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/signature-0.txt",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/signature-1.txt",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/signature-2.txt",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/signature-3.txt",
+        "receipts/dba6ee09d4b04e029f96aea9ea2e6644/signature-4.txt"
+      ]
+    },
+    "comparison-3.110.0": {
+      "outcome": {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "receipt_path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-7d5330fd2e104e65a572ada0e43f4e44/receipts/e42c027730034641873923c040372b9e.json",
+      "receipt_sha256": "d3e8631fc878ac3dbde9c2f99add572673c8d1cab4e9383e9d4726e46fbe63d8",
+      "retained_files": [
+        "receipts/e42c027730034641873923c040372b9e/Domain/loaded.json",
+        "receipts/e42c027730034641873923c040372b9e/Domain/packages.lock.json",
+        "receipts/e42c027730034641873923c040372b9e/Domain/project.assets.json",
+        "receipts/e42c027730034641873923c040372b9e/Host/loaded.json",
+        "receipts/e42c027730034641873923c040372b9e/Host/packages.lock.json",
+        "receipts/e42c027730034641873923c040372b9e/Host/project.assets.json",
+        "receipts/e42c027730034641873923c040372b9e/Probe/loaded.json",
+        "receipts/e42c027730034641873923c040372b9e/Probe/packages.lock.json",
+        "receipts/e42c027730034641873923c040372b9e/Probe/project.assets.json",
+        "receipts/e42c027730034641873923c040372b9e/evidence.json",
+        "receipts/e42c027730034641873923c040372b9e/signature-0.txt",
+        "receipts/e42c027730034641873923c040372b9e/signature-1.txt",
+        "receipts/e42c027730034641873923c040372b9e/signature-2.txt",
+        "receipts/e42c027730034641873923c040372b9e/signature-3.txt",
+        "receipts/e42c027730034641873923c040372b9e/signature-4.txt"
+      ]
+    },
+    "comparison-3.70.1": {
+      "outcome": {
+        "assertions": {
+          "attempted": 89,
+          "failed": 0,
+          "passed": 89
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "receipt_path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-7d5330fd2e104e65a572ada0e43f4e44/receipts/564905ef1dad47ba8a41345076b579e0.json",
+      "receipt_sha256": "4c4851ac91e47f769699b29f8a743286f76e3179b27bf40595ad7288f172512c",
+      "retained_files": [
+        "receipts/564905ef1dad47ba8a41345076b579e0/Domain/loaded.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Domain/packages.lock.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Domain/project.assets.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Host/loaded.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Host/packages.lock.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Host/project.assets.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Probe/loaded.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Probe/packages.lock.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/Probe/project.assets.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/evidence.json",
+        "receipts/564905ef1dad47ba8a41345076b579e0/signature-0.txt",
+        "receipts/564905ef1dad47ba8a41345076b579e0/signature-1.txt",
+        "receipts/564905ef1dad47ba8a41345076b579e0/signature-2.txt",
+        "receipts/564905ef1dad47ba8a41345076b579e0/signature-3.txt",
+        "receipts/564905ef1dad47ba8a41345076b579e0/signature-4.txt"
+      ]
+    }
+  },
+  "previous_audit": {
+    "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-v2-7d5330fd2e104e65a572ada0e43f4e44",
+    "sha256": "c156e55f09b5aa642e43d0cfcb271e53033e3c471e3a57a212b9ff9792c03a8f"
+  },
+  "process_controls": {
+    "rows": [
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "startup-failure",
+        "reason": "separately owned qualification evidence unavailable"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "success",
+        "reason": "separately owned qualification evidence unavailable"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "timeout",
+        "reason": "separately owned qualification evidence unavailable"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "cancellation",
+        "reason": "separately owned qualification evidence unavailable"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "descendants",
+        "reason": "separately owned qualification evidence unavailable"
+      },
+      {
+        "assertions": null,
+        "compatibility": "unverified",
+        "execution": "unavailable",
+        "id": "repeated-cleanup",
+        "reason": "separately owned qualification evidence unavailable"
+      }
+    ],
+    "scope": "local-process-control",
+    "sentinel": {
+      "after_controls": null,
+      "after_release": null,
+      "before": {
+        "pgid": 3075,
+        "pid": 3075,
+        "running": true,
+        "session": 3075,
+        "start_ticks": 22288912
+      },
+      "identity": {
+        "pgid": 3075,
+        "pid": 3075,
+        "session": 3075,
+        "start_ticks": 22288912
+      },
+      "released": true
+    }
+  },
+  "qualified": false,
+  "receipts": [
+    {
+      "assertions": {
+        "attempted": 33,
+        "failed": 0,
+        "passed": 33
+      },
+      "group": "scenarios",
+      "lane": "provenance",
+      "outcome": {
+        "assertions": {
+          "attempted": 33,
+          "failed": 0,
+          "passed": 33
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+      "sha256": "26db53ad72b01e95482d8675266cd0d4b34f05a0d0c3931b653b15a669759104",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 20,
+        "failed": 0,
+        "passed": 20
+      },
+      "group": "scenarios",
+      "lane": "legacy-metadata",
+      "outcome": {
+        "assertions": {
+          "attempted": 20,
+          "failed": 0,
+          "passed": 20
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+      "sha256": "2facecd13f3c2a45ba92b93d861dbe64b98a8bfe4682401ecbda73b605b85232",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 40,
+        "failed": 0,
+        "passed": 40
+      },
+      "group": "scenarios",
+      "lane": "metadata-read",
+      "outcome": {
+        "assertions": {
+          "attempted": 40,
+          "failed": 0,
+          "passed": 40
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+      "sha256": "6ca033751fbaccf19efa95ebcc6c3fa01b094f9fe600cd348caf473f222b0a0e",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 226,
+        "failed": 0,
+        "passed": 226
+      },
+      "lane": "metadata-write",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "sha256": "f929b574aab4c56d614391dbbed206affe488de1a59cd39c7a25e6eef8caf981",
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 270,
+        "failed": 0,
+        "passed": 270
+      },
+      "group": "scenarios",
+      "lane": "full-replay",
+      "outcome": {
+        "assertions": {
+          "attempted": 270,
+          "failed": 0,
+          "passed": 270
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+      "sha256": "8e41e00ab4b61165624996c9cbafcec511f4a4b04506453c224caa1698684073",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "lane": "snapshot-tail",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "sha256": "a4a8db493e41f110a6f5647aacc3c9ef045b7fecfae9e8cdb9b1ce799b092153",
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 298,
+        "failed": 0,
+        "passed": 298
+      },
+      "lane": "retained-covered",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "sha256": "5cd711158ec83ae87a36755185cc26423e518bcfc5bc57c3279ac5fb0c8a0d55",
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 596,
+        "failed": 0,
+        "passed": 596
+      },
+      "lane": "retained-uncovered",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "sha256": "09e264393d4ead438cb7f179b35fc2abbf6b2fafe2010e71fdc8d72a00502c38",
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 540,
+        "failed": 0,
+        "passed": 540
+      },
+      "group": "scenarios",
+      "lane": "missing-event",
+      "outcome": {
+        "assertions": {
+          "attempted": 540,
+          "failed": 0,
+          "passed": 540
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+      "sha256": "7f73a2a958fd103fe4dcb5fe2e1b78b6567f4514d87becc79976d9780bddf4de",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 354,
+        "failed": 0,
+        "passed": 354
+      },
+      "group": "scenarios",
+      "lane": "invalid-evidence",
+      "outcome": {
+        "assertions": {
+          "attempted": 354,
+          "failed": 0,
+          "passed": 354
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+      "sha256": "ece00aeb5cb7770ea864a471302087c870293c739991fbc850e8efa563af0e1e",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 192,
+        "failed": 0,
+        "passed": 192
+      },
+      "group": "scenarios",
+      "lane": "query-wire",
+      "outcome": {
+        "assertions": {
+          "attempted": 192,
+          "failed": 0,
+          "passed": 192
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+      "sha256": "3d606101beb740342a4d9e168834d2e0ae8f571bc5089c85730fbd502411b3e4",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 34,
+        "failed": 0,
+        "passed": 34
+      },
+      "group": "scenarios",
+      "lane": "projection-wire",
+      "outcome": {
+        "assertions": {
+          "attempted": 34,
+          "failed": 0,
+          "passed": 34
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "published-package"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+      "sha256": "05ff76adffcbeeffbcd5af66b72c9b6b09e42cc40b7cf122e5f6210d1346c201",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 641,
+        "failed": 0,
+        "passed": 641
+      },
+      "group": "scenarios",
+      "lane": "mixed-api",
+      "outcome": {
+        "assertions": {
+          "attempted": 641,
+          "failed": 0,
+          "passed": 641
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+      "sha256": "05ef5977b149e6d2a32ba92dce511da21f9c1805eeee943229239961e6883321",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 704,
+        "failed": 0,
+        "passed": 704
+      },
+      "group": "scenarios",
+      "lane": "checkout",
+      "outcome": {
+        "assertions": {
+          "attempted": 704,
+          "failed": 0,
+          "passed": 704
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+      "sha256": "3ee3d3ec95f59684fe161d6fca005ff3e958a6d99b4e781dbc8e851da07cb2b8",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 61,
+        "failed": 3,
+        "passed": 58
+      },
+      "lane": "post-upgrade-restore",
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+      "refusal": {
+        "message": "qualified snapshot unapproved or shell-mediated command during genuine seed",
+        "type": "InvalidPacket"
+      },
+      "sha256": "a454c9651d96ba9fc4d1a67c3ddff47f2f1076148a58c2ebb4da3144d17c3b90",
+      "validated": false
+    },
+    {
+      "assertions": {
+        "attempted": 44,
+        "failed": 0,
+        "passed": 44
+      },
+      "group": "scenarios",
+      "lane": "pre-upgrade-restore",
+      "outcome": {
+        "assertions": {
+          "attempted": 44,
+          "failed": 0,
+          "passed": 44
+        },
+        "compatibility": "incompatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+      "sha256": "dcc60a085d3bc07e7236226b986afad2eb3bb1b96df0101709a71a82a242af22",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 115,
+        "failed": 0,
+        "passed": 115
+      },
+      "group": "scenarios",
+      "lane": "failure-cleanup",
+      "outcome": {
+        "assertions": {
+          "attempted": 115,
+          "failed": 0,
+          "passed": 115
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+      "sha256": "f85d108f4a73986cf877559d8bf951df4bd8bfca9a1fe1b7f9c13678b972b1ff",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 149,
+        "failed": 0,
+        "passed": 149
+      },
+      "group": "additions",
+      "lane": "reminder-recovery",
+      "outcome": {
+        "assertions": {
+          "attempted": 149,
+          "failed": 0,
+          "passed": 149
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+      "sha256": "89b9d7d49a38922777cc078df3af41bdd7b90f8f24b78b000efe73855ed0cd12",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 193,
+        "failed": 0,
+        "passed": 193
+      },
+      "group": "additions",
+      "lane": "logical-event-evolution",
+      "outcome": {
+        "assertions": {
+          "attempted": 193,
+          "failed": 0,
+          "passed": 193
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+      "sha256": "3f95608504f617f60edaf12c72a472e6f114beba922a2b92c94bf96272ef7709",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 7,
+        "failed": 0,
+        "passed": 7
+      },
+      "group": "recovery",
+      "lane": "container-cleanup",
+      "outcome": {
+        "assertions": {
+          "attempted": 7,
+          "failed": 0,
+          "passed": 7
+        },
+        "compatibility": "compatible",
+        "execution": "passed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/a8e6ddab048147d49f25fb405954aa85.json",
+      "sha256": "60cc1f6530a932c75b725ce63dcfc1a7b17277ca8d776a9046378780f7a2ba67",
+      "validated": true
+    },
+    {
+      "assertions": {
+        "attempted": 12,
+        "failed": 2,
+        "passed": 10
+      },
+      "group": "recovery",
+      "lane": "candidate-restore",
+      "outcome": {
+        "assertions": {
+          "attempted": 12,
+          "failed": 2,
+          "passed": 10
+        },
+        "compatibility": "incompatible",
+        "execution": "failed",
+        "scope": "operational"
+      },
+      "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6e394b952a734152ad72fbab44f599b8.json",
+      "sha256": "fc45887300b2d5737a1b8b21fea305962276edd22cedc5eeb342e227bc45c547",
+      "validated": true
+    }
+  ],
+  "schema": "hexalith.p1r.remaining-audit.v1",
+  "scope": "Existing execution only; frozen validators; no acceptance or runtime reexecution",
+  "script": {
+    "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/resume-complete-audit.py",
+    "sha256": "0575727095e112213c04aa13d80a3100659894aa44c5e347448d0e05afed9be6"
+  },
+  "source_checked_after_all_commands": true,
+  "started_utc": "2026-10-18T21:33:09.997022+00:00",
+  "valid_evidence": false
+}

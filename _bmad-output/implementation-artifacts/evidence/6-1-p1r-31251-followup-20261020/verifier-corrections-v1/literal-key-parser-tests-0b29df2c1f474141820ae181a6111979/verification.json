@@ -1,0 +1,25 @@
+{
+  "scope": "Bounded V3 literal Dapr actor-storage key parser correction only; no runtime, historical evidence, sealed checkout, or Git mutations.",
+  "key_forms": [
+    "tenant-a:counter:fixture:events:10",
+    "eventstore||tenant-a:counter:fixture:events:10",
+    "eventstore||AggregateActor||tenant-a:counter:fixture||tenant-a:counter:fixture:events:10"
+  ],
+  "validation": "Require matching actor tenant, state-key tenant, and any recorded top-level/nested payload identity in executor and independent witness parser.",
+  "tests": {
+    "command": "PYTHONPATH=tools:tools/tests python3 -m unittest test_p1r_verifier_corrections.LiteralActorKeyTests",
+    "tests": 3,
+    "passed": true
+  },
+  "whitespace": {
+    "command": "git diff --check -- tools/p1r_published_executor.py tools/p1r_check_witnesses.py tools/tests/test_p1r_verifier_corrections.py",
+    "exit_code": 0
+  },
+  "source_sha256": {
+    "tools/p1r_published_executor.py": "99eb3de223963b92b8205fc2a41e167bb0d155b553f539502ffd394beb426d01",
+    "tools/p1r_check_witnesses.py": "b686e3886a36a06028e6c9163738a36085285face713db2bb81ff7d5e22eb6f7",
+    "tools/tests/test_p1r_verifier_corrections.py": "41f97dc0775f11b2227c43760f4876beae399cd85333419796ac6bd07e4e6548"
+  },
+  "qualified": false,
+  "p1r_usable": false
+}

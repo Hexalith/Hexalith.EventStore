@@ -1,0 +1,17 @@
+{
+  "scope": "SDK selection compatibility repair in owning repository; frozen V4 producer unchanged",
+  "observed_utc": "2026-10-19T05:23:54.895803+00:00",
+  "before": {
+    "tools/p1r_published_executor.py": "00fea01d55ea23f41a0cbe6fae6a9f96c06862402fee0428920ee1453a658067",
+    "tools/tests/p1r_isolation_fixture.py": "40e9ccb4615a9bfc9f9291d182a4ddff439814843a8e666bac5b5a1b3ee03c2e",
+    "tools/p1r-published-consumers/README.md": "efe9a5a51de76815e3105adbe7c6a926230b939b489c639c47084b2be3ceaa69",
+    "tools/tests/test_p1r_published_executor.py": "4238f9d2ab56edb4f0b4a3f008fca64948fdc7403040ec6b93a2be9dba905b3c"
+  },
+  "after": {
+    "tools/p1r_published_executor.py": "f4084a5ae94eb8bd8e86666bb918121b289c342f0417e85ac4d9ec942cf3484e",
+    "tools/tests/p1r_isolation_fixture.py": "ad57e1ef4e6e7586d4110b34a86828dce6c179839a396e7a87cd13f90232c85a",
+    "tools/p1r-published-consumers/README.md": "c0963f5edd7528b9a90f10b316cdc6563606cb905bcfd14297a62f37d5bfe063",
+    "tools/tests/test_p1r_published_executor.py": "4238f9d2ab56edb4f0b4a3f008fca64948fdc7403040ec6b93a2be9dba905b3c"
+  },
+  "red_regression": "sdk-regression-red-6f9002e7ee5b4840be31d320e32e0a7d/command.json"
+}

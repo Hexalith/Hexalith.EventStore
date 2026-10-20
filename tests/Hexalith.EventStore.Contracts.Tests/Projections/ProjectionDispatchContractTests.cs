@@ -33,6 +33,27 @@ public class ProjectionDispatchContractTests {
         ProjectionResponse restored = JsonSerializer.Deserialize<ProjectionResponse>(json, WebJson).ShouldNotBeNull();
         restored.ProjectionType.ShouldBe("order-detail");
         restored.State.GetProperty("count").GetInt32().ShouldBe(7);
+        restored.NotificationGroupScope.ShouldBeNull();
+        restored.NotificationMetadata.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ProjectionResponse_OptionalDetail_RoundTripsWithoutChangingLegacyDeconstruction()
+    {
+        using JsonDocument document = JsonDocument.Parse("""{"count":7}""");
+        var response = new ProjectionResponse("counter", document.RootElement.Clone())
+        {
+            NotificationGroupScope = "counter-status",
+            NotificationMetadata = new Dictionary<string, string> { ["opaque"] = "hint-only" },
+        };
+        (string projection, JsonElement state) = response;
+        projection.ShouldBe("counter");
+        state.GetProperty("count").GetInt32().ShouldBe(7);
+        string json = JsonSerializer.Serialize(response, WebJson);
+        ProjectionResponse restored = JsonSerializer.Deserialize<ProjectionResponse>(json, WebJson).ShouldNotBeNull();
+        restored.NotificationGroupScope.ShouldBe("counter-status");
+        restored.NotificationMetadata.ShouldNotBeNull()["opaque"].ShouldBe("hint-only");
+        restored.State.GetRawText().ShouldBe(response.State.GetRawText());
     }
 
     [Fact]

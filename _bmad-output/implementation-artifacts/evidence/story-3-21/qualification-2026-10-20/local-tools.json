@@ -1,0 +1,41 @@
+{
+  "daprCli": {
+    "argv": [
+      "dapr",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "CLI version: 1.18.2 \nRuntime version: 1.18.7",
+    "sha256": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5"
+  },
+  "daprd": {
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "1.18.7",
+    "sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+  },
+  "dotnet": {
+    "argv": [
+      "dotnet",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "10.0.402",
+    "sha256": null
+  },
+  "kubectl": {
+    "argv": [
+      "kubectl",
+      "version",
+      "--client",
+      "-o",
+      "json"
+    ],
+    "exitCode": 0,
+    "output": "{\n  \"clientVersion\": {\n    \"major\": \"1\",\n    \"minor\": \"36\",\n    \"gitVersion\": \"v1.36.1\",\n    \"gitCommit\": \"756939600b9a7180fc2df6550a4585b638875e67\",\n    \"gitTreeState\": \"clean\",\n    \"buildDate\": \"2026-05-12T09:54:35Z\",\n    \"goVersion\": \"go1.26.2\",\n    \"compiler\": \"gc\",\n    \"platform\": \"linux/amd64\"\n  },\n  \"kustomizeVersion\": \"v5.8.1\"\n}",
+    "sha256": "629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7"
+  }
+}

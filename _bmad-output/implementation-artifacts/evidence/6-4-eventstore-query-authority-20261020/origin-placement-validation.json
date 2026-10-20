@@ -1,0 +1,39 @@
+[
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+      "--configuration",
+      "Debug",
+      "-p:UseHexalithProjectReferences=true",
+      "-m:1"
+    ],
+    "exit_code": 0,
+    "log": "origin-placement-build.log",
+    "source_manifest_path": "source-manifest.json",
+    "source_manifest_sha256": "662e0add74c7c8eb37ff297f562ba2924b2323125af6379bec7610489e071224",
+    "capture_phase": "final origin-placement refinement",
+    "summary": [
+      "Build succeeded.",
+      "    0 Warning(s)",
+      "    0 Error(s)"
+    ]
+  },
+  {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "-method",
+      "*CorrectlyAttestedInvalidOriginContextIsRefusedBeforeProtectedHandler"
+    ],
+    "exit_code": 0,
+    "log": "origin-placement-tests.log",
+    "source_manifest_path": "source-manifest.json",
+    "source_manifest_sha256": "662e0add74c7c8eb37ff297f562ba2924b2323125af6379bec7610489e071224",
+    "capture_phase": "final origin-placement refinement",
+    "summary": [
+      "   Hexalith.EventStore.Server.Tests  Total: 2, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.345s"
+    ]
+  }
+]

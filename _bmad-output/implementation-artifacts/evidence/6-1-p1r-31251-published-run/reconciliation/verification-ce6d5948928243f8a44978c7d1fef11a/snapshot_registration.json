@@ -1,0 +1,23 @@
+{
+  "name": "snapshot_registration",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_snapshot_registration.py"
+  ],
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:43:25.129373+00:00",
+  "finished_utc": "2026-10-18T22:44:03.547149+00:00",
+  "exit_code": 0,
+  "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-ce6d5948928243f8a44978c7d1fef11a/snapshot_registration.log",
+  "log_sha256": "f1def0b63696a7b0a24a2d285c69a4a488b8161370b4871a83ff33ccfb6836c7",
+  "tests": 3,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/p1r-isolated-runner.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-4c589413d7d342be93f276b7ba03098e-isolation",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28",
+    "--",
+    "python3",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251.py",
+    "--verifier-root",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-fe336e1f52b0487c8bb6a41229063d28",
+    "--execution",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-bc3c2bca738541538fdcecdd40c3a6f3",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-a87fc7cc50e3447aae60a23491db9773/owner-inputs.json",
+    "--decisions",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-a87fc7cc50e3447aae60a23491db9773/owner-decisions.json",
+    "--out",
+    "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-4c589413d7d342be93f276b7ba03098e"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+  "started_utc": "2026-10-18T18:43:50.510575+00:00",
+  "out": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-4c589413d7d342be93f276b7ba03098e",
+  "isolation": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-4c589413d7d342be93f276b7ba03098e-isolation",
+  "exit_code": 2,
+  "finished_utc": "2026-10-18T18:44:27.548830+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-command-4c589413d7d342be93f276b7ba03098e.log"
+}

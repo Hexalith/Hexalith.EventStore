@@ -1,0 +1,10 @@
+{
+  "afterContainerId": "8871c36beb309199bb5f4c00cc601410d7a7760d920e8e1cf8ceeb3994f7a865",
+  "beforeContainerId": "8871c36beb309199bb5f4c00cc601410d7a7760d920e8e1cf8ceeb3994f7a865",
+  "broker": "kafka",
+  "effectCount": 1,
+  "messageId": "c2b0fe2b7a79cbcbbf3c7605",
+  "publishedWhileOffline": true,
+  "restartReceipt": 313,
+  "scenario": "broker-restart"
+}

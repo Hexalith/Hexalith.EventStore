@@ -1,0 +1,11 @@
+{
+  "broker": "rabbitmq",
+  "brokerRetentionObserved": true,
+  "controlEffects": 1,
+  "expiredEffects": 0,
+  "expiredMessageId": "fc4bc43d2d6c55c3cd621a89",
+  "limitation": "Bounded quorum-queue backlog/expiry observation only.",
+  "messageId": "18051f41c23fddceee4f6f49",
+  "outageSeconds": 3.9500908690097276,
+  "scenario": "retention-expiry"
+}

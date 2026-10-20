@@ -109,15 +109,19 @@ public class DaprReadModelStoreTests {
     }
 
     [Theory]
-    [InlineData("missing", false)]
-    [InlineData("read-failed", false)]
-    [InlineData("caller-cancelled", false)]
-    [InlineData("update", false)]
-    [InlineData("missing", true)]
-    [InlineData("read-failed", true)]
-    [InlineData("caller-cancelled", true)]
-    [InlineData("update", true)]
-    public async Task FailedCreatePreservesFailureWithoutExistingKeyProof(string failure, bool raw) {
+    [InlineData("missing", "typed")]
+    [InlineData("read-failed", "typed")]
+    [InlineData("caller-cancelled", "typed")]
+    [InlineData("update", "typed")]
+    [InlineData("missing", "raw")]
+    [InlineData("read-failed", "raw")]
+    [InlineData("caller-cancelled", "raw")]
+    [InlineData("update", "raw")]
+    [InlineData("missing", "ttl")]
+    [InlineData("read-failed", "ttl")]
+    [InlineData("caller-cancelled", "ttl")]
+    [InlineData("update", "ttl")]
+    public async Task FailedCreatePreservesFailureWithoutExistingKeyProof(string failure, string writeMode) {
         var client = new RecordingDaprClient { PersistTypedState = true };
         var store = new DaprReadModelStore(client);
         var original = new Dapr.DaprException("Ambiguous write failure.");
@@ -132,25 +136,57 @@ public class DaprReadModelStoreTests {
             if (failure == "read-failed") throw new IOException("Read is unavailable.");
         };
         string etag = failure == "update" ? "existing-etag" : string.Empty;
-        Task<bool> WriteAsync() => raw
-            ? new DaprReadModelBatchStateAccessor(client, StoreName).TryWriteAsync("receipt", "{}"u8.ToArray(), etag, cancellation.Token)
-            : store.TrySaveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, etag, cancellation.Token);
+        Task<bool> WriteAsync() => writeMode switch {
+            "raw" => new DaprReadModelBatchStateAccessor(client, StoreName).TryWriteAsync("receipt", "{}"u8.ToArray(), etag, cancellation.Token),
+            "ttl" => store.TrySaveWithTimeToLiveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, etag, TimeSpan.FromMinutes(1), cancellation.Token),
+            _ => store.TrySaveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, etag, cancellation.Token),
+        };
+        using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
 
         (await Should.ThrowAsync<Dapr.DaprException>(WriteAsync)).ShouldBeSameAs(original);
         reads.ShouldBe(failure is "update" or "caller-cancelled" ? 0 : 1);
+        cost[ProjectionDeliveryCost.StateRpcAttempts].ShouldBe(1 + reads);
     }
 
-    [Fact]
-    public async Task CancellationDuringFailedCreateReadBackRemainsCancellation() {
+    [Theory]
+    [InlineData("typed")]
+    [InlineData("raw")]
+    [InlineData("ttl")]
+    public async Task CancellationDuringFailedCreateReadBackRemainsCancellation(string writeMode) {
         var client = new RecordingDaprClient { PersistTypedState = true };
         client.SeedByteStore("receipt", "{}"u8.ToArray());
         var store = new DaprReadModelStore(client);
         using var cancellation = new CancellationTokenSource();
         client.BeforeReadByteState = _ => cancellation.Cancel();
+        Task<bool> WriteAsync() => writeMode switch {
+            "raw" => new DaprReadModelBatchStateAccessor(client, StoreName).TryWriteAsync("receipt", "{}"u8.ToArray(), string.Empty, cancellation.Token),
+            "ttl" => store.TrySaveWithTimeToLiveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, string.Empty, TimeSpan.FromMinutes(1), cancellation.Token),
+            _ => store.TrySaveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, string.Empty, cancellation.Token),
+        };
 
-        await Should.ThrowAsync<OperationCanceledException>(() => store.TrySaveAsync(StoreName, "receipt",
-            new DaprReadModelStoreTestModel { Value = 42 }, string.Empty, cancellation.Token));
+        await Should.ThrowAsync<OperationCanceledException>(WriteAsync);
         cancellation.IsCancellationRequested.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("typed")]
+    [InlineData("raw")]
+    [InlineData("ttl")]
+    public async Task FailedCreateReadBackChargesExactlyOneAdditionalStateRpc(string writeMode) {
+        var client = new RecordingDaprClient { PersistTypedState = true };
+        client.SeedByteStore("receipt", "{}"u8.ToArray());
+        var store = new DaprReadModelStore(client);
+        using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
+
+        bool saved = await (writeMode switch {
+            "raw" => new DaprReadModelBatchStateAccessor(client, StoreName).TryWriteAsync("receipt", "{}"u8.ToArray(), string.Empty, CancellationToken.None),
+            "ttl" => store.TrySaveWithTimeToLiveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, string.Empty, TimeSpan.FromMinutes(1)),
+            _ => store.TrySaveAsync(StoreName, "receipt", new DaprReadModelStoreTestModel { Value = 42 }, string.Empty),
+        });
+
+        saved.ShouldBeFalse();
+        cost[ProjectionDeliveryCost.StateRpcAttempts].ShouldBe(2);
+        client.ByteStoreValue("receipt").ShouldBe("{}"u8.ToArray());
     }
 
     [Fact]

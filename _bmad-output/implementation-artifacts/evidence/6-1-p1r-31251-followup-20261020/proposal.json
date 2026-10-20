@@ -1,0 +1,126 @@
+{
+  "scope": "proposal after retained V4 causal separation; no repair, publication or qualification execution performed",
+  "basis": "diagnosis.json",
+  "status": "proposed; prerequisite work and candidate selection remain open",
+  "qualified": false,
+  "p1r_usable": false,
+  "verifier_preparation": [
+    {
+      "id": "V1",
+      "problem": "Positive retained restore fixture changes metadata floor without changing existing source-proof floor.",
+      "change": "In a new verifier revision only, construct a coherent stopped-writer, task-owned disposable positive fixture; preserve existing source identity, incarnation, head, message ID, cumulative digest, snapshot and retained event bytes while coherently setting metadata and existing proof retention coordinates.",
+      "scope": "Never repair retained V4 inputs, live data, published packages or tagged production source. Never strip sourceProof, disable its check or invent a new source incarnation/digest to obtain a pass.",
+      "checks": [
+        "Before backup and after fresh restore, bind metadata floor=5 and proof floor=5, head=12 and proof head=12, snapshot=9, event sequence set=5..12, unchanged retained event/snapshot hashes and tenant-B head=3.",
+        "Keep the original mismatched floor=5/proof floor=1 as an explicit negative; require refusal with unchanged domain state.",
+        "Preserve legacy metadata without a source proof; retain invalid-floor, erased, wrong-identity/head/digest and other negative semantics.",
+        "Only actual accepted append, persisted head/event=13, floor=5 and fresh restart/hydration=13 can pass the positive lane."
+      ]
+    },
+    {
+      "id": "V2",
+      "problem": "Restore case labels effect/compatible despite failed assertions.",
+      "change": "Derive the future case outcome from the actual append/restart responses and compatibility from all required checks; retain failure/unavailable independently of compatible/incompatible/unverified.",
+      "checks": [
+        "Refused append with a zero-exit instrumentation probe cannot report a compatible successful restore.",
+        "A successful negative-control refusal remains distinct from a positive restore failure.",
+        "Lane, recovery and strict gate aggregation must continue to reject failed assertions regardless of command exits.",
+        "No historical receipt or counter is rewritten."
+      ]
+    },
+    {
+      "id": "V3",
+      "problem": "Source/package pair proceeded on different fixture contents after one comparison seed failed.",
+      "change": "Capture both tenant seed outcomes and exact persisted preconditions before comparison. Retain failed/unattempted assertions and prevent invalid preconditions from supporting equivalence.",
+      "checks": [
+        "Do not invent four unattempted append checks or convert the six V4 failures to a pass.",
+        "Bind the 3.110.0 seed separately from the 3.125.1 tagged source reader.",
+        "Seed failure blocks dependent qualification; no automatic retry to erase a failure."
+      ]
+    }
+  ],
+  "environment_preparation": [
+    {
+      "id": "E1",
+      "observed": "Task-private SQLite name-resolution registration deadlines during the 3.110.0 seed.",
+      "investigation": "Capture task-owned registration state, lock/IO conditions and exact shutdown/registration timeline to distinguish lock contention, stale registration and provider/runtime behavior. The retained logs do not isolate which one occurred.",
+      "constraints": [
+        "No shared service intervention or host settings change.",
+        "Keep selected runtime/backend and assertion budgets.",
+        "Validate with a bounded focused two-tenant seed/discovery control before considering the compatibility matrix."
+      ]
+    },
+    {
+      "id": "E2",
+      "observed": "Outer shared-host identities changed despite task-owned cleanup passing.",
+      "investigation": "Use a coordinated exclusive host window or separate host that can prove the same complete before/after identity set. Retain full IDs, image IDs, start times and running state.",
+      "constraints": [
+        "Do not remove containers from the comparison or retrospectively blame another actor.",
+        "No additional action against unrelated containers.",
+        "Owned-resource absence is an additional proof, never a substitute for outer preservation."
+      ]
+    }
+  ],
+  "track_3_125_1": {
+    "candidate": "3.125.1",
+    "tag": "v3.125.1",
+    "source": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b",
+    "tag_builds": "4629ff2d3bd66376b29a553663c241d3a7b87853",
+    "execution_builds": "record afresh, independently from tagged Builds; V4 observed 1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c",
+    "packages": "Same five nuget.org signed archives and exact SHA-256 values bound by diagnosis.json; no repack or replacement.",
+    "runtime": "Dapr 1.18.2; pinned PostgreSQL v1 profile and image, private discovery/configuration recorded explicitly.",
+    "comparisons": [
+      "3.70.1",
+      "3.110.0"
+    ],
+    "rollback": null,
+    "checks": "All 17 scenarios plus Reminder and logical evolution, all required source/package, recovery, failure-drill, private cleanup and outer preservation controls.",
+    "next_run": "deferred until verifier fixes and environmental preconditions are demonstrated; new unique evidence directory and separate verifier closure required",
+    "production_repair": "None justified by V4. If valid inputs isolate a production defect requiring source changes, stop treating 3.125.1 as repaired and enroll an explicit successor.",
+    "newer_origin_api_qualification": false
+  },
+  "explicit_successor_proposal": {
+    "purpose": "Qualify the newer verified-origin API required by Story 6.4; also carry any independently demonstrated runtime repairs if required.",
+    "status": "unselected; source implementation is evidence for selection, not a candidate substitution",
+    "version": null,
+    "tag": null,
+    "source": null,
+    "tag_builds": null,
+    "execution_builds": null,
+    "signed_archives": null,
+    "source_reference_only": "6c56c27bc1a8d63c83f9631f7162cf79fdde0a1e and retained 6-4-eventstore-query-authority-20261020 source/test manifests",
+    "required_contents": [
+      "QueryCallerAuthorityBinding producer/receiver exact Tenant/domain/digest signing repair.",
+      "Default-off AllowQueryAuthorityDigest issuance capability with exact policy and audience/operation/resource binding.",
+      "OriginatingQueryContext and QueryCallerAuthority.OriginatingContext, immutable and omitted for absent legacy values.",
+      "Verified gateway origin capture/routing and VerifiedQueryCaller.OriginatingContext, separate from owner-hop identity and current-owner authorization.",
+      "Selected aggregate proof limit 256 with principal/domain limits unchanged."
+    ],
+    "selection_gates": [
+      "Select one explicit immutable version and complete five-package family; verify actual signatures, archive hashes, nuspec repository metadata, tag/source equality and tagged Builds.",
+      "If publication is needed, prepare exact new coordinates and obtain the separate publication authority; do not publish as part of this follow-up.",
+      "Enroll only that exact finite version in a separately bound verifier and run the same full P1R/recovery/preservation envelope under an explicitly selected runtime/backend profile.",
+      "Use its own exact tagged production source for Debug comparison and its immutable signed family for Release/package consumption; bind assets/locks and physically loaded assemblies."
+    ],
+    "additional_api_checks": [
+      "Production-mode RSA broker/outbound issuer/receiving verification across packaged components with exact query/resource/audience bindings.",
+      "Origin actor/workload/delegation/scopes/audiences survive gateway/router/JSON/DataContract/SDK; receiver owner-hop identity remains independent.",
+      "Tampering, wrong policy/scope/resource/audience, expiry, revocation and current-owner denial refuse before protected effects.",
+      "Legacy absent-origin wire/proof compatibility, defensive collection copies and aggregate/principal/domain boundary isolation.",
+      "Exercise the actual consuming Story 6.4 path with exact resolved and loaded package identities; source-only 422 checks and legacy P1R query-wire are insufficient."
+    ],
+    "no_inherited_acceptance": [
+      "No inferred publication, owner acceptance, same-baseline conformance, P1R usability or parent Story 6.4 completion.",
+      "No package/catalog/Stack/consumer pin or Projects/sprint/readiness changes."
+    ]
+  },
+  "owner_gates": {
+    "eventstore": "pending",
+    "builds": "pending",
+    "solution": "pending",
+    "test": "pending",
+    "same_baseline_conformance": "pending",
+    "rollback_policy": "Projects AD-17 single-writer drain/freeze/forward recovery while rollback=null",
+    "story_6_4": "Independent runtime/governance/topology, authenticated exact-candidate CI, owner-assurance and parent acceptance gates remain open."
+  }
+}

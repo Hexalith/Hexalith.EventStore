@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "test_p1r_isolation.SeparateSourceMountTests",
+    "test_p1r_published_executor.Published31251SnapshotWitnessTests.testActualImportReadsPostgresqlTemplateFromTheBoundTaggedRoot"
+  ],
+  "environment_overrides": {
+    "PYTHONPATH": "tools:tools/tests"
+  },
+  "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+  "started_utc": "2026-10-18T22:20:02.230591+00:00",
+  "finished_utc": "2026-10-18T22:20:03.296307+00:00",
+  "exit_code": 0,
+  "log": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-role-import-green.log",
+  "log_sha256": "488563ec772cd90e2770ee63cb1d7b8a7d2e9609eba2e331957c69f24dfd2076"
+}

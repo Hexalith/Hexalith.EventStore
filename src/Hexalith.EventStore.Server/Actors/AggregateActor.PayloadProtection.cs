@@ -177,8 +177,8 @@ public partial class AggregateActor
                 { throw new InvalidOperationException("ProtectionCompletionSourceMismatch"); }
                 // This requests the original independently checked writer proof. Neither the
                 // journal nor a successful local save supplies the registry's activation authority.
-                await payloadProtectionService.CompletePayloadProtectionAsync(context,
-                    PayloadProtectionPersistenceOutcome.Persisted, token).WaitAsync(token).ConfigureAwait(false);
+                await PayloadProtectionIoAsync(() => payloadProtectionService.CompletePayloadProtectionAsync(context,
+                    PayloadProtectionPersistenceOutcome.Persisted, token), token).ConfigureAwait(false);
             }
             // Retain originals. The caller's next atomic save records completion; a crash before
             // that save repeats exact idempotent lookup/completion, never a new encryption identity.

@@ -1,6 +1,9 @@
 """Executor tooling controls; no fixture in this suite grants operational qualification."""
 import base64
 import copy
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import signal
@@ -20,6 +23,326 @@ import p1r_published_executor as executor
 import p1r_published_qualification as qualification
 import p1r_qualification as preparation
 import p1r_qualification_runtime as runtime
+from p1r_isolation_fixture import separate_inputs, separate_source_fixture
+
+
+def verifier_fixture(head=12, floor=1, snapshot=True, proof=False, suffix=""):
+    raw = {}
+    for tenant, end in (("tenant-a", head), ("tenant-b", 3)):
+        first = floor if tenant == "tenant-a" else 1
+        for sequence in range(first, end + 1):
+            event = {"messageId": f"message-{tenant}-{sequence}{suffix}", "sequenceNumber": sequence,
+                     "tenantId": tenant, "domain": "counter", "aggregateId": "fixture", "aggregateType": "Counter",
+                     "timestamp": "2026-01-01T00:00:00.1234567+00:00", "globalPosition": sequence,
+                     "eventTypeName": "CounterIncremented", "metadataVersion": 1, "serializationFormat": "json", "payload": "e30="}
+            raw[f"{tenant}:counter:fixture:events:{sequence}"] = executor.canonical(event)
+        metadata = {"currentSequence": end, "retainedFloor": first, "lastModified": "2026-01-01T00:00:00Z"}
+        if proof and tenant == "tenant-a":
+            source = {"codecVersion": 1, "tenantId": tenant, "domain": "counter", "aggregateId": "fixture",
+                "sourceIncarnation": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "headSequence": head,
+                "headMessageId": f"message-{tenant}-{head}{suffix}", "retainedFloor": first, "erased": False}
+            all_events = verifier_fixture(head=head, floor=1, snapshot=False, suffix=suffix)[0]
+            source["cumulativeDigest"] = executor.source_proof_digest({int(key.rsplit(':', 1)[1]): data
+                for key, data in all_events.items() if tenant in key and ':events:' in key}, source)
+            metadata["sourceProof"] = source
+        raw[f"{tenant}:counter:fixture:metadata"] = executor.canonical(metadata)
+    if snapshot:
+        raw["tenant-a:counter:fixture:snapshot"] = executor.canonical({"sequenceNumber": 9,
+            "snapshotEnvelopeVersion": 1, "state": {"count": 9}, "createdAt": "2026-01-01T00:00:00Z"})
+    return raw, verifier_rows(raw)
+
+
+def verifier_rows(raw):
+    rows = []
+    for key, data in sorted(raw.items()):
+        value = json.loads(data)
+        kind = "metadata" if key.endswith(':metadata') else "snapshot" if key.endswith(':snapshot') else "event"
+        rows.append({"key": key, "tenant": "tenant-a" if "tenant-a" in key else "tenant-b", "kind": kind,
+                     "sequence": value.get('currentSequence') if kind == 'metadata' else value.get('sequenceNumber'),
+                     "floor": value.get('retainedFloor', 1) if kind == 'metadata' else None, "sha256": executor.digest(data)})
+    return rows
+
+
+class SeparateRootExecutorTests(unittest.TestCase):
+    def testSuccessfulObservationEmitsToolingPinsAndAdmitsTheSelectedReleaseRoots(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            selected = separate_inputs(f)
+            for version in qualification.COMPARISON_VERSIONS:
+                f.git(f.tooling,'tag','v'+version)
+            f.git(f.builds,'tag','v4.30.1')
+            def archive_bytes(identifier,version): return (identifier+':'+version).encode()
+            for package in selected['candidate']['packages']:
+                package['archive_sha256'] = preparation.digest(archive_bytes(package['id'],'3.125.1'))
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.output,worker.commands,worker.result = f.root/'observation',[],{}
+            worker.output.mkdir()
+            worker.source_root,worker.source_builds_root = f.source,f.source_builds
+            worker.source_binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            worker.save = mock.Mock()
+            def build(version):
+                root = worker.output/version
+                for identifier in executor.PACKAGE_IDS:
+                    base = root/'packages'/identifier.lower()/version
+                    base.mkdir(parents=True)
+                    (base/(identifier.lower()+'.'+version+'.nupkg')).write_bytes(archive_bytes(identifier,version))
+                    preparation.write_json(base/'.nupkg.metadata',{'contentHash':base64.b64encode(b'x'*64).decode()})
+                return root
+            def inspect(path,data):
+                identifier = next(name for name in executor.PACKAGE_IDS if name.lower() == path.parent.parent.name)
+                version = path.parent.name
+                return ({'valid':True,'id':identifier,'version':version,'repository_commit':
+                         f.release if version == '3.125.1' else f.pins['commit']},
+                        {'signature':True,'synthetic_marker':False},{})
+            worker.build_consumers = mock.Mock(side_effect=build)
+            worker.run = lambda *args,**kwargs:worker.commands.append({'output':qualification.REPOSITORY_SIGNATURE})
+            with mock.patch.object(executor,'ROOT',f.tooling), mock.patch.object(qualification,'inspect_archive',side_effect=inspect):
+                worker.observe_inputs({'candidate_proposed':selected['candidate'],'tooling':f.pins},'temporary fixture only')
+                emitted = preparation.read_json(worker.output/'owner-inputs.json')
+                self.assertEqual(emitted['tooling'],f.pins)
+                self.assertEqual(emitted['candidate'],selected['candidate'])
+                self.assertIsNone(emitted['rollback'])
+                executor.validate_execution_inputs(emitted,f.source,f.source_builds)
+                self.assertEqual(worker.result['inputs_sha256'],preparation.digest((worker.output/'owner-inputs.json').read_bytes()))
+
+    def cli(self):
+        spec = importlib.util.spec_from_file_location('binding_executor_cli', preparation.ROOT/'tools/p1r-published-executor.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def testBothCliEntryPathsValidateAndForwardSeparateRoots(self):
+        cli = self.cli()
+        for entry in ('run','observe'):
+            for private in (False,True):
+                with self.subTest(entry=entry,private=private), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    inputs = separate_inputs(f)
+                    planning = {'candidate_proposed':inputs['candidate'],'tooling':f.pins}
+                    selected = f.root/'selected.json'
+                    preparation.write_json(selected,inputs if entry == 'run' else planning)
+                    args = [entry,'--out',str(f.root/'output')]
+                    args += ['--inputs',str(selected)] if entry == 'run' else ['--planning-observations',str(selected),'--selection-reference','fixture']
+                    suffix = ['--source-root',str(f.source),'--source-builds-root',str(f.source_builds)]
+                    import p1r_isolation as isolation
+                    with mock.patch.object(executor,'ROOT',f.tooling), \
+                            mock.patch.object(cli,'Executor') as worker, \
+                            mock.patch.object(isolation,'IsolatedRunner') as outer, \
+                            mock.patch.object(isolation,'private_proof'), \
+                            mock.patch.dict(os.environ,{'HEXALITH_P1R_ISOLATION':'fixture'} if private else {},clear=True), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        worker.return_value.errors = []
+                        outer.return_value.run.return_value = 0
+                        outer.return_value.result = {'command_stdout':'','errors':[],'passed':True}
+                        self.assertEqual(cli.main(args+suffix),0)
+                        if private:
+                            worker.assert_called_once()
+                            (worker.return_value.execute if entry == 'run' else worker.return_value.observe_inputs).assert_called_once()
+                        else:
+                            outer.assert_called_once()
+                            self.assertEqual(outer.return_value.run.call_args.args[0][-4:],suffix)
+                            worker.assert_not_called()
+
+    def testBothCliEntryPathsRefuseBeforeAnyOperationalBoundary(self):
+        cli = self.cli()
+        import p1r_isolation as isolation
+        for entry in ('run','observe'):
+            for defect in ('tooling-pin','tooling-dirty','source-dirty','tooling-builds','source-builds','tag','missing-source','unknown-successor'):
+                with self.subTest(entry=entry,defect=defect), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    inputs = separate_inputs(f)
+                    source, builds = f.source, f.source_builds
+                    if defect == 'tooling-pin': inputs['tooling']['commit'] = 'a'*40
+                    elif defect == 'tooling-dirty': (f.tooling/'src/Runtime.cs').write_text('// changed\n')
+                    elif defect == 'source-dirty': (f.source/'src/Runtime.cs').write_text('// changed\n')
+                    elif defect == 'tooling-builds': inputs['tooling']['builds_commit'] = f.release_builds
+                    elif defect == 'source-builds': builds = f.builds
+                    elif defect == 'tag': f.git(f.source,'tag','-d','v3.125.1')
+                    elif defect == 'unknown-successor': inputs['candidate'].update(version='3.125.2',tag='v3.125.2')
+                    selected = f.root/'selected.json'
+                    preparation.write_json(selected,inputs if entry == 'run' else {'candidate_proposed':inputs['candidate'],'tooling':inputs['tooling']})
+                    args = [entry,'--out',str(f.root/'output')]
+                    args += ['--inputs',str(selected)] if entry == 'run' else ['--planning-observations',str(selected),'--selection-reference','fixture']
+                    if defect != 'missing-source': args += ['--source-root',str(source),'--source-builds-root',str(builds)]
+                    with mock.patch.object(executor,'ROOT',f.tooling), mock.patch.object(cli,'Executor') as worker, \
+                            mock.patch.object(isolation,'IsolatedRunner') as outer, contextlib.redirect_stderr(io.StringIO()):
+                        self.assertEqual(cli.main(args),2)
+                        worker.assert_not_called()
+                        outer.assert_not_called()
+                    self.assertFalse((f.root/'output').exists())
+
+    def testObservationAndExecutionKeepBothIdentitiesAtConsumerBoundary(self):
+        for entry in ('run','observe'):
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                inputs = separate_inputs(f)
+                binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.source_binding, worker.source_root, worker.source_builds_root = binding,f.source,f.source_builds
+                worker.inputs, worker.candidate = inputs,'3.125.1'
+                worker.build_consumers = mock.Mock(side_effect=RuntimeError('consumer boundary reached'))
+                worker.cleanup = mock.Mock()
+                worker.save = mock.Mock()
+                worker.pending_restore = None
+                worker.versions = ('3.110.0','3.70.1','3.125.1')
+                with mock.patch.object(executor,'ROOT',f.tooling), mock.patch.object(executor,'provisional_successor_execution_policy',return_value={}):
+                    if entry == 'observe':
+                        with self.assertRaisesRegex(RuntimeError,'consumer boundary reached'):
+                            worker.observe_inputs({'candidate_proposed':inputs['candidate'],'tooling':f.pins},'fixture')
+                    else:
+                        with self.assertRaisesRegex(RuntimeError,'consumer boundary reached'): worker.execute()
+                        worker.cleanup.assert_called_once()
+                self.assertEqual(worker.source_binding,binding)
+
+    def testBothSourceRoutesSelectTheTaggedSdkBeforeEvaluationOrRestore(self):
+        class ConsumerBoundaryReached(Exception):
+            pass
+        for route in ('candidate_source', 'runtime_source'):
+            for source in (False, True):
+                with self.subTest(route=route, source=source), tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    tagged = root/'tagged'
+                    tagged.mkdir()
+                    selected_sdk = b'{"sdk":{"version":"10.0.401","rollForward":"disable"}}\n'
+                    (tagged/'global.json').write_bytes(selected_sdk)
+                    consumers = root/'consumer-template'
+                    consumers.mkdir()
+                    worker = executor.Executor.__new__(executor.Executor)
+                    worker.output, worker.source_root, worker.candidate = root/'execution', tagged, '3.125.1'
+                    worker.explicit_source_root = route == 'candidate_source'
+                    worker.source_binding = {} if route == 'candidate_source' else {
+                        'runtime_source': {'repository':str(tagged), 'builds':{'path':str(root/'builds')}}}
+                    worker.check_sources = mock.Mock()
+                    role = 'source' if source else 'candidate'
+                    def boundary(*args, **kwargs):
+                        self.assertEqual((worker.output/'consumers'/role/'global.json').read_bytes(), selected_sdk)
+                        raise ConsumerBoundaryReached()
+                    worker.run = mock.Mock(side_effect=boundary)
+                    worker.evaluate_source_consumers = mock.Mock(side_effect=boundary)
+                    with mock.patch.object(executor,'CONSUMERS',consumers), \
+                            self.assertRaises(ConsumerBoundaryReached):
+                        worker.build_consumers('3.125.1',source=source)
+                    self.assertEqual(worker.run.call_count + worker.evaluate_source_consumers.call_count, 1)
+
+    def testSourceConsumersUseVerifiedReferencesCatalogAndVersionBeforeRestore(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.source_binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            worker.source_root, worker.source_builds_root = f.source,f.source_builds
+            worker.output, worker.candidate, worker.commands = f.root/'execution','3.125.1',[]
+            references = [f.source/'src'/identifier/(identifier+'.csproj') for identifier in executor.PACKAGE_IDS]
+            def run(argv, **kwargs):
+                if argv[1] == 'restore': raise RuntimeError('restore boundary reached')
+                project = Path(argv[2])
+                if '-preprocess' in argv:
+                    data = '\n'+str(f.source_builds/'Props/Directory.Packages.props')+'\n'
+                    data += '/usr/share/dotnet/sdk/10.0.401/Current/Microsoft.Common.props\n'
+                    data += str(kwargs['cwd']/'packages/restored/1.0/build/restored.targets')+'\n'
+                else:
+                    data = json.dumps({'Properties':{'MSBuildProjectFullPath':str(project),
+                        'EventStoreVersion':'3.125.1','HexalithEventStoreVersion':'3.125.1','Version':'3.125.1'},
+                        'Items':{'ProjectReference':[{'FullPath':str(path)} for path in references]
+                                 if not project.is_relative_to(f.source) else []}})
+                worker.commands.append({'argv':list(map(str,argv)),'exit_code':0,'output':data,
+                                        'output_sha256':preparation.digest(data.encode())})
+                return data.encode()
+            worker.run = mock.Mock(side_effect=run)
+            with self.assertRaisesRegex(RuntimeError,'restore boundary reached'):
+                worker.build_consumers('3.125.1',source=True)
+            self.assertEqual(len(worker.source_evaluations),8)
+            consumer_root = worker.output/'consumers/source'
+            qualification.validate_source_evaluations({'source_evaluations':worker.source_evaluations},worker.source_binding,consumer_root)
+            smaller_domain = copy.deepcopy(worker.source_evaluations)
+            value = json.loads(smaller_domain[1]['evaluation']['output'])
+            value['Items']['ProjectReference'] = [row for row in value['Items']['ProjectReference']
+                if Path(row['FullPath']).stem in ('Hexalith.EventStore.Contracts','Hexalith.EventStore.DomainService')]
+            smaller_domain[1]['evaluation']['output'] = json.dumps(value)
+            smaller_domain[1]['evaluation']['output_sha256'] = preparation.digest(smaller_domain[1]['evaluation']['output'].encode())
+            qualification.validate_source_evaluations({'source_evaluations':smaller_domain},worker.source_binding,consumer_root)
+            properties = worker.run.call_args.args[0]
+            self.assertIn('-p:EventStoreSourceRoot='+str(f.source),properties)
+            self.assertIn('-p:Hexalith1BuildPackageProps='+str(f.source_builds/'Props/Directory.Packages.props'),properties)
+            self.assertNotIn('-p:EventStoreSourceRoot='+str(f.tooling),properties)
+            for mutation in ('reference','catalog','source-catalog','version','arguments','omit','all-references',
+                             'consumer-root','slash-property','response-file','extra-target','external-target'):
+                changed = copy.deepcopy(worker.source_evaluations)
+                if mutation == 'omit': changed.pop()
+                elif mutation == 'all-references':
+                    changed = changed[:3]
+                    for item in changed:
+                        value = json.loads(item['evaluation']['output'])
+                        value['Items']['ProjectReference'] = []
+                        item['evaluation']['output'] = json.dumps(value)
+                        item['evaluation']['output_sha256'] = preparation.digest(item['evaluation']['output'].encode())
+                elif mutation == 'consumer-root':
+                    for item in changed[:3]:
+                        old = item['project']
+                        item['project'] = old.replace(str(consumer_root),str(f.root/'other/consumers/source'))
+                        for command in ('imports','evaluation'):
+                            item[command]['argv'][2] = item['project']
+                        value = json.loads(item['evaluation']['output'])
+                        value['Properties']['MSBuildProjectFullPath'] = item['project']
+                        item['evaluation']['output'] = json.dumps(value)
+                        item['evaluation']['output_sha256'] = preparation.digest(item['evaluation']['output'].encode())
+                elif mutation in ('slash-property','response-file','extra-target'):
+                    changed[0]['evaluation']['argv'].append({'slash-property':'/p:UseCurrentSource=false',
+                        'response-file':'@overrides.rsp','extra-target':'-target:Build'}[mutation])
+                elif mutation == 'external-target':
+                    changed[0]['imports']['output'] += '/tmp/unrelated.targets\n'
+                    changed[0]['imports']['output_sha256'] = preparation.digest(changed[0]['imports']['output'].encode())
+                elif mutation in ('catalog','source-catalog'):
+                    changed[0]['imports']['output'] += str((f.builds/'Props' if mutation == 'catalog' else f.source/'obj')/'Directory.Packages.props')+'\n'
+                    changed[0]['imports']['output_sha256'] = preparation.digest(changed[0]['imports']['output'].encode())
+                elif mutation == 'arguments':
+                    command = changed[0]['evaluation']['argv']
+                    index = next(i for i,arg in enumerate(command) if arg.startswith('-p:EventStoreSourceRoot='))
+                    command[index] = '-p:EventStoreSourceRoot='+str(f.tooling)
+                else:
+                    value = json.loads(changed[0]['evaluation']['output'])
+                    if mutation == 'reference': value['Items']['ProjectReference'][0]['FullPath'] = str(f.tooling/'src/wrong.csproj')
+                    else: value['Properties']['HexalithEventStoreVersion'] = '3.124.0'
+                    changed[0]['evaluation']['output'] = json.dumps(value)
+                    changed[0]['evaluation']['output_sha256'] = preparation.digest(changed[0]['evaluation']['output'].encode())
+                with self.subTest(mutation=mutation), self.assertRaises(preparation.InvalidPacket):
+                    qualification.validate_source_evaluations({'source_evaluations':changed},worker.source_binding,consumer_root)
+            # The published restore receives neither source references nor catalog overrides.
+            worker.run.reset_mock()
+            with self.assertRaisesRegex(RuntimeError,'restore boundary reached'): worker.build_consumers('3.125.1')
+            props = worker.run.call_args.args[0]
+            self.assertFalse(any('SourceRoot=' in str(value) or 'BuildPackage' in str(value) or 'UseCurrentSource=' in str(value) for value in props))
+
+    def testPostRestoreImportsAreReevaluatedBeforeAnyDebugBuild(self):
+        for substituted in (False,True):
+            with self.subTest(substituted=substituted), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                worker = executor.Executor.__new__(executor.Executor)
+                worker.source_binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+                worker.source_root,worker.source_builds_root = f.source,f.source_builds
+                worker.output,worker.candidate,worker.commands = f.root/'execution','3.125.1',[]
+                restored, built = [],[]
+                source_projects = [f.source/'src'/name/(name+'.csproj') for name in executor.PACKAGE_IDS]
+                def run(argv, **kwargs):
+                    if argv[1] == 'build':
+                        built.append(argv)
+                        raise RuntimeError('Debug build boundary reached')
+                    if argv[1] == 'restore':
+                        restored.append(argv)
+                        data = 'restored'
+                    elif '-preprocess' in argv:
+                        imported = [f.source_builds/'Props/Directory.Packages.props']
+                        if restored:
+                            imported.append(Path('/tmp/restore-injected.targets') if substituted else kwargs['cwd']/'host/obj/generated.targets')
+                        data = '\n'+'\n'.join(map(str,imported))+'\n'
+                    else:
+                        project = Path(argv[2])
+                        data = json.dumps({'Properties':{'MSBuildProjectFullPath':str(project),'EventStoreVersion':'3.125.1',
+                            'HexalithEventStoreVersion':'3.125.1','Version':'3.125.1'},'Items':{'ProjectReference':
+                            [{'FullPath':str(path)} for path in source_projects] if not project.is_relative_to(f.source) else []}})
+                    worker.commands.append({'argv':list(map(str,argv)),'exit_code':0,'output':data,'output_sha256':preparation.digest(data.encode())})
+                    return data.encode()
+                worker.run = run
+                with self.assertRaisesRegex(preparation.InvalidPacket if substituted else RuntimeError,
+                                            'external source import' if substituted else 'Debug build boundary reached'):
+                    worker.build_consumers('3.125.1',source=True)
+                self.assertEqual(len(restored),3)
+                self.assertEqual(len(built),0 if substituted else 1)
+                if not substituted:
+                    self.assertTrue(all('generated.targets' in item['imports']['output'] for item in worker.source_evaluations))
 
 
 class QualifiedSnapshotWitnessTests(unittest.TestCase):
@@ -35,11 +358,11 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-3.110.0'))
             for writer in ('3.110.0','3.70.1','3.122.2',
-                           *(version for version in ('3.121.0','3.122.1','3.125.0') if version != self.candidate_version)):
+                           *(version for version in ('3.121.0','3.122.1','3.125.0','3.125.1','3.126.0') if version != self.candidate_version)):
                 with self.subTest(lane=lane,writer=writer):
                     self.assertFalse(executor.witnesses.requires_qualified_snapshot(self.candidate_version,lane,writer+'-to-'+self.candidate_version))
         self.assertTrue(executor.witnesses.requires_qualified_snapshot(self.candidate_version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
-        for version in ('3.119.0','3.122.0','3.122.2','3.125.1'):
+        for version in ('3.119.0','3.122.0','3.122.2','3.125.2','3.126.1','3.127.0'):
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'post-upgrade-restore','fresh-backup-restore-append-restart'))
             self.assertFalse(executor.witnesses.requires_qualified_snapshot(version,'snapshot-tail','source-to-3.110.0'))
 
@@ -173,6 +496,71 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
             with self.subTest(executable=executable), self.assertRaises(preparation.InvalidPacket):
                 self.validate(fixture)
 
+    def testCanonicalEmptyBodyReadinessGETAndFailedRetryAreAccepted(self):
+        fixture = self.fixture()
+        for command in fixture[1]['commands']:
+            if command['argv'][:2] == ['HTTP','GET']:
+                command['argv'].append('request-sha256='+executor.digest(b''))
+        retry = copy.deepcopy(fixture[1]['commands'][13])
+        retry.update(id=100,exit_code=124,started_utc='2026-10-14T00:00:15.250000+00:00',
+                     finished_utc='2026-10-14T00:00:15.300000+00:00',output='URLError',
+                     output_sha256=executor.digest(b'URLError'))
+        fixture[1]['commands'].append(retry)
+        self.rehash_inventory(fixture)
+        self.validate(fixture)
+
+    def testFourArgumentSeedGETRejectsAlteredHashExtraArgumentsAndForeignURLs(self):
+        for mutation in ('hash','extra','foreign-ready','foreign-health','query','host'):
+            fixture = self.fixture()
+            command = copy.deepcopy(fixture[1]['commands'][13])
+            command['id'] = 100
+            command['argv'].append('request-sha256='+executor.digest(b''))
+            if mutation == 'hash':
+                command['argv'][3] = 'request-sha256='+executor.digest(b'changed')
+            elif mutation == 'extra':
+                command['argv'].append('unapproved-extra-argument')
+            elif mutation == 'foreign-ready':
+                command['argv'][2] = 'http://127.0.0.1:19999/ready'
+            elif mutation == 'foreign-health':
+                command['argv'][2] = 'http://127.0.0.1:19999/v1.0/healthz/outbound'
+            elif mutation == 'query':
+                command['argv'][2] += '?substituted=true'
+            else:
+                command['argv'][2] = command['argv'][2].replace('127.0.0.1','localhost')
+            fixture[1]['commands'].append(command)
+            self.rehash_inventory(fixture)
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(preparation.InvalidPacket,'unapproved|readiness'):
+                self.validate(fixture)
+
+    def testRestartedDomainReadinessGETRequiresItsBoundPhysicalLaunch(self):
+        fixture = self.fixture()
+        commands,configurations = fixture[1]['commands'],fixture[1]['configurations']
+        host,sidecar = copy.deepcopy(commands[8]),copy.deepcopy(commands[9])
+        host.update(id=100,started_utc='2026-10-14T00:00:14+00:00',finished_utc='2026-10-14T00:00:20+00:00',
+                    output='Now listening on: http://127.0.0.1:10008')
+        host['output_sha256'] = executor.digest(host['output'].encode())
+        sidecar.update(id=101,started_utc='2026-10-14T00:00:14.200000+00:00',finished_utc='2026-10-14T00:00:20+00:00',
+                       runtime_configuration=configurations[1]['id'],
+                       runtime_configuration_sha256=executor.digest(executor.canonical(configurations[1])))
+        for name,value in (('--app-port','10008'),('--dapr-http-port','10007')):
+            sidecar['argv'][sidecar['argv'].index(name)+1] = value
+        for command in (host,sidecar):
+            command['process'] = {key:command['id'] for key in ('pid','pgid','session','start_ticks')}
+            command['owned_processes'] = [command['process']]
+            command['cleanup'][0]['before'] = [command['process']]
+        commands.extend((host,sidecar))
+        for identity,url in ((102,'http://127.0.0.1:10008/ready'),(103,'http://127.0.0.1:10007/v1.0/healthz/outbound')):
+            command = copy.deepcopy(commands[13])
+            command.update(id=identity,argv=['HTTP','GET',url,'request-sha256='+executor.digest(b'')],
+                           started_utc='2026-10-14T00:00:14.500000+00:00',finished_utc='2026-10-14T00:00:14.600000+00:00')
+            commands.append(command)
+        self.rehash_inventory(fixture)
+        self.validate(fixture)
+        sidecar['runtime_configuration'] = configurations[0]['id']
+        sidecar['runtime_configuration_sha256'] = executor.digest(executor.canonical(configurations[0]))
+        with self.assertRaises(preparation.InvalidPacket):
+            self.validate(fixture)
+
     def testShellMediatedProviderMutationInsideSeedIsRejected(self):
         for shell in ('sh', '/bin/bash', 'env', 'busybox', '/bin/toybox', 'timeout'):
             for outer_shell in (False, True):
@@ -229,7 +617,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
                     'sha256':value} for entry in verified.values() for value in entry['dlls']]},
             'cases':[row],'execution_evidence':executed,'output_sha256':executor.digest(executor.canonical(executed)),
             'assertions':row['assertions'],'execution':'passed','compatibility':'compatible'}
-        if self.candidate_version in ('3.122.1','3.125.0'):
+        if self.candidate_version in ('3.122.1','3.125.0','3.125.1','3.126.0'):
             receipt = self.attach_isolation(receipt,context)
         return receipt,context
 
@@ -295,7 +683,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
     def testLaunchReadinessOwnershipAndRestartedStateStoreAreMandatory(self):
         fixture = self.fixture()
         for version in ('source','3.122.2',
-                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0') if candidate != self.candidate_version]):
+                        *[candidate for candidate in ('3.121.0','3.122.1','3.125.0','3.125.1','3.126.0') if candidate != self.candidate_version]):
             changed = copy.deepcopy(fixture)
             config = changed[1]['configurations'][0]
             config['version'] = version
@@ -742,7 +1130,10 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
                 qualification.receipt_outcome(receipt,context)
 
     def testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract(self):
-        from tools.tests.test_p1r_published_qualification import restore_receipt
+        try:
+            from test_p1r_published_qualification import restore_receipt
+        except ImportError:
+            from tools.tests.test_p1r_published_qualification import restore_receipt
         receipt,context = self.import_fixture(scope='operational')
         root = Path(self.temporary.name)
         restore = restore_receipt(scope='operational')
@@ -796,6 +1187,101 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
                     attempt[key] = ['e'*64 if identity == old_id else identity for identity in attempt[key]]
             with self.subTest(schema=original['schema']),self.assertRaisesRegex(preparation.InvalidPacket,'cleanup containers differ'):
                 qualification.receipt_outcome(changed,context)
+
+
+class Published31251SnapshotWitnessTests(ProposedQualifiedSnapshotWitnessTests):
+    candidate_version = '3.125.1'
+    source_commit = qualification.SELECTED_SOURCE_COMMIT
+    tag_builds_commit = qualification.SELECTED_TAG_BUILDS
+
+    def setUp(self):
+        super().setUp()
+        self.tagged_root = Path(self.temporary.name) / 'tagged-source'
+        self.tagged_root.mkdir()
+        component = self.tagged_root/'deploy/dapr/statestore-postgresql.yaml'
+        component.parent.mkdir(parents=True)
+        component.write_bytes((preparation.ROOT/'deploy/dapr/statestore-postgresql.yaml').read_bytes())
+        (self.tagged_root/'.gitmodules').write_text('[submodule \"Builds\"]\n path = references/Hexalith.Builds\n url = fixture-builds\n')
+        self.test_binding = None
+        original_binding,original_git = preparation.source_binding,preparation.git
+        def bind(root=preparation.ROOT,source_root=None):
+            if self.test_binding is not None and Path(root) == preparation.ROOT:
+                return copy.deepcopy(self.test_binding)
+            return original_binding(root,source_root) if source_root is not None else original_binding(root)
+        def git(root,*arguments):
+            if Path(root) == self.tagged_root:
+                if arguments[0] == 'ls-tree':
+                    return ('160000 commit '+self.tag_builds_commit+'\treferences/Hexalith.Builds\n').encode()
+                return self.source_commit.encode()
+            return original_git(root,*arguments)
+        for patcher in (mock.patch.object(preparation,'source_binding',side_effect=bind),
+                        mock.patch.object(preparation,'self_contained_checkout'),
+                        mock.patch.object(preparation,'require_tagged_checkout'),
+                        mock.patch.object(preparation,'git',side_effect=git)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def testActualImportReadsPostgresqlTemplateFromTheBoundTaggedRoot(self):
+        receipt,context = self.import_fixture(scope='operational')
+        validate = qualification.validate_postgresql_component
+        with mock.patch.object(qualification,'validate_postgresql_component',wraps=validate) as observed:
+            self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+        self.assertTrue(observed.call_args_list)
+        self.assertTrue(all(Path(call.args[1]) == self.tagged_root for call in observed.call_args_list))
+        component = self.tagged_root/'deploy/dapr/statestore-postgresql.yaml'
+        component.write_bytes(component.read_bytes()+b'\n# substituted bound template\n')
+        with self.assertRaisesRegex(preparation.InvalidPacket,'PostgreSQL component template'):
+            qualification.receipt_outcome(receipt,context)
+
+    def testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution(self):
+        with tempfile.TemporaryDirectory(prefix='p1r-sibling-source-') as temporary:
+            target = Path(temporary) / 'tagged-source'
+            shutil.move(str(self.tagged_root), target)
+            self.tagged_root = target
+            receipt, context = self.import_fixture(scope='operational')
+            self.assertEqual(qualification.receipt_outcome(receipt, context)[2]['execution'], 'passed')
+            for mutation in ('mount', 'command'):
+                receipt, context = self.import_fixture(scope='operational')
+                if mutation == 'mount':
+                    def change(value):
+                        mount = next(row for row in value['runner_proof']['Mounts']
+                                     if row['Destination'] == str(self.tagged_root))
+                        mount['Destination'] = str(self.tagged_root.parent / 'substituted')
+                    self.change_isolation(receipt, 'wrapper', change)
+                else:
+                    self.change_isolation(receipt, 'private',
+                                          lambda value: value['command'].__setitem__(-1, str(preparation.ROOT)))
+                    self.change_isolation(receipt, 'wrapper',
+                                          lambda value: value['inner_command'].__setitem__(-1, str(preparation.ROOT)))
+                with self.subTest(mutation=mutation), self.assertRaises(preparation.InvalidPacket):
+                    qualification.receipt_outcome(receipt, context)
+
+    def attach_isolation(self,receipt,context):
+        binding = context['source_binding']
+        production = {'head':self.source_commit,'diff_sha256':preparation.digest(b''),
+            'files':[{'path':'src/Production.cs','sha256':'a'*64,'git_blob':'b'*40,'index_blob':'b'*40}],
+            'gitlinks':{'references/Hexalith.Builds':self.tag_builds_commit}}
+        binding['candidate_source'] = {'repository':str(self.tagged_root),'main':production,'retained_inputs':[],
+            'python':binding['python'],'dependencies':[{'path':'references/Hexalith.Builds','initialized':True,
+                'binding':dict(copy.deepcopy(production),head=self.tag_builds_commit)}]}
+        self.test_binding = binding
+        context['inputs']['value']['candidate'].update(tag='v'+self.candidate_version,tag_commit=self.source_commit,
+            tag_builds_commit=self.tag_builds_commit,feed='https://api.nuget.org/v3/index.json')
+        source_path = Path(self.temporary.name)/'executor-source.json'
+        executor.write_json(source_path,binding)
+        execution_path = Path(self.temporary.name)/'execution.json'
+        execution = json.loads(execution_path.read_bytes())
+        execution['executor_source_sha256'] = executor.digest(source_path.read_bytes())
+        executor.write_json(execution_path,execution)
+        receipt['execution_evidence'].update(executor_source=binding,executor_source_sha256=executor.digest(source_path.read_bytes()))
+        receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
+        return super().attach_isolation(receipt,context)
+
+
+class Published31260SnapshotWitnessTests(Published31251SnapshotWitnessTests):
+    candidate_version = '3.126.0'
+    source_commit = 'fcf78d6cafb6c0c9f52dc350a9a09aff54ded288'
+    tag_builds_commit = '1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c'
 
 
 class IndependentRecoverySelectionTests(unittest.TestCase):
@@ -894,10 +1380,11 @@ class MeasurementTests(unittest.TestCase):
         worker.postgres_write.assert_not_called()
 
     def testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends(self):
-        for version in ("3.121.0", "3.122.1", "3.125.0", "source"):
-            with self.subTest(version=version):
+        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")]
+        for candidate, version in writers + [("3.125.0", "source"), ("3.125.1", "source")]:
+            with self.subTest(candidate=candidate, version=version):
                 worker, checks = self.snapshotSeedWorker({"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 9}},
-                    candidate=version if version != "source" else "3.125.0")
+                    candidate=candidate)
                 worker.seed(version, 10, checks)
                 self.assertEqual([call.args[0] for call in worker.probe.call_args_list], [version] * 4)
                 self.assertEqual([call.args[1][0] for call in worker.probe.call_args_list], ["seed", "manual-snapshot", "seed", "seed"])
@@ -907,18 +1394,22 @@ class MeasurementTests(unittest.TestCase):
                 self.assertEqual(worker.last_snapshot_creation["persisted_snapshot"]["snapshotEnvelopeVersion"], 1)
 
     def testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis(self):
-        for version in ("3.121.0", "3.122.1", "3.125.0", "source"):
+        writers = [(version, version) for version in ("3.121.0", "3.122.1", "3.125.0", "3.125.1", "3.126.0")]
+        for candidate, version in writers + [("3.125.0", "source"), ("3.125.1", "source")]:
             for snapshot in (None, {"sequenceNumber": 9, "state": {"count": 9}},
                              {"sequenceNumber": 9, "snapshotEnvelopeVersion": 1, "state": {"count": 8}}):
-                with self.subTest(version=version,snapshot=snapshot):
-                    worker, checks = self.snapshotSeedWorker(snapshot,candidate=version if version != "source" else "3.125.0")
-                    worker.seed(version, 10, checks)
+                with self.subTest(candidate=candidate,version=version,snapshot=snapshot):
+                    worker, checks = self.snapshotSeedWorker(snapshot,candidate=candidate)
+                    with self.assertRaises(executor.SeedFailure):
+                        worker.seed(version, 10, checks)
                     self.assertGreater(checks.counter["failed"], 0)
                     worker.mutate.assert_not_called()
 
     def testUnenrolledSuccessorSeedRefusesBeforeManualSnapshotOrDiagnosticSynthesis(self):
         for candidate,version in (("3.125.0","3.122.0"),("3.125.0","3.122.2"),
-                                  ("3.125.0","3.125.1"),("3.126.0","source"),
+                                  ("3.125.0","3.125.2"),("3.125.2","3.125.2"),
+                                  ("3.125.2","source"),("3.127.0","3.127.0"),("3.127.0","source"),
+                                  ("3.125.1","3.127.0"),("3.125.1","3.125.0"),
                                   ("3.125.0","3.121.0")):
             worker, checks = self.snapshotSeedWorker(None,candidate=candidate)
             with self.subTest(candidate=candidate,version=version), self.assertRaisesRegex(executor.InvalidPacket,"not explicitly enabled"):
@@ -930,9 +1421,27 @@ class MeasurementTests(unittest.TestCase):
             worker.postgres_query.assert_not_called()
             worker.start_nodes.assert_not_called()
 
+    def testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation(self):
+        for interval in (10, 50, 1000):
+            for candidate, version in (("3.127.0", "source"), ("3.127.0", "3.127.0"),
+                                       ("3.127.0", "3.110.0"), ("3.125.2", "source"),
+                                       ("3.125.1", "3.125.0"), ("3.125.1", "3.127.0"),
+                                       ("3.125.1", "unknown")):
+                worker, checks = self.snapshotSeedWorker(None, candidate=candidate)
+                with self.subTest(interval=interval, candidate=candidate, version=version):
+                    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+                        worker.seed(version, interval, checks)
+                    worker.stop_nodes.assert_not_called()
+                    worker.postgres_query.assert_not_called()
+                    worker.start_nodes.assert_not_called()
+                    worker.probe.assert_not_called()
+                    worker.mutate.assert_not_called()
+
     def testCaseRetainsSharedFixtureSourceForEnrolledPackageAndSourceSeedsOnly(self):
-        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),
-                                 ("3.125.0","source"),("3.122.2","3.122.2"),("3.125.0",None)):
+        for candidate,writer in (("3.121.0","3.121.0"),("3.122.1","3.122.1"),("3.125.0","3.125.0"),("3.125.1","3.125.1"),
+                                 ("3.125.1","source"),("3.125.0","source"),
+                                 ("3.122.2","3.122.2"),("3.125.2","3.125.2"),
+                                 ("3.127.0","source"),("3.125.0",None)):
             with self.subTest(candidate=candidate,writer=writer):
                 worker = executor.Executor.__new__(executor.Executor)
                 worker.commands, worker.configurations, worker.errors = [], [], []
@@ -942,7 +1451,7 @@ class MeasurementTests(unittest.TestCase):
                     worker.commands.append({"id":1})
                     return {"seed_snapshot":worker.last_snapshot_creation},"effect","compatible"
                 _,evidence = worker.case("snapshot-tail",(writer or candidate)+"-to-3.110.0",action,False)
-                if candidate == "3.122.2" or writer is None:
+                if candidate in ("3.122.2","3.125.2","3.127.0") or writer is None:
                     self.assertNotIn("snapshot_fixture_source",evidence)
                 else:
                     path = preparation.ROOT/"tools/p1r-published-consumers/FixtureSnapshotQualification.cs"
@@ -953,18 +1462,17 @@ class MeasurementTests(unittest.TestCase):
         worker, checks = self.snapshotSeedWorker(None)
         worker.mutate = mock.Mock()
         worker.probe = mock.Mock(side_effect=[{"committed": 12}, {"committed": 3}])
-        worker.inventory = mock.Mock(return_value=self.snapshotSeedRows(15))
+        raw, rows = verifier_fixture()
+        worker.inventory = mock.Mock(return_value=rows)
+        worker.raw_state = mock.Mock(return_value=raw)
         worker.seed("3.110.0", 10, checks)
         worker.mutate.assert_called_once_with("snapshot-nine")
-        worker.raw_state.assert_not_called()
+        worker.raw_state.assert_called_once()
         self.assertIsNone(worker.last_snapshot_creation)
 
     @staticmethod
     def snapshotSeedRows(count):
-        head = 9 if count == 9 else 12
-        return [{"key": "event-" + str(index), "kind": "event", "tenant": "tenant-a" if index < head else "tenant-b",
-                 "sequence": index + 1 if index < head else index - head + 1, "sha256": "a" * 64}
-                for index in range(count)] + [{"key": "metadata", "kind": "metadata", "tenant": "tenant-a", "sequence": head, "sha256": "b" * 64}]
+        return verifier_fixture(head=9 if count == 9 else 12)[1]
 
     def snapshotSeedWorker(self, snapshot, candidate="3.121.0"):
         worker = executor.Executor.__new__(executor.Executor)
@@ -977,57 +1485,65 @@ class MeasurementTests(unittest.TestCase):
             "detached_apply": True, "applied_count": 10}})
         worker.probe = mock.Mock(side_effect=[{"committed": 9, "sequence": 9}, {"outcome": "Created", "sequence": 9},
             {"committed": 3, "sequence": 12}, {"committed": 3, "sequence": 3}])
-        worker.raw_state = mock.Mock(return_value={} if snapshot is None else
-            {"tenant-a:counter:fixture:snapshot": executor.canonical(snapshot)})
-        worker.inventory = mock.Mock(side_effect=[self.snapshotSeedRows(9), self.snapshotSeedRows(15)])
+        raw, _ = verifier_fixture(snapshot=False)
+        if snapshot is not None:
+            raw["tenant-a:counter:fixture:snapshot"] = executor.canonical(snapshot)
+        worker.raw_state = mock.Mock(return_value=raw)
+        prefix_raw, _ = verifier_fixture(head=9, snapshot=False)
+        if snapshot is not None:
+            prefix_raw["tenant-a:counter:fixture:snapshot"] = executor.canonical(snapshot)
+        worker.inventory = mock.Mock(side_effect=[verifier_rows(prefix_raw), verifier_rows(raw)])
         return worker, executor.Measurements()
 
     def testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands(self):
-        with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
-            worker = CleanupTests.worker(self, scratch)
-            worker.candidate = "3.125.0"
-            worker.redis = "source-id"
-            worker.postgres_password = "<TEST_PASSWORD>"
-            worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
+        for candidate in ("3.125.0", "3.125.1", "3.126.0"):
+            with self.subTest(candidate=candidate):
+                with tempfile.TemporaryDirectory() as scratch, mock.patch.object(executor, "reserve_port", return_value=15432):
+                    worker = CleanupTests.worker(self, scratch)
+                    worker.candidate = candidate
+                    worker.redis = "source-id"
+                    worker.postgres_password = "<TEST_PASSWORD>"
+                    worker.inputs = {"operational_profile": {}, "candidate": {"packages": []}}
+                    worker.raw_state = mock.Mock(return_value=verifier_fixture(floor=5)[0])
 
-            def run(argv, **kwargs):
-                output = b""
-                if argv[:2] == ["docker", "inspect"]:
-                    name = argv[-1]
-                    output = (json.dumps({"Id": "restored-id", "Name": "/" + name,
-                        "Config": {"Labels": {"hexalith.p1r.invocation": worker.invocation}}}) + "\n").encode()
-                elif argv[:2] == ["docker", "cp"] and ":/tmp/" in str(argv[2]):
-                    Path(argv[3]).write_bytes(b"synthetic-backup")
-                worker.record(argv, worker.scratch, executor.stamp(), 0, output)
-                return output
+                    def run(argv, **kwargs):
+                        output = b""
+                        if argv[:2] == ["docker", "inspect"]:
+                            name = argv[-1]
+                            output = (json.dumps({"Id": "restored-id", "Name": "/" + name,
+                                "Config": {"Labels": {"hexalith.p1r.invocation": worker.invocation}}}) + "\n").encode()
+                        elif argv[:2] == ["docker", "cp"] and ":/tmp/" in str(argv[2]):
+                            Path(argv[3]).write_bytes(b"synthetic-backup")
+                        worker.record(argv, worker.scratch, executor.stamp(), 0, output)
+                        return output
 
-            def inventory(*args):
-                run(["synthetic-inventory"])
-                return []
+                    def inventory(*args):
+                        run(["synthetic-inventory"])
+                        return []
 
-            def actor(*args):
-                run(["synthetic-actor"])
-                return {"accepted": True, "event_count": 1}
+                    def actor(*args):
+                        run(["synthetic-actor"])
+                        return {"accepted": True, "event_count": 1}
 
-            worker.run = run
-            worker.inventory = inventory
-            worker.actor = mock.Mock(side_effect=actor)
-            worker.seed, worker.mutate, worker.stop_nodes = mock.Mock(), mock.Mock(), mock.Mock()
-            worker.start_nodes = mock.Mock(side_effect=lambda *args, **kwargs: [
-                {"pid": 1, "start_ticks": 1, "pgid": 1, "session": 1}])
+                    worker.run = run
+                    worker.inventory = inventory
+                    worker.actor = mock.Mock(side_effect=actor)
+                    worker.seed, worker.mutate, worker.stop_nodes = mock.Mock(), mock.Mock(), mock.Mock()
+                    worker.start_nodes = mock.Mock(side_effect=lambda *args, **kwargs: [
+                        {"pid": 1, "start_ticks": 1, "pgid": 1, "session": 1}])
 
-            worker.restore_case("synthetic-restore", executor.Measurements())
-            worker.seed.assert_called_once_with("3.125.0", 10, mock.ANY)
-            self.assertEqual([call.args[0] for call in worker.start_nodes.call_args_list], ["3.125.0", "3.125.0"])
-            self.assertTrue(all(call.args[0] == "3.125.0" for call in worker.actor.call_args_list))
-            commands = {row["step"]: row for row in worker.pending_restore["commands"]}
-            self.assertEqual(commands["backup"]["argv"][:4], ["docker", "exec", "source-id", "pg_dump"])
-            self.assertEqual(commands["create-database"]["argv"], ["docker", "start", "restored-id"])
-            self.assertEqual(commands["backup"]["output_sha256"], executor.digest(b"synthetic-backup"))
-            for step in ("backup", "create-database"):
-                recorded = next(row for row in worker.commands if row["argv"] == commands[step]["argv"])
-                for field in ("cwd", "started_utc", "finished_utc", "exit_code"):
-                    self.assertEqual(commands[step][field], recorded[field])
+                    worker.restore_case("synthetic-restore", executor.Measurements())
+                    worker.seed.assert_called_once_with(candidate, 10, mock.ANY)
+                    self.assertEqual([call.args[0] for call in worker.start_nodes.call_args_list], [candidate, candidate])
+                    self.assertTrue(all(call.args[0] == candidate for call in worker.actor.call_args_list))
+                    commands = {row["step"]: row for row in worker.pending_restore["commands"]}
+                    self.assertEqual(commands["backup"]["argv"][:4], ["docker", "exec", "source-id", "pg_dump"])
+                    self.assertEqual(commands["create-database"]["argv"], ["docker", "start", "restored-id"])
+                    self.assertEqual(commands["backup"]["output_sha256"], executor.digest(b"synthetic-backup"))
+                    for step in ("backup", "create-database"):
+                        recorded = next(row for row in worker.commands if row["argv"] == commands[step]["argv"])
+                        for field in ("cwd", "started_utc", "finished_utc", "exit_code"):
+                            self.assertEqual(commands[step][field], recorded[field])
 
     def testPrivateProbeBinaryAndExactInputDigestAreCapturedByCommands(self):
         with tempfile.TemporaryDirectory() as scratch:
@@ -1197,8 +1713,14 @@ class MeasurementTests(unittest.TestCase):
              mock.patch.object(executor.time, "sleep"):
             root = Path(temporary)
             (root / "configurations").mkdir()
+            tooling,release = root/'tooling',root/'release'
+            template = (executor.ROOT/'deploy/dapr/statestore-postgresql.yaml').read_text()
+            for path,marker in ((tooling,'tooling'),(release,'release')):
+                (path/'deploy/dapr').mkdir(parents=True)
+                (path/'deploy/dapr/statestore-postgresql.yaml').write_text(template+'\n# '+marker+' template\n')
             worker = executor.Executor.__new__(executor.Executor)
             worker.output = worker.scratch = root
+            worker.source_root = release
             worker.inputs = {"operational_profile": {"runtime_version": "1.18.2"}}
             worker.redis, worker.redis_port, worker.pubsub_port = "owned", 15432, 16379
             worker.postgres_password = "<TEST_PASSWORD>"
@@ -1211,14 +1733,22 @@ class MeasurementTests(unittest.TestCase):
             worker.stop_nodes = mock.Mock()
             worker.wait = mock.Mock()
             worker.launch = lambda argv, environment: environments.append(environment) or {"ownership": mock.Mock(root={})}
-            worker.start_nodes(executor.CANDIDATE)
+            with mock.patch.object(executor,'ROOT',tooling):
+                worker.start_nodes(executor.CANDIDATE)
             self.assertEqual(len(environments), 4)
             self.assertTrue(all("POSTGRES_CONNECTION_STRING" not in value for value in environments))
             self.assertIn("password=<TEST_PASSWORD>", (root / "resources/state.yaml").read_text())
+            self.assertIn('# release template',(root/'resources/state.yaml').read_text())
+            self.assertNotIn('# tooling template',(root/'resources/state.yaml').read_text())
             self.assertNotIn("<TEST_PASSWORD>", json.dumps(worker.configurations))
             self.assertIsNotNone(worker.configurations[0]["source_workload_authority"])
             qualification.validate_postgresql_component(
-                next(file for file in worker.configurations[0]["files"] if file["name"] == "state.yaml"))
+                next(file for file in worker.configurations[0]["files"] if file["name"] == "state.yaml"),release)
+            wrong = dict(next(file for file in worker.configurations[0]['files'] if file['name'] == 'state.yaml'),
+                         content=(tooling/'deploy/dapr/statestore-postgresql.yaml').read_text())
+            wrong['sha256'] = preparation.digest(wrong['content'].encode())
+            with self.assertRaisesRegex(preparation.InvalidPacket,'component template'):
+                qualification.validate_postgresql_component(wrong,release)
 
     def testDockerDiscoverySelectsOnlyPreservationAndOwnershipFields(self):
         argv = executor.safe_inspect_argv("synthetic-id")
@@ -1256,6 +1786,161 @@ class MeasurementTests(unittest.TestCase):
         self.assertFalse(observed["completed"])
         self.assertEqual(observed["observations"], [])
         self.assertEqual(checks.counter, {"attempted": 1, "passed": 0, "failed": 1})
+
+    def reminderWorker(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.candidate, worker.host_port, worker.sidecar_port = '3.125.1', 10001, 10002
+        worker.seed, worker.stop_nodes, worker.start_nodes = mock.Mock(), mock.Mock(), mock.Mock()
+        worker.inventory = mock.Mock(return_value=[])
+        worker.probe = mock.Mock(return_value={'sequence':12})
+        worker.natural_reminder = mock.Mock(return_value={'completed':True})
+        def http(method,url,body):
+            parsed = executor.urllib.parse.urlsplit(url)
+            revision = int(parsed.path.rsplit('/',1)[-1])
+            query = executor.urllib.parse.parse_qs(parsed.query)
+            due = query.get('due',[worker.reminder_due])[0]
+            identity = {'intent_due':due,'intent_revision':revision,
+                        'reminder_name':executor.witnesses.reminder_name(due,revision)}
+            return dict(identity, **({'armed':1,'unresolved':0,'quarantined':0,'submitted':0}
+                                    if '/register/' in url else {'sequence':13,'callback_status':204}))
+        worker.http = mock.Mock(side_effect=http)
+        return worker
+
+    def testReminderFutureLeadSurvivesSlowReadinessAndPreservesArmedDue(self):
+        worker = self.reminderWorker()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
+                   '2026-10-18T00:01:50.100000+00:00']
+        checks = executor.Measurements()
+        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
+        self.assertEqual({window['due_utc'] for window in observed['deadline_windows']}, {'2026-10-18T00:02:00+00:00'})
+        self.assertEqual(checks.counter['failed'],0)
+        self.assertEqual(worker.http.call_count,3)
+
+    def testReminderMissedInitialOrRestartWindowRefusesWithoutRescheduling(self):
+        for phase,moments,posts in (
+            ('initial',['2026-10-18T00:00:00+00:00','2026-10-18T00:02:01+00:00'],0),
+            ('initial-response',['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                                 '2026-10-18T00:02:01+00:00'],1),
+            ('restart',['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                        '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:01+00:00'],1)):
+            worker,checks = self.reminderWorker(),executor.Measurements()
+            with self.subTest(phase=phase), mock.patch.object(executor,'stamp',side_effect=moments), \
+                    mock.patch.object(executor.time,'sleep'):
+                with self.assertRaisesRegex(preparation.InvalidPacket,'future deadline missed'):
+                    worker.reminder_case('scheduled-restart-effect',checks)
+                self.assertEqual(worker.http.call_count,posts)
+                self.assertEqual(worker.reminder_due,'2026-10-18T00:02:00+00:00')
+                self.assertEqual(checks.counter['failed'],1)
+
+    def testReminderRevisionTwoHasItsOwnFutureStartupLead(self):
+        worker,checks = self.reminderWorker(),executor.Measurements()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:40+00:00',
+                   '2026-10-18T00:03:50+00:00','2026-10-18T00:03:50.100000+00:00']
+        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('stale-generation-refusal',checks)
+        self.assertEqual(observed['deadline_windows'][0]['due_utc'],'2026-10-18T00:02:00+00:00')
+        self.assertEqual(observed['deadline_windows'][2]['due_utc'],'2026-10-18T00:04:40+00:00')
+        callback = executor.urllib.parse.urlsplit(worker.http.call_args.args[1])
+        self.assertEqual(executor.urllib.parse.parse_qs(callback.query), {
+            'due':[observed['registration']['intent_due']], 'reminderName':[observed['registration']['reminder_name']]})
+        self.assertNotEqual(observed['registration']['reminder_name'],observed['rearmed']['reminder_name'])
+        self.assertEqual(observed['repeated_or_stale']['reminder_name'],observed['registration']['reminder_name'])
+        self.assertEqual(checks.counter['failed'],0)
+
+    def testReminderIndependentCodecMatchesPublishedGoldenVectors(self):
+        for item,revision,expected in (
+            ('item-1',0,'DH9MMM0QHN2MWP2XDVTVGDQ8PMVMN8KDNFAPWMAJQNA7T0E6PB20'),
+            ('item-1',1,'AED0KV4P0SF4RAQGXRJ8AZJEJ1NE6TVF5GWFHD0Z3HRMVRSQA8D0'),
+            ('Item-1',1,'6P3J38VYKVQCKFH8WGX4ZP2KCD7QJVT8MN0D74K352JFEMV75NYG')):
+            with self.subTest(item=item,revision=revision):
+                self.assertEqual(executor.witnesses.reminder_name('2026-10-01T09:30:00+00:00',revision,item=item),'date-wrs-'+expected)
+
+    def testReminderProducerRetainsRejectedActorRequestAsFailedMeasurement(self):
+        for status in (403,404,500,None,True):
+            worker,checks = self.reminderWorker(),executor.Measurements()
+            invoke = worker.http.side_effect
+            def http(method,url,body):
+                response = invoke(method,url,body)
+                if '/callback/' in url:response['callback_status'] = status
+                return response
+            worker.http.side_effect = http
+            moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                       '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
+                       '2026-10-18T00:01:50.100000+00:00']
+            with self.subTest(status=status),mock.patch.object(executor,'stamp',side_effect=moments),mock.patch.object(executor.time,'sleep'):
+                observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
+                self.assertEqual(checks.counter['failed'],1)
+                self.assertIn({'id':'callback-actor-request-accepted','passed':False},checks.checks)
+                self.assertEqual(observed['repeated_or_stale']['callback_status'],status)
+
+    def testReminderIdentityImportRejectsUnknownTokenAndRehashedSubstitutions(self):
+        worker,checks = self.reminderWorker(),executor.Measurements()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:02:40+00:00',
+                   '2026-10-18T00:03:50+00:00','2026-10-18T00:03:50.100000+00:00']
+        with mock.patch.object(executor,'stamp',side_effect=moments),mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('stale-generation-refusal',checks)
+        rows = [({'argv':['HTTP','POST',call.args[1]]},observed[key])
+                for call,key in zip(worker.http.call_args_list,('registration','rearmed','repeated_or_stale'))]
+        values = {row['id']:row['passed'] for row in checks.checks}
+        executor.witnesses.validate_reminder_identity(observed,rows,values,'stale-generation-refusal')
+        for mutation in ('due','name','revision','request','unknown-token','missing-query','rearmed','check','status'):
+            changed,commands,verdicts = copy.deepcopy(observed),copy.deepcopy(rows),dict(values)
+            if mutation in ('due','name','revision'):
+                key = {'due':'intent_due','name':'reminder_name','revision':'intent_revision'}[mutation]
+                changed['registration'][key] = {'due':changed['due'],'name':changed['rearmed']['reminder_name'],'revision':2}[mutation]
+            elif mutation == 'request':commands[-1][0]['argv'][2] += '&due=2026-10-18T00%3A04%3A40%2B00%3A00'
+            elif mutation == 'unknown-token':
+                # The previous fixture recomputed revision one with revision two's current due.
+                due = changed['rearmed']['intent_due']
+                name = executor.witnesses.reminder_name(due,1)
+                changed['repeated_or_stale'].update(intent_due=due,reminder_name=name)
+                commands[-1][0]['argv'][2] = 'http://127.0.0.1/reminder/callback/1?'+executor.urllib.parse.urlencode({'due':due,'reminderName':name})
+            elif mutation == 'missing-query':commands[-1][0]['argv'][2] = 'http://127.0.0.1/reminder/callback/1'
+            elif mutation == 'rearmed':changed['rearmed']['reminder_name'] = changed['registration']['reminder_name']
+            elif mutation == 'status':changed['repeated_or_stale']['callback_status'] = 403
+            else:verdicts['callback-replays-original-armed-identity'] = False
+            commands = [(command,copy.deepcopy(changed[key])) for (command,_),key in
+                        zip(commands,('registration','rearmed','repeated_or_stale'))]
+            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
+                executor.witnesses.validate_reminder_identity(changed,commands,verdicts,'stale-generation-refusal')
+
+        for status in (403,404,500,None,True):
+            changed,commands,verdicts = copy.deepcopy(observed),copy.deepcopy(rows),dict(values)
+            changed['repeated_or_stale']['callback_status'] = status
+            verdicts['callback-actor-request-accepted'] = False
+            commands[-1] = (commands[-1][0],copy.deepcopy(changed['repeated_or_stale']))
+            with self.subTest(retained_nonpassing_status=status):
+                executor.witnesses.validate_reminder_identity(changed,commands,verdicts,'stale-generation-refusal')
+
+    def testReminderTimingImportBindsActualRegistrationAndLaunchConfiguration(self):
+        worker,checks = self.reminderWorker(),executor.Measurements()
+        moments = ['2026-10-18T00:00:00+00:00','2026-10-18T00:01:10+00:00',
+                   '2026-10-18T00:01:10.100000+00:00','2026-10-18T00:01:50+00:00',
+                   '2026-10-18T00:01:50.100000+00:00']
+        with mock.patch.object(executor,'stamp',side_effect=moments), mock.patch.object(executor.time,'sleep'):
+            observed,_,_ = worker.reminder_case('scheduled-restart-effect',checks)
+        commands = [({'argv':['HTTP','POST','http://127.0.0.1/reminder/register/1'],
+                     'started_utc':'2026-10-18T00:01:'+second+'.010000+00:00',
+                     'finished_utc':'2026-10-18T00:01:'+second+'.090000+00:00'}, {}) for second in ('10','50')]
+        configurations = [{'observed_utc':'2026-10-18T00:01:'+second+'+00:00','reminder_due':observed['due']}
+                          for second in ('00','40')]
+        values = {row['id']:row['passed'] for row in checks.checks}
+        executor.witnesses.validate_reminder_windows(observed,commands,configurations,values,'scheduled-restart-effect')
+        for mutation in ('missing','remaining','expired','due','phase','command','configuration'):
+            changed,rows,configs = copy.deepcopy(observed),copy.deepcopy(commands),copy.deepcopy(configurations)
+            if mutation == 'missing':del changed['deadline_windows']
+            elif mutation == 'remaining':changed['deadline_windows'][0]['remaining_seconds'] += 1
+            elif mutation == 'expired':changed['deadline_windows'][0]['observed_utc'] = '2026-10-18T00:03:00+00:00'
+            elif mutation == 'due':changed['deadline_windows'][2]['due_utc'] = '2026-10-18T00:03:00+00:00'
+            elif mutation == 'phase':changed['deadline_windows'].reverse()
+            elif mutation == 'command':rows[0][0]['finished_utc'] = '2026-10-18T00:03:00+00:00'
+            else:configs[1]['reminder_due'] = '2026-10-18T00:03:00+00:00'
+            with self.subTest(mutation=mutation),self.assertRaises(preparation.InvalidPacket):
+                executor.witnesses.validate_reminder_windows(changed,rows,configs,values,'scheduled-restart-effect')
 
     def testExecutionRefusesSubstitutedApprovedTupleBeforeOperations(self):
         inputs = {"candidate": {"version": "3.119.0", "tag": "v3.119.0",
@@ -1326,6 +2011,35 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(worker.versions, ("3.110.0", "3.70.1", "3.121.0"))
         worker.build_consumers.assert_called_once_with("3.110.0")
         self.assertEqual(git.call_count, 3)
+
+    def test31251EditedToolingHeadCannotInheritReleasedSourceBinding(self):
+        candidate = {"version": "3.125.1", "tag": "v3.125.1", "tag_commit": "a" * 40,
+                     "tag_builds_commit": "b" * 40, "builds": {"version": "4.31.0", "commit": "c" * 40},
+                     "feed": "https://fixture.invalid/v3/index.json",
+                     "packages": [{"id": identifier, "archive_sha256": "e" * 64,
+                                   "content_hash": base64.b64encode(b"fixture-hash" * 5 + b"xxxx").decode(),
+                                   "repository_commit": "a" * 40}
+                                  for identifier in executor.PACKAGE_IDS]}
+        inputs = {"candidate": candidate, "rollback": None,
+                  "assertion_instrumentation": {"mechanism": executor.MECHANISM},
+                  "comparisons": [{"version": version} for version in qualification.COMPARISON_VERSIONS],
+                  "operational_profile": {"runtime": "dapr", "runtime_version": "1.18.2",
+                                          "backend": "state.postgresql", "backend_image": executor.POSTGRES},
+                  "selected_additions": list(qualification.ADDITIONS)}
+        observations = [b"a" * 40, b"d" * 40,
+                        b"160000 commit " + b"b" * 40 + b"\treferences/Hexalith.Builds\n"]
+        with mock.patch.object(qualification, "validate_inputs", return_value="owner-selected"), \
+             mock.patch.object(preparation, "source_binding", return_value={}), \
+             mock.patch.object(qualification, "validate_candidate_source"), \
+             mock.patch.object(preparation, "git", side_effect=observations):
+            with self.assertRaisesRegex(preparation.InvalidPacket, "exact source"):
+                executor.validate_execution_inputs(inputs)
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.build_consumers = mock.Mock()
+        with mock.patch.object(preparation, "git", side_effect=observations):
+            with self.assertRaisesRegex(preparation.InvalidPacket, "source or tag substituted"):
+                worker.observe_inputs({"candidate_proposed": candidate}, "selected-successor")
+        worker.build_consumers.assert_not_called()
 
     def testSuccessorExecutionPlanRerunsCandidateAndFencesOldRoutes(self):
         selection = {"candidate": {"version": "3.121.0"},
@@ -1800,10 +2514,11 @@ class CorrectionTests(unittest.TestCase):
                 return {'accepted':True,'event_count':1 if kind=='IncrementCounter' else 0,'sequence':expected}
             starts=[]
             with mock.patch.object(worker,'seed'),mock.patch.object(worker,'mutate'), \
-                 mock.patch.object(worker,'inventory',side_effect=[rows(12),rows(13),rows(13)]), \
+                 mock.patch.object(worker,'inventory',side_effect=[rows(13),rows(13)]), \
                  mock.patch.object(worker,'start_nodes',side_effect=lambda version,**kwargs:starts.append(version)), \
                  mock.patch.object(worker,'stop_nodes'),mock.patch.object(worker,'actor',side_effect=actor):
-                measured=executor.Measurements();observation,_,_=worker.live_case('metadata-write','3.110.0-to-3.119.0',measured)
+                measured=executor.Measurements();observation,_,_=worker.live_case('metadata-write','3.110.0-to-3.119.0',measured,
+                    prepared={'before':rows(12),'seed_snapshot':None})
             self.assertEqual(starts,['3.119.0','3.119.0'])
             self.assertEqual(observation['replay']['sequence'],13)
             self.assertIn({'id':'supported-append-restart-rehydrates-thirteen','passed':True},measured.checks)
@@ -2153,6 +2868,96 @@ class BoundaryAdmissionTests(unittest.TestCase):
         checks = executor.Measurements()
         worker.boundary_case("query-wire", "3.119.0-3.70.1-json-dual", checks)
         self.assertEqual(checks.counter["failed"], 1)
+
+
+class PublishedPatchSourceTests(unittest.TestCase):
+    """Real selection, wait and snapshot callers; Git observations are tooling fixtures."""
+
+    def fixture(self):
+        source_root = Path('/selected/tagged-source')
+        clean = {'head': qualification.SELECTED_SOURCE_COMMIT, 'diff_sha256': preparation.digest(b''),
+                 'files': [{'path': 'src/Production.cs', 'git_blob': 'a'*40,
+                            'index_blob': 'a'*40, 'sha256': 'b'*64}],
+                 'gitlinks': {'references/Hexalith.Builds': qualification.SELECTED_TAG_BUILDS}}
+        builds = dict(copy.deepcopy(clean), head=qualification.SELECTED_TAG_BUILDS)
+        source = {'repository': str(source_root), 'main': clean,
+                  'dependencies': [{'path':'references/Hexalith.Builds','initialized':True,'binding':builds}]}
+        binding = {'repository':str(preparation.ROOT), 'main':{'head':'f'*40}, 'candidate_source':source}
+        candidate = {'version':'3.125.1','tag':'v3.125.1','tag_commit':qualification.SELECTED_SOURCE_COMMIT,
+            'tag_builds_commit':qualification.SELECTED_TAG_BUILDS,
+            'builds':{'version':'4.33.1','commit':'c'*40},'feed':'https://api.nuget.org/v3/index.json'}
+        inputs = {'candidate':candidate,'rollback':None,'comparisons':[{'version':v} for v in qualification.COMPARISON_VERSIONS],
+            'assertion_instrumentation':{'mechanism':executor.MECHANISM},'selected_additions':list(qualification.ADDITIONS),
+            'operational_profile':{'runtime':'dapr','runtime_version':'1.18.2','backend':'state.postgresql','backend_image':executor.POSTGRES}}
+        def git(root,*arguments):
+            if Path(root) != source_root:
+                return b'f'*40
+            if arguments[0] == 'ls-tree':
+                return ('160000 commit '+qualification.SELECTED_TAG_BUILDS+'\treferences/Hexalith.Builds\n').encode()
+            return qualification.SELECTED_SOURCE_COMMIT.encode()
+        return source_root,binding,inputs,git
+
+    def testNewerVerifierCanSelectOnlyExactCleanTaggedProductionAndBuildClosure(self):
+        source_root,binding,inputs,git = self.fixture()
+        for mutation in (None,'head','builds','dirty','missing-builds','tag','feed'):
+            changed = copy.deepcopy(binding)
+            selected = copy.deepcopy(inputs)
+            if mutation == 'head': changed['candidate_source']['main']['head'] = '0'*40
+            if mutation == 'builds': changed['candidate_source']['dependencies'][0]['binding']['head'] = '0'*40
+            if mutation == 'dirty': changed['candidate_source']['main']['diff_sha256'] = preparation.digest(b'dirty source')
+            if mutation == 'missing-builds': changed['candidate_source']['dependencies'] = []
+            if mutation == 'tag': selected['candidate']['tag_commit'] = '0'*40
+            if mutation == 'feed': selected['candidate']['feed'] = 'https://substituted.invalid/v3/index.json'
+            with self.subTest(mutation=mutation), mock.patch.object(qualification,'validate_inputs',return_value='owner-selected'), \
+                    mock.patch.object(preparation,'source_binding',return_value=changed) as bind, \
+                    mock.patch.object(preparation,'require_tagged_checkout'), \
+                    mock.patch.object(preparation,'self_contained_checkout'), mock.patch.object(preparation,'git',side_effect=git):
+                if mutation is None:
+                    executor.validate_execution_inputs(selected,source_root)
+                    bind.assert_called_once_with(executor.ROOT,source_root)
+                else:
+                    with self.assertRaises(preparation.InvalidPacket):
+                        executor.validate_execution_inputs(selected,source_root)
+
+    def testMissingCandidateClosureCannotBeRehashedIntoAnImport(self):
+        _,binding,inputs,_ = self.fixture()
+        del binding['candidate_source']
+        for binder in (qualification.bind_lane,qualification.bind_recovery):
+            context = {'source_binding':binding,'inputs':{'value':inputs,'scope':'owner-selected'}}
+            with self.subTest(binder=binder.__name__), self.assertRaisesRegex(preparation.InvalidPacket,'source closure missing'):
+                if binder == qualification.bind_lane:
+                    binder({'lane':'checkout'},{'scope':'operational'},context)
+                else:
+                    binder({}, {'scope':'operational'}, 'candidate-restore', context)
+
+    def testReadyWaitRechecksSourceAfterReturningAndRefusesDrift(self):
+        worker = executor.Executor.__new__(executor.Executor)
+        worker.http = mock.Mock(return_value={'ready':True})
+        worker.source_binding = {'repository':'/selected/verifier','candidate_source':{'repository':'/selected/source'}}
+        worker.inputs = None
+        item = {'process':mock.Mock()}
+        item['process'].poll.return_value = None
+        with mock.patch.object(preparation,'check_current_source',side_effect=preparation.InvalidPacket('post-wait drift')) as check:
+            with self.assertRaisesRegex(preparation.InvalidPacket,'post-wait drift'):
+                worker.wait('http://127.0.0.1:12345/ready',item)
+        worker.http.assert_called_once()
+        check.assert_called_once_with(worker.source_binding)
+
+    def testSelectedPatchRequiresEveryGenuineSnapshotWitness(self):
+        helper = QualifiedSnapshotWitnessTests()
+        helper.candidate_version = '3.125.1'
+        helper.setUp()
+        self.addCleanup(helper.doCleanups)
+        for lane in ('post-upgrade-restore','snapshot-tail','retained-covered','retained-uncovered','metadata-write'):
+            for writer in (('3.125.1',) if lane == 'post-upgrade-restore' else ('3.125.1','source')):
+                with self.subTest(lane=lane,writer=writer):
+                    fixture = helper.fixture(writer_version=writer,lane=lane)
+                    helper.validate(fixture,lane)
+                    del fixture[1]['snapshot_fixture_source']
+                    with self.assertRaises(preparation.InvalidPacket):
+                        helper.validate(fixture,lane)
+        self.assertIn('3.125.1',qualification.ISOLATION_VERSIONS)
+        self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.127.0','snapshot-tail','source-to-3.110.0'))
 
 
 if __name__ == "__main__":

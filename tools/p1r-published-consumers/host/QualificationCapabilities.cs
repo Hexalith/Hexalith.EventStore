@@ -50,12 +50,21 @@ internal static class QualificationCapabilities
         app.MapPost("/reminder/register/{revision:int}", async (int revision, FixtureReminderIntentSource source, IReminderRegistrar registrar) =>
         {
             source.Current = FixtureReminderIntentSource.Intent(revision);
-            return Results.Ok(await registrar.ConvergeAsync(new ReminderTarget("tenant-a", "counter", "fixture")));
+            ReminderConvergenceResult result = await registrar.ConvergeAsync(new ReminderTarget("tenant-a", "counter", "fixture"));
+            return Results.Ok(new { result.Armed, result.Submitted, result.Cancelled, result.Unresolved, result.Quarantined,
+                intent_due = Environment.GetEnvironmentVariable("P1R_REMINDER_DUE"), intent_revision = revision,
+                reminder_name = ReminderIdentityCodec.ComputeReminderName(source.Current) });
         });
-        app.MapPost("/reminder/callback/{revision:int}", async (int revision, IConfiguration configuration) =>
+        app.MapPost("/reminder/callback/{revision:int}", async (int revision, string? due, string? reminderName, IConfiguration configuration) =>
         {
             string actorId = ReminderIdentityCodec.ComputeActorId("tenant-a", "fixture");
-            string name = ReminderIdentityCodec.ComputeReminderName(FixtureReminderIntentSource.Intent(revision));
+            string selectedDue = due ?? Environment.GetEnvironmentVariable("P1R_REMINDER_DUE")
+                ?? throw new InvalidOperationException("Owned reminder due time unavailable.");
+            string name = ReminderIdentityCodec.ComputeReminderName(FixtureReminderIntentSource.Intent(revision, selectedDue));
+            if (reminderName is not null && !string.Equals(reminderName, name, StringComparison.Ordinal))
+            {
+                return Results.BadRequest(new { error = "callback-intent-identity-mismatch" });
+            }
             using HttpClient client = new();
             string address = configuration["ASPNETCORE_URLS"] ?? throw new InvalidOperationException("Owned app address unavailable.");
             using HttpRequestMessage request = new(HttpMethod.Put, address + $"/actors/P1RReminderActor/{actorId}/method/remind/{name}");
@@ -63,7 +72,8 @@ internal static class QualificationCapabilities
             request.Headers.Add("dapr-api-token", configuration["APP_API_TOKEN"]);
             using HttpResponseMessage response = await client.SendAsync(request);
             IAggregateActor actor = ActorProxy.Create<IAggregateActor>(new ActorId("tenant-a:counter:fixture"), "AggregateActor");
-            return Results.Ok(new { callback_status = (int)response.StatusCode, sequence = await actor.GetCurrentSequenceAsync() });
+            return Results.Ok(new { callback_status = (int)response.StatusCode, sequence = await actor.GetCurrentSequenceAsync(),
+                intent_due = selectedDue, intent_revision = revision, reminder_name = name });
         });
 #endif
         app.MapPost("/qualification/{operation}", async (string operation, IServiceProvider services, IConfiguration configuration) =>

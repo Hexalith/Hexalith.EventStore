@@ -1,0 +1,71 @@
+{
+  "errors": [],
+  "executor_source_sha256": "2c47aee97120d1145482be608cce91512c63cda0eda8135ae7ccd8e9af8e0cf8",
+  "finished_utc": "2026-10-18T21:28:16.254608+00:00",
+  "inputs_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+  "invocation": "b967bd839eec46ad9c58dee9369f4bd1",
+  "owned_containers": {
+    "1ef797d376c64db3848c9a608d831e079030955f86f967152bee194fcb7ea0b5": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-b967bd839eec46ad9c58dee9369f4bd1-restored-bdf0aa94",
+      "port": 19967,
+      "role": "restored"
+    },
+    "3b668fb0cbb83263f937b99f44e43e7b5be63961b8273d4843ad427f51d05dbf": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-b967bd839eec46ad9c58dee9369f4bd1-pubsub-0f172fb1",
+      "port": 23651,
+      "role": "pubsub"
+    },
+    "aaccd927342ce996e5f38fdd46e857278350f351e776488cbcfb1729cd20df83": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-b967bd839eec46ad9c58dee9369f4bd1-containment-e9bb1c60",
+      "port": 22447,
+      "role": "containment"
+    },
+    "e055cfaaae0257018bfc9db1bc71e4b800d498fab08a54230aae677d91d47056": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-b967bd839eec46ad9c58dee9369f4bd1-placement-a45a85c9",
+      "port": 16725,
+      "role": "placement"
+    },
+    "f4234fd6b78946702ca1f1987f18eabaec0d39af552d41fb9ce073d3cac1ff2f": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-b967bd839eec46ad9c58dee9369f4bd1-scheduler-03024a2f",
+      "port": 10702,
+      "role": "scheduler"
+    },
+    "f9f24a792161cf1e238bbd8ed0e944907642682e74e70e8f7f0c986926e2ea12": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-b967bd839eec46ad9c58dee9369f4bd1-source-e76d354c",
+      "port": 15367,
+      "role": "source"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/a8e6ddab048147d49f25fb405954aa85.json",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6e394b952a734152ad72fbab44f599b8.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-18T19:40:04.313879+00:00"
+}

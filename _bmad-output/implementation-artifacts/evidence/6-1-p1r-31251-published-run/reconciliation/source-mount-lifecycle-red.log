@@ -1,0 +1,36 @@
+testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup (__main__.ControllerSourceOrderTests.testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup) ... FAIL
+testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution (__main__.SiblingTaggedSourceTests.testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution) ... FAIL
+
+======================================================================
+FAIL: testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup (__main__.ControllerSourceOrderTests.testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-tests.py", line 65, in testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup
+    self.assertEqual(events[0][0], 'source')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'docker' != 'source'
+- docker
++ source
+
+
+======================================================================
+FAIL: testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution (__main__.SiblingTaggedSourceTests.testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/source-mount-lifecycle-tests.py", line 24, in testActualImportAcceptsSiblingTaggedSourceMountAndRejectsRehashedSubstitution
+    receipt, context = self.import_fixture(scope='operational')
+                       ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py", line 554, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py", line 1186, in attach_isolation
+    return super().attach_isolation(receipt,context)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/tools/tests/test_p1r_published_executor.py", line 564, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['final isolation runner ownership, mounts or namespace binding differs']
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.726s
+
+FAILED (failures=2)

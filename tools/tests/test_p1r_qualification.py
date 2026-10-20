@@ -14,6 +14,119 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import p1r_qualification as p
+from p1r_isolation_fixture import separate_source_fixture
+
+
+class SeparateRuntimeBindingTests(unittest.TestCase):
+    def testIndexFlagsCannotHidePhysicalTrackedChanges(self):
+        for role in ('tooling','source','builds','source_builds'):
+            for flag in ('--assume-unchanged','--skip-worktree'):
+                with self.subTest(role=role,flag=flag), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f,role)
+                    name = 'src/Runtime.cs' if role in ('tooling','source') else 'README.md'
+                    f.git(root,'update-index',flag,name)
+                    (root/name).write_text('// hidden modification\n')
+                    self.assertEqual(f.git(root,'diff','HEAD','--',name),'')
+                    with self.assertRaisesRegex(p.InvalidPacket,'physical tracked'):
+                        p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testPhysicalTrackedComparisonPreservesGitNewlineConversion(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            (f.source/'.gitattributes').write_text('*.cs text eol=crlf\n')
+            f.git(f.source,'add','.gitattributes')
+            f.git(f.source,'commit','-qm','test: configure fixture newlines')
+            (f.source/'src/Runtime.cs').write_bytes(b'// committed runtime\r\n')
+            f.git(f.source,'update-index','--assume-unchanged','src/Runtime.cs')
+            p.repository_binding(f.source,clean=True)
+
+    def testNativeSourcelessAndEmbeddedRepositoryInputsRefuse(self):
+        for role in ('tooling','source','builds','source_builds'):
+            for kind in ('.so','.so.1','.pyc','repository'):
+                with self.subTest(role=role,kind=kind), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f,role)
+                    if kind == 'repository':
+                        nested = root/'src/embedded'
+                        nested.mkdir(parents=True)
+                        f.git(nested,'init','-q')
+                        (nested/'Injected.cs').write_text('// nested compiler input\n')
+                        self.assertIn(b'src/embedded/',p.git(root,'ls-files','--others','-z').split(b'\0'))
+                    else:
+                        (root/('injected'+kind)).write_bytes(b'foreign module')
+                        (root/'.git/info/exclude').write_text('*'+kind+'\n')
+                    with self.assertRaisesRegex(p.InvalidPacket,'untracked'):
+                        p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testDistinctCleanRootsRetainBothInventoriesAndBuildsRoles(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as fixture:
+            binding = p.source_binding(fixture.tooling, fixture.pins, fixture.source, fixture.source_builds)
+            self.assertEqual(binding['main']['head'], fixture.pins['commit'])
+            self.assertEqual(binding['runtime_source']['main']['head'], fixture.release)
+            self.assertEqual(binding['runtime_source']['builds']['binding']['head'], fixture.release_builds)
+            self.assertNotEqual(fixture.release, fixture.pins['commit'])
+            p.check_current_source(binding)
+
+    def testPinPathAndTagSubstitutionsRefuse(self):
+        for replacement in ('tooling-head','tooling-builds','source-builds','source-path','missing-source','missing-pin','tag-missing','tag-replaced'):
+            with self.subTest(replacement=replacement), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                pins, source, builds = dict(f.pins), f.source, f.source_builds
+                if replacement == 'tooling-head': pins['commit'] = 'a'*40
+                elif replacement == 'tooling-builds': pins['builds_commit'] = f.release_builds
+                elif replacement == 'source-builds': builds = f.builds
+                elif replacement == 'source-path': source = f.tooling
+                elif replacement == 'missing-source': source = None
+                elif replacement == 'missing-pin': del pins['builds_commit']
+                elif replacement == 'tag-missing': f.git(f.source,'tag','-d','v3.125.1')
+                else: f.git(f.source,'tag','-f','v3.125.1','HEAD^')
+                with self.assertRaises(p.InvalidPacket):
+                    p.source_binding(f.tooling,pins,source,builds)
+
+    def testDirtyStagedAndUntrackedInputsRefuseForEveryRole(self):
+        for role in ('tooling','builds','source','source_builds'):
+            for mutation in ('dirty','staged','untracked-module','untracked-config','ignored-code','ignored-config'):
+                with self.subTest(role=role,mutation=mutation), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f,role)
+                    if mutation in ('dirty','staged'):
+                        (root/'README.md').write_text('changed\n')
+                        if mutation == 'staged': f.git(root,'add','README.md')
+                    else:
+                        extra = root/'added-module'
+                        extra.mkdir()
+                        name = 'new.py' if mutation == 'untracked-module' else 'Injected.cs' if mutation == 'ignored-code' else 'settings.json'
+                        (extra/name).write_text('{}\n')
+                        if mutation.startswith('ignored-'):
+                            (root/'.git/info/exclude').write_text('added-module/\n')
+                    with self.assertRaises(p.InvalidPacket):
+                        p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testIgnoredGeneratedOutputsAreNotSourceInputs(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            for role in ('tooling','builds','source','source_builds'):
+                root = getattr(f,role)
+                for name in ('obj/Generated.cs','bin/generated.so','__pycache__/generated.pyc'):
+                    path = root/name
+                    path.parent.mkdir(exist_ok=True)
+                    path.write_bytes(b'generated output')
+                (root/'.git/info/exclude').write_text('obj/\nbin/\n__pycache__/\n')
+            p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+
+    def testInvocationEvidenceCopiesDoNotBecomeNewSourceInputs(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            binding = p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            output = f.tooling/'_bmad-output/evidence/invocation/consumers/candidate'
+            output.mkdir(parents=True)
+            (output/'Fixture.cs').write_text('// copied fixture evidence\n')
+            (output/'Probe.csproj').write_text('<Project />\n')
+            (output/'execution.json').write_text('{}\n')
+            p.check_current_source(binding)
+
+    def testRuntimeOmissionAndPostBindingDriftRefuse(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            binding = p.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            removed = copy.deepcopy(binding)
+            del removed['runtime_source']
+            with self.assertRaises(p.InvalidPacket): p.check_current_source(removed)
+            (f.source/'src/Runtime.cs').write_text('// post-start drift\n')
+            with self.assertRaises(p.InvalidPacket): p.check_current_source(binding)
 
 
 class TimestampTests(unittest.TestCase):
@@ -694,6 +807,201 @@ class SourceAndProcessTests(unittest.TestCase):
             finally:
                 sentinel_process.terminate()
                 sentinel_process.wait(timeout=2)
+
+
+class TaggedPhysicalSourceTests(unittest.TestCase):
+    """Real Git/index/filter observations; disposable object sharing is fixture-only."""
+
+    @contextlib.contextmanager
+    def checkout(self):
+        with tempfile.TemporaryDirectory(prefix="p1r-tagged-bytes-") as scratch:
+            root = Path(scratch) / "source"
+            builds = root / "references/Hexalith.Builds"
+            names = {".editorconfig", ".gitattributes", "global.json",
+                     "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs", "src/Untracked.cs"}
+            builds_source = p.ROOT / "references/Hexalith.Builds"
+            if not (builds_source / ".git").exists():
+                binding = p.source_binding()
+                builds_source = Path(binding["workspace_builds"]["path"])
+            for source, target in ((p.ROOT, root), (builds_source, builds)):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                subprocess.run(["git", "clone", "--shared", "--no-checkout", "-q", str(source), str(target)],
+                               check=True, capture_output=True)
+                subprocess.run(["git", "read-tree", "HEAD"], cwd=target, check=True, capture_output=True)
+                tracked = {name.decode() for name in p.git(target, "ls-files", "-z").split(b"\0") if name}
+                selected = sorted(names.intersection(tracked))
+                subprocess.run(["git", "checkout-index", "--", *selected], cwd=target, check=True, capture_output=True)
+            with mock.patch.object(p, "relevant", side_effect=lambda name: name in names):
+                def binding():
+                    main, dependency = p.repository_binding(root), p.repository_binding(builds)
+                    # The fixture tests byte admission, independently of tag selection.
+                    main["gitlinks"]["references/Hexalith.Builds"] = dependency["head"]
+                    return {"repository": str(root), "main": main, "dependencies": [
+                        {"path": "references/Hexalith.Builds", "initialized": True, "binding": dependency}]}
+                p.require_clean_source(binding())
+                yield root, builds, binding
+
+    def testIndexFlagsCannotHidePhysicalProductionOrBuildChanges(self):
+        for flag in ("--assume-unchanged", "--skip-worktree"):
+            for target in ("production", "build"):
+                with self.subTest(flag=flag, target=target), self.checkout() as (root, builds, binding):
+                    repository = root if target == "production" else builds
+                    subprocess.run(["git", "update-index", flag, "--", ".editorconfig"],
+                                   cwd=repository, check=True, capture_output=True)
+                    path = repository / ".editorconfig"
+                    path.write_bytes(path.read_bytes() + b"\n# hidden physical source change\n")
+                    observed = binding()
+                    changed = observed["main"] if target == "production" else observed["dependencies"][0]["binding"]
+                    self.assertEqual(changed["diff_sha256"], p.digest(b""))
+                    with self.assertRaisesRegex(p.InvalidPacket, "tagged|physical"):
+                        p.require_clean_source(observed)
+
+    def testReplacementTreeCannotSubstituteCanonicalTaggedObjects(self):
+        with self.checkout() as (root, _, binding):
+            original = p.git(root, "rev-parse", "HEAD:.editorconfig").decode().strip()
+            original_tree = p.git(root, "rev-parse", "HEAD^{tree}").decode().strip()
+            data = (root / ".editorconfig").read_bytes() + b"\n# replacement-backed change\n"
+            changed = subprocess.check_output(["git", "hash-object", "-w", "--stdin"], cwd=root, input=data).strip()
+            tree = subprocess.check_output(["git", "ls-tree", "HEAD"], cwd=root)
+            tree = b"\n".join((line.split(b" ", 2)[0] + b" blob " + changed + b"\t.editorconfig")
+                               if line.endswith(b"\t.editorconfig") else line for line in tree.splitlines()) + b"\n"
+            replacement = subprocess.check_output(["git", "mktree"], cwd=root, input=tree).strip().decode()
+            subprocess.run(["git", "replace", original_tree, replacement], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "update-index", "--cacheinfo", "100644", changed.decode(), ".editorconfig"],
+                           cwd=root, check=True, capture_output=True)
+            (root / ".editorconfig").write_bytes(data)
+            self.assertEqual(subprocess.check_output(["git", "rev-parse", "HEAD:.editorconfig"], cwd=root).strip(), changed)
+            self.assertEqual(p.git(root, "rev-parse", "HEAD:.editorconfig").decode().strip(), original)
+            with self.assertRaises(p.InvalidPacket):
+                p.require_clean_source(binding())
+
+    def testDeclaredCrLfIsAcceptedAndUnexpectedCrLfForLfSourceIsRefused(self):
+        with self.checkout() as (root, _, binding):
+            global_json = (root / "global.json").read_bytes()
+            self.assertIn(b"\r\n", global_json)
+            self.assertNotIn(b"\n", global_json.replace(b"\r\n", b""))
+            p.require_clean_source(binding())
+            source = root / "src/Hexalith.EventStore.Contracts/Events/EventEnvelope.cs"
+            self.assertNotIn(b"\r\n", source.read_bytes())
+            source.write_bytes(source.read_bytes().replace(b"\n", b"\r\n"))
+            observed = binding()
+            self.assertEqual(observed["main"]["diff_sha256"], p.digest(b""))
+            with self.assertRaisesRegex(p.InvalidPacket, "tagged|physical"):
+                p.require_clean_source(observed)
+
+    def testExternalCleanFilterAndAttributesCannotHidePhysicalChanges(self):
+        for location in ("info", "configured"):
+            with self.subTest(location=location), self.checkout() as (root, _, binding):
+                original = (root / ".editorconfig").read_bytes()
+                filter_script = root.parent / "filter.py"
+                filter_script.write_text("import sys\nsys.stdin.buffer.read()\nsys.stdout.buffer.write(" + repr(original) + ")\n")
+                subprocess.run(["git", "config", "filter.hide.clean", sys.executable + " " + str(filter_script)],
+                               cwd=root, check=True, capture_output=True)
+                attributes = root / ".git/info/attributes" if location == "info" else root.parent / "attributes"
+                attributes.write_text(".editorconfig filter=hide\n")
+                if location == "configured":
+                    subprocess.run(["git", "config", "core.attributesFile", str(attributes)],
+                                   cwd=root, check=True, capture_output=True)
+                (root / ".editorconfig").write_bytes(original + b"\n# hidden by clean filter\n")
+                observed = binding()
+                self.assertEqual(observed["main"]["diff_sha256"], p.digest(b""))
+                with self.assertRaisesRegex(p.InvalidPacket, "attributes|filter|tagged|physical"):
+                    p.require_clean_source(observed)
+
+    def testIgnoredSourceInjectionIsRefusedWhileGeneratedOutputsRemainAllowed(self):
+        with self.checkout() as (root, _, binding):
+            generated = root / "src/obj/Generated.cs"
+            generated.parent.mkdir(parents=True, exist_ok=True)
+            generated.write_text("generated output\n")
+            p.require_clean_source(binding())
+            (root / ".git/info/exclude").write_text("src/Untracked.cs\n")
+            injected = root / "src/Untracked.cs"
+            injected.parent.mkdir(parents=True, exist_ok=True)
+            injected.write_text("// ignored source can affect compilation\n")
+            observed = binding()
+            self.assertNotIn("src/Untracked.cs", [row["path"] for row in observed["main"]["files"]])
+            with self.assertRaisesRegex(p.InvalidPacket, "untracked|tagged|physical"):
+                p.require_clean_source(observed)
+
+    def testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff(self):
+        for location in ("info", "configured", "worktree"):
+            with self.subTest(location=location), self.checkout() as (root, _, _):
+                marker = root.parent / "filter-executed"
+                script = root.parent / "filter.py"
+                script.write_text("import pathlib,sys\npathlib.Path(" + repr(str(marker))
+                                  + ").touch()\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n")
+                subprocess.run(["git", "config", "filter.hide.clean", sys.executable + " " + str(script)],
+                               cwd=root, check=True, capture_output=True)
+                if location == "worktree":
+                    attributes = root / ".gitattributes"
+                    attributes.write_bytes(attributes.read_bytes() + b"\n.editorconfig filter=hide\n")
+                    subprocess.run(["git", "update-index", "--assume-unchanged", "--", ".gitattributes"],
+                                   cwd=root, check=True, capture_output=True)
+                else:
+                    attributes = root / ".git/info/attributes" if location == "info" else root.parent / "attributes"
+                    attributes.write_text(".editorconfig filter=hide\n")
+                    if location == "configured":
+                        subprocess.run(["git", "config", "core.attributesFile", str(attributes)],
+                                       cwd=root, check=True, capture_output=True)
+                # Git may refresh another file through its clean filter while
+                # setting the index flag. The strict-observation boundary starts
+                # after that controlled setup, whose trace is retained separately.
+                if marker.exists():
+                    marker.unlink()
+                with self.assertRaises(p.InvalidPacket):
+                    p.repository_binding(root, tagged=True)
+                self.assertFalse(marker.exists(), "refusal must precede filtered diff execution")
+
+
+
+class CleanSourceFilterBoundaryTests(unittest.TestCase):
+    def testPinnedRolesRejectExternalCleanFiltersBeforeExecutingThem(self):
+        for role in ('tooling', 'source', 'builds', 'source_builds'):
+            for location in ('info', 'configured'):
+                with self.subTest(role=role, location=location), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                    root = getattr(f, role)
+                    name = 'src/Runtime.cs' if role in ('tooling', 'source') else 'README.md'
+                    target = root / name
+                    original = target.read_bytes()
+                    marker = Path(temporary) / 'filter-executed'
+                    script = Path(temporary) / 'filter.py'
+                    script.write_text('import pathlib,sys\npathlib.Path(' + repr(str(marker))
+                                      + ').touch()\nsys.stdin.buffer.read()\nsys.stdout.buffer.write(' + repr(original) + ')\n')
+                    f.git(root, 'config', 'filter.hide.clean', sys.executable + ' ' + str(script))
+                    attributes = root / '.git/info/attributes' if location == 'info' else Path(temporary) / 'attributes'
+                    attributes.write_text(name + ' filter=hide\n')
+                    if location == 'configured':
+                        f.git(root, 'config', 'core.attributesFile', str(attributes))
+                    target.write_bytes(original + b'// concealed physical change\n')
+                    with self.assertRaisesRegex(p.InvalidPacket, 'physical tracked'):
+                        p.source_binding(f.tooling, f.pins, f.source, f.source_builds)
+                    self.assertFalse(marker.exists(), 'source refusal must precede clean-filter execution')
+
+class InterpreterSourceCheckTests(unittest.TestCase):
+    def testExplicitInterpreterDiagnosticStillRechecksEveryPhysicalSourceRole(self):
+        for mode in ('legacy', 'candidate', 'pinned'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+                if mode == 'candidate':
+                    destination = f.source / 'references/Hexalith.Builds'
+                    destination.parent.mkdir(parents=True)
+                    subprocess.run(['git', 'clone', '--no-hardlinks', '--no-recurse-submodules', '-q',
+                                    str(f.source_builds), str(destination)], check=True, capture_output=True)
+                    binding = p.source_binding(f.tooling, f.source)
+                elif mode == 'pinned':
+                    binding = p.source_binding(f.tooling, f.pins, f.source, f.source_builds)
+                else:
+                    binding = p.source_binding(f.tooling)
+                recorded = copy.deepcopy(binding)
+                recorded['python']['version'] = [0, 0, 0]
+                if mode == 'candidate':
+                    recorded['candidate_source']['python']['version'] = [0, 0, 0]
+                with self.assertRaises(p.InvalidPacket):
+                    p.check_current_source(recorded)
+                p.check_current_source(recorded, check_python=False)
+                changed = f.tooling if mode == 'legacy' else f.source
+                (changed / 'src/Runtime.cs').write_text('// physical drift after recorded binding\n')
+                with self.assertRaises(p.InvalidPacket):
+                    p.check_current_source(recorded, check_python=False)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,171 @@
+FFFFFFFFFFFFFFFF
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=10, candidate='3.126.0', version='3.110.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 997, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    worker.seed(version, interval, checks)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r_published_executor.py", line 970, in seed
+    self.mutate("snapshot-nine")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+AssertionError: successor snapshot cannot be synthesized
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=10, candidate='3.125.1', version='unknown')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 997, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    worker.seed(version, interval, checks)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r_published_executor.py", line 970, in seed
+    self.mutate("snapshot-nine")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+AssertionError: successor snapshot cannot be synthesized
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.126.0', version='source')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.126.0', version='3.126.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.126.0', version='3.110.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.125.2', version='source')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.125.1', version='3.125.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.125.1', version='3.126.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=50, candidate='3.125.1', version='unknown')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.126.0', version='source')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.126.0', version='3.126.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.126.0', version='3.110.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.125.2', version='source')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.125.1', version='3.125.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.125.1', version='3.126.0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+======================================================================
+FAIL: testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation (test_p1r_published_executor.MeasurementTests.testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation) (interval=1000, candidate='3.125.1', version='unknown')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 996, in testEverySeedIntervalRefusesUnenrolledCandidatesAndWrongWritersBeforeMutation
+    with self.assertRaisesRegex(executor.InvalidPacket, "not explicitly enabled"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidPacket not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.321s
+
+FAILED (failures=16)

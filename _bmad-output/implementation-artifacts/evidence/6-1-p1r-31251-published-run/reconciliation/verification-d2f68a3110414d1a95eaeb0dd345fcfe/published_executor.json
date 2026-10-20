@@ -1,0 +1,23 @@
+{
+  "name": "published_executor",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_executor.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-19T05:27:22.869164+00:00",
+  "finished_utc": "2026-10-19T05:29:44.857018+00:00",
+  "exit_code": 0,
+  "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-d2f68a3110414d1a95eaeb0dd345fcfe/published_executor.log",
+  "log_sha256": "37cfd3378611141b905314cc37ef98df3f29cda58bd9f43a481c8b2dad1638c5",
+  "tests": 184,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

@@ -1,0 +1,19 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15131-c0f7-7fc1-991a-670ae7e3bb81",
+  "call_id": "call_53fa5c4c16924661b5de0b3dd3a19ef7",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.7 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"817927\",\"wall_time_seconds\":0.530545089,\"exit_code\":0,\"original_token_count\":90,\"output\":\"{\\\"output\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-ce6d5948928243f8a44978c7d1fef11a/parent-independent-audit.json\\\", \\\"sha256\\\": \\\"246d6b52d91638a4409b6f31ef69527861d020c47ace3677553450bf50f350e7\\\", \\\"test_executions\\\": 406, \\\"matrix_rows\\\": 5}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792363577.5919523
+  }
+}

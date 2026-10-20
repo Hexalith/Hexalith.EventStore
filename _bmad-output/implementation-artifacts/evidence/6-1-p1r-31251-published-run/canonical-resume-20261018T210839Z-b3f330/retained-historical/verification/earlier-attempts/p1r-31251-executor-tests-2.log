@@ -1,0 +1,91 @@
+.....................................................E.........................................................F....FF...F....F............................
+======================================================================
+ERROR: test31251EditedToolingHeadCannotInheritReleasedSourceBinding (test_p1r_published_executor.MeasurementTests.test31251EditedToolingHeadCannotInheritReleasedSourceBinding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 1364, in test31251EditedToolingHeadCannotInheritReleasedSourceBinding
+    executor.validate_execution_inputs(inputs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_published_executor.py", line 200, in validate_execution_inputs
+    binding = preparation.source_binding(ROOT, selected_root)
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 218, in source_binding
+    main = repository_binding(root)
+  File "/home/administrator/projects/hexalith/eventstore/tools/p1r_qualification.py", line 149, in repository_binding
+    info, raw_name = row.split(b"\t", 1)
+    ^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+
+======================================================================
+FAIL: testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof (test_p1r_published_executor.Published31251SnapshotWitnessTests.testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 247, in testActualReceiptImportForwardsSelectedVersionAndRefusesMissingOrSubstitutedProof
+    receipt,context = self.import_fixture()
+                      ~~~~~~~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['selected candidate source closure missing']
+
+======================================================================
+FAIL: testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes (test_p1r_published_executor.Published31251SnapshotWitnessTests.testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 709, in testFinalIsolationRejectsRehashedBackwardsCleanupAndEscapedReceiptOrCommandTimes
+    receipt,context = self.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['selected candidate source closure missing']
+
+======================================================================
+FAIL: testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract (test_p1r_published_executor.Published31251SnapshotWitnessTests.testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 749, in testFinalRecoveryReferencePreservesExactEmbeddedContributingCleanupContract
+    receipt,context = self.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['selected candidate source closure missing']
+
+======================================================================
+FAIL: testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands (test_p1r_published_executor.Published31251SnapshotWitnessTests.testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 664, in testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands
+    receipt,context = self.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['selected candidate source closure missing']
+
+======================================================================
+FAIL: testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope (test_p1r_published_executor.Published31251SnapshotWitnessTests.testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 702, in testRuntimeConfiguredImportCannotBypassIsolationByClaimingPackageOnlyScope
+    receipt,context = self.import_fixture()
+                      ~~~~~~~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 233, in import_fixture
+    receipt = self.attach_isolation(receipt,context)
+  File "/home/administrator/projects/hexalith/eventstore/tools/tests/test_p1r_published_executor.py", line 243, in attach_isolation
+    self.assertEqual(code,0,worker.result['errors'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : ['selected candidate source closure missing']
+
+----------------------------------------------------------------------
+Ran 155 tests in 96.136s
+
+FAILED (failures=5, errors=1)

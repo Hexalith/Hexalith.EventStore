@@ -22,7 +22,7 @@ state.Apply(Event)                          // fold events back into state
 
 - **Repository:** https://github.com/Hexalith/Hexalith.EventStore
 - **License:** MIT
-- **Framework:** .NET 10 (SDK `10.0.401`, pinned in `global.json`, roll-forward `latestPatch`)
+- **Framework:** .NET 10 (SDK `10.0.402`, pinned in `global.json`, roll-forward `latestPatch`)
 - **Solution file:** `Hexalith.EventStore.slnx` (modern XML solution format — `.sln` is never used)
 
 ## Repository Classification
@@ -42,7 +42,7 @@ state.Apply(Event)                          // fold events back into state
 
 | Category | Technology | Version | Role |
 |----------|-----------|---------|------|
-| Runtime | .NET | `net10.0` (SDK 10.0.401) | Target framework |
+| Runtime | .NET | `net10.0` (SDK 10.0.402) | Target framework |
 | Distributed runtime | DAPR (Client, AspNetCore, Actors, Actors.AspNetCore) | `1.18.10` | State store, pub/sub, actors, service invocation |
 | Orchestration | .NET Aspire (`Aspire.Hosting`, Redis, Keycloak, Docker, K8s, Azure AppContainers) | `13.6.1` (Keycloak/K8s `13.6.1-preview.1.26506.6`) | Local topology + publish targets |
 | DAPR for Aspire | `CommunityToolkit.Aspire.Hosting.Dapr` | `13.6.0-preview.1.261001-0243` | DAPR sidecar wiring in AppHost |

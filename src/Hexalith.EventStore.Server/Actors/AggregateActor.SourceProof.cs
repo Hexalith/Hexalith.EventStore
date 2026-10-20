@@ -58,6 +58,15 @@ public partial class AggregateActor
     }
 
     /// <inheritdoc/>
+    public async Task<SourceEventRange> ReadNativeEventsBoundedRangeAsync(long fromSequence, long toSequence, int maxCount, int maxBytes)
+    {
+        SourceProofInspection inspection = await InspectSourceProofAsync().ConfigureAwait(false);
+        if (inspection.Status != SourceProofInspectionStatus.Available || inspection.Erased)
+            return EmptySourceRange("source_conflict");
+        return await ReadMeasuredEventsBoundedRangeAsync(fromSequence, toSequence, maxCount, maxBytes).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
     public async Task<EventEnvelope[]> ReadEventsBoundedRangeAsync(
         long fromSequence, long toSequence, int maxCount, int maxBytes)
     {

@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15127-0336-7043-b221-fdbcae4d9ddc",
+  "call_id": "call_f5818155b21541938424827c31874d39",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.2 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"63b8da\",\"wall_time_seconds\":0.000028496,\"exit_code\":0,\"original_token_count\":256,\"output\":\"{\\n  \\\"finished_utc\\\": null,\\n  \\\"errors\\\": [],\\n  \\\"completed\\\": [\\n    {\\n      \\\"lane\\\": \\\"provenance\\\",\\n      \\\"cases\\\": 3,\\n      \\\"assertions\\\": {\\n        \\\"attempted\\\": 33,\\n        \\\"failed\\\": 0,\\n        \\\"passed\\\": 33\\n      }\\n    },\\n    {\\n      \\\"lane\\\": \\\"legacy-metadata\\\",\\n      \\\"cases\\\": 6,\\n      \\\"assertions\\\": {\\n        \\\"attempted\\\": 20,\\n        \\\"failed\\\": 0,\\n        \\\"passed\\\": 20\\n      }\\n    },\\n    {\\n      \\\"lane\\\": \\\"metadata-read\\\",\\n      \\\"cases\\\": 12,\\n      \\\"assertions\\\": {\\n        \\\"attempted\\\": 40,\\n        \\\"failed\\\": 0,\\n        \\\"passed\\\": 40\\n      }\\n    },\\n    {\\n      \\\"lane\\\": \\\"metadata-write\\\",\\n      \\\"cases\\\": 6,\\n      \\\"assertions\\\": {\\n        \\\"attempted\\\": 226,\\n        \\\"failed\\\": 0,\\n        \\\"passed\\\": 226\\n      }\\n    },\\n    {\\n      \\\"lane\\\": \\\"full-replay\\\",\\n      \\\"cases\\\": 6,\\n      \\\"assertions\\\": {\\n        \\\"attempted\\\": 270,\\n        \\\"failed\\\": 0,\\n        \\\"passed\\\": 270\\n      }\\n    },\\n    {\\n      \\\"lane\\\": \\\"snapshot-tail\\\",\\n      \\\"cases\\\": 6,\\n      \\\"assertions\\\": {\\n        \\\"attempted\\\": 298,\\n        \\\"failed\\\": 0,\\n        \\\"passed\\\": 298\\n      }\\n    }\\n  ]\\n}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"609985\",\"wall_time_seconds\":0.00001552,\"exit_code\":0,\"original_token_count\":213,\"output\":\"{\\n  \\\"observed_utc\\\": \\\"2026-10-18T22:34:26.215009+00:00\\\",\\n  \\\"root\\\": \\\"/home/administrator/projects/hexalith/eventstore\\\",\\n  \\\"head\\\": \\\"fcf78d6cafb6c0c9f52dc350a9a09aff54ded288\\\",\\n  \\\"status\\\": \\\"## main...origin/main [behind 4]\\\\n\\\",\\n  \\\"index_path\\\": \\\"/home/administrator/projects/hexalith/eventstore/.git/index\\\",\\n  \\\"index_sha256\\\": \\\"e2f1bb3694dd2e31f35573c9c0de115f553d006e044ccb51692d63fe8f92d64c\\\",\\n  \\\"index_unchanged_during_observation\\\": true,\\n  \\\"scope\\\": \\\"all owning repository tracked physical inputs before parent writes; gitlinks retained as index identities, no nested initialization\\\",\\n  \\\"file_count\\\": 23074,\\n  \\\"total_physical_bytes\\\": 3776237567\\n}\\n/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/shared-pre-reconcile-92d408e662554024b5f6eaee403331e6.json\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792362873.6549563
+  }
+}

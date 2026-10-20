@@ -1,0 +1,122 @@
+[
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_qualification.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:21:59.777416+00:00",
+    "finished_utc": "2026-10-18T18:23:14.610051+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/qualification-attempt1.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_qualification.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:23:14.610179+00:00",
+    "finished_utc": "2026-10-18T18:23:57.634665+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_qualification-attempt1.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_published_executor.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:23:57.634773+00:00",
+    "finished_utc": "2026-10-18T18:25:17.568211+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/published_executor-attempt1.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_snapshot_registration.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:25:17.568315+00:00",
+    "finished_utc": "2026-10-18T18:27:21.967351+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/snapshot_registration-attempt1.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:27:21.967471+00:00",
+    "finished_utc": "2026-10-18T18:27:23.781395+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation-attempt1.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation_hardening.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:27:23.781508+00:00",
+    "finished_utc": "2026-10-18T18:27:52.483244+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-attempt1.log"
+  },
+  {
+    "argv": [
+      "python3",
+      "-O",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_isolation_hardening.py"
+    ],
+    "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "started_utc": "2026-10-18T18:27:52.483364+00:00",
+    "finished_utc": "2026-10-18T18:28:22.270609+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/isolation_hardening-optimized-attempt1.log"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_qualification.py",
+    "-v"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc",
+  "started_utc": "2026-10-20T10:29:39.581204+00:00",
+  "reason": "repeat failed broader preparation suite with stable exact verifier checkout; retain earlier failure",
+  "exit_code": 0,
+  "finished_utc": "2026-10-20T10:31:27.261322+00:00"
+}

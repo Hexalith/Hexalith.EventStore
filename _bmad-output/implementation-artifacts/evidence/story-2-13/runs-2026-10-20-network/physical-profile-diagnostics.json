@@ -1,0 +1,40 @@
+{
+  "observedUtc": "2026-10-20T07:59:02.592821+00:00",
+  "purpose": "physical profile diagnostics only; not Dapr application acceptance evidence",
+  "redisContainer": {
+    "command": [
+      "docker",
+      "inspect",
+      "dapr_redis",
+      "--format",
+      "{{json .Id}} {{json .Image}} {{json .Config.Image}} {{json .State.StartedAt}} {{json .RestartCount}}"
+    ],
+    "exitCode": 0,
+    "output": "\"8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922\" \"sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf\" \"docker.io/redis:6\" \"2026-10-19T15:22:08.435874046Z\" 0"
+  },
+  "redisVersion": {
+    "command": [
+      "docker",
+      "exec",
+      "dapr_redis",
+      "redis-server",
+      "--version"
+    ],
+    "exitCode": 0,
+    "output": "Redis server v=6.2.21 sha=00000000:0 malloc=jemalloc-5.1.0 bits=64 build=bfa2c172d6556ada"
+  },
+  "controlPlane": {
+    "command": [
+      "docker",
+      "ps",
+      "--filter",
+      "name=dapr_placement",
+      "--filter",
+      "name=dapr_scheduler",
+      "--format",
+      "{{.Names}} {{.Image}} {{.ID}}"
+    ],
+    "exitCode": 0,
+    "output": "dapr_placement daprio/dapr:1.18.7 f1e0a30a3a93\ndapr_scheduler daprio/dapr:1.18.7 8623af8b7bbd"
+  }
+}

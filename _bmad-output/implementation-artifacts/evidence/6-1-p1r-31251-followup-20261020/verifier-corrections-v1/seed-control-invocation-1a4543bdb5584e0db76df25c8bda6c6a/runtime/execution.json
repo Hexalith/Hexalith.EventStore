@@ -1,0 +1,45 @@
+{
+  "errors": [],
+  "executor_source_sha256": "8dc0bc89e89f06daa881c94c5fe8a6012a0f1d303548f874ac4bb8a54d393ba6",
+  "finished_utc": "2026-10-20T10:07:03.329917+00:00",
+  "inputs_sha256": "2265a6460b79301c00a01f83155d2a80fe0203ee167484b7fedbcdfcb92e5b5a",
+  "invocation": "9d6729f4ab334d47a089e7e17be34dcd",
+  "owned_containers": {
+    "122cd993c4cbeeface18fbc02fb6368b69bb94b9e3fc8821fe2146c92f2a57d6": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-9d6729f4ab334d47a089e7e17be34dcd-source-affb3b7a",
+      "port": 25018,
+      "role": "source"
+    },
+    "238f1a509969616a3a4848084ae41a38193ed302ca9a92ad20fce15d63bf73cb": {
+      "image": "redis@sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf",
+      "name": "p1r-9d6729f4ab334d47a089e7e17be34dcd-pubsub-10de5c8e",
+      "port": 11155,
+      "role": "pubsub"
+    },
+    "d7ea3ddf123e5885656adfa2beaf2184259c006bbbb8bbb0fd890f354f5496e7": {
+      "image": "postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636",
+      "name": "p1r-9d6729f4ab334d47a089e7e17be34dcd-restored-27b2844e",
+      "port": 20996,
+      "role": "restored"
+    },
+    "da5373915ac502068c853ff5ab52fecb1e315bfd5e6ec01844dec6f6753fcb9b": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-9d6729f4ab334d47a089e7e17be34dcd-placement-2a92acea",
+      "port": 13983,
+      "role": "placement"
+    },
+    "f36dec67a4fbb3ae0cb5863296d4e4fad0647025832fd88e3592da180a48bf4e": {
+      "image": "daprio/dapr@sha256:9ec89d30076155d2376c06f98028b6920f31fac5df0eb40e0b8b94cc88dd5b59",
+      "name": "p1r-9d6729f4ab334d47a089e7e17be34dcd-scheduler-051714b0",
+      "port": 29828,
+      "role": "scheduler"
+    }
+  },
+  "p1r_usable": false,
+  "receipts": [
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/seed-control-invocation-1a4543bdb5584e0db76df25c8bda6c6a/runtime/receipts/59320e90e01d429498b7b3a766fc3219.json"
+  ],
+  "schema": "hexalith.p1r.executor.v1",
+  "started_utc": "2026-10-20T10:01:27.381612+00:00"
+}

@@ -1,0 +1,11 @@
+{
+  "scope": "unchanged single SIGINT process cleanup regression; temporary packet retained for diagnosis",
+  "argv": [
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/run_sigint_regression.py"
+  ],
+  "started_utc": "2026-10-20T10:27:18.473478+00:00",
+  "passed": true,
+  "failures": 0,
+  "errors": 0,
+  "finished_utc": "2026-10-20T10:27:41.169129+00:00"
+}

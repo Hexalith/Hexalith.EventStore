@@ -1,0 +1,30 @@
+{
+  "scope": "observed independent edits after clean task entry; no task writes or restoration",
+  "files": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.json",
+      "sha256": "7118a69f1ea2301ae65535e9f1b929c98eb22901c7f616e4c66cb23f7131cd75",
+      "status": " M"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md",
+      "sha256": "6a2d4404025df86cfc4b4740ba3ce75b4f81477dfd71b513749de4c89dea2e59",
+      "status": " M"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/index.before-approval.json",
+      "sha256": "f8b69bf32f93da5a38385effe4bac9887d6e5d3bfd433791860517b87257487d",
+      "status": "??"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/spec-approval.json",
+      "sha256": "893cb0dd0e014011f048eb118445878c0b104ab76caae0f1924af951187a889e",
+      "status": "??"
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/spec.before-approval.md",
+      "sha256": "05fd17582c9803f5270449c220e5c102bfe80b01f9b69ccc31f78e6c4ab3b64a",
+      "status": "??"
+    }
+  ]
+}

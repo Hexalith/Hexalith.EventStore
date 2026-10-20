@@ -31,6 +31,51 @@ public static class EventStoreServerServiceCollectionExtensions {
     /// </summary>
     public const string EventStoreWorkloadIdentity = "eventstore";
 
+    /// <summary>Explicitly enrolls finite publication scopes using independent installation and private operation authorities.</summary>
+    /// <param name="services">The actor host service collection.</param>
+    /// <param name="scopes">The exact finite scopes whose writers must register before persistence.</param>
+    /// <param name="authority">The independent current legacy or virgin inventory and all-writer coverage authority.</param>
+    /// <param name="operations">The independent current private namespace and index operation authority.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>This opt-in registers the executable seams only. It neither installs a roster nor certifies production coverage.
+    /// All deployment writer paths and cold actor activation recovery still require separate qualification.</remarks>
+    public static IServiceCollection AddEventStoreSourcePublication(
+        this IServiceCollection services,
+        IReadOnlyList<Hexalith.EventStore.Contracts.Streams.SourcePublicationScope> scopes,
+        Hexalith.EventStore.Server.Streams.ISourcePublicationNamespaceAuthority authority,
+        Hexalith.EventStore.Server.Streams.ISourcePublicationOperationAuthority operations)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(scopes);
+        ArgumentNullException.ThrowIfNull(authority);
+        ArgumentNullException.ThrowIfNull(operations);
+        if (scopes.Count is < 1 or > 1000 || scopes.Any(scope => scope is null)
+            || scopes.Distinct().Count() != scopes.Count
+            || services.Any(descriptor => descriptor.ServiceType == typeof(Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration)))
+        {
+            throw new ArgumentException("Explicit unique bounded publication scopes and a single writer enrollment are required.", nameof(scopes));
+        }
+        var ownedScopes = Array.AsReadOnly(scopes.ToArray());
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton(authority);
+        services.AddSingleton(operations);
+        services.AddSingleton<Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration>(provider =>
+            new Hexalith.EventStore.Server.Streams.DaprSourcePublicationWriterRegistration(ownedScopes,
+                provider.GetRequiredService<IActorProxyFactory>(), authority, provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<Hexalith.EventStore.Client.Streams.ISourcePublicationNamespaceSource,
+            Hexalith.EventStore.Server.Streams.DaprSourcePublicationNamespaceSource>();
+        services.AddSingleton<Hexalith.EventStore.Client.Streams.ISourcePublicationIndexStore,
+            Hexalith.EventStore.Server.Streams.DaprSourcePublicationIndexStore>();
+        services.AddActors(options =>
+        {
+            options.Actors.RegisterActor<Hexalith.EventStore.Server.Streams.SourcePublicationNamespaceActor>(
+                Hexalith.EventStore.Server.Streams.SourcePublicationNamespaceActor.ActorTypeName);
+            options.Actors.RegisterActor<Hexalith.EventStore.Server.Streams.SourcePublicationIndexActor>(
+                Hexalith.EventStore.Server.Streams.SourcePublicationIndexActor.ActorTypeName);
+        });
+        return services;
+    }
+
     /// <summary>
     /// Registers EventStore Server services including command routing and DAPR actor infrastructure.
     /// </summary>

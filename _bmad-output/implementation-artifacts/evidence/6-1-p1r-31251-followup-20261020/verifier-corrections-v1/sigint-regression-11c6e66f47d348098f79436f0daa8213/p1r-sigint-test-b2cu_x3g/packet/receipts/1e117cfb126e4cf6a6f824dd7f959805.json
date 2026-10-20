@@ -1,0 +1,68 @@
+{
+  "argv": [
+    "/nonexistent/hexalith-p1r-owned-startup-control"
+  ],
+  "assertions": {
+    "attempted": 6,
+    "failed": 0,
+    "passed": 6
+  },
+  "cancelled": false,
+  "checks": [
+    {
+      "id": "expected-process-outcome",
+      "passed": true
+    },
+    {
+      "id": "output-retained",
+      "passed": true
+    },
+    {
+      "id": "exact-session-ownership",
+      "passed": true
+    },
+    {
+      "id": "cleanup-1-complete",
+      "passed": true
+    },
+    {
+      "id": "cleanup-2-complete",
+      "passed": true
+    },
+    {
+      "id": "shared-sentinel-preserved",
+      "passed": true
+    }
+  ],
+  "cleanup": [
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    },
+    {
+      "before": [],
+      "errors": [],
+      "remaining": []
+    }
+  ],
+  "control": "startup-failure",
+  "cwd": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/sigint-regression-11c6e66f47d348098f79436f0daa8213/p1r-sigint-test-b2cu_x3g/packet",
+  "execution": "passed",
+  "exit_code": null,
+  "finished_utc": "2026-10-20T10:27:22.841523+00:00",
+  "id": "1e117cfb126e4cf6a6f824dd7f959805",
+  "invocation": "c70c96b05e234bbc8a7ee36f7512e490",
+  "launch_error": {
+    "errno": 2,
+    "type": "FileNotFoundError"
+  },
+  "output": {
+    "path": "receipts/1e117cfb126e4cf6a6f824dd7f959805.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "owned_processes": [],
+  "root_process": null,
+  "started_utc": "2026-10-20T10:27:22.811150+00:00",
+  "timed_out": false
+}

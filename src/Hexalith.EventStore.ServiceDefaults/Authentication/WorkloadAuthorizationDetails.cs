@@ -69,6 +69,10 @@ public sealed record WorkloadAuthorizationDetails
             }
             if (result.Count > 0 && (!result.ContainsKey(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType)
                 || !result.ContainsKey(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType))) return null;
+            if (result.TryGetValue(QueryCallerAuthorityBinding.DigestClaim, out string? digest)
+                && (operation != EventStoreWorkloadOperations.DomainServiceQuery || result.Count != 3
+                    || digest.Length != 64 || !digest.All(static character => character is >= '0' and <= '9' or >= 'A' and <= 'F')
+                    || result.Values.Any(static binding => binding.Contains('*')))) return null;
             return new WorkloadAuthorizationDetails { Audience = audience, Operation = operation, Bindings = result };
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or KeyNotFoundException)

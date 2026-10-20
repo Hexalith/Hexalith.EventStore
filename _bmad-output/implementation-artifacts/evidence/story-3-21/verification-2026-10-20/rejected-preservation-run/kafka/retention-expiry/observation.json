@@ -1,0 +1,27 @@
+{
+  "acknowledgedReplayObserved": true,
+  "beforeReplayReceiptCount": 1,
+  "broker": "kafka",
+  "brokerRetentionObserved": true,
+  "controlEffects": 1,
+  "expiredEffects": 0,
+  "expiredMessageId": "f9b108f63e78f7f5ff325d1a",
+  "messageId": "6106022eb4d0ac376d88b06f",
+  "nativeExpiryObserved": true,
+  "offsetReceipts": [
+    366,
+    367,
+    368,
+    369,
+    370,
+    371,
+    372,
+    373,
+    374,
+    375,
+    376,
+    377
+  ],
+  "outageSeconds": 28.658487610009615,
+  "scenario": "retention-expiry"
+}

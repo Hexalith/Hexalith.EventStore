@@ -60,7 +60,7 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
         if (owned.DispatchProgress != current?.DispatchProgress && owned.DispatchProgress is { } progress
             && (!MatchesProgress(owned, Checkpoint(owned), progress) || !await operations.VerifyDispatchProgressAsync(Checkpoint(owned), progress).ConfigureAwait(false))) { return false; }
         if (current is not null && (owned.Entries.Count < current.Entries.Count || !current.Entries.SequenceEqual(owned.Entries.Take(current.Entries.Count))
-            || current.Sources.Any(prior => !owned.Sources.Any(next => next.Identity == prior.Identity && next.Head >= prior.Head)))) { return false; }
+            || current.Sources.Any(prior => !owned.Sources.Any(prior.CanAdvanceUnder)))) { return false; }
         if (!await operations.WriteIndexAsync(request).ConfigureAwait(false)) { return false; }
         var pending = RecoverableAnchoredState.Prepare(PendingScope, write.ExpectedRevision, owned.Revision, current, owned);
         if (!await RecoverableAnchoredState.CommitAsync(pending, operations, ReadPendingAsync, PersistPendingAsync).ConfigureAwait(false)) { return false; }
@@ -184,7 +184,7 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
             || cut.AuthorityRevision.Length > 256 || cut.Sources is null || cut.Sources.Count > 1000) { throw new ArgumentException("Malformed exact publication cut.", nameof(cut)); }
         var heads = new List<SourcePublicationHead>();
         foreach (var head in cut.Sources)
-        { if (heads.Count >= 1000 || head is null || head.Identity is null || head.Identity.TenantId != cut.Scope.Tenant || head.Identity.Domain != cut.Scope.Domain || head.Head is < 0 or > 10000 || heads.Any(h => h.Identity == head.Identity)) { throw new ArgumentException("Malformed publication cut vector.", nameof(cut)); } heads.Add(head); }
+        { if (heads.Count >= 1000 || head is null || head.Identity is null || head.Identity.TenantId != cut.Scope.Tenant || head.Identity.Domain != cut.Scope.Domain || head.Head is < 0 or > 10000 || !head.HasConsistentNativeProof || heads.Any(h => h.Identity == head.Identity)) { throw new ArgumentException("Malformed publication cut vector.", nameof(cut)); } heads.Add(head); }
         return cut with { Sources = heads.AsReadOnly() };
     }
 
@@ -222,7 +222,7 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
         foreach (SourcePublicationHead head in state.Sources)
         {
             if (heads.Count >= 1000 || head is null || head.Identity is null || head.Head is < 0 or > 10000
-                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain
+                || head.Identity.TenantId != scope.Tenant || head.Identity.Domain != scope.Domain || !head.HasConsistentNativeProof
                 || heads.Any(h => h.Identity == head.Identity))
             { throw new InvalidOperationException("Malformed publication source vector."); }
             heads.Add(head);

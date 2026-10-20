@@ -1,0 +1,6 @@
+{
+  "blockedBy": "persisted application HTTP readback unavailable",
+  "broker": "rabbitmq",
+  "failureClass": "observed-scenario-failure",
+  "scenario": "failed-diversion"
+}

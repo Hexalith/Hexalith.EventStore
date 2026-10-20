@@ -22,6 +22,8 @@ def main(arguments=None):
     prepare = commands.add_parser("prepare", help="create a new sealed qualification packet")
     prepare.add_argument("--out", type=Path, required=True, help="new output directory (must not exist)")
     prepare.add_argument("--inputs", type=Path, help="owner execution inputs (hexalith.p1r.owner-inputs.v1)")
+    prepare.add_argument("--source-root", type=Path, help="exact selected 3.125.1 runtime checkout")
+    prepare.add_argument("--source-builds-root", type=Path, help="exact release-source Builds checkout")
     prepare.add_argument("--decisions", type=Path, help="owner decisions and same-baseline conformance")
     prepare.add_argument("--candidate-evidence", type=Path, help="isolated Release package evidence for the candidate")
     prepare.add_argument("--rollback-evidence", type=Path, help="isolated Release package evidence for a selected rollback")
@@ -54,7 +56,8 @@ def main(arguments=None):
             packet = create_packet(args.out, inputs=args.inputs, decisions=args.decisions,
                                    candidate_evidence=args.candidate_evidence, rollback_evidence=args.rollback_evidence,
                                    receipts=tuple(args.receipt), process_controls=args.process_controls,
-                                   comparison_evidence=tuple(args.comparison_evidence), support_boundary=args.support_boundary)
+                                   comparison_evidence=tuple(args.comparison_evidence), support_boundary=args.support_boundary,
+                                   source_root=args.source_root, source_builds_root=args.source_builds_root)
             if packet["errors"]:
                 # The sealed packet retains the refusal; report its exact errors and refusals instead of validating.
                 print(json.dumps({"valid": False, "qualified": False, "p1r_usable": False,

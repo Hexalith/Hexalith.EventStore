@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a150fa-25c9-7f72-a0dd-c982c6c720fa",
+  "call_id": "call_685b92ae8bfc4451bf584c900640aac1",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.1 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"a7099b\",\"wall_time_seconds\":0.000023156,\"exit_code\":0,\"original_token_count\":47,\"output\":\"{\\n  \\\"scope\\\": \\\"draft merge resolutions in temporary assembly only\\\",\\n  \\\"conflict_regions_resolved\\\": 9,\\n  \\\"root\\\": \\\"/tmp/p1r-31251-reconciliation-86a7e2d45c394a23be160ccd0caab427/merged\\\"\\n}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"807219\",\"wall_time_seconds\":0.000021913,\"exit_code\":0,\"original_token_count\":78,\"output\":\"{\\n  \\\"root\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31\\\",\\n  \\\"head\\\": \\\"fcf78d6cafb6c0c9f52dc350a9a09aff54ded288\\\",\\n  \\\"record\\\": \\\"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/creation.json\\\"\\n}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792359933.3856564
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/verifier-corrections-v1/run_seed_controls.py",
+    "--controls",
+    "retained"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc",
+  "scope": "two finite retained controls only; no qualification"
+}

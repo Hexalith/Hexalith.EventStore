@@ -1,0 +1,62 @@
+{
+  "commandReceipt": 322,
+  "kind": "persisted-application-http-readback",
+  "ledger": [
+    {
+      "id": "c9bda16fecd75bf28708be98",
+      "kind": "receipt",
+      "messageId": "c9bda16fecd75bf28708be98",
+      "receivedUtc": "2026-10-20T10:55:43.821543+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c9bda16fecd75bf28708be98",
+      "kind": "receipt",
+      "messageId": "c9bda16fecd75bf28708be98",
+      "receivedUtc": "2026-10-20T10:55:44.030370+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "faaeebe8c6bee7a25aaeb7f1",
+      "kind": "receipt",
+      "messageId": "faaeebe8c6bee7a25aaeb7f1",
+      "receivedUtc": "2026-10-20T10:55:53.617453+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "c9bda16fecd75bf28708be98",
+      "kind": "effect",
+      "messageId": "c9bda16fecd75bf28708be98",
+      "persistedUtc": "2026-10-20T10:55:44.038137+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "faaeebe8c6bee7a25aaeb7f1",
+      "kind": "effect",
+      "messageId": "faaeebe8c6bee7a25aaeb7f1",
+      "persistedUtc": "2026-10-20T10:55:53.621225+00:00",
+      "route": "/events"
+    }
+  ],
+  "stateComponent": "qualification-state",
+  "stateReadback": {
+    "etag": "187dabe0-5584-4613-ac1e-6adae0296e59",
+    "status": 200,
+    "value": [
+      {
+        "id": "c9bda16fecd75bf28708be98",
+        "kind": "effect",
+        "messageId": "c9bda16fecd75bf28708be98",
+        "persistedUtc": "2026-10-20T10:55:44.038137+00:00",
+        "route": "/events"
+      },
+      {
+        "id": "faaeebe8c6bee7a25aaeb7f1",
+        "kind": "effect",
+        "messageId": "faaeebe8c6bee7a25aaeb7f1",
+        "persistedUtc": "2026-10-20T10:55:53.621225+00:00",
+        "route": "/events"
+      }
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Hexalith.EventStore.Client.Projections;
@@ -19,6 +20,35 @@ namespace Hexalith.EventStore.Server.Tests.SignalR;
 
 public class SignalRProjectionChangedBroadcasterTests {
     private const string BroadcastActivityName = "EventStore.SignalR.BroadcastProjectionChanged";
+
+    [Theory]
+    [InlineData("x", 2_040, true)]
+    [InlineData("x", 2_041, false)]
+    [InlineData("\\", 1_021, false)]
+    [InlineData("\"", 400, false)]
+    [InlineData("é", 342, false)]
+    [InlineData("😀", 200, false)]
+    public async Task DetailMetadata_ClipsSerializedOverheadEscapingAndMultibyteValues(string value, int repetitions, bool retained) {
+        IProjectionChangedClient client = Substitute.For<IProjectionChangedClient>();
+        IHubClients<IProjectionChangedClient> clients = Substitute.For<IHubClients<IProjectionChangedClient>>();
+        _ = clients.Group("order-list:acme:scope").Returns(client);
+        IHubContext<ProjectionChangedHub, IProjectionChangedClient> hub = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
+        _ = hub.Clients.Returns(clients);
+        IReadOnlyDictionary<string, string>? sent = null;
+        _ = client.ProjectionChangedDetail("order-list", "acme", "scope",
+            Arg.Do<IReadOnlyDictionary<string, string>>(metadata => sent = metadata)).Returns(Task.CompletedTask);
+        var sut = new SignalRProjectionChangedBroadcaster(hub, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
+        var metadata = new Dictionary<string, string> { ["k"] = string.Concat(Enumerable.Repeat(value, repetitions)) };
+
+        await sut.BroadcastChangedAsync(new ProjectionChangedDetail("order-list", "acme", "scope", metadata));
+
+        sent.ShouldNotBeNull();
+        sent.Count.ShouldBe(retained ? 1 : 0);
+        JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBeLessThanOrEqualTo(2_048);
+        if (retained) {
+            JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBe(2_048);
+        }
+    }
 
     [Fact]
     public async Task BroadcastChangedAsync_ValidInput_ForwardsToGroupClient() {
@@ -298,7 +328,7 @@ public class SignalRProjectionChangedBroadcasterTests {
         _ = hubContext.Clients.Returns(clients);
 
         var logEntries = new List<LogEntry>();
-        var options = Options.Create(new SignalROptions { MaxDetailMetadataEntries = 2, MaxDetailMetadataBytes = 100_000 });
+        var options = Options.Create(new SignalROptions { MaxDetailMetadataEntries = 2, MaxDetailMetadataBytes = 2_048 });
         var sut = new SignalRProjectionChangedBroadcaster(hubContext, options, new TestLogger<SignalRProjectionChangedBroadcaster>(logEntries));
 
         var metadata = new Dictionary<string, string>();
@@ -325,8 +355,7 @@ public class SignalRProjectionChangedBroadcasterTests {
         IHubContext<ProjectionChangedHub, IProjectionChangedClient> hubContext = Substitute.For<IHubContext<ProjectionChangedHub, IProjectionChangedClient>>();
         _ = hubContext.Clients.Returns(clients);
 
-        // Cap allows the first entry (key "a" 1 byte + 50-byte value = 51 <= 60) but not a second
-        // identical-shaped entry (would total 102 > 60).
+        // Compact JSON for {"a":"<50 ASCII bytes>"} uses 58 bytes; a second entry exceeds 60.
         var options = Options.Create(new SignalROptions { MaxDetailMetadataEntries = 16, MaxDetailMetadataBytes = 60 });
         var sut = new SignalRProjectionChangedBroadcaster(hubContext, options, Substitute.For<ILogger<SignalRProjectionChangedBroadcaster>>());
 

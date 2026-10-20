@@ -1,0 +1,1 @@
+python3 -m unittest discover -s tools/tests -p 'test_p1r_published_qualification.py' > /tmp/p1r-31251-qualification-tests-2.log 2>&1

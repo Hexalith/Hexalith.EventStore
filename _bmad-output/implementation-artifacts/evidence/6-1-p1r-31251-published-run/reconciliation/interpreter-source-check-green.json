@@ -1,0 +1,51 @@
+[
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_qualification.py",
+      "-k",
+      "InterpreterSourceCheckTests",
+      "-v"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:29:34.692637+00:00",
+    "finished_utc": "2026-10-18T22:29:35.870337+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/interpreter-source-check-green-0.log",
+    "log_sha256": "bfcb555c79f4b50f73e7739d1aa214256503b9fd97be0aa112a601f9d576acab"
+  },
+  {
+    "argv": [
+      "/usr/bin/python3",
+      "-m",
+      "py_compile",
+      "tools/p1r_qualification.py",
+      "tools/tests/test_p1r_qualification.py"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:29:35.870430+00:00",
+    "finished_utc": "2026-10-18T22:29:35.927611+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/interpreter-source-check-green-1.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "cwd": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",
+    "started_utc": "2026-10-18T22:29:35.927669+00:00",
+    "finished_utc": "2026-10-18T22:29:35.955414+00:00",
+    "exit_code": 0,
+    "log": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/interpreter-source-check-green-2.log",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+]

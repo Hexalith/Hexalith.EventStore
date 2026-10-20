@@ -1,0 +1,735 @@
+{
+  "actual_get_commands": [
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:12.674096+00:00",
+      "id": 77,
+      "started_utc": "2026-10-18T21:59:12.673797+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:12.826267+00:00",
+      "id": 78,
+      "started_utc": "2026-10-18T21:59:12.825908+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:12.979624+00:00",
+      "id": 79,
+      "started_utc": "2026-10-18T21:59:12.979169+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:13.135220+00:00",
+      "id": 80,
+      "started_utc": "2026-10-18T21:59:13.134525+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:13.292333+00:00",
+      "id": 81,
+      "started_utc": "2026-10-18T21:59:13.291303+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:13.556549+00:00",
+      "id": 82,
+      "started_utc": "2026-10-18T21:59:13.450700+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19882/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:18.140594+00:00",
+      "id": 83,
+      "started_utc": "2026-10-18T21:59:18.140217+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19882/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:18.296718+00:00",
+      "id": 84,
+      "started_utc": "2026-10-18T21:59:18.294053+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15433/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:22.898684+00:00",
+      "id": 85,
+      "started_utc": "2026-10-18T21:59:22.898298+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15433/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:23.052414+00:00",
+      "id": 86,
+      "started_utc": "2026-10-18T21:59:23.051900+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15433/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:23.210472+00:00",
+      "id": 87,
+      "started_utc": "2026-10-18T21:59:23.210016+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15433/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:23.370170+00:00",
+      "id": 88,
+      "started_utc": "2026-10-18T21:59:23.369580+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15433/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:23.626116+00:00",
+      "id": 89,
+      "started_utc": "2026-10-18T21:59:23.523733+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:28905/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:28.288936+00:00",
+      "id": 90,
+      "started_utc": "2026-10-18T21:59:28.288523+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:28905/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:28.442806+00:00",
+      "id": 91,
+      "started_utc": "2026-10-18T21:59:28.442387+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:28905/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:28.597834+00:00",
+      "id": 92,
+      "started_utc": "2026-10-18T21:59:28.596213+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:23995/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:34.236567+00:00",
+      "id": 93,
+      "started_utc": "2026-10-18T21:59:34.216205+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:37.313196+00:00",
+      "id": 102,
+      "started_utc": "2026-10-18T21:59:37.312851+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:37.467771+00:00",
+      "id": 103,
+      "started_utc": "2026-10-18T21:59:37.467237+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:37.622127+00:00",
+      "id": 104,
+      "started_utc": "2026-10-18T21:59:37.621538+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:37.778574+00:00",
+      "id": 105,
+      "started_utc": "2026-10-18T21:59:37.778061+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:37.933273+00:00",
+      "id": 106,
+      "started_utc": "2026-10-18T21:59:37.932614+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:38.088211+00:00",
+      "id": 107,
+      "started_utc": "2026-10-18T21:59:38.087652+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25347/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:38.371395+00:00",
+      "id": 108,
+      "started_utc": "2026-10-18T21:59:38.249736+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:18952/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:43.107895+00:00",
+      "id": 109,
+      "started_utc": "2026-10-18T21:59:43.107548+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:18952/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:43.264632+00:00",
+      "id": 110,
+      "started_utc": "2026-10-18T21:59:43.262156+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19796/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:47.951476+00:00",
+      "id": 111,
+      "started_utc": "2026-10-18T21:59:47.951124+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19796/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:48.107776+00:00",
+      "id": 112,
+      "started_utc": "2026-10-18T21:59:48.107197+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19796/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:48.262546+00:00",
+      "id": 113,
+      "started_utc": "2026-10-18T21:59:48.262052+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19796/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:48.422611+00:00",
+      "id": 114,
+      "started_utc": "2026-10-18T21:59:48.421652+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:19796/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:48.695108+00:00",
+      "id": 115,
+      "started_utc": "2026-10-18T21:59:48.582333+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:24024/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T21:59:53.335087+00:00",
+      "id": 116,
+      "started_utc": "2026-10-18T21:59:53.334491+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:24024/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T21:59:53.494540+00:00",
+      "id": 117,
+      "started_utc": "2026-10-18T21:59:53.492826+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14489/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:02.525366+00:00",
+      "id": 132,
+      "started_utc": "2026-10-18T22:00:02.524913+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14489/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:02.681154+00:00",
+      "id": 133,
+      "started_utc": "2026-10-18T22:00:02.680671+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14489/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:02.838218+00:00",
+      "id": 134,
+      "started_utc": "2026-10-18T22:00:02.837661+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14489/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:02.995915+00:00",
+      "id": 135,
+      "started_utc": "2026-10-18T22:00:02.995414+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14489/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:03.254994+00:00",
+      "id": 136,
+      "started_utc": "2026-10-18T22:00:03.154385+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:17617/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:07.804164+00:00",
+      "id": 137,
+      "started_utc": "2026-10-18T22:00:07.803684+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:17617/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:07.963258+00:00",
+      "id": 138,
+      "started_utc": "2026-10-18T22:00:07.961302+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:11670/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:12.754134+00:00",
+      "id": 139,
+      "started_utc": "2026-10-18T22:00:12.753845+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:11670/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:12.909385+00:00",
+      "id": 140,
+      "started_utc": "2026-10-18T22:00:12.908919+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:11670/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:13.068298+00:00",
+      "id": 141,
+      "started_utc": "2026-10-18T22:00:13.067601+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:11670/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:13.412413+00:00",
+      "id": 142,
+      "started_utc": "2026-10-18T22:00:13.224361+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14663/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:18.043011+00:00",
+      "id": 143,
+      "started_utc": "2026-10-18T22:00:18.042708+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:14663/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:18.199224+00:00",
+      "id": 144,
+      "started_utc": "2026-10-18T22:00:18.198111+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25786/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:25.869057+00:00",
+      "id": 153,
+      "started_utc": "2026-10-18T22:00:25.868608+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25786/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:26.024101+00:00",
+      "id": 154,
+      "started_utc": "2026-10-18T22:00:26.023527+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25786/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:26.183819+00:00",
+      "id": 155,
+      "started_utc": "2026-10-18T22:00:26.183390+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25786/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:26.339521+00:00",
+      "id": 156,
+      "started_utc": "2026-10-18T22:00:26.338952+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:25786/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:26.592856+00:00",
+      "id": 157,
+      "started_utc": "2026-10-18T22:00:26.496605+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:26750/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:31.145973+00:00",
+      "id": 158,
+      "started_utc": "2026-10-18T22:00:31.145573+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:26750/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:31.303720+00:00",
+      "id": 159,
+      "started_utc": "2026-10-18T22:00:31.302308+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27647/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:35.930134+00:00",
+      "id": 160,
+      "started_utc": "2026-10-18T22:00:35.929785+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27647/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:36.089767+00:00",
+      "id": 161,
+      "started_utc": "2026-10-18T22:00:36.089183+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27647/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:36.247903+00:00",
+      "id": 162,
+      "started_utc": "2026-10-18T22:00:36.247226+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:27647/ready",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:36.545388+00:00",
+      "id": 163,
+      "started_utc": "2026-10-18T22:00:36.408084+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15612/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 124,
+      "finished_utc": "2026-10-18T22:00:41.375474+00:00",
+      "id": 164,
+      "started_utc": "2026-10-18T22:00:41.374990+00:00"
+    },
+    {
+      "argv": [
+        "HTTP",
+        "GET",
+        "http://127.0.0.1:15612/v1.0/healthz/outbound",
+        "request-sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "exit_code": 0,
+      "finished_utc": "2026-10-18T22:00:41.533807+00:00",
+      "id": 165,
+      "started_utc": "2026-10-18T22:00:41.532665+00:00"
+    }
+  ],
+  "case": {
+    "assertions": {
+      "attempted": 66,
+      "failed": 0,
+      "passed": 66
+    },
+    "outcome": "effect",
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093/case.json",
+    "sha256": "1fd5f10080df26fed099e31973ef960b273f7cbef596875ed96b9a58e6c92b63"
+  },
+  "cleanup_assertions": {
+    "attempted": 7,
+    "failed": 0,
+    "passed": 7
+  },
+  "errors": [],
+  "executor_errors": [],
+  "finished_utc": "2026-10-18T22:01:02.098161+00:00",
+  "p1r_usable": false,
+  "qualified": false,
+  "scope": "bounded real canonical snapshot/GET control; no full matrix or acceptance",
+  "script_sha256": "085dcaa9e67e36408bd253df54ef2a1e3de0946ba35756776e2455f29fd2d51c",
+  "started_utc": "2026-10-18T21:56:49.816566+00:00"
+}

@@ -17,7 +17,7 @@ public sealed record SourcePublicationReconciliationProgress(SourcePublicationSc
         return OriginalCut is { IsComplete: true } original && MatchesCut(original) && current.IsComplete
             && current.Scope == original.Scope && current.AuthorityRevision == original.AuthorityRevision
             && current.Sources.Count == Sources.Count
-            && Sources.Zip(current.Sources).All(pair => pair.First.Identity == pair.Second.Identity && pair.First.Head <= pair.Second.Head);
+            && Sources.Zip(current.Sources).All(pair => pair.First.CanAdvanceUnder(pair.Second));
     }
 
     /// <summary>Checks structural exact-cut identity only; independent fresh proof verification remains mandatory.</summary>
@@ -40,7 +40,7 @@ public sealed record SourcePublicationReconciliationProgress(SourcePublicationSc
         foreach (var head in progress.Sources)
         {
             if (heads.Count >= 1000 || head is null || head.Identity is null || head.Identity.TenantId != progress.Scope.Tenant
-                || head.Identity.Domain != progress.Scope.Domain || head.Head is < 0 or > 10000
+                || head.Identity.Domain != progress.Scope.Domain || head.Head is < 0 or > 10000 || !head.HasConsistentNativeProof
                 || heads.Count > 0 && StringComparer.Ordinal.Compare(heads[^1].Identity.ActorId, head.Identity.ActorId) >= 0)
             { throw new InvalidOperationException("Malformed reconciliation source vector."); }
             heads.Add(head);

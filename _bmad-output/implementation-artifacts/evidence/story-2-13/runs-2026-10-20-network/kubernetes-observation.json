@@ -1,0 +1,708 @@
+{
+  "observedUtc": "2026-10-20T07:26:30.877321+00:00",
+  "context": "jpiquot@local",
+  "apiServer": "https://192.168.1.30:6443",
+  "access": "read-only-resource-inspection; no Secret resources read; no mutations",
+  "serverVersion": {
+    "major": "1",
+    "minor": "34",
+    "emulationMajor": "1",
+    "emulationMinor": "34",
+    "minCompatibilityMajor": "1",
+    "minCompatibilityMinor": "33",
+    "gitVersion": "v1.34.9",
+    "gitCommit": "ad7c7374b74c04d07ea041d367ecb1a526bdf758",
+    "gitTreeState": "clean",
+    "buildDate": "2026-06-11T17:37:10Z",
+    "goVersion": "go1.25.11",
+    "compiler": "gc",
+    "platform": "linux/amd64"
+  },
+  "workloads": [
+    {
+      "namespace": "dapr-system",
+      "kind": "Deployment",
+      "name": "dapr-operator",
+      "replicas": 3,
+      "readyReplicas": 3,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "dapr-operator",
+          "image": "ghcr.io/dapr/operator:1.18.1",
+          "envNames": [
+            "NAMESPACE"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "dapr-system",
+      "kind": "Deployment",
+      "name": "dapr-sentry",
+      "replicas": 3,
+      "readyReplicas": 3,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "dapr-sentry",
+          "image": "ghcr.io/dapr/sentry:1.18.1",
+          "envNames": [
+            "NAMESPACE"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "dapr-system",
+      "kind": "Deployment",
+      "name": "dapr-sidecar-injector",
+      "replicas": 3,
+      "readyReplicas": 3,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "dapr-sidecar-injector",
+          "image": "ghcr.io/dapr/injector:1.18.1",
+          "envNames": [
+            "DAPR_TRUST_ANCHORS_FILE",
+            "DAPR_CONTROL_PLANE_TRUST_DOMAIN",
+            "DAPR_SENTRY_ADDRESS",
+            "KUBE_CLUSTER_DOMAIN",
+            "SIDECAR_IMAGE",
+            "SIDECAR_IMAGE_PULL_POLICY",
+            "SIDECAR_RUN_AS_NON_ROOT",
+            "ENABLE_K8S_DOWNWARD_APIS",
+            "SIDECAR_DROP_ALL_CAPABILITIES",
+            "SIDECAR_READ_ONLY_ROOT_FILESYSTEM",
+            "NATIVE_SIDECAR_ENABLED",
+            "NAMESPACE",
+            "IGNORE_ENTRYPOINT_TOLERATIONS",
+            "ACTORS_ENABLED",
+            "ACTORS_SERVICE_NAME",
+            "ACTORS_SERVICE_ADDRESS"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "kind": "Deployment",
+      "name": "eventstore",
+      "replicas": 1,
+      "readyReplicas": 1,
+      "daprAnnotations": {
+        "dapr.io/app-id": "eventstore",
+        "dapr.io/app-port": "8080",
+        "dapr.io/config": "ext-secrets-1-eventstore",
+        "dapr.io/enabled": "true"
+      },
+      "containers": [
+        {
+          "name": "eventstore",
+          "image": "registry.hexalith.com/ext-secrets-1-eventstore@sha256:7cc365ff65351070e7156fef2ab858ff26a05943985b532b838b33ffc39878c1",
+          "envNames": [
+            "ASPNETCORE_ENVIRONMENT",
+            "ASPNETCORE_HTTP_PORTS",
+            "Authentication__JwtBearer__Authority",
+            "Authentication__JwtBearer__Issuer",
+            "Authentication__JwtBearer__Audience",
+            "Authentication__JwtBearer__AllowedAlgorithms__0",
+            "Authentication__JwtBearer__RequireHttpsMetadata",
+            "SSL_CERT_FILE",
+            "Authentication__WorkloadIssuer__Workload",
+            "Authentication__WorkloadIssuer__ClientId",
+            "Authentication__Workload__Audience",
+            "Authentication__Workload__AllowedCallers__0",
+            "Authentication__DaprInternal__AllowedCallers__0",
+            "EventStore__DomainService__AppId",
+            "Tenants__BootstrapGlobalAdminEnabled",
+            "Logging__LogLevel__Default",
+            "EventStore__OpenApi__Enabled",
+            "APP_API_TOKEN",
+            "DAPR_API_TOKEN",
+            "Authentication__WorkloadIssuer__ClientSecret",
+            "EventStore__CommandStatus__StateStoreName",
+            "EventStore__Projections__CheckpointStateStoreName",
+            "EventStore__Projections__ReadModelStateStoreName",
+            "EventStore__Publisher__PubSubName",
+            "EventStore__ProjectionChanges__PubSubName",
+            "EventStore__RateLimiting__ConfigurationStoreName"
+          ],
+          "publicProfileValues": {
+            "ASPNETCORE_ENVIRONMENT": "Production",
+            "Authentication__JwtBearer__Authority": "https://registry-idp.ext-secrets-1-isolated.svc.cluster.local:8443/realms/ext-secrets-1-registry",
+            "Authentication__JwtBearer__Issuer": "https://registry-idp.ext-secrets-1-isolated.svc.cluster.local:8443/realms/ext-secrets-1-registry",
+            "Authentication__JwtBearer__Audience": "hexalith-eventstore"
+          }
+        },
+        {
+          "name": "daprd",
+          "image": "ghcr.io/dapr/daprd:1.18.1",
+          "envNames": [
+            "NAMESPACE",
+            "DAPR_TRUST_ANCHORS",
+            "POD_NAME",
+            "DAPR_CONTROLPLANE_NAMESPACE",
+            "DAPR_CONTROLPLANE_TRUST_DOMAIN",
+            "DAPR_API_TOKEN",
+            "APP_API_TOKEN"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "kind": "Deployment",
+      "name": "inventory",
+      "replicas": 1,
+      "readyReplicas": 1,
+      "daprAnnotations": {
+        "dapr.io/app-id": "ext-secrets-1-inventory",
+        "dapr.io/app-port": "8080",
+        "dapr.io/config": "ext-secrets-1-inventory",
+        "dapr.io/enabled": "true"
+      },
+      "containers": [
+        {
+          "name": "inventory",
+          "image": "registry.hexalith.com/ext-secrets-1-inventory@sha256:06e869c7dd6cf51ea63d5aa48f89c57b2c36021da02b2dc313df572b7640a856",
+          "envNames": [
+            "APP_API_TOKEN",
+            "DAPR_API_TOKEN",
+            "ASPNETCORE_ENVIRONMENT",
+            "ASPNETCORE_HTTP_PORTS",
+            "Logging__LogLevel__Default",
+            "Inventory__RuntimeReferenceFile",
+            "Inventory__PermittedReferencesFile",
+            "Inventory__ProviderCaFile",
+            "Inventory__RegistryCaFile",
+            "Inventory__ProviderCredentialFile",
+            "Inventory__RegistryCredentialFile",
+            "Inventory__RegistryTokenEndpoint",
+            "SSL_CERT_FILE"
+          ],
+          "publicProfileValues": {
+            "ASPNETCORE_ENVIRONMENT": "Production"
+          }
+        },
+        {
+          "name": "daprd",
+          "image": "ghcr.io/dapr/daprd:1.18.1",
+          "envNames": [
+            "NAMESPACE",
+            "DAPR_TRUST_ANCHORS",
+            "POD_NAME",
+            "DAPR_CONTROLPLANE_NAMESPACE",
+            "DAPR_CONTROLPLANE_TRUST_DOMAIN",
+            "DAPR_API_TOKEN",
+            "APP_API_TOKEN"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "kind": "Deployment",
+      "name": "registry-idp",
+      "replicas": 1,
+      "readyReplicas": 1,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "registry-idp",
+          "image": "quay.io/keycloak/keycloak@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c",
+          "envNames": [
+            "KC_DB_USERNAME",
+            "KC_DB_PASSWORD",
+            "KC_BOOTSTRAP_ADMIN_CLIENT_ID",
+            "KC_BOOTSTRAP_ADMIN_CLIENT_SECRET",
+            "KC_DB",
+            "KC_DB_URL",
+            "KC_HOSTNAME",
+            "KC_HOSTNAME_STRICT",
+            "KC_HTTP_ENABLED",
+            "KC_HTTPS_CERTIFICATE_FILE",
+            "KC_HTTPS_CERTIFICATE_KEY_FILE",
+            "KC_HEALTH_ENABLED",
+            "KC_METRICS_ENABLED",
+            "KC_LOG_LEVEL",
+            "KC_CACHE",
+            "JAVA_OPTS_KC_HEAP"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "kind": "Deployment",
+      "name": "tenants",
+      "replicas": 1,
+      "readyReplicas": 1,
+      "daprAnnotations": {
+        "dapr.io/app-id": "tenants",
+        "dapr.io/app-port": "8080",
+        "dapr.io/config": "ext-secrets-1-tenants",
+        "dapr.io/enabled": "true"
+      },
+      "containers": [
+        {
+          "name": "tenants",
+          "image": "registry.hexalith.com/ext-secrets-1-tenants@sha256:d2e67a06bacf9f88e30270cb5f47a8de8bc6b568d3bcf1b5831eb908cdf8fd0b",
+          "envNames": [
+            "ASPNETCORE_ENVIRONMENT",
+            "ASPNETCORE_HTTP_PORTS",
+            "Authentication__JwtBearer__Authority",
+            "Authentication__JwtBearer__Issuer",
+            "Authentication__JwtBearer__Audience",
+            "Authentication__JwtBearer__AllowedAlgorithms__0",
+            "Authentication__JwtBearer__RequireHttpsMetadata",
+            "SSL_CERT_FILE",
+            "Authentication__WorkloadIssuer__Workload",
+            "Authentication__WorkloadIssuer__ClientId",
+            "Authentication__Workload__Audience",
+            "Authentication__Workload__AllowedCallers__0",
+            "Authentication__DaprInternal__AllowedCallers__0",
+            "EventStore__DomainService__AppId",
+            "Tenants__BootstrapGlobalAdminEnabled",
+            "Logging__LogLevel__Default",
+            "EventStore__OpenApi__Enabled",
+            "APP_API_TOKEN",
+            "DAPR_API_TOKEN",
+            "Authentication__WorkloadIssuer__ClientSecret"
+          ],
+          "publicProfileValues": {
+            "ASPNETCORE_ENVIRONMENT": "Production",
+            "Authentication__JwtBearer__Authority": "https://registry-idp.ext-secrets-1-isolated.svc.cluster.local:8443/realms/ext-secrets-1-registry",
+            "Authentication__JwtBearer__Issuer": "https://registry-idp.ext-secrets-1-isolated.svc.cluster.local:8443/realms/ext-secrets-1-registry",
+            "Authentication__JwtBearer__Audience": "hexalith-eventstore"
+          }
+        },
+        {
+          "name": "daprd",
+          "image": "ghcr.io/dapr/daprd:1.18.1",
+          "envNames": [
+            "NAMESPACE",
+            "DAPR_TRUST_ANCHORS",
+            "POD_NAME",
+            "DAPR_CONTROLPLANE_NAMESPACE",
+            "DAPR_CONTROLPLANE_TRUST_DOMAIN",
+            "DAPR_API_TOKEN",
+            "APP_API_TOKEN"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "keycloak",
+      "kind": "Deployment",
+      "name": "keycloak",
+      "replicas": 2,
+      "readyReplicas": 2,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "keycloak",
+          "image": "quay.io/keycloak/keycloak@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c",
+          "envNames": [
+            "KC_HOSTNAME",
+            "KC_PROXY_HEADERS",
+            "KC_PROXY_TRUSTED_ADDRESSES",
+            "KC_DB",
+            "KC_HEALTH_ENABLED",
+            "KC_METRICS_ENABLED",
+            "KC_DB_URL",
+            "KC_DB_USERNAME",
+            "KC_DB_PASSWORD",
+            "KC_DB_POOL_INITIAL_SIZE",
+            "KC_DB_POOL_MIN_SIZE",
+            "KC_DB_POOL_MAX_SIZE",
+            "KC_CACHE",
+            "KC_CACHE_STACK",
+            "KC_SHUTDOWN_DELAY",
+            "KC_SHUTDOWN_TIMEOUT",
+            "KC_HOSTNAME_ADMIN"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "keycloak",
+      "kind": "Deployment",
+      "name": "postgres",
+      "replicas": 0,
+      "readyReplicas": 0,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "postgres",
+          "image": "docker.io/library/postgres@sha256:86d2fe3ed4d43250d2865b551fca46478361c4cd7e359939ad6e8663be274f3a",
+          "envNames": [],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "dapr-system",
+      "kind": "StatefulSet",
+      "name": "dapr-placement-server",
+      "replicas": 3,
+      "readyReplicas": 3,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "dapr-placement-server",
+          "image": "ghcr.io/dapr/placement:1.18.1",
+          "envNames": [
+            "PLACEMENT_ID",
+            "NAMESPACE"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "dapr-system",
+      "kind": "StatefulSet",
+      "name": "dapr-scheduler-server",
+      "replicas": 3,
+      "readyReplicas": 3,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "dapr-scheduler-server",
+          "image": "ghcr.io/dapr/scheduler:1.18.1",
+          "envNames": [
+            "SCHEDULER_ID",
+            "NAMESPACE",
+            "POD_IP"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "kind": "StatefulSet",
+      "name": "registry-idp-db",
+      "replicas": 1,
+      "readyReplicas": 1,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "registry-idp-db",
+          "image": "docker.io/library/postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722",
+          "envNames": [
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_DB",
+            "PGDATA"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "kind": "StatefulSet",
+      "name": "registry-state",
+      "replicas": 1,
+      "readyReplicas": 1,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "registry-state",
+          "image": "redis/redis-stack-server:7.4.0-v8@sha256:798ab84d9f266936b034ab11c4d04a2b8e4b441884c5aa7d17ac951eefdf742a",
+          "envNames": [],
+          "publicProfileValues": {}
+        }
+      ]
+    },
+    {
+      "namespace": "openbao",
+      "kind": "StatefulSet",
+      "name": "hexalith-keys",
+      "replicas": 3,
+      "readyReplicas": 3,
+      "daprAnnotations": {},
+      "containers": [
+        {
+          "name": "openbao",
+          "image": "quay.io/openbao/openbao:2.6.2@sha256:11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641",
+          "envNames": [
+            "HOST_IP",
+            "POD_IP",
+            "BAO_K8S_POD_NAME",
+            "BAO_K8S_NAMESPACE",
+            "BAO_ADDR",
+            "BAO_API_ADDR",
+            "SKIP_CHOWN",
+            "SKIP_SETCAP",
+            "HOSTNAME",
+            "BAO_CLUSTER_ADDR",
+            "BAO_RAFT_NODE_ID",
+            "HOME",
+            "BAO_LOG_LEVEL",
+            "BAO_LOG_FORMAT",
+            "BAO_CACERT"
+          ],
+          "publicProfileValues": {}
+        }
+      ]
+    }
+  ],
+  "daprComponents": [
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "configstore",
+      "type": "configuration.redis",
+      "version": "v1",
+      "scopes": [
+        "tenants"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisUsername",
+        "redisPassword"
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "eventstore-configstore",
+      "type": "configuration.redis",
+      "version": "v1",
+      "scopes": [
+        "eventstore"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisUsername",
+        "redisPassword"
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "eventstore-pubsub",
+      "type": "pubsub.redis",
+      "version": "v1",
+      "scopes": [
+        "eventstore"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisUsername",
+        "redisPassword"
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "eventstore-statestore",
+      "type": "state.redis",
+      "version": "v1",
+      "scopes": [
+        "eventstore"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisUsername",
+        "redisPassword",
+        "actorStateStore"
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "ext-secrets-1-hmac",
+      "type": "secretstores.hashicorp.vault",
+      "version": "v1",
+      "scopes": [
+        "ext-secrets-1-custody"
+      ],
+      "metadataNames": [
+        "vaultAddr",
+        "enginePath",
+        "vaultKVUsePrefix",
+        "vaultValueType",
+        "vaultTokenMountPath",
+        "caCert",
+        "tlsServerName",
+        "skipVerify"
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "pubsub",
+      "type": "pubsub.redis",
+      "version": "v1",
+      "scopes": [
+        "tenants"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisUsername",
+        "redisPassword"
+      ]
+    },
+    {
+      "namespace": "ext-secrets-1-isolated",
+      "name": "statestore",
+      "type": "state.redis",
+      "version": "v1",
+      "scopes": [
+        "tenants"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisUsername",
+        "redisPassword",
+        "actorStateStore"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "access-telemetry-config",
+      "type": "configuration.redis",
+      "version": "v1",
+      "scopes": [
+        "memories",
+        "memories-access-telemetry"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisPassword"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "access-telemetry-secrets",
+      "type": "secretstores.hashicorp.vault",
+      "version": "v1",
+      "scopes": [
+        "memories",
+        "memories-access-telemetry",
+        "memories-access-telemetry-clock"
+      ],
+      "metadataNames": [
+        "vaultAddr",
+        "caPem",
+        "skipVerify",
+        "tlsServerName",
+        "vaultToken",
+        "vaultKVPrefix",
+        "vaultKVUsePrefix",
+        "enginePath",
+        "vaultValueType"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "access-telemetry-store",
+      "type": "state.postgresql",
+      "version": "v2",
+      "scopes": [
+        "memories-access-telemetry"
+      ],
+      "metadataNames": [
+        "connectionString",
+        "sslRootCert",
+        "tablePrefix",
+        "metadataTableName",
+        "timeout",
+        "cleanupInterval",
+        "maxConns",
+        "connectionMaxIdleTime",
+        "actorStateStore"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "llm-openai",
+      "type": "conversation.openai",
+      "version": "v1",
+      "scopes": [
+        "memories"
+      ],
+      "metadataNames": [
+        "key",
+        "model",
+        "responseCacheTTL"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "pubsub",
+      "type": "pubsub.redis",
+      "version": "v1",
+      "scopes": [
+        "eventstore",
+        "memories"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisPassword",
+        "allowedTopics",
+        "protectedTopics",
+        "publishingScopes",
+        "subscriptionScopes"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "secretstore",
+      "type": "secretstores.hashicorp.vault",
+      "version": "v1",
+      "scopes": [
+        "eventstore",
+        "memories"
+      ],
+      "metadataNames": [
+        "vaultAddr",
+        "caPem",
+        "skipVerify",
+        "tlsServerName",
+        "vaultToken",
+        "vaultKVPrefix",
+        "vaultKVUsePrefix",
+        "enginePath",
+        "vaultValueType"
+      ]
+    },
+    {
+      "namespace": "hexalith-memories",
+      "name": "statestore",
+      "type": "state.redis",
+      "version": "v1",
+      "scopes": [
+        "memories"
+      ],
+      "metadataNames": [
+        "redisHost",
+        "redisPassword",
+        "actorStateStore"
+      ]
+    }
+  ],
+  "identityIngressHosts": [
+    {
+      "namespace": "keycloak",
+      "name": "keycloak-ingress",
+      "hosts": [
+        "auth.tache.ai"
+      ]
+    },
+    {
+      "namespace": "keycloak",
+      "name": "keycloak-reset-rate-limit",
+      "hosts": [
+        "auth.tache.ai"
+      ]
+    }
+  ]
+}

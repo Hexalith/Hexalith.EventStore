@@ -1,7 +1,5 @@
-using System.Collections.ObjectModel;
-using System.Text;
-
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 
 using Microsoft.Extensions.Options;
 
@@ -13,9 +11,6 @@ namespace Hexalith.EventStore.SignalRHub;
 public static class SignalRRuntimeProofEndpoints {
     private const string ConfigurationKey = "EventStore:SignalR:RuntimeProof:Enabled";
     private const int MaxGroupScopeLength = 64;
-
-    private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
-        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
     /// <summary>
     /// Maps test-only SignalR runtime proof endpoints when explicitly enabled in Development.
@@ -149,79 +144,6 @@ public static class SignalRRuntimeProofEndpoints {
 
     private static IReadOnlyDictionary<string, string> BoundMetadata(
         IReadOnlyDictionary<string, string>? metadata,
-        SignalROptions options) {
-        if (metadata is null || metadata.Count == 0) {
-            return EmptyMetadata;
-        }
-
-        var bounded = new Dictionary<string, string>(StringComparer.Ordinal);
-        int totalBytes = 0;
-
-        foreach (KeyValuePair<string, string> entry in metadata.OrderBy(e => e.Key, StringComparer.Ordinal)) {
-            if (bounded.Count >= options.MaxDetailMetadataEntries) {
-                break;
-            }
-
-            int entryBytes = Encoding.UTF8.GetByteCount(entry.Key) + Encoding.UTF8.GetByteCount(entry.Value);
-            if (totalBytes + entryBytes > options.MaxDetailMetadataBytes) {
-                break;
-            }
-
-            totalBytes += entryBytes;
-            bounded[entry.Key] = entry.Value;
-        }
-
-        return new ReadOnlyDictionary<string, string>(bounded);
-    }
+        SignalROptions options)
+        => ProjectionChangedMetadataLimits.Bound(metadata, options.MaxDetailMetadataEntries, options.MaxDetailMetadataBytes);
 }
-
-/// <summary>
-/// Runtime identity emitted by Development-only SignalR proof endpoints.
-/// </summary>
-/// <param name="InstanceName">Configured proof instance name.</param>
-/// <param name="ProcessId">Operating system process id.</param>
-/// <param name="MachineName">Machine name.</param>
-/// <param name="EnvironmentName">ASP.NET Core environment name.</param>
-/// <param name="SignalREnabled">Whether SignalR is enabled in runtime configuration.</param>
-/// <param name="BackplaneRedisConnectionString">Effective Redis backplane connection string.</param>
-/// <param name="Timestamp">UTC timestamp when the identity was captured.</param>
-public sealed record SignalRRuntimeProofIdentity(
-    string InstanceName,
-    int ProcessId,
-    string MachineName,
-    string EnvironmentName,
-    bool SignalREnabled,
-    string? BackplaneRedisConnectionString,
-    DateTimeOffset Timestamp);
-
-/// <summary>
-/// Broadcast request accepted only by Development-only SignalR proof endpoints.
-/// </summary>
-/// <param name="ProjectionType">Projection type to broadcast.</param>
-/// <param name="TenantId">Tenant id to broadcast.</param>
-/// <param name="GroupScope">Optional sub-tenant SignalR group scope.</param>
-/// <param name="Metadata">Optional opaque metadata for a detail broadcast.</param>
-public sealed record SignalRRuntimeProofBroadcastRequest(
-    string ProjectionType,
-    string TenantId,
-    string? GroupScope = null,
-    IReadOnlyDictionary<string, string>? Metadata = null);
-
-/// <summary>
-/// Broadcast result emitted by Development-only SignalR proof endpoints.
-/// </summary>
-/// <param name="ProjectionType">Projection type broadcast.</param>
-/// <param name="TenantId">Tenant id broadcast.</param>
-/// <param name="GroupScope">Optional sub-tenant SignalR group scope.</param>
-/// <param name="GroupName">SignalR group name.</param>
-/// <param name="MetadataCount">Number of metadata entries supplied to the broadcast.</param>
-/// <param name="ProcessId">Origin process id.</param>
-/// <param name="Timestamp">UTC timestamp after the broadcast call completed.</param>
-public sealed record SignalRRuntimeProofBroadcastResult(
-    string ProjectionType,
-    string TenantId,
-    string? GroupScope,
-    string GroupName,
-    int MetadataCount,
-    int ProcessId,
-    DateTimeOffset Timestamp);

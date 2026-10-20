@@ -1,0 +1,49 @@
+{
+  "actorRuntime": {
+    "hostReady": true,
+    "placement": "placement: connected",
+    "runtimeStatus": "RUNNING"
+  },
+  "appConnectionProperties": {
+    "channelAddress": "127.0.0.1",
+    "port": 45359,
+    "protocol": "http"
+  },
+  "components": [
+    {
+      "capabilities": [
+        "MULTIPLE_KEY_VALUES_PER_SECRET"
+      ],
+      "name": "openbao",
+      "type": "secretstores.hashicorp.vault",
+      "version": "v1"
+    },
+    {
+      "capabilities": [
+        "BULK_PUBSUB"
+      ],
+      "name": "pubsub",
+      "type": "pubsub.kafka",
+      "version": "v1"
+    }
+  ],
+  "enabledFeatures": [
+    "WorkflowsRemoteActivityReminder",
+    "HotReload"
+  ],
+  "extended": {
+    "daprRuntimeVersion": "1.18.7"
+  },
+  "id": "qualification-publisher",
+  "resiliencies": [
+    {
+      "name": "qualification"
+    }
+  ],
+  "runtimeVersion": "1.18.7",
+  "scheduler": {
+    "connected_addresses": [
+      "172.21.201.86:53001"
+    ]
+  }
+}

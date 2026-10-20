@@ -1,0 +1,14 @@
+.........................................F.
+======================================================================
+FAIL: testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff (test_p1r_qualification.TaggedPhysicalSourceTests.testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff) (location='worktree')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_qualification.py", line 831, in testStrictObservationRefusesExternalTransformsBeforeInvokingGitDiff
+    self.assertFalse(marker.exists(), "refusal must precede filtered diff execution")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : refusal must precede filtered diff execution
+
+----------------------------------------------------------------------
+Ran 43 tests in 77.722s
+
+FAILED (failures=1)

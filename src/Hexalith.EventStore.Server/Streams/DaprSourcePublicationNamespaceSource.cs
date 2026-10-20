@@ -4,6 +4,7 @@ using Hexalith.EventStore.Client.Streams;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Events;
 
 namespace Hexalith.EventStore.Server.Streams;
 
@@ -29,20 +30,29 @@ public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory prox
                 var approved = await deadline.ReadAsync(token => authority.AuthorizeAsync(installed, token)).ConfigureAwait(false);
                 if (!Current(approved)) { return null; }
                 var heads = new List<SourcePublicationHead>();
+                var inspections = new Dictionary<AggregateIdentity, SourceProofInspection>();
                 foreach (AggregateIdentity identity in installed.Sources)
                 {
                     deadline.ThrowIfCancellationRequested();
                     var source = proxies.CreateActorProxy<IAggregateActor>(new(identity.ActorId), "AggregateActor");
-                    AggregateStreamMetadata metadata = await deadline.ReadAsync(_ => source.GetStreamMetadataAsync()).ConfigureAwait(false);
-                    if (metadata.CurrentSequence is < 0 or > 10000 || !metadata.Exists && metadata.CurrentSequence != 0) { return null; }
-                    heads.Add(new(identity, metadata.CurrentSequence));
+                    SourceProofInspection inspection = await deadline.ReadAsync(_ => source.InspectSourceProofAsync()).ConfigureAwait(false);
+                    if (!Valid(identity, inspection)) { return null; }
+                    inspections.Add(identity, inspection);
+                    SourceProof proof = inspection.Proof!;
+                    heads.Add(new(identity, inspection.CurrentSequence)
+                    {
+                        NativeProof = new(proof.CodecVersion, proof.TenantId, proof.Domain, proof.AggregateId,
+                            proof.SourceIncarnation, proof.HeadSequence, proof.HeadMessageId, proof.CumulativeDigest,
+                            proof.RetainedFloor, proof.Erased),
+                    });
                 }
-                // Reconfirm each monotonic committed head; reservations/global maxima never enter this vector.
+                // Compare the full native incarnation/prefix/erasure proof, not just a sequence that
+                // could belong to a replaced source. This probe does not invoke stream recovery.
                 foreach (SourcePublicationHead head in heads)
                 {
                     var source = proxies.CreateActorProxy<IAggregateActor>(new(head.Identity.ActorId), "AggregateActor");
-                    AggregateStreamMetadata current = await deadline.ReadAsync(_ => source.GetStreamMetadataAsync()).ConfigureAwait(false);
-                    if (current.CurrentSequence != head.Head || !current.Exists && current.CurrentSequence != 0) { return null; }
+                    SourceProofInspection current = await deadline.ReadAsync(_ => source.InspectSourceProofAsync()).ConfigureAwait(false);
+                    if (!Valid(head.Identity, current) || current != inspections[head.Identity]) { return null; }
                 }
                 var final = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
                 if (final is null) { return null; }
@@ -61,6 +71,13 @@ public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory prox
         }
         catch (Exception) { cancellationToken.ThrowIfCancellationRequested(); throw; }
     }
+    private static bool Valid(AggregateIdentity identity, SourceProofInspection inspection)
+        => inspection is { Status: SourceProofInspectionStatus.Available, Exists: true, Erased: false,
+                CurrentSequence: >= 0 and <= 10000, Proof: { Erased: false, RetainedFloor: 1 } proof }
+            && proof.TenantId == identity.TenantId && proof.Domain == identity.Domain
+            && proof.AggregateId == identity.AggregateId && proof.HeadSequence == inspection.CurrentSequence
+            && SourceProofCodec.IsValid(proof, identity, inspection.CurrentSequence, 1);
+
     private bool Current(SourcePublicationNamespaceAuthorization? result) => result is not null
         && !string.IsNullOrWhiteSpace(result.AuthorityRevision) && result.AuthorityRevision.Length <= 200 && result.ValidUntil > clock.GetUtcNow();
 }

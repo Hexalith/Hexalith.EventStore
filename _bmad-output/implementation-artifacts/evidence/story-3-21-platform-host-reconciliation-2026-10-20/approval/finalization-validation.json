@@ -1,0 +1,225 @@
+{
+  "recordedUtc": "2026-10-20T12:06:05.641228+00:00",
+  "planningWorkflow": "complete-approved",
+  "approvalRecordSha256": "92649311b7f32d6b03dac7c86ebc6c2e5b0b5bb664ed5c4bcd5a677b75bff86b",
+  "approvedAsReviewed": {
+    "_bmad-output/planning-artifacts/sprint-change-proposal-2026-10-20.md": {
+      "sha256": "ce96d402a1e69635c8590e9a1cd2700c64ff907986343b2be75998303ddd2cd0",
+      "retainedCopy": "approval/as-approved-sprint-change-proposal-2026-10-20.md"
+    },
+    "_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md": {
+      "sha256": "2435832e51541e64d1e3155de5ead2119448fe82480883f52411706aac1622b2",
+      "retainedCopy": "approval/as-approved-spec-3-21-local-broker-failure-diagnosis.md"
+    },
+    "_bmad-output/planning-artifacts/next-bmad-build-story-3-21.md": {
+      "sha256": "fe124667e22d7ae6d2cf41b98d0feee3f6692d07cd74f744e023e3f03babbe21",
+      "retainedCopy": "approval/as-approved-next-bmad-build-story-3-21.md"
+    }
+  },
+  "amendedPlanning": {
+    "_bmad-output/implementation-artifacts/epic-3-context.md": {
+      "before": "bc9f65baa6d1cd1cfeb21500142f0f91c54cb21db9cda16213409636228bca3e",
+      "after": "e1c8cdea096eb2ebfac0f19d1f6d43dbef9fe81f297ffedb5e912da890cbfb6a"
+    },
+    "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md": {
+      "before": "27fb35e7cd8dcf66b00d75f9f50ae6938e511a312065463d0e4daf7a9ad6f92c",
+      "after": "227d2744bb53ccec9fe8df00bbb194c82572c68109e1daaa712e281a637631bb"
+    },
+    "_bmad-output/planning-artifacts/architecture.md": {
+      "before": "a4a970a6b0314c1112e15d19bb143c5c626206e48f46b9abd0145f052e90eff4",
+      "after": "7ad1e596089d92334ff7b512bfe52cb485319d87698544c7f1be3911177b9980"
+    },
+    "_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/.memlog.md": {
+      "before": "38cfcee7aa9f550e49d9910378955446713c5de075e190eb3803835daa779994",
+      "after": "119c4d02ab971752e2e1f929b2aca04815e45d124644d11c1c0da4352315d031"
+    },
+    "_bmad-output/planning-artifacts/epics.md": {
+      "before": "c9e08b90310a9f45eb98560f66b399abfb0d48522fe7df9530c4a98f1ad1bf9a",
+      "after": "87c047e0a81866394d06f1c33476a54e1521c622f47d28dceb67bdd319f22468"
+    },
+    "_bmad-output/planning-artifacts/prd.md": {
+      "before": "fefa6f69b62c30ba0fb14565b32c9d12f1e7fcc5d99ac9e390f1b0b9a6ec6e82",
+      "after": "d0440bf973e4accd1fea80bbf0ef22ac392338ca29b39ada0cbe7708f4fa0efb"
+    }
+  },
+  "finalizedHandoff": {
+    "_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md": "6840394f54ab68acfed217604f975b2672b5859ed9837ab65b515f33bdc99add",
+    "_bmad-output/planning-artifacts/next-bmad-build-story-3-21.md": "1a18b4bc961ecafca7a064f43cbc52e08585fec9b772796331fc10f3c28b7a10",
+    "_bmad-output/planning-artifacts/sprint-change-proposal-2026-10-20.md": "52d1ce6d7135f714f6446b1da33ee08130b32876a8308e8ace43c8be9dd44768"
+  },
+  "esDiagFrozenBlockUnchanged": true,
+  "checks": [
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/implementation-artifacts/epic-3-context.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/architecture.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/architecture/architecture-eventstore-2026-07-05/.memlog.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/epics.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/next-bmad-build-story-3-21.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/prd.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--no-index",
+        "--check",
+        "/dev/null",
+        "_bmad-output/planning-artifacts/sprint-change-proposal-2026-10-20.md"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "introducedLocalLinks": {
+    "status": "PASS",
+    "missing": []
+  },
+  "requirementsTextUnchanged": true,
+  "planningInputDigestsUnchanged": true,
+  "protectedPreservation": {
+    "initialFileCount": 3550,
+    "approvedAmendmentsWithinInitialSet": [
+      "_bmad-output/implementation-artifacts/epic-3-context.md",
+      "_bmad-output/implementation-artifacts/spec-3-21-production-dapr-runtime-pin-and-durable-broker-qualification.md",
+      "_bmad-output/planning-artifacts/architecture.md",
+      "_bmad-output/planning-artifacts/epics.md",
+      "_bmad-output/planning-artifacts/prd.md"
+    ],
+    "unchangedCount": 3545,
+    "unexpectedChanges": []
+  },
+  "ad26RatificationSubject": {
+    "before": "efd33e1ee81d2b988ae890400a2c3f6bb09a4a36ab884c812958fbc57a8b0a0e",
+    "after": "2ed96f02278d2562a6777a4f33e76cd1bb7eae46fac1d7a072094f6eaa298d90",
+    "freshOwnerRecordsRequired": true,
+    "ratificationIssued": false
+  },
+  "parentStoryStatus": "in-progress",
+  "sprintStatusChanged": false,
+  "readiness": "blocked/reject",
+  "brokerSelected": null,
+  "productionChanged": false,
+  "sealedWorkflowsChanged": false,
+  "platformOrBuildsChanged": false,
+  "runtimeCodeChanged": false,
+  "runtimeTestsRun": false,
+  "currentSubjectCorrectiveAuthorizationValidated": false,
+  "handoff": "PO/DEV coordination; ES-DIAG starts only after valid current-subject Story 9.1 preflight; later Platform/Builds work remains owner-routed."
+}

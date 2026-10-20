@@ -1,0 +1,23 @@
+[
+  {
+    "argv": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tools/tests",
+      "-p",
+      "test_p1r_snapshot_registration.py"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore",
+    "environment_overrides": {
+      "TMPDIR": "/dev/shm/p1r-31251-review-yu44qi4u",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "started_utc": "2026-10-18T15:31:58.659086+00:00",
+    "finished_utc": "2026-10-18T15:32:51.738331+00:00",
+    "exit_code": 0,
+    "output": "test_p1r_snapshot_registration.log"
+  }
+]

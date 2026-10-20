@@ -1,0 +1,23 @@
+{
+  "name": "qualification",
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_qualification.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_utc": "2026-10-19T05:23:54.966602+00:00",
+  "finished_utc": "2026-10-19T05:26:37.216918+00:00",
+  "exit_code": 0,
+  "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-d2f68a3110414d1a95eaeb0dd345fcfe/qualification.log",
+  "log_sha256": "1009ce2b5cf4273fc14237d772d02ab07bbab77470485b4e5b43f75eaa086eaa",
+  "tests": 54,
+  "ok": true,
+  "skips": false,
+  "source_unchanged": true
+}

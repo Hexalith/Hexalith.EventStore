@@ -1,0 +1,1173 @@
+.....EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.......
+======================================================================
+ERROR: testCoordinatedMalformedCanonicalEngineSourcesAreRefused (test_p1r_isolation_hardening.LifecycleTests.testCoordinatedMalformedCanonicalEngineSourcesAreRefused) (source='/engine/workspace.sock')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 477, in _run
+    qualification.finalize_isolation_receipts(Path(command[command.index("--out")+1]),self.output,selection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1341, in finalize_isolation_receipts
+    write_json(path,receipt)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 798, in write_bytes
+    return f.write(view)
+           ~~~~~~~^^^^^^
+OSError: [Errno 28] No space left on device
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 352, in testCoordinatedMalformedCanonicalEngineSourcesAreRefused
+    witness,code,_,receipt,context = self.fixture(mapped_bind=True)
+                                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 35, in fixture
+    code,worker,retained = run_controller(root,receipt,context,**options)
+                           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/p1r_isolation_fixture.py", line 176, in run_controller
+    code = worker._run(command)
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 481, in _run
+    self.save()
+    ~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 329, in save
+    write_json(self.output / "isolation.json", self.result)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 52, in write_json
+    preparation.write_json(Path(path), value)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testCoordinatedMalformedCanonicalEngineSourcesAreRefused (test_p1r_isolation_hardening.LifecycleTests.testCoordinatedMalformedCanonicalEngineSourcesAreRefused) (source='/engine/workspace.socket')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 352, in testCoordinatedMalformedCanonicalEngineSourcesAreRefused
+    witness,code,_,receipt,context = self.fixture(mapped_bind=True)
+                                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpyrbxorz7'
+
+======================================================================
+ERROR: testCoordinatedMalformedCanonicalEngineSourcesAreRefused (test_p1r_isolation_hardening.LifecycleTests.testCoordinatedMalformedCanonicalEngineSourcesAreRefused) (source='relative/workspace')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 352, in testCoordinatedMalformedCanonicalEngineSourcesAreRefused
+    witness,code,_,receipt,context = self.fixture(mapped_bind=True)
+                                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpd6y16i7q'
+
+======================================================================
+ERROR: testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected (test_p1r_isolation_hardening.LifecycleTests.testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected) (label='invalid-namespace')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 247, in testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 35, in fixture
+    code,worker,retained = run_controller(root,receipt,context,**options)
+                           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/p1r_isolation_fixture.py", line 176, in run_controller
+    code = worker._run(command)
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 470, in _run
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 616, in cleanup
+    self.save()
+    ~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 329, in save
+    write_json(self.output / "isolation.json", self.result)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 52, in write_json
+    preparation.write_json(Path(path), value)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected (test_p1r_isolation_hardening.LifecycleTests.testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected) (label='invalid-daemon-namespace')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 247, in testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpg80wbmog'
+
+======================================================================
+ERROR: testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected (test_p1r_isolation_hardening.LifecycleTests.testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected) (label='missing-glibc')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 247, in testCoordinatedToolAndNamespaceProofSubstitutionsAreRejected
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpy9f1lvh2'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='daemon', key='Mounts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 35, in fixture
+    code,worker,retained = run_controller(root,receipt,context,**options)
+                           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/p1r_isolation_fixture.py", line 176, in run_controller
+    code = worker._run(command)
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 470, in _run
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 616, in cleanup
+    self.save()
+    ~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 329, in save
+    write_json(self.output / "isolation.json", self.result)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 52, in write_json
+    preparation.write_json(Path(path), value)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='python-tools', key='NetworkMode')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp_mc8koaf'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='python-tools', key='PidMode')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmph5mas_dw'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='python-tools', key='Privileged')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp9zgh4du0'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='python-tools', key='Ports')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp8qgiitzb'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='python-tools', key='Mounts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpj2y9j4wu'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='sdk', key='NetworkMode')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpl92l9pww'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='sdk', key='PidMode')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp20wok96s'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='sdk', key='Privileged')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmphvv5iylp'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='sdk', key='Ports')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpngzi75tx'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings) (role='sdk', key='Mounts')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 209, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp7xtmzm_s'
+
+======================================================================
+ERROR: testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings (test_p1r_isolation_hardening.LifecycleTests.testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 221, in testEveryObservedRoleMustAgreeWithSafeCreationAndStaticSdkSettings
+    witness,_,_,receipt,context = self.fixture()
+                                  ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpk2t8yy3y'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='image-id')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 35, in fixture
+    code,worker,retained = run_controller(root,receipt,context,**options)
+                           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/p1r_isolation_fixture.py", line 156, in run_controller
+    isolation.write_json(path,receipt)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 52, in write_json
+    preparation.write_json(Path(path), value)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='missing-python-tools')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 33, in fixture
+    receipt,context = witness.import_fixture(scope='operational')
+                      ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 195, in import_fixture
+    row,evidence,binding,sources = self.fixture()
+                                   ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 479, in fixture
+    executor.write_json(root/'execution.json',{'invocation':invocation,'owned_containers':{database:owned},
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        'executor_source_sha256':executor.digest((root/'executor-source.json').read_bytes())})
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_executor.py", line 57, in write_json
+    _write_json(Path(path), value)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='create-options')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpxptavv_w'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='copy-chain')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp_cpb5yvw'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='missing-launch')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpaeeohvl1'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='launch-options')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpz0uhbz9v'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='altered-arguments')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp3p5plz94'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='selected-hash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpeu2tz_0e'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='selected-path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpgsfh8ze7'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='unrelated-mutation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmps3t0fnvo'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='duplicate-command-id')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmppxp525u0'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='boolean-command-id')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpxehfhhg2'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='boolean-cleanup-id')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp98d9jks4'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='duplicate-command')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpk2c1ihgl'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='duplicate-cleanup-absence')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpvpppdht2'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='reordered-command')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpbm06os6m'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='command-time-overlap')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp_ajos6a7'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='missing-supervisor')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpn56l_0ua'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='missing-root')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpa_h7016e'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='missing-owned')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpwvhc9ygb'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='incomplete-root')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp3hjog_v2'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='missing-process-cleanup')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp2w80wb3b'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='reordered-process-cleanup')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmped9gih30'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='duplicate-process-cleanup')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpqgtknfi9'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='unowned-process')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpv7pyji5q'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='docker-hash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpgacqv7fy'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='docker-path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp8cn8dqud'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='docker-client-version')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpwxvw2hlt'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='docker-server-version')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp8l7_e6ve'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='dotnet-hash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpjpikaz_s'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='dotnet-path')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpzijkjnkl'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='dotnet-version')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmpndm9q87d'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='duplicate-outer-cleanup')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmphccl8bc9'
+
+======================================================================
+ERROR: testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller (test_p1r_isolation_hardening.LifecycleTests.testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller) (name='remote-controller')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 134, in testEveryRehashedSemanticGapIsRefusedThroughActualReceiptCaller
+    witness,code,worker,receipt,context = self.fixture()
+                                          ~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 29, in fixture
+    witness.setUp()
+    ~~~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 29, in setUp
+    self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 907, in __init__
+    self.name = mkdtemp(suffix, prefix, dir)
+                ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/tempfile.py", line 381, in mkdtemp
+    _os.mkdir(file, 0o700)
+    ~~~~~~~~~^^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp358v59yu'
+
+======================================================================
+ERROR: testLiteralStartupBudgetIncludesStartAndUsesExactBounds (test_p1r_isolation_hardening.LifecycleTests.testLiteralStartupBudgetIncludesStartAndUsesExactBounds) (label='exact-bounds')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_isolation.py", line 477, in _run
+    qualification.finalize_isolation_receipts(Path(command[command.index("--out")+1]),self.output,selection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_qualification.py", line 1341, in finalize_isolation_receipts
+    write_json(path,receipt)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 798, in write_bytes
+    return f.write(view)
+           ~~~~~~~^^^^^^
+OSError: [Errno 28] No space left on device
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_isolation_hardening.py", line 172, in testLiteralStartupBudgetIncludesStartAndUsesExactBoun

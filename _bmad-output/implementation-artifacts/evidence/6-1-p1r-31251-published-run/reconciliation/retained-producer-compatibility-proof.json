@@ -1,0 +1,34 @@
+{
+  "observed_utc": "2026-10-18T22:40:21.365535+00:00",
+  "scope": "nonqualifying merged-reader compatibility audit of immutable completed V3; original rejected V3 import remains rejected",
+  "diagnostic": "/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/retained-producer-diagnostic-cbbee74e736b4a79a6283402c457671d/diagnostic.json",
+  "diagnostic_sha256": "2abe2ad6efdb0294d54ccce2db0a421c93d3461c2bc0eff7d4e6338b7e26b41e",
+  "producer_binding": {
+    "path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-5d40d0c63beb4512adc644d086b5180e/executor-source.json",
+    "sha256": "2c47aee97120d1145482be608cce91512c63cda0eda8135ae7ccd8e9af8e0cf8"
+  },
+  "reader_binding_sha256": "55d9c4f253cbb0adf1abc3ab77c4fb5c846e57b0f57ccd47b918e451ab0a5f4f",
+  "all_19_lanes_and_two_recovery_readable": true,
+  "lane_assertions": {
+    "attempted": 4808,
+    "passed": 4805,
+    "failed": 3
+  },
+  "nonpassing_lanes": [
+    {
+      "lane": "post-upgrade-restore",
+      "outcome": {
+        "assertions": {
+          "attempted": 61,
+          "failed": 3,
+          "passed": 58
+        },
+        "compatibility": "unverified",
+        "execution": "failed",
+        "scope": "operational"
+      }
+    }
+  ],
+  "qualified": false,
+  "p1r_usable": false
+}

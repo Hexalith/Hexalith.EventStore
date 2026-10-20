@@ -11,6 +11,16 @@ namespace Hexalith.EventStore.Client.Tests.Streams;
 public sealed class AuthoritativeEventStreamReaderTests
 {
     [Fact]
+    public void OriginalThreeParameterConstructorRemainsAvailableForCompiledConsumers()
+    {
+        var constructor = typeof(AuthoritativeEventStreamReader).GetConstructor(
+            [typeof(IEventStoreGatewayClient), typeof(TimeProvider), typeof(TimeSpan?)]);
+        constructor.ShouldNotBeNull();
+        constructor.Invoke([Substitute.For<IEventStoreGatewayClient>(), TimeProvider.System, null])
+            .ShouldBeOfType<AuthoritativeEventStreamReader>();
+    }
+
+    [Fact]
     public async Task CompleteStablePrefix_ReturnsOneCoherentObservation()
     {
         IEventStoreGatewayClient gateway = Substitute.For<IEventStoreGatewayClient>();

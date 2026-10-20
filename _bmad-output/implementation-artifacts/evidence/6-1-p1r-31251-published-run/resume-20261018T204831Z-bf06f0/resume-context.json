@@ -1,0 +1,15 @@
+{
+  "owner_spec": "_bmad-output/implementation-artifacts/spec-6-1-p1r-31251-published-qualification.md",
+  "source_root": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/resume-20261018T204831Z-bf06f0/runtime-source",
+  "source_builds_root": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/resume-20261018T204831Z-bf06f0/runtime-builds",
+  "tooling": {
+    "commit": "fcf78d6cafb6c0c9f52dc350a9a09aff54ded288",
+    "builds_commit": "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c"
+  },
+  "package_construction_builds": {
+    "version": "4.33.0-3-g4629ff2",
+    "commit": "4629ff2d3bd66376b29a553663c241d3a7b87853"
+  },
+  "prior_planning_observations_preserved": true,
+  "qualification_or_acceptance": false
+}

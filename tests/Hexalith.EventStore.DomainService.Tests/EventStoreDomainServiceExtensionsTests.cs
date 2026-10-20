@@ -69,6 +69,33 @@ public sealed class EventStoreDomainServiceExtensionsTests {
     }
 
     [Fact]
+    public void ProjectionOnlyMappingsPreserveCustomRoutesAndCanonicalPolicies()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
+        WebApplication app = builder.Build();
+        app.MapPost("/project", () => Results.Ok("owner-projection"));
+        app.MapPost("/query", () => Results.Ok("owner-query"));
+        app.MapEventStoreDomainProjectionEndpoints();
+        app.MapEventStoreDomainProjectionMetadataEndpoint();
+        app.MapEventStoreDomainProjectionEndpoints();
+        app.MapEventStoreDomainProjectionMetadataEndpoint();
+        RouteEndpoint[] endpoints = GetRouteEndpoints(app);
+        endpoints.Count(endpoint => endpoint.RoutePattern.RawText == "/project").ShouldBe(1);
+        endpoints.Count(endpoint => endpoint.RoutePattern.RawText == "/query").ShouldBe(1);
+        endpoints.ShouldNotContain(endpoint => endpoint.RoutePattern.RawText == "/process");
+        foreach (var route in EventStoreDomainServiceRoutes.Operational.Where(route =>
+            route.Route.StartsWith("/project", StringComparison.Ordinal)
+            || route.Route == "/admin/operational-index-metadata"))
+        {
+            if (route.Route == "/project") { continue; }
+            RouteEndpoint endpoint = endpoints.Single(endpoint => endpoint.RoutePattern.RawText == route.Route);
+            endpoint.Metadata.GetOrderedMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>()
+                .ShouldContain(policy => policy.Policy == route.Policy);
+        }
+    }
+
+    [Fact]
     public void MetadataReportsRegisteredHandlerOnlyDomainWithoutGrantingOrphanProjectionCapabilities()
     {
         IDomainQueryHandler handler = Substitute.For<IDomainQueryHandler>();

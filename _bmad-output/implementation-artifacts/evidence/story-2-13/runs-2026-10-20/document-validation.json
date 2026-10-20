@@ -1,0 +1,197 @@
+{
+  "recordedUtc": "2026-10-20T03:17:06.872945+00:00",
+  "checkedRelativeLinks": [
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "qualification.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "qualification-2026-10-19.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/architecture-ad26-impact.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/replica-restart.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/pre-fix-source-snapshot.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/profile-identity.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/baseline-describe.log"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/final-graph-build.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/post-audit-server-build.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/post-audit-integration-build.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/post-audit-metadata-tests.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/retry-distribution-tests.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/final-real-projection.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/final-ordinary-regression.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/post-audit-redis-baseline.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/focused-source-restore.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/focused-restored-build.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/post-audit-distribution-tests.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/distribution-startup-failure-classification.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/redis-baseline-evidence-2026-10-20-031440Z.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "runs-2026-10-20/closing-observations.json"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md",
+      "target": "qualification-2026-10-19.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+      "target": "evidence/story-2-13/qualification.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+      "target": "evidence/story-2-13/qualification-2026-10-19.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+      "target": "evidence/story-2-13/qualification-2026-10-20.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+      "target": "evidence/story-2-13/qualification-2026-10-20.md"
+    },
+    {
+      "source": "_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md",
+      "target": "evidence/story-2-13/qualification-2026-10-20.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../README.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "architecture-overview.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../guides/dapr-component-reference.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/planning-artifacts/prd.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../src/Hexalith.EventStore/Hexalith.EventStore.csproj"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/spec-shared-payload-protection-dapr-amendment-2026-10-05.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-19.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../architecture/dapr-infrastructure-exceptions.yaml"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/3-17-dapr-boundary-inventory-and-enforcement.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "architecture-overview.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../guides/dapr-component-reference.md"
+    },
+    {
+      "source": "docs/concepts/dapr-infrastructure-boundary.md",
+      "target": "../../_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md"
+    }
+  ],
+  "indexLinkValidatedAfterGeneration": [
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20/index.json"
+  ],
+  "missingRelativeLinks": [],
+  "exceptionRegisterParsed": true,
+  "acceptedExceptions": [],
+  "scope": "local links and YAML structure; primary documentation links independently read during qualification",
+  "closingIndexLinkExists": true
+}

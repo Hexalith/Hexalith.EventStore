@@ -1,0 +1,14 @@
+{
+  "command": [
+    "dotnet",
+    "restore",
+    "tests/Hexalith.EventStore.IntegrationTests/Hexalith.EventStore.IntegrationTests.csproj",
+    "-p:UseHexalithProjectReferences=true",
+    "--disable-build-servers",
+    "-v:q"
+  ],
+  "startedUtc": "2026-10-20T02:34:05.304998+00:00",
+  "completedUtc": "2026-10-20T02:34:08.661436+00:00",
+  "exitCode": 0,
+  "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

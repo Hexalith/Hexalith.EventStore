@@ -1,0 +1,209 @@
+{
+  "scope": "pre-finalization read-only observation of retained source tenant-B refusal; no production root-cause claim",
+  "receipt": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+    "sha256_before_final_isolation": "038a687ee36b3d125329f1639236255e14829d7fa0064c3e5bf2caba8f06dd31"
+  },
+  "case": "snapshot-tail",
+  "case_assertions": {
+    "attempted": 87,
+    "failed": 6,
+    "passed": 81
+  },
+  "failed_check_ids": [
+    "source:tenant-b:append-1-accepted",
+    "source:tenant-b:append-1-one-event",
+    "source:tenant-b:committed-count",
+    "source:seed-persisted-fifteen-events",
+    "source:second-tenant-hydrates",
+    "source-package-semantics-equivalent"
+  ],
+  "commands": [
+    {
+      "id": 3483,
+      "argv": [
+        "dotnet",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+        "actor",
+        "http://127.0.0.1:28103",
+        "tenant-a",
+        "fixture",
+        "12",
+        "AssertCounter"
+      ],
+      "started_utc": "2026-10-18T23:26:03.949435+00:00",
+      "finished_utc": "2026-10-18T23:26:04.622209+00:00",
+      "exit_code": 0,
+      "output_sha256": "fadadc1d9385c02de4e4cb86fdf4f88439cac23db46cc89ad2d2bb9f91d73c39",
+      "observation": {
+        "accepted": true,
+        "event_count": 0,
+        "error": null,
+        "sequence": 12
+      },
+      "measurement": {
+        "checks": [
+          {
+            "id": "actor-response-observed",
+            "passed": true
+          }
+        ],
+        "assertions": {
+          "attempted": 1,
+          "passed": 1,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "id": 3484,
+      "argv": [
+        "dotnet",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+        "actor",
+        "http://127.0.0.1:28103",
+        "tenant-b",
+        "fixture",
+        "3",
+        "AssertCounter"
+      ],
+      "started_utc": "2026-10-18T23:26:04.782052+00:00",
+      "finished_utc": "2026-10-18T23:26:05.763333+00:00",
+      "exit_code": 0,
+      "output_sha256": "a71e17bb98c74982ca1106edb56644b3df0b299fa0ce8e18e7680c73fb90a4d4",
+      "observation": {
+        "accepted": true,
+        "event_count": 0,
+        "error": null,
+        "sequence": 3
+      },
+      "measurement": {
+        "checks": [
+          {
+            "id": "actor-response-observed",
+            "passed": true
+          }
+        ],
+        "assertions": {
+          "attempted": 1,
+          "passed": 1,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "id": 3500,
+      "argv": [
+        "dotnet",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+        "seed",
+        "http://127.0.0.1:22194",
+        "tenant-b",
+        "fixture",
+        "3"
+      ],
+      "started_utc": "2026-10-18T23:26:34.166771+00:00",
+      "finished_utc": "2026-10-18T23:26:38.565239+00:00",
+      "exit_code": 0,
+      "output_sha256": "5c997639d08ffcebaa5881200356c983e6f8fc449a1c979235f8203221eb1cd8",
+      "observation": {
+        "accepted": false,
+        "event_count": 0,
+        "committed": 0,
+        "error": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing."
+      },
+      "measurement": {
+        "checks": [
+          {
+            "id": "append-1-accepted",
+            "passed": false
+          },
+          {
+            "id": "append-1-one-event",
+            "passed": false
+          }
+        ],
+        "assertions": {
+          "attempted": 2,
+          "passed": 0,
+          "failed": 2
+        }
+      }
+    },
+    {
+      "id": 3519,
+      "argv": [
+        "dotnet",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/source/probe/bin/Debug/net10.0/Probe.dll",
+        "actor",
+        "http://127.0.0.1:28613",
+        "tenant-a",
+        "fixture",
+        "12",
+        "AssertCounter"
+      ],
+      "started_utc": "2026-10-18T23:27:00.391401+00:00",
+      "finished_utc": "2026-10-18T23:27:00.960340+00:00",
+      "exit_code": 0,
+      "output_sha256": "fadadc1d9385c02de4e4cb86fdf4f88439cac23db46cc89ad2d2bb9f91d73c39",
+      "observation": {
+        "accepted": true,
+        "event_count": 0,
+        "error": null,
+        "sequence": 12
+      },
+      "measurement": {
+        "checks": [
+          {
+            "id": "actor-response-observed",
+            "passed": true
+          }
+        ],
+        "assertions": {
+          "attempted": 1,
+          "passed": 1,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "id": 3520,
+      "argv": [
+        "dotnet",
+        "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/source/probe/bin/Debug/net10.0/Probe.dll",
+        "actor",
+        "http://127.0.0.1:28613",
+        "tenant-b",
+        "fixture",
+        "3",
+        "AssertCounter"
+      ],
+      "started_utc": "2026-10-18T23:27:01.119304+00:00",
+      "finished_utc": "2026-10-18T23:27:01.379762+00:00",
+      "exit_code": 0,
+      "output_sha256": "ab33aed91b2ca75ff807923905fba82bf8c96850a8256c8e55f5755deaddd5e8",
+      "observation": {
+        "accepted": false,
+        "event_count": 0,
+        "error": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing.",
+        "sequence": 0
+      },
+      "measurement": {
+        "checks": [
+          {
+            "id": "actor-response-observed",
+            "passed": true
+          }
+        ],
+        "assertions": {
+          "attempted": 1,
+          "passed": 1,
+          "failed": 0
+        }
+      }
+    }
+  ],
+  "source_root": "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+  "production_source_edits": false,
+  "p1r_usable": false
+}

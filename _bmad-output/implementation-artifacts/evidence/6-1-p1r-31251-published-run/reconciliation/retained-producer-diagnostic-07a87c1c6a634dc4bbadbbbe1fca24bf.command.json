@@ -1,0 +1,34 @@
+{
+  "scope": "nonqualifying compatibility diagnostic with separate producer and current merged reader closures",
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/diagnose-retained-producer.py",
+    "--reader-root",
+    "/home/administrator/projects/hexalith/eventstore",
+    "--reader-source",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775",
+    "--execution",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/owner-inputs.json",
+    "--out",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/retained-producer-diagnostic-07a87c1c6a634dc4bbadbbbe1fca24bf"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "driver_argv": [
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/run-retained-producer-diagnostic.py",
+    "--execution",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-754c6a84815246a6b5af12b3d47841e2/owner-inputs.json",
+    "--reader-source",
+    "/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775"
+  ],
+  "started_utc": "2026-10-19T05:24:36.877575+00:00",
+  "script_sha256": "eac945ba3bb0c315235c82326392e677526921f1095174d1b4f79354c1a0d959",
+  "driver_sha256": "d1be82e8b66d6d17653038cbe58a2e0a10de4c37baa139a80e4e500379d1a7b2",
+  "exit_code": 0,
+  "finished_utc": "2026-10-19T05:25:35.325014+00:00",
+  "log": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/retained-producer-diagnostic-07a87c1c6a634dc4bbadbbbe1fca24bf.log",
+  "log_sha256": "f06fae37fe8addc954d0aca957476cbbb31f69861604bd1cf0df0b113b6cf721"
+}

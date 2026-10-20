@@ -1,8 +1,7 @@
-using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Text;
 
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Telemetry;
 
 using Microsoft.AspNetCore.SignalR;
@@ -192,37 +191,11 @@ public partial class SignalRProjectionChangedBroadcaster : IProjectionChangedBro
     /// </summary>
     private (IReadOnlyDictionary<string, string> Bounded, bool Clipped, int OriginalCount) BoundMetadata(
         IReadOnlyDictionary<string, string>? metadata) {
-        if (metadata is null || metadata.Count == 0) {
-            return (EmptyMetadata, false, 0);
-        }
-
-        int maxEntries = _options.MaxDetailMetadataEntries;
-        int maxBytes = _options.MaxDetailMetadataBytes;
-        var bounded = new Dictionary<string, string>(StringComparer.Ordinal);
-        int totalBytes = 0;
-        bool clipped = false;
-
-        foreach (KeyValuePair<string, string> entry in metadata.OrderBy(e => e.Key, StringComparer.Ordinal)) {
-            if (bounded.Count >= maxEntries) {
-                clipped = true;
-                break;
-            }
-
-            int entryBytes = Encoding.UTF8.GetByteCount(entry.Key) + Encoding.UTF8.GetByteCount(entry.Value);
-            if (totalBytes + entryBytes > maxBytes) {
-                clipped = true;
-                break;
-            }
-
-            totalBytes += entryBytes;
-            bounded[entry.Key] = entry.Value;
-        }
-
-        return (bounded, clipped, metadata.Count);
+        IReadOnlyDictionary<string, string> bounded = ProjectionChangedMetadataLimits.Bound(
+            metadata, _options.MaxDetailMetadataEntries, _options.MaxDetailMetadataBytes);
+        int originalCount = metadata?.Count ?? 0;
+        return (bounded, bounded.Count != originalCount, originalCount);
     }
-
-    private static readonly IReadOnlyDictionary<string, string> EmptyMetadata =
-        new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
     private static partial class Log {
         [LoggerMessage(EventId = 1090, Level = LogLevel.Information,

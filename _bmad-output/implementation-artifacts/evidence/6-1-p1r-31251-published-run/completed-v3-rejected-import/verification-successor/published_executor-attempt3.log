@@ -1,0 +1,20 @@
+.......................................................................................................................................F..........................
+======================================================================
+FAIL: testShellMediatedProviderMutationInsideSeedIsRejected (test_p1r_published_executor.Published31251SnapshotWitnessTests.testShellMediatedProviderMutationInsideSeedIsRejected) (shell='sh', outer_shell=True)
+----------------------------------------------------------------------
+p1r_qualification.InvalidPacket: check witness source differs from executor closure
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/tests/test_p1r_published_executor.py", line 190, in testShellMediatedProviderMutationInsideSeedIsRejected
+    with self.subTest(shell=shell, outer_shell=outer_shell), self.assertRaisesRegex(
+                                                             ~~~~~~~~~~~~~~~~~~~~~~^
+            preparation.InvalidPacket, 'provider mutation|shell-mediated'):
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "provider mutation|shell-mediated" does not match "check witness source differs from executor closure"
+
+----------------------------------------------------------------------
+Ran 162 tests in 84.165s
+
+FAILED (failures=1)

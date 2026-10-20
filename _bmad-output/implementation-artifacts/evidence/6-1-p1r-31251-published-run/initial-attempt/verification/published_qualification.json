@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_qualification.py"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+  "started_utc": "2026-10-18T17:25:31.277755+00:00",
+  "finished_utc": "2026-10-18T17:26:14.766178+00:00",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "...............................................................\n----------------------------------------------------------------------\nRan 63 tests in 43.413s\n\nOK\n"
+}

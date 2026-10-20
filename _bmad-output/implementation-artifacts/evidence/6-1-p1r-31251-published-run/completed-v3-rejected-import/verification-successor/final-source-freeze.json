@@ -1,0 +1,35 @@
+{
+  "binding_path": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-binding-host.json",
+  "binding_sha256": "33c33bd19341a4695b97597310cf07cf11abdd5a03ea898442a867095c51a464",
+  "canonical_binding_sha256": "fa5dbfedef4ebd3084003cfc1e7ef152cffcda0d3cdebe79b4d4c0b1477bf686",
+  "observed_utc": "2026-10-18T18:28:57.468278+00:00",
+  "p1r_usable": false,
+  "required_suites": {
+    "isolation": 33,
+    "isolation_hardening": 25,
+    "isolation_hardening_optimized": 25,
+    "published_executor": 156,
+    "published_qualification": 63,
+    "qualification": 43,
+    "snapshot_registration": 2
+  },
+  "samples": [
+    {
+      "seconds": 2.54885541900876,
+      "sha256": "fa5dbfedef4ebd3084003cfc1e7ef152cffcda0d3cdebe79b4d4c0b1477bf686"
+    },
+    {
+      "seconds": 2.57178074400872,
+      "sha256": "fa5dbfedef4ebd3084003cfc1e7ef152cffcda0d3cdebe79b4d4c0b1477bf686"
+    },
+    {
+      "seconds": 2.5428456329973415,
+      "sha256": "fa5dbfedef4ebd3084003cfc1e7ef152cffcda0d3cdebe79b4d4c0b1477bf686"
+    }
+  ],
+  "schema": "hexalith.p1r.successor-source-freeze.v1",
+  "source_mutations_frozen": true,
+  "source_root": "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+  "tests": 347,
+  "verifier_root": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf"
+}

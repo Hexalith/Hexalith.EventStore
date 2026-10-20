@@ -70,7 +70,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
         string keyReference, string proofId, bool persisted, CancellationToken token = default)
     {
         long start = clock.GetTimestamp();
-        try { return await AwaitAsync(() => registry.CompleteWriterAsync(identity, keyReference, proofId, persisted, CancellationToken.None), start, token).ConfigureAwait(false); }
+        try { return await AwaitAsync(() => registry.CompleteWriterAsync(identity, keyReference, proofId, persisted, CancellationToken.None), start, token, quiesceOriginal: true).ConfigureAwait(false); }
         catch (Exception) { token.ThrowIfCancellationRequested(); throw; }
     }
 
@@ -188,7 +188,7 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
     {
         token.ThrowIfCancellationRequested(); if (clock.GetElapsedTime(start) >= TimeSpan.FromSeconds(30)) { throw new TimeoutException("Occurrence operation unavailable."); }
     }
-    private async Task<T> AwaitAsync<T>(Func<Task<T>> operation, long start, CancellationToken token, Action<T>? abandoned = null)
+    private async Task<T> AwaitAsync<T>(Func<Task<T>> operation, long start, CancellationToken token, Action<T>? abandoned = null, bool quiesceOriginal = false)
     {
         CheckBudget(start, token); var pending = Task.Run(operation, CancellationToken.None);
         try
@@ -198,11 +198,21 @@ internal sealed class InteractionOccurrenceProtector(IInteractionOccurrenceRegis
         }
         catch (Exception)
         {
-            // Late owned material is cleared away from the query continuation; exceptions are observed without releasing evidence.
-            _ = pending.ContinueWith(task =>
+            if (quiesceOriginal)
             {
-                try { if (task.IsCompletedSuccessfully) { abandoned?.Invoke(task.Result); } else { _ = task.Exception; } } catch (Exception) { /* Cleanup failure is observed; it cannot release evidence. */ }
-            }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+                // A writer completion may still commit after cancellation. Keep its
+                // original task in the actor's I/O tracker until the mutation settles.
+                try { await pending.ConfigureAwait(false); }
+                catch (Exception) { /* Preserve the original deadline or cancellation. */ }
+            }
+            else
+            {
+                // Late owned material is cleared away from the query continuation; exceptions are observed without releasing evidence.
+                _ = pending.ContinueWith(task =>
+                {
+                    try { if (task.IsCompletedSuccessfully) { abandoned?.Invoke(task.Result); } else { _ = task.Exception; } } catch (Exception) { /* Cleanup failure is observed; it cannot release evidence. */ }
+                }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            }
             token.ThrowIfCancellationRequested(); throw;
         }
     }

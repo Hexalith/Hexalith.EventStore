@@ -1,0 +1,16 @@
+[
+  {
+    "source": "_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/evidence-2026-10-20-025903Z.md",
+    "retained": "redis-baseline-evidence-2026-10-20-025903Z.md",
+    "sha256": "2f24774ac3de32b7fde2d180c84c59e31c1c290485886071cc7d74a132198d20",
+    "commandReceipt": "superseded-final-redis-baseline.json",
+    "identityAuthority": "full revision and exact invocation are in command receipt; generated legacy display is preserved"
+  },
+  {
+    "source": "_bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/evidence-2026-10-20-031440Z.md",
+    "retained": "redis-baseline-evidence-2026-10-20-031440Z.md",
+    "sha256": "7be8a6361fd6db0c9edf5d8add6c15b22a09c22e9c7aa2c61d6631854ffe8f6e",
+    "commandReceipt": "post-audit-redis-baseline.json",
+    "identityAuthority": "full revision and exact invocation are in command receipt; generated legacy display is preserved"
+  }
+]

@@ -1,0 +1,69 @@
+{
+  "scope": "tooling caller boundary observation; no provider command or writer executed",
+  "cwd": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c",
+  "source": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/tools/p1r_published_executor.py",
+  "source_sha256": "c6632e00532697f90f20b26109495e26b348948ab0e5787d5299c60c2c491a86",
+  "cases": [
+    {
+      "candidate": "3.126.0",
+      "writer": "source",
+      "interval": 10,
+      "exception": "InvalidPacket",
+      "reason": "successor snapshot fixture is not explicitly enabled",
+      "stop_nodes_called": false,
+      "state_reset_boundary_reached": false,
+      "writer_started": false
+    },
+    {
+      "candidate": "3.126.0",
+      "writer": "3.126.0",
+      "interval": 10,
+      "exception": "InvalidPacket",
+      "reason": "successor snapshot fixture is not explicitly enabled",
+      "stop_nodes_called": false,
+      "state_reset_boundary_reached": false,
+      "writer_started": false
+    },
+    {
+      "candidate": "3.126.0",
+      "writer": "source",
+      "interval": 50,
+      "exception": "BoundaryReached",
+      "reason": "state reset boundary reached; no provider command executed",
+      "stop_nodes_called": true,
+      "state_reset_boundary_reached": true,
+      "writer_started": false
+    },
+    {
+      "candidate": "3.126.0",
+      "writer": "3.126.0",
+      "interval": 50,
+      "exception": "BoundaryReached",
+      "reason": "state reset boundary reached; no provider command executed",
+      "stop_nodes_called": true,
+      "state_reset_boundary_reached": true,
+      "writer_started": false
+    },
+    {
+      "candidate": "3.126.0",
+      "writer": "source",
+      "interval": 1000,
+      "exception": "BoundaryReached",
+      "reason": "state reset boundary reached; no provider command executed",
+      "stop_nodes_called": true,
+      "state_reset_boundary_reached": true,
+      "writer_started": false
+    },
+    {
+      "candidate": "3.126.0",
+      "writer": "3.126.0",
+      "interval": 1000,
+      "exception": "BoundaryReached",
+      "reason": "state reset boundary reached; no provider command executed",
+      "stop_nodes_called": true,
+      "state_reset_boundary_reached": true,
+      "writer_started": false
+    }
+  ],
+  "p1r_usable": false
+}

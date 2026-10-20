@@ -88,7 +88,7 @@ For detailed installation instructions for each tool, see the [Prerequisites](do
 
 ### Required Tools
 
-- **.NET 10 SDK** (10.0.401 or later patch in the same feature band)
+- **.NET 10 SDK** (10.0.402 or later patch in the same feature band)
 - **Node.js** (`^22.14.0` or `>=24.10.0`) and **npm** (for repository tooling
   and Git hook installation)
 - **Docker Desktop** (for local DAPR infrastructure)
@@ -115,6 +115,68 @@ dotnet test tests/Hexalith.EventStore.Testing.Tests
 ```
 
 The solution file is `Hexalith.EventStore.slnx`.
+
+### Run and Debug in the Platform Workspace
+
+Run and debug EventStore as a module from the
+[Hexalith.Platform](https://github.com/Hexalith/Hexalith.Platform) workspace, where this repository is the
+direct submodule `references/Hexalith.EventStore`. Prerequisites:
+
+- The Platform-pinned `hexalith-module` tool, restored with `dotnet tool restore` in the Platform root.
+- Aspire CLI `13.6.1` exactly; the tool refuses any other version with `HXR015`.
+- A running Docker engine.
+- `HEXALITH_DAPR_HOME` set to an absolute, isolated Dapr home: Dapr CLI `1.18.0` at `tools/dapr` and runtime
+  `1.18.2` at `.dapr/bin/{daprd,placement,scheduler}`. The Platform README shows how to prepare one from the
+  official release assets.
+- The Platform workspace's direct `references/Hexalith.Builds`, `references/Hexalith.EventStore`,
+  `references/Hexalith.Tenants` and `references/Hexalith.Memories` checkouts, initialized without `--recursive`.
+  The tool reads all three declaration owners even for EventStore alone. Each `HEAD` must equal its gitlink
+  staged in Platform. After a local commit here, run `git add references/Hexalith.EventStore` in Platform
+  before starting a run.
+- The local Aspire orchestration and dashboard packages at `13.6.1`: run `dotnet restore apphost.cs` from
+  Platform once before the first `debug` run. Tool restore alone does not install these SDK packages.
+  If NuGet uses a custom `globalPackagesFolder`, set `NUGET_PACKAGES` to that absolute folder for both
+  restore and `debug`; otherwise the tool checks `~/.nuget/packages` and reports `HXR016` when packages
+  are missing.
+
+From the Platform root:
+
+```bash
+export HEXALITH_DAPR_HOME="$HOME/.hexalith/dapr/1.18.2"
+dotnet tool run hexalith-module -- debug --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
+```
+
+Pass the owner manifest under `references/`, never the Platform's copy in
+`src/Hexalith.Platform.Composition/Declarations/`. `debug` builds this checkout in Debug, starts only the
+`eventstore` gateway with its Dapr sidecar, the Dapr control plane and Redis, waits for the declared `/ready`
+endpoint, and reports the process id of the `dotnet run` launcher. The gateway is the launcher's child process:
+
+```bash
+ps --ppid <launcher-pid> -o pid,args
+```
+
+Attach to the child running `src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore`, for example with
+VS Code ("Attach to a .NET process"). Breakpoints in this checkout's sources bind. Stay attached until
+you finish, then stop only that run with:
+
+```bash
+dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json
+```
+
+`debug` does not print the run id: it is the file name of the run state `<runId>.json` under
+`${XDG_DATA_HOME:-$HOME/.local/share}/hexalith-builds/g4-runs/` on Linux. When an earlier run used the same manifest,
+`down --manifest` refuses with `HXR024`. Inspect the state files and select the one whose `projectProcessIds`
+contains the launcher id reported by this `debug` invocation. Confirm its `manifestHash` matches
+`sha256sum references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json` (ignoring hexadecimal letter case),
+then pass its `runId` with `--run-id`. File modification time alone cannot identify your run, and an explicit
+`--run-id` is not cross-checked against the manifest:
+
+```bash
+dotnet tool run hexalith-module -- down --manifest references/Hexalith.EventStore/module/hexalith.module-manifest.v2.json --run-id <runId>
+```
+
+`src/Hexalith.EventStore.AppHost` serves only this repository's own tests. A run of it is never evidence that
+EventStore runs in the Platform composition.
 
 ## Documentation Contributions
 

@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/validate-measured-checkout-v4.py"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+  "started_utc": "2026-10-18T23:37:22.139071+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/measured-checkout-witness-command-v4.log",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T23:37:22.785496+00:00"
+}

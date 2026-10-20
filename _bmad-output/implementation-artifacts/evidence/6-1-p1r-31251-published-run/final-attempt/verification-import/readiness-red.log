@@ -1,0 +1,10 @@
+E
+======================================================================
+ERROR: QualifiedSnapshot31251WitnessTests (unittest.loader._FailedTest.QualifiedSnapshot31251WitnessTests)
+----------------------------------------------------------------------
+AttributeError: module 'tools.tests.test_p1r_published_executor' has no attribute 'QualifiedSnapshot31251WitnessTests'. Did you mean: 'QualifiedSnapshotWitnessTests'?
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

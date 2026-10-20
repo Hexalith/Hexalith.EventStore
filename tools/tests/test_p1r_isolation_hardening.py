@@ -19,11 +19,135 @@ import p1r_isolation as isolation
 import p1r_isolation_evidence as isolation_evidence
 import p1r_published_qualification as qualification
 import p1r_qualification as preparation
-from p1r_isolation_fixture import run_controller
+from p1r_isolation_fixture import run_controller, separate_inputs, separate_source_fixture
 import test_p1r_published_executor as published_tests
 
 
+class TaggedSourceLifecycleTests(unittest.TestCase):
+    def testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup(self):
+        witness = published_tests.Published31251SnapshotWitnessTests()
+        witness.setUp()
+        self.addCleanup(witness.doCleanups)
+        events = []
+        check = preparation.check_current_source
+        docker = isolation.IsolatedRunner.docker
+        finalize = qualification.finalize_isolation_receipts
+        def checked(binding, **kwargs):
+            events.append(('source', kwargs))
+            return check(binding, **kwargs)
+        def called(worker, *args, **kwargs):
+            events.append(('docker', None))
+            return docker(worker, *args, **kwargs)
+        def finalized(*args, **kwargs):
+            events.append(('finalize', None))
+            return finalize(*args, **kwargs)
+        with mock.patch.object(preparation, 'check_current_source', side_effect=checked), \
+                mock.patch.object(isolation.IsolatedRunner, 'docker', new=called), \
+                mock.patch.object(qualification, 'finalize_isolation_receipts', side_effect=finalized):
+            witness.import_fixture(scope='operational')
+        self.assertEqual(events[0][0], 'source')
+        final = next(index for index, value in enumerate(events) if value[0] == 'finalize')
+        self.assertEqual(events[final - 1][0], 'source')
+        self.assertTrue(any(value == ('source', {'check_python': False}) for value in events[final + 1:]))
+
+    def testIndependentImportRefusesRehashedRoleAndRootSubstitution(self):
+        for record,mutation in (
+            ('private',lambda value:value['source_binding']['candidate_source'].__setitem__('repository',str(preparation.ROOT))),
+            ('wrapper',lambda value:value.__setitem__('source_root',str(preparation.ROOT))),
+            ('wrapper',lambda value:value['controller_source_binding']['candidate_source']['main'].__setitem__('head','0'*40)),
+            ('wrapper',lambda value:value['inner_command'].__setitem__(-1,str(preparation.ROOT))),
+        ):
+            witness = published_tests.Published31251SnapshotWitnessTests()
+            witness.setUp()
+            self.addCleanup(witness.doCleanups)
+            receipt,context = witness.import_fixture(scope='operational')
+            self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+            witness.change_isolation(receipt,record,mutation)
+            with self.subTest(record=record),self.assertRaises(preparation.InvalidPacket):
+                qualification.receipt_outcome(receipt,context)
+            witness.doCleanups()
+
+
+class SeparateRootIsolationTests(unittest.TestCase):
+    def testExactSourceSuffixAndPrivatePreflightKeepBothBindings(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            import p1r_published_executor as executor
+            selected = f.root/'inputs.json'
+            preparation.write_json(selected,separate_inputs(f))
+            command = ['python3',str(f.tooling/'tools/p1r-published-executor.py'),'run','--out',str(f.root/'output'),
+                       '--inputs',str(selected),'--source-root',str(f.source),'--source-builds-root',str(f.source_builds)]
+            with mock.patch.object(isolation,'ROOT',f.tooling), mock.patch.object(executor,'ROOT',f.tooling):
+                binding = isolation.command_source_binding(command)
+                self.assertEqual(binding['runtime_source']['repository'],str(f.source))
+                self.assertEqual(isolation.executor_input(command,f.tooling)['sha256'],preparation.digest(selected.read_bytes()))
+                for changed in (command[:-2],command+command[-4:],command[:-1]+[str(f.builds)]):
+                    with self.assertRaises(preparation.InvalidPacket): isolation.command_source_binding(changed)
+
+    def testSourceDriftAfterChildStartStillRunsRepeatedOwnedCleanup(self):
+        with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
+            binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
+            target = f.source/'src/Runtime.cs'
+            command = [sys.executable,'-c','from pathlib import Path; import sys; Path(sys.argv[1]).write_text("// drift\\n")',str(target)]
+            output = f.root/'inner'
+            with mock.patch.object(isolation,'private_proof',return_value={}), \
+                    mock.patch.object(isolation,'command_source_binding',return_value=binding), \
+                    mock.patch.object(isolation,'private_environment',return_value=dict(os.environ)):
+                self.assertEqual(isolation._inner(output,'outer',command),2)
+            result = preparation.read_json(output/'private-execution.json')
+            self.assertTrue(result['errors'])
+            self.assertFalse(result['passed'])
+            self.assertEqual(len(result['cleanup']),2)
+            self.assertTrue(all(item['remaining'] == [] and item['errors'] == [] for item in result['cleanup']))
+
+
 class LifecycleTests(unittest.TestCase):
+    def testSeparateRuntimeRootsSurviveProducerFinalizerAndIndependentImport(self):
+        witness = published_tests.Published31251SnapshotWitnessTests()
+        witness.setUp()
+        self.addCleanup(witness.doCleanups)
+        with mock.patch.object(witness,'attach_isolation',side_effect=lambda receipt,context:receipt):
+            receipt,context = witness.import_fixture(scope='operational')
+        root = Path(witness.temporary.name)
+        source, builds = root/'release-source',root/'release-builds'
+        (source/'deploy/dapr').mkdir(parents=True)
+        builds.mkdir()
+        shutil.copyfile(preparation.ROOT/'deploy/dapr/statestore-postgresql.yaml',source/'deploy/dapr/statestore-postgresql.yaml')
+        pins = {'commit':'a'*40,'builds_commit':'b'*40}
+        binding = context['source_binding']
+        binding.update(tooling=pins,runtime_source={'repository':str(source),'main':{'head':preparation.RUNTIME_COMMIT},
+                       'builds':{'path':str(builds),'binding':{'head':preparation.RUNTIME_BUILDS_COMMIT}}})
+        binding.setdefault('main',{})['head'] = pins['commit']
+        selection = context['inputs']['value']
+        selection['tooling'] = pins
+        selection['candidate'].update(tag='v3.125.1',tag_commit=preparation.RUNTIME_COMMIT,tag_builds_commit=preparation.RUNTIME_BUILDS_COMMIT)
+        receipt['execution_evidence']['executor_source_sha256'] = preparation.digest(json.dumps(binding,indent=2,sort_keys=True).encode()+b'\n')
+        preparation.write_json(root/'executor-source.json',binding)
+        execution = preparation.read_json(root/'execution.json')
+        execution['executor_source_sha256'] = preparation.digest((root/'executor-source.json').read_bytes())
+        preparation.write_json(root/'execution.json',execution)
+        with mock.patch.object(isolation,'command_source_binding',return_value=binding), \
+                mock.patch.object(preparation,'check_current_source'):
+            code,worker,retained = run_controller(root,receipt,context,source_paths=(source,builds))
+            self.assertEqual(code,0,worker.result['errors'])
+            self.assert_imports(retained,context)
+            reference = retained['execution_evidence']['isolation']
+            wrapper = json.loads(reference['wrapper']['content'])
+            private = json.loads(reference['private']['content'])
+            execution = json.loads(reference['execution']['content'])
+            with tempfile.TemporaryDirectory() as outside:
+                for role,index in (('source',-3),('builds',-1)):
+                    submitted,changed = copy.deepcopy(context),copy.deepcopy(wrapper)
+                    runtime = submitted['source_binding']['runtime_source']
+                    if role == 'source': runtime['repository'] = outside
+                    else: runtime['builds']['path'] = outside
+                    changed['inner_command'][index] = outside
+                    with self.subTest(role=role), self.assertRaisesRegex(preparation.InvalidPacket,'outside the isolated workspace'):
+                        isolation_evidence.validate(changed,private,dict(submitted,execution=execution),root,
+                                                    reference['wrapper']['path'],qualification.validate_times)
+            # Fresh wrapper hashes cannot make a different runtime path selected.
+            witness.change_isolation(retained,'wrapper',lambda value:value['inner_command'].__setitem__(-3,str(preparation.ROOT)))
+            with self.assertRaises(preparation.InvalidPacket): qualification.receipt_outcome(retained,context)
+
     def fixture(self, **options):
         witness = published_tests.ProposedQualifiedSnapshotWitnessTests()
         witness.setUp()

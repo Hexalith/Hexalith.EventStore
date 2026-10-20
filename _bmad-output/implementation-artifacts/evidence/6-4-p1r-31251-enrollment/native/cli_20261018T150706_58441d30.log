@@ -1,0 +1,145 @@
+﻿[2026-10-18 15:07:06.799] [INFO] [Cli] Aspire CLI version: 13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8
+[2026-10-18 15:07:06.799] [INFO] [Cli] Aspire CLI build ID: 13.600.126.50606
+[2026-10-18 15:07:06.799] [INFO] [Cli] Aspire CLI path: /home/administrator/.aspire/bin/aspire
+[2026-10-18 15:07:06.799] [INFO] [Cli] Aspire CLI channel: stable
+[2026-10-18 15:07:06.799] [INFO] [Cli] Working directory: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore
+[2026-10-18 15:07:06.799] [INFO] [Cli] Log file: /home/administrator/.aspire/logs/cli_20261018T150706_58441d30.log
+[2026-10-18 15:07:06.799] [INFO] [Cli] CLI process ID: 71621
+[2026-10-18 15:07:06.810] [DBUG] [Host] Hosting starting
+[2026-10-18 15:07:06.816] [DBUG] [Host] Hosting started
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature aspireSkillsRemoteFetchEnabled = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature defaultWatchEnabled = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature experimentalPolyglot:go = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature experimentalPolyglot:java = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature experimentalPolyglot:python = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature experimentalPolyglot:rust = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature nugetSignatureVerificationEnabled = True (default: True)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature polyglotIntegrationFilterEnabled = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature showAllTemplates = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature showDeprecatedPackages = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature stagingChannelEnabled = False (default: False)
+[2026-10-18 15:07:06.816] [DBUG] [Features] Feature updateNotificationsEnabled = True (default: True)
+[2026-10-18 15:07:06.826] [INFO] [Cli] Command: aspire run --non-interactive --detach --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json
+[2026-10-18 15:07:06.826] [DBUG] [Cli] Parsing arguments: run --non-interactive --detach --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json
+[2026-10-18 15:07:06.826] [DBUG] [Cli] Executing command: aspire run
+[2026-10-18 15:07:06.826] [DBUG] [AuxiliaryBackchannelMonitor] Current command is not MCP start command. Auxiliary backchannel monitoring disabled.
+[2026-10-18 15:07:06.826] [DBUG] [ProjectLocator] Finding project file in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore
+[2026-10-18 15:07:06.826] [DBUG] [AppHostProjectFactory] TryGetProject called for file: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+[2026-10-18 15:07:06.826] [DBUG] [AppHostProjectFactory] Language detected: csharp for file: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+[2026-10-18 15:07:06.827] [DBUG] [ProcessExecutionFactory] Running dotnet in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost with args: msbuild -getProperty:MSBuildVersion,IsAspireHost,AspireHostingSDKVersion,AspireUseCliBundle,UserSecretsId,RunCommand,TargetPath,RunWorkingDirectory,RunArguments,TargetFramework,TargetFrameworks -getItem:PackageReference,AspireProjectOrPackageReference,PackageVersion -t:ComputeRunArguments /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: DOTNET_CLI_TELEMETRY_OPTOUT=1
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=1
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: ASPIRE_SUPPRESS_CLI_RUN_HOOK=true
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: ASPIRE_CLI_PID=71621
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: ASPIRE_CLI_STARTED=1792336026
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: ASPIRE_CLI_STARTED_STABLE=199651150
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: ASPIRE_CLI_LOG_FILE=/home/administrator/.aspire/logs/cli_20261018T150706_58441d30.log
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: MSBUILDTERMINALLOGGER=false
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: DOTNET_NOLOGO=1
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet env: AspireCliPath=/home/administrator/.aspire/bin/aspire
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet(72073) started in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost
+[2026-10-18 15:07:06.828] [DBUG] [ProcessExecutionFactory] dotnet(72073) waiting for exit
+[2026-10-18 15:07:07.344] [DBUG] [ProcessExecutionFactory] dotnet(72073) exited with code: 0
+[2026-10-18 15:07:07.344] [DBUG] [ProcessExecutionFactory] dotnet(72073) output drained
+[2026-10-18 15:07:07.358] [DBUG] [ProjectLocator] Using C# (.NET) apphost /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+[2026-10-18 15:07:07.358] [DBUG] [AppHostLauncher] Starting AppHost in background: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+[2026-10-18 15:07:07.358] [DBUG] [AppHostLauncher] Spawning child CLI: /home/administrator/.aspire/bin/aspire (isDotnetHost=False) with args: run --non-interactive --apphost /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --log-file /home/administrator/.aspire/logs/cli_20261018T150707358_detach-child_e265d4eca04c4ecb847e66de4e457c34.log
+[2026-10-18 15:07:07.358] [DBUG] [AppHostLauncher] Working directory: /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore
+[2026-10-18 15:07:07.358] [INFO] [Stderr] Starting Aspire AppHost in the background...
+[2026-10-18 15:07:07.359] [DBUG] [ProcessExecutionFactory] Running /home/administrator/.aspire/bin/aspire in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore with args: run --non-interactive --apphost /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --log-file /home/administrator/.aspire/logs/cli_20261018T150707358_detach-child_e265d4eca04c4ecb847e66de4e457c34.log
+[2026-10-18 15:07:07.359] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire env: ASPIRE_CLI_RUN_DETACHED=true
+[2026-10-18 15:07:07.359] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire env: ASPIRE_LAUNCHER_PID=71621
+[2026-10-18 15:07:07.359] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire env: ASPIRE_LAUNCHER_STARTED=199651150
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] TryDiscoverRelativeLayout: CLI at /home/administrator/.aspire/bin, checking for layout...
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] TryInferLayout: Checking layout at /home/administrator/.aspire/bin
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/managed/: MISSING
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/dashboard/: MISSING
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/dcp/: MISSING
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   managed/: MISSING
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   dashboard/: MISSING
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   dcp/: MISSING
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] TryInferLayout: Layout rejected - missing required directories
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] TryDiscoverRelativeLayout: Checking parent directory /home/administrator/.aspire...
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] TryInferLayout: Checking layout at /home/administrator/.aspire
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/managed/: exists
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/dashboard/: exists
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/dcp/: exists
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/managed/aspire-managed: exists
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/dashboard/Aspire.Dashboard: exists
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery]   bundle/dcp/dcp: exists
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] TryInferLayout: New bundle/ layout is valid
+[2026-10-18 15:07:07.359] [DBUG] [LayoutDiscovery] Discovered layout relative to CLI: /home/administrator/.aspire
+[2026-10-18 15:07:07.359] [DBUG] [BundleService] Bundle already extracted and up to date (version: 13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8|192226920|639269290230000000).
+[2026-10-18 15:07:07.366] [DBUG] [ProcessExecutionFactory] Launching detached child process through DCP fork-process: /home/administrator/.aspire/versions/13.6.1_3751e615ad660621f2a7aa4c390ef48e08a0eed8-50b61dfaaa4e74c7/dcp/dcp
+[2026-10-18 15:07:07.407] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(72572) started in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore
+[2026-10-18 15:07:07.407] [DBUG] [AppHostLauncher] Child CLI process started with PID: 72572
+[2026-10-18 15:07:07.407] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(72572) waiting for exit
+[2026-10-18 15:07:32.449] [DBUG] [AuxiliaryBackchannelMonitor] Socket created: /home/administrator/.aspire/cli/bch/DGVx2cvpcCQ4zh1UeSp.85944
+[2026-10-18 15:07:32.449] [INFO] [AuxiliaryBackchannelMonitor] Connecting to auxiliary socket: /home/administrator/.aspire/cli/bch/DGVx2cvpcCQ4zh1UeSp.85944
+[2026-10-18 15:07:32.449] [DBUG] [AuxiliaryBackchannelMonitor] Connected to auxiliary backchannel at /home/administrator/.aspire/cli/bch/DGVx2cvpcCQ4zh1UeSp.85944
+[2026-10-18 15:07:32.496] [DBUG] [AuxiliaryBackchannelMonitor] AppHost capabilities: aux.v1, aux.v2, aux.v3, terminals.v1, resource-snapshot-versions.v1
+[2026-10-18 15:07:32.496] [INFO] [AuxiliaryBackchannelMonitor] Successfully connected to AppHost at /home/administrator/.aspire/cli/bch/DGVx2cvpcCQ4zh1UeSp.85944. AppHost Path: /home/administrator/projects/hexalith/folders/src/Hexalith.Folders.AppHost/Hexalith.Folders.AppHost.csproj, AppHost PID: 85944, CLI PID: 85636, In Scope: False, Supports V2: True
+[2026-10-18 15:07:38.314] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(72572) exited with code: 134
+[2026-10-18 15:07:38.314] [DBUG] [ProcessExecutionFactory] /home/administrator/.aspire/bin/aspire(72572) output drained
+[2026-10-18 15:07:38.314] [WARN] [AppHostLauncher] Child CLI process exited with code 134
+[2026-10-18 15:07:38.314] [INFO] [Stderr] ❌ Failed to start the AppHost.
+[2026-10-18 15:07:38.314] [INFO] [Stderr] ℹ️ Recent AppHost startup output:
+[2026-10-18 15:07:38.319] [INFO] [AppHostLauncher] Begin detached AppHost startup log excerpt from child process 72572.
+[2026-10-18 15:07:38.319] [WARN] [DetachedAppHost/NativeCertificateToolRunner] The certificate is not trusted by OpenSSL.  Ensure that the SSL_CERT_DIR environment variable is set correctly.
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Determining projects to restore...
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj (in 411 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj (in 423 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj (in 408 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Contracts/Hexalith.EventStore.Sample.Contracts.csproj (in 406 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.TestSubscriber/Hexalith.EventStore.TestSubscriber.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj (in 407 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj (in 17 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj (in 16 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj (in 15 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.RestApi.Generators/Hexalith.EventStore.RestApi.Generators.csproj (in 27 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj (in 24 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj (in 29 ms).
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.TestSubscriber -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tests/Hexalith.EventStore.TestSubscriber/bin/Debug/net10.0/Hexalith.EventStore.TestSubscriber.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Contracts -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.SignalR -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/bin/Debug/net10.0/Hexalith.EventStore.SignalR.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Admin.Abstractions -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Sample.Contracts -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Contracts/bin/Debug/net10.0/Hexalith.EventStore.Sample.Contracts.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.ServiceDefaults -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Admin.Server -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Admin.Server.Host -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/bin/Debug/net10.0/Hexalith.EventStore.Admin.Server.Host.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Client -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/bin/Debug/net10.0/Hexalith.EventStore.Client.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.RestApi.Generators -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.RestApi.Generators/bin/Debug/netstandard2.0/Hexalith.EventStore.RestApi.Generators.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.DomainService -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Sample.BlazorUI -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.BlazorUI/bin/Debug/net10.0/Hexalith.EventStore.Sample.BlazorUI.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Sample.Api -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample.Api/bin/Debug/net10.0/Hexalith.EventStore.Sample.Api.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Sample -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/samples/Hexalith.EventStore.Sample/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Admin.UI -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Server -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Server/bin/Debug/net10.0/Hexalith.EventStore.Server.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Gateway -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Gateway/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.Aspire -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/bin/Debug/net10.0/Hexalith.EventStore.Aspire.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]   Hexalith.EventStore.AppHost -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/bin/Debug/net10.0/Hexalith.EventStore.AppHost.dll
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build] Build succeeded.
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]     0 Warning(s)
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build]     0 Error(s)
+[2026-10-18 15:07:38.319] [INFO] [DetachedAppHost/Build] Time Elapsed 00:00:28.54
+[2026-10-18 15:07:38.319] [FAIL] [DetachedAppHost/AppHost] Unhandled exception. System.InvalidOperationException: Plain local Aspire run requires both Hexalith.Tenants host projects before any resources can start. Initialize the root Tenants submodule with 'git submodule update --init references/Hexalith.Tenants'. Missing project(s): '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj', '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj'
+[2026-10-18 15:07:38.319] [FAIL] [DetachedAppHost/AppHost]    at Hexalith.EventStore.AppHost.TenantsProjectPaths.Validate() in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs:line 56
+[2026-10-18 15:07:38.319] [FAIL] [DetachedAppHost/AppHost]    at Hexalith.EventStore.AppHost.TenantsProjectPaths.Resolve() in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/TenantsProjectPaths.cs:line 36
+[2026-10-18 15:07:38.319] [FAIL] [DetachedAppHost/AppHost]    at Program.<Main>$(String[] args) in /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/src/Hexalith.EventStore.AppHost/Program.cs:line 203
+[2026-10-18 15:07:38.319] [FAIL] [DetachedAppHost/AppHost]    at Program.<Main>(String[] args)
+[2026-10-18 15:07:38.319] [INFO] [AppHostLauncher] End detached AppHost startup log excerpt. Child log: /home/administrator/.aspire/logs/cli_20261018T150707358_detach-child_e265d4eca04c4ecb847e66de4e457c34.log
+[2026-10-18 15:07:38.319] [INFO] [Stderr] ❌ AppHost process exited with code 134.
+[2026-10-18 15:07:38.319] [INFO] [Stderr] 📄 See logs at /home/administrator/.aspire/logs/cli_20261018T150706_58441d30.log
+[2026-10-18 15:07:38.319] [INFO] [Stderr] 🔍 See AppHost logs at /home/administrator/.aspire/logs/cli_20261018T150707358_detach-child_e265d4eca04c4ecb847e66de4e457c34.log
+[2026-10-18 15:07:38.320] [INFO] [Cli] Exit code: 2
+[2026-10-18 15:07:38.320] [DBUG] [Host] Hosting stopping
+[2026-10-18 15:07:38.320] [DBUG] [Host] Hosting stopped

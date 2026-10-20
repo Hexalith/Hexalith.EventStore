@@ -1,0 +1,48 @@
+{
+  "commandReceipt": 65,
+  "kind": "persisted-application-http-readback",
+  "ledger": [
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "receipt",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "receivedUtc": "2026-10-20T10:54:05.279745+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "receipt",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "receivedUtc": "2026-10-20T10:54:05.686833+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "receipt",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "receivedUtc": "2026-10-20T10:54:06.280930+00:00",
+      "route": "/events"
+    },
+    {
+      "id": "9e1accbdef965602c940b8c1",
+      "kind": "effect",
+      "messageId": "9e1accbdef965602c940b8c1",
+      "persistedUtc": "2026-10-20T10:54:06.283867+00:00",
+      "route": "/events"
+    }
+  ],
+  "stateComponent": "qualification-state",
+  "stateReadback": {
+    "etag": "f703ffff-7248-4b29-a8d7-65868eb26c31",
+    "status": 200,
+    "value": [
+      {
+        "id": "9e1accbdef965602c940b8c1",
+        "kind": "effect",
+        "messageId": "9e1accbdef965602c940b8c1",
+        "persistedUtc": "2026-10-20T10:54:06.283867+00:00",
+        "route": "/events"
+      }
+    ]
+  }
+}

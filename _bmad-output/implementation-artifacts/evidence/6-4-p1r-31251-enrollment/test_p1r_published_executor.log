@@ -1,0 +1,125 @@
+...............................................................................................................................EEEEEE..................
+======================================================================
+ERROR: testServingBinariesMustPhysicallyExistAndMatchRetainedDigest (test_p1r_published_executor.Published31251SnapshotWitnessTests.testServingBinariesMustPhysicallyExistAndMatchRetainedDigest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 144, in testServingBinariesMustPhysicallyExistAndMatchRetainedDigest
+    fixture = self.fixture()
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 459, in fixture
+    path.write_bytes(('physical synthetic '+project).encode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testShellMediatedProviderMutationInsideSeedIsRejected (test_p1r_published_executor.Published31251SnapshotWitnessTests.testShellMediatedProviderMutationInsideSeedIsRejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 179, in testShellMediatedProviderMutationInsideSeedIsRejected
+    fixture = self.fixture()
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 462, in fixture
+    executor.write_json(consumer/'serving-binaries.json',serving_binaries)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_executor.py", line 57, in write_json
+    _write_json(Path(path), value)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testSnapshotIdentityProtectionAndCreationTimeAreBoundToProviderEnvelope (test_p1r_published_executor.Published31251SnapshotWitnessTests.testSnapshotIdentityProtectionAndCreationTimeAreBoundToProviderEnvelope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 417, in testSnapshotIdentityProtectionAndCreationTimeAreBoundToProviderEnvelope
+    fixture = self.fixture()
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 481, in fixture
+    executor.write_json(root/'commands.json',[{'argv':['docker','inspect',database],'exit_code':0,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        'output':json.dumps({'Id':database,'Name':'/'+owned['name'],'Config':{'Labels':{'hexalith.p1r.invocation':invocation}}})}])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_published_executor.py", line 57, in write_json
+    _write_json(Path(path), value)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/p1r_qualification.py", line 89, in write_json
+    temporary.write_bytes(json.dumps(value, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testSourceSeedWitnessSubstitutionsRemainRejectedAfterRehashing (test_p1r_published_executor.Published31251SnapshotWitnessTests.testSourceSeedWitnessSubstitutionsRemainRejectedAfterRehashing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 67, in testSourceSeedWitnessSubstitutionsRemainRejectedAfterRehashing
+    fixture = self.fixture(writer_version='source',lane='snapshot-tail')
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 459, in fixture
+    path.write_bytes(('physical synthetic '+project).encode())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 797, in write_bytes
+    with self.open(mode='wb') as f:
+         ~~~~~~~~~^^^^^^^^^^^
+OSError: [Errno 28] No space left on device
+
+======================================================================
+ERROR: testTailCountAndDistinctOrderedInventoriesCannotBeSubstituted (test_p1r_published_executor.Published31251SnapshotWitnessTests.testTailCountAndDistinctOrderedInventoriesCannotBeSubstituted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 1012, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp_uwdzqcu/consumers/candidate/domain/bin/Release/net10.0'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 343, in testTailCountAndDistinctOrderedInventoriesCannotBeSubstituted
+    fixture = self.fixture()
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 458, in fixture
+    path.parent.mkdir(parents=True,exist_ok=True)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 1017, in mkdir
+    self.mkdir(mode, parents=False, exist_ok=exist_ok)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 1012, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp_uwdzqcu/consumers/candidate/domain/bin/Release/net10.0'
+
+======================================================================
+ERROR: testUnverifiedProbePathsDigestsFailedExitsAndTailEndpointsAreRejected (test_p1r_published_executor.Published31251SnapshotWitnessTests.testUnverifiedProbePathsDigestsFailedExitsAndTailEndpointsAreRejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 1012, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp7oj2yb0f/consumers/candidate/domain/bin/Release/net10.0'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 271, in testUnverifiedProbePathsDigestsFailedExitsAndTailEndpointsAreRejected
+    fixture = self.fixture()
+  File "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tools/tests/test_p1r_published_executor.py", line 458, in fixture
+    path.parent.mkdir(parents=True,exist_ok=True)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 1017, in mkdir
+    self.mkdir(mode, parents=False, exist_ok=exist_ok)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 1012, in mkdir
+    os.mkdir(self, mode)
+    ~~~~~~~~^^^^^^^^^^^^
+OSError: [Errno 28] No space left on device: '/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/tmp7oj2yb0f/consumers/candidate/domain/bin/Release/net10.0'
+
+----------------------------------------------------------------------
+Ran 151 tests in 102.319s
+
+FAILED (errors=6)

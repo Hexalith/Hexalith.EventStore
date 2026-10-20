@@ -1,0 +1,6 @@
+testExternalSigintPreservesReceiptAndCleansActualDescendants (test_p1r_qualification.SourceAndProcessTests.testExternalSigintPreservesReceiptAndCleansActualDescendants) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 22.697s
+
+OK

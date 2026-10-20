@@ -1,0 +1,10 @@
+{
+  "afterContainerId": "4a3fb2192ee1c7ecd49a2a4388b304aeff8df19541cfb0f078cd0b8b9604d093",
+  "beforeContainerId": "4a3fb2192ee1c7ecd49a2a4388b304aeff8df19541cfb0f078cd0b8b9604d093",
+  "broker": "rabbitmq",
+  "effectCount": 1,
+  "messageId": "ad56ff785eea4a2aa90b4cc1",
+  "publishedWhileOffline": true,
+  "restartReceipt": 72,
+  "scenario": "broker-restart"
+}

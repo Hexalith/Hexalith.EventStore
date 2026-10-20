@@ -1,6 +1,4 @@
-using Hexalith.EventStore.Server.Configuration;
-
-using Microsoft.Extensions.Options;
+using Hexalith.EventStore.Contracts.Projections;
 
 namespace Hexalith.EventStore.SignalRHub;
 
@@ -31,44 +29,15 @@ public class SignalROptions {
     /// <summary>
     /// Gets the maximum number of key/value entries carried in a metadata-rich
     /// projection-changed detail broadcast. Entries beyond this cap are clipped (the
-    /// broadcast still fires). Keeps the channel metadata-only and bounded. Default: 16.
+    /// broadcast still fires). Keeps the channel metadata-only and bounded. Default and ceiling: 16.
     /// </summary>
-    public int MaxDetailMetadataEntries { get; init; } = ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataEntries;
+    public int MaxDetailMetadataEntries { get; init; } = ProjectionChangedMetadataLimits.MaximumEntries;
 
     /// <summary>
-    /// Gets the maximum total UTF-8 byte size (sum of all keys and values) carried in a
+    /// Gets the maximum serialized UTF-8 byte size (compact JSON, including punctuation and escaping) in a
     /// metadata-rich projection-changed detail broadcast. Entries that would exceed this cap
     /// are clipped (the broadcast still fires). Keeps the channel metadata-only and bounded.
-    /// Default: 2048.
+    /// Default: 2048. Options may lower this ceiling; the empty object requires at least 2 bytes.
     /// </summary>
-    public int MaxDetailMetadataBytes { get; init; } = ProjectionChangeNotifierOptions.DefaultMaxDetailMetadataBytes;
-}
-
-/// <summary>
-/// Validates <see cref="SignalROptions"/> at startup.
-/// </summary>
-public sealed class ValidateSignalROptions : IValidateOptions<SignalROptions> {
-    /// <inheritdoc/>
-    public ValidateOptionsResult Validate(string? name, SignalROptions options) {
-        ArgumentNullException.ThrowIfNull(options);
-
-        if (options.MaxGroupsPerConnection <= 0) {
-            return ValidateOptionsResult.Fail("SignalR MaxGroupsPerConnection must be greater than zero.");
-        }
-
-        if (options.MaxDetailMetadataEntries <= 0) {
-            return ValidateOptionsResult.Fail("SignalR MaxDetailMetadataEntries must be greater than zero.");
-        }
-
-        if (options.MaxDetailMetadataBytes <= 0) {
-            return ValidateOptionsResult.Fail("SignalR MaxDetailMetadataBytes must be greater than zero.");
-        }
-
-        if (options.BackplaneRedisConnectionString is not null
-            && string.IsNullOrWhiteSpace(options.BackplaneRedisConnectionString)) {
-            return ValidateOptionsResult.Fail("SignalR BackplaneRedisConnectionString must be null or a non-empty value.");
-        }
-
-        return ValidateOptionsResult.Success;
-    }
+    public int MaxDetailMetadataBytes { get; init; } = ProjectionChangedMetadataLimits.MaximumSerializedUtf8Bytes;
 }

@@ -1,0 +1,23 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a1513f-f18d-79c1-9298-44c5e4b3c36d",
+  "call_id": "call_850aa7aab62b461ea93dba371ce8f797",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.1 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"309a2a\",\"wall_time_seconds\":0.000015429,\"exit_code\":0,\"original_token_count\":25,\"output\":\"{'retained_commands': 2579, 'completed_receipts': 9, 'finished_utc': None, 'executor_errors': []}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"current_time\":\"2026-10-18 23:01:47 UTC\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792364507.5333798
+  }
+}

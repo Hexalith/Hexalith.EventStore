@@ -35,7 +35,7 @@ events. Original event and snapshot hashes must survive those appends. Historica
 comparison fixtures retain their original stopped-writer snapshot diagnostic;
 they cannot establish genuine successor snapshot creation. Enrollment is a finite
 tooling allowlist; later versions receive no successor compiler definitions or
-snapshot fixture sources, and an unenrolled successor's genuine seed refuses.
+snapshot fixture sources, and an unenrolled candidate's seed refuses at every interval.
 The refusal occurs before fixture state reset or writer start. The selected
 candidate's restore writer must use that exact candidate version. The 3.125.0
 operational importer also requires the final private isolation and cleanup journal.
@@ -230,3 +230,122 @@ Debug/project-reference checks cannot satisfy it.
 Rollback remains null. Drain and freeze incompatible ingress, then recover
 forward until a separately qualified capable rollback is selected. Publication,
 consumer pins, P1R acceptance, production/story gates and Story 6.4 remain open.
+
+
+## Exact 3.125.1 enrollment, 2026-10-18
+
+The finite qualification fixture additionally enrolls published 3.125.1 in the
+same capability, logical-evolution and folded-snapshot compiler paths, genuine
+seed requirements, retained fixture source, strict physical-writer witnesses and
+final isolation/cleanup attachment and import checks. Existing 3.125.0,
+historical and Debug/source paths retain their contracts. A selected 3.125.1
+restore writer must be exactly 3.125.1; either cross-version substitution with
+3.125.0 refuses before provider I/O or writer start. Unenrolled 3.125.2 and
+3.126.0 receive no successor compiler paths and genuine seeds refuse before
+fixture reset.
+
+The focused executor, qualification, registration and isolation suites verify
+these tooling boundaries. Registration evaluates Host, Domain and Probe for
+both enrolled versions and both unenrolled controls, and separately executes
+the real source Host/Domain programs at HostBuilt with missing-enrollment
+negative controls. The 3.125.1 witness class executes the existing strict
+snapshot, physical binary, provider, private isolation, timing, cleanup and
+recovery import corpus. These checks execute no published P1R qualification.
+Exact commands, results and preservation proof are retained in
+`../../_bmad-output/implementation-artifacts/evidence/6-4-p1r-31251-enrollment/`.
+
+The published 3.125.1 qualification selects source
+`55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b` and tag Builds
+`4629ff2d3bd66376b29a553663c241d3a7b87853`. Pass `--source-root` to both
+`observe` and `run` to select a self-contained ordinary Git checkout at that
+exact tag, and pass the same root to strict `prepare`. The verifier closure
+records the current tools and their execution Builds independently. Its
+`candidate_source` closure records the immutable production/build inputs;
+independent validation reconstructs both roles and refuses dirty, missing,
+substituted or drifting source. Linked worktrees and borrowed Git object stores
+are refused. Legacy calls without this option retain their historical binding.
+Canonical Git observation ignores replacement refs. Physical production and
+build bytes must match tagged blobs in their declared checkout form, including
+LF C# and CRLF `global.json`. Index flags, external attributes/filters and ignored
+source injections cannot hide changes; ordinary generated `bin`/`obj` outputs
+remain excluded.
+
+Genuine snapshot import accepts the executor's literal empty-body GET hash only
+for ready and outbound-health URLs bound to its owned physical launches. Failed
+readiness retries remain visible. Legacy three-field GET records keep their
+existing grammar; extra arguments, altered hashes and foreign endpoints cannot
+enter through the new form.
+
+Reminder fixtures reserve a separate 120-second startup/restart lead and retain
+the same armed revision-one deadline across restart. Revision two selects its
+own future deadline. Checks before and after each registration require at least
+five seconds remaining, bind the launched due time and refuse missed windows.
+The natural scheduler observation budget remains 30 seconds after the due time.
+Registration reports the literal due time, revision and published reminder name.
+The callback repeats the original armed identity explicitly, including after a
+revision-two restart changes the current due time. Independent validation
+recomputes the published schedule tuple and binds both registrations, the
+callback query and the identity actually invoked. Legacy callback calls without
+an explicit identity continue to use their current fixture environment.
+Before private SDK teardown, a completed canonical run with an explicit source root returns only
+its output and receipt directories to the owner of the host-created wrapper
+directory. This preserves receipt bytes and modes while allowing the host to
+attach final isolation evidence atomically.
+
+The private runner mounts that exact candidate root when it is outside the
+verifier workspace. It rechecks source after readiness waits and before final
+receipt attachment. Source consumers use Debug/project references into the
+selected root, including its SDK and central package pins. Their assets, locks
+and physically loaded assemblies are independently bound. Package consumers
+continue to restore the signed immutable nuget.org bytes in Release. The finite
+snapshot/evolution enrollment includes exactly 3.125.1 alongside the earlier
+enrolled versions; 3.126.0 remains refused before state reset or writer startup.
+
+Fresh technical measurements retain every failed check and execution error.
+A measured successor support table remains pending until its architect supplies
+a genuine disposition. Strict preparation refuses that missing decision; all
+four owner decisions and same-baseline conformance remain pending and
+`p1r_usable=false`. This tooling changes no production snapshot policy, pins,
+rollback=null, Projects AD-17 drain/freeze/forward recovery, acceptance, sprint
+status or readiness.
+
+The optional pinned-tooling route also accepts a `tooling: {commit, builds_commit}`
+block in observations and inputs. In that route, pass both `--source-root` and
+`--source-builds-root`; tooling and qualification Builds must match the selected
+full commits. Its `runtime_source` binding retains separate source and Builds
+identities, complete preprocessed imports and evaluated source references. These
+paths must be inside the isolated workspace. Existing MSBuild import properties
+select the verified release Builds catalog and runtime version; pre-restore and
+post-restore evaluations retain the complete source-reference graph. The
+PostgreSQL component template also comes from that verified release root.
+Physical-byte checks precede Git filters in both source-selection routes.
+Completed canonical runs in either route return only their fresh output and
+receipt directories to the wrapper owner before host finalization.
+Tooling pins must be explicitly supplied for the pinned route. This published
+qualification uses the independently retained verifier/candidate closure route
+above. Legacy calls without explicit roots retain their historical binding.
+
+Both explicit source routes copy the selected tagged source’s `global.json` into
+each fresh consumer root before the first MSBuild evaluation or restore. This
+selects its SDK for Debug source builds and Release published-package builds,
+even when the verifier checkout pins a newer SDK.
+
+## Exact 3.126.0 enrollment, 2026-10-20
+
+The approved P0 current-catalog preparation target additionally enrolls published
+3.126.0 for the existing finite snapshot, recovery, Reminder and evolution proof.
+Its exact tag/source is `fcf78d6cafb6c0c9f52dc350a9a09aff54ded288`; tag-construction
+Builds is `1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c`. The verifier and its actual
+execution Builds remain separate identities. Use the existing separate
+verifier/candidate-closure route with an explicit clean tagged `--source-root`.
+The optional pinned-tooling/runtime-source route remains bounded to its existing
+3.125.1 contract; this enrollment does not silently widen that route.
+
+The fixture executes genuine manual snapshot nine, tail twelve, restore floor
+five/head twelve and append thirteen, plus the existing strict Reminder and
+logical evolution additions. Exact 3.126.0 package writers and the separately
+bound Debug source writer are supported fixture inputs; 3.126.1/3.127.0 and
+cross-version writer substitution remain refused. Historical 3.125.1 identities,
+measurements and failures are preserved. Enrollment and synthetic controls grant
+no P1R support boundary, conformance, acceptance, downgrade, or consumer adoption.
+Keep comparison-only 3.70.1/3.110.0, rollback null and AD-17 forward recovery.

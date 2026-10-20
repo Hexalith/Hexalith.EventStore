@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/tools/p1r-isolated-runner.py",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7-isolation",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+    "--",
+    "python3",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-31251-v2.py",
+    "reminder",
+    "--verifier-root",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+    "--source-root",
+    "/tmp/p1r-31251-tagged-source-final-60e77a9db287420b8a913e014956015f",
+    "--inputs",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-owner-inputs.json",
+    "--out",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7",
+    "--wrapper",
+    "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7-isolation"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",
+  "started_utc": "2026-10-18T19:27:10.150368+00:00",
+  "out": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7",
+  "isolation": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7-isolation",
+  "source_freeze": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-successor/final-source-freeze-v3.json",
+  "exit_code": 0,
+  "finished_utc": "2026-10-18T19:36:57.242459+00:00",
+  "output_log": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reminder-smoke-v3-command-d158cf87ed27489d9025b04c8e13f4f7.log"
+}

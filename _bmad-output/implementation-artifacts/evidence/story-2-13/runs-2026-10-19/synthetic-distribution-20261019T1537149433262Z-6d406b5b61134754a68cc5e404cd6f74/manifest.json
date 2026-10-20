@@ -1,0 +1,82 @@
+{
+  "SchemaVersion": 1,
+  "Scenario": "synthetic-distribution",
+  "StartedUtc": "2026-10-19T15:37:14.9433262+00:00",
+  "CompletedUtc": "2026-10-19T15:39:29.361568+00:00",
+  "Result": "passed-scenario-assertions-only",
+  "Runtime": "10.0.13",
+  "AppId": "eventstore",
+  "FirstHostProcessId": 127409,
+  "SecondHostProcessId": 140111,
+  "FirstSidecarProcessId": 127411,
+  "SecondSidecarProcessId": 152267,
+  "FirstHostPort": 46641,
+  "SecondHostPort": 38463,
+  "Sources": {
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs": "ed2af8baa656ef371b3cacbc4c86eb44c553985d15b650dc0d82b695188cd918",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs": "26486a024de616c31b89e69bb94bbef12b234988822cb5495a8e6d5b4f38d59d",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs": "f0cc075aa5e30d3f587d7127ab8bcf9472b74a143d497ce5d30fd8c8132d2b7d",
+    "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprProjectionDispatchProofTests.cs": "45c36582b208dfc4897d5739e59281fdb0605b9e91335801b71971e7ad4b8d83",
+    "src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs": "8153078bbd0db73769b488f9e2a0ee450652a5bbddff4376f04cd91d8f6972e0",
+    "src/Hexalith.EventStore/Authentication/ProjectionNotificationProvenanceVerifier.cs": "bee2319aab5a98e38c400d12ca64157cd247a70a230470cb9528d002557a8991",
+    "src/Hexalith.EventStore/Validation/ProjectionChangedNotificationValidator.cs": "444a45f5d3bbeb1cc06b5c458cdf63328c14fdf1da4c9ae41062d6f4ff4713b4",
+    "src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs": "0d66f792fd4db26fd0da9cf0baaca074610ed67c810de3bf92a6cdae5e698848"
+  },
+  "Binaries": {
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll": "d7f2a32f6941018d40eb55e6f975f3bce5b9b65da8d1d1f2a92921d7a85776d8",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "10c46f23c55d68e635d11c067817f1d679f9678460e41dd299b376597fd43035",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.deps.json": "3493e6b20412f59237ec3480253aa883bba9b1fb564739eca732d4b1a00ab3b0",
+    "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll": "e9662124b97efe5f01922f69a6f0c2f59d7befcb1d36c71cda9b9ae018b34199"
+  },
+  "Artifacts": {
+    "first-sidecar.json": "0323f900cde03510b05c67f3077d7bcfda15a3e2236e606562390ed2312a015e",
+    "first.log": "b8fd7bc95fa31cafc0d02809b3b0e5ea8f7d957a3aa5d01174bd1adcf62468b3",
+    "pubsub.yaml": "483c2de2d90aa876a80efe6499edc98a82903a46ddd98a79a9f610ec2719b001",
+    "second-sidecar.json": "0323f900cde03510b05c67f3077d7bcfda15a3e2236e606562390ed2312a015e",
+    "second.log": "764d2c60d76fb07eea2a03bbe051feaebb9e2f2fa2285f95f20975d67c20d491",
+    "statestore.yaml": "8cfd8564018ac754f5d3f14acfc215f3d2caf186cb1e14b7b377b1d4660d023a",
+    "subscription-0.yaml": "5874920f2a220acb2d64db182ba95f048bda1681d1166915779be67f6a21c40e",
+    "subscription-1.yaml": "eb38b997f688e61134a0daceb8ce815ed39f7befce625e2b8c666ec85435dec2",
+    "subscription-2.yaml": "cb651c75379e48d2daf95a89ccab890efb94c75d4a1e0f486fb68a53516d8bf7"
+  },
+  "Observations": {
+    "Topic": "tenant-a-2bd68add2830.counter-2bd68add2830.projection-changed",
+    "DeniedTopic": "tenant-a-2bd68add2830.denied-2bd68add2830.projection-changed",
+    "RecoveredTopic": "tenant-a-2bd68add2830.recovered-2bd68add2830.projection-changed",
+    "UnsubscribedTopic": "tenant-a-2bd68add2830.dynamic-2bd68add2830.projection-changed",
+    "TenantA": "tenant-a-2bd68add2830",
+    "TenantB": "tenant-b-2bd68add2830",
+    "Projection": "counter-2bd68add2830",
+    "Scope": "scope-2bd68add2830",
+    "FirstConnectionId": "FG9piWQNW9-fpANkAXH-xw",
+    "SecondConnectionId": "dZjL8Qd0UNqJG-xoAGCMWA",
+    "RejoinedConnectionId": "zj9-AY4e_dFPrFjNb-5lxQ",
+    "OriginalSecondSidecarProcessId": 140113,
+    "ReadModelKey": "story-2-13:tenant-a-2bd68add2830:counter-2bd68add2830",
+    "InitialVersion": 1,
+    "FinalVersion": 2,
+    "InitialETag": "1",
+    "FinalETag": "2",
+    "DetailMetadataEntries": 16,
+    "DetailMetadataKeyValueUtf8Bytes": 1904,
+    "DetailMetadataSerializedUtf8Bytes": 2001,
+    "Scenarios": [
+      "two-host-signal-and-scoped-detail",
+      "both-host-anonymous-expired-wrong-tenant-missing-grant-forged-scope-denials",
+      "missing-mismatched-expired-provenance-with-positive-control",
+      "reordered-and-repeated-hints-persisted-readback",
+      "both-host-17-entry-and-multibyte-oversize-denials-with-positive-control",
+      "information-level-metadata-value-suppression",
+      "registered-shipped-wildcard-misses-dynamic-topic-beside-exact-topic-control",
+      "reauthorized-rejoin-readback",
+      "sidecar-outage-bounded-query-and-recovery"
+    ],
+    "Limits": [
+      "synthetic-state-does-not-prove-a-projection-change",
+      "no-production-issuer-or-profile",
+      "no-dynamic-topic-coverage",
+      "no-ui-completion-or-freshness-state-proof",
+      "no-provider-host-outage-or-transition-rollback"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "containerId": "fdd83ed4369e60320a344731b181f1b94d3ac30a7832ff206306a7967032cfd1",
+  "imageId": "sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837",
+  "kind": "disposable-broker-container",
+  "requestedImage": "docker.io/apache/kafka@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837"
+}

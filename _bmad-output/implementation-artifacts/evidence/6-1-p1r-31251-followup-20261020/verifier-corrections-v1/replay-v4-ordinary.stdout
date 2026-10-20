@@ -1,0 +1,429 @@
+{
+  "candidate": {
+    "archives_rehashed": [
+      {
+        "archive_sha256": "27bbd41df6a8b59e5fa71bd3d3c4ee30583c1b77b7999b53f0b7af530e97189c",
+        "bytes": 427187,
+        "id": "Hexalith.EventStore.Client"
+      },
+      {
+        "archive_sha256": "b386677aa8d37d74c2d22905c7422220dd7ca9b809379f2023a597d0ab64e802",
+        "bytes": 345136,
+        "id": "Hexalith.EventStore.Contracts"
+      },
+      {
+        "archive_sha256": "a05d9afae5d242e86f40a2dbd89b5c965b2715cfe395d3d99f0e8a68665b847e",
+        "bytes": 360962,
+        "id": "Hexalith.EventStore.DomainService"
+      },
+      {
+        "archive_sha256": "38e0698d5037955d10d2968c80defbd1845f3a217d6ee0ae68a800f9cada7da8",
+        "bytes": 996200,
+        "id": "Hexalith.EventStore.Server"
+      },
+      {
+        "archive_sha256": "71ce53d42bea7203cf463e431ba82c15e1e3a19fd1e73123f7d3894510642838",
+        "bytes": 83455,
+        "id": "Hexalith.EventStore.ServiceDefaults"
+      }
+    ],
+    "selection": {
+      "builds": {
+        "commit": "1dfc39e3a3e6ab1c8ce95138490b39d76e7feb2c",
+        "version": "4.33.1-1-g1dfc39e"
+      },
+      "feed": "https://api.nuget.org/v3/index.json",
+      "packages": [
+        {
+          "archive_sha256": "27bbd41df6a8b59e5fa71bd3d3c4ee30583c1b77b7999b53f0b7af530e97189c",
+          "content_hash": "WNTME86u/UfXN9Xf7GfSEwOAJ/XNtJM1Gitr6R+cfAjU4MblAYzG8f8J0eQmiCQP2u4zUe9BWmEt3r+haAM7ag==",
+          "id": "Hexalith.EventStore.Client",
+          "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+        },
+        {
+          "archive_sha256": "b386677aa8d37d74c2d22905c7422220dd7ca9b809379f2023a597d0ab64e802",
+          "content_hash": "FZrJQfCdE2dFpOBM1HGvowm5Z9RRyk+b3Gr3ps0TKNkd+WU0xQp0UUQ4WiJoEiZPnzlyhgk+DFxDmUMEDkbP7A==",
+          "id": "Hexalith.EventStore.Contracts",
+          "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+        },
+        {
+          "archive_sha256": "a05d9afae5d242e86f40a2dbd89b5c965b2715cfe395d3d99f0e8a68665b847e",
+          "content_hash": "FTMD2BwNZABi4JD95nV2Y4ObvUTyo2KIEKS93SV6nviA0hqW9Lz1Zdpk49+/Idc2yCRNnrMXlLoi7nlVG+i9jw==",
+          "id": "Hexalith.EventStore.DomainService",
+          "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+        },
+        {
+          "archive_sha256": "38e0698d5037955d10d2968c80defbd1845f3a217d6ee0ae68a800f9cada7da8",
+          "content_hash": "bKtWAtQrKTKj67XMXVrj6tLOUs/XOnhi9McJCKUeDe5Kl1isREnxA9Cph2UGhAfVi0dxrqP4krRet7pgmEojuw==",
+          "id": "Hexalith.EventStore.Server",
+          "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+        },
+        {
+          "archive_sha256": "71ce53d42bea7203cf463e431ba82c15e1e3a19fd1e73123f7d3894510642838",
+          "content_hash": "9TuqwCcEZPbUxumAV4EaBOh6muMVtquX4WNsNAQv1tvg3hfw0CE0UbEWl4wcv8bjp2xWgAgwt9p5MigFDiYzBg==",
+          "id": "Hexalith.EventStore.ServiceDefaults",
+          "repository_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b"
+        }
+      ],
+      "tag": "v3.125.1",
+      "tag_builds_commit": "4629ff2d3bd66376b29a553663c241d3a7b87853",
+      "tag_commit": "55432c50d4b6f1666b4bd6d4a60bfc263b2d0e0b",
+      "version": "3.125.1"
+    },
+    "signature_scope": "retained signature observations only; no fresh signature verification",
+    "tagged_source_files": {
+      "src/Hexalith.EventStore.Contracts/Queries/QueryCallerAuthority.cs": {
+        "git_blob": "370d5321e64aa057fd678175a976714e8c0281b0",
+        "sha256": "2e46c6e753daa4047c51d0e83176b31b68f2a823c23ef72b8baa0965a804eabb"
+      },
+      "src/Hexalith.EventStore.DomainService/VerifiedQueryCaller.cs": {
+        "git_blob": "540ed7f68913fe0181e8933c7516526d3c71807a",
+        "sha256": "531f1b6c2c89496afdc657533b418d46e184d51920ad9935ad76d0f98ed7518a"
+      },
+      "src/Hexalith.EventStore.Server/Events/EventPersister.cs": {
+        "git_blob": "3b957a7cc43ea67c84b866cc424753b4e01b2b2c",
+        "sha256": "a38504ceaace235b9eee06cdf4a93af89f3ca274c13a256779f69df8e274d16b"
+      },
+      "src/Hexalith.EventStore.Server/Events/SourceProofCodec.cs": {
+        "git_blob": "92215eb237b27b7b5766e8f32240f1a49f0f2fe8",
+        "sha256": "f6e56578f53dbbcf5183c4732e52c4f3ea2f04530ce4852874de58044e9adf41"
+      }
+    },
+    "verifier_source_sha256": "d75d54e15d57c99fec3b7b4a7b28d5a2032e6617099bddc0083a87f650e9d951"
+  },
+  "classification": {
+    "environmental_seed_failure": {
+      "limit": "3.110.0 seeder failed before tagged 3.125.1 reader; cannot isolate source/package regression",
+      "logs": [
+        {
+          "command_id": 3501,
+          "lines": [
+            "time=\"2026-10-18T23:26:31.645857047Z\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=eventstore component=\"nr (sqlite/v1)\" instance=fffb9d815607 scope=dapr.contrib type=log ver=1.18.2",
+            "time=\"2026-10-18T23:26:38.480971678Z\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=eventstore component=\"nr (sqlite/v1)\" instance=fffb9d815607 scope=dapr.contrib type=log ver=1.18.2"
+          ],
+          "output_sha256": "94049fc285b322a07f66ef754c07e3e4ad37f91f61aabd2c37b2c46ff70c3820"
+        },
+        {
+          "command_id": 3503,
+          "lines": [
+            "time=\"2026-10-18T23:26:38.392618071Z\" level=error msg=\"Failed to update host registration: context deadline exceeded\" app_id=counter component=\"nr (sqlite/v1)\" instance=fffb9d815607 scope=dapr.contrib type=log ver=1.18.2"
+          ],
+          "output_sha256": "936ab8b874b70c7ea1e64bb45476ffa87b439051ac37422237f232a849f782ca"
+        }
+      ],
+      "main_failed_checks": 6,
+      "seed": {
+        "argv": [
+          "dotnet",
+          "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/comparison-3.110.0/probe/bin/Release/net10.0/Probe.dll",
+          "seed",
+          "http://127.0.0.1:22194",
+          "tenant-b",
+          "fixture",
+          "3"
+        ],
+        "command_id": 3500,
+        "exit_code": 0,
+        "output_sha256": "5c997639d08ffcebaa5881200356c983e6f8fc449a1c979235f8203221eb1cd8",
+        "result": {
+          "instrumentation": "p1r-executed-checks-v1",
+          "measurement": {
+            "assertions": {
+              "attempted": 2,
+              "failed": 2,
+              "passed": 0
+            },
+            "checks": [
+              {
+                "id": "append-1-accepted",
+                "passed": false
+              },
+              {
+                "id": "append-1-one-event",
+                "passed": false
+              }
+            ]
+          },
+          "observation": {
+            "accepted": false,
+            "committed": 0,
+            "error": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing.",
+            "event_count": 0
+          }
+        }
+      },
+      "status": "observed discovery deadlines; exact underlying host/SQLite cause unproven",
+      "unattempted_seed_checks": 4
+    },
+    "runtime_defects": {
+      "limit": "no production repair justified; absence of an isolated defect does not qualify 3.125.1",
+      "proven_by_these_failures": []
+    },
+    "shared_host_drift": {
+      "comparisons": [
+        {
+          "added": [],
+          "after": 9,
+          "baseline": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/outer-shared-before-canonical-v4.json",
+          "before": 13,
+          "changed": [],
+          "entire_set_unchanged": false,
+          "removed": [
+            "05bbf9a68de34bb1f6cf11a6c32d2d8adc2554e30cab879b6ecb947429c02139",
+            "8e3097fda20365d70fe1597bf9dbb47651616356f7311d6439d47c483d513602",
+            "8ef46d38f1ceea9224da9720b921f9c0bf6cd85fd960924c43bb0b240ceb3e6e",
+            "b929660f9511e7ebda8e4447f3ca9e56c7ee277dbe4ac80934ddd28979a43414"
+          ]
+        },
+        {
+          "added": [
+            "6533ea1b762fd5b16c2c03292ea8523a30cca1bd544d5fee772e64401cdf655c",
+            "8623af8b7bbd8ebd3d73221af72615162475f3f8a7190432e09e64e51befc826",
+            "88d9922f30ed3c6fcfa7dd8ed641afff2d80324ff689665aa4cd4e27df6756a0",
+            "98c19d4e578dac3a7387a24418bd06b28f78bab10bee58b7d21cfbe0a6dcd7d3",
+            "d758028f3025e51356e9759f376ca67ecb677b3e3e523e74b7af9eb1384e64ce",
+            "f1e0a30a3a93a1542ee5ad74856e44d483a94f7a8e5ef769f398827815cc1da6"
+          ],
+          "after": 9,
+          "baseline": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/outer-shared-before.json",
+          "before": 5,
+          "changed": [],
+          "entire_set_unchanged": false,
+          "removed": [
+            "0719fe8c59bd450c1f20a3b94a1ee85ab75f52e5c92bdbcb2de86e31cd304df7",
+            "8a7dea8bcfe132c3fddbf71b97d69e926a4af1873315b07d75f5293b987ce5ac"
+          ]
+        }
+      ],
+      "limit": "owned cleanup 7/7 and private audit do not prove preservation of the outer host",
+      "removed_overlap_with_recorded_v4_owned_containers": [],
+      "status": "failed preservation; actor attribution unavailable"
+    },
+    "verifier_fixture_defect": {
+      "append": {
+        "argv": [
+          "dotnet",
+          "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+          "actor",
+          "http://127.0.0.1:27106",
+          "tenant-a",
+          "fixture",
+          "12",
+          "IncrementCounter"
+        ],
+        "command_id": 4038,
+        "exit_code": 0,
+        "output_sha256": "6621973073ed3aa54a06802f6534bc414c6d6b94f26e6cc6e8f0d855775edf45",
+        "result": {
+          "instrumentation": "p1r-executed-checks-v1",
+          "measurement": {
+            "assertions": {
+              "attempted": 1,
+              "failed": 0,
+              "passed": 1
+            },
+            "checks": [
+              {
+                "id": "actor-response-observed",
+                "passed": true
+              }
+            ]
+          },
+          "observation": {
+            "accepted": false,
+            "error": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=EventsStored.",
+            "event_count": 0,
+            "sequence": 12
+          }
+        }
+      },
+      "causal_limit": "guard refusal inferred from exact input and tagged code; raw exception message remains redacted",
+      "count_scope": "recovery failures repeat the same append/restart observations; not two new runtime incidents",
+      "guard": "tagged SourceProofCodec.IsValid requires proof.RetainedFloor == metadata.RetainedFloor; EventPersister rejects source_conflict",
+      "main_failed_checks": 3,
+      "metadata": {
+        "currentSequence": 12,
+        "eTag": null,
+        "lastModified": "2026-10-18T23:36:05.9013246+00:00",
+        "retainedFloor": 5,
+        "sourceProof": {
+          "aggregateId": "fixture",
+          "codecVersion": 1,
+          "cumulativeDigest": "4ae20a8b91c81f936bda79bb919518dad47edfb022233c3deb3eb28274218bc4",
+          "domain": "counter",
+          "erased": false,
+          "headMessageId": "01M58NYPGDZ19FRT9E0D7BNDE3",
+          "headSequence": 12,
+          "retainedFloor": 1,
+          "sourceIncarnation": "01M58NY2DGPGC9N7GKDW8ZEREM",
+          "tenantId": "tenant-a"
+        }
+      },
+      "metadata_sha256": "c03b45fefe2269d240c01e9b2aedf6763b1a63565a3f75b30037e6332f3e0538",
+      "mutation_command_id": 4014,
+      "recovery_failed_checks": 2,
+      "restarted_assertion": {
+        "argv": [
+          "dotnet",
+          "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/execution-e262ce52e42b4c64a436ac3841c17ac9/consumers/candidate/probe/bin/Release/net10.0/Probe.dll",
+          "actor",
+          "http://127.0.0.1:29228",
+          "tenant-a",
+          "fixture",
+          "13",
+          "AssertCounter"
+        ],
+        "command_id": 4055,
+        "exit_code": 0,
+        "output_sha256": "bff2f59b9cfa1a81bc47901ed78a922b2cb084d8d148ec35a80c29a7a3b34fda",
+        "result": {
+          "instrumentation": "p1r-executed-checks-v1",
+          "measurement": {
+            "assertions": {
+              "attempted": 1,
+              "failed": 0,
+              "passed": 1
+            },
+            "checks": [
+              {
+                "id": "actor-response-observed",
+                "passed": true
+              }
+            ]
+          },
+          "observation": {
+            "accepted": false,
+            "error": "Protected data diagnostic details were redacted. ReasonCode=protected-data-diagnostic-redacted; Stage=Processing.",
+            "event_count": 0,
+            "sequence": 12
+          }
+        }
+      },
+      "status": "demonstrated invalid positive fixture"
+    },
+    "verifier_reporting_defect": {
+      "case_disposition": "compatible",
+      "case_outcome": "effect",
+      "failed": 3,
+      "limit": "incorrect case labels did not grant passing receipt or qualification",
+      "receipt_compatibility": "unverified",
+      "receipt_execution": "failed"
+    }
+  },
+  "historical_results": {
+    "cases": 163,
+    "cleanup": {
+      "attempted": 7,
+      "failed": 0,
+      "passed": 7
+    },
+    "failed_checks": [
+      {
+        "case": "snapshot-tail",
+        "check": "source:tenant-b:append-1-accepted",
+        "lane": "checkout"
+      },
+      {
+        "case": "snapshot-tail",
+        "check": "source:tenant-b:append-1-one-event",
+        "lane": "checkout"
+      },
+      {
+        "case": "snapshot-tail",
+        "check": "source:tenant-b:committed-count",
+        "lane": "checkout"
+      },
+      {
+        "case": "snapshot-tail",
+        "check": "source:seed-persisted-fifteen-events",
+        "lane": "checkout"
+      },
+      {
+        "case": "snapshot-tail",
+        "check": "source:second-tenant-hydrates",
+        "lane": "checkout"
+      },
+      {
+        "case": "snapshot-tail",
+        "check": "source-package-semantics-equivalent",
+        "lane": "checkout"
+      },
+      {
+        "case": "fresh-backup-restore-append-restart",
+        "check": "fresh-restore-appends-thirteen",
+        "lane": "post-upgrade-restore"
+      },
+      {
+        "case": "fresh-backup-restore-append-restart",
+        "check": "fresh-restart-reconstructs-thirteen",
+        "lane": "post-upgrade-restore"
+      },
+      {
+        "case": "fresh-backup-restore-append-restart",
+        "check": "restored-head-thirteen",
+        "lane": "post-upgrade-restore"
+      }
+    ],
+    "lanes": 19,
+    "main": {
+      "attempted": 4804,
+      "failed": 9,
+      "passed": 4795
+    },
+    "restore": {
+      "attempted": 12,
+      "failed": 2,
+      "passed": 10
+    }
+  },
+  "p1r_usable": false,
+  "qualified": false,
+  "read_input_sha256": {
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/canonical-v4-index.json": "f62f14434c352c7a098b3d45f2c772f1384ab543e6d0ac03039389440900b228",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/commands.json": "ce2d896d5ed265b4a426b436a6fd809e6885c45207cc29e339f90a9041f19d2c",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/execution.json": "79da7de846547566a87dd2635d608fc1aeb0f5a74006f9503c11237450377add",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/executor-source.json": "12a1bcb7ed02df5c63b17d2501717eec00c29d83262e9d4b894fbe3d6a111803",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json": "a0417027b54d5f5924e0560d9657eb985581895a322ba2c2a2267318d85859ac",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json": "f228787f35a02b17bccc3a66f78c29e1938145bf2d2856592ad71fe82efcd724",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json": "8bac78c60e6bfe1f5292b7a2b852aaf26df8c0886a888139daba05dc0d21bd92",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json": "c822b83b34d80c410311a43f19170833aa7ff6f8adca24000576b378a8f14995",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json": "c5569c61b2e1cdbbf00de56d80789fedd0c3b7b97fb99090c1fb10924ac934c5",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json": "68ed0ef5e1b61014e34fa0cdad3128a4e2763aaa9a127f66ccf4f5b3fea2b9a8",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json": "3539284c90aa8bfd3926102f6c0f081b886d34eae626f6c22a904667834d1793",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json": "05ffd96b3b15672a1a5cfcef27e46297150b9f1994d2eb56f0f944bbedd8030a",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json": "9dca3630645f11b68f3c08f69c00d359b64a3f4267d7864d42fe34dd08a1eee9",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json": "ac50e90d8e2bc976ca0c7e1989cd1471eeb5fc2851bfc7db40222d820000c555",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json": "bb42ca581797fb5f8c33250bd6d952eefa90c594256daa9cc3c47e902a496009",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json": "0cf130498b22be821f5965a0378823b85e792e3f704b7f1373ec05af73a10aee",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json": "75e8c1e0a5f3476c456ff74ed3cf0f620c86cdb912cfed6b8fb6be1caff5d7d4",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json": "bb44b4b3b090a05becb1e71dfc503a22b5b8a6bda22c9dae91a6eaceed151637",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c6f3543e8b5b497fb519314f6b6cf0fe.json": "acb1320e2ba81e79f6a4d9a88227a5038fd0b35a35195881dee2f40cc4e8debc",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json": "a56b6336cd86fee69516e1d0ccd46f6a8a0166cac8b0229ae09c41a39a78e4e1",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json": "5684e99f99905a806915650ad24689c645cb21ee06576a95a48ede45935579db",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json": "02ac282b585fbab91d997ba68eef726bca8641e9e0ded0c0d6fb8688a3e76b1a",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json": "5dcdcdadaf11bcca74020d1594f2b29d66fd552ce9fd88074ea75dd872d0aef3",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f480a83b124a4117b6df06ebe3f1d37e.json": "55ed9b4d0bf7f6b85c8487f287e24548c8565e5da9daee1e06b2520cd6e0495c",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json": "8c15e7b5dd582af45fe7c00d7bed08ac98194d23286fa96034ef6da73f6ce0c4",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/observation-754c6a84815246a6b5af12b3d47841e2/owner-decisions.json": "b296ef0751287a1af00cfa278db023002f9d133b09e73067c71c6c03ca02537f",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/observation-754c6a84815246a6b5af12b3d47841e2/owner-inputs.json": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/outer-shared-after-canonical-v4.json": "3b4ecd157c316d483a3b7d0ba4ebcbcedc94582d8cd46beec373efc1167aee18",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/outer-shared-before-canonical-v4.json": "b15f7e4e8ae8cdb241896c687a9e665ccb8551ba1f0057b25143ea406346c9dd",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/outer-shared-before.json": "5cff579df04dfc8ac9099f31d0ef8309725e0efe38f23d9be482a0f9edd13584",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations-verified/archives/Hexalith.EventStore.Client.3.125.1.nupkg": "27bbd41df6a8b59e5fa71bd3d3c4ee30583c1b77b7999b53f0b7af530e97189c",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations-verified/archives/Hexalith.EventStore.Contracts.3.125.1.nupkg": "b386677aa8d37d74c2d22905c7422220dd7ca9b809379f2023a597d0ab64e802",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations-verified/archives/Hexalith.EventStore.DomainService.3.125.1.nupkg": "a05d9afae5d242e86f40a2dbd89b5c965b2715cfe395d3d99f0e8a68665b847e",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations-verified/archives/Hexalith.EventStore.Server.3.125.1.nupkg": "38e0698d5037955d10d2968c80defbd1845f3a217d6ee0ae68a800f9cada7da8",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/planning-observations-verified/archives/Hexalith.EventStore.ServiceDefaults.3.125.1.nupkg": "71ce53d42bea7203cf463e431ba82c15e1e3a19fd1e73123f7d3894510642838",
+    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/selected-final-parent-audit-9895165b155e48f2852f55b91c9bea35.json": "40d9724e31b4a63dd936dd5c0743f6e64cd2d1267f1120dd1f09f43d0bc5f0df",
+    "_bmad-output/implementation-artifacts/evidence/6-4-eventstore-query-authority-20261020/final-validation.json": "01396164e707c82afd39a3b2959f7c2ff15f6940a6318e95b4c5d698fc38d7f6"
+  },
+  "scope": "retained canonical V4 causal analysis; no runtime execution, repair or qualification",
+  "separate_story_6_4_api": {
+    "implementation_commit": "6c56c27bc1a8d63c83f9631f7162cf79fdde0a1e",
+    "owner_acceptance": "not inferred",
+    "present_in_3_125_1": false,
+    "published_candidate_selected": null,
+    "qualification": "separate successor package/source and consumer qualification required",
+    "retained_focused_source_passed": 422
+  }
+}

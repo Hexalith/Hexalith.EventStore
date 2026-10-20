@@ -1,0 +1,80 @@
+{
+  "scope": "retained failed control setup; Executor never initialized",
+  "wrapper": {
+    "path": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/snapshot-get-smoke-2f578ede569b4b08a880338b46e043ce-isolation/isolation.json",
+    "sha256": "34f5d2b5ff6ad9516ed6e25381dd18220275247257c1d98d03e62ead7ce8689a"
+  },
+  "actual_mounts": [
+    "type=volume,src=p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9,dst=/var/lib/docker",
+    "type=volume,src=p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9,dst=/var/lib/docker",
+    "type=bind,src=/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4,dst=/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",
+    "type=bind,src=/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775,dst=/tmp/p1r-31251-tagged-source-import-da30571ce90c4296ba51b1d98b3c1775"
+  ],
+  "actual_private_sdk": "10.0.401",
+  "actual_command_exit_code": 2,
+  "actual_final_diagnostic_error": "FileNotFoundError writing nonexistent smoke output directory",
+  "initial_input_unavailable_inference": "The literal input path belongs to V3, which is absent from the complete bind mount list; the initial regular-input check therefore cannot succeed. Its caught exception was masked by the later diagnostic write failure.",
+  "cleanup": [
+    {
+      "absent_containers": [
+        "351b1e8d9098928193f95776a586214c319686ea16c219ddc811374e4618b944",
+        "bcfeb87735dd8ef0583705e4292933498b9de4676548c1c788742b223e3394a5",
+        "32603840d4dff4db398a9478ee53296458cc79f5a0d15b7c89c40e43396a9afd"
+      ],
+      "absent_scratch": [
+        "/tmp/p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9-4t9dykoh"
+      ],
+      "absent_volumes": [
+        "p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9"
+      ],
+      "errors": [],
+      "finished_utc": "2026-10-18T21:55:00.667163+00:00",
+      "id": 1,
+      "nested_inventory": {
+        "complete": true,
+        "containers": [],
+        "daemon": "32603840d4dff4db398a9478ee53296458cc79f5a0d15b7c89c40e43396a9afd"
+      },
+      "remaining": [],
+      "started_utc": "2026-10-18T21:54:52.416350+00:00",
+      "targeted": [
+        "351b1e8d9098928193f95776a586214c319686ea16c219ddc811374e4618b944",
+        "bcfeb87735dd8ef0583705e4292933498b9de4676548c1c788742b223e3394a5",
+        "32603840d4dff4db398a9478ee53296458cc79f5a0d15b7c89c40e43396a9afd",
+        "volume:p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9",
+        "scratch:/tmp/p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9-4t9dykoh"
+      ]
+    },
+    {
+      "absent_containers": [
+        "351b1e8d9098928193f95776a586214c319686ea16c219ddc811374e4618b944",
+        "bcfeb87735dd8ef0583705e4292933498b9de4676548c1c788742b223e3394a5",
+        "32603840d4dff4db398a9478ee53296458cc79f5a0d15b7c89c40e43396a9afd"
+      ],
+      "absent_scratch": [
+        "/tmp/p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9-4t9dykoh"
+      ],
+      "absent_volumes": [
+        "p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9"
+      ],
+      "errors": [],
+      "finished_utc": "2026-10-18T21:55:06.413333+00:00",
+      "id": 2,
+      "nested_inventory": {
+        "daemon_absent": true,
+        "prior_empty_inventory": true
+      },
+      "remaining": [],
+      "started_utc": "2026-10-18T21:55:00.681178+00:00",
+      "targeted": [
+        "351b1e8d9098928193f95776a586214c319686ea16c219ddc811374e4618b944",
+        "bcfeb87735dd8ef0583705e4292933498b9de4676548c1c788742b223e3394a5",
+        "32603840d4dff4db398a9478ee53296458cc79f5a0d15b7c89c40e43396a9afd",
+        "volume:p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9",
+        "scratch:/tmp/p1r-isolation-8e84ac74aa1846c79ab190f4a9e1bfb9-4t9dykoh"
+      ]
+    }
+  ],
+  "successor_helpers": "snapshot-smoke-v2-lineage.json",
+  "tooling_source_freeze_unchanged": true
+}

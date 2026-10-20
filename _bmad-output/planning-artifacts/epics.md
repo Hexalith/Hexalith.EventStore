@@ -3192,9 +3192,14 @@ So that no evidence result is ever relabelled as release or promotion authority.
 **And** EventStore never re-implements the codec.
 
 **Given** the build steps are complete
-**When** the release owner and then the deployment owner issue their records for the unchanged Story 3.15 subject
-**Then** the `release-available` entry is release-owner-authenticated and the `production-promoted` entry is deployment-owner-authenticated, binding the canonical profile digest and an immutable deployment identity
-**And** the story is `done` only after both records validate under the Assurance Control; until then the validator reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule.
+**When** registered authenticated issuers issue records for their exact immutable subjects
+**Then** EventStore's evidence-validated and release-available records bind its exact qualified server/package subject, while a Platform-composed `platform/eventstore` image starts a new Platform subject at `built` and its Platform-issued release-available/production-promoted records bind the eligible server/package, extension, catalog, runtime, resolved profile and rendered-deployment digests
+**And** Story 3.15 and all existing records remain on their original subject; no container receipt or unrelated package authority transfers to a composed subject. Composed-host availability requires owner approval of the subject/issuer split and extension API, registered issuer roles and the existing Assurance Control. Story completion and every issue-step prerequisite remain gated; otherwise the validator reports truthful FAIL.
+
+**Given** the agreed EventStore/Platform template and per-release binding contract
+**When** Platform generates a complete value-free resolved profile candidate
+**Then** the deployment owner publishes accepted canonical bytes at EventStore's sole `deploy/dapr/production-profile.yaml` slot, Story 3.19 validates the exact bytes, and Platform release/deployment records bind that same digest
+**And** templates, partial bindings, development manifests and second profile files cannot substitute for the full actual app/component/physical target/runtime/issuer/catalog/restore/envelope inventory.
 
 **Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07.md` as the FR36-C3 owner required by OR29. Issue-step prerequisites named 2026-10-07 by `sprint-change-proposal-2026-10-07-architecture-routing.md`.
 
@@ -3237,38 +3242,48 @@ So that no consumer removes local projection or query infrastructure without val
 ### Story 3.21: Production DAPR Runtime Pin And Durable Broker Qualification
 
 As a deployment owner,
-I want one tested DAPR runtime pin and qualified durable-broker candidates on the production path,
-So that the AD-26 decision names a broker and runtime from evidence, and the production profile binds exactly what was proven.
+I want qualified durable-broker and Dapr runtime inputs that the shared Platform host rehearses on self-hosted Kubernetes,
+So that the AD-26 owner decision and canonical production profile bind exactly what was proven.
 
 **Requirements coverage:** Supporting FR32, FR34, NFR6, and NFR17. No primary FR or NFR claim. Owns the durable-broker and DAPR-runtime-pin inputs that AD-26 requires before any `production-promoted` record.
 
-**Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5 (envelope re-proof on a runtime minor-version change), AD-8, AD-9, AD-12, and AD-31.
+**Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5 (envelope re-proof on a runtime minor-version change), AD-8, AD-9, AD-12, AD-24, AD-31 and AD-34.
 
-**Dependencies:** Story 3.17 (inventory rows); a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. **Selection boundary:** the owner names the broker and runtime pin only in an AD-26 ratification record or an approved replacement; this story builds evidence and never selects. The DAPR CLI pin and catalog alignment belong to the Hexalith.Builds owner. `.github/workflows/integration.yml` and `.github/workflows/ci.yml` are sealed OQ8 v3 inputs: their runtime and CLI pins change only inside a planned Story 4.15 reseal, and otherwise the qualification lane is a new workflow file.
+**Dependencies and ownership:** Story 3.17 accepts inventory rows; gate-closing implementation requires a valid current-subject Story 9.1 record for G-PUBLICATION-AUTH. EventStore owns local Dapr/component qualification; Platform owns the shared composition, disposable self-hosted Kubernetes rehearsal through its existing Story 4.17/shared-runtime work, and the later exact deployment/restore bundle. Builds owns CLI/runtime/control-plane catalog, embedded tool and runner alignment. EventStore's own AppHost/fixture proves repository behavior only; Platform tests consume its runner-owned descriptor. Only authenticated Architecture and Platform deployment AD-26 records explicitly select an eligible broker/runtime. Sealed `.github/workflows/integration.yml` and `.github/workflows/ci.yml` pins change only through a planned Story 4.15 reseal; otherwise use the new non-promoting qualification workflow.
 
 **Acceptance Criteria:**
 
-**Given** a candidate runtime of at least `1.18.3` (`1.18.4` is the current stable release) and its CLI
-**When** every runtime, CLI, placement, and scheduler pin in CI, the AppHost, and the production-profile inputs is inventoried
-**Then** each location is listed with its value, and the candidate passes the live-sidecar suite in the qualification lane
-**And** a production-profile input pinned below the floor or to a mutable tag fails a guard; drift in the deployment guides is reported to Story 5.9.
+**Given** a candidate runtime of at least `1.18.3` and its independently compatible CLI
+**When** runtime, CLI, embedded component, placement, scheduler and catalog/tool pins in CI, AppHosts and profile inputs are inventoried
+**Then** exact immutable identities and loaded configuration bind the live qualification evidence
+**And** below-floor or mutable production inputs fail; guide drift goes to Story 5.9. The retained comparison is Dapr `1.18.7`, CLI `1.18.2`, components-contrib `1.18.6`, RabbitMQ `4.3.6-management` and Kafka `4.3.1`, not a production selection or newest-release claim.
 
-**Given** the broker candidates `pubsub.kafka` and `pubsub.rabbitmq` (templates in `deploy/dapr`) and the cloud-managed `pubsub.azure.servicebus.topics`
-**When** each is qualified on the candidate runtime
-**Then** at-least-once redelivery after subscriber failure, dead-letter routing, retention, a CloudEvent `id` equal to `MessageId`, publishing and subscription scopes, and `secretKeyRef` credentials are observed and recorded as Story 3.17 inventory rows with exact versions
-**And** an unobserved guarantee stays unresolved, and no candidate is recorded as selected.
+**Given** `pubsub.kafka/v1` and `pubsub.rabbitmq/v1` self-hosted candidates
+**When** the complete 12-scenario matrix per broker executes in exclusively allocated disposable local infrastructure
+**Then** redelivery after subscriber failure, durable delivery/quarantine and failed diversion, retention/expiry, stable CloudEvent `id == MessageId` and deduplication, scopes, TLS, secrets/rotation, cancellation/backpressure and missing bindings have independently verified command-bound Dapr persisted readback and separate broker diagnostics
+**And** both rotation failures and RabbitMQ pressure/missing bindings meet the approved closure controls or remain explicit rejected/unresolved observations; timeout/cancellation never establishes no effect. Preserve historical packets and all unrelated-container baseline identities/specifications; disappearance, mutation, unlisted packet artifacts, missing observations or contradictory receipts fail capture integrity. Azure/AWS qualification is outside this slice.
 
-**Given** the owner's AD-26 record naming the broker and runtime pin
-**When** the story binds them
-**Then** the selected broker component goes to Story 5.7 for production parity, and the runtime image identity goes to the Story 3.19 profile
-**And** any later runtime minor-version change requires broker requalification and the Story 4.16 envelope re-proof.
+**Given** an integrity-valid capture containing rejected guarantees
+**When** the separately approved ES-DIAG slice is evaluated
+**Then** a complete executed diagnostic capture may finish that slice while candidate qualification stays FAIL
+**And** no capture-test pass, historical pass or `--allow-failures` result selects a broker or completes the parent story.
 
-**Given** the build steps are complete and no AD-26 record names a broker and pin
-**When** the validator runs
-**Then** it reports a truthful FAIL under the Epic 9 truthful-FAIL CI rule
-**And** the story is `done` only after that record exists and the binding above passes.
+**Given** Platform's actual shared composition and the same qualified immutable candidate inputs
+**When** Platform's owned disposable Kubernetes rehearsal executes
+**Then** it binds server/node identity, rendered manifests/chart, admission/injection, mTLS/trust domains, DNS, native TLS/OpenBao grants and generations, exact topics/DLQ, storage restart, scheduler/placement and isolated restore, with applicable delivery/security/fault vectors and all target deviations retained
+**And** local Docker/SQLite results and Platform startup alone never establish target-path or production proof.
 
-**Current reconciliation (2026-10-07):** Backlog. Added by `sprint-change-proposal-2026-10-07-architecture-routing.md` (Group 2). CI pins runtime `1.18.2` and CLI `1.18.0`, below the AD-26 floor.
+**Given** valid owner AD-26 records explicitly naming a qualified runtime and broker
+**When** accepted selected-component and runtime/profile-input handoff receipts are retained
+**Then** Story 5.7 receives the selected component for production parity and Story 3.19 receives the exact runtime/profile inputs
+**And** later runtime minor changes require broker requalification and Story 4.16 envelope re-proof.
+
+**Given** any missing qualification, rehearsal, ratification or accepted input binding
+**When** completion/eligibility is evaluated
+**Then** Story 3.21 remains in progress and production eligibility is truthful FAIL
+**And** completion never waits for already-issued Story 3.19 records, which consume these upstream inputs; their issuance and all production actions retain their separate gates.
+
+**Current reconciliation (2026-10-20):** In progress. The retained report has four rejected/unresolved broker checks and a failed latest Docker preservation capture; the current read-only verifier stops earlier on pre-existing unlisted bytecode. No broker is selected. The user approved the [shared-host course correction](sprint-change-proposal-2026-10-20.md) and [ES-DIAG intent](../implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md); current-subject corrective authorization remains a build preflight. Builds/CI development pins remain runtime `1.18.2` / CLI `1.18.0`; no protected inputs were changed.
 
 ## Epic 4: Operators Can Trust Command and Event Integrity
 
@@ -4463,6 +4478,8 @@ So that local sidecars cannot silently use generated, duplicate, unscoped, or di
 **Then** actual loaded component identities and effective sidecar arguments agree with the modeled contract and no duplicate/fallback component exists
 **And** Production YAML closure, deployment publication, and cross-surface parity are not claimed until Stories 5.7 and 5.8 complete.
 
+**Shared-host reconciliation (2026-10-20):** Story 5.6 owns the module/component contract, while Platform owns the shared model and lifecycle. Compare that contract with Platform's canonical paths, rendered output and actual sidecars; a repository AppHost run remains own-repository evidence only. The approved [course correction](sprint-change-proposal-2026-10-20.md) supplies staged inputs without asserting production parity.
+
 ### Story 5.7: Production DAPR Component And ACL Parity
 
 As a deployment operator,
@@ -4471,7 +4488,7 @@ So that tenant isolation and allowed operations do not change between local proo
 
 **Requirements coverage:** Primary ownership of the production-DAPR slice of FR32, NFR1, and NFR2; supporting ownership of NFR17's component, resiliency, app-health, and secret-free topology posture. Story 7.6 retains primary ownership of OpenBao component, secret-scope, `secretKeyRef`, and real secret-retrieval closure.
 
-**Architecture constraints:** AD-9, AD-10, AD-12, and AD-28. Production YAML and AppHost identities are one governed topology; DAPR ACLs are deny-by-default defense in depth and never replace Story 5.5's application credentials.
+**Architecture constraints:** AD-9, AD-10, AD-12, and AD-28. EventStore owns module topology contracts; Platform owns the shared composition, resolved hosted configuration and declarative Subscription rendering. Stories 5.6–5.8 compare owner contracts with Platform's model, rendered manifests and loaded sidecars; EventStore's own AppHost proves repository behavior only. DAPR ACLs are deny-by-default defense in depth and never replace Story 5.5's application credentials. Story 5.7 may prepare both candidate variants before selection, but final production parity binds the owner-selected Story 3.21 inputs, accepted Story 3.17 rows and exact Platform rehearsal, retaining AD-5 per-app physical actor-state isolation.
 
 **UX coverage:** No new interactive workflow. Admin topology views derive deployed app IDs, component availability, scopes, and health from runtime evidence; missing or mismatched production configuration renders unknown/degraded/unavailable and never exposes connection strings, policy internals that aid attack, or hidden tenant/topic inventories.
 
@@ -4491,7 +4508,7 @@ So that tenant isolation and allowed operations do not change between local proo
 **Given** every production state-store component is parsed structurally
 **When** metadata and scopes are compared with the approved AppHost/runtime contract
 **Then** component name, type/version, `actorStateStore`, key-prefix posture, authorized app IDs, backend-required metadata, and secret-reference ownership agree for each supported provider
-**And** domain services and service-invocation-only workloads retain zero actor-state access while no inline credential or connection secret is committed.
+**And** service-invocation-only workloads retain zero actor-state access; each actor-hosting app reaches only its own separately scoped physical actor target under AD-5. Shared operational-state readers use separately scoped components, never broadened actor-store grants; no inline credential or connection secret is committed.
 
 **Given** every production pub/sub component and declarative subscription is parsed structurally
 **When** publishing, subscription, component, tenant/topic, route, dead-letter, and authorized-app scopes are compared
@@ -4582,6 +4599,8 @@ So that stale AppHost, YAML, ACL, component, topic, or sidecar assumptions fail 
 **When** AppHost tests, structured local/production YAML comparison, adversarial drift fixtures, the production-equivalent DAPR/Aspire lane, full affected regression suites, and Release build run
 **Then** all configured and observed mappings agree with no unexpected skip or warning regression
 **And** documentation-only assertions, mock component calls, self-reported pass flags, or current Admin UI rendering cannot close runtime parity.
+
+**Shared-host reconciliation (2026-10-20):** Story 5.8's exact typed comparison joins EventStore-owned contracts, Platform's shared model/rendered deployment and actual loaded sidecars. EventStore AppHost fixtures remain supporting repository evidence; Platform tests consume its runner-owned descriptor without starting another AppHost. No candidate or environment-specific difference may silently widen production grants.
 
 ### Story 5.9: Deployment And Operator Documentation Alignment
 
@@ -5706,7 +5725,7 @@ So that applications remain provider-independent and Kubernetes Secrets are not 
 
 **Given** deployment overlays compose the DAPR secret store
 **When** structured manifests are inspected
-**Then** exactly one singleton component is named `openbao`, uses `type: secretstores.hashicorp.vault`, `version: v1`, `vaultValueType: map`, and `vaultKVUsePrefix: true`, and the production DAPR runtime is pinned compatibly with the repository's `1.18.0` seed
+**Then** exactly one singleton component is named `openbao`, uses `type: secretstores.hashicorp.vault`, `version: v1`, `vaultValueType: map`, and `vaultKVUsePrefix: true`, and the production DAPR runtime uses the qualified immutable Story 3.21 runtime/profile inputs and approved Builds catalog
 **And** the overlay alone supplies environment-specific `vaultAddr`, `enginePath`, `vaultKVPrefix`, TLS metadata, component scopes, and policy bindings; applications and dependent component files author no competing copy.
 
 **Given** production OpenBao transport and bootstrap are configured
@@ -5758,6 +5777,8 @@ So that applications remain provider-independent and Kubernetes Secrets are not 
 **When** AppHost graph tests, structured contract/component/scope/policy/YAML validation, tracked-secret scans, application retrieval/cache/readiness/rotation tests, negative missing/denied/malformed/expired/cross-app cases, and a real pinned OpenBao instance accessed only through DAPR run
 **Then** a seeded non-production secret is retrieved only by allowed consumers, dependent components initialize, readiness and rotation follow the contract, denied consumers learn no value/existence, and all evidence is value-free
 **And** documentation validation and affected Release builds pass with no unexpected skips; fakes, LocalDev stores, direct Vault clients, Kubernetes application secrets, or Epic 8 key-custody tests cannot substitute for the real-provider lane.
+
+**Shared-host reconciliation (2026-10-20):** Platform composes the value-free secret-contract instance and singleton logical OpenBao role; EventStore retains AD-24 retrieval, readiness, scopes and rotation semantics. Any physical-name injection into canonical `openbao` requires explicit EventStore/Platform architecture reconciliation before hosted enrollment. Broker-lab rotation supports but never completes Story 7.6 or the production OpenBao server/security gate.
 
 ### Story 7.7: Readiness And DAPR App-Health
 
@@ -6717,7 +6738,7 @@ So that a restore never re-admits a consumed idempotency key, repeats a global p
 
 **Architecture constraints:** AD-26 (production proof mechanics; the target stays `[ASSUMPTION]`), AD-5, AD-6, AD-12, and AD-25.
 
-**Dependencies:** Story 3.21 (scheduler and placement behavior is runtime-specific); Story 3.17; a Story 9.1 authorization record for gate G-PUBLICATION-AUTH. The owner names the restore posture only in an AD-26 ratification record or an approved replacement.
+**Dependencies:** Restore design and disposable drills consume Story 3.21's exact candidate runtime/scheduler/placement evidence without waiting for the parent to be done; Story 3.17 and a valid Story 9.1 record still apply. The owner binds the accepted restore-posture digest only in AD-26 ratification or an approved replacement. Story 7.22 completion and Story 3.19 issuance retain their authority/profile gates. Candidate component/render preparation may precede selection, but selected parity and Story 4.16's final envelope proof use the ratified profile. No restore invariant or production gate is removed.
 
 **Acceptance Criteria:**
 

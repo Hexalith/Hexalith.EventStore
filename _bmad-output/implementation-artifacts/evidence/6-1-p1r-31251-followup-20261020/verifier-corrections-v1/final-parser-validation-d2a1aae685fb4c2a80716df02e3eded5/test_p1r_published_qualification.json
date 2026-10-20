@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_p1r_published_qualification.py",
+    "-v"
+  ],
+  "cwd": "/tmp/p1r-31251-verifier-controls-0e6a2ad007ba4faca2bcf5930aeb20bc",
+  "started_utc": "2026-10-20T10:35:38.643053+00:00",
+  "test_sha256": "5fb315c0b125e1700bee61f89e5df7d8d31cd41d7ab0ea10cd278ac3e1b5f8c8",
+  "exit_code": 0,
+  "finished_utc": "2026-10-20T10:36:22.764281+00:00"
+}

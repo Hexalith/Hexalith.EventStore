@@ -1,0 +1,14 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.IntegrationTests
+  Discovered:  Hexalith.EventStore.IntegrationTests
+  Starting:    Hexalith.EventStore.IntegrationTests
+    Hexalith.EventStore.IntegrationTests.ContractTests.DurableBrokerQualificationTests.BothCandidates_AllFaultScenarios_RetainVerifiedOutcomes [FAIL]
+      System.InvalidOperationException : Broker packet integrity failed; inspect /tmp/story-3-21-integration-f208c22a82774536a2f25388f1c6e21c.
+      Stack Trace:
+        tests/Hexalith.EventStore.IntegrationTests/Fixtures/DurableBrokerQualificationFixture.cs(36,0): at Hexalith.EventStore.IntegrationTests.Fixtures.DurableBrokerQualificationFixture.QualifyAsync(CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/DurableBrokerQualificationTests.cs(20,0): at Hexalith.EventStore.IntegrationTests.ContractTests.DurableBrokerQualificationTests.BothCandidates_AllFaultScenarios_RetainVerifiedOutcomes()
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/DurableBrokerQualificationTests.cs(26,0): at Hexalith.EventStore.IntegrationTests.ContractTests.DurableBrokerQualificationTests.BothCandidates_AllFaultScenarios_RetainVerifiedOutcomes()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.IntegrationTests (ID = '080c5c73212076b88a7bac03bc2edc7c83015343fa22802d831d2ce3da83b6ee')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.IntegrationTests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 321.259s

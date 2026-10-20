@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Client;
@@ -19,6 +21,41 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public class DaprProjectionChangeNotifierTests {
+    [Theory]
+    [InlineData(ProjectionChangeTransport.PubSub)]
+    [InlineData(ProjectionChangeTransport.Direct)]
+    public async Task DetailMetadata_ClipsSerializedOverheadEscapingAndMultibyteValues(ProjectionChangeTransport transport) {
+        foreach ((string value, int repetitions, bool retained) in new[] {
+            ("x", 2_040, true), ("x", 2_041, false), ("\\", 1_021, false),
+            ("\"", 400, false), ("é", 342, false), ("😀", 200, false),
+        }) {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
+            IETagActor actor = Substitute.For<IETagActor>();
+            _ = actorProxyFactory.CreateActorProxy<IETagActor>(Arg.Any<ActorId>(), Arg.Any<string>()).Returns(actor);
+            IProjectionChangedBroadcaster broadcaster = Substitute.For<IProjectionChangedBroadcaster>();
+            IReadOnlyDictionary<string, string>? sent = null;
+            _ = daprClient.PublishEventAsync("pubsub", "acme.order-list.projection-changed",
+                Arg.Do<ProjectionChangedNotification>(notice => sent = notice.Metadata), Arg.Any<CancellationToken>())
+                .Returns(Task.CompletedTask);
+            _ = broadcaster.BroadcastChangedAsync(Arg.Do<ProjectionChangedDetail>(detail => sent = detail.Metadata), Arg.Any<CancellationToken>())
+                .Returns(Task.CompletedTask);
+            var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster,
+                Options.Create(new ProjectionChangeNotifierOptions { Transport = transport }),
+                Substitute.For<ILogger<DaprProjectionChangeNotifier>>(), Issuer());
+            var metadata = new Dictionary<string, string> { ["k"] = string.Concat(Enumerable.Repeat(value, repetitions)) };
+
+            await sut.NotifyProjectionChangedAsync(new ProjectionChangedDetail("order-list", "acme", "scope", metadata));
+
+            sent.ShouldNotBeNull();
+            sent.Count.ShouldBe(retained ? 1 : 0);
+            JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBeLessThanOrEqualTo(2_048);
+            if (retained) {
+                JsonSerializer.SerializeToUtf8Bytes(sent).Length.ShouldBe(2_048);
+            }
+        }
+    }
+
     [Fact]
     public async Task NotifyProjectionChangedAsync_PubSubTransport_PublishesToPubSub() {
         DaprClient daprClient = Substitute.For<DaprClient>();
@@ -133,7 +170,7 @@ public class DaprProjectionChangeNotifierTests {
         IOptions<ProjectionChangeNotifierOptions> options = Options.Create(new ProjectionChangeNotifierOptions {
             Transport = ProjectionChangeTransport.PubSub,
             MaxDetailMetadataEntries = 1,
-            MaxDetailMetadataBytes = 100_000,
+            MaxDetailMetadataBytes = 2_048,
         });
         var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger, Issuer());
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {
@@ -163,7 +200,7 @@ public class DaprProjectionChangeNotifierTests {
         IOptions<ProjectionChangeNotifierOptions> options = Options.Create(new ProjectionChangeNotifierOptions {
             Transport = ProjectionChangeTransport.PubSub,
             MaxDetailMetadataEntries = 16,
-            MaxDetailMetadataBytes = 2,
+            MaxDetailMetadataBytes = 9,
         });
         var sut = new DaprProjectionChangeNotifier(daprClient, actorProxyFactory, broadcaster, options, logger, Issuer());
         var metadata = new Dictionary<string, string>(StringComparer.Ordinal) {

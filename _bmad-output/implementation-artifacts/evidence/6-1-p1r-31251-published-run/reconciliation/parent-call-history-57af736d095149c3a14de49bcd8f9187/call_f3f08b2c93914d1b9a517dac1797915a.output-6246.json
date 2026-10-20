@@ -1,0 +1,19 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a15124-dae9-7b81-8076-24c83efe4459",
+  "call_id": "call_f3f08b2c93914d1b9a517dac1797915a",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.1 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"5fdd56\",\"wall_time_seconds\":0.000017734,\"exit_code\":0,\"original_token_count\":508,\"output\":\"{\\n  \\\"path\\\": \\\"/tmp/p1r-31251-v4-to-merged-review-99d55ff900874a28843228784a2885d0.patch\\\",\\n  \\\"sha256\\\": \\\"63cd9b69bb4936be8ec6ade2c82b9700d594597ca8ab254ee257d128e50f539c\\\",\\n  \\\"scope\\\": \\\"frozen V4 producer to merged reader union; inspect removals for lost single-root protections\\\",\\n  \\\"lines\\\": 2366,\\n  \\\"sections\\\": [\\n    {\\n      \\\"path\\\": \\\"tools/p1r-published-consumers/README.md\\\",\\n      \\\"start_line\\\": 1,\\n      \\\"end_line\\\": 24\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r-published-executor.py\\\",\\n      \\\"start_line\\\": 25,\\n      \\\"end_line\\\": 104\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r-published-qualification.py\\\",\\n      \\\"start_line\\\": 105,\\n      \\\"end_line\\\": 128\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r_isolation.py\\\",\\n      \\\"start_line\\\": 129,\\n      \\\"end_line\\\": 369\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r_isolation_evidence.py\\\",\\n      \\\"start_line\\\": 370,\\n      \\\"end_line\\\": 399\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r_published_executor.py\\\",\\n      \\\"start_line\\\": 400,\\n      \\\"end_line\\\": 728\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r_published_qualification.py\\\",\\n      \\\"start_line\\\": 729,\\n      \\\"end_line\\\": 1050\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/p1r_qualification.py\\\",\\n      \\\"start_line\\\": 1051,\\n      \\\"end_line\\\": 1319\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/p1r_isolation_fixture.py\\\",\\n      \\\"start_line\\\": 1320,\\n      \\\"end_line\\\": 1419\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/test_p1r_isolation.py\\\",\\n      \\\"start_line\\\": 1420,\\n      \\\"end_line\\\": 1542\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/test_p1r_isolation_hardening.py\\\",\\n      \\\"start_line\\\": 1543,\\n      \\\"end_line\\\": 1642\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/test_p1r_published_executor.py\\\",\\n      \\\"start_line\\\": 1643,\\n      \\\"end_line\\\": 1985\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/test_p1r_published_qualification.py\\\",\\n      \\\"start_line\\\": 1986,\\n      \\\"end_line\\\": 2117\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/test_p1r_qualification.py\\\",\\n      \\\"start_line\\\": 2118,\\n      \\\"end_line\\\": 2298\\n    },\\n    {\\n      \\\"path\\\": \\\"tools/tests/test_p1r_snapshot_registration.py\\\",\\n      \\\"start_line\\\": 2299,\\n      \\\"end_line\\\": 2366\\n    }\\n  ]\\n}\\n\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792362732.2650814
+  }
+}

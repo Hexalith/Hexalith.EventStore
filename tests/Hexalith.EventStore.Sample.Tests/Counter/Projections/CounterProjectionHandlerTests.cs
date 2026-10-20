@@ -159,6 +159,16 @@ public class CounterProjectionHandlerTests {
     }
 
     [Fact]
+    public void Project_LongAggregateId_EmitsValidOptionalScopeWithoutChangingTheProjection()
+    {
+        ProjectionRequest request = CreateRequest(CreateEvent("CounterIncremented")) with { AggregateId = new string('a', 128) };
+        ProjectionResponse response = CounterProjectionHandler.Project(request);
+        Assert.Equal(1, response.State.GetProperty("count").GetInt32());
+        Assert.Equal("counter-status", response.NotificationGroupScope);
+        Assert.Equal("counter-projection-updated", response.NotificationMetadata!["change-kind"]);
+    }
+
+    [Fact]
     public void Project_PostTombstoneEventsInStream_StillCounted() {
         ProjectionRequest request = CreateRequest(
             CreateEvent("CounterIncremented"),

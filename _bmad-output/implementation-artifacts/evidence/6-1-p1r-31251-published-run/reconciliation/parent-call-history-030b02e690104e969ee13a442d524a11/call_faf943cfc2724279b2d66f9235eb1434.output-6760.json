@@ -1,0 +1,27 @@
+{
+  "type": "custom_tool_call_output",
+  "id": "ctco_01a1513d-80dc-7903-8186-3b21f65a0e3c",
+  "call_id": "call_faf943cfc2724279b2d66f9235eb1434",
+  "output": [
+    {
+      "type": "input_text",
+      "text": "Script completed\nWall time 0.6 seconds\nOutput:\n"
+    },
+    {
+      "type": "input_text",
+      "text": "{}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"chunk_id\":\"0cb840\",\"wall_time_seconds\":0.462985976,\"exit_code\":0,\"original_token_count\":166,\"output\":\"{'schema': 'hexalith.p1r.cleanup-receipt.v1', 'assertions': {'attempted': 7, 'failed': 0, 'passed': 7}, 'keys': ['assertions', 'attempts', 'checks', 'compatibility', 'execution', 'execution_evidence', 'fixture', 'id', 'inputs_sha256', 'invocation', 'owned', 'profile', 'schema', 'scope', 'shared']}\\n{'schema': 'hexalith.p1r.restore-receipt.v1', 'assertions': {'attempted': 12, 'failed': 2, 'passed': 10}, 'keys': ['assertions', 'backup', 'checks', 'cleanup', 'commands', 'compatibility', 'databases', 'execution', 'execution_evidence', 'fixture', 'id', 'inputs_sha256', 'inventories', 'observations', 'packages', 'profile', 'role', 'schema', 'scope', 'tenants']}\\n\"}"
+    },
+    {
+      "type": "input_text",
+      "text": "{\"current_time\":\"2026-10-18 22:59:07 UTC\"}"
+    }
+  ],
+  "internal_chat_message_metadata_passthrough": {
+    "turn_id": "01a14ff9-3d3f-7ab1-b31a-abdd4cf2303b",
+    "create_time": 1792364347.6122968
+  }
+}
