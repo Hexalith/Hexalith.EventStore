@@ -1,0 +1,206 @@
+{
+  "SchemaVersion": 1,
+  "CapturedUtc": "2026-10-19T15:56:30.259473+00:00",
+  "RunStartRevision": "dfe963ffd44c4df1d3b43891234e30231a9a28e8",
+  "SpecBaselineCommit": "f2b480b68a8bd5369b3cdf550340e0fadfb2332b",
+  "Disposition": "unresolved-no-approved-transition-or-exception",
+  "Attempts": [
+    {
+      "ManifestPath": "real-projection-distribution-20261019T1550089359725Z-a31f454413a046d28117ea11ea81a0c5/manifest.json",
+      "ManifestSha256": "0aceb5b65828261a8924dd12d0a1a996ee52425d1d577ca0fcc850e443fee65a",
+      "StartedUtc": "2026-10-19T15:50:08.9359725+00:00",
+      "CompletedUtc": "2026-10-19T15:50:13.1392865+00:00",
+      "SourceMatchesCurrent": true,
+      "Disposition": "current-source-scenario-pass-not-production-qualification",
+      "CommandReceipt": "real-projection-current-source-command.json",
+      "CommandReceiptSha256": "abfc0eb427840283005a5dac67b44bc8f5d6fae306958d2e2b8b1af4d80ed564",
+      "Limitations": [
+        "exact-topic-development-profile-only",
+        "no-real-projection-scoped-detail",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-transition-or-rollback-approval"
+      ]
+    },
+    {
+      "ManifestPath": "synthetic-distribution-20261019T1533404182690Z-b9f7dc324a3a4748b8be0c66c4008882/manifest.json",
+      "ManifestSha256": "ba7fb2d37ab491d9aa4908a13c149057ba4526d979adf130014449c6933e3bf6",
+      "StartedUtc": "2026-10-19T15:33:40.418269+00:00",
+      "CompletedUtc": "2026-10-19T15:35:45.5536883+00:00",
+      "SourceMatchesCurrent": false,
+      "Disposition": "superseded-source-development-pass-not-current-coverage",
+      "CommandReceipt": null,
+      "CommandReceiptSha256": null,
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "ManifestPath": "synthetic-distribution-20261019T1537149433262Z-6d406b5b61134754a68cc5e404cd6f74/manifest.json",
+      "ManifestSha256": "09f26954b0f8aa6e5199cd7b25be2324670a579b5003bf67f78fe85cc41b93df",
+      "StartedUtc": "2026-10-19T15:37:14.9433262+00:00",
+      "CompletedUtc": "2026-10-19T15:39:29.361568+00:00",
+      "SourceMatchesCurrent": false,
+      "Disposition": "superseded-source-development-pass-not-current-coverage",
+      "CommandReceipt": null,
+      "CommandReceiptSha256": null,
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "ManifestPath": "synthetic-distribution-20261019T1547368108854Z-a16dc3a87e974680853222d8065139d8/manifest.json",
+      "ManifestSha256": "d1f25d5d20d4feb88200b1516ff8c8808722076e40f37e93619a86806ba980bc",
+      "StartedUtc": "2026-10-19T15:47:36.8108854+00:00",
+      "CompletedUtc": "2026-10-19T15:49:50.258442+00:00",
+      "SourceMatchesCurrent": true,
+      "Disposition": "current-source-scenario-pass-not-production-qualification",
+      "CommandReceipt": "synthetic-current-source-command.json",
+      "CommandReceiptSha256": "fffc442f82e2992a2a0e8eb2ed2163bc3572b13885285208c8931472c7bda07f",
+      "Limitations": [
+        "synthetic-state-does-not-prove-a-projection-change",
+        "no-production-issuer-or-profile",
+        "no-dynamic-topic-coverage",
+        "no-ui-completion-or-freshness-state-proof",
+        "no-provider-host-outage-or-transition-rollback"
+      ]
+    },
+    {
+      "ManifestPath": null,
+      "CommandReceipt": "synthetic-command.json",
+      "CommandReceiptSha256": "0c1a4de0cddf743d782ea05131b0fd3ec8da770e691d3bf0c677cb1c1e7fff17",
+      "StartedUtc": "2026-10-19T15:45:09.897964+00:00",
+      "CompletedUtc": "2026-10-19T15:45:34.656692+00:00",
+      "Disposition": "failed-unscoped-recovery-observer-no-qualification",
+      "SourceSnapshotRetained": false,
+      "Limitation": "The assertion rejected any tenant-B traffic without inspecting tenant; the later corrected run observed authorized B duplicates. No success manifest exists for this attempt."
+    }
+  ],
+  "ManifestArtifactChecks": [
+    {
+      "Manifest": "real-projection-distribution-20261019T1550089359725Z-a31f454413a046d28117ea11ea81a0c5/manifest.json",
+      "ArtifactsVerified": 7,
+      "SourceMatchesCurrent": true
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1533404182690Z-b9f7dc324a3a4748b8be0c66c4008882/manifest.json",
+      "ArtifactsVerified": 9,
+      "SourceMatchesCurrent": false
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1537149433262Z-6d406b5b61134754a68cc5e404cd6f74/manifest.json",
+      "ArtifactsVerified": 9,
+      "SourceMatchesCurrent": false
+    },
+    {
+      "Manifest": "synthetic-distribution-20261019T1547368108854Z-a16dc3a87e974680853222d8065139d8/manifest.json",
+      "ArtifactsVerified": 10,
+      "SourceMatchesCurrent": true
+    }
+  ],
+  "RedactionPatternChecks": [
+    {
+      "Path": "build-canceled-shared-server.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "build-current-source.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "build-focused-full-graph.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "build-focused-isolated.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "build-initial-assertion-overload-error.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "build-source-assets-mismatch.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "initial-synthetic-output.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "ordinary-aspire-regression.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "real-projection-current-source.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "real-projection-distribution-20261019T1550089359725Z-a31f454413a046d28117ea11ea81a0c5/first.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "real-projection-distribution-20261019T1550089359725Z-a31f454413a046d28117ea11ea81a0c5/second.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "solution-debug-build.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "superseded-synthetic-output.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-current-source.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-distribution-20261019T1533404182690Z-b9f7dc324a3a4748b8be0c66c4008882/first.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-distribution-20261019T1533404182690Z-b9f7dc324a3a4748b8be0c66c4008882/second.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-distribution-20261019T1537149433262Z-6d406b5b61134754a68cc5e404cd6f74/first.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-distribution-20261019T1537149433262Z-6d406b5b61134754a68cc5e404cd6f74/second.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-distribution-20261019T1547368108854Z-a16dc3a87e974680853222d8065139d8/first.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-distribution-20261019T1547368108854Z-a16dc3a87e974680853222d8065139d8/second.log",
+      "CredentialPatternMatches": 0
+    },
+    {
+      "Path": "synthetic-final.log",
+      "CredentialPatternMatches": 0
+    }
+  ],
+  "RedactionLimit": "Known test keys/app-channel tokens are removed by the fixture, JWT-shaped credentials by fixture/runner; pattern checks do not establish a universal production redaction audit.",
+  "OwnerApprovals": {
+    "SignalRTransport": "pending",
+    "Architecture": "pending",
+    "Security": "pending",
+    "Operations": "pending",
+    "Test": "pending"
+  },
+  "ProductionProfileApproved": false,
+  "AcceptedException": null,
+  "StoryCompletionAuthorized": false
+}

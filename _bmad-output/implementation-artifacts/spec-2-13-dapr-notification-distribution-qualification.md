@@ -66,6 +66,7 @@ context:
 - The [qualification packet](evidence/story-2-13/qualification.md) records a passing test-only two-host, two-sidecar exact-topic Dapr proof, a real projection-triggered signal with projection-backed readback, and a scoped Redis exception proposal that has **not** been accepted.
 - The shipped Redis Streams wildcard subscription did not deliver concrete tenant topics. Dynamic tenant subscription, real projection-triggered detail, full outage/freshness and rollback behavior, and owner approvals remain open. No production profile or backplane dependency changed; the original story remains backlog.
 - The ordinary Aspire regression test body passed, but collection teardown failed while restoring the shared writer-protocol marker. The packet records the exact result and unresolved lock interference. The local inotify limit also remains elevated while unrelated processes hold more watches than the original limit.
+- The [2026-10-19 continuation](evidence/story-2-13/qualification-2026-10-19.md) records a separate run-start revision, current runtime identities, expanded two-host denial/bounds/reconciliation scenarios, retained component bytes and redacted logs, and the unresolved serialized-versus-key/value metadata ceiling. It does not change the frozen baseline, accept an exception, or authorize the atomic runtime transition. Historical teardown and machine-state observations above remain historical; current results and cleanup are bound by the continuation.
 
 ## Spec Change Log
 

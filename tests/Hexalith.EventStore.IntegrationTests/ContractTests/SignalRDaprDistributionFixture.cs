@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace Hexalith.EventStore.IntegrationTests.ContractTests;
 
@@ -81,6 +82,81 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
     /// <summary>Restarts the second sidecar after a bounded outage.</summary>
     public Task RestartSecondSidecarAsync(CancellationToken cancellationToken)
         => Second.StartSidecarAsync(_componentsPath, cancellationToken);
+
+    /// <summary>Retains exact component bytes, redacted process logs, and source/binary identities when requested.</summary>
+    public async Task CaptureEvidenceAsync(
+        string scenario,
+        DateTimeOffset startedUtc,
+        object observations,
+        CancellationToken cancellationToken)
+    {
+        string? destination = Environment.GetEnvironmentVariable("HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY");
+        if (string.IsNullOrWhiteSpace(destination))
+        {
+            return;
+        }
+
+        string directory = Path.Combine(
+            Path.GetFullPath(destination, RepositoryRoot),
+            $"{scenario}-{startedUtc:yyyyMMddTHHmmssfffffffZ}-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        foreach (string component in Directory.GetFiles(_componentsPath, "*.yaml").Order(StringComparer.Ordinal))
+        {
+            File.Copy(component, Path.Combine(directory, Path.GetFileName(component)), overwrite: false);
+        }
+
+        await File.WriteAllTextAsync(Path.Combine(directory, "first.log"), First.SnapshotRedactedLogs(), cancellationToken).ConfigureAwait(false);
+        await File.WriteAllTextAsync(Path.Combine(directory, "second.log"), Second.SnapshotRedactedLogs(), cancellationToken).ConfigureAwait(false);
+        foreach (SignalRDaprDistributionNode node in new[] { First, Second })
+        {
+            JsonElement metadata = await node.GetRuntimeMetadataAsync(cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(
+                Path.Combine(directory, $"{node.Name}-sidecar.json"),
+                JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true }) + "\n",
+                cancellationToken).ConfigureAwait(false);
+        }
+        string[] sources = [
+            "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs",
+            "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs",
+            "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs",
+            "tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprProjectionDispatchProofTests.cs",
+            "src/Hexalith.EventStore/Controllers/ProjectionNotificationController.cs",
+            "src/Hexalith.EventStore/Authentication/ProjectionNotificationProvenanceVerifier.cs",
+            "src/Hexalith.EventStore/Validation/ProjectionChangedNotificationValidator.cs",
+            "src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs",
+        ];
+        string[] binaries = [
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.deps.json",
+            "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
+        ];
+        var manifest = new
+        {
+            SchemaVersion = 1,
+            Scenario = scenario,
+            StartedUtc = startedUtc,
+            CompletedUtc = DateTimeOffset.UtcNow,
+            Result = "passed-scenario-assertions-only",
+            Runtime = Environment.Version.ToString(),
+            AppId = "eventstore",
+            FirstHostProcessId = First.ApplicationProcessId,
+            SecondHostProcessId = Second.ApplicationProcessId,
+            FirstSidecarProcessId = First.SidecarProcessId,
+            SecondSidecarProcessId = Second.SidecarProcessId,
+            FirstHostPort = First.AppPort,
+            SecondHostPort = Second.AppPort,
+            Sources = sources.ToDictionary(path => path, path => HashFile(Path.Combine(RepositoryRoot, path)), StringComparer.Ordinal),
+            Binaries = binaries.ToDictionary(path => path, path => HashFile(Path.Combine(RepositoryRoot, path)), StringComparer.Ordinal),
+            Artifacts = Directory.GetFiles(directory).Order(StringComparer.Ordinal)
+                .ToDictionary(path => Path.GetFileName(path), HashFile, StringComparer.Ordinal),
+            Observations = observations,
+        };
+        await File.WriteAllTextAsync(
+            Path.Combine(directory, "manifest.json"),
+            JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }) + "\n",
+            cancellationToken).ConfigureAwait(false);
+    }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()

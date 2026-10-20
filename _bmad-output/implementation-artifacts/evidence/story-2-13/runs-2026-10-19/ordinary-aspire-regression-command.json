@@ -1,0 +1,16 @@
+{
+  "Command": [
+    "timeout",
+    "420s",
+    "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests",
+    "-class",
+    "Hexalith.EventStore.IntegrationTests.ContractTests.ValidProjectionRoundTripE2ETests"
+  ],
+  "WorkingDirectory": "/home/administrator/projects/hexalith/eventstore",
+  "StartedUtc": "2026-10-19T15:51:23.179364+00:00",
+  "CompletedUtc": "2026-10-19T15:51:48.133041+00:00",
+  "ExitCode": 0,
+  "OutputPath": "ordinary-aspire-regression.log",
+  "OutputSha256": "8a2649e5b33e0471511dc3843da6f793bbd2a3f18c1a5fefa73e4cf8a87acb19",
+  "TestAssemblySha256": "d9ed4ceb95a8db0baa15591e31dbf0da1da63d710a62c28c631489bdcd346353"
+}
