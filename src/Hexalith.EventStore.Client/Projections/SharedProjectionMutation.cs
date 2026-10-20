@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.EventStore.Client.Projections;
 
 /// <summary>A durable, immutable logical mutation prepared for one catch-up delivery.</summary>
@@ -6,7 +8,8 @@ public sealed record SharedProjectionMutation(
     ReadModelBatchOperationKind Kind,
     string ValueTypeName,
     byte[] CanonicalValue,
-    TimeSpan? TimeToLive = null)
+    TimeSpan? TimeToLive = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? ExpiresAtUtc = null)
 {
     /// <summary>Captures a batch operation before it is assigned a physical generation.</summary>
     public static SharedProjectionMutation FromOperation(ReadModelBatchOperation operation)
@@ -17,7 +20,8 @@ public sealed record SharedProjectionMutation(
             operation.Kind,
             operation.ValueTypeName,
             operation.CanonicalValue.ToArray(),
-            operation.TimeToLive);
+            operation.TimeToLive,
+            operation.ExpiresAtUtc);
     }
 
     internal ReadModelBatchOperation ToOperation(string physicalKey) => Kind switch
@@ -26,7 +30,8 @@ public sealed record SharedProjectionMutation(
             physicalKey,
             ValueTypeName,
             CanonicalValue,
-            TimeToLive),
+            TimeToLive,
+            ExpiresAtUtc),
         ReadModelBatchOperationKind.Delete => ReadModelBatchOperation.Delete(
             physicalKey,
             ReadModelBatchConcurrency.IdempotentAbsent),

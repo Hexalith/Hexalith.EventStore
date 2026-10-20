@@ -12,8 +12,10 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <param name="CandidateDigest">SHA-256 of original candidate bytes (empty for deletion).</param>
 /// <param name="PreviousDigest">SHA-256 of prior bytes, or null for prior absence.</param>
 /// <param name="TimeToLive">Original candidate retention.</param>
+/// <param name="ExpiresAtUtc">Original inclusive source deadline.</param>
 internal sealed record ReadModelBatchRecoveryAnchor([property: JsonRequired] ReadModelBatchScope Scope, [property: JsonRequired] string Key, [property: JsonRequired] int Ordinal, [property: JsonRequired] bool IsDelete,
-    [property: JsonRequired] string CandidateDigest, [property: JsonRequired] string? PreviousDigest, [property: JsonRequired] TimeSpan? TimeToLive)
+    [property: JsonRequired] string CandidateDigest, [property: JsonRequired] string? PreviousDigest, [property: JsonRequired] TimeSpan? TimeToLive,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? ExpiresAtUtc = null)
 {
     /// <summary>Hashes exact stored value bytes without retaining their payload.</summary>
     internal static string Digest(ReadOnlyMemory<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes.Span));
@@ -33,11 +35,13 @@ internal sealed record ReadModelBatchRecoveryAnchor([property: JsonRequired] Rea
             && Ordinal >= 0 && Ordinal < ReadModelBatchOptions.DefaultMaxOperations
             && IsDigest(CandidateDigest) && (PreviousDigest is null || IsDigest(PreviousDigest))
             && (TimeToLive is null || TimeToLive > TimeSpan.Zero)
-            && (!IsDelete || CandidateDigest == Digest(ReadOnlyMemory<byte>.Empty) && TimeToLive is null);
+            && (TimeToLive is null || ExpiresAtUtc is null)
+            && (!IsDelete || CandidateDigest == Digest(ReadOnlyMemory<byte>.Empty) && TimeToLive is null && ExpiresAtUtc is null);
     }
 
     /// <summary>Checks both candidate and prior-value digests against the final own envelope.</summary>
     internal bool Matches(ReadModelBatchMarker marker, ReadModelBatchEnvelope envelope) => envelope.ScopeHash == marker.ScopeHash
+        && envelope.ExpiresAtUtc == ExpiresAtUtc
         && envelope.Fingerprint == marker.Fingerprint && envelope.Ordinal == Ordinal && envelope.IsDelete == IsDelete
         && Digest(envelope.CandidateBytes()) == CandidateDigest
         && (envelope.PreviousBase64 is null ? PreviousDigest is null : Digest(envelope.PreviousBytes()) == PreviousDigest);

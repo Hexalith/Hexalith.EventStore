@@ -22,7 +22,7 @@ internal static class ReadModelBatchFingerprint {
     /// <summary>Requires the frozen unpadded base64url encoding of exactly one SHA-256 value.</summary>
     internal static bool IsCanonical(string? value)
     {
-        if (value is not { Length: 46 } || !value.StartsWith("v1:", StringComparison.Ordinal)) return false;
+        if (value is not { Length: 46 } || !(value.StartsWith("v1:", StringComparison.Ordinal) || value.StartsWith("v2:", StringComparison.Ordinal))) return false;
         string encoded = value[3..];
         if (encoded.Any(static character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_')) return false;
         Span<byte> bytes = stackalloc byte[SHA256.HashSizeInBytes];
@@ -40,7 +40,7 @@ internal static class ReadModelBatchFingerprint {
         var buffer = new ArrayBufferWriter<byte>(512);
         using (var writer = new Utf8JsonWriter(buffer, s_writerOptions)) {
             writer.WriteStartObject();
-            writer.WriteNumber("v", Version);
+            writer.WriteNumber("v", batch.Operations.Any(static operation => operation.ExpiresAtUtc is not null) ? 2 : Version);
 
             writer.WritePropertyName("scope");
             writer.WriteStartObject();
@@ -68,6 +68,7 @@ internal static class ReadModelBatchFingerprint {
                 if (operation.TimeToLive is { } timeToLive) {
                     writer.WriteNumber("ttl", checked((long)Math.Ceiling(timeToLive.TotalSeconds)));
                 }
+                if (operation.ExpiresAtUtc is { } deadline) writer.WriteNumber("expires", deadline.UtcTicks);
                 writer.WriteBase64String("val", operation.CanonicalValue.Span);
                 writer.WriteEndObject();
             }
@@ -90,7 +91,11 @@ internal static class ReadModelBatchFingerprint {
     /// <returns>A <c>v1:</c>-prefixed base64url SHA-256 digest.</returns>
     public static string ComputeFromManifest(ReadOnlySpan<byte> manifest) {
         byte[] digest = SHA256.HashData(manifest);
-        return "v" + Version + ":" + Base64Url(digest);
+        var reader = new Utf8JsonReader(manifest);
+        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject || !reader.Read()
+            || !reader.ValueTextEquals("v") || !reader.Read() || !reader.TryGetInt32(out int version)
+            || version is not (1 or 2)) throw new ArgumentException("Unsupported canonical manifest.", nameof(manifest));
+        return "v" + version + ":" + Base64Url(digest);
     }
 
     private static string Base64Url(byte[] bytes) =>

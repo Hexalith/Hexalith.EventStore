@@ -43,6 +43,11 @@ internal sealed class ReadModelBatchEnvelope {
     [JsonPropertyName("cand")]
     public string? CandidateBase64 { get; set; }
 
+    /// <summary>Gets or sets the original inclusive source deadline for a v2 candidate.</summary>
+    [JsonPropertyName("expires")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? ExpiresAtUtc { get; set; }
+
     /// <summary>Detects an actual top-level batch discriminator; ordinary strings and nested metadata are preserved.</summary>
     /// <param name="raw">The raw stored bytes.</param>
     /// <returns><see langword="true"/> when the top-level discriminator exists or malformed envelope-like data requires refusal.</returns>
@@ -79,11 +84,16 @@ internal sealed class ReadModelBatchEnvelope {
                 return null;
             }
 
-            string[] required = [DiscriminatorPropertyName, "scope", "fp", "ord", "del", "prev", "cand"];
+            int version = document.RootElement.GetProperty(DiscriminatorPropertyName).GetInt32();
+            string[] required = version == 2
+                ? [DiscriminatorPropertyName, "scope", "fp", "ord", "del", "prev", "cand", "expires"]
+                : [DiscriminatorPropertyName, "scope", "fp", "ord", "del", "prev", "cand"];
             JsonProperty[] properties = document.RootElement.EnumerateObject().ToArray();
             if (properties.Length != required.Length || required.Any(name => properties.Count(property => property.Name == name) != 1)) return null;
             ReadModelBatchEnvelope? envelope = JsonSerializer.Deserialize<ReadModelBatchEnvelope>(raw.Span, s_json);
-            if (envelope is not { EnvelopeVersion: 1 } || envelope.Ordinal < 0
+            if (envelope is null || envelope.EnvelopeVersion is not (1 or 2)
+                || (envelope.EnvelopeVersion == 2) != (envelope.ExpiresAtUtc is not null)
+                || envelope.IsDelete && envelope.ExpiresAtUtc is not null || envelope.Ordinal < 0
                 || envelope.IsDelete != (envelope.CandidateBase64 is null)) return null;
             if (envelope.PreviousBase64 is not null)
             {

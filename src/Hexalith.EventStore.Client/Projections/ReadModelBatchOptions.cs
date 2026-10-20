@@ -9,6 +9,9 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <see cref="StoreProfiles"/> default to <see cref="ReadModelBatchStoreProfile.Resumable"/>.
 /// </remarks>
 public sealed class ReadModelBatchOptions {
+    /// <summary>Gets or sets the UTC clock used to enforce immutable source deadlines.</summary>
+    public TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
     /// <summary>The default maximum number of operations in one batch.</summary>
     public const int DefaultMaxOperations = 100;
 
@@ -57,6 +60,7 @@ public sealed class ReadModelBatchOptions {
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">A limit or the timeout is not positive.</exception>
     public void Validate() {
+        ArgumentNullException.ThrowIfNull(TimeProvider);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxOperations);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxCanonicalManifestBytes);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxKeyByteLength);

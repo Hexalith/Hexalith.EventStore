@@ -39,7 +39,7 @@ internal static class ReadModelBatchManifestCodec
             throw new ArgumentException("The original immutable manifest is unavailable.");
         using JsonDocument document = JsonDocument.Parse(manifest);
         JsonElement root = document.RootElement;
-        if (root.GetProperty("v").GetInt32() != 1) throw new ArgumentException("Unsupported manifest.");
+        if (root.GetProperty("v").GetInt32() is not (1 or 2)) throw new ArgumentException("Unsupported manifest.");
         JsonElement source = root.GetProperty("scope");
         var scope = new ReadModelBatchScope(source.GetProperty("store").GetString()!, source.GetProperty("tenant").GetString()!,
             source.GetProperty("domain").GetString()!, source.GetProperty("aggregate").GetString()!,
@@ -59,7 +59,8 @@ internal static class ReadModelBatchManifestCodec
             {
                 "w" => ReadModelBatchOperation.WriteCanonical(key, value.GetProperty("type").GetString()!,
                     value.GetProperty("val").GetBytesFromBase64(), value.TryGetProperty("ttl", out JsonElement ttl)
-                        ? TimeSpan.FromSeconds(ttl.GetInt64()) : null).WithConcurrency(concurrency),
+                        ? TimeSpan.FromSeconds(ttl.GetInt64()) : null, value.TryGetProperty("expires", out JsonElement expires)
+                        ? new DateTimeOffset(expires.GetInt64(), TimeSpan.Zero) : null).WithConcurrency(concurrency),
                 "d" => ReadModelBatchOperation.Delete(key, concurrency),
                 _ => throw new ArgumentException("Invalid original manifest operation."),
             };

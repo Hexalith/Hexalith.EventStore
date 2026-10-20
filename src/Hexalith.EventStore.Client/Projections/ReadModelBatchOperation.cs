@@ -18,13 +18,15 @@ public sealed class ReadModelBatchOperation {
         string valueTypeName,
         ReadOnlyMemory<byte> canonicalValue,
         ReadModelBatchConcurrency concurrency,
-        TimeSpan? timeToLive) {
+        TimeSpan? timeToLive,
+        DateTimeOffset? expiresAtUtc = null) {
         Key = key;
         Kind = kind;
         ValueTypeName = valueTypeName;
         CanonicalValue = canonicalValue;
         Concurrency = concurrency;
         TimeToLive = timeToLive;
+        ExpiresAtUtc = expiresAtUtc?.ToUniversalTime();
     }
 
     /// <summary>Gets the logical state key the operation targets.</summary>
@@ -45,6 +47,9 @@ public sealed class ReadModelBatchOperation {
     /// <summary>Gets the optional retention period applied when the final write becomes visible.</summary>
     public TimeSpan? TimeToLive { get; }
 
+    /// <summary>Gets the immutable, inclusive UTC source deadline, independent of execution time.</summary>
+    public DateTimeOffset? ExpiresAtUtc { get; }
+
     /// <summary>Returns the same immutable operation with its original staged concurrency policy.</summary>
     public ReadModelBatchOperation WithConcurrency(ReadModelBatchConcurrency concurrency) {
         ArgumentNullException.ThrowIfNull(concurrency);
@@ -62,7 +67,7 @@ public sealed class ReadModelBatchOperation {
             && concurrency.Mode != ReadModelBatchConcurrencyMode.ExpectedETag)
             throw new ArgumentException("Invalid write concurrency policy.", nameof(concurrency));
         return new ReadModelBatchOperation(Key, Kind, ValueTypeName,
-            CanonicalValue, concurrency, TimeToLive);
+            CanonicalValue, concurrency, TimeToLive, ExpiresAtUtc);
     }
 
     /// <summary>
@@ -77,6 +82,7 @@ public sealed class ReadModelBatchOperation {
     /// <see cref="ReadModelBatchConcurrencyMode.ExpectedETag"/>; idempotent-absent is delete-only.
     /// </param>
     /// <param name="timeToLive">Optional positive retention applied when the final write becomes visible.</param>
+    /// <param name="expiresAtUtc">Optional inclusive source deadline; mutually exclusive with relative retention.</param>
     /// <returns>An immutable write operation.</returns>
     /// <exception cref="ArgumentException">The key is null/whitespace or the concurrency mode is invalid for a write.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> or <paramref name="concurrency"/> is null.</exception>
@@ -84,7 +90,8 @@ public sealed class ReadModelBatchOperation {
         string key,
         TValue value,
         ReadModelBatchConcurrency concurrency,
-        TimeSpan? timeToLive = null)
+        TimeSpan? timeToLive = null,
+        DateTimeOffset? expiresAtUtc = null)
         where TValue : class {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
@@ -99,6 +106,9 @@ public sealed class ReadModelBatchOperation {
             throw new ArgumentOutOfRangeException(nameof(timeToLive), "Time-to-live must be greater than zero.");
         }
 
+        if (timeToLive is not null && expiresAtUtc is not null)
+            throw new ArgumentException("Specify either relative retention or an absolute deadline.", nameof(expiresAtUtc));
+
         ReadOnlyMemory<byte> canonical = ReadModelBatchCanonicalJson.Serialize(value);
         string typeName = typeof(TValue).FullName ?? typeof(TValue).Name;
         return new ReadModelBatchOperation(
@@ -107,7 +117,8 @@ public sealed class ReadModelBatchOperation {
             typeName,
             canonical,
             concurrency,
-            timeToLive);
+            timeToLive,
+            expiresAtUtc);
     }
 
     /// <summary>
@@ -148,7 +159,8 @@ public sealed class ReadModelBatchOperation {
         string key,
         string valueTypeName,
         ReadOnlyMemory<byte> canonicalValue,
-        TimeSpan? timeToLive = null) {
+        TimeSpan? timeToLive = null,
+        DateTimeOffset? expiresAtUtc = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentException.ThrowIfNullOrWhiteSpace(valueTypeName);
         if (canonicalValue.IsEmpty) {
@@ -159,12 +171,16 @@ public sealed class ReadModelBatchOperation {
             throw new ArgumentOutOfRangeException(nameof(timeToLive));
         }
 
+        if (timeToLive is not null && expiresAtUtc is not null)
+            throw new ArgumentException("Specify either relative retention or an absolute deadline.", nameof(expiresAtUtc));
+
         return new ReadModelBatchOperation(
             key,
             ReadModelBatchOperationKind.Write,
             valueTypeName,
             canonicalValue.ToArray(),
             ReadModelBatchConcurrency.LastWrite,
-            timeToLive);
+            timeToLive,
+            expiresAtUtc);
     }
 }

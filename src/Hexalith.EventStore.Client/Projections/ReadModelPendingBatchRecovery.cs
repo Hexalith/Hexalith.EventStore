@@ -19,7 +19,7 @@ internal static class ReadModelPendingBatchRecovery
             RawStateEntry current = await accessor.ReadAsync(key, token).ConfigureAwait(false);
             if (!current.Exists || !ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) return new(true);
             ReadModelBatchEnvelope? envelope = ReadModelBatchEnvelope.FromBytes(current.Value);
-            if (envelope is not { EnvelopeVersion: 1 } || !ReadModelBatchFingerprint.IsCanonical(envelope.Fingerprint)
+            if (envelope is null || envelope.EnvelopeVersion is not (1 or 2) || !ReadModelBatchFingerprint.IsCanonical(envelope.Fingerprint)
                 || envelope.ScopeHash is not { Length: 43 } || envelope.ScopeHash.Any(static ch => !char.IsAsciiLetterOrDigit(ch) && ch is not '-' and not '_'))
                 return new(false, "invalid-recovery-evidence");
             RawStateEntry row = await accessor.ReadAsync(ReadModelBatchKeys.MarkerKey(envelope.ScopeHash), token).ConfigureAwait(false);
@@ -34,7 +34,7 @@ internal static class ReadModelPendingBatchRecovery
                 if (marker.OriginalManifest is not null || marker.OriginalManifestKey is not null || marker.Operations is not null
                     || anchor.Key != key || !anchor.Matches(marker, expected) || !anchor.Matches(marker, envelope))
                     return new(false, "invalid-recovery-evidence");
-                return await ReadModelBatchProtocol.FinishRecoveryAnchorAsync(accessor, marker, expected, injector, token).ConfigureAwait(false)
+                return await ReadModelBatchProtocol.FinishRecoveryAnchorAsync(accessor, marker, expected, injector, token, options.TimeProvider).ConfigureAwait(false)
                     ? new(true, WasRecovered: true) : new(false, "recovery-incomplete");
             }
             ReadOnlyMemory<byte> manifest = marker.OriginalManifest;
@@ -66,6 +66,7 @@ internal static class ReadModelPendingBatchRecovery
                     || operation.IsDelete != (batch.Operations[index].Kind == ReadModelBatchOperationKind.Delete)).Any()
                 || envelope.Ordinal < 0 || envelope.Ordinal >= batch.Operations.Count
                 || batch.Operations[envelope.Ordinal].Key != key
+                || envelope.ExpiresAtUtc != batch.Operations[envelope.Ordinal].ExpiresAtUtc
                 || envelope.IsDelete != (batch.Operations[envelope.Ordinal].Kind == ReadModelBatchOperationKind.Delete)
                 || !envelope.CandidateBytes().Span.SequenceEqual(batch.Operations[envelope.Ordinal].CanonicalValue.Span))
                 return new(false, "invalid-recovery-evidence");
@@ -79,6 +80,7 @@ internal static class ReadModelPendingBatchRecovery
                 if (installed.Fingerprint != marker.Fingerprint || installed.Ordinal != ordinal
                     || operation.Concurrency.Mode == ReadModelBatchConcurrencyMode.ExpectedETag
                         && (operation.Concurrency.ExpectedETag.Length == 0) != (installed.PreviousBase64 is null)
+                    || installed.ExpiresAtUtc != operation.ExpiresAtUtc
                     || installed.IsDelete != (operation.Kind == ReadModelBatchOperationKind.Delete)
                     || !installed.CandidateBytes().Span.SequenceEqual(operation.CanonicalValue.Span))
                     return new(false, "invalid-recovery-evidence");
