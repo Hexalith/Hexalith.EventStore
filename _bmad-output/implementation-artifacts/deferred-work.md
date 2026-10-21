@@ -6069,3 +6069,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
   summary: Capture complete per-lane application fixture and configuration provenance before future projection qualification.
   evidence: Shared-channel review B4 found old recorder snapshots omit AspireContractTestFixture/configuration inputs; current DLLs are hash-bound, both projection regressions fail, and retrospective observation cannot supply pre-run source capture.
+
+## Deferred from: code review of spec-3-22-bounded-qualification-evidence-production-and-admission.md (2026-10-21, chunk A)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md`
+  summary: Verify that external P1R evidence validation does not depend on the live validator host (unverified medium risk).
+  evidence: `validate_external_root` (`tools/p1r_isolation.py:389`) and `storage.materialize` re-check current `/proc/self/mountinfo`, outer-socket identity, directory ownership by the reading user and availability of the prior attempt root when `create_packet`/`validate_packet` run. Running both on a new-format receipt inside a fresh isolated runner and as a different user would settle whether valid evidence is refused.
