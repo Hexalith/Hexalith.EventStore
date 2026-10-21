@@ -34,6 +34,19 @@ def main(arguments=None):
     inventory.add_argument("--backend", choices=("state.postgresql", "state.redis"), default="state.postgresql")
     args = parser.parse_args(arguments)
     worker, isolation, code, failure = None, None, 2, None
+    def construct(factory, controller, *arguments, **keywords):
+        nonlocal worker, isolation
+        if args.summary_out is None:
+            return factory(*arguments, **keywords)
+        # Retain the actual instance if initialization fails, as the standalone
+        # runner does. Constructor ownership markers decide what may be exported.
+        instance = factory.__new__(factory)
+        if controller:
+            isolation = instance
+        else:
+            worker = instance
+        factory.__init__(instance, *arguments, **keywords)
+        return instance
     def perform():
         nonlocal worker, isolation, code, failure
         try:
@@ -42,8 +55,7 @@ def main(arguments=None):
                 sys.stdout.buffer.write(canonical(reader(args.container, args.invocation)))
                 return 0
             # Resolve every path while still in the caller's original working directory.
-            args.out = (args.out or storage.default_root() / ("attempt-" + uuid.uuid4().hex)).absolute()
-            storage.safe_directory(args.out.parent, qualification.ROOT, create=True)
+            args.out = (args.out or storage.default_root() / ("attempt-" + uuid.uuid4().hex) / "packet").absolute()
             args.source_root = args.source_root.absolute() if args.source_root is not None else None
             args.source_builds_root = args.source_builds_root.absolute() if args.source_builds_root is not None else None
             if args.command == "run":
@@ -57,7 +69,7 @@ def main(arguments=None):
                 validate_observation_inputs(planning, args.source_root, args.source_builds_root)
             if not os.environ.get("HEXALITH_P1R_ISOLATION"):
                 from p1r_isolation import IsolatedRunner
-                isolation = IsolatedRunner(args.out.with_name(args.out.name + "-isolation"),
+                isolation = construct(IsolatedRunner, True, args.out.with_name(args.out.name + "-isolation"),
                                            **({"source_root": args.source_root} if args.source_root is not None
                                               and args.source_builds_root is None else {}))
                 forwarded = [args.command, "--out", str(args.out)]
@@ -86,13 +98,13 @@ def main(arguments=None):
             from p1r_isolation import private_proof, OUTER_MARKER
             private_proof(os.environ.get(OUTER_MARKER))
             if args.command == "observe":
-                worker = Executor(args.out, source_root=args.source_root, source_builds_root=args.source_builds_root,
+                worker = construct(Executor, False, args.out, source_root=args.source_root, source_builds_root=args.source_builds_root,
                                   tooling=planning.get("tooling"), observation=planning,
                                   observation_sha256=qualification.digest(qualification.regular(args.planning_observations)))
                 worker.observe_inputs(planning, args.selection_reference)
                 worker.cleanup()
             else:
-                worker = Executor(args.out, inputs, args.source_root, args.source_builds_root, inputs_sha256=qualification.digest(data))
+                worker = construct(Executor, False, args.out, inputs, args.source_root, args.source_builds_root, inputs_sha256=qualification.digest(data))
                 worker.inputs_sha256 = qualification.digest(data)
                 worker.result["inputs_sha256"] = worker.inputs_sha256
                 worker.save()
@@ -102,7 +114,7 @@ def main(arguments=None):
             return code
         except (Exception, KeyboardInterrupt) as error:
             code, failure = 2, str(error) if isinstance(error, InvalidPacket) else type(error).__name__
-            if worker is not None:
+            if worker is not None and isinstance(getattr(worker, "errors", None), list) and isinstance(getattr(worker, "result", None), dict):
                 worker.errors.append(str(error) if isinstance(error, InvalidPacket) else type(error).__name__)
                 try:
                     worker.cleanup()
@@ -115,10 +127,15 @@ def main(arguments=None):
     code = perform()
     if args.command != "inventory" and args.summary_out is not None:
         try:
-            store = (worker.storage if worker is not None else isolation.storage if isolation is not None else
+            # Executor assigns its invocation only after exclusively creating its
+            # output. The controller explicitly owns a freshly created parent.
+            owned_worker = worker is not None and isinstance(getattr(worker, "invocation", None), str)
+            owned_controller = isolation is not None and getattr(isolation, "owns_attempt", False) is True
+            store = (worker.storage if owned_worker and hasattr(worker, "storage") else
+                isolation.storage if owned_controller and hasattr(isolation, "storage") else
                 storage.Store(storage.default_root() / ".summary-artifacts", storage.context(uuid.uuid4().hex, qualification.ROOT)))
-            packet = args.out or storage.default_root() / ("absent-" + uuid.uuid4().hex)
-            outer = isolation.output if isolation is not None else Path(packet).with_name(Path(packet).name + "-isolation")
+            packet = worker.output if owned_worker else args.out if owned_controller else store.root / ("absent-" + uuid.uuid4().hex)
+            outer = isolation.output if owned_controller else None
             storage.export_attempt(packet, args.summary_out, store, isolation=outer, exit_code=code, error=failure)
         except (Exception, KeyboardInterrupt) as summary_error:
             print(json.dumps({"error": str(summary_error) if isinstance(summary_error, InvalidPacket)

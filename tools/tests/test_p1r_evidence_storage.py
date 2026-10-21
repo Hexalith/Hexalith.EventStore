@@ -100,6 +100,91 @@ class EvidenceStorageTests(unittest.TestCase):
         row["output"] = "changed"
         with self.assertRaises(InvalidPacket): storage.command_text(row)
 
+    def testNestedInventoryReferencesAreValidatedAndReusedWithinOneOperation(self):
+        for nested in ({"schema": "hexalith.p1r.json-reference.v999", "reference": {}},
+                       dict(self.command(), output="mixed")):
+            with self.subTest(nested=nested), self.assertRaises(InvalidPacket):
+                storage.materialize(self.store.inventory([nested]), self.context)
+        inner = self.store.inventory([{"position": 2}, {"position": 1}])
+        outer = self.store.inventory([inner, copy.deepcopy(inner)])
+        result = storage.materialize(outer, self.context)
+        self.assertEqual(result, [[{"position": 2}, {"position": 1}]] * 2)
+        self.assertIs(result[0], result[1])
+        # Each wrapper is validated even when its decoded payload is reusable.
+        changed = copy.deepcopy(inner)
+        changed["reference"]["artifact"]["context"]["attempt"] = "e" * 32
+        with self.assertRaises(InvalidPacket): storage.materialize([inner, changed], self.context)
+
+    def testMaterializationCyclesAndDepthAreBounded(self):
+        cyclic = []
+        cyclic.append(cyclic)
+        with self.assertRaisesRegex(InvalidPacket, "cyclic"):
+            storage.materialize(cyclic, self.context)
+        nested = []
+        for _ in range(130): nested = [nested]
+        with self.assertRaisesRegex(InvalidPacket, "traversal budget"):
+            storage.materialize(nested, self.context)
+        # A compact repeated-reference DAG must not allocate its expanded tree.
+        reference = self.store.inventory(["ordered", "payload"])
+        for _ in range(14): reference = self.store.inventory([reference, copy.deepcopy(reference)])
+        result = storage.materialize(reference, self.context)
+        for _ in range(14):
+            self.assertIs(result[0], result[1])
+            result = result[0]
+        self.assertEqual(result, ["ordered", "payload"])
+
+    def testLegacySignatureCannotMixAnyExternalMarker(self):
+        import p1r_published_qualification as qualification
+        data = qualification.REPOSITORY_SIGNATURE.encode()
+        path = self.root / "signature.txt"
+        path.write_bytes(data)
+        legacy = {"exit_code": 0, "output": {"path": path.name, "sha256": digest(data)}}
+        self.assertTrue(qualification.signature_verified(self.root, legacy, self.context))
+        for marker in storage.OUTPUT_MARKERS:
+            with self.subTest(marker=marker), self.assertRaises(InvalidPacket):
+                qualification.signature_verified(self.root, dict(legacy, **{marker: "mixed"}), self.context)
+
+    def testProducerRejectsUnsupportedFieldsBeforePublishingAnything(self):
+        before = list((self.store.root / "objects").iterdir())
+        for representation in ("utf-8", "canonical-json-v2", None, [], {}):
+            with self.subTest(representation=representation), self.assertRaises(InvalidPacket):
+                self.store.retain(b"unpublished", {"kind": "control"}, representation)
+        for hold in (0, 1, "true", None, []):
+            root = self.root / ("invalid-" + str(type(hold).__name__))
+            with self.subTest(hold=hold), self.assertRaises(InvalidPacket):
+                storage.Store(root, self.context, hold=hold)
+            self.assertFalse(root.exists())
+        self.assertEqual(list((self.store.root / "objects").iterdir()), before)
+        for representation in ("raw-bytes", "canonical-json"):
+            reference = self.store.retain(b"[]", {"kind": "round-trip"}, representation)
+            self.assertEqual(storage.resolve(reference, self.context, {"kind": "round-trip"}), b"[]")
+
+    def testOnlyRootJournalDefinesAttemptCommandTotals(self):
+        packet = self.root / "packet"
+        (packet / "nested").mkdir(parents=True)
+        (packet / "commands.json").write_bytes(canonical([self.command()]))
+        (packet / "nested/commands.json").write_text("not a root journal")
+        summary = storage.export_attempt(packet, self.root / "summary-root-journal", self.store)
+        self.assertEqual(summary["commands"]["total"], 1)
+        index = json.loads(storage.resolve(summary["complete_index"], self.context, {"kind": "complete-index"}))
+        self.assertEqual({row["path"] for row in index["files"]}, {"commands.json", "nested/commands.json"})
+
+    def testEnumerationAndIndexBudgetsRefuseBeforeAccumulatingOrPublishingExcess(self):
+        packet = self.root / "packet-budget"
+        packet.mkdir()
+        for number in range(6):
+            (packet / str(number)).write_bytes(str(number).encode())
+        with mock.patch.object(storage, "INDEX_ENTRIES", 2), mock.patch.object(self.store, "retain", wraps=self.store.retain) as retained:
+            with self.assertRaisesRegex(InvalidPacket, "enumeration exceeds entry"):
+                storage.export_attempt(packet, self.root / "summary-enumeration", self.store)
+            self.assertEqual(retained.call_count, 2)
+        with mock.patch.object(storage, "INDEX_BYTES", 1), mock.patch.object(self.store, "retain", wraps=self.store.retain) as retained:
+            with self.assertRaisesRegex(InvalidPacket, "index exceeds capture"):
+                storage.export_attempt(packet, self.root / "summary-index", self.store)
+            retained.assert_not_called()
+        self.assertFalse((self.root / "summary-enumeration").exists())
+        self.assertFalse((self.root / "summary-index").exists())
+
     def testExternalInventoriesPreserveStrictJsonAndRepresentationRules(self):
         for data, representation in ((b'{"field":1,"field":2}', "canonical-json"),
                 (b'[NaN]', "canonical-json"), (b'[Infinity]', "canonical-json"),

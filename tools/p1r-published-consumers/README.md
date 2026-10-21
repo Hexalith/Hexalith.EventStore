@@ -108,21 +108,22 @@ The immutable input guard still requires the selected tag and source HEAD to
 match. A dirty tooling repair requires a separately scoped verification command;
 it cannot use that guard to claim immutable package qualification.
 
-For an explicitly scoped repair verification, run from the EventStore root:
+For current scoped tooling verification, run from the EventStore root:
 
 ```sh
 python3 tools/p1r-isolated-runner.py \
-  --out _bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/isolation-UNIQUE \
-  -- python3 "$PWD/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-and-audit.py" \
-  --attempt "$PWD/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/attempt-UNIQUE" \
-  --repo "$PWD"
+  --out "$HOME/.local/share/hexalith/p1r-evidence/repair-UNIQUE/isolation" \
+  -- python3 -m unittest discover -s tools/tests -p test_p1r_evidence_storage.py
 ```
 
-Both output directories must be new and inside the mounted workspace. The whole
-measurement attempt freezes all three executed scripts, refuses reuse, retains
-separate plan/summary/audit files, and verifies script hashes again after audit.
-The measurement audit leaves overall evidence validity pending the final outer
-controller audit, including its final cleanup and actual owned absence.
+The `repair-UNIQUE` parent must not exist: the controller creates it exclusively
+and mounts only that invocation-owned tree. The complete isolation packet stays
+outside every checkout at the same absolute host/container path. This synthetic
+storage suite grants no qualification authority. The retained historical
+`verify-and-audit.py` repair driver requires checkout-contained attempts and is
+therefore no longer a runnable example for this external storage contract; its
+source and retained packets remain unchanged historical inputs.
+
 The driver receives the existing workspace at
 its original absolute path, allowing Git provenance and adjacent root-declared
 source references to retain their identities. The outer endpoint is captured
@@ -356,7 +357,10 @@ Published executor and isolated-runner full packets default to an external
 `~/.local/share/hexalith/p1r-evidence/` attempt directory. Set
 `HEXALITH_P1R_EVIDENCE_ROOT` to select another external root. `--out` still means
 the complete packet directory; it must be outside this checkout and any enclosing
-checkout. `--summary-out` exports a fresh directory containing one `summary.json`.
+checkout, with a previously absent attempt parent. The controller creates that
+parent exclusively; an existing parent is refused before Docker provisioning.
+Default packets use `<external-root>/attempt-UUID/packet`, beside their isolation
+packet and immutable object store. Keep inputs in the mounted workspace. `--summary-out` exports a fresh directory containing one `summary.json`.
 Use that summary as the reviewable Git artifact. It contains totals, the attempt
 outcome, and one external complete-index reference. Full journals, generated
 reports, videos, traces, archives and screenshot trees are excluded from new Git
@@ -398,7 +402,7 @@ immutable retrieval and retention/hold enforcement; local storage never supplies
 that authority. No qualification, readiness, publication, selection or digest
 change follows from this storage format.
 
-Isolation mounts the single admitted external root at the same path inside the
+Isolation mounts the freshly created invocation-owned attempt parent at the same path inside the
 private SDK container. Workspace/source mounts and existing socket exclusions
 remain enforced. The external tree also rejects the outer Unix socket, physical
 aliases and nested mounts. Cleanup continues to target only registered owned

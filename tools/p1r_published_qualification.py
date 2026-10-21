@@ -1062,7 +1062,7 @@ def loaded_checks(prefix, project, loaded, graph_ids, archives, packages_root):
 def signature_verified(directory, signature, enclosing=None):
     if not isinstance(signature, dict) or signature.get("exit_code") != 0:
         return False
-    if "output_ref" in signature or "output_schema" in signature:
+    if storage.OUTPUT_MARKERS.intersection(signature):
         return REPOSITORY_SIGNATURE in storage.command_text(signature, enclosing)
     output = signature["output"]
     data = regular(directory / relative(output["path"]))

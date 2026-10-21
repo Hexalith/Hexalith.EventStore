@@ -1079,6 +1079,9 @@ public sealed partial class SecretsProtectionTests
     }
 
     private static IEnumerable<string> FindViolations(string relativePath, string content)
+        => FindDecodedEvidenceViolations(relativePath, content);
+
+    private static IEnumerable<string> FindViolationsCore(string relativePath, string content)
     {
         content = MaskBoundedPythonSecurityProbes(relativePath, content);
         content = MaskSealedPublishedExecutorSource(relativePath, content);
@@ -1155,7 +1158,8 @@ public sealed partial class SecretsProtectionTests
             if (!IsInertUriUserInfo(userInfo)
                 && !IsPublicGitHubSshUsername(match.Value)
                 && !(effectivePath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-                    && ContainsRuntimeCSharpInterpolation(userInfo)))
+                    && ContainsRuntimeCSharpInterpolation(userInfo))
+                && !IsBoundedPythonRuntimeUri(effectivePath, content, match))
             {
                 Record(match.Groups["userinfo"].Index, "credential-uri");
             }
@@ -1212,6 +1216,7 @@ public sealed partial class SecretsProtectionTests
             if (dependencyNames.Contains(match.Groups["name"].Index)
                 || match.Groups["bare"].Success && nullValues.Contains(match.Groups["value"].Index)
                 || IsArgparseMetavar(content, match.Groups["name"].Index)
+                || IsCheckoutPersistenceControl(relativePath, content, match)
                 || IsJavaScriptDestructuringAlias(effectivePath, content, match.Groups["name"].Index)
                 || IsPackageDependencyMetadata(
                     effectivePath,
@@ -1317,6 +1322,9 @@ public sealed partial class SecretsProtectionTests
             }
 
             if (!IsBoundedPythonSourceAssignment(effectivePath, content, match)
+                && !IsBoundedPythonCallOrDictionary(effectivePath, content, match)
+                && !IsBoundedGoRuntimeValue(effectivePath, content, match)
+                && !IsBoundedWrongSecretNegativeTest(effectivePath, content, match)
                 && !IsNonCredentialFixtureAssignment(effectivePath, content, match)
                 && IsUsableLiteral(
                 effectivePath,
@@ -2937,6 +2945,10 @@ public sealed partial class SecretsProtectionTests
 
     private static string GetEffectiveSourcePath(string relativePath, string content, int index)
     {
+        if (relativePath.EndsWith(".cs.source", StringComparison.OrdinalIgnoreCase))
+        {
+            return relativePath[..^".source".Length];
+        }
         if (relativePath.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal)
             && relativePath.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
         {
@@ -2982,6 +2994,7 @@ public sealed partial class SecretsProtectionTests
         {
             "c#" or "csharp" or "cs" => relativePath + ".cs",
             "python" or "py" => relativePath + ".py",
+            "p1r-python-fragment" => relativePath + ".pyfrag",
             "javascript" or "js" or "typescript" or "ts" or "tsx" or "jsx" => relativePath + ".js",
             "bash" or "shell" or "sh" => IsInClosedMarkdownPythonHereDocument(content, index)
                 ? relativePath + ".py" : relativePath + ".sh",

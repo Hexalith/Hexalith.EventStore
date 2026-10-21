@@ -569,6 +569,7 @@ class PacketFixture(unittest.TestCase):
         return next(row for row in packet["lanes"][group] if row["id"] == lane)["receipts"][0]
 
 
+
 class InventoryAndInputTests(PacketFixture):
     def testCanonicalInventoryMatchesTheHistoricalContract(self):
         tree = ast.parse((q.ROOT / preparation.VERIFIER).read_bytes())
@@ -730,6 +731,31 @@ class InventoryAndInputTests(PacketFixture):
 
 
 class PackageEvidenceTests(PacketFixture):
+    def testProductionDefaultVerifierExternalSignatureRoundTripAndDeletionRefusal(self):
+        import p1r_evidence_storage as storage
+        out = self.root / "default-verifier-external-control"
+        output = b" " * 4096 + q.REPOSITORY_SIGNATURE.encode()
+        with mock.patch.object(q.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, output)) as execution:
+            packet = q.create_packet(out, inputs=self.inputs, candidate_evidence=self.evidence)
+        self.assertEqual(execution.call_count, len(self.selection["packages"]))
+        self.assertTrue(q.validate_packet(out)["valid"])
+        lane = packet["lanes"]["packages"][0]
+        receipt = q.parse_json((out / lane["receipts"][0]).read_bytes())
+        enclosing = q.package_output_context(out, receipt["invocation"], self.selection,
+            {"sha256": sha(self.inputs.read_bytes())})
+        signatures = [row["signature"] for row in receipt["observation"]["packages"]]
+        for signature in signatures:
+            self.assertEqual(signature["verifier"], q.VERIFIER)
+            self.assertNotIn("output", signature)
+            self.assertNotIn(q.REPOSITORY_SIGNATURE, signature["output_excerpt"])
+            self.assertEqual(storage.command_text(signature, enclosing), output.decode())
+            with self.assertRaises(q.InvalidPacket):
+                storage.command_text(signature, dict(enclosing, attempt="f" * 32))
+        Path(signatures[0]["output_ref"]["artifact"]["locator"]).unlink()
+        with self.assertRaises(q.InvalidPacket):
+            q.validate_packet(out)
+
+
     def testSyntheticPackagesPassChecksButRetainToolingOnlyScope(self):
         result = q.validate_packet(self.full)
         self.assertTrue(result["valid"])

@@ -27,6 +27,51 @@ from p1r_isolation_fixture import submitted_mounts
 
 
 class PrivateEndpointTests(unittest.TestCase):
+    def testInterruptedInitializationRetainsIts130SummaryOutcome(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch.object(isolation, "validate_workspace", side_effect=KeyboardInterrupt), \
+                    mock.patch.object(subprocess, "run", side_effect=AssertionError("Docker must remain blocked")), \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = isolation.main(["--out", str(root / "attempt/isolation"), "--summary-out", str(root / "summary.json"),
+                    "--outer-host", "unix:///outer", "--workspace", str(root), "--", "python3", "-c", "pass"])
+            self.assertEqual(code, 130)
+            summary = json.loads((root / "summary.json/summary.json").read_bytes())
+            self.assertEqual(summary["outcome"]["exit_code"], 130)
+            self.assertEqual(summary["outcome"]["status"], "failed")
+            self.assertGreater(summary["outcome"]["cleanup"]["attempts"], 0)
+
+    def testStandaloneConstructorRefusalsExportFailedSummariesWithoutDockerOrForeignFiles(self):
+        for defect in ("endpoint", "existing-parent"):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                attempt, summary = root / "attempt", root / "summary.json"
+                rejected = "StandaloneRejectedCredential" + "b" * 32
+                if defect == "existing-parent":
+                    attempt.mkdir()
+                    (attempt / "foreign.txt").write_text(rejected)
+                blocked = root / "bin"
+                blocked.mkdir()
+                marker = root / "docker-called"
+                (blocked / "docker").write_text("#!/bin/sh\n: > '" + str(marker) + "'\nexit 99\n")
+                (blocked / "docker").chmod(0o700)
+                environment = dict(os.environ, PATH=str(blocked), HEXALITH_P1R_EVIDENCE_ROOT=str(root / "diagnostics"))
+                endpoint = "tcp://user:" + rejected + "@rejected:2375" if defect == "endpoint" else "unix:///outer"
+                completed = subprocess.run([sys.executable, str(Path(isolation.__file__).with_name("p1r-isolated-runner.py")),
+                    "--out", str(attempt / "isolation"), "--summary-out", str(summary), "--outer-host", endpoint,
+                    "--", sys.executable, "-c", "pass"], env=environment, capture_output=True, timeout=30)
+                self.assertEqual(completed.returncode, 2, completed.stderr.decode())
+                self.assertFalse(marker.exists())
+                value = json.loads((summary / "summary.json").read_bytes())
+                self.assertEqual(value["outcome"]["status"], "failed")
+                self.assertEqual(value["outcome"]["exit_code"], 2)
+                index = json.loads(storage.resolve(value["complete_index"], value["context"], {"kind": "complete-index"}))
+                self.assertNotIn("foreign.txt", {row["path"] for row in index["files"]})
+                if defect == "existing-parent": self.assertEqual((attempt / "foreign.txt").read_text(), rejected)
+                for path in root.rglob("*"):
+                    if path.is_file() and path.name != "foreign.txt":
+                        self.assertNotIn(rejected.encode(), path.read_bytes(), str(path))
+
     def environment(self):
         return {isolation.MARKER: "a" * 32, "DOCKER_HOST": isolation.SOCKET,
                 "DOCKER_CONFIG": isolation.CLIENT_CONFIG, "PATH": os.defpath, "CUSTOM_FIXTURE": "preserved"}
@@ -109,7 +154,7 @@ class ControllerTests(unittest.TestCase):
     def testObservePlanningIdentitySurvivesProvisioningAndRefusesChangedBytes(self):
         for changed in (False,True):
             with self.subTest(changed=changed):
-                worker = isolation.IsolatedRunner(self.worker.output.parent/str(changed),workspace=self.worker.workspace,outer_host='unix:///outer')
+                worker = isolation.IsolatedRunner(self.worker.output.parent.parent/('attempt-'+str(changed))/'isolation',workspace=self.worker.workspace,outer_host='unix:///outer')
                 self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
                 planning = worker.workspace/'planning.json'
                 planning.write_text('{"candidate_proposed":{}}')
@@ -152,7 +197,7 @@ class ControllerTests(unittest.TestCase):
         declarations = mock.patch.object(preparation, "declared_dependencies", return_value=[])
         declarations.start()
         self.addCleanup(declarations.stop)
-        self.worker = isolation.IsolatedRunner(root / "evidence", workspace=repository, outer_host="unix:///explicit-outer.sock")
+        self.worker = isolation.IsolatedRunner(root / "attempt" / "evidence", workspace=repository, outer_host="unix:///explicit-outer.sock")
         self.addCleanup(lambda: __import__("shutil").rmtree(self.worker.scratch, ignore_errors=True))
 
     def observed(self, identity="owned-id", label=None):
@@ -353,6 +398,22 @@ class ControllerTests(unittest.TestCase):
                 isolation.IsolatedRunner(output, workspace=self.worker.workspace, outer_host="unix:///outer")
         docker.assert_not_called()
         self.assertFalse(output.parent.exists())
+
+    def testSubmittedEvidenceMountExcludesUnrelatedPrivateParentFile(self):
+        parent = self.worker.output.parent.parent
+        private = parent / "controller-private"
+        private.write_text("unrelated controller bytes")
+        options = isolation.sdk_arguments(self.worker.workspace, self.worker.workspace,
+            self.worker.invocation, "daemon", self.worker.volume, external_root=self.worker.external_root)
+        mounts = submitted_mounts(options)
+        self.assertEqual([row["Source"] for row in mounts if row["Type"] == "bind"],
+            [str(self.worker.workspace), str(self.worker.external_root)])
+        self.assertTrue(all(not private.is_relative_to(Path(row["Source"])) for row in mounts if row["Type"] == "bind"))
+        with mock.patch.object(isolation.IsolatedRunner, "docker") as docker:
+            with self.assertRaisesRegex(preparation.InvalidPacket, "fresh and invocation-owned"):
+                isolation.IsolatedRunner(parent / "unsafe-output", workspace=self.worker.workspace, outer_host="unix:///outer")
+        docker.assert_not_called()
+        self.assertEqual(private.read_text(), "unrelated controller bytes")
 
     def testUnexpectedOrUnobservableInnerContainersPreserveDaemonAndVolume(self):
         for status, data in ((0, b"unexpected-inner-id\n"), (1, b"private socket unavailable")):

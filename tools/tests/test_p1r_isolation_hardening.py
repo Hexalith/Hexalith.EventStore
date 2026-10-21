@@ -146,11 +146,11 @@ class LifecycleTests(unittest.TestCase):
                     else: runtime['builds']['path'] = outside
                     changed['inner_command'][index] = outside
                     with self.subTest(context_mismatch=role), self.assertRaisesRegex(preparation.InvalidPacket,'isolation artifact context differs'):
-                        isolation_evidence.validate(changed,private,dict(submitted,execution=execution),root,
+                        isolation_evidence.validate(changed,private,dict(submitted,execution=execution),Path(wrapper['inner_command'][4]),
                                                     reference['wrapper']['path'],qualification.validate_times)
                     changed['evidence_context']['source'] = storage.source_identity(submitted['source_binding'])
                     with self.subTest(role=role), self.assertRaisesRegex(preparation.InvalidPacket,'outside the isolated workspace'):
-                        isolation_evidence.validate(changed,private,dict(submitted,execution=execution),root,
+                        isolation_evidence.validate(changed,private,dict(submitted,execution=execution),Path(wrapper['inner_command'][4]),
                                                     reference['wrapper']['path'],qualification.validate_times)
             # Fresh wrapper hashes cannot make a different runtime path selected.
             witness.change_isolation(retained,'wrapper',lambda value:value['inner_command'].__setitem__(-3,str(preparation.ROOT)))
@@ -583,7 +583,7 @@ class LocalStartupTests(unittest.TestCase):
             root.mkdir()
             for index, workspace in enumerate(('/', directory, str(root) + '/.', str(root) + '/',
                                                str(root) + '/a/..', '/proc', '/dev', 'relative', '/tmp/repo,socket')):
-                output = root.parent / ('refusal-' + str(index))
+                output = root.parent / ('attempt-' + str(index)) / 'refusal'
                 with self.subTest(workspace=workspace), mock.patch.object(isolation, 'ROOT', root), \
                         mock.patch.object(preparation, 'git', return_value=b''), \
                         mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
@@ -607,7 +607,7 @@ class LocalStartupTests(unittest.TestCase):
                     with self.subTest(endpoint=endpoint), mock.patch.object(isolation, 'ROOT', root), \
                             mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
                         with self.assertRaisesRegex(preparation.InvalidPacket, 'outer Docker socket'):
-                            isolation.IsolatedRunner(parent / ('refusal-' + endpoint.name), workspace=root,
+                            isolation.IsolatedRunner(parent / ('attempt-' + endpoint.name) / 'refusal', workspace=root,
                                                      outer_host='unix://' + str(endpoint))
                         docker.assert_not_called()
                 alias.unlink()
@@ -640,7 +640,7 @@ class LocalStartupTests(unittest.TestCase):
                         mock.patch.object(isolation, 'ROOT', root), \
                         mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
                     with self.assertRaisesRegex(preparation.InvalidPacket, 'workspace contents unavailable'):
-                        isolation.IsolatedRunner(parent / 'refusal', workspace=root, outer_host='unix://' + str(selected))
+                        isolation.IsolatedRunner(parent / 'attempt' / 'refusal', workspace=root, outer_host='unix://' + str(selected))
                     docker.assert_not_called()
 
     def testEarlyConfigurationAndInitialSaveFailuresCleanOwnedScratch(self):
@@ -666,10 +666,10 @@ class LocalStartupTests(unittest.TestCase):
                         mock.patch.object(isolation.IsolatedRunner, 'save', save), \
                         mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
                     with self.assertRaisesRegex(OSError, 'injected'):
-                        isolation.IsolatedRunner(root / 'evidence', workspace=root, outer_host='unix:///outside/docker.sock')
+                        isolation.IsolatedRunner(root / 'attempt' / 'evidence', workspace=root, outer_host='unix:///outside/docker.sock')
                     docker.assert_not_called()
                 self.assertFalse(scratch.exists())
-                retained = json.loads((root / 'evidence/isolation.json').read_text())
+                retained = json.loads((root / 'attempt/evidence/isolation.json').read_text())
                 self.assertFalse(retained['passed'])
                 self.assertEqual(len(retained['cleanup']), 2)
 
@@ -678,7 +678,7 @@ class LocalStartupTests(unittest.TestCase):
         for host in (f'tcp://user:{credential}@remote:2376',f'ssh://user:{credential}@remote','unix://remote/socket',
                      f'https://user:{credential}@remote',f'unix:///socket?token={credential}',f'unix:///socket#{credential}'):
             with self.subTest(host=host), tempfile.TemporaryDirectory() as directory:
-                output = Path(directory)/'evidence'
+                output = Path(directory)/'attempt'/'evidence'
                 with mock.patch.object(isolation.IsolatedRunner,'docker') as docker:
                     with self.assertRaisesRegex(preparation.InvalidPacket,'local Unix'):
                         isolation.IsolatedRunner(output,workspace=Path(directory),outer_host=host)
@@ -695,7 +695,7 @@ class LocalStartupTests(unittest.TestCase):
                 root = Path(directory)
                 repository = root/'repo';repository.mkdir()
                 with mock.patch.object(isolation,'ROOT',repository):
-                    worker = isolation.IsolatedRunner(root/'evidence',workspace=repository,outer_host='unix:///outer')
+                    worker = isolation.IsolatedRunner(root/'attempt'/'evidence',workspace=repository,outer_host='unix:///outer')
                 self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
                 clock = [0.0]
                 calls = []

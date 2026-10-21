@@ -452,11 +452,26 @@ class IsolatedRunner:
             self.initialize(output, workspace, outer_host, source_root)
 
     def initialize(self, output, workspace=None, outer_host=None, source_root=None):
+        self.owns_attempt = False
         self.output = Path(output).absolute()
         self.source_root = Path(source_root).absolute() if source_root is not None else None
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
-        self.external_root = storage.safe_directory(self.output.parent, ROOT, create=True)
         self.invocation = uuid.uuid4().hex
+        # The sole evidence bind must be created by this invocation. Adopting an
+        # existing output parent exposes unrelated controller files to the SDK.
+        self.external_root = self.output.parent
+        storage.safe_directory(self.external_root.parent, ROOT, create=True)
+        require(self.external_root == self.external_root.resolve(), "external attempt parent substituted")
+        parent = storage._open_directory(self.external_root.parent)
+        try:
+            try:
+                os.mkdir(self.external_root.name, 0o700, dir_fd=parent)
+            except FileExistsError as error:
+                raise InvalidPacket("external attempt parent must be fresh and invocation-owned") from error
+        finally:
+            os.close(parent)
+        self.owns_attempt = True
+        storage.safe_directory(self.external_root, ROOT)
         self.storage = storage.Store(self.external_root / ".p1r-artifacts", storage.context(self.invocation, ROOT))
         self.scratch = None
         self.environment = {key: value for key, value in os.environ.items()
@@ -575,6 +590,9 @@ class IsolatedRunner:
                 source_paths = (self.source_root,)
             published = len(command) >= 3 and str(command[1]) == str(ROOT / "tools/p1r-published-executor.py")
             if published and command[2] in ("run", "observe"):
+                packet = Path(command[command.index("--out") + 1]).absolute()
+                require(packet.parent == self.external_root and packet != self.output and not packet.exists(),
+                        "executor packet is outside the owned attempt directory or already exists")
                 if not source_arguments(command):
                     require(command_source_root(command) == self.source_root,
                             "executor and isolation selected source roots differ")
@@ -866,10 +884,29 @@ def main(arguments=None):
     require(command, "explicit verification command required")
     if internal:
         return inner(args.out, args.outer_id, command, args.source_root)
-    output = args.out or storage.default_root() / ("isolation-" + uuid.uuid4().hex)
-    runner = IsolatedRunner(output, args.workspace, args.outer_host, args.source_root)
-    code = runner.run(command)
+    output = args.out or storage.default_root() / ("attempt-" + uuid.uuid4().hex) / "isolation"
+    runner = IsolatedRunner.__new__(IsolatedRunner)
+    failure = None
+    try:
+        with signal_handling():
+            runner.initialize(output, args.workspace, args.outer_host, args.source_root)
+        code = runner.run(command)
+    except (Exception, KeyboardInterrupt) as error:
+        code = 130 if isinstance(error, KeyboardInterrupt) else 2
+        failure = str(error) if isinstance(error, InvalidPacket) else type(error).__name__
+        print(json.dumps({"error": failure, "p1r_usable": False}), file=sys.stderr)
     if args.summary_out is not None:
-        storage.export_attempt(runner.output, args.summary_out, runner.storage)
-    print(json.dumps({"out": str(runner.output), "passed": runner.result["passed"], "p1r_usable": False}), flush=True)
+        try:
+            store = (runner.storage if getattr(runner, "owns_attempt", False) and hasattr(runner, "storage") else
+                storage.Store(storage.default_root() / ".summary-artifacts", storage.context(uuid.uuid4().hex, ROOT)))
+            # A rejected destination belongs to someone else. Export an absent
+            # diagnostic packet instead of inspecting any of its files.
+            packet = runner.output if getattr(runner, "owns_attempt", False) else store.root / ("absent-" + uuid.uuid4().hex)
+            storage.export_attempt(packet, args.summary_out, store, exit_code=code, error=failure)
+        except (Exception, KeyboardInterrupt) as error:
+            print(json.dumps({"error": str(error) if isinstance(error, InvalidPacket) else type(error).__name__,
+                "summary_exported": False, "p1r_usable": False}), file=sys.stderr)
+            code = 2
+    print(json.dumps({"out": str(output), "passed": code == 0 and getattr(runner, "result", {}).get("passed", False),
+        "p1r_usable": False}), flush=True)
     return code
