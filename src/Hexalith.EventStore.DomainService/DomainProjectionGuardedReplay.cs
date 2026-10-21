@@ -62,7 +62,7 @@ internal static class DomainProjectionGuardedReplay
             || enrolled.GroupBy(static item => item.ProjectionType, StringComparer.Ordinal).Any(static group => group.Count() != 1)
             || enrolled.Any(static item => !item.Capability.IsSupported)
             || selected.Any(static handler => handler is not IAsyncDomainProjectionRebuildHandler)
-            || services.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == request.Request.Domain)
+            || enrolled.Any(item => !DomainProjectionOwnerProof.SupportsEnrollment(services, item))
             || ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion,
                 DomainProjectionOwnerProof.BindRoutes(services, all.Where(handler => handler.Domain == request.Request.Domain)
                     .Select(handler => new ProjectionDispatchRoute(handler.Domain, handler.ProjectionType))),

@@ -13,6 +13,36 @@ using Shouldly;
 namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class DaprProjectionDeliveryRetrySchedulerTests {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OriginalNativeProofOrAbsenceSurvivesSerializationAndReplacementScheduling(bool originalProof)
+    {
+        var state = new Dictionary<string, ProjectionDeliveryRetryLedger>(StringComparer.Ordinal);
+        var scheduler = CreateScheduler(CreateStatefulDaprClient(state));
+        var original = CreateWorkItem("work-native", "aggregate-a");
+        var identity = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity(original.TenantId, original.Domain, original.AggregateId);
+        var proof = Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.ExtendDigest(
+            Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV"),
+            identity, 1, original.HeadMessageId, new('a', 64));
+        original = original with { NativeSourceProof = originalProof ? proof : null };
+        await scheduler.ScheduleAsync(original);
+        foreach (string key in state.Keys.ToArray()) state[key] = System.Text.Json.JsonSerializer.Deserialize<ProjectionDeliveryRetryLedger>(
+            System.Text.Json.JsonSerializer.Serialize(state[key]))!;
+        var replacement = original with { NativeSourceProof = originalProof ? null : proof };
+        (await scheduler.ScheduleAsync(replacement)).NativeSourceProof.ShouldBe(original.NativeSourceProof);
+        state.Values.SelectMany(item => item.Items).Single().NativeSourceProof.ShouldBe(original.NativeSourceProof);
+        (await scheduler.ReadAsync(original.WorkId)).ShouldNotBeNull().NativeSourceProof.ShouldBe(original.NativeSourceProof);
+        var malformed = original with { WorkId = "invalid-work", NativeSourceProof = proof with { AggregateId = "foreign" } };
+        await Should.ThrowAsync<ArgumentException>(() => scheduler.ScheduleAsync(malformed));
+        state.Values.SelectMany(item => item.Items).Count().ShouldBe(1);
+        var persisted = (await scheduler.ReadAsync(original.WorkId))!;
+        var claimed = (await scheduler.TryAcquireAsync(persisted, "native-owner", DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1)))!;
+        var changed = claimed with { NativeSourceProof = originalProof ? proof with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" } : proof };
+        (await scheduler.TryUpdateAsync(changed)).ShouldBeFalse();
+        (await scheduler.ReadAsync(original.WorkId))!.NativeSourceProof.ShouldBe(original.NativeSourceProof);
+    }
+
     [Fact]
     public async Task ReadAsync_OriginalNotDueReservedWorkIsReadWithoutMutationOrLeaseChanges()
     {

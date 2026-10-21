@@ -226,6 +226,7 @@ internal static class DomainProjectionRebuildTransport
             && StringComparer.Ordinal.Equals(left.Request.AggregateId, right.Request.AggregateId)
             && left.Request.RebuildSourceHeadSequence == right.Request.RebuildSourceHeadSequence
             && left.Request.RebuildSourceHeadMessageId == right.Request.RebuildSourceHeadMessageId
+            && left.Request.NativeSourceProof == right.Request.NativeSourceProof
             && Equals(ProjectionReplayTransportContext.CaptureCanonical(left.Request),
                 ProjectionReplayTransportContext.CaptureCanonical(right.Request))
             && left.Request.RebuildSourceErased == right.Request.RebuildSourceErased

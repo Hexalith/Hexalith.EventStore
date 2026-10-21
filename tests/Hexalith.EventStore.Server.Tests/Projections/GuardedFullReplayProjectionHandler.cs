@@ -9,8 +9,12 @@ internal sealed class GuardedFullReplayProjectionHandler(GuardedTailProjectionHa
     public string Domain => inner.Domain;
     public string ProjectionType => inner.ProjectionType;
     public DomainProjectionRebuildSemantics RebuildSemantics => DomainProjectionRebuildSemantics.FullReplay;
+    public Hexalith.EventStore.Contracts.Streams.NativeSourceProof? OriginalNativeProof { get; private set; }
     public Task<DomainProjectionRebuildPlan> PrepareRebuildAsync(ProjectionRequest request, string operationId, CancellationToken cancellationToken)
-        => inner.PrepareRebuildAsync(request, operationId, cancellationToken);
+    {
+        OriginalNativeProof = request.VerifiedNativeSourceProof;
+        return inner.PrepareRebuildAsync(request, operationId, cancellationToken);
+    }
     public Task<DomainProjectionHandlerResult> ProjectAsync(ProjectionRequest request, string dispatchId, CancellationToken cancellationToken)
         => inner.ProjectAsync(request, dispatchId, cancellationToken);
 }

@@ -11,10 +11,23 @@ internal interface INamedProjectionDispatchCoordinator {
     Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
         long headSequence, string headMessageId, ProjectionEventDto[] events, CancellationToken cancellationToken);
 
+    /// <summary>Retains the already validated original native cut or its frozen absence without resampling DTOs.</summary>
+    Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
+        long headSequence, string headMessageId, ProjectionEventDto[] events,
+        Hexalith.EventStore.Contracts.Streams.NativeSourceProof? nativeSourceProof, CancellationToken cancellationToken)
+        => TryDispatchHeadAsync(identity, registration, headSequence, headMessageId, events, cancellationToken);
+
     /// <summary>Delivers only the explicitly unguarded ordinary scopes from the same verified catalog snapshot.</summary>
     Task<bool> TryDispatchCompatibleAsync(AggregateIdentity identity, NamedProjectionRouteCatalogEntry catalog,
         long headSequence, string headMessageId, ProjectionEventDto[] events, IReadOnlyList<string> routes,
         CancellationToken cancellationToken);
+
+    /// <summary>Preserves an originally verified native cut through compatible full-prefix delivery.</summary>
+    Task<bool> TryDispatchCompatibleAsync(AggregateIdentity identity, NamedProjectionRouteCatalogEntry catalog,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, IReadOnlyList<string> routes,
+        Hexalith.EventStore.Contracts.Streams.NativeSourceProof nativeSourceProof, CancellationToken cancellationToken)
+        => TryDispatchCompatibleAsync(identity, catalog, headSequence, headMessageId, events, routes, cancellationToken);
+
 
     /// <summary>Checks whether every named route is either streamed full replay or fenced shared epoch delivery.</summary>
     Task<bool> SupportsMappedOnlyStreamedDeliveryAsync(

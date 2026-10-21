@@ -343,6 +343,30 @@ public class StreamsControllerTests {
         proxies.ReceivedCalls().ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task NativeEventReadsPreserveBlankUserIdentityWhileOrdinaryReadsNormalizeIt(string user)
+    {
+        var envelope = BuildEnvelope(1) with { UserId = user };
+        var identity = new AggregateIdentity(Tenant, Domain, AggregateId);
+        var proof = SourceProofCodec.Extend(SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV"), envelope);
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.InspectSourceProofAsync().Returns(new SourceProofInspection(SourceProofInspectionStatus.Available, true, 1, false, proof));
+        actor.ReadNativeEventsBoundedRangeAsync(0, 1, 101, 2_097_152).Returns(new SourceEventRange([envelope], 1));
+        actor.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, 1));
+        actor.ReadEventsRangeAsync(0, null, 101).Returns([envelope]);
+        var (native, _, _, _) = CreateController(actor);
+        BindWorkload(native);
+        var page = (await native.ReadWorkloadStreamAsync(HeadRequest() with { ToSequence = null }))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>();
+        page.Events.Single().UserId.ShouldBe(user);
+        var (ordinary, _, _, _) = CreateController(actor);
+        var ordinaryPage = (await ordinary.ReadStreamAsync(new(Tenant, Domain, AggregateId, 0)))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>();
+        ordinaryPage.Events.Single().UserId.ShouldBeNull();
+    }
+
     [Fact]
     public async Task OrdinaryNativeEventPageStillReadsRangeAndRechecksProof()
     {

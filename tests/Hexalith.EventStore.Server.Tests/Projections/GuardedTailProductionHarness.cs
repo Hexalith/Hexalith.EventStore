@@ -112,6 +112,23 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             incrementalReplayProjectionTypes: mapped ? routes.Where(route => CapabilityFor(route).HandlerSemantics == "mapped-incremental-replay-v1") : [])
         { SourceGuardCapabilities = routes.Where(Guarded).ToDictionary(static route => route, CapabilityFor, StringComparer.Ordinal) };
         var services = new ServiceCollection();
+        var nativeGateway = Substitute.For<Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient>();
+        nativeGateway.ReadStreamAsync(Arg.Any<Hexalith.EventStore.Contracts.Streams.StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var query = call.Arg<Hexalith.EventStore.Contracts.Streams.StreamReadRequest>();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            Hexalith.EventStore.Contracts.Streams.StreamReadEvent[] page = query.ToSequence == 0 ? [] : Events
+                .Where(item => item.SequenceNumber > query.FromSequence && item.SequenceNumber <= (query.ToSequence ?? Head.HeadSequence))
+                .Take(query.PageSize).Select(item => new Hexalith.EventStore.Contracts.Streams.StreamReadEvent(item.SequenceNumber,
+                    item.EventTypeName, item.Payload, item.SerializationFormat, item.MetadataVersion, item.MessageId, item.CorrelationId,
+                    item.CausationId, item.Timestamp, item.UserId)
+                { GlobalPosition = item.GlobalPosition, PayloadVersion = item.PayloadVersion, NativeEventDigest = SourceProofCodec.ComputeEventHash(item) }).ToArray();
+            return new Hexalith.EventStore.Contracts.Streams.StreamReadPage(Identity.TenantId, Identity.Domain, Identity.AggregateId, page,
+                new(query.FromSequence, query.ToSequence, page.LastOrDefault()?.SequenceNumber, Head.HeadSequence, page.Length,
+                    page.Length > 0 && page[^1].SequenceNumber < Math.Min(query.ToSequence ?? Head.HeadSequence, Head.HeadSequence), null)
+                { NativeProof = SourceProofCodec.ToNative(Head) });
+        });
+        services.AddSingleton(nativeGateway);
         services.AddSingleton(Options.Create(new DomainProjectionIdentityOptions { AppId = "sample", ServiceVersion = "v1" }));
         services.AddSingleton<IReadModelBatchStore>(Models);
         services.AddSingleton<IReadModelStore>(Models);
@@ -432,7 +449,8 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             Identity, Events, CancellationToken.None).ConfigureAwait(false)).Events!;
         if (changedInput) events[^1] = events[^1] with { Payload = "{\"changed\":true}"u8.ToArray() };
         var request = new ProjectionDispatchRequest(new(Identity.TenantId, Identity.Domain, Identity.AggregateId, events)
-            { RebuildSourceHeadSequence = Head.HeadSequence, RebuildSourceHeadMessageId = Head.HeadMessageId,
+            { NativeSourceProof = SourceProofCodec.ToNative(Head),
+                RebuildSourceHeadSequence = Head.HeadSequence, RebuildSourceHeadMessageId = Head.HeadMessageId,
                 RebuildOwnerGenerations = Catalog.ProjectionTypes.ToDictionary(static route => route,
                     _ => ownerGeneration, StringComparer.Ordinal),
                 RebuildOwnerIdentities = Catalog.ProjectionTypes.ToDictionary(static route => route,

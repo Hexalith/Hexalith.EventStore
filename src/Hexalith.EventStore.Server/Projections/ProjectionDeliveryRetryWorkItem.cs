@@ -35,6 +35,10 @@ public sealed record ProjectionDeliveryRetryWorkItem(
     int Attempt,
     DateTimeOffset NextDueUtc,
     string? LastReasonCode) {
+    /// <summary>Gets the original native cut or original absence frozen by the first scheduler admission.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public Hexalith.EventStore.Contracts.Streams.NativeSourceProof? NativeSourceProof { get; init; }
+
     /// <summary>Gets the optimistic revision of this retry transition.</summary>
     public long Revision { get; init; }
 

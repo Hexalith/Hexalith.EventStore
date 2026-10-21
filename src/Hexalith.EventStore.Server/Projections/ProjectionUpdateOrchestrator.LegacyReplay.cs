@@ -80,7 +80,8 @@ internal partial class ProjectionUpdateOrchestrator
                     (ProjectionEventDto[] namedEvents, string _, string namedHeadId) = await ReadLegacyReplayPrefixAsync(
                         source, identity, metadata.CurrentSequence, sourceInspection.Proof, true, cancellationToken).ConfigureAwait(false);
                     _ = await namedProjectionDispatchCoordinator.TryDispatchHeadAsync(identity, registration,
-                        metadata.CurrentSequence, namedHeadId, namedEvents, cancellationToken).ConfigureAwait(false);
+                        metadata.CurrentSequence, namedHeadId, namedEvents,
+                        sourceInspection.Proof is null ? null : SourceProofCodec.ToNative(sourceInspection.Proof), cancellationToken).ConfigureAwait(false);
                 }
                 return true;
             }
@@ -98,7 +99,7 @@ internal partial class ProjectionUpdateOrchestrator
             // Named and explicit legacy routes may coexist. Their durable work remains independent.
             if (namedProjectionDispatchCoordinator is not null)
                 _ = await namedProjectionDispatchCoordinator.TryDispatchHeadAsync(identity, registration, head, headId, events,
-                    cancellationToken).ConfigureAwait(false);
+                    anchor is null ? null : SourceProofCodec.ToNative(anchor), cancellationToken).ConfigureAwait(false);
 
             ProjectionState? candidate = null;
             string? actorId = intent.ProjectionType is null ? null

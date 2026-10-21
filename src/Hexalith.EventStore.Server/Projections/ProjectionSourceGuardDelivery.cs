@@ -375,7 +375,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
             Events.SourceProofCodec.CreateSeed(identity, head.SourceIncarnation), head, 1, cancellationToken).ConfigureAwait(false))
             events.AddRange(page.Readable);
         _ = await compatibleDelivery.TryDispatchCompatibleAsync(identity, catalog, head.HeadSequence, head.HeadMessageId!,
-            [.. events], routes, cancellationToken).ConfigureAwait(false);
+            [.. events], routes, Events.SourceProofCodec.ToNative(head), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<ProjectionSourceGuardDeliveryResult> RecoverPendingAsync(AggregateIdentity identity,

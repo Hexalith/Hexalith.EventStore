@@ -13,6 +13,15 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class NamedProjectionDispatchCoordinatorTests
 {
+    [Fact]
+    public async Task UnhintedFullReplayConsumerRemainsUnprovenDespiteAvailableNativeReader()
+    {
+        using var fixture = await GuardedTailProductionHarness.CreateAsync(3, 1, 1, "full-replay-v1");
+        (await fixture.CanonicalReplayAsync()).Outcomes.ShouldAllBe(outcome => outcome.Status == ProjectionDispatchStatus.Completed);
+        var model = (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + fixture.Catalog.ProjectionTypes.Single())).Value!;
+        model.Count.ShouldBe(3);
+        model.NativeSourceProof.ShouldBeNull();
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -43,6 +52,10 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         keys.ShouldAllBe(key => fixture.Backend.ByteStoreContains(key));
         fixture.Handlers.ShouldAllBe(handler => handler.RebuildCalls == 1);
         string dispatch = fixture.Work.DispatchId;
+        var originalProof = Hexalith.EventStore.Server.Events.SourceProofCodec.ToNative(fixture.Head);
+        foreach (string fullRoute in fixture.Catalog.FullReplayProjectionTypes.Except(fixture.Catalog.MappedOnlyStreamedProjectionTypes, StringComparer.Ordinal))
+            (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + fullRoute)).Value!
+                .NativeSourceProof.ShouldBe(originalProof);
         fixture.InterruptBeforePendingRoute = null;
         fixture.ReconstructGuardedDelivery();
         await fixture.RunGuardedRetryAsync();
@@ -50,6 +63,9 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
         fixture.Rows.Values.ShouldAllBe(row => row.LastDeliveredSequence == 3 && row.ActiveReservation == null && row.IdleBindingPending == null
             && row.GuardEvidence!.OwnerProof.Selection.BatchId == dispatch);
         fixture.Handlers.ShouldAllBe(handler => handler.RebuildCalls == 1);
+        foreach (string fullRoute in fixture.Catalog.FullReplayProjectionTypes.Except(fixture.Catalog.MappedOnlyStreamedProjectionTypes, StringComparer.Ordinal))
+            (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + fullRoute)).Value!
+                .NativeSourceProof.ShouldBe(originalProof);
         keys.ShouldAllBe(key => fixture.Backend.ByteStoreContains(key) == key.EndsWith(":-3", StringComparison.Ordinal));
         using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
         (await fixture.Probe.InspectCurrentAsync(fixture.Identity, CancellationToken.None)).AlreadyCurrent.ShouldBeTrue();
@@ -672,6 +688,7 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
     {
         using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(257, 1, routeCount: 2,
             handlerSemantics: "mapped-incremental-replay-v1", mixedReplay: true);
+        var originalNativeProof = Hexalith.EventStore.Server.Events.SourceProofCodec.ToNative(fixture.Head);
         string mapped = fixture.Catalog.MappedOnlyStreamedProjectionTypes.ShouldHaveSingleItem();
         foreach (string key in new[] { fixture.Identity.ActorId + ":" + mapped, fixture.Identity.ActorId + ":" + mapped + "-index" })
         {
@@ -703,6 +720,8 @@ public sealed partial class NamedProjectionDispatchCoordinatorTests
             proof.ReceiptFingerprint.ShouldBe(fingerprint);
             GuardedTailModel model = (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + route)).Value.ShouldNotBeNull();
             model.Count.ShouldBe(257);
+            if (!fixture.Catalog.MappedOnlyStreamedProjectionTypes.Contains(route, StringComparer.Ordinal))
+                model.NativeSourceProof.ShouldBe(originalNativeProof);
             (await fixture.Models.GetAsync<GuardedTailModel>("models", fixture.Identity.ActorId + ":" + route + "-index")).Value.ShouldBe(model);
         }
         int writes = fixture.Backend.TrySaveByteOperations.Count;

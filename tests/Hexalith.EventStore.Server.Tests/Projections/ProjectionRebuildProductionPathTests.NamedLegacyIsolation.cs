@@ -1,4 +1,6 @@
 using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Contracts.Streams;
+using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.DomainServices;
 using Hexalith.EventStore.Server.Projections;
 
@@ -17,7 +19,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
         await fixture.InitializeAsync(1).ConfigureAwait(true);
         INamedProjectionDispatchCoordinator named = Substitute.For<INamedProjectionDispatchCoordinator>();
         named.TryDispatchHeadAsync(fixture.Identity, Arg.Any<DomainServiceRegistration>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<ProjectionEventDto[]>(), Arg.Any<CancellationToken>()).Returns(true);
+            Arg.Any<string>(), Arg.Any<ProjectionEventDto[]>(), Arg.Any<NativeSourceProof?>(), Arg.Any<CancellationToken>()).Returns(true);
         fixture.NamedCoordinator = named;
         fixture.Http.BeforePreparation = () => throw new IOException("synthetic circuit-open legacy endpoint");
         await fixture.DeliverAsync().ConfigureAwait(true);
@@ -31,7 +33,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
 
         await named.Received(1).TryDispatchHeadAsync(fixture.Identity, Arg.Any<DomainServiceRegistration>(), 2,
             fixture.Events[1].MessageId, Arg.Is<ProjectionEventDto[]>(events => events.Length == 2
-                && events[0].SequenceNumber == 1 && events[1].SequenceNumber == 2), Arg.Any<CancellationToken>()).ConfigureAwait(true);
+                && events[0].SequenceNumber == 1 && events[1].SequenceNumber == 2), SourceProofCodec.ToNative(fixture.Head), Arg.Any<CancellationToken>()).ConfigureAwait(true);
         ProjectionActivationWorkItem retained = (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldNotBeNull();
         retained.LegacyDelivery.ShouldBe(original);
         retained.Revision.ShouldBeGreaterThan(original.FrozenActivationRevision);
@@ -47,7 +49,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
         await fixture.InitializeAsync(1).ConfigureAwait(true);
         INamedProjectionDispatchCoordinator named = Substitute.For<INamedProjectionDispatchCoordinator>();
         named.TryDispatchHeadAsync(fixture.Identity, Arg.Any<DomainServiceRegistration>(), Arg.Any<long>(),
-            Arg.Any<string>(), Arg.Any<ProjectionEventDto[]>(), Arg.Any<CancellationToken>()).Returns(namedCompleted);
+            Arg.Any<string>(), Arg.Any<ProjectionEventDto[]>(), Arg.Any<NativeSourceProof?>(), Arg.Any<CancellationToken>()).Returns(namedCompleted);
         fixture.NamedCoordinator = named;
         fixture.Http.BeforePreparation = () => throw new IOException("synthetic circuit-open legacy endpoint");
         await fixture.DeliverAsync().ConfigureAwait(true);
@@ -59,7 +61,7 @@ public sealed partial class ProjectionRebuildProductionPathTests
 
         await named.Received(1).TryDispatchHeadAsync(fixture.Identity, Arg.Any<DomainServiceRegistration>(), 1,
             fixture.Events[0].MessageId, Arg.Is<ProjectionEventDto[]>(events => events.Length == 1 && events[0].SequenceNumber == 1),
-            Arg.Any<CancellationToken>()).ConfigureAwait(true);
+            SourceProofCodec.ToNative(fixture.Head), Arg.Any<CancellationToken>()).ConfigureAwait(true);
         ProjectionActivationWorkItem retained = (await fixture.Outbox.GetAsync(fixture.Identity).ConfigureAwait(true)).ShouldNotBeNull();
         retained.LegacyDelivery.ShouldBe(original.LegacyDelivery);
         retained.Revision.ShouldBe(original.Revision);

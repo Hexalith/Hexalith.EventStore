@@ -80,6 +80,10 @@ internal sealed class ReplayRecoveryCoordinatorFixture : IDisposable
     internal Task<bool> DispatchAsync() => _coordinator.TryDispatchCompatibleAsync(Identity, Catalog, Host.Request.Request.Events.Length,
         Host.Request.DispatchId, Host.Request.Request.Events, Host.Request.ProjectionTypes, CancellationToken.None);
 
+    internal Task<bool> DispatchNativeAsync(Hexalith.EventStore.Contracts.Streams.NativeSourceProof proof)
+        => _coordinator.TryDispatchCompatibleAsync(Identity, Catalog, Host.Request.Request.Events.Length,
+            Host.Request.DispatchId, Host.Request.Request.Events, Host.Request.ProjectionTypes, proof, CancellationToken.None);
+
     public void Dispose()
     {
         _http.Dispose();

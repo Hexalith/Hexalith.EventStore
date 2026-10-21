@@ -14,6 +14,7 @@ internal sealed class ReplayRecoveryProductionHttpHandler(ReplayRecoveryProducti
     internal string? LoseAfterAction { get; set; }
     internal bool RejectCleanup { get; set; }
     internal string? StoreBinding { get; set; } = ReplayRecoveryProductionFixture.StoreName;
+    internal List<ProjectionDispatchRequest> Inputs { get; } = [];
     internal List<(string Action, string DispatchId, string Header)> Calls { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -28,6 +29,7 @@ internal sealed class ReplayRecoveryProductionHttpHandler(ReplayRecoveryProducti
             await request.Content!.ReadAsByteArrayAsync(cancellationToken), JsonSerializerOptions.Web)!;
         input = ProjectionReplayTransportContext.Bind(input, request.Headers.TryGetValues(ProjectionReplayTransportContext.HeaderName,
             out IEnumerable<string>? context) ? context.Single() : null);
+        Inputs.Add(input);
         Calls.Add((action, input.DispatchId, header));
         DomainProjectionRebuildBatchAction operation = action switch
         {

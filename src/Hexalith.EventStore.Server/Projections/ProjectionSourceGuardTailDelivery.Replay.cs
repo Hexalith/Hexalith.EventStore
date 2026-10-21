@@ -16,6 +16,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery
         // no partial page or application reread is substituted for this immutable prefix.
         var request = new ProjectionDispatchRequest(new(identity.TenantId, identity.Domain, identity.AggregateId, events)
         {
+            NativeSourceProof = Hexalith.EventStore.Server.Events.SourceProofCodec.ToNative(replays[0].Binding.AdmittedSource),
             RebuildSourceHeadSequence = replays[0].Binding.AdmittedSource.HeadSequence,
             RebuildSourceHeadMessageId = replays[0].Binding.AdmittedSource.HeadMessageId,
             RebuildOwnerGenerations = replays.ToDictionary(static plan => plan.Projection,

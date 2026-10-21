@@ -2,6 +2,7 @@
 using System.Text.Json.Serialization;
 
 using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Streams;
 
 namespace Hexalith.EventStore.Contracts.Projections;
 
@@ -18,6 +19,61 @@ public record ProjectionRequest(
     string Domain,
     string AggregateId,
     ProjectionEventDto[] Events) {
+    private NativeSourceProof? _verifiedNativeSourceProof;
+    private byte[]? _verifiedNativeRequestDigest;
+
+    /// <summary>Gets the producer's original native prefix hint; transport binding alone supplies no authority.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public NativeSourceProof? NativeSourceProof { get; init; }
+
+    /// <summary>Gets native evidence only while this exact request still matches SDK verification before evolution.</summary>
+    [JsonIgnore]
+    public NativeSourceProof? VerifiedNativeSourceProof => _verifiedNativeRequestDigest is not null
+        && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(_verifiedNativeRequestDigest, NativeRequestDigest())
+            ? _verifiedNativeSourceProof : null;
+
+    /// <summary>Binds verified evidence to this exact immutable input snapshot.</summary>
+    internal void AdmitNativeSourceProof(NativeSourceProof proof)
+    {
+        _verifiedNativeSourceProof = proof;
+        _verifiedNativeRequestDigest = NativeRequestDigest();
+    }
+
+    /// <summary>Removes all inherited private admission before a new verification attempt.</summary>
+    internal void ClearNativeSourceAdmission()
+    {
+        _verifiedNativeSourceProof = null;
+        _verifiedNativeRequestDigest = null;
+    }
+
+    private byte[] NativeRequestDigest()
+    {
+        // Hash bounded metadata and raw payload segments separately. Encoding the whole request
+        // as JSON would allocate another complete base64 prefix on every mutation check.
+        using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        void Append(byte[]? bytes)
+        {
+            Span<byte> length = stackalloc byte[4];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(length, bytes?.Length ?? -1);
+            hash.AppendData(length);
+            if (bytes is not null) hash.AppendData(bytes);
+        }
+        Append(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(this with
+        { Events = [], EventEvolutionProof = null, VerifiedEffectiveEvents = null }, System.Text.Json.JsonSerializerOptions.Web));
+        Append(EventEvolutionProof);
+        // Evolution hints cannot acquire native admission; mutation still changes the digest.
+        if (VerifiedEffectiveEvents is not null) Append([1]);
+        foreach (ProjectionEventDto item in Events)
+        {
+            Append(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(item with
+            { Payload = [], EffectivePayload = null, StoredDigest = null }, System.Text.Json.JsonSerializerOptions.Web));
+            Append(item.Payload);
+            Append(item.EffectivePayload);
+            Append(item.StoredDigest);
+        }
+        return hash.GetHashAndReset();
+    }
+
     /// <summary>Gets untrusted effective-view transport hints that require verification before handler dispatch.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VerifiedEffectiveEventView[]? VerifiedEffectiveEvents { get; init; }

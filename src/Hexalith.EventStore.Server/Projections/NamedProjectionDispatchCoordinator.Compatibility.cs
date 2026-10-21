@@ -22,7 +22,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator
             foreach (ProjectionEventDto[] call in calls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var request = new ProjectionDispatchRequest(new(identity.TenantId, identity.Domain, identity.AggregateId, call),
+                var request = new ProjectionDispatchRequest(new(identity.TenantId, identity.Domain, identity.AggregateId, call) { NativeSourceProof = perEvent ? null : work.NativeSourceProof },
                     [route], work.DispatchId, catalog.CatalogFingerprint);
                 ProjectionDispatchResponse? response = await InvokeAsync(catalog.AppId, "project/v2", request,
                     options.Value, cancellationToken).ConfigureAwait(false);

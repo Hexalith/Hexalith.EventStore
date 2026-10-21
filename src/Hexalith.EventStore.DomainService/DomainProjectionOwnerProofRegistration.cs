@@ -9,4 +9,8 @@ namespace Hexalith.EventStore.DomainService;
 /// <param name="Capability">The fingerprint-bound handler and recovery semantics.</param>
 /// <param name="Binding">The owning SDK selection/receipt binding, kept out of wire DTOs.</param>
 public sealed record DomainProjectionOwnerProofRegistration(string Domain, string ProjectionType,
-    ProjectionSourceGuardCapability Capability, ReadModelOwnerProofBinding Binding);
+    ProjectionSourceGuardCapability Capability, ReadModelOwnerProofBinding Binding)
+{
+    /// <summary>Gets the optional exact source declaration permitting a response-only legacy handler.</summary>
+    public DomainProjectionLegacyCoexistence? LegacyCoexistence { get; init; }
+}

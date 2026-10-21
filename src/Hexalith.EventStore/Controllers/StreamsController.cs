@@ -275,7 +275,7 @@ public sealed partial class StreamsController(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                [.. readableEvents.Select((item, index) => ToStreamReadEvent(item) with
+                [.. readableEvents.Select((item, index) => ToStreamReadEvent(item, native is not null) with
                 { NativeEventDigest = native is null ? null : SourceProofCodec.ComputeEventHash(orderedEvents[index]) })],
                 new StreamReadMetadata(
                     request.FromSequence,
@@ -474,7 +474,7 @@ public sealed partial class StreamsController(
         return value.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
     }
 
-    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope)
+    private static StreamReadEvent ToStreamReadEvent(ServerEventEnvelope envelope, bool preserveNativeUserId = false)
                             => new(
             envelope.SequenceNumber,
             envelope.EventTypeName,
@@ -485,7 +485,7 @@ public sealed partial class StreamsController(
             envelope.CorrelationId,
             envelope.CausationId,
             envelope.Timestamp,
-            string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
+            preserveNativeUserId ? envelope.UserId : string.IsNullOrWhiteSpace(envelope.UserId) ? null : envelope.UserId,
             EventStorePayloadProtectionMetadataCarrier.Read(envelope.Extensions))
                             { GlobalPosition = envelope.GlobalPosition, PayloadVersion = envelope.PayloadVersion };
 

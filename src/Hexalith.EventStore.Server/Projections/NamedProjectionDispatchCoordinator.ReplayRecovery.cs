@@ -31,7 +31,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator
             string header = RecoveryHeader(work);
             if (System.Text.Encoding.UTF8.GetByteCount(header) > 4096) return null;
             var request = new ProjectionDispatchRequest(new(identity.TenantId, identity.Domain, identity.AggregateId, events)
-            { RebuildSourceHeadSequence = work.HeadSequence, RebuildSourceHeadMessageId = work.HeadMessageId },
+            { NativeSourceProof = work.NativeSourceProof, RebuildSourceHeadSequence = work.HeadSequence, RebuildSourceHeadMessageId = work.HeadMessageId },
                 bound, work.DispatchId, work.CatalogFingerprint);
             foreach (string method in new[] { "project/rebuild/stage/v1", "project/rebuild/commit/v1", "project/rebuild/verify/v1" })
             {
@@ -69,7 +69,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator
         if (group.All(completedRoutes.Contains))
         {
             var request = new ProjectionDispatchRequest(new(identity.TenantId, identity.Domain, identity.AggregateId, [])
-                { RebuildSourceHeadSequence = work.HeadSequence, RebuildSourceHeadMessageId = work.HeadMessageId },
+                { NativeSourceProof = work.NativeSourceProof, RebuildSourceHeadSequence = work.HeadSequence, RebuildSourceHeadMessageId = work.HeadMessageId },
                 group, work.DispatchId, work.CatalogFingerprint);
             ProjectionDispatchResponse? response = await InvokeAsync(catalog.AppId, "project/rebuild/reclaim-recovery/v1",
                 request, options.Value, cancellationToken, RecoveryHeader(work)).ConfigureAwait(false);

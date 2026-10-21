@@ -156,7 +156,8 @@ public static class DomainProjectionDispatcher {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
-        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
+        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, await DomainProjectionNativeSourceAdmission
+            .VerifyAsync(serviceProvider, dispatchRequest.Request, cancellationToken).ConfigureAwait(false));
         var outcomes = new List<ProjectionDispatchOutcome>(handlers.Length);
         foreach (IAsyncDomainProjectionHandler handler in handlers) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -530,7 +531,8 @@ public static class DomainProjectionDispatcher {
                             header, options, identity, cancellationToken).ConfigureAwait(false);
                         ValidateRequest(complete, options);
                         ValidateRebuildEventHistory(complete.Request, options.MaxRebuildEventCount);
-                        fullReplayRequest = UpcastRequest(services, complete.Request);
+                        fullReplayRequest = UpcastRequest(services, await DomainProjectionNativeSourceAdmission
+                            .VerifyAsync(services, complete.Request, cancellationToken).ConfigureAwait(false));
                     }
                     plan = await MeasureHandler(fullHandler).PrepareRebuildAsync(fullReplayRequest,
                         header.DispatchId, cancellationToken).ConfigureAwait(false);
@@ -607,7 +609,8 @@ public static class DomainProjectionDispatcher {
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedRoute);
         }
 
-        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
+        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, await DomainProjectionNativeSourceAdmission
+            .VerifyAsync(serviceProvider, dispatchRequest.Request, cancellationToken).ConfigureAwait(false));
         var outcomes = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         var operations = new List<ReadModelBatchOperation>();
         string? storeName = null;
@@ -723,7 +726,8 @@ public static class DomainProjectionDispatcher {
         if (handlers.Any(handler => !handler.OrdinaryDeliveryEnabled))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
 
-        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, dispatchRequest.Request);
+        ProjectionRequest effectiveRequest = UpcastRequest(serviceProvider, await DomainProjectionNativeSourceAdmission
+            .VerifyAsync(serviceProvider, dispatchRequest.Request, cancellationToken).ConfigureAwait(false));
 
         var outcomes = new List<ProjectionDispatchOutcome>(handlers.Length);
         foreach (IAsyncDomainProjectionHandler handler in handlers) {

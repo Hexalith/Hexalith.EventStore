@@ -14,7 +14,6 @@ public static class DomainProjectionOwnerProof
     internal static ReadModelBatch BindRebuildBatch(IServiceProvider services, ProjectionDispatchRequest request, ReadModelBatch batch,
         DomainProjectionIdentityOptions identity)
     {
-        if (services.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == request.Request.Domain)) return batch;
         if (request.Request.RebuildSourceHeadSequence == 0) return batch;
         if (!UsesGuardedCatalog(services, request, identity)) return batch;
         DomainProjectionOwnerProofRegistration[] enrolled = [.. services.GetServices<DomainProjectionOwnerProofRegistration>()
@@ -63,7 +62,7 @@ public static class DomainProjectionOwnerProof
             .Where(item => item.Domain == request.Domain && item.ProjectionType == request.ProjectionName)];
         if (registrations.Length != 1 || !registrations[0].Capability.IsSupported
             || registrations[0].Capability.HandlerSemantics == "shared-epoch-v1"
-            || services.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == request.Domain)
+            || !SupportsEnrollment(services, registrations[0])
             || !AuthorizesCurrentCatalog(services, request)
             || services.GetService<IReadModelOwnerProofStore>() is not { } proofStore)
             return new(null, ProjectionDispatchReasonCodes.UnsupportedCapability, 0, 0);
@@ -84,7 +83,7 @@ public static class DomainProjectionOwnerProof
             .Where(item => item.Domain == scope.Domain && item.ProjectionType == scope.ProjectionName)];
         if (registrations.Length != 1 || !registrations[0].Capability.IsSupported
             || !SupportsEventReceipts(services, scope, registrations[0].Capability)
-            || services.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == scope.Domain)
+            || !SupportsEnrollment(services, registrations[0])
             || !AuthorizesCurrentCatalog(services, scope)
             || services.GetService<IReadModelAppliedReceiptStore>() is not { } store)
             return new(null, ProjectionDispatchReasonCodes.UnsupportedCapability, 0, 0);
@@ -105,7 +104,7 @@ public static class DomainProjectionOwnerProof
             .Where(item => item.Domain == scope.Domain && item.ProjectionType == scope.ProjectionName)];
         if (registrations.Length != 1 || !registrations[0].Capability.IsSupported
             || !SupportsEventReceipts(services, scope, registrations[0].Capability)
-            || services.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == scope.Domain)
+            || !SupportsEnrollment(services, registrations[0])
             || !AuthorizesCurrentCatalog(services, scope)
             || services.GetService<IReadModelAppliedReceiptRecoveryStore>() is not { } store)
             return new(null, ProjectionDispatchReasonCodes.UnsupportedCapability, 0, 0);
@@ -121,11 +120,19 @@ public static class DomainProjectionOwnerProof
     public static AdminOperationalIndexMetadata.Response BindMetadata(AdminOperationalIndexMetadata.Response response,
         IEnumerable<DomainProjectionOwnerProofRegistration> registrations,
         IEnumerable<IDomainProjectionHandler>? legacyProjectionHandlers)
+        => BindMetadata(response, registrations, legacyProjectionHandlers, null);
+
+    /// <summary>Binds explicit coexistence only when the complete local handler inventory matches its declaration.</summary>
+    public static AdminOperationalIndexMetadata.Response BindMetadata(AdminOperationalIndexMetadata.Response response,
+        IEnumerable<DomainProjectionOwnerProofRegistration> registrations,
+        IEnumerable<IDomainProjectionHandler>? legacyProjectionHandlers,
+        IEnumerable<IAsyncDomainProjectionHandler>? namedProjectionHandlers)
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentNullException.ThrowIfNull(registrations);
-        HashSet<string> legacyDomains = new((legacyProjectionHandlers ?? []).Select(static handler => handler.Domain), StringComparer.Ordinal);
-        DomainProjectionOwnerProofRegistration[] enrolled = [.. registrations.Where(item => !legacyDomains.Contains(item.Domain))];
+        IDomainProjectionHandler[] legacy = [.. legacyProjectionHandlers ?? []];
+        IAsyncDomainProjectionHandler[] named = [.. namedProjectionHandlers ?? []];
+        DomainProjectionOwnerProofRegistration[] enrolled = [.. registrations.Where(item => SupportsEnrollment(item, legacy, named))];
         if (enrolled.Length == 0 || response.CatalogFingerprint is null || response.AppId is null || response.ServiceVersion is null) return response;
         if (enrolled.GroupBy(static item => (item.Domain, item.ProjectionType)).Any(static group => group.Count() != 1)
             || enrolled.Any(static item => !item.Capability.IsSupported))
@@ -154,9 +161,31 @@ public static class DomainProjectionOwnerProof
     {
         Dictionary<(string Domain, string ProjectionType), ProjectionSourceGuardCapability> descriptors = services
             .GetServices<DomainProjectionOwnerProofRegistration>()
-            .Where(item => !services.GetServices<IDomainProjectionHandler>().Any(handler => handler.Domain == item.Domain))
+            .Where(item => SupportsEnrollment(services, item))
             .ToDictionary(static item => (item.Domain, item.ProjectionType), static item => item.Capability);
         return routes.Select(route => route with { SourceGuard = descriptors.GetValueOrDefault((route.Domain, route.ProjectionType)) });
+    }
+
+    /// <summary>Checks local source declarations without treating them as native installation authority.</summary>
+    internal static bool SupportsEnrollment(IServiceProvider services, DomainProjectionOwnerProofRegistration registration)
+        => SupportsEnrollment(registration, services.GetServices<IDomainProjectionHandler>(),
+            services.GetServices<IAsyncDomainProjectionHandler>());
+
+    private static bool SupportsEnrollment(DomainProjectionOwnerProofRegistration registration,
+        IEnumerable<IDomainProjectionHandler> legacyHandlers, IEnumerable<IAsyncDomainProjectionHandler> namedHandlers)
+    {
+        IDomainProjectionHandler[] legacy = [.. legacyHandlers.Where(handler =>
+            string.Equals(handler.Domain, registration.Domain, StringComparison.OrdinalIgnoreCase))];
+        if (registration.LegacyCoexistence is not { } declaration) return legacy.Length == 0;
+        IAsyncDomainProjectionHandler[] named = [.. namedHandlers.Where(handler =>
+            string.Equals(handler.Domain, registration.Domain, StringComparison.OrdinalIgnoreCase))];
+        return registration.Capability.IsSupported && registration.Capability.HandlerSemantics == "full-replay-v1"
+            && legacy.Length == 1 && legacy[0].Domain == registration.Domain
+            && legacy[0].GetType() == declaration.ResponseOnlyLegacyHandlerType
+            && named.Length == 1 && named[0].Domain == registration.Domain
+            && named[0].ProjectionType == registration.ProjectionType && named[0].GetType() == declaration.OwnerHandlerType
+            && named[0] is IAsyncDomainProjectionRebuildHandler { RebuildSemantics: DomainProjectionRebuildSemantics.FullReplay }
+            && named[0] is IAsyncDomainProjectionReconciliationHandler;
     }
 
     /// <summary>Accepts the independently fingerprinted historical catalog only for its compatible unguarded semantics.</summary>

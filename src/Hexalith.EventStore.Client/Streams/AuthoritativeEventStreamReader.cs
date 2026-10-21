@@ -55,7 +55,7 @@ public sealed class AuthoritativeEventStreamReader(IEventStoreGatewayClient gate
                 {
                     result = await ReadCoreAsync(identity, deadline).ConfigureAwait(false);
                 }
-                catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException or ArgumentException or System.Text.Json.JsonException)
+                catch (Exception exception) when (exception is EventStoreGatewayException or HttpRequestException or InvalidOperationException or ArgumentException or System.Text.Json.JsonException)
                 {
                     result = new(null, "source-unavailable");
                 }

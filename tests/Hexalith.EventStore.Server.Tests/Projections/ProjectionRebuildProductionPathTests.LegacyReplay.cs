@@ -12,6 +12,42 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed partial class ProjectionRebuildProductionPathTests
 {
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task CompatibleOrchestratorFreezesValidatedNativeAnchorOrAbsenceInNamedRetry(bool activeLegacyLease, bool anchored)
+    {
+        using var fixture = new LegacyReplayProductionHarness();
+        await fixture.InitializeAsync(2);
+        if (!anchored)
+        {
+            await fixture.SourceState.SetStateAsync(fixture.Identity.MetadataKey,
+                new AggregateMetadata(fixture.Events.Count, fixture.Clock.GetUtcNow(), null));
+            await fixture.SourceState.SaveStateAsync();
+        }
+        if (activeLegacyLease)
+        {
+            fixture.LoseStageResponse = true;
+            await fixture.DeliverAsync();
+            (await fixture.Outbox.GetAsync(fixture.Identity))!.LegacyDelivery!.InvocationToken.ShouldNotBeNull();
+            await fixture.AppendAsync(1);
+        }
+        if (!anchored)
+        {
+            await fixture.SourceState.SetStateAsync(fixture.Identity.MetadataKey,
+                new AggregateMetadata(fixture.Events.Count, fixture.Clock.GetUtcNow(), null));
+            await fixture.SourceState.SaveStateAsync();
+        }
+        fixture.UseProductionNamedCoordinator(hasNamedRoute: true);
+        await fixture.DeliverAsync();
+        var workId = ProjectionDeliveryRetryWorkItem.CreateWorkId(fixture.Identity.TenantId, fixture.Identity.Domain,
+            fixture.Identity.AggregateId, fixture.Events.Count);
+        var work = (await fixture.NamedScheduler!.ReadAsync(workId)).ShouldNotBeNull();
+        if (anchored) work.NativeSourceProof.ShouldBe(SourceProofCodec.ToNative(fixture.Head));
+        else work.NativeSourceProof.ShouldBeNull();
+    }
     [Fact]
     public async Task LegacyFallback_ReleasedCompletedRowWithExistingActorSettlesReadOnlyThenNextHeadUsesBoundedReplay()
     {

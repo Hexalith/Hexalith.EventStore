@@ -142,7 +142,7 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
                 }
 
                 ProjectionDeliveryRetryWorkItem current = items[index];
-                if (current.Revision != workItem.Revision
+                if (current.Revision != workItem.Revision || current.NativeSourceProof != workItem.NativeSourceProof
                     || !string.Equals(current.LeaseOwner, workItem.LeaseOwner, StringComparison.Ordinal)) {
                     return false;
                 }
@@ -537,6 +537,11 @@ public sealed class DaprProjectionDeliveryRetryScheduler(
         ArgumentNullException.ThrowIfNull(workItem.PendingRoutes);
         ArgumentNullException.ThrowIfNull(workItem.TerminalRoutes);
         ArgumentNullException.ThrowIfNull(workItem.ReservationFencingTokens);
+        if (workItem.NativeSourceProof is { } proof && (proof.Erased || proof.RetainedFloor != 1
+            || proof.HeadMessageId != workItem.HeadMessageId
+            || !Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.IsValid(proof,
+                new(workItem.TenantId, workItem.Domain, workItem.AggregateId), workItem.HeadSequence, 1)))
+            throw new ArgumentException("Invalid original native source binding.", nameof(workItem));
         if (workItem.ReplayRecoveryBindings is { } bindings && bindings.Any(pair => string.IsNullOrWhiteSpace(pair.Key)
             || pair.Value is not { Length: 64 } || !pair.Value.All(static item => item is >= '0' and <= '9' or >= 'a' and <= 'f')))
             throw new ArgumentException("Invalid frozen replay recovery binding.", nameof(workItem));

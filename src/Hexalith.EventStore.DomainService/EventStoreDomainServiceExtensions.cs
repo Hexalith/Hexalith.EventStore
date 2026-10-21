@@ -553,7 +553,7 @@ public static class EventStoreDomainServiceExtensions {
                     return Results.BadRequest(ProjectionDispatchReasonCodes.UnsupportedCapability);
                 if (request.ProjectionSourceGuardVersion == 1)
                 {
-                    response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers);
+                    response = DomainProjectionOwnerProof.BindMetadata(response, ownerProofRegistrations, legacyProjectionHandlers, namedProjectionHandlers);
                     response = DomainProjectionReplayRecovery.BindMetadata(app.Services, response, namedProjectionHandlers);
                 }
                 RegisterNamedProjectionCatalog(response, catalogRegistry);

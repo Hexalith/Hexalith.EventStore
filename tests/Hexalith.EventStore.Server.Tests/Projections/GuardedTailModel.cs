@@ -6,4 +6,6 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 internal sealed record GuardedTailModel(int Count, string ProjectionVersion, ProjectionOwnerSelection ProjectionOwner)
 {
     public string? Padding { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public Hexalith.EventStore.Contracts.Streams.NativeSourceProof? NativeSourceProof { get; init; }
 }

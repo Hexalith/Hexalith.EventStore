@@ -15,6 +15,46 @@ namespace Hexalith.EventStore.DomainService.Tests;
 public sealed class MixedProjectionCatalogTests
 {
     [Theory]
+    [InlineData("gain")]
+    [InlineData("loss")]
+    [InlineData("replacement")]
+    [InlineData("unchanged")]
+    public async Task ImmutableReplayPartsBindOriginalNativeHintIncludingAbsenceBeforePreparation(string mutation)
+    {
+        var handler = new Handler("enabled", true);
+        var store = new InMemoryReadModelStore();
+        using var provider = Provider(store, handler);
+        var options = new ProjectionDispatchOptions();
+        var identity = new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" };
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion, [new("widget", "enabled")]);
+        var source = new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("tenant-a", "widget", "owner");
+        var proof = Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.ExtendDigest(
+            Hexalith.EventStore.Client.Streams.NativeSourceProofCodec.CreateSeed(source, "01ARZ3NDEKTSV4RRFFQ69G5FAV"), source, 1, "message-1", new string('a', 64));
+        ProjectionEventDto[] events = [new("event", "{}"u8.ToArray(), "json", 1, DateTimeOffset.UnixEpoch, "corr", "message-1")];
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(events, JsonSerializerOptions.Web);
+        var header = new ProjectionDispatchRequest(new("tenant-a", "widget", "owner", [])
+            { NativeSourceProof = mutation == "gain" ? null : proof, RebuildSourceHeadSequence = 1 },
+            ["enabled"], "transport-original", fingerprint) { RebuildTransport = new(1, Convert.ToHexString(SHA256.HashData(bytes))) };
+        await DomainProjectionRebuildTransport.StoreAsync(provider, new(header, 0, bytes), options, identity, TestContext.Current.CancellationToken);
+        var retry = header with { Request = header.Request with { NativeSourceProof = mutation switch
+        { "gain" => proof, "loss" => null, "replacement" => proof with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" }, _ => proof } } };
+        if (mutation != "unchanged")
+        {
+            await Should.ThrowAsync<ProjectionDispatchValidationException>(() => DomainProjectionRebuildTransport.StoreAsync(provider,
+                new(retry, 0, bytes), options, identity, TestContext.Current.CancellationToken));
+            await Should.ThrowAsync<ProjectionDispatchValidationException>(() => DomainProjectionDispatcher.StageRebuildAsync(provider,
+                retry, options, identity, TestContext.Current.CancellationToken));
+            handler.Calls.ShouldBe(0);
+        }
+        else
+        {
+            await DomainProjectionRebuildTransport.StoreAsync(provider, new(retry, 0, bytes), options, identity, TestContext.Current.CancellationToken);
+            var resolved = await DomainProjectionRebuildTransport.ResolveAsync(provider, retry, options, identity, TestContext.Current.CancellationToken);
+            resolved.Request.NativeSourceProof.ShouldBe(proof);
+            resolved.Request.VerifiedNativeSourceProof.ShouldBeNull();
+        }
+    }
+    [Theory]
     [InlineData("ordinary-identity")]
     [InlineData("ordinary-registry")]
     [InlineData("reconcile")]

@@ -48,6 +48,13 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         => TryDispatchCoreAsync(identity, new(catalog.AppId, "project/v2", identity.TenantId, identity.Domain, catalog.ServiceVersion),
             headSequence, headMessageId, events, false, cancellationToken, routes, catalog.CatalogFingerprint);
 
+    /// <inheritdoc/>
+    public Task<bool> TryDispatchCompatibleAsync(AggregateIdentity identity, NamedProjectionRouteCatalogEntry catalog,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, IReadOnlyList<string> routes,
+        NativeSourceProof nativeSourceProof, CancellationToken cancellationToken)
+        => TryDispatchCoreAsync(identity, new(catalog.AppId, "project/v2", identity.TenantId, identity.Domain, catalog.ServiceVersion),
+            headSequence, headMessageId, events, false, cancellationToken, routes, catalog.CatalogFingerprint, nativeSourceProof);
+
     public async Task<bool> SupportsMappedOnlyStreamedDeliveryAsync(
         AggregateIdentity identity, DomainServiceRegistration registration, CancellationToken cancellationToken) {
         NamedProjectionRouteCatalogEntry? entry = await ResolveCatalogEntryAsync(identity, registration,
@@ -398,7 +405,14 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         => TryDispatchCoreAsync(identity, registration, headSequence, headMessageId, events, false, cancellationToken);
 
     /// <inheritdoc/>
-    public Task<bool> TryDispatchAsync(
+    public Task<bool> TryDispatchHeadAsync(AggregateIdentity identity, DomainServiceRegistration registration,
+        long headSequence, string headMessageId, ProjectionEventDto[] events, NativeSourceProof? nativeSourceProof,
+        CancellationToken cancellationToken)
+        => TryDispatchCoreAsync(identity, registration, headSequence, headMessageId, events, false, cancellationToken,
+            nativeSourceProof: nativeSourceProof);
+
+    /// <inheritdoc/>
+    public async Task<bool> TryDispatchAsync(
         AggregateIdentity identity,
         DomainServiceRegistration registration,
         EventEnvelope[] events,
@@ -413,8 +427,9 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         }
 
         EventEnvelope head = events.OrderBy(static item => item.SequenceNumber).Last();
-        return TryDispatchCoreAsync(identity, registration, head.SequenceNumber, head.MessageId,
-            projectionEvents, mappedOnly: false, cancellationToken);
+        NativeSourceProof? proof = await CaptureNativePrefixAsync(identity, events, cancellationToken).ConfigureAwait(false);
+        return await TryDispatchCoreAsync(identity, registration, head.SequenceNumber, head.MessageId,
+            projectionEvents, mappedOnly: false, cancellationToken, nativeSourceProof: proof).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -433,7 +448,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
         AggregateIdentity identity, DomainServiceRegistration registration,
         long highestSequence, string headMessageId, ProjectionEventDto[] projectionEvents,
         bool mappedOnly, CancellationToken cancellationToken, IReadOnlyList<string>? compatibleRoutes = null,
-        string? expectedCatalogFingerprint = null) {
+        string? expectedCatalogFingerprint = null, NativeSourceProof? nativeSourceProof = null) {
 
         ProjectionDispatchOptions dispatchOptions = options.Value;
         dispatchOptions.Validate();
@@ -498,7 +513,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
             catalogEntry.CatalogFingerprint,
             0,
             now + dispatchOptions.RetryWorkerInterval,
-            null) { MappedOnlyStreamed = mappedOnly,
+            null) { NativeSourceProof = nativeSourceProof, MappedOnlyStreamed = mappedOnly,
                 ReplayRecoveryBindings = ProjectionReplayRecoveryContext.Freeze(catalogEntry) };
         ProjectionDeliveryRetryWorkItem scheduledWork;
         if (retryScheduler is null) {
@@ -760,7 +775,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                     identity.TenantId,
                     identity.Domain,
                     identity.AggregateId,
-                    projectionEvents);
+                    projectionEvents) { NativeSourceProof = scheduledWork.NativeSourceProof };
                 var dispatchRequest = new ProjectionDispatchRequest(
                     projectionRequest,
                     admittedRoutes,
@@ -1160,7 +1175,7 @@ internal sealed partial class NamedProjectionDispatchCoordinator(
                 identity.TenantId,
                 identity.Domain,
                 identity.AggregateId,
-                projectionEvents),
+                projectionEvents) { NativeSourceProof = scheduledWork.NativeSourceProof },
             orderedRoutes,
             scheduledWork.DispatchId,
             scheduledWork.CatalogFingerprint);
