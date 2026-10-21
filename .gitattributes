@@ -139,6 +139,8 @@ _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/*
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-19/** -text
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20/** -text -whitespace
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/** -text -whitespace
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-blackhole/** -text -whitespace
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-restart-trace/** -text -whitespace
 
 # Story 9.1 and ES-DIAG retain exact authority and evidence bytes across checkouts.
 _bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/** -text

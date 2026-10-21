@@ -1,0 +1,20 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/router/router.go",
+    "retrievedUtc": "2026-10-21T08:24:52.676313+00:00",
+    "retainedPath": "router.go",
+    "sha256": "7e5882d35233e4ebbe4b888c2a61d2832a1302da14432404ae28e7f94a555fed"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/resiliency/policy.go",
+    "retrievedUtc": "2026-10-21T08:24:52.907682+00:00",
+    "retainedPath": "policy.go",
+    "sha256": "14a92807ca6aae49f75f048d16b8a3b306643b85e7931abc1aa0a1da62b964d3"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/actors.go",
+    "retrievedUtc": "2026-10-21T08:24:53.079730+00:00",
+    "retainedPath": "actors.go",
+    "sha256": "c8497241219c034f646486be392a1c67bb5b50ee11d12b79f23999cb99814e42"
+  }
+]

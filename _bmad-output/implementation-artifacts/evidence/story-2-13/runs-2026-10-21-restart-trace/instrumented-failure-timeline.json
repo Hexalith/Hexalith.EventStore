@@ -1,0 +1,305 @@
+{
+  "derivedUtc": "2026-10-21T08:28:16.548809+00:00",
+  "commandReceipt": "instrumented-distribution.json",
+  "scenarioManifest": "scenarios/replica-restart-signal-timeout-20261021T0821279257680Z-f840045ef5b24167bd39235a091da1cb/manifest.json",
+  "sourceLogSha256": {
+    "first": "911f50342e20109acfc733cbaa8b802c9c72c7e5ebecfd15a0eeee0bd276b3a2",
+    "second": "909276eddc7a72521914854d4f8499c03c138a6330158014298e5c55b6c31f32"
+  },
+  "events": [
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.1319481+00:00 pid=89987",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: before-replica-stop"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.1340842+00:00 pid=89987",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HBNGFE7:00000003, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.1926869+00:00 pid=89987",
+      "eventId": 1151,
+      "message": "Projection notification ETag invocation completed. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HBNGFE7:00000003, CompletedUtc: 10/21/2026 08:22:00 +00:00, ElapsedMilliseconds: 59.0254"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.1940701+00:00 pid=89987",
+      "eventId": 1090,
+      "message": "SignalR broadcast started. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00, TraceId: 9756f5f14e2257584b14c1412dc9dae0, SpanId: 32c0d8a842d35f01, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.1968842+00:00 pid=89987",
+      "eventId": 1091,
+      "message": "SignalR broadcast completed. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, CompletedUtc: 10/21/2026 08:22:00 +00:00, ElapsedMilliseconds: 2.9645, Result: Success, TraceId: 9756f5f14e2257584b14c1412dc9dae0, SpanId: 32c0d8a842d35f01, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.4518745+00:00 pid=89987",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: while-replica-stopped"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.4520525+00:00 pid=89987",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HBNGFE7:00000004, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.5040708+00:00 pid=89987",
+      "eventId": 1151,
+      "message": "Projection notification ETag invocation completed. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HBNGFE7:00000004, CompletedUtc: 10/21/2026 08:22:00 +00:00, ElapsedMilliseconds: 51.8289"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.5040939+00:00 pid=89987",
+      "eventId": 1090,
+      "message": "SignalR broadcast started. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00, TraceId: bc5067f57ff7a1e0bcd5c0413d5b48a3, SpanId: 7172fb6b6152eb5b, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:00.5042975+00:00 pid=89987",
+      "eventId": 1091,
+      "message": "SignalR broadcast completed. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, CompletedUtc: 10/21/2026 08:22:00 +00:00, ElapsedMilliseconds: 0.2331, Result: Success, TraceId: bc5067f57ff7a1e0bcd5c0413d5b48a3, SpanId: 7172fb6b6152eb5b, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:31.8731483+00:00 pid=89987",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: after-replica-restart"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:31.8733210+00:00 pid=89987",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HBNGFE7:00000005, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "first",
+      "capturePrefix": "2026-10-21T08:22:36.8826702+00:00 pid=89987",
+      "eventId": 1055,
+      "message": "ETag actor invocation failed for actor restart-ad92c3f79a81:tenant-a-ad92c3f79a81. ExceptionType: DaprApiException. Returning non-200 for DAPR retry."
+    },
+    {
+      "node": "first",
+      "line": "2026-10-21T08:22:31.8739839+00:00 pid=89992 time=\"2026-10-21T10:22:31.873850653+02:00\" level=warning msg=\"Error processing operation DaprBuiltInActorNotFoundRetries. Retrying in 1s\u2026\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1347307+00:00 pid=12680",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: before-replica-stop"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1398507+00:00 pid=12680",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HGAGCD9:00000003, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1763092+00:00 pid=12680",
+      "eventId": 1152,
+      "message": "ETag regeneration started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1772739+00:00 pid=12680",
+      "eventId": 1153,
+      "message": "ETag persistence started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1809981+00:00 pid=12680",
+      "eventId": 1050,
+      "message": "ETag regenerated for actor restart-ad92c3f79a81:tenant-a-ad92c3f79a81. New ETag prefix: cmVzdGFy"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1866207+00:00 pid=12680",
+      "eventId": 1152,
+      "message": "ETag regeneration started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1866261+00:00 pid=12680",
+      "eventId": 1153,
+      "message": "ETag persistence started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1877836+00:00 pid=12680",
+      "eventId": 1050,
+      "message": "ETag regenerated for actor restart-ad92c3f79a81:tenant-a-ad92c3f79a81. New ETag prefix: cmVzdGFy"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1926668+00:00 pid=12680",
+      "eventId": 1151,
+      "message": "Projection notification ETag invocation completed. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HGAGCD9:00000003, CompletedUtc: 10/21/2026 08:22:00 +00:00, ElapsedMilliseconds: 53.1447"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1940823+00:00 pid=12680",
+      "eventId": 1090,
+      "message": "SignalR broadcast started. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:00 +00:00, TraceId: 23b4054809771a33f9fbc07303da9f99, SpanId: f8f05dc46ff4f417, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:00.1969638+00:00 pid=12680",
+      "eventId": 1091,
+      "message": "SignalR broadcast completed. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, CompletedUtc: 10/21/2026 08:22:00 +00:00, ElapsedMilliseconds: 3.1537, Result: Success, TraceId: 23b4054809771a33f9fbc07303da9f99, SpanId: f8f05dc46ff4f417, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.7919281+00:00 pid=36573",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: while-replica-stopped"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.7919363+00:00 pid=36573",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: before-replica-stop"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.7986301+00:00 pid=36573",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HPR70BN:00000001, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.7986343+00:00 pid=36573",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HPR70BM:00000003, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8555825+00:00 pid=36573",
+      "eventId": 1152,
+      "message": "ETag regeneration started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8565916+00:00 pid=36573",
+      "eventId": 1153,
+      "message": "ETag persistence started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8614539+00:00 pid=36573",
+      "eventId": 1050,
+      "message": "ETag regenerated for actor restart-ad92c3f79a81:tenant-a-ad92c3f79a81. New ETag prefix: cmVzdGFy"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8672205+00:00 pid=36573",
+      "eventId": 1152,
+      "message": "ETag regeneration started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8672258+00:00 pid=36573",
+      "eventId": 1153,
+      "message": "ETag persistence started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8685771+00:00 pid=36573",
+      "eventId": 1050,
+      "message": "ETag regenerated for actor restart-ad92c3f79a81:tenant-a-ad92c3f79a81. New ETag prefix: cmVzdGFy"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8703258+00:00 pid=36573",
+      "eventId": 1151,
+      "message": "Projection notification ETag invocation completed. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HPR70BM:00000003, CompletedUtc: 10/21/2026 08:22:31 +00:00, ElapsedMilliseconds: 72.5302"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8716238+00:00 pid=36573",
+      "eventId": 1151,
+      "message": "Projection notification ETag invocation completed. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HPR70BN:00000001, CompletedUtc: 10/21/2026 08:22:31 +00:00, ElapsedMilliseconds: 73.1215"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8716254+00:00 pid=36573",
+      "eventId": 1051,
+      "message": "Projection change notification received via pub/sub. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, EntityId: after-replica-restart"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8716277+00:00 pid=36573",
+      "eventId": 1150,
+      "message": "Projection notification ETag invocation started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HPR70BT:00000001, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8722787+00:00 pid=36573",
+      "eventId": 1090,
+      "message": "SignalR broadcast started. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00, TraceId: 1e8e7bf9c093bf24ed5b7fa5cb424d2d, SpanId: ffda192f952afbda, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8725867+00:00 pid=36573",
+      "eventId": 1152,
+      "message": "ETag regeneration started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8725922+00:00 pid=36573",
+      "eventId": 1153,
+      "message": "ETag persistence started. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8732900+00:00 pid=36573",
+      "eventId": 1091,
+      "message": "SignalR broadcast completed. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, CompletedUtc: 10/21/2026 08:22:31 +00:00, ElapsedMilliseconds: 1.7023, Result: Success, TraceId: 1e8e7bf9c093bf24ed5b7fa5cb424d2d, SpanId: ffda192f952afbda, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8735286+00:00 pid=36573",
+      "eventId": 1050,
+      "message": "ETag regenerated for actor restart-ad92c3f79a81:tenant-a-ad92c3f79a81. New ETag prefix: cmVzdGFy"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8742481+00:00 pid=36573",
+      "eventId": 1151,
+      "message": "Projection notification ETag invocation completed. ActorId: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, RequestId: 0HNPF9HPR70BT:00000001, CompletedUtc: 10/21/2026 08:22:31 +00:00, ElapsedMilliseconds: 3.2332"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8742541+00:00 pid=36573",
+      "eventId": 1090,
+      "message": "SignalR broadcast started. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00, TraceId: c6060a5df62b8ad93933dbc3f7ae985e, SpanId: b3518ef6de3e9fbc, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8744353+00:00 pid=36573",
+      "eventId": 1091,
+      "message": "SignalR broadcast completed. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, CompletedUtc: 10/21/2026 08:22:31 +00:00, ElapsedMilliseconds: 0.1293, Result: Success, TraceId: c6060a5df62b8ad93933dbc3f7ae985e, SpanId: b3518ef6de3e9fbc, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8773321+00:00 pid=36573",
+      "eventId": 1090,
+      "message": "SignalR broadcast started. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, StartedUtc: 10/21/2026 08:22:31 +00:00, TraceId: 5aaa8c8a20555a3e7f941a62941784b9, SpanId: a6c5e2f147c37af9, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    },
+    {
+      "node": "second",
+      "capturePrefix": "2026-10-21T08:22:31.8773389+00:00 pid=36573",
+      "eventId": 1091,
+      "message": "SignalR broadcast completed. ProjectionType: restart-ad92c3f79a81, TenantId: tenant-a-ad92c3f79a81, Group: restart-ad92c3f79a81:tenant-a-ad92c3f79a81, CompletedUtc: 10/21/2026 08:22:31 +00:00, ElapsedMilliseconds: 5.2789, Result: Success, TraceId: 5aaa8c8a20555a3e7f941a62941784b9, SpanId: a6c5e2f147c37af9, CategoryName: Hexalith.EventStore.SignalRHub.SignalRProjectionChangedBroadcaster"
+    }
+  ],
+  "established": "Post-restart pub/sub reached first controller; actor invocation returned DaprApiException before its broadcast; second locally regenerated/persisted and broadcast successfully.",
+  "unresolved": "Underlying remote actor error and why first runtime could not invoke the restored actor."
+}

@@ -5,7 +5,7 @@ story_key: 2-13-dapr-notification-distribution-qualification
 epic: '2'
 status: backlog
 created: 2026-10-05
-updated: 2026-10-05
+updated: 2026-10-21
 owner: SignalR transport owner
 supporting_requirements: [FR16, NFR5, NFR12, NFR15, NFR16]
 context:
@@ -31,6 +31,8 @@ The current `ConfigureBackplane` in `src/Hexalith.EventStore/SignalRHub/SignalRS
 Dependencies: Story 2.8's delivered notification contracts and existing authorization/group semantics are the compatibility baseline. Story 3.17 is a coordination handoff for final inventory/guard disposition, not a cyclic execution prerequisite; do not require 3.17 conformance before collecting this story's qualification evidence. Existing production/profile/release gates and any external-service provisioning authority remain required.
 
 ## Current Supporting Evidence
+
+The [October 21 silent-fault continuation](evidence/story-2-13/qualification-2026-10-21-blackhole.md) retains a passing reset/blackhole pair with two-second caller cancellation, Dapr reconciliation and restored delivery on both proof hosts, under an explicitly recorded auxiliary AppHost/sample topology. The original standalone startup failure remains retained. Replica restart passed once in isolation but failed twice at the first-host post-restart signal wait in broader runs, so that delivery gap remains unresolved. Current Story 3.21 inputs still select no production broker/profile. No transition, exception, completion or owner approval is inferred; this original story remains backlog.
 
 The [October 20 qualification continuation](evidence/story-2-13/qualification-2026-10-20.md) records the user's clarification to enforce the approved serialized metadata ceiling, shared producer/receiver/broadcaster enforcement, and disposable two-host restart/rejoin/readback evidence. The retained Redis integration remains unresolved. Dynamic-topic distribution, real projection-triggered detail, the production issuer/profile, complete outage/freshness/rollback qualification, and authorized disposition remain open; this story stays backlog and supplies the unresolved Story 3.17 handoff.
 

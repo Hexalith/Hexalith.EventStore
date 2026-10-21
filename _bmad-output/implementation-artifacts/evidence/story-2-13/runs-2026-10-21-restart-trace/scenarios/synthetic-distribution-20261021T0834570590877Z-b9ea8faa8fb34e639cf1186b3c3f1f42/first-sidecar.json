@@ -1,0 +1,124 @@
+{
+  "id": "eventstore",
+  "runtimeVersion": "1.18.7",
+  "actorRuntime": {
+    "runtimeStatus": "RUNNING",
+    "activeActors": [
+      {
+        "type": "IdentityActorRegistryActor"
+      },
+      {
+        "type": "IdempotencyLegacyInventoryActor"
+      },
+      {
+        "type": "SharedProjectionSourceRosterActor"
+      },
+      {
+        "type": "GlobalPositionActor"
+      },
+      {
+        "type": "IdempotencyAdmissionDirectoryActor"
+      },
+      {
+        "type": "IdempotencyTenantLifecycleActor"
+      },
+      {
+        "type": "AggregateActor"
+      },
+      {
+        "type": "ProjectionActor"
+      },
+      {
+        "type": "IdempotencyAdmissionActor"
+      },
+      {
+        "type": "ProjectionLifecycleActor"
+      },
+      {
+        "type": "ETagActor"
+      },
+      {
+        "type": "CoordinatedCommandActor"
+      }
+    ],
+    "hostReady": true,
+    "placement": "placement: connected"
+  },
+  "actors": [
+    {
+      "type": "IdentityActorRegistryActor"
+    },
+    {
+      "type": "IdempotencyLegacyInventoryActor"
+    },
+    {
+      "type": "SharedProjectionSourceRosterActor"
+    },
+    {
+      "type": "GlobalPositionActor"
+    },
+    {
+      "type": "IdempotencyAdmissionDirectoryActor"
+    },
+    {
+      "type": "IdempotencyTenantLifecycleActor"
+    },
+    {
+      "type": "AggregateActor"
+    },
+    {
+      "type": "ProjectionActor"
+    },
+    {
+      "type": "IdempotencyAdmissionActor"
+    },
+    {
+      "type": "ProjectionLifecycleActor"
+    },
+    {
+      "type": "ETagActor"
+    },
+    {
+      "type": "CoordinatedCommandActor"
+    }
+  ],
+  "components": [
+    {
+      "name": "pubsub",
+      "type": "pubsub.redis",
+      "version": "v1"
+    },
+    {
+      "name": "statestore",
+      "type": "state.redis",
+      "version": "v1"
+    }
+  ],
+  "subscriptions": [
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-e361cbd9ea52.counter-e361cbd9ea52.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-e361cbd9ea52.denied-e361cbd9ea52.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-e361cbd9ea52.recovered-e361cbd9ea52.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-b-e361cbd9ea52.counter-e361cbd9ea52.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "*.*.projection-changed",
+      "type": "PROGRAMMATIC"
+    }
+  ]
+}

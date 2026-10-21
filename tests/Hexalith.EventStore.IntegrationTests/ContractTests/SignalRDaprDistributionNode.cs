@@ -42,7 +42,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     public int DaprGrpcPort { get; }
 
     /// <summary>Gets the sidecar internal gRPC port.</summary>
-    public int DaprInternalGrpcPort { get; }
+    public int DaprInternalGrpcPort { get; private set; }
 
     /// <summary>Gets the sidecar metrics port.</summary>
     public int MetricsPort { get; }
@@ -110,6 +110,8 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         application.Environment["EventStore__SignalR__Enabled"] = "true";
         application.Environment["EventStore__OpenApi__Enabled"] = "false";
         application.Environment["Logging__LogLevel__Default"] = "Information";
+        application.Environment["Logging__LogLevel__Hexalith.EventStore.Controllers.ProjectionNotificationController"] = "Debug";
+        application.Environment["Logging__LogLevel__Hexalith.EventStore.Server.Actors.ETagActor"] = "Debug";
         if (enablePubSubProjectionTransport)
         {
             application.Environment["EventStore__ProjectionChanges__Transport"] = "PubSub";
@@ -153,11 +155,24 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     }
 
     /// <summary>Starts this node's sidecar after an outage.</summary>
-    public async Task StartSidecarAsync(string componentsPath, CancellationToken cancellationToken)
+    public async Task StartSidecarAsync(
+        string componentsPath,
+        CancellationToken cancellationToken,
+        bool renewInternalGrpcEndpoint = false)
     {
         if (_sidecar is not null)
         {
             throw new InvalidOperationException("Sidecar is already running.");
+        }
+
+        if (renewInternalGrpcEndpoint)
+        {
+            int replacementPort = ReservePort();
+            if (replacementPort == DaprInternalGrpcPort)
+            {
+                throw new InvalidOperationException("The diagnostic replacement must have a fresh internal gRPC endpoint.");
+            }
+            DaprInternalGrpcPort = replacementPort;
         }
 
         string daprd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", "daprd");
@@ -185,7 +200,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
             "--resources-path", componentsPath,
             "--placement-host-address", "127.0.0.1:50005",
             "--scheduler-host-address", "127.0.0.1:50006",
-            "--log-level", "info",
+            "--log-level", "debug",
         ];
         foreach (string argument in arguments)
         {
@@ -245,6 +260,8 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         {
             id = root.GetProperty("id").GetString(),
             runtimeVersion = root.GetProperty("runtimeVersion").GetString(),
+            actorRuntime = root.TryGetProperty("actorRuntime", out JsonElement actorRuntime) ? actorRuntime : (JsonElement?)null,
+            actors = root.TryGetProperty("actors", out JsonElement actors) ? actors : (JsonElement?)null,
             components = root.GetProperty("components").EnumerateArray().Select(component => new
             {
                 name = component.GetProperty("name").GetString(),
@@ -276,11 +293,12 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     private static Process StartCapturedProcess(ProcessStartInfo info, ConcurrentQueue<string> log)
     {
         Process process = Process.Start(info) ?? throw new InvalidOperationException($"Could not start {info.FileName}.");
+        int processId = process.Id;
         process.OutputDataReceived += (_, args) =>
         {
             if (args.Data is not null)
             {
-                log.Enqueue(args.Data);
+                log.Enqueue($"{DateTimeOffset.UtcNow:O} pid={processId} {args.Data}");
                 TrimLog(log);
             }
         };
@@ -288,7 +306,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         {
             if (args.Data is not null)
             {
-                log.Enqueue(args.Data);
+                log.Enqueue($"{DateTimeOffset.UtcNow:O} pid={processId} {args.Data}");
                 TrimLog(log);
             }
         };

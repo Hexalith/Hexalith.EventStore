@@ -1,0 +1,20 @@
+{
+  "observedUtc": "2026-10-21T09:02:17.886474+00:00",
+  "maxUserWatches": 2097152,
+  "maxUserInstances": 8192,
+  "observedWatchesPerFd": 1075173,
+  "watchesByProcessName": {
+    "fluentui-mcp": 1072386,
+    "dbus-daemon": 5,
+    "MainThread": 13,
+    "claude": 41,
+    "agy": 16,
+    "codex": 2595,
+    "Counter.Web": 37,
+    "Hexalith.Partie": 80
+  },
+  "method": "Count accessible /proc/<pid>/fdinfo inotify watch lines; upper bound if an instance is inherited/shared",
+  "originalMaxUserWatches": 1048576,
+  "restorePermittedByObservedUse": false,
+  "noPersistentSysctlConfigurationChanged": true
+}

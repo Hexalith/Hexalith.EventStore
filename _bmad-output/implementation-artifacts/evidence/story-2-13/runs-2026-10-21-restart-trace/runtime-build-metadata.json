@@ -1,0 +1,20 @@
+{
+  "observedUtc": "2026-10-21T08:49:21.076986+00:00",
+  "runtimeBinarySha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+  "method": "Read embedded Go build-info line markers; official go metadata tool unavailable",
+  "fields": {
+    "path\t": "path\t\u0000\u0000\u0000M9\ufffdA\u000f\ufffd\ufffd\ufffd\u0003E1\ufffdE\ufffd\ufffdt[\u000f\u001f\ufffd\u0000\u0000\u0000\u0000H\ufffd\ufffd\u0005\u000f\ufffd\ufffd\u0012\u0000\u0000H\ufffds\ufffdI\ufffd\ufffdH\ufffd\ufffdH\ufffd\ufffd?\ufffd\ufffd\u0005L\ufffd\ufffd$p\u0001\u0000\u0000M\ufffdA\u0018H\u0001\u0183=\ufffdjH\r\u0000t\u0010M\ufffdA\u0010\ufffdD&\ufffd\ufffdI\ufffd3M\ufffdC\bI\ufffdq\u0010H\ufffd\ufffd$H\u0001\u0000\u0000\ufffd/\ufffd\ufffd\ufffdH\ufffd\ufffd\u0004|\f\ufffd8mod\tA\u000f\ufffd\ufffd\ufffd\u0003E1\ufffdH\ufffd\ufffd$\ufffd\u0000\u0000\u0000H\ufffd\ufffd$x\u0001\u0000\u0000\u000f\u001f\ufffd\u0000\u0000\u0000\u0000E\ufffd\ufffd\u000f\ufffd\ufffd\u0007\u0000\u0000H\ufffd\ufffd\u0004|\f\ufffd8dep\tA\u000f\ufffd\ufffd\ufffd\u0005E1\ufffdf\ufffdE\ufffd\ufffd\u000f\ufffd\ufffd\u0004\u0000\u0000H\ufffd\ufffd\u0003|\u001dD\u000f\ufffd\bD\u000f\ufffdP\u0002A\ufffd\ufffd\u0010E\t\ufffdA\ufffd\ufffd=>\t\u0000A\u000f\ufffd\ufffd\ufffd\u0003E1\ufffdE\ufffd\ufffd\u000f\ufffdh\u0003\u0000\u0000H\ufffd\ufffd\u0006|$D\ufffd\u0000D\u000f\ufffdH\u0004I\ufffd\ufffd M\t\ufffdI\ufffdbuild\t\u0000\u0000M9\ufffdA\u000f\ufffd\ufffdf\ufffd\ufffd\u0003E1\ufffdE\ufffd\ufffdu\u0016H\ufffd\ufffd$H\u0001\u0000\u0000\ufffdl\ufffd\ufffd\ufffdf\u000f\u001f\ufffd\u0000\u0000\u0000\u0000\u0000H\ufffd\ufffd\u0006\u000f\ufffd\ufffd\u0011\u0000\u0000H\ufffdS\ufffdI\ufffd\ufffdH\ufffd\ufffdH\ufffd\ufffd?\ufffd\ufffd\u0006L\ufffd\f\u0002\ufffdH\ufffd\ufffd\u0006\u000f\ufffd\ufffd\u000e\u0000\u0000H\ufffd\ufffd$\ufffd\u0000\u0000\u0000\u000f\ufffd\u0014\u0002\ufffd\ufffd\"\u000f\ufffd\ufffd\u0000\u0000\u0000\ufffd\ufffd\ufffd=\u000f\ufffd\ufffd",
+    "mod\tgithub.com/dapr/dapr\t": "mod\tgithub.com/dapr/dapr\tv1.18.7\t",
+    "dep\tgoogle.golang.org/grpc\t": "dep\tgoogle.golang.org/grpc\tv1.83.2\th1:EManeRomTObA0BU7I8vXgg/78uE5MJ9M8B39EX2WscU=",
+    "build\tvcs.revision=": "build\tvcs.revision=b32a815fa2260983e181b95272ea555fe17d3895",
+    "build\tvcs.time=": "build\tvcs.time=2026-10-09T19:55:46Z",
+    "build\tvcs.modified=": "build\tvcs.modified=false"
+  },
+  "blockedCommand": [
+    "go",
+    "version",
+    "-m",
+    "/home/administrator/.dapr/bin/daprd"
+  ],
+  "blocker": "FileNotFoundError: go executable is not installed; runner produced no command receipt and its partial source snapshot is retained"
+}

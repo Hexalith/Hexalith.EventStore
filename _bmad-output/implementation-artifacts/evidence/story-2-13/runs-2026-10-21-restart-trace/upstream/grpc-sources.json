@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/api/grpc/manager/dial.go",
+    "retainedPath": "pkg/api/grpc/manager/dial.go",
+    "retrievedUtc": "2026-10-21T08:47:38.853266+00:00",
+    "sha256": "ad39e6e4c6a2249fd127e9be5dcf853d3ffd6d23bcbe8fe390c4708a06a92a73"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/api/grpc/manager/dial_windows.go",
+    "retainedPath": "pkg/api/grpc/manager/dial_windows.go",
+    "retrievedUtc": "2026-10-21T08:47:39.106751+00:00",
+    "sha256": "168a8ac456132ce3da29330e405749721c1767cf9e83c6bf52388dd1928293cb"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/api/grpc/manager/manager.go",
+    "retainedPath": "pkg/api/grpc/manager/manager.go",
+    "retrievedUtc": "2026-10-21T08:47:39.389575+00:00",
+    "sha256": "988a00f1f5c9c1b8a2f27329810ea490400678d0de9e43f0b7435109e121061f"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/api/grpc/manager/pool.go",
+    "retainedPath": "pkg/api/grpc/manager/pool.go",
+    "retrievedUtc": "2026-10-21T08:47:39.639274+00:00",
+    "sha256": "1d2b25abf56d23626e856aa708ea1e5ff62e5e4c9207ce8eb0e07b76a8627f2a"
+  }
+]

@@ -63,6 +63,27 @@ context:
 
 ## Implementation Notes
 
+### Active continuation: October 21 restart timeout investigation
+
+The user explicitly resumed the existing dirty working tree from
+`evidence/story-2-13/qualification-2026-10-21-blackhole.md`. Preserve that work
+and every historical packet. This continuation focuses only on the unresolved
+first-host signal timeout after the second replica restarts. Use the existing
+failure capture to reproduce and trace Dapr delivery →
+`ProjectionNotificationController` → `ETagActor.RegenerateAsync` → SignalR
+broadcast. Establish the cause before changing behavior. Implement a fix only
+when justified by retained evidence; do not infer resolution from passing
+reruns alone. Preserve authorization, metadata bounds, caller cancellation
+budgets, and the 15-second signal deadline. Retain failures and passes on their
+exact source and binary identities in a new continuation packet (never rewrite
+the blackhole packet). Include actor/controller/broadcaster sources in new
+identity captures. Run the focused restart case, then the full distribution
+class. Report the existing Contracts validator blocker separately. Production
+graph/profile changes remain gated; keep the active spec and sprint row
+in-progress and the original backlog story uncompleted until all remaining
+qualification and approval requirements pass. Do not execute gated production
+tasks or claim whole-story completion during this focused continuation.
+
 - The [qualification packet](evidence/story-2-13/qualification.md) records a passing test-only two-host, two-sidecar exact-topic Dapr proof, a real projection-triggered signal with projection-backed readback, and a scoped Redis exception proposal that has **not** been accepted.
 - The shipped Redis Streams wildcard subscription did not deliver concrete tenant topics. Dynamic tenant subscription, real projection-triggered detail, full outage/freshness and rollback behavior, and owner approvals remain open. No production profile or backplane dependency changed; the original story remains backlog.
 - The ordinary Aspire regression test body passed, but collection teardown failed while restoring the shared writer-protocol marker. The packet records the exact result and unresolved lock interference. The local inotify limit also remains elevated while unrelated processes hold more watches than the original limit.
@@ -74,7 +95,22 @@ context:
 
 The final local continuation passed the full Debug graph, 186 focused detail/compatibility cases, real two-host projection signal/detail/readback and tenant denials, ordinary Direct regression, and 182 supporting client/credential cases. The four-scenario network/catalog/runtime run also passed against its separately retained earlier source/binary identity. Optional legacy projection-response detail is implemented; named v2 outcomes are unchanged. Remaining gates are the selected production runtime/durable broker/enrolled issuer, shipped enrollment, canonical completion/freshness fault profile, atomic graph transition/rollback and authorized disposition. Story status and whole-task checkboxes remain open; no exception or production profile is accepted.
 
+The [October 21 local continuation](evidence/story-2-13/qualification-2026-10-21-blackhole.md) adds silent bidirectional traffic discard beside connection reset in the existing test-only network proxy and distribution runtime proof. Both cases pass under a declared auxiliary AppHost/sample topology, with unchanged caller cancellation/readback limits, fresh two-host delivery and tenant denials. The full Debug source-reference graph passes. An unchanged focused replica-restart run passes, but two broader runs time out at the first-host post-restart signal; that intermittent delivery gap and the separate standalone startup failure remain retained. Run-start revision is `7217b5bf740b80ae92858378785b496e6b564285`; the frozen baseline is unchanged. Current Story 3.21 inputs still select no production broker/profile. Production runtime/broker/issuer, canonical completion/freshness, atomic transition/rollback and authorized disposition remain required gates; no whole-story checkbox or completion status is advanced.
+
+The local restart diagnostic phase adds failure-only evidence retention in the existing fixture/runtime proof and targeted controller receipt logging in `SignalRDaprDistributionNode.cs`. Failed captures are explicitly separate from passed assertions; the signal wait remains 15 seconds and capture has its own bounded budget. New fixture/runner captures retain MSBuild inputs with a `.source` suffix and explicit original-path mappings. Earlier new-packet file names may be transformed with recorded aliases while their bytes and emitted manifests remain unchanged; historical packets remain untouched.
+
 ## Spec Change Log
+
+The [October 21 restart routing continuation](evidence/story-2-13/qualification-2026-10-21-restart-trace.md)
+reproduces the surviving host's failed remote ETag invocation after restart.
+Both controlled reused-endpoint failures retain successful independent TCP
+connects during the unchanged 15-second signal wait; the additive fresh internal
+endpoint profile passes twice with initial second-host actor ownership proved.
+Pinned runtime/pool/backoff sources support retained gRPC reconnect state, with
+no direct channel-state capture or runtime repair claimed. The final full class
+records 5 passed and 1 failed of 6, and the Debug graph plus 66 focused existing
+checks pass. Same-endpoint recovery and all production/disposition gates remain
+open; this continuation advances no whole-story checkbox or completion status.
 
 - 2026-10-20 — The user resolved the metadata accounting conflict: "Enforce the serialized-byte limit in the approved story spec." The frozen intent is unchanged. Compact default System.Text.Json metadata sizing now includes punctuation and escaping across producer, receiver and broadcaster, with Contracts-owned ceilings. The [October 20 continuation](evidence/story-2-13/qualification-2026-10-20.md) separates the observed pre-fix gap from final-source qualification and replica restart evidence. Profile/owner gates and the retained Redis disposition remain unresolved.
 - 2026-10-20 — The user clarified: "production is on local 192.168.1.30 kubernetes server. Azure or AWS is not MVP." This narrows the target; it approves no issuer, broker, runtime upgrade, cluster mutation, or production transition. The frozen intent and required candidate comparison are unchanged.

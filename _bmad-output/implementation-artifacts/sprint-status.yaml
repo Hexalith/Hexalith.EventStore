@@ -113,6 +113,8 @@ development_status:
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
   2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
   2-13-dapr-notification-distribution-qualification: in-progress
+  # 2.13: October 21 reset/blackhole pair passed locally; intermittent replica-restart
+  # delivery and production profile/issuer/transition/rollback/disposition remain open.
   # 2.13: rejected because Stories 6.2, 6.3, and 6.4 remain unfinished
   2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: backlog
   2-15-messageid-only-command-status-identity: backlog

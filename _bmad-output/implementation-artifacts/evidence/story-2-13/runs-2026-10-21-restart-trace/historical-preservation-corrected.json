@@ -1,0 +1,20 @@
+{
+  "observedUtc": "2026-10-21T09:03:11.675259+00:00",
+  "baselineIdentityFile": "/tmp/story-2-13-start-lt01bjl3/identities.json",
+  "baselineIdentityFileSha256": "a480f98dccdd7a508f6dc1d135862dd24fc86b2b56dc6631c150f9dfa6cd90ce",
+  "baselineTotalEntries": 1808,
+  "preExistingEvidenceFileCount": 1798,
+  "changedOrMissingEvidenceFiles": [],
+  "trackedHistoricalDiffCommand": [
+    "git",
+    "diff",
+    "--name-only",
+    "HEAD",
+    "--",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13"
+  ],
+  "trackedHistoricalDiffExitCode": 0,
+  "trackedHistoricalDiffOutput": "",
+  "corrects": "historical-preservation.json overbroad comparison included 10 mutable source/config/doc entries; its five differences are authorized changes, not evidence changes",
+  "result": "passed"
+}

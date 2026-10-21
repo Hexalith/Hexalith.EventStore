@@ -18,7 +18,9 @@ public sealed class SignalRDaprNetworkFaultProxy : IAsyncDisposable
     private long _nextId;
     private long _rejected;
     private long _disconnected;
+    private long _blackholedBytes;
     private int _blocked;
+    private int _blackholed;
 
     /// <summary>Starts a transparent test-only route to the existing loopback Redis service.</summary>
     public SignalRDaprNetworkFaultProxy()
@@ -40,6 +42,9 @@ public sealed class SignalRDaprNetworkFaultProxy : IAsyncDisposable
     /// <summary>Gets the number of established connections severed by the fault.</summary>
     public long DisconnectedConnections => Interlocked.Read(ref _disconnected);
 
+    /// <summary>Gets the number of opaque bytes discarded during the silent network fault.</summary>
+    public long BlackholedBytes => Interlocked.Read(ref _blackholedBytes);
+
     /// <summary>Severs this fixture's active provider connections and refuses reconnects.</summary>
     public async Task BlockAsync(CancellationToken cancellationToken)
     {
@@ -54,8 +59,15 @@ public sealed class SignalRDaprNetworkFaultProxy : IAsyncDisposable
         await Task.WhenAll(_forwarders.Values).WaitAsync(TimeSpan.FromSeconds(3), cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Silently discards traffic in both directions while retaining TCP connections and accepting reconnects.</summary>
+    public void Blackhole() => Interlocked.Exchange(ref _blackholed, 1);
+
     /// <summary>Restores this fixture's provider route; it does not restart either application or sidecar.</summary>
-    public void Restore() => Interlocked.Exchange(ref _blocked, 0);
+    public void Restore()
+    {
+        Interlocked.Exchange(ref _blackholed, 0);
+        Interlocked.Exchange(ref _blocked, 0);
+    }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
@@ -116,8 +128,8 @@ public sealed class SignalRDaprNetworkFaultProxy : IAsyncDisposable
                 await outgoing.ConnectAsync(IPAddress.Loopback, 6379, _stopping.Token).ConfigureAwait(false);
                 NetworkStream source = incoming.GetStream();
                 NetworkStream target = outgoing.GetStream();
-                Task upload = source.CopyToAsync(target, _stopping.Token);
-                Task download = target.CopyToAsync(source, _stopping.Token);
+                Task upload = ForwardOpaqueBytesAsync(source, target);
+                Task download = ForwardOpaqueBytesAsync(target, source);
                 await Task.WhenAny(upload, download).ConfigureAwait(false);
                 incoming.Dispose();
                 outgoing.Dispose();
@@ -131,6 +143,27 @@ public sealed class SignalRDaprNetworkFaultProxy : IAsyncDisposable
             {
                 _connections.TryRemove(id, out _);
             }
+        }
+    }
+
+    private async Task ForwardOpaqueBytesAsync(NetworkStream source, NetworkStream target)
+    {
+        byte[] buffer = new byte[16_384];
+        while (true)
+        {
+            int count = await source.ReadAsync(buffer, _stopping.Token).ConfigureAwait(false);
+            if (count == 0)
+            {
+                return;
+            }
+
+            if (Volatile.Read(ref _blackholed) != 0)
+            {
+                Interlocked.Add(ref _blackholedBytes, count);
+                continue;
+            }
+
+            await target.WriteAsync(buffer.AsMemory(0, count), _stopping.Token).ConfigureAwait(false);
         }
     }
 }

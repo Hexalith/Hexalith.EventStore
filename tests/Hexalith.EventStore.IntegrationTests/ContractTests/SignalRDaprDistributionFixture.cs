@@ -107,18 +107,24 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
     }
 
     /// <summary>Restarts the second complete replica with its original application and component configuration.</summary>
-    public async Task RestartSecondAsync(CancellationToken cancellationToken)
+    public async Task RestartSecondAsync(CancellationToken cancellationToken, bool renewInternalGrpcEndpoint = false)
     {
         await Second.RestartApplicationAsync(cancellationToken).ConfigureAwait(false);
-        await Second.StartSidecarAsync(_componentsPath, cancellationToken).ConfigureAwait(false);
+        await Second.StartSidecarAsync(_componentsPath, cancellationToken, renewInternalGrpcEndpoint).ConfigureAwait(false);
     }
 
     /// <summary>Retains exact component bytes, redacted process logs, and source/binary identities when requested.</summary>
+    /// <param name="scenario">The scenario or failure-diagnostic label.</param>
+    /// <param name="startedUtc">The UTC start of the observed scenario.</param>
+    /// <param name="observations">The bounded, credential-free observations to retain.</param>
+    /// <param name="cancellationToken">The cancellation token bounding evidence capture.</param>
+    /// <param name="scenarioAssertionsPassed">Whether assertions passed; false labels diagnostics without a passing verdict.</param>
     public async Task CaptureEvidenceAsync(
         string scenario,
         DateTimeOffset startedUtc,
         object observations,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool scenarioAssertionsPassed = true)
     {
         string? destination = Environment.GetEnvironmentVariable("HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY");
         if (string.IsNullOrWhiteSpace(destination))
@@ -164,6 +170,8 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             "src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofBroadcastResult.cs",
             "src/Hexalith.EventStore/SignalRHub/SignalRProjectionChangedBroadcaster.cs",
             "src/Hexalith.EventStore.Server/Projections/DaprProjectionChangeNotifier.cs",
+            "src/Hexalith.EventStore.Server/Actors/ETagActor.cs",
+            "src/Hexalith.EventStore.Server/Actors/IETagActor.cs",
             "src/Hexalith.EventStore.Contracts/Projections/ProjectionResponse.cs",
             "src/Hexalith.EventStore.Server/Actors/ProjectionState.cs",
             "src/Hexalith.EventStore.Server/Actors/EventReplayProjectionActor.cs",
@@ -194,12 +202,21 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
         string[] binaries = [
             "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
             "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.dll",
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.AspNetCore.dll",
+            "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Client.dll",
             "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.deps.json",
             "tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll",
         ];
+        Dictionary<string, string> retainedSourcePaths = sources.ToDictionary(
+            path => path,
+            path => "sources/" + (Path.GetExtension(path) is ".props" or ".targets" or ".csproj" or ".slnx"
+                ? path + ".source" : path),
+            StringComparer.Ordinal);
         foreach (string source in sources)
         {
-            string retained = Path.Combine(directory, "sources", source);
+            string retained = Path.Combine(directory, retainedSourcePaths[source]);
             Directory.CreateDirectory(Path.GetDirectoryName(retained)!);
             File.Copy(Path.Combine(RepositoryRoot, source), retained, overwrite: false);
         }
@@ -210,7 +227,7 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             Scenario = scenario,
             StartedUtc = startedUtc,
             CompletedUtc = DateTimeOffset.UtcNow,
-            Result = "passed-scenario-assertions-only",
+            Result = scenarioAssertionsPassed ? "passed-scenario-assertions-only" : "failed-scenario-diagnostics-only",
             Runtime = Environment.Version.ToString(),
             AppId = "eventstore",
             FirstHostProcessId = First.ApplicationProcessId,
@@ -219,7 +236,14 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             SecondSidecarProcessId = Second.SidecarProcessId,
             FirstHostPort = First.AppPort,
             SecondHostPort = Second.AppPort,
+            FirstSidecarHttpPort = First.DaprHttpPort,
+            FirstSidecarGrpcPort = First.DaprGrpcPort,
+            FirstSidecarInternalGrpcPort = First.DaprInternalGrpcPort,
+            SecondSidecarHttpPort = Second.DaprHttpPort,
+            SecondSidecarGrpcPort = Second.DaprGrpcPort,
+            SecondSidecarInternalGrpcPort = Second.DaprInternalGrpcPort,
             Sources = sources.ToDictionary(path => path, path => HashFile(Path.Combine(RepositoryRoot, path)), StringComparer.Ordinal),
+            RetainedSourcePaths = retainedSourcePaths,
             Binaries = binaries.ToDictionary(path => path, path => HashFile(Path.Combine(RepositoryRoot, path)), StringComparer.Ordinal),
             Artifacts = Directory.GetFiles(directory, "*", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
                 .ToDictionary(path => Path.GetRelativePath(directory, path).Replace(Path.DirectorySeparatorChar, '/'), HashFile, StringComparer.Ordinal),

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "aspire",
+    "stop",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "startedUtc": "2026-10-21T06:39:17.651113+00:00",
+  "completedUtc": "2026-10-21T06:39:18.200220+00:00",
+  "exitCode": 0,
+  "output": "Scanning for running AppHosts...\n\ud83d\udce6 Found running AppHost: src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj\n\ud83d\uded1 Sending stop signal to src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj...\nStopping src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj...\n\n\u2705 src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj stopped successfully.\n"
+}

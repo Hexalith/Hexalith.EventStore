@@ -1,5 +1,6 @@
 
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 
 using Dapr;
 using Dapr.Actors;
@@ -80,7 +81,11 @@ public partial class ProjectionNotificationController(
                 new ActorId(actorId),
                 ETagActor.ETagActorTypeName);
 
+            long startedTimestamp = Stopwatch.GetTimestamp();
+            Log.ActorInvocationStarted(logger, actorId, HttpContext?.TraceIdentifier, DateTimeOffset.UtcNow);
             _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+            Log.ActorInvocationCompleted(logger, actorId, HttpContext?.TraceIdentifier, DateTimeOffset.UtcNow,
+                Stopwatch.GetElapsedTime(startedTimestamp).TotalMilliseconds);
 
             // Broadcast to SignalR clients (fail-open — ADR-18.5a)
             try {
@@ -108,6 +113,10 @@ public partial class ProjectionNotificationController(
         }
         catch (Exception ex) {
             // CM-1: Return non-200 to trigger DAPR pub/sub retry
+            if (ex is DaprApiException daprException) {
+                Log.ActorDaprInvocationFailed(logger, actorId, HttpContext?.TraceIdentifier,
+                    daprException.ErrorCode, daprException.IsTransient);
+            }
             Log.ActorInvocationFailed(logger, actorId, ex.GetType().Name);
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
@@ -120,6 +129,24 @@ public partial class ProjectionNotificationController(
             || notification.Metadata is not null;
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 1154,
+            Level = LogLevel.Debug,
+            Message = "Projection notification ETag invocation returned a Dapr error. ActorId: {ActorId}, RequestId: {RequestId}, ErrorCode: {ErrorCode}, IsTransient: {IsTransient}")]
+        public static partial void ActorDaprInvocationFailed(ILogger logger, string actorId, string? requestId, string errorCode, bool isTransient);
+
+        [LoggerMessage(
+            EventId = 1150,
+            Level = LogLevel.Debug,
+            Message = "Projection notification ETag invocation started. ActorId: {ActorId}, RequestId: {RequestId}, StartedUtc: {StartedUtc}")]
+        public static partial void ActorInvocationStarted(ILogger logger, string actorId, string? requestId, DateTimeOffset startedUtc);
+
+        [LoggerMessage(
+            EventId = 1151,
+            Level = LogLevel.Debug,
+            Message = "Projection notification ETag invocation completed. ActorId: {ActorId}, RequestId: {RequestId}, CompletedUtc: {CompletedUtc}, ElapsedMilliseconds: {ElapsedMilliseconds}")]
+        public static partial void ActorInvocationCompleted(ILogger logger, string actorId, string? requestId, DateTimeOffset completedUtc, double elapsedMilliseconds);
+
         [LoggerMessage(
             EventId = 1051,
             Level = LogLevel.Debug,

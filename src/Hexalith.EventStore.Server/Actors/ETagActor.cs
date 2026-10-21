@@ -28,10 +28,12 @@ public partial class ETagActor(ActorHost host, ILogger<ETagActor> logger)
 
     /// <inheritdoc/>
     public async Task<string> RegenerateAsync() {
+        Log.RegenerationStarted(logger, Host.Id.GetId(), DateTimeOffset.UtcNow);
         string projectionType = ExtractProjectionType();
         string newETag = SelfRoutingETag.GenerateNew(projectionType);
 
         await StateManager.SetStateAsync(ETagStateKey, newETag).ConfigureAwait(false);
+        Log.PersistenceStarted(logger, Host.Id.GetId(), DateTimeOffset.UtcNow);
         await StateManager.SaveStateAsync().ConfigureAwait(false);
 
         // Cache only after successful persistence (FM-1)
@@ -104,6 +106,18 @@ public partial class ETagActor(ActorHost host, ILogger<ETagActor> logger)
     }
 
     private static partial class Log {
+        [LoggerMessage(
+            EventId = 1152,
+            Level = LogLevel.Debug,
+            Message = "ETag regeneration started. ActorId: {ActorId}, StartedUtc: {StartedUtc}")]
+        public static partial void RegenerationStarted(ILogger logger, string actorId, DateTimeOffset startedUtc);
+
+        [LoggerMessage(
+            EventId = 1153,
+            Level = LogLevel.Debug,
+            Message = "ETag persistence started. ActorId: {ActorId}, StartedUtc: {StartedUtc}")]
+        public static partial void PersistenceStarted(ILogger logger, string actorId, DateTimeOffset startedUtc);
+
         [LoggerMessage(
             EventId = 1050,
             Level = LogLevel.Information,

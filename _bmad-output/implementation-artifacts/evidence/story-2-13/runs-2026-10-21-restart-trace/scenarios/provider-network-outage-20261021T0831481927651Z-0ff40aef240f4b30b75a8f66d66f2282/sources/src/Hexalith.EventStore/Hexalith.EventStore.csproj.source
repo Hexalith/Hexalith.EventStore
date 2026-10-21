@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>true</IsPublishable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <EnableContainer>true</EnableContainer>
+    <ContainerRepository>eventstore</ContainerRepository>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Authentication\**\*.cs" />
+    <Compile Remove="Authorization\**\*.cs" />
+    <Compile Remove="Commands\**\*.cs" />
+    <Compile Remove="Configuration\**\*.cs" />
+    <Compile Remove="Controllers\**\*.cs" />
+    <Compile Remove="ErrorHandling\**\*.cs" />
+    <Compile Remove="Extensions\**\*.cs" />
+    <Compile Remove="Filters\**\*.cs" />
+    <Compile Remove="HealthChecks\**\*.cs" />
+    <Compile Remove="Indexes\**\*.cs" />
+    <Compile Remove="Middleware\**\*.cs" />
+    <Compile Remove="Models\**\*.cs" />
+    <Compile Remove="OpenApi\**\*.cs" />
+    <Compile Remove="Pipeline\**\*.cs" />
+    <Compile Remove="Queries\**\*.cs" />
+    <Compile Remove="Services\**\*.cs" />
+    <Compile Remove="SignalRHub\**\*.cs" />
+    <Compile Remove="Telemetry\**\*.cs" />
+    <Compile Remove="Validation\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hexalith.EventStore.Gateway\Hexalith.EventStore.Gateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapr.AspNetCore" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
+  </ItemGroup>
+
+</Project>
