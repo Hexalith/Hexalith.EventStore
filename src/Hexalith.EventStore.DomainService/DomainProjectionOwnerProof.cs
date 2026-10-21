@@ -31,7 +31,7 @@ public static class DomainProjectionOwnerProof
             || enrolled.Any(registration => selections.Count(selection => selection.ProjectionName == registration.ProjectionType) != 1)
             || selections.Any(selection => selection.AppliedSequence != head || selection.BatchId != request.DispatchId
                 || headMessageId is not null && selection.MessageId != headMessageId
-                || selection.ReceiptProjectionName != "rebuild" || !request.ProjectionTypes.Contains(selection.ProjectionName, StringComparer.Ordinal)))
+                || !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(selection.ReceiptProjectionName) || !request.ProjectionTypes.Contains(selection.ProjectionName, StringComparer.Ordinal)))
         {
             if (!ProjectionReplayTransportContext.HasOwners(request.Request)) return batch;
             throw new ArgumentException("A replay selection is missing from the complete immutable manifest.");

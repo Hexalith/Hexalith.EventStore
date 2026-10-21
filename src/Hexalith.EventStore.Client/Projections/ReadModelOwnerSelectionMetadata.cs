@@ -75,7 +75,7 @@ internal static class ReadModelOwnerSelectionMetadata
             if (candidate is null) continue;
             if (candidate.TenantId != batch.Scope.TenantId || candidate.Domain != batch.Scope.Domain
                 || candidate.AggregateId != batch.Scope.AggregateId || candidate.BatchId != batch.Scope.BatchId
-                || candidate.ReceiptProjectionName != batch.Scope.ProjectionType
+                || !IsRebuildReceipt(candidate.ReceiptProjectionName)
                 || selected.TryGetValue(candidate.ProjectionName, out ProjectionOwnerSelection? prior) && prior != candidate)
                 throw new ArgumentException("Selected owner does not match the immutable coordinated batch scope.");
             selected[candidate.ProjectionName] = candidate;
@@ -87,15 +87,19 @@ internal static class ReadModelOwnerSelectionMetadata
         return result;
     }
 
+    /// <summary>Accepts only the existing rebuild receipt or the explicit content-free protocol.</summary>
+    internal static bool IsRebuildReceipt(string? name)
+        => name is "rebuild" or ReadModelRebuildCompletion.ReceiptProjectionName;
+
     /// <summary>Finds one exact selection in either existing receipt representation, rejecting ambiguous bindings.</summary>
     internal static bool ReceiptContains(ReadModelBatchMarker receipt, ProjectionOwnerSelection selected)
         => selected.ReceiptProjectionName is null
             ? receipt.OwnerSelection == selected && receipt.OwnerSelections is null
-            : selected.ReceiptProjectionName == "rebuild" && receipt.OwnerSelection is null
+            : IsRebuildReceipt(selected.ReceiptProjectionName) && receipt.OwnerSelection is null
                 && receipt.OwnerSelections is { Count: > 0 } owners
                 && owners.Select(static item => item.ProjectionName).Distinct(StringComparer.Ordinal).Count() == owners.Count
                 && owners.All(item => item.TenantId == selected.TenantId && item.Domain == selected.Domain
                     && item.AggregateId == selected.AggregateId && item.BatchId == selected.BatchId
-                    && item.ReceiptProjectionName == selected.ReceiptProjectionName)
+                    && IsRebuildReceipt(item.ReceiptProjectionName))
                 && owners.Count(item => item == selected) == 1;
 }

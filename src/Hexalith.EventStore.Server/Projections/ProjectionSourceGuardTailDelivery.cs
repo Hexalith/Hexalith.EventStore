@@ -41,7 +41,8 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
             string originalId = ProjectionDeliveryRetryWorkItem.CreateWorkId(identity.TenantId, identity.Domain, identity.AggregateId, completed);
             if (await scheduler.ReadAsync(originalId, cancellationToken).ConfigureAwait(false) is { } retained
                 && (retained.ReservationFencingTokens.Count > 0 || observations.Any(item => item.State.LastDeliveredSequence == completed
-                    && item.State.GuardEvidence?.OwnerProof.Selection is { ReceiptProjectionName: "rebuild" } selection
+                    && item.State.GuardEvidence?.OwnerProof.Selection is { } selection
+                    && ReadModelOwnerSelectionMetadata.IsRebuildReceipt(selection.ReceiptProjectionName)
                     && selection.BatchId == retained.DispatchId)))
             {
                 var completedOwners = observations.Where(item => item.State.ActiveReservation is null
@@ -60,7 +61,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
             && binding.CatalogFingerprint == catalog.CatalogFingerprint && binding.Source == head
             && binding.OwnerProof == item.Selected.Proof && item.Lifecycle.Phase == ProjectionLifecyclePhase.Idle
             && item.Lifecycle.Revision == binding.IdleLifecycleRevision && binding.OwnerProof.Selection.BatchId == head.HeadMessageId
-            && binding.OwnerProof.Selection.ReceiptProjectionName == "rebuild")
+            && ReadModelOwnerSelectionMetadata.IsRebuildReceipt(binding.OwnerProof.Selection.ReceiptProjectionName))
             .Select(static item => item.Selected.Proof!).ToArray();
         foreach (ProjectionSourceGuardRouteObservation item in observations)
         {
@@ -192,7 +193,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                     || plan.ReplayEvents is null && plan.State.ActiveReservation is null && selected != plan.Binding.BaseOwnerProof
                     || plan.ReplayEvents is not null && selected is not null && selected != plan.Binding.BaseOwnerProof
                         && (plan.State.ActiveReservation is null || selected.Selection.AppliedSequence != head.HeadSequence
-                            || selected.Selection.BatchId != work.DispatchId || selected.Selection.ReceiptProjectionName != "rebuild"))
+                            || selected.Selection.BatchId != work.DispatchId || !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(selected.Selection.ReceiptProjectionName)))
                     return new(true, false, reason = progress.ReasonCode ?? "delivery_reconciliation_required");
                 long k = selected?.Selection.AppliedSequence ?? plan.Binding.BaseSource.HeadSequence;
                 if (k < plan.Binding.BaseSource.HeadSequence || k > head.HeadSequence)
@@ -280,7 +281,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
             // original coordinated manifest. Already-proven tail siblings stay intact.
             if (plans.Any(static plan => plan.ReplayEvents is not null) && (completedReplayOwners.Length == 0
                 || plans.Any(plan => plan.ReplayEvents is not null && (plan.ObservedOwner?.Selection.AppliedSequence != head.HeadSequence
-                    || plan.ObservedOwner.Selection.BatchId != work.DispatchId || plan.ObservedOwner.Selection.ReceiptProjectionName != "rebuild"))))
+                    || plan.ObservedOwner.Selection.BatchId != work.DispatchId || !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(plan.ObservedOwner.Selection.ReceiptProjectionName)))))
             {
                 string? replayFailure = await ApplyCanonicalReplayAsync(identity, catalog, plans, snapshots,
                     work.DispatchId, cancellationToken).ConfigureAwait(false);
@@ -309,7 +310,7 @@ internal sealed partial class ProjectionSourceGuardTailDelivery(ProjectionSource
                     snapshots[plan.Projection], cancellationToken).ConfigureAwait(false);
                 if (output.Proof is not { } selected || !ValidProgress(identity, plan, selected, head.HeadSequence)
                     || selected.Selection.MessageId != head.HeadMessageId || selected.Selection.BatchId != head.HeadMessageId
-                    || plan.ReplayEvents is not null && selected.Selection.ReceiptProjectionName != "rebuild")
+                    || plan.ReplayEvents is not null && !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(selected.Selection.ReceiptProjectionName))
                     return new(true, false, reason = output.ReasonCode ?? "delivery_reconciliation_required");
                 verifiedOwners.Add(plan.Projection, selected);
             }

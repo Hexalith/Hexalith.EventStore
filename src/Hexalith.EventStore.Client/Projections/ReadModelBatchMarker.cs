@@ -59,7 +59,7 @@ internal sealed class ReadModelBatchMarker {
             || IsUtcTerminalTime(marker.TerminalTimeUtc)) ? marker : null;
     }
 
-    private static bool IsUtcTerminalTime(string? value)
+    internal static bool IsUtcTerminalTime(string? value)
         => value is not null && (value.EndsWith('Z') || value.EndsWith("+00:00", StringComparison.Ordinal))
             && DateTimeOffset.TryParseExact(value,
                 ["yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'",
@@ -67,7 +67,7 @@ internal sealed class ReadModelBatchMarker {
                 CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset timestamp)
             && timestamp.Offset == TimeSpan.Zero;
 
-    private static bool HasDuplicateProperties(JsonElement value)
+    internal static bool HasDuplicateProperties(JsonElement value)
     {
         if (value.ValueKind == JsonValueKind.Object)
         {

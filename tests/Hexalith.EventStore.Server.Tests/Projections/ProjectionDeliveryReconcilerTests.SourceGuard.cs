@@ -13,8 +13,10 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public partial class ProjectionDeliveryReconcilerTests
 {
-    [Fact]
-    public async Task SourceGuardQualification_CompletedSameCheckpointRebuildRehydratesOnlyTheNewSelectedReceiptAndIdleBinding()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SourceGuardQualification_CompletedSameCheckpointRebuildRehydratesOnlyTheNewSelectedReceiptAndIdleBinding(bool contentFree)
     {
         using GuardedTailProductionHarness fixture = await GuardedTailProductionHarness.CreateAsync(3, 3,
             handlerSemantics: "full-replay-v1").ConfigureAwait(true);
@@ -26,6 +28,7 @@ public partial class ProjectionDeliveryReconcilerTests
         byte[] writer = fixture.Backend.ByteStoreValue(ProjectionDeliveryStateKeys.WriterProtocol);
         fixture.Clock.SetUtcNow(original.UpdatedAt.AddMinutes(1));
 
+        fixture.Handlers.Single().ContentFreeRebuildCompletion = contentFree;
         await fixture.CompleteOperatorRebuildAsync("rebuilt-generation-2").ConfigureAwait(true);
         using ProjectionDeliveryCostScope cost = ProjectionDeliveryCostDiagnostics.BeginScope();
         ProjectionSourceGuardQualificationResult result = await fixture.CreateQualification(store).QualifyAsync(fixture.Identity,
@@ -43,7 +46,7 @@ public partial class ProjectionDeliveryReconcilerTests
         hydrated.IdleBindingPending.ShouldBeNull();
         hydrated.GuardEvidence.ShouldNotBeNull().Source.ShouldBe(original.GuardEvidence!.Source);
         hydrated.GuardEvidence.OwnerProof.Selection.OwnerGeneration.ShouldBe("rebuilt-generation-2");
-        hydrated.GuardEvidence.OwnerProof.Selection.ReceiptProjectionName.ShouldBe("rebuild");
+        hydrated.GuardEvidence.OwnerProof.Selection.ReceiptProjectionName.ShouldBe(contentFree ? ReadModelRebuildCompletion.ReceiptProjectionName : "rebuild");
         hydrated.GuardEvidence.IdleLifecycleRevision.ShouldBeGreaterThan(original.GuardEvidence.IdleLifecycleRevision);
         hydrated.UpdatedAt.ShouldBeGreaterThan(original.UpdatedAt);
         fixture.Backend.ByteStoreValue(ProjectionDeliveryStateKeys.GetSourceGuardKey(fixture.Identity, route)).ShouldBe(marker);

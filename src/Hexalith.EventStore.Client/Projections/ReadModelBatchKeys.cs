@@ -13,6 +13,9 @@ internal static class ReadModelBatchKeys {
     /// <returns>The marker key.</returns>
     public static string MarkerKey(string scopeHash) => MarkerPrefix + scopeHash;
 
+    /// <summary>Builds the isolated namespace that can contain terminal metadata only.</summary>
+    internal static string CompletionKey(string scopeHash) => "hxrmb:v1:completion:" + scopeHash;
+
     /// <summary>Builds the private immutable legacy compensation evidence key in the owning batch namespace.</summary>
     internal static string ScratchCompensationKey(string scopeHash) => MarkerKey(scopeHash) + ":scratch-compensation";
 

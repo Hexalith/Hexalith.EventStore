@@ -17,6 +17,7 @@ internal sealed class GuardedTailProjectionHandler(string projection, DaprReadMo
     public string? ReplayOwnerIdentityOverride { get; set; }
     public string? ReplayMessageIdOverride { get; set; }
     public bool UnconditionalReplay { get; set; }
+    public bool ContentFreeRebuildCompletion { get; set; }
     public bool RequireRebuildBeforeEffects { get; set; }
     public int RebuildPaddingBytes { get; set; }
     public List<string> Dispatches { get; } = [];
@@ -35,7 +36,7 @@ internal sealed class GuardedTailProjectionHandler(string projection, DaprReadMo
         var selected = new ProjectionOwnerSelection(1, identity.TenantId, identity.Domain, identity.AggregateId,
             projection, ReplayOwnerIdentityOverride ?? "owner-1", ReplayGenerationOverride ?? request.RebuildOwnerGenerations?.GetValueOrDefault(projection) ?? "generation-1",
             last.SequenceNumber, ReplayMessageIdOverride ?? last.MessageId!, operationId, "replay-version-" + last.SequenceNumber)
-        { ReceiptProjectionName = "rebuild" };
+        { ReceiptProjectionName = ContentFreeRebuildCompletion ? ReadModelRebuildCompletion.ReceiptProjectionName : "rebuild" };
         var model = new GuardedTailModel(request.Events.Length, selected.FreshnessVersion, selected)
             { Padding = RebuildPaddingBytes == 0 ? null : new string('p', RebuildPaddingBytes), NativeSourceProof = request.VerifiedNativeSourceProof };
         return new DomainProjectionRebuildPlan("models",

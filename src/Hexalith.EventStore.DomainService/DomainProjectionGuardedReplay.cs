@@ -98,7 +98,7 @@ internal static class DomainProjectionGuardedReplay
                 if (recovered.OwnerSelections is not { Count: > 0 } owners || owners.Count != request.ProjectionTypes.Count
                     || owners.Any(owner => !request.ProjectionTypes.Contains(owner.ProjectionName, StringComparer.Ordinal)
                         || owner.AppliedSequence != request.Request.RebuildSourceHeadSequence || owner.MessageId != request.DispatchId
-                        || owner.BatchId != request.DispatchId || owner.ReceiptProjectionName != "rebuild")
+                        || owner.BatchId != request.DispatchId || !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(owner.ReceiptProjectionName))
                     || !ProjectionReplayTransportContext.MatchesOwners(request.Request, owners))
                     throw new ArgumentException("The original plan does not match its admitted owners.");
             }
@@ -208,7 +208,7 @@ internal static class DomainProjectionGuardedReplay
         {
             if (!completed.ProjectionTypes.Contains(owner.ProjectionName, StringComparer.Ordinal)
                 || owner.AppliedSequence != completed.Request.RebuildSourceHeadSequence || owner.MessageId != completed.DispatchId
-                || owner.BatchId != completed.DispatchId || owner.ReceiptProjectionName != "rebuild") return false;
+                || owner.BatchId != completed.DispatchId || !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(owner.ReceiptProjectionName)) return false;
             DomainProjectionOwnerProofRegistration enrolled = services.GetServices<DomainProjectionOwnerProofRegistration>()
                 .Single(item => item.Domain == completed.Request.Domain && item.ProjectionType == owner.ProjectionName);
             ProjectionOwnerProofResult selected = await proofs.ReadOwnerProofAsync(new(completed.Request.TenantId, completed.Request.Domain,

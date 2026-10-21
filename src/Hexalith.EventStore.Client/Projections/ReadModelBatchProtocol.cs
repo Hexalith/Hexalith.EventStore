@@ -231,6 +231,7 @@ internal sealed partial class ReadModelBatchProtocol {
         _fingerprint = ReadModelBatchFingerprint.ComputeFromManifest(manifest);
         _scopeHash = batch.Scope.ComputeScopeHash();
         _markerKey = ReadModelBatchKeys.MarkerKey(_scopeHash);
+        ValidateCompletionProofBudget();
         ReadModelBatchStoreProfile profile = _options.GetProfile(batch.Scope.StoreName);
         _profileName = profile.ToString();
         return profile;
@@ -1326,8 +1327,9 @@ internal sealed partial class ReadModelBatchProtocol {
             if (marker?.RecoveryAnchor is not null)
                 return await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
         }
-        return _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery
+        bool reclaimed = _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery
             || await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
+        return reclaimed && await PublishCompletionProofAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Reclaims only the same terminal receipt's original immutable manifest; uncertainty retains owned retry work.</summary>

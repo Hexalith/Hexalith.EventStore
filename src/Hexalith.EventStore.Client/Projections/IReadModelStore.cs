@@ -35,6 +35,21 @@ public interface IReadModelStore {
         CancellationToken cancellationToken = default)
         where TValue : class;
 
+    /// <summary>Reads only a physically compacted value, without reading any batch marker or manifest.</summary>
+    /// <typeparam name="TValue">The isolated content-free read-model type.</typeparam>
+    /// <param name="storeName">The DAPR state-store component.</param>
+    /// <param name="key">The isolated read-model key.</param>
+    /// <param name="cancellationToken">The caller cancellation token.</param>
+    /// <returns>The compacted value or an absent entry.</returns>
+    /// <exception cref="InvalidOperationException">The key contains an incomplete envelope.</exception>
+    /// <exception cref="NotSupportedException">The store has not implemented this strict read capability.</exception>
+    Task<ReadModelEntry<TValue>> GetCompactedAsync<TValue>(string storeName, string key,
+        CancellationToken cancellationToken = default) where TValue : class
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new NotSupportedException("Content-free compacted reads require explicit store support.");
+    }
+
     /// <summary>
     /// Saves a read-model value unconditionally (last-write-wins).
     /// </summary>

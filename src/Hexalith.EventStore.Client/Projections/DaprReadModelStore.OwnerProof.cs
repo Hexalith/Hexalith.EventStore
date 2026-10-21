@@ -36,14 +36,22 @@ public sealed partial class DaprReadModelStore : IReadModelOwnerProofStore
             if (selection is null || selection.TenantId != identity.TenantId || selection.Domain != identity.Domain
                 || selection.AggregateId != identity.AggregateId || selection.ProjectionName != request.ProjectionName)
                 return new(null, "delivery_reconciliation_required", reads, bytes);
+            bool completionOnly = selection.ReceiptProjectionName == ReadModelRebuildCompletion.ReceiptProjectionName;
+            if (selection.ReceiptProjectionName is not null && !ReadModelOwnerSelectionMetadata.IsRebuildReceipt(selection.ReceiptProjectionName))
+                return new(null, "delivery_reconciliation_required", reads, bytes);
             var scope = new ReadModelBatchScope(binding.StoreName, identity.TenantId, identity.Domain,
-                identity.AggregateId, selection.ReceiptProjectionName ?? request.ProjectionName, selection.BatchId);
+                identity.AggregateId, completionOnly ? "rebuild" : selection.ReceiptProjectionName ?? request.ProjectionName, selection.BatchId);
             reads++;
-            RawStateEntry receiptRow = await accessor.ReadAsync(scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
+            // The completion discriminator never falls back to the potentially rich marker, even when
+            // evidence is absent or corrupt. Old readers hash the discriminator as a different scope.
+            RawStateEntry receiptRow = await accessor.ReadAsync(completionOnly
+                ? ReadModelBatchKeys.CompletionKey(scope.ComputeScopeHash()) : scope.ComputeMarkerKey(), cancellationToken).ConfigureAwait(false);
             bytes += receiptRow.Value.Length;
             if (!receiptRow.Exists)
                 return new(null, "delivery_reconciliation_required", reads, bytes);
-            ReadModelBatchMarker? receipt = ReadModelBatchMarker.ReadBoundedProof(receiptRow.Value);
+            ReadModelBatchMarker? receipt = completionOnly
+                ? ReadModelBatchCompletionProof.Read(receiptRow.Value)?.ToReceipt()
+                : ReadModelBatchMarker.ReadBoundedProof(receiptRow.Value);
             if (receipt is null || receipt.Version != 1 || receipt.Status != ReadModelBatchMarkerStatus.Completed
                 || receipt.ScopeHash != scope.ComputeScopeHash() || receipt.BatchId != selection.BatchId
                 || !ReadModelOwnerSelectionMetadata.ReceiptContains(receipt, selection) || receipt.Operations is not null

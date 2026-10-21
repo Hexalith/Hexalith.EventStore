@@ -4,6 +4,7 @@ using System.Text;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
+using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Server.Actors;
@@ -131,7 +132,7 @@ internal sealed partial class ProjectionSourceGuardQualification(IProjectionDeli
             if (original.SchemaVersion == 2 && (original.GuardEvidenceVersion != 1
                 || original.GuardEvidence is not { } previous || previous.Source != evidence.Source
                 || previous.CatalogFingerprint != evidence.CatalogFingerprint || previous.HandlerSemantics != evidence.HandlerSemantics
-                || previous != evidence && (owner.Selection.ReceiptProjectionName != "rebuild"
+                || previous != evidence && (!ReadModelOwnerSelectionMetadata.IsRebuildReceipt(owner.Selection.ReceiptProjectionName)
                     || owner.Selection.OwnerIdentity != previous.OwnerProof.Selection.OwnerIdentity
                     || idle.Revision <= previous.IdleLifecycleRevision)))
                 return new(false, false, "source_conflict", preserved);

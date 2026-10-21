@@ -86,6 +86,19 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     }
 
     /// <inheritdoc/>
+    public async Task<ReadModelEntry<TValue>> GetCompactedAsync<TValue>(string storeName, string key,
+        CancellationToken cancellationToken = default) where TValue : class
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var accessor = new InMemoryBatchAccessor(this, storeName);
+        RawStateEntry entry = await ReadModelBatchProtocol.ReadCompactedAsync(accessor, key,
+            cancellationToken, BatchOptions.TimeProvider).ConfigureAwait(false);
+        return entry.Exists ? new(Deserialize<TValue>(entry.Value), entry.ETag) { ExpiresAtUtc = entry.ExpiresAtUtc }
+            : new(null, null) { ExpiresAtUtc = entry.ExpiresAtUtc };
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ReadModelBulkEntry<TValue>>> GetManyAsync<TValue>(
         string storeName,
         IReadOnlyList<string> keys,

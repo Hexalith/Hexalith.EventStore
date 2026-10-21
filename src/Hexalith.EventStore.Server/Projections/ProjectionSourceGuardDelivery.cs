@@ -73,7 +73,7 @@ internal sealed partial class ProjectionSourceGuardDelivery(INamedProjectionRout
             ProjectionOwnerProofResult selected = await ownerProof.ReadAsync(identity, catalog, projection, idle, cancellationToken).ConfigureAwait(false);
             if (selected.Proof != binding.OwnerProof || !ProjectionDeliveryIdempotencyCoordinator.ValidOwnerProof(binding.OwnerProof, identity, projection)
                 || await source.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != first) return false;
-            if (binding.OwnerProof.Selection.ReceiptProjectionName == "rebuild") owners.Add(binding.OwnerProof);
+            if (ReadModelOwnerSelectionMetadata.IsRebuildReceipt(binding.OwnerProof.Selection.ReceiptProjectionName)) owners.Add(binding.OwnerProof);
         }
         foreach (IGrouping<string, ProjectionOwnerProof> group in owners.GroupBy(static owner => owner.Selection.BatchId, StringComparer.Ordinal))
             if (transport is null || !await transport.ReclaimReplayAsync(catalog,

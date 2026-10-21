@@ -42,4 +42,8 @@ public enum ReadModelBatchPhase {
     RecoveryManifestReclaimed,
     /// <summary>After the final opted-in envelope is compacted/restored.</summary>
     RecoveryAnchorCompacted,
+    /// <summary>After verified compaction and manifest reclamation, before isolated completion publication.</summary>
+    BeforeCompletionProof,
+    /// <summary>After isolated completion publication and exact read-back.</summary>
+    AfterCompletionProof,
 }
