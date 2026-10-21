@@ -2,7 +2,10 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json.Serialization;
 
+using Dapr;
 using Dapr.Client;
+
+using Grpc.Core;
 
 using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
 using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
@@ -31,6 +34,8 @@ public sealed partial class AdminOperationalIndexHostedService(
     ILogger<AdminOperationalIndexHostedService> logger,
     IOptions<ProjectionDispatchOptions>? projectionDispatchOptions = null) : IHostedService, INamedProjectionCatalogRefresher {
     private const string MetadataMethodName = "admin/operational-index-metadata";
+    private const int MaxStartupWriteAttempts = 30;
+    private static readonly TimeSpan StartupWriteRetryDelay = TimeSpan.FromSeconds(1);
     private readonly string _stateStoreName = commandStatusOptions.Value.StateStoreName;
     private readonly ConcurrentDictionary<string, DomainServiceRegistration> _knownRegistrations = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _refreshStopping = new();
@@ -41,27 +46,45 @@ public sealed partial class AdminOperationalIndexHostedService(
         foreach (DomainServiceRegistration registration in domainServiceOptions.Value.Registrations.Values) {
             TrackRegistration(registration);
         }
-        _refreshTask = RefreshLoopAsync(_refreshStopping.Token);
-
         AdminOperationalIndexMetadataLoadResult metadataLoad = await LoadDomainMetadataAsync(cancellationToken).ConfigureAwait(false);
         AdminOperationalIndexSnapshot snapshot = BuildSnapshot(
             metadataLoad.Metadata,
             domainServiceOptions.Value.Registrations.Values,
             projectionOptions.Value,
             metadataLoad.BoundMetadata);
-        int recoveredQueryTypeDomains = await WriteQueryTypeIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
-        if (metadataLoad.HasFailures) {
-            if (recoveredQueryTypeDomains > 0) {
-                Log.QueryTypeIndexesWrittenDespitePartialFailure(logger, recoveredQueryTypeDomains);
-            }
+        for (int attempt = 1; ; attempt++) {
+            cancellationToken.ThrowIfCancellationRequested();
+            try {
+                int recoveredQueryTypeDomains = await WriteQueryTypeIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                if (metadataLoad.HasFailures) {
+                    if (recoveredQueryTypeDomains > 0) {
+                        Log.QueryTypeIndexesWrittenDespitePartialFailure(logger, recoveredQueryTypeDomains);
+                    }
 
-            Log.MetadataWriteSkipped(logger);
-            return;
+                    Log.MetadataWriteSkipped(logger);
+                }
+                else {
+                    // Replay the same derived snapshot if startup races the sidecar. Publication of
+                    // the in-memory routes still follows every successful state-store write.
+                    await WriteProjectionIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                    await WriteTypeCatalogIndexesAsync(snapshot, cancellationToken).ConfigureAwait(false);
+                    namedProjectionRouteCatalog.Replace(metadataLoad.NamedProjectionRoutes);
+                }
+
+                break;
+            }
+            catch (DaprException ex) when (ex.InnerException is RpcException { StatusCode: StatusCode.Unavailable }) {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (attempt >= MaxStartupWriteAttempts) {
+                    throw;
+                }
+
+                Log.StartupWriteRetry(logger, attempt, MaxStartupWriteAttempts);
+                await Task.Delay(StartupWriteRetryDelay, cancellationToken).ConfigureAwait(false);
+            }
         }
 
-        await WriteProjectionIndexAsync(snapshot, cancellationToken).ConfigureAwait(false);
-        await WriteTypeCatalogIndexesAsync(snapshot, cancellationToken).ConfigureAwait(false);
-        namedProjectionRouteCatalog.Replace(metadataLoad.NamedProjectionRoutes);
+        _refreshTask = RefreshLoopAsync(_refreshStopping.Token);
     }
 
     /// <inheritdoc/>
@@ -673,6 +696,12 @@ public sealed partial class AdminOperationalIndexHostedService(
             Level = LogLevel.Information,
             Message = "Persisted handler query-type indexes for {DomainCount} domain(s) whose metadata loaded successfully while other domain metadata sources failed.")]
         public static partial void QueryTypeIndexesWrittenDespitePartialFailure(ILogger logger, int domainCount);
+
+        [LoggerMessage(
+            EventId = 6105,
+            Level = LogLevel.Warning,
+            Message = "Dapr is unavailable during admin index startup write attempt {Attempt}/{MaxAttempts}; retrying the same derived indexes.")]
+        public static partial void StartupWriteRetry(ILogger logger, int attempt, int maxAttempts);
     }
 }
 
