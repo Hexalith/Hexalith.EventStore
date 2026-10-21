@@ -382,8 +382,8 @@ public sealed class DeployedRuntimeParityClosureTests
         string root = FindRepositoryRoot();
         string[] patterns = ReadSignificantGitignorePatterns(root);
         patterns.Length.ShouldBeGreaterThanOrEqualTo(4);
-        patterns[^2].ShouldBe("!_bmad-output/**/evidence/**/packages/");
-        patterns[^1].ShouldBe("!_bmad-output/**/evidence/**/packages/*.nupkg");
+        patterns[^2].ShouldBe("!" + SelectedEvidenceRelativePath + "/packages/");
+        patterns[^1].ShouldBe("!" + SelectedEvidenceRelativePath + "/packages/*.nupkg");
         patterns.ShouldContain("*.nupkg");
         patterns.ShouldContain("!_bmad-output/**/evidence/**/[Ll]ogs/");
         patterns.ShouldContain("!_bmad-output/**/evidence/**/*.log");

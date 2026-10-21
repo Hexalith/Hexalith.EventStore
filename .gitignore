@@ -475,8 +475,8 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 # were never committed and would vanish on `git clean -xdf` (found in the Story 2.12 code review,
 # 2026-07-28). These negations must stay after the `[Ll]ogs/` and `*.log` rules they override —
 # the last matching pattern wins, and git cannot re-include a file whose parent directory is still
-# excluded, so the directory is re-included first. The evidence packages/ negations
-# are the final patterns so they win over the generated-evidence exclusions.
+# excluded, so the directory is re-included first. Only the selected Story 3.13
+# packet negations are final, so generated evidence packages stay ignored.
 #
 # Corrected 2026-07-28 (delta code review). The first version was both too narrow and too broad:
 #   too narrow — it matched only a lowercase `logs/` directory under `implementation-artifacts`, so
@@ -502,13 +502,13 @@ _bmad/render/
 # ignores the archives themselves. **/[Pp]ackages/* ignores children of a
 # packages/ directory, not the directory. Still re-include the directory first,
 # then the archives, because git cannot re-include a file whose parent directory
-# is excluded. The package negations are repeated after the generated-evidence
-# rules so final match keeps selected-packet archives tracked. Do not use
-# !…/logs/** — that re-included build nupkgs in 2026-07-28.
+# is excluded. Do not use !…/logs/** — that re-included build nupkgs in
+# 2026-07-28. Generated evidence packages stay ignored. The selected Story 3.13
+# packet is re-included after these rules.
 
 # Story 3.22: new generated evidence belongs in external storage. These rules
-# follow the legacy log negations. Package archive negations stay last so
-# selected-packet nupkgs remain tracked while other generated evidence stays ignored.
+# follow the legacy log negations. Final match ignores generated evidence
+# packages. The selected Story 3.13 packet negations come last.
 # Existing tracked evidence and source/snapshot baselines remain historical input.
 _bmad-output/**/evidence/**/*.zip
 _bmad-output/**/evidence/**/*.tar
@@ -546,5 +546,5 @@ _bmad-output/**/evidence/**/result.json
 _bmad-output/**/evidence/**/results.json
 _bmad-output/**/evidence/**/*-report.json
 _bmad-output/**/evidence/**/*-results.json
-!_bmad-output/**/evidence/**/packages/
-!_bmad-output/**/evidence/**/packages/*.nupkg
+!_bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/packages/
+!_bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/packages/*.nupkg
