@@ -7,6 +7,8 @@ import json
 import os
 import sys
 import subprocess
+import shutil
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -172,6 +174,8 @@ class DockerBoundary:
             elif '_proof' in args:
                 output = json.dumps(self.proof)
             elif '_inner' in args:
+                if hasattr(self, 'staged_root'):
+                    shutil.copytree(self.staged_root, self.root, ignore=shutil.ignore_patterns('owned-attempt-*'))
                 self.persist_private()
                 code = 2 if self.private_failure else 0
                 self.current = datetime(2026,10,14,0,0,32,tzinfo=timezone.utc)
@@ -229,6 +233,8 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
                    source_paths=()):
     """Persist producer output through real _run; no finalizer or importer replacement."""
     root = Path(root)
+    attempt = root / ('owned-attempt-' + uuid.uuid4().hex)
+    packet_root = attempt / 'packet'
     selected = root/'inputs.json'
     isolation.write_json(selected,context['inputs']['value'])
     selected_hash = preparation.digest(selected.read_bytes())
@@ -237,9 +243,13 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
     isolation.write_json(path,receipt)
     execution = json.loads((root/'execution.json').read_bytes())
     execution.update(schema='hexalith.p1r.executor.v1',started_utc='2026-10-14T00:00:00+00:00',
-        finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=selected_hash,receipts=[str(path)])
+        finished_utc='2026-10-14T00:00:31+00:00',errors=[],inputs_sha256=selected_hash,
+        receipts=[str(packet_root/'receipts'/path.name)])
     isolation.write_json(root/'execution.json',execution)
+    staged_root = root
+    root = packet_root
     boundary = DockerBoundary(root,receipt,context,private_failure,outer_failure,real_inner,mapped_bind,late_process)
+    boundary.staged_root = staged_root
     source = context['source_binding'].get('candidate_source')
     source_root = Path(source['repository']) if source is not None else None
     command = ['python3',str(preparation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(root),'--inputs',str(selected)]
@@ -251,7 +261,7 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
             mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
             mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
             mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):
-        worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',source_root=source_root)
+        worker = isolation.IsolatedRunner(attempt/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',source_root=source_root)
         boundary.worker = worker
         # Fixture executor timestamps are historical, so launch starts before them.
         original_run = boundary.run
@@ -265,4 +275,5 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
             else:
                 with mock.patch.object(qualification,'finalize_isolation_receipts',side_effect=finalize):
                     code = worker._run(command)
-    return code,worker,json.loads(path.read_bytes())
+    retained = root/'receipts'/(receipt['id']+'.json')
+    return code,worker,json.loads((retained if retained.exists() else path).read_bytes())

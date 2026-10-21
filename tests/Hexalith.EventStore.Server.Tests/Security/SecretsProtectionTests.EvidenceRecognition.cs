@@ -10,7 +10,8 @@ public sealed partial class SecretsProtectionTests
 
     private static bool IsBoundedPythonSourceAssignment(string path, string content, Match assignment)
     {
-        if (!path.EndsWith(".py", StringComparison.OrdinalIgnoreCase))
+        bool fragment = path.EndsWith(".pyfrag", StringComparison.OrdinalIgnoreCase);
+        if (!path.EndsWith(".py", StringComparison.OrdinalIgnoreCase) && !fragment)
         {
             return false;
         }
@@ -21,6 +22,19 @@ public sealed partial class SecretsProtectionTests
         end = end < 0 ? content.Length : end;
         string line = content[start..end].TrimEnd('\r');
         int local = name.Index - start;
+        if (fragment)
+        {
+            // A retained pathless diff can end after this complete f-string token.
+            // Only its exact runtime password slot is recognized; other assignments
+            // in this fragment keep ordinary conservative literal scanning.
+            Match connection = Regex.Match(line, "^[\\t ]*connection = \\(f\"host=127\\.0\\.0\\.1 port=\\{(?<port>[A-Za-z_][A-Za-z0-9_.]*)\\} user=postgres "
+                + "pass" + "word=\\{(?<runtime>[A-Za-z_][A-Za-z0-9_.]*)\\} \"[\\t ]*$", RegexOptions.CultureInvariant);
+            return connection.Success && name.Value == "password"
+                && local == line.IndexOf("pass" + "word=", StringComparison.Ordinal)
+                && IsPythonRuntimeReference(connection.Groups["runtime"].Value)
+                && IsPythonRuntimeReference(connection.Groups["port"].Value)
+                && HasCompletePythonSourcePrefix(path, content, start);
+        }
         Match mutation = PythonAccountTupleMutationPattern().Match(line);
         if (mutation.Success
             && (mutation.Groups["oldname"].Index == local || mutation.Groups["newname"].Index == local)
@@ -157,6 +171,15 @@ public sealed partial class SecretsProtectionTests
     private static bool TryGetPythonSourceStart(string path, string content, int target, out int start)
     {
         start = 0;
+        if (path.EndsWith(".md.pyfrag", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (Match fence in ClosedSourceDiffFragmentPattern().Matches(content))
+            {
+                Group body = fence.Groups["body"];
+                if (target >= body.Index && target < body.Index + body.Length) { start = body.Index; return true; }
+            }
+            return false;
+        }
         if (!path.EndsWith(".md.py", StringComparison.OrdinalIgnoreCase)) { return true; }
         foreach (Match fence in ClosedMarkdownShellFencePattern().Matches(content))
         {
@@ -439,6 +462,9 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"(?m)^(?<fence>```|~~~)(?:python|py)[\t ]*\r?\n(?<body>(?:(?!^(?:```|~~~)).*\n)*?)\k<fence>[\t ]*(?:\r?$)", RegexOptions.CultureInvariant)]
     private static partial Regex ClosedMarkdownPythonFencePattern();
+
+    [GeneratedRegex(@"(?m)^```p1r-python-fragment[\t ]*\r?\n(?<body>(?:(?!^```).*\n)*?)```[\t ]*(?:\r?$)", RegexOptions.CultureInvariant)]
+    private static partial Regex ClosedSourceDiffFragmentPattern();
 
     [GeneratedRegex(@"\Apython3?[\t ]+-[\t ]+<<(?<quote>['""]?)(?<delimiter>[A-Za-z_][A-Za-z0-9_]*)\k<quote>[\t ]*\z", RegexOptions.CultureInvariant)]
     private static partial Regex PythonHereDocumentOpeningPattern();

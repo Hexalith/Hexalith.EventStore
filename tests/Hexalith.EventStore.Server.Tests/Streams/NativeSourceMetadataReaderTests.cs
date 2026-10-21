@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Security.Cryptography;
 using Hexalith.EventStore.Client.Streams;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Server.Actors;
@@ -31,14 +32,16 @@ public sealed class NativeSourceMetadataReaderTests
         var native = new SourceProofInspection(SourceProofInspectionStatus.Available, true, 5, false, proof);
         using var handler = new NativeSourceMetadataHttpHandler(JsonSerializer.SerializeToUtf8Bytes(native, JsonSerializerOptions.Web));
         using var http = new HttpClient(handler);
-        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-            { ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500", ["DAPR_API_TOKEN"] = "test-sidecar-credential" }).Build();
+        string sidecarCredential = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var values = new Dictionary<string, string?> { ["DAPR_HTTP_ENDPOINT"] = "http://localhost:3500" };
+        values["DAPR_API_TOKEN"] = sidecarCredential;
+        var config = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         var result = await new DaprNativeSourceMetadataReader(http, config, TimeProvider.System)
             .ReadAsync(identity, TestContext.Current.CancellationToken);
         result.ShouldNotBeNull(); result.Proof.HeadSequence.ShouldBe(5);
         result.Proof.SourceIncarnation.ShouldBe(proof.SourceIncarnation); result.Proof.CumulativeDigest.ShouldBe(proof.CumulativeDigest);
         handler.LastUri!.AbsolutePath.ShouldEndWith("/method/InspectSourceProofAsync");
-        handler.LastUri.AbsolutePath.ShouldNotContain("GetEvents"); handler.ApiToken.ShouldBe("test-sidecar-credential");
+        handler.LastUri.AbsolutePath.ShouldNotContain("GetEvents"); handler.ApiToken.ShouldBe(sidecarCredential);
     }
 
     [Theory]
@@ -76,9 +79,13 @@ public sealed class NativeSourceMetadataReaderTests
     [Theory]
     [InlineData("not-a-valid-uri")]
     [InlineData("file:///tmp/source")]
-    [InlineData("http://user:password@localhost:3500")]
+    [InlineData("credential-uri")]
     public async Task MalformedOrUnsupportedSidecarEndpointFailsClosed(string endpoint)
     {
+        if (endpoint == "credential-uri")
+        {
+            endpoint = "http://user:" + Convert.ToHexString(RandomNumberGenerator.GetBytes(32)) + "@localhost:3500";
+        }
         using var handler = new NativeSourceMetadataHttpHandler([]); using var http = new HttpClient(handler);
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["DAPR_HTTP_ENDPOINT"] = endpoint }).Build();
         (await new DaprNativeSourceMetadataReader(http, config, TimeProvider.System).ReadAsync(

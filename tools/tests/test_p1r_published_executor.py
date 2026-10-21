@@ -1142,7 +1142,9 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
         except ImportError:
             from tools.tests.test_p1r_published_qualification import restore_receipt
         receipt,context = self.import_fixture(scope='operational')
-        root = Path(self.temporary.name)
+        proof = receipt['execution_evidence']['isolation']
+        root = Path(proof['execution']['path']).parent
+        wrapper = Path(proof['wrapper']['path']).parent
         restore = restore_receipt(scope='operational')
         cleanup = restore['cleanup']
         for value in (restore,cleanup):
@@ -1171,7 +1173,7 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
         execution = json.loads((root/'execution.json').read_bytes())
         execution['receipts'].extend(paths)
         executor.write_json(root/'execution.json',execution)
-        qualification.finalize_isolation_receipts(root,root/'wrapper',context['inputs']['value'])
+        qualification.finalize_isolation_receipts(root,wrapper,context['inputs']['value'])
         cleanup,restore = (json.loads(Path(path).read_bytes()) for path in paths)
         self.assertEqual(restore['cleanup'],cleanup)
         self.assertEqual(qualification.receipt_outcome(restore,context)[2]['execution'],'passed')
@@ -3092,6 +3094,114 @@ class ReviewedExecutorSummaryTests(unittest.TestCase):
             self.assertEqual(summary['outcome']['exit_code'],2)
             self.assertEqual(summary['files'],0)
 
+    def testActualCliAdmissionFailureNeverExportsForeignPacketOrSibling(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            packet, outer = root/'packet', root/'packet-isolation'
+            packet.mkdir();outer.mkdir()
+            originals = {packet/'private-control.txt':('packet-private-'+uuid.uuid4().hex).encode(),
+                outer/'private-sibling.txt':('sibling-private-'+uuid.uuid4().hex).encode()}
+            for path,data in originals.items():path.write_bytes(data)
+            inputs = root/'inputs.json';inputs.write_text('{}')
+            blocked = root/'bin';blocked.mkdir()
+            marker = root/'docker-called'
+            docker = blocked/'docker';docker.write_text("#!/bin/sh\n: > '"+str(marker)+"'\nexit 99\n");docker.chmod(0o700)
+            env = dict(os.environ,PATH=str(blocked),HEXALITH_P1R_EVIDENCE_ROOT=str(root/'diagnostics'))
+            env.pop('HEXALITH_P1R_ISOLATION',None)
+            completed = subprocess.run([sys.executable,str(preparation.ROOT/'tools/p1r-published-executor.py'),
+                'run','--out',str(packet),'--inputs',str(inputs),'--summary-out',str(root/'summary')],
+                env=env,capture_output=True,timeout=30)
+            self.assertEqual(completed.returncode,2,completed.stderr.decode())
+            self.assertFalse(marker.exists())
+            summary = json.loads((root/'summary/summary.json').read_bytes())
+            self.assertEqual(summary['outcome']['status'],'failed')
+            self.assertEqual(summary['outcome']['exit_code'],2)
+            index = json.loads(storage.resolve(summary['complete_index'],summary['context'],{'kind':'complete-index'}))
+            self.assertEqual(index['files'],[])
+            for path,data in originals.items():self.assertEqual(path.read_bytes(),data)
+            for path in root.rglob('*'):
+                if path.is_file() and path not in originals:
+                    retained = path.read_bytes()
+                    for foreign,data in originals.items():
+                        self.assertNotIn(foreign.name.encode(),retained,str(path))
+                        self.assertNotIn(data,retained,str(path))
+            for foreign,data in originals.items():
+                self.assertNotIn(foreign.name.encode(),completed.stdout+completed.stderr)
+                self.assertNotIn(data,completed.stdout+completed.stderr)
+
+    def testRequestedSummaryKeepsOwnedPartialExecutorWithoutAdoptingForeignSibling(self):
+        import p1r_isolation as isolation
+        for existing in (False,True):
+            with self.subTest(existing=existing),tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                packet,outer = root/'packet',root/'packet-isolation'
+                outer.mkdir();foreign=outer/'foreign-sibling.txt';data=uuid.uuid4().hex.encode();foreign.write_bytes(data)
+                if existing:
+                    packet.mkdir();(packet/'foreign-packet.txt').write_bytes(data)
+                planning=root/'planning.json';planning.write_text('{"candidate_proposed":{}}')
+                cli=self.cli()
+                with mock.patch.object(cli,'validate_observation_inputs'), \
+                        mock.patch.object(storage,'default_root',return_value=root/'diagnostics'), \
+                        mock.patch.object(isolation,'private_proof',return_value={}), \
+                        mock.patch.object(preparation,'source_binding',side_effect=preparation.InvalidPacket('owned initialization control')), \
+                        mock.patch.object(executor.Executor,'run',side_effect=AssertionError('Docker blocked')), \
+                        mock.patch.object(executor.Executor,'check_sources'), \
+                        mock.patch.dict(os.environ,{'HEXALITH_P1R_ISOLATION':'a'*32},clear=True), \
+                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(cli.main(['observe','--out',str(packet),'--planning-observations',str(planning),
+                        '--selection-reference','control','--summary-out',str(root/'summary')]),2)
+                summary=json.loads((root/'summary/summary.json').read_bytes())
+                index=json.loads(storage.resolve(summary['complete_index'],summary['context'],{'kind':'complete-index'}))
+                paths={row['path'] for row in index['files']}
+                self.assertEqual(summary['outcome']['status'],'failed')
+                if existing:self.assertEqual(paths,set())
+                else:
+                    self.assertIn('execution.json',paths)
+                    self.assertGreaterEqual(summary['outcome']['cleanup']['attempts'],4)
+                self.assertEqual(foreign.read_bytes(),data)
+                self.assertFalse(summary['isolation_proof'])
+                for path in root.rglob('*'):
+                    if path.is_file() and path not in (foreign,packet/'foreign-packet.txt'):
+                        self.assertNotIn(data,path.read_bytes(),str(path))
+                        self.assertNotIn(b'foreign-sibling.txt',path.read_bytes(),str(path))
+                        self.assertNotIn(b'foreign-packet.txt',path.read_bytes(),str(path))
+
+    def testRequestedSummaryKeepsPartialControllerCleanupAfterConstructorFailure(self):
+        for existing in (False,True):
+            with self.subTest(existing=existing),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary)
+                packet,outer=root/'attempt/packet',root/'attempt/packet-isolation'
+                data=uuid.uuid4().hex.encode()
+                if existing:
+                    packet.mkdir(parents=True);outer.mkdir()
+                    (packet/'foreign-packet.txt').write_bytes(data)
+                    (outer/'foreign-sibling.txt').write_bytes(data)
+                planning=root/'planning.json';planning.write_text('{}')
+                cli=self.cli()
+                with mock.patch.object(cli,'validate_observation_inputs'), \
+                        mock.patch.object(storage,'default_root',return_value=root/'diagnostics'), \
+                        mock.patch.object(subprocess,'check_output',return_value=b'tcp://rejected'), \
+                        mock.patch.object(subprocess,'run',side_effect=AssertionError('Docker blocked')), \
+                        mock.patch.dict(os.environ,{},clear=True), \
+                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(cli.main(['observe','--out',str(packet),
+                        '--planning-observations',str(planning),'--selection-reference','control',
+                        '--summary-out',str(root/'summary')]),2)
+                summary=json.loads((root/'summary/summary.json').read_bytes())
+                self.assertEqual(summary['outcome']['status'],'failed')
+                if not existing:
+                    self.assertGreater(summary['outcome']['cleanup']['attempts'],0)
+                    self.assertIn('isolation.json',summary['isolation_proof'])
+                else:
+                    self.assertEqual(summary['files'],0)
+                    self.assertFalse(summary['isolation_proof'])
+                    for path in root.rglob('*'):
+                        if path.is_file() and path not in (packet/'foreign-packet.txt',outer/'foreign-sibling.txt'):
+                            retained=path.read_bytes()
+                            self.assertNotIn(data,retained,str(path))
+                            self.assertNotIn(b'foreign-packet.txt',retained,str(path))
+                            self.assertNotIn(b'foreign-sibling.txt',retained,str(path))
+
     def testRequestedSummaryIncludesOuterCleanupFailureWithoutChildPacket(self):
         import p1r_isolation as isolation
         with tempfile.TemporaryDirectory() as temporary:
@@ -3102,9 +3212,12 @@ class ReviewedExecutorSummaryTests(unittest.TestCase):
                 'cleanup':[{'errors':['owned cleanup failed'],'remaining':['owned']}], 'command_stdout':''}
             preparation.write_json(outer/'isolation.json',result)
             store = storage.Store(root/'proof',storage.context('a'*32,preparation.ROOT))
-            runner = mock.Mock(output=outer,storage=store,result=result)
+            runner = mock.Mock(output=outer,storage=store,result=result,owns_attempt=True)
             runner.run.return_value = 2
-            with mock.patch.object(isolation,'IsolatedRunner',return_value=runner), \
+            class Runner:
+                def __new__(cls):return runner
+                def __init__(self,*args,**kwargs):pass
+            with mock.patch.object(isolation,'IsolatedRunner',Runner), \
                     mock.patch.object(cli := self.cli(),'validate_observation_inputs'), \
                     mock.patch.dict(os.environ,{},clear=True),contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(cli.main(['observe','--out',str(root/'packet'),'--planning-observations',str(planning),

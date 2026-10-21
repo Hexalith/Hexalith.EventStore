@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Net;
 using System.Text.Json;
 using Hexalith.EventStore.Contracts.Queries;
@@ -265,7 +266,7 @@ public sealed partial class WorkloadBindingAuthorityTests
             case "wrong-audience": details = details with { Audience = "other" }; break;
             case "wrong-operation": details = details with { Operation = "gateway:query" }; break;
             case "wrong-client": client = "other"; break;
-            case "wrong-secret": secret = new string('x', 64); break;
+            case "wrong-secret": secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)); break;
             case "revoked": _options.Grants[0].Revoked = true; break;
             case "expired": _options.Grants[0].ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1); break;
         }

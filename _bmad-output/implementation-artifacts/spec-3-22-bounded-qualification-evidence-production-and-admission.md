@@ -2,11 +2,11 @@
 title: 'Story 3.22: Bounded qualification evidence production and admission'
 type: 'refactor'
 created: '2026-10-21'
-status: 'in-review'
+status: 'done'
 approved: '2026-10-21'
 approval: 'approve and stop'
 route: 'dispatch'
-review_loop_iteration: 0
+review_loop_iteration: 1
 baseline_commit: 'd01c6756c769dcbd8d4d5fff472d07339ebeb22a'
 context: []
 ---
@@ -57,7 +57,16 @@ context: []
 - [x] `.github/workflows/p1r-qualification.yml`, `tools/p1r-published-consumers/README.md` — enroll controls; document capture, materialization, retention, budgets and P5.
 - [x] Resume: profile and remove the full-scanner bottleneck with dynamically balanced, bounded concurrency and equivalent assignment discovery; retain complete tracked-file coverage and credential rejection controls.
 - [x] Resume: distinguish exactly enrolled frozen MSBuild captures from active build inputs; enforce unchanged membership/bytes, reject activation, retain adjacent-file package authority, and transport the full inventory without OS argument truncation.
-- [ ] Required full secrets gate passes. The closing run completes within its budget but retains 168 findings; the exact result and remaining dependencies are recorded below.
+- [x] Continuation: `SecretsProtectionTests` source recognition — decode structurally bound source captures and nested tool-output JSON before applying language-aware rules; retain complete scanning of every scalar, strict bounds, seal failures, original line reporting and adjacent credential rejection. Recognize `.cs.source` language snapshots without excluding their contents. Add bounded Go runtime-value and Python keyword/dictionary/interpolated-URI recognition only where the complete context proves nonliteral material; injection controls must reject literal substitutions and adjacent credentials. Keep the locked broker qualifier and all frozen evidence byte-identical.
+- [x] Continuation: `WorkloadBindingAuthorityTests.QueryAuthority.cs`, `NativeSourceMetadataReaderTests.cs` — generate current credential fixtures at runtime. Preserve the frozen wrong-secret fixture through a narrowly proven negative-test context (complete wrong-secret branch and denial assertion), with controls for changed literals, removed/changed assertions, unrelated contexts and adjacent credentials. Preserve existing general deterministic-literal rejection and all original seals; do not add directory/hash allowlists.
+- [x] Continuation: `ContractsPackageDependencyTests.FrozenEvidence.cs` — carry MSBuild task Properties/RemoveProperties into traversed bridge projects, inspect wildcard task inputs and item transforms, and retain each imported target's owning MSBuildThisFileDirectory. Add focused reproductions of all four reported activation bypasses. Keep the exact frozen inventory, supported mode/framework evaluation and structured argument transport.
+- [x] Continuation: `tools/p1r_isolation.py` — mount a fresh invocation-owned evidence directory rather than an arbitrary output parent. Preserve `--out` packet identity, same-path host/container storage, strict command grammar, socket exclusion and owned cleanup. Add a submitted-mount control using a parent with an unrelated private file.
+- [x] Continuation: `tools/p1r_evidence_storage.py` — select only the root command journal for attempt totals; reject unsupported representations and nonboolean holds before object publication; bound file enumeration/index accumulation before retaining excessive metadata. Add round-trip and overflow controls, including a nested commands.json.
+- [x] Continuation: `tools/tests/test_p1r_published_qualification.py` — cover the production default-verifier branch through package creation and independent validation with only subprocess execution stubbed. Verify external signature references, enclosing context and refusal after payload deletion.
+- [x] Continuation: `tools/p1r-published-consumers/README.md` — update the runnable repair example and containment guidance for admitted external attempt directories.
+- [x] Required full secrets gate passes after final review corrections: **982 passed**, zero failures/skips, 546.739 seconds, no timeout. All previous failures remain preserved below and are superseded by this closing result.
+
+- [x] Final review corrections: close all ten demonstrated boundary defects and subsequent parent findings below; add focused regressions, preserve all passing controls and exact history, then repeat affected full gates.
 
 **Acceptance Criteria:**
 
@@ -73,7 +82,13 @@ context: []
 
 ## Spec Change Log
 
+- 2026-10-21 continuation, review iteration 1: executable MSBuild edge reproductions, arbitrary parent mount exposure and unbounded index enumeration exposed missing non-frozen constraints. Added concrete continuation tasks and context-sensitive scanner work needed by the existing full-gate acceptance criterion. Avoid silently skipped build destinations, broad parent mounts and unconditional source exemptions. KEEP all preservation constraints in Continuation design and preservation; frozen intent is unchanged.
+
 - 2026-10-21: implementation authorization was explicitly granted in the session after the missing external preflight was reported. Frozen intent remains unchanged. Added the boundary-measurement CLI to delivered-file scanner enrollment after review required its reader integration.
+
+## Continuation design and preservation
+
+The resumed review found missing executable-edge and external-directory constraints in the non-frozen plan. Re-derive those internal seams and the still-incomplete scanner recognition using the continuation tasks above. The inherited implementation is already committed at `b6d1807035fba2e485c8587ac3581d669d1036e5`; there are no changes from this continuation to revert. Preserve that existing work rather than reverting user-owned commits. KEEP: all existing storage/reader contracts, deduplication, budgets, legacy validation, privacy suppression, full scanner inventory/grammar, exact historical bytes and seals, frozen MSBuild enrollment, passing Python/Contracts controls and concurrent Story 2.13 work. All diagnostics and complete logs remain outside the checkout. Keep implementation changes unstaged through verification; the explicitly invoked build workflow requires a final local commit after the repository commit-message preflight. No remote Git mutation, dependency update, external authority or historical retirement is authorized.
 
 ## Review Triage Log
 
@@ -122,6 +137,35 @@ Every finding is recorded before grouping. All accepted corrections use existing
 | Resume parent verification: OS argument ceiling | medium / patch | The complete exact inventory exceeds the Linux per-argument limit. Transport the same deduplicated paths as structured JSON through both PowerShell process boundaries, outside the checkout; the full authority gate verifies enforcement and membership. |
 
 Survivors group into restore order, boundary context, boundary classification, stable observation context, atomic publication, cache validation, summary outcome aggregation, private storage, mixed schema dispatch, anchored summary export, aggregate materialization bounds, manifest budget parity, output suppression and mount verification. All route to focused patches. The prior historical Contracts authority failure is superseded by the passing resumed full gate recorded below.
+
+
+| Finding | Verdict / route | Evidence |
+| --- | --- | --- |
+| Continuation blind 1: task property activation | medium / bad_spec | Task traversal copies parent properties and discards the MSBuild task Properties/RemoveProperties; independently reproduced conditional bridge activation. Add explicit effective task-property handling to the continuation plan. |
+| Continuation blind 2: wildcard task activation | medium / bad_spec | The executable-input walk skips wildcard paths; a matching child can import frozen evidence. Require bounded expansion and inspect every admitted destination. |
+| Continuation blind 3: item-transform activation | medium / bad_spec | Unresolved item transforms are silently skipped although the executable task reaches archived projects. Require evaluated transform handling or an explicit refusal. |
+| Continuation blind 4: imported target directory | medium / bad_spec | MSBuildThisFileDirectory is overwritten with the top-level project directory, losing imported-target provenance. Preserve defining-file context and cover the alias reproduction. |
+| Continuation blind 5: incomplete secrets gate | false / reject | The spec already records the gate failure and leaves both story and sprint incomplete; no successful result is claimed. Passing this existing acceptance gate remains required work. |
+| Continuation blind 6: arbitrary external parent mount | high / bad_spec | initialize selects output.parent and sdk_arguments binds that complete tree; existing admission rejects sockets/mounts but does not isolate unrelated home-directory credentials. Require a fresh owned directory. |
+| Continuation blind 7: nested command journal | medium / patch | export_attempt selects every basename commands.json and replaces totals. Restrict totals to the root journal. |
+| Continuation blind 8: producer/reader field mismatch | medium / patch | retain accepts arbitrary representation and Store accepts nonboolean hold; resolve rejects both. Validate producer fields before publishing proof. |
+| Continuation blind 9: inventory work before bounds | medium / bad_spec | sorted(rglob) and the files list grow before the final index storage budget runs. Enforce incremental enumeration and index bounds. |
+| Continuation blind 10: stale runnable example | medium / patch | The repair example selects checkout-contained output while current admission rejects it. Correct the example and its containment explanation. |
+| Continuation edge 1: task property activation | medium / bad_spec | Independent reflection reproduction passes the guard while SelectFrozen=true activates Captured.props. Shares blind 1's root cause. |
+| Continuation verification gap 1: production signature lane | medium / patch | Package-lane tests inject synthetic_verifier, while default_verifier externalizes output; direct reader tests cannot catch lost enclosing context in package_outcome. Add the filed production-path round-trip and missing-payload control. |
+
+| Continuation parent 1: escaped credential role | high / patch | Decoding then masking an arbitrary escaped JSON string could lose its credential field name. Keep credential-valued outer strings visible; the nested-scalar rejection control passes. |
+| Continuation parent 2: dictionary literal operands | high / patch | General dictionary interpolation could admit a literal password prefix/suffix. Restrict recognition to complete broker endpoint/password-slot grammar; literal and adjacency controls pass. |
+| Continuation parent 3: negative proof markers | medium / patch | Substring markers could recognize a commented or string-contained denial. Bind the actual executable method/branch/denial and reject both forged contexts. |
+| Continuation parent 4: skipped transform metadata | medium / patch | Unresolved custom transforms still reached continue while a comment claimed refusal. Explicit custom-transform refusal and a positive frozen-activation control now run. |
+| Continuation parent 5: frozen repair-driver example | medium / patch | The frozen driver's line 25 still requires checkout-contained attempts. Retire its runnable example and show current external synthetic verification without editing that driver. |
+| Continuation parent 6: diff language substitution | medium / patch | A hunk marker alone initially granted Python context to unrelated output. Derive framed language from paths; pathless fragments receive only exact runtime credential-slot recognition. Shell/unknown/forged/mixed controls pass. |
+| Continuation parent 7: pre-decoding exact seals | medium / patch | Two inherited scanner controls failed because transformed outer JSON reached original exact-seal recognition. Apply original recognizers before decoding; all 971 focused controls then passed. |
+| Continuation parent 8: ordinary Aspire item filter | medium / patch | The full Contracts gate ran 102 tests with one failure on WithMetadataValue in the real AppHost. Preserve a conservative superset of its underlying references and effective batching metadata, with benign and frozen-bridge controls; retain the failed full-run log. |
+| Continuation parent 9: metadata casing | medium / patch | A case-insensitive match fed a case-sensitive built-in metadata switch, so lowercase fullpath could erase a bridge. Normalize metadata names and cover a lowercase frozen bridge. |
+| Continuation parent 10: decoded checkout boolean | medium / patch | The full secrets gate ran 978 tests with one finding in a newly decoded historical workflow's persist-credentials false option. Recognize only a complete bounded checkout-with boolean control; generated literal/suffix, unrelated-context and adjacent-credential controls protect rejection. Retain the failed full-run log. |
+| Continuation parent 11: original seal mutation | medium / patch | The first checkout-boolean correction let a changed, already sealed workflow bypass its original byte requirement. Exclude original sealed-file identities from that new semantic recognition. All 978 scanner controls then passed, including the original exact-byte mutation controls; retain the stopped failing full-run record. |
+| Continuation parent 12: unknown transform erasure | medium / patch | Replacing unknown transform metadata with an empty string could lose a nested-only bridge. Preserve unresolved metadata and refuse it; retain explicit OriginalItemSpec child/default/attribute overrides before conservative identity fallback. Both nested-bridge controls and all 41 focused frozen-input controls pass. |
 
 ## Resumed verification work
 
@@ -182,3 +226,93 @@ The four deterministic fixtures comprise three current test assignments and one 
 All 35,581 tracked historical evidence files retain their original raw hashes and membership. The new 984-member MSBuild inventory binds original paths/bytes at resumed HEAD `f4d29263bd9d22dd432a6a464ee145e57eff3acd`; previous seals are untouched. Frozen intent remains byte-identical. No historical evidence, approvals or pins were rewritten; no dependency updates, staging, commits, pushes or Story 3.23 work occurred.
 
 All resumed review findings were individually triaged above and corrected. Story status remains **in-review**, and sprint status remains **in-progress**, because the full secrets gate is still failed. The prior session authorization continues to authorize this implementation; the absent external Story 9.1 receipt and actual preflight FAIL remain unchanged. Diagnostics confer no qualification, readiness, publication or enduring acceptance authority.
+
+
+## Continuation verification results
+
+Current full logs and exact command records are outside the checkout at `/tmp/story-3-22-completion-22sche_s/`. Each run record binds its argv, working directory, timing, exit, timeout disposition and complete-log SHA-256. Prior failures above and their original logs remain preserved. These results concern local implementation verification only.
+
+- Both test projects build in Debug with local project references using the previously recorded exact build commands, `--no-restore -m:1`; both exit 0 with zero warnings/errors. The last Server build is `server-build-seal-final.json`; final Contracts build evidence is `/tmp/story-3-22-unresolved-transform-build-complete.log`.
+- The same ten exact Python commands recorded above pass **540 test executions**: storage 33 in each of normal and optimized mode; executor 215; published qualification 70; isolation 43; hardening 29 in each mode; preparation 54; corrections 31; registration 3. `python-verification-summary.json` binds every command and complete log.
+- The affected credential fixtures pass **101 tests**, zero failures/skips, with `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*WorkloadBindingAuthorityTests*' -class '*NativeSourceMetadataReaderTests*'`; `credential-fixtures.json` records the exact command.
+- All **978 scanner controls** pass, zero failures/skips, with the full SecretsProtectionTests class filter excluding only `TrackedReusableContent_DoesNotContainUsableSecrets`; `secrets-all-controls-final.json` records the exact command. This includes original seals, transformed scalar/diff contents, adjacent credentials and generated-literal substitutions.
+- An intermediate full Contracts run passes **107 tests** in 563.217 seconds (`contracts-full-corrected.json`). The final guard additionally passes **41 focused controls** in 33.283 seconds (`/tmp/story-3-22-unresolved-transform-focused-complete.log`). These were intermediate controls; the completed full-gate results below supersede their pending state.
+- `matrix-audit.json` maps all six frozen matrix rows to 13 covering storage tests that ran in both normal and optimized suites. It includes complete raw/replacement-decoded proof, UTF-8 bounds, unavailable/corrupt/expired/context-substituted refusal, legacy and mixed-schema rules, destination substitution, and the 5,116-command/large-inventory budget.
+- `historical-after-final.json` verifies all **35,581** tracked historical evidence files retain exact raw bytes and membership. Frozen intent is byte-identical. No historical evidence, approvals, selections, digest pins, dependency versions or Git history were changed by this continuation.
+
+- Required full secrets gate: `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SecretsProtectionTests*'` exits 0 with **979 passed**, zero failures/skips, no timeout; `secrets-full-final.json` and `.log` retain the complete record. This supersedes the historical 168 findings and the continuation's decoded-workflow/byte-seal failures without changing their retained evidence.
+- Required full Contracts gate: `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ContractsPackageDependencyTests*'` exits 0 with **109 passed**, zero failures/skips, in 535.635 seconds, no timeout; `contracts-full-final.json` and `.log` retain the complete record. Actual AppHost evaluation also passes both supported modes without executing targets (`/tmp/story-3-22-unresolved-transform-apphost-complete.log`).
+- All implementation tasks and six frozen matrix rows are verified. Required full gates pass; story enters final independent review. The inherited Story 9.1 preflight FAIL and absent external receipt remain factual records under the existing session authorization. P5 rollout, Story 3.23 retirement and durable acceptance storage remain separately owned.
+
+
+## Final review triage
+
+All three required layers completed before triage. Every filed outcome below was verified against the cited implementation and complete external reproductions in `/tmp/story322-blind-probe-ra3jftco/confirmed-reproductions.json`; all 14 reproduction log hashes were checked. The four executable-edge controls each report guard success followed by actual execution of synthetic frozen input. No shared assemblies or historical evidence were changed by the reviewers.
+
+| Finding | Verdict / route | Verified evidence and smallest correction |
+| --- | --- | --- |
+| Final blind 1: property-function task destination | medium / patch | The unresolved-expression branch skips a custom Projects property function; the actual synthetic target reaches the frozen import. Refuse unproven custom executable destinations using the existing defining-file classification. |
+| Final blind 2: task-item AdditionalProperties | medium / patch | Raw item metadata is enrolled but FrozenTaskProperties reads only task attributes; actual MSBuild applies the item's AdditionalProperties. Carry that existing effective-property metadata into the existing child variants. |
+| Final blind 3: escaped task properties | medium / patch | The bridge sees literal tr%75e in inspection while actual MSBuild decodes true. Decode the existing task-property protocol correctly or explicitly refuse unsupported escaped controls before traversal. |
+| Final blind 4: direct Exec build invocation | medium / patch | The executable-edge selection omits Exec Command; the direct archived project invocation passes inspection and executes. Apply the existing frozen-path/refusal guard to this demonstrated direct build route without introducing a shell interpreter. |
+| Final blind 5: escaped JSON credential name | high / patch | The JSON reader decodes the property name but never scans that decoded name with its scalar value; the plain-key positive control rejects the same value. Preserve the decoded credential role and original outer line. |
+| Final blind 6: self-declared C# capture | high / patch | A valid content digest proves bytes, not the claimed language; JSON credential content labeled Program.cs bypasses the colon-assignment check and is masked outside. Ensure structured JSON keeps its credential semantics regardless of a self-declared source extension. |
+| Final blind 7: Go raw string | high / patch | C# lexical state does not recognize Go backticks, so literal text within a Go raw string receives a runtime-field exemption. Restrict the Go runtime exemption to real Go code, including raw-string handling. |
+| Final blind 8: standalone initialization summary | medium / patch | IsolatedRunner construction occurs before summary handling. The refused endpoint retains isolation failure/cleanup but omits the requested bounded summary. Add the existing failure-summary behavior to this entry point and preserve ownership/privacy on rejected destinations. |
+| Final blind 9: nested inventory schema | medium / patch | The common reader returns decoded inventory contents without visiting nested schema markers; an unsupported nested reference is returned unchanged. Validate nested references with bounded recursion/cycle handling under the same operation budget. |
+| Final blind 10: mixed signature excerpt marker | medium / patch | signature_verified dispatches only on output_ref/output_schema, so valid legacy output plus output_excerpt is accepted. Use the common complete marker set and reject this mixed boundary form. |
+| Final edge 1: property-function task destination | medium / patch | Independently confirmed custom property-function bridge activation at the same unresolved-expression branch. Shares final blind 1's correction after independent verification. |
+| Final edge 2: escaped JSON credential name | high / patch | Independently confirmed the Unicode-escaped property-name bypass and the rejecting plain-key control. Shares final blind 5's correction after independent verification. |
+| Final edge 3: standalone initialization summary | medium / patch | Existing-parent admission raises before summary export, independently of the rejected-endpoint reproduction. Share final blind 8's correction and cover both admission states. |
+| Final verification other 1: standalone initialization summary | medium / patch | Verified constructor refusal occurs before export in main and that existing tests cover the separate published-executor entry point. Share final blind 8's correction, adding a real standalone CLI control with Docker blocked. |
+
+The fourteen individually classified findings form ten correction groups: unproven task destinations, task-item properties, task-property escaping, direct Exec activation, decoded credential names, self-declared source language, Go raw-string context, initialization summary, nested reference validation, and signature marker dispatch. Each smallest correction remains in an existing private helper/entry point, introduces no public surface, and covers a reproduced state. The captured intent and plan already require these refusals and preserved outcomes; no intent/spec loopback or historical rollback is needed. All groups route to focused patches in the same implementation agent; no findings are deferred.
+
+
+Parent verification of the final patches identified the following adjacent regressions before accepting the handoff. They share the existing private correction groups; none changes frozen intent or historical authority.
+
+| Finding | Verdict / route | Evidence and correction |
+| --- | --- | --- |
+| Final parent 1: interrupted summary exit | medium / patch | The new standalone failure handler initially mapped KeyboardInterrupt to 2 although initialization records 130. Preserve 130 and add an interrupted-initialization summary control; that focused control passes. |
+| Final parent 2: Exec expansion truncation | medium / patch | Direct Exec expansion took 257 values without refusing overflow, unlike the existing project-edge bound. Assert at most 256 before consuming values; the 258-alternative regression passes. |
+| Final parent 3: host separator in executable name | medium / patch | Actual AppHost evaluation encountered an Aspire RID helper invoking a quoted backslash dotnet exec path on Linux, parsed as a build destination. Normalize separators only for executable identity, preserve the non-build exec distinction, and cover it without executing SDK targets. |
+| Final parent 4: SDK reference annotations | medium / patch | The code-coverage target consumes SDK-generated AnnotatedProjects and nearest-framework metadata that raw source expansion cannot simulate. Map only the proven SDK reference protocol to a conservative actual/source reference union and inspect real child frameworks plus the outer context. Preserve custom additions and effective properties; no package-wide exemption is permitted. |
+| Final parent 5: package JSON identity | medium / patch | Post-review scanner controls ran 980 tests with one failure in PackageVersionExemption_IsLimitedToDependencyObjects. Appending .json to an existing package.json identity and ignoring its dependency-object context broke an existing public metadata rule. Preserve actual JSON identities and existing bounded dependency-object recognition alongside decoded-key rejection; retain the failing run record. |
+
+The final local commit is required by step-05 of the explicitly invoked bmad-build workflow, subject to the owning repository's pinned commitlint 21.1.0 and exact-message preflight. Earlier no-commit statements remain historical observations from those verification points; this finalization grants no push, merge, publication or qualification authority. The explicit candidate has passed the pinned local CLI (`commitlint-final.json`); preserve that validation evidence and revalidate any replacement.
+
+
+| Finding | Verdict / route | Evidence and correction |
+| --- | --- | --- |
+| Final parent 6: built-in batched item identity | medium / patch | The post-review full Contracts run has 126 tests, 125 passing and one refusal in Admin.Abstractions.Tests. Microsoft.Testing.Platform.MSBuild 2.5.1 batches the current project through `_ProjectToTestWithTFM` using `TargetFramework=%(_TargetFramework.Identity)` and declared TargetFrameworks. Resolve that built-in identity into separate bounded variants, preserving explicit metadata overrides and unknown custom-metadata refusal. |
+| Final parent 7: decoded key role grammar | medium / patch | The post-review full secrets run has 981 tests, 980 passing, with 30 findings in three unchanged files. Whole arbitrary property names were passed directly to IsCredentialName, broadening the original assignment-name grammar to slash-qualified file-count and Kubernetes reference keys. Require the original full assignment-name grammar before decoded credential-role recognition; keep all scalar/value scanning, escaped/plain parity and adjacent credential rejection. No path/hash exemption is permitted. |
+| Final parent 8: published CLI foreign failure summary | high / patch | An actual CLI run with invalid inputs, Docker blocked and an existing foreign output exited 2 but included `private-control.txt` in the complete summary index (`/tmp/story322-published-summary-boundary-l7hwukbq/probe-result.json`). Bind export to actual Executor/controller ownership, retain partially initialized owned attempts, and never infer ownership of a rejected packet or isolation sibling; this shares the standalone CLI ownership correction's root cause. |
+
+## Post-review closing verification
+
+The ten Python commands completed successfully again: **548 test executions**, including storage 36 in each mode and isolation 45. `post-review-python-verification-summary.json` binds every exact command and complete log. The subsequent published CLI ownership correction receives additional targeted verification below.
+
+All **980 scanner controls** excluding the full tracked scan pass (`/tmp/story322-review-fixes-scanner-controls-complete.log`). All **58 focused Contracts controls** pass (`/tmp/story322-review-fixes-contracts-focused-protocol.log`), and the actual AppHost passes both evaluation-only modes (`/tmp/story322-review-fixes-apphost-annotated.log`). These focused results do not replace the two required full gates.
+
+- `post-review-contracts-full.json`: exact full Contracts command above; **126 run, 125 passed, one failed**, no timeout, 252.571 seconds. The remaining built-in identity protocol correction is recorded as final parent 6.
+- `post-review-secrets-full.json`: exact full secrets command above; **981 run, 980 passed, one failed**, no timeout, 543.240 seconds. All 30 reported path/line findings are retained in the complete log; final parent 7 records their exact name-role root cause.
+- At those failed-run checkpoints, both required gates remained open. Keep the story in review and make no final commit until corrected full results pass. Previous green runs and all failures remain preserved as version-specific diagnostics.
+
+
+## Completion verification
+
+All closing diagnostics remain outside the checkout at `/tmp/story-3-22-completion-22sche_s/`. `verification-summary.json` records exact commands, exits, timings, log hashes and final source identities; earlier failures remain preserved.
+
+The corrected full gates both exit 0 without timeout: **982 secrets checks passed** in 546.739 seconds and **133 Contracts checks passed** in 729.585 seconds, with zero failures/skips (`closing-secrets-full.json` / `.log` and `closing-contracts-full.json` / `.log`). These runs cover the final C# sources. After the isolated published CLI ownership correction, all **58 additional Python checks** and the delivered-file secrets scan pass:
+
+| Exact command | Closing result | External log |
+| --- | --- | --- |
+| `PYTHONPATH=tools/tests:tools python3 -m unittest test_p1r_published_executor.ReviewedExecutorSummaryTests test_p1r_published_executor.SeparateRootExecutorTests test_p1r_evidence_storage.ReviewedStorageTests.testSummaryPreservesOuterCleanupLaneAndInitializationFailures` | 13 passed, 5.560 seconds | `closing-published-cli-ownership.log` |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_isolation.py` | 45 passed, 4.232 seconds | `closing-isolation-cli-routing.log` |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method '*CanonicalReconciliationDelivery*'` | One passed; final delivered files scanned | `closing-delivery-scan-after-cli.log` |
+
+The preceding ten Python commands passed **548 executions**, including both normal and optimized storage suites. The closing targeted checks cover every changed CLI constructor/routing seam, actual Docker-blocked foreign packet/sibling rejection, owned partial initialization and cleanup summaries. Both Debug/source builds passed with zero warnings/errors; the changed credential-fixture classes passed all 101 checks. No Release/package build or Aspire lifecycle operation was required.
+
+All three final review layers completed. Every finding was individually triaged and corrected; **nothing was deferred**. The matrix audit maps all six frozen scenarios to registered passing controls (`matrix-audit-closing.json`). All **35,581 historical paths/bytes are unchanged**, with no missing or added historical files (`historical-closing.json`); the frozen intent remains byte-identical (`frozen-intent-closing.json`). `git diff --check` passes.
+
+The exact local commit candidate passed the repository's pinned commitlint CLI: `node node_modules/@commitlint/cli/cli.js --config commitlint.config.mjs --edit /tmp/story-3-22-completion-22sche_s/commit-message.txt --verbose` (`commitlint-final.json` / `.log`). The invoked workflow requires a local commit; no push is performed. P5 rollout, Story 3.23 retirement, durable acceptance storage and external Story 9.1 authority remain separately owned, as required by frozen intent. These results establish implementation verification only and confer no qualification/readiness or publication authority.

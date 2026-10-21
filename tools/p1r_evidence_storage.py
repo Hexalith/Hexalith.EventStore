@@ -27,6 +27,9 @@ ATTEMPT_BYTES = 10 * 1024 * 1024
 READ_BYTES = 256 * 1024 * 1024
 MANIFEST_BYTES = 1024 * 1024
 CHUNK = 64 * 1024
+INDEX_ENTRIES = 65536
+INDEX_DEPTH = 128
+INDEX_BYTES = READ_BYTES
 OUTPUT_MARKERS = {"output_schema", "output_ref", "output_excerpt"}
 CONTEXT_KEYS = {"attempt", "repository", "source", "candidate", "inputs"}
 REF_KEYS = {"schema", "producer", "representation", "bytes", "sha256", "decoded_sha256", "context", "identity",
@@ -160,6 +163,7 @@ class Store:
     def __init__(self, root, enclosing, retention="diagnostic", hold=False):
         validate_context(enclosing)
         require(retention == "diagnostic", "local storage cannot confer durable acceptance")
+        require(type(hold) is bool, "artifact hold must be boolean")
         self.context = dict(enclosing)
         self.controller_uid = Path(enclosing["repository"]).stat().st_uid
         self.root = safe_directory(root, enclosing["repository"], create=True)
@@ -212,8 +216,9 @@ class Store:
             os.close(parent)
         return str(target)
 
-    def retain(self, data, identity, representation="raw-bytes"):
+    def _reference(self, data, identity, representation):
         require(isinstance(data, bytes) and len(data) <= READ_BYTES, "artifact exceeds capture budget")
+        require(representation in ("raw-bytes", "canonical-json"), "unsupported artifact representation")
         ref = {"schema": SCHEMA, "producer": PRODUCER, "representation": representation, "bytes": len(data),
                "sha256": digest(data), "decoded_sha256": decoded_digest(data),
                "context": dict(self.context), "identity": identity, "locator": str(self.root / "objects" / digest(data)),
@@ -221,9 +226,14 @@ class Store:
                "hold": self.hold}
         encoded = canonical(ref)
         require(len(encoded) <= MANIFEST_BYTES, "artifact manifest exceeds capture budget")
+        return {"artifact": ref, "manifest": str(self.root / "manifests" / digest(encoded)),
+                "manifest_sha256": digest(encoded)}, encoded
+
+    def retain(self, data, identity, representation="raw-bytes"):
+        reference, encoded = self._reference(data, identity, representation)
         self._put("objects", data)
-        manifest = self._put("manifests", encoded)
-        return {"artifact": ref, "manifest": manifest, "manifest_sha256": digest(encoded)}
+        self._put("manifests", encoded)
+        return reference
 
     def command(self, row, data):
         identity = {name: row[name] for name in COMMAND_FIELDS}
@@ -384,27 +394,46 @@ class _Materialization:
 def materialize(value, enclosing, *, io_limit=READ_BYTES, decoded_limit=READ_BYTES):
     """Verify once per physical payload and bound aggregate I/O and decoded bytes."""
     budget = _Materialization(io_limit, decoded_limit)
-    def visit(item):
-        if isinstance(item, list):
-            return [visit(child) for child in item]
-        if not isinstance(item, dict):
+    completed, active = {}, set()
+    remaining_nodes = 1_000_000
+    def visit(item, depth=0):
+        nonlocal remaining_nodes
+        remaining_nodes -= 1
+        require(depth <= 128 and remaining_nodes >= 0, "materialization traversal budget exceeded")
+        if not isinstance(item, (list, dict)):
             return item
+        identity = id(item)
+        require(identity not in active, "cyclic materialization reference")
+        if identity in completed:
+            return completed[identity]
+        active.add(identity)
+        try:
+            result = expand(item, depth)
+            completed[identity] = result
+            return result
+        finally:
+            active.remove(identity)
+    def expand(item, depth):
+        def child(value):
+            return visit(value, depth + 1)
+        if isinstance(item, list):
+            return [child(value) for value in item]
         if isinstance(item.get("schema"), str) and item["schema"].startswith("hexalith.p1r.json-reference"):
             require(set(item) == {"schema", "reference"} and item["schema"] == JSON_SCHEMA, "unsupported inventory schema")
             data = resolve(item["reference"], enclosing, {"kind": "inventory"}, _budget=budget)
             require(item["reference"]["artifact"]["representation"] == "canonical-json", "inventory representation differs")
-            return budget.parse(data)
+            return child(budget.parse(data))
         if "content_ref" in item:
             return {"path": item["path"], "sha256": item["sha256"],
                     "content": budget.text(preserved_bytes(item, enclosing, _budget=budget), "strict")}
         if "output_command" in item:
             require(set(item) == {"command", "output_command", "observation"}, "mixed recovery output form")
             return {"command": item["command"], "output": command_text(item["output_command"], enclosing, _budget=budget),
-                    "observation": visit(item["observation"])}
+                    "observation": child(item["observation"])}
         if OUTPUT_MARKERS.intersection(item):
             output = command_text(item, enclosing, _budget=budget)
-            return {**{key: visit(child) for key, child in item.items() if key not in OUTPUT_MARKERS}, "output": output}
-        result = {key: visit(child) for key, child in item.items() if key != "command_stdout_command"}
+            return {**{key: child(value) for key, value in item.items() if key not in OUTPUT_MARKERS}, "output": output}
+        result = {key: child(value) for key, value in item.items() if key != "command_stdout_command"}
         if "command_stdout_command" in item:
             require("command_stdout" not in item, "mixed isolation output form")
             result["command_stdout"] = command_text(item["command_stdout_command"], enclosing, _budget=budget)
@@ -452,6 +481,22 @@ def _write_summary(destination, encoded):
         os.close(parent)
 
 
+def _attempt_files(root, budget, depth=0):
+    """Enumerate incrementally: directory width, depth and the whole walk are bounded."""
+    require(depth <= INDEX_DEPTH, "attempt file enumeration exceeds depth budget")
+    try:
+        with os.scandir(root) as entries:
+            for entry in entries:
+                budget[0] += 1
+                require(budget[0] <= INDEX_ENTRIES, "attempt file enumeration exceeds entry budget")
+                if entry.is_dir(follow_symlinks=False):
+                    yield from _attempt_files(Path(entry.path), budget, depth + 1)
+                else:
+                    yield Path(entry.path)
+    except OSError as failure:
+        raise InvalidPacket("attempt file enumeration unavailable") from failure
+
+
 def export_attempt(packet, destination, store, *, isolation=None, exit_code=None, error=None):
     """Export one bounded outcome, including failed initialization and outer cleanup."""
     packet, destination = Path(packet).absolute(), Path(destination).absolute()
@@ -461,19 +506,24 @@ def export_attempt(packet, destination, store, *, isolation=None, exit_code=None
     receipts = {"total": 0, "passed": 0, "failed": 0, "assertions": {"attempted": 0, "passed": 0, "failed": 0}}
     cleanup = {"attempts": 0, "errors": 0, "remaining": 0}
     roots = [("", packet)] + ([("isolation/", Path(isolation).absolute())] if isolation is not None else [])
+    enumeration = [0]
+    index_bytes = len(canonical({"schema": "hexalith.p1r.complete-index.v1", "context": store.context, "files": []}))
     for prefix, root in roots:
         if not root.exists():
             continue
         require(root == root.resolve() and root.is_dir(), "attempt packet substituted")
-        for path in sorted(root.rglob("*")):
-            if path.is_dir() and not path.is_symlink():
-                continue
+        for path in _attempt_files(root, enumeration):
             data = bounded_file(path)
             total += len(data)
             name = prefix + path.relative_to(root).as_posix()
-            reference = store.retain(data, {"kind": "packet-file", "path": name})
-            files.append({"path": name, "bytes": len(data), "sha256": digest(data), "reference": reference})
-            if not prefix and path.name == "commands.json":
+            identity = {"kind": "packet-file", "path": name}
+            reference, _ = store._reference(data, identity, "raw-bytes")
+            entry = {"path": name, "bytes": len(data), "sha256": digest(data), "reference": reference}
+            index_bytes += len(canonical(entry)) + bool(files)
+            require(index_bytes <= INDEX_BYTES, "attempt complete index exceeds capture budget")
+            store.retain(data, identity)
+            files.append(entry)
+            if not prefix and path.parent == root and path.name == "commands.json":
                 rows = json.loads(data)
                 require(isinstance(rows, list), "invalid command journal export")
                 command_totals = {"total": len(rows), "succeeded": sum(row.get("exit_code") == 0 for row in rows),
@@ -500,7 +550,9 @@ def export_attempt(packet, destination, store, *, isolation=None, exit_code=None
                         cleanup["attempts"] += 1
                         cleanup["errors"] += len(attempt.get("errors", []))
                         cleanup["remaining"] += len(attempt.get("remaining", []))
+    files.sort(key=lambda row: row["path"])
     index = canonical({"schema": "hexalith.p1r.complete-index.v1", "context": store.context, "files": files})
+    require(len(index) <= INDEX_BYTES, "attempt complete index exceeds capture budget")
     execution, outer = documents.get("execution.json", {}), documents.get("isolation.json", {})
     errors = int(error is not None) + sum(len(value.get("errors", [])) for value in documents.values())
     observed_exit = exit_code if exit_code is not None else outer.get("command_exit_code")
