@@ -89,13 +89,41 @@ internal static class ReadModelBatchFingerprint {
     /// <summary>Computes the versioned fingerprint string from already-built canonical manifest bytes.</summary>
     /// <param name="manifest">The canonical manifest bytes.</param>
     /// <returns>A manifest-version-prefixed base64url SHA-256 digest.</returns>
-    public static string ComputeFromManifest(ReadOnlySpan<byte> manifest) {
+    /// <remarks>
+    /// A leading <c>v</c> of 1 or 2 selects the prefix. Bytes that are not a canonical object keep the
+    /// historical <c>v1:</c> prefix so retained corrupt manifests still have a stable digest. An explicit
+    /// version other than 1 or 2 is rejected.
+    /// </remarks>
+    public static string ComputeFromManifest(ReadOnlySpan<byte> manifest)
+    {
         byte[] digest = SHA256.HashData(manifest);
-        var reader = new Utf8JsonReader(manifest);
-        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject || !reader.Read()
-            || !reader.ValueTextEquals("v") || !reader.Read() || !reader.TryGetInt32(out int version)
-            || version is not (1 or 2)) throw new ArgumentException("Unsupported canonical manifest.", nameof(manifest));
-        return "v" + version + ":" + Base64Url(digest);
+        return "v" + ResolveManifestVersion(manifest) + ":" + Base64Url(digest);
+    }
+
+    private static int ResolveManifestVersion(ReadOnlySpan<byte> manifest)
+    {
+        try
+        {
+            var reader = new Utf8JsonReader(manifest);
+            if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject
+                || !reader.Read() || reader.TokenType != JsonTokenType.PropertyName
+                || !reader.ValueTextEquals("v"u8) || !reader.Read()
+                || !reader.TryGetInt32(out int version))
+            {
+                return Version;
+            }
+
+            if (version is not (1 or 2))
+            {
+                throw new ArgumentException("Unsupported canonical manifest.", nameof(manifest));
+            }
+
+            return version;
+        }
+        catch (JsonException)
+        {
+            return Version;
+        }
     }
 
     private static string Base64Url(byte[] bytes) =>
