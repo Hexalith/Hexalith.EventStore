@@ -1,0 +1,181 @@
+{
+  "commandsPassed": false,
+  "limitations": [
+    "Source Debug graph only; no package/release or Folders acceptance claim.",
+    "Dapr lane uses a test-only physical byte observer and process-exit injector around the unchanged production protocol."
+  ],
+  "measuredMaxima": {
+    "MaximumBatchOperations": 68,
+    "MaximumCanonicalBatchBytes": 110556,
+    "MaximumCheckpointValueBytes": 1696,
+    "MaximumIdentityValueBytes": 12302,
+    "MaximumOwnerManifestValueBytes": 1258,
+    "MaximumPhysicalValueBytes": 110556,
+    "PhysicalWrites": 153011
+  },
+  "qualificationErrors": [],
+  "qualified": false,
+  "skippedTests": [
+    {
+      "lane": "Client",
+      "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: False)",
+      "reason": null
+    },
+    {
+      "lane": "Client",
+      "name": "Hexalith.EventStore.Client.Tests.Projections.PendingBatchRecoveryLiveTests.RestartRecoversInterruptedConditionalBatchAndPreservesLaterSharedIndex(committed: True)",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_DecrementsPendingCounterAtMostOnce",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainMissingEventInRange_ActivityFailureReasonTagIsStableReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainEventCountMismatch_ActivityFailureReasonTagIsStableReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_UnregistersReminderAtMostOnce",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainPublishFailed_ActivityFailureReasonTagIsStableReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainEventCountMismatch_DoesNotDecrementPendingCommandCount",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainAnyClassifiedFailure_ActivityFailureReasonTagDoesNotContainRawExceptionMessage",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Actors.Dw1DrainHardeningAtddTests.DrainReminder_FiredTwiceForSameCorrelationId_PublishesAtMostOnce",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_AnyClassifiedFailure_DoesNotLogEventPayload",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_NullState_LogsProjectInvalidStateReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_HttpTimeoutWhileHostStillRunning_LogsProjectTimeoutAndDoesNotThrow",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_TwoOverlappingCallsForSameActorId_AreSerializedByKeyedSemaphore",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_Upstream5xx_LogsProjectUpstream5xxReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_HostTokenCancelled_PropagatesOperationCanceledException",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_EmptyProjectionType_LogsProjectInvalidProjectionTypeReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_InvalidCharset_LogsProjectInvalidCharsetReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_UnsupportedContentType_LogsProjectUnsupportedContentTypeReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_Upstream4xx_LogsProjectUpstream4xxReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_PersistedCheckpointAheadOfAggregateStream_DoesNotRegressCheckpoint",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_MalformedJson_LogsProjectMalformedJsonReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1ProjectionDeliveryAtddTests.DeliverProjection_PersistedCheckpointAheadOfAggregateStream_EmitsCheckpointDriftReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_TrackerCorruption_BoundedRetryWithinSameTick",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_TrackerCorruption_AdvancesNextDueToPreventTightRetryStorm",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_IdentityIndexCorruption_EmitsTrackerCorruptIdentityIndexReasonCode",
+      "reason": null
+    },
+    {
+      "lane": "Server",
+      "name": "Hexalith.EventStore.Server.Tests.Projections.Dw1PollerCorruptionAtddTests.PollOnceAsync_ScopeIndexCorruption_EmitsTrackerCorruptScopeIndexReasonCode",
+      "reason": null
+    }
+  ],
+  "suiteResults": {
+    "Client": {
+      "failed": 0,
+      "passed": 1936,
+      "skipped": 2,
+      "total": 1938
+    },
+    "DomainService": {
+      "failed": 1,
+      "passed": 1104,
+      "skipped": 0,
+      "total": 1105
+    },
+    "Server": {
+      "failed": 6,
+      "passed": 6218,
+      "skipped": 25,
+      "total": 6249
+    },
+    "live-process": {
+      "failed": 0,
+      "passed": 6,
+      "skipped": 0,
+      "total": 6
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-21T12:46:53.170142+00:00",
+  "run": "run-20261021T123423Z",
+  "reason": "Preserve passed full Client/Domain and runtime preflight; stop before Dapr to fix resumability of an old inline manifest persisted before session acceptance.",
+  "signals": [
+    {
+      "pid": 99165,
+      "role": "driver",
+      "result": "SIGTERM sent"
+    },
+    {
+      "pid": 77720,
+      "role": "active Server suite",
+      "result": "SIGTERM sent"
+    }
+  ]
+}

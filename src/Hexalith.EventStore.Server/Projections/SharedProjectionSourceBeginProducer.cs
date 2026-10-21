@@ -152,7 +152,7 @@ public sealed class SharedProjectionSourceBeginProducer(
                     IAggregateActor aggregate = proxies.CreateActorProxy<IAggregateActor>(
                         new ActorId(write.Identity.ActorId), actorOptions.Value.AggregateActorTypeName);
                     AggregateStreamMetadata head = await aggregate.GetStreamMetadataAsync().ConfigureAwait(false);
-                    if (head.CurrentSequence is < 0 or > 10_000 || head.Erased && head.Exists
+                    if (head.CurrentSequence < 0 || head.Erased && head.Exists
                         || !head.Exists && head.CurrentSequence != 0)
                         throw new InvalidOperationException("Pending source write has no valid durable actor head.");
                     if (!await roster.CompleteWriteAsync(write.Identity, write.IntentId).ConfigureAwait(false))
@@ -191,7 +191,7 @@ public sealed class SharedProjectionSourceBeginProducer(
                         IAggregateActor aggregate = proxies.CreateActorProxy<IAggregateActor>(
                             new ActorId(owner.ActorId), actorOptions.Value.AggregateActorTypeName);
                         AggregateStreamMetadata metadata = await aggregate.GetStreamMetadataAsync().ConfigureAwait(false);
-                        if (metadata.CurrentSequence is < 0 or > 10_000 || metadata.Erased && metadata.Exists
+                        if (metadata.CurrentSequence < 0 || metadata.Erased && metadata.Exists
                             || !metadata.Exists && metadata.CurrentSequence != 0)
                             throw new InvalidOperationException("Authoritative owner metadata is invalid.");
                         (string historyFingerprint, long lastPosition) = await ScanHistoryAsync(

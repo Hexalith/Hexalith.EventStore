@@ -1,0 +1,83 @@
+[
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 37.874,
+    "exitCode": 0,
+    "label": "build-Client",
+    "log": "build-Client.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 7.854,
+    "exitCode": 0,
+    "label": "build-DomainService",
+    "log": "build-DomainService.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 18.171,
+    "exitCode": 0,
+    "label": "build-Server",
+    "log": "build-Server.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 12.662,
+    "exitCode": 0,
+    "label": "build-Server.LiveSidecar",
+    "log": "build-Server.LiveSidecar.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/run-20261021T121338Z/tests-Client.xml"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 10.529,
+    "exitCode": 0,
+    "label": "tests-Client",
+    "log": "tests-Client.log"
+  }
+]

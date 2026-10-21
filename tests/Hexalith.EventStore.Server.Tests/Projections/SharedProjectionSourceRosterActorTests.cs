@@ -17,6 +17,35 @@ namespace Hexalith.EventStore.Server.Tests.Projections;
 
 public sealed class SharedProjectionSourceRosterActorTests
 {
+    [Theory]
+    [InlineData(10_001)]
+    [InlineData(32_769)]
+    public async Task AuthoritativeCaptureRetainsOriginalOwnerBeyondFormerSequenceBoundary(long count)
+    {
+        var scope = new SharedProjectionSourceScope("tenant-a", "timesheets");
+        var owner = new AggregateIdentity(scope.TenantId, scope.Domain, "original-owner");
+        var authority = Substitute.For<IInstallationCoverageAuthority>();
+        authority.AuthorizeInstallationAsync(Arg.Any<SharedProjectionSourceInstallation>()).Returns(true);
+        authority.AuthorizeCaptureAsync(scope, "large-owner").Returns(true);
+        var backend = new InMemoryStateManager();
+        var actor = new SharedProjectionSourceRosterActor(ActorHost.CreateForTest<SharedProjectionSourceRosterActor>(
+            new ActorTestOptions { ActorId = new(scope.ActorId) }), authority);
+        ActorStateManagerTestHelper.SetStateManager(actor, backend);
+        (await actor.InstallAsync(new(scope, "census", "writers", false, [owner]))).ShouldBeTrue();
+        _ = (await actor.BeginCaptureAsync(scope, "large-owner")).ShouldNotBeNull();
+        for (int partition = 0; partition < 64; partition++)
+        {
+            var page = (await actor.ReadPageAsync(scope, "large-owner", partition)).ShouldNotBeNull();
+            (await actor.WriteCapturedPageAsync(scope, "large-owner", partition,
+                page.Owners.Select(item => new SharedProjectionCapturedSourceOwner(item, count, count * 3, false)).ToArray())).ShouldBeTrue();
+            (await actor.ReadCapturedPageAsync(scope, "large-owner", partition))!.Owners
+                .Select(item => item.Sequence).ShouldBe(page.Owners.Select(_ => count));
+        }
+        (await actor.SealCaptureAsync(scope, "large-owner", "large-fingerprint", "shared-projection", "catalog-a")).ShouldBeTrue();
+        (await actor.ReadCaptureProgressAsync(scope, "large-owner"))!.AppendFenceHeld.ShouldBeTrue();
+        backend.CommittedState.ShouldNotBeEmpty();
+    }
+
     [Fact]
     public async Task UncertifiedInstallationAndWritesFailClosed()
     {

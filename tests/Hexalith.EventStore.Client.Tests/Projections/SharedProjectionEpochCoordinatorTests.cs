@@ -130,10 +130,12 @@ public sealed class SharedProjectionEpochCoordinatorTests {
             s_scope, "stale-operation", "widget-a", 8, capturedEventDigests: identities));
         bool raced = false;
         var newer = new SharedProjectionCheckpoint(9, [9], 9, identities[..32]);
-        store.ConcurrentWriteBeforeTrySave = () => {
-            store.ConcurrentWriteBeforeTrySave = null;
-            raced = true;
-            store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("widget-a"), newer);
+        store.BatchFaultHook = (phase, ordinal, _) => {
+            if (phase == ReadModelBatchPhase.AfterInstallOperation && ordinal == 0 && !raced) {
+                raced = true;
+                store.SeedRaw(s_scope.StoreName, s_scope.CheckpointKey("widget-a"), newer);
+            }
+            return Task.CompletedTask;
         };
 
         _ = await Should.ThrowAsync<InvalidOperationException>(() => coordinator.SeedCapturedOwnerSequenceAsync(

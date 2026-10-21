@@ -232,7 +232,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken)
     {
-        if (handler is not IAsyncDomainSharedProjectionStreamedOwnerHandler { EpochEnabled: true } partitioned)
+        if (handler is not IAsyncDomainSharedProjectionPartitionedRebuildHandler { EpochEnabled: true } partitioned)
             return Failure(DomainSharedProjectionRebuildPhase.Accumulating, ProjectionDispatchStatus.Failed,
                 0, DomainSharedProjectionRebuildFingerprint.EmptyInventory, null,
                 ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -381,7 +381,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
         ProjectionDispatchOptions options,
         CancellationToken cancellationToken)
     {
-        if (handler is not IAsyncDomainSharedProjectionStreamedOwnerHandler { EpochEnabled: true } streamed)
+        if (handler is not IAsyncDomainSharedProjectionPartitionedRebuildHandler { EpochEnabled: true } partitioned)
             return Failure(DomainSharedProjectionRebuildPhase.Accumulating, ProjectionDispatchStatus.Failed,
                 0, DomainSharedProjectionRebuildFingerprint.EmptyInventory, null,
                 ProjectionDispatchReasonCodes.UnsupportedCapability);
@@ -423,7 +423,36 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 request with { Action = DomainSharedProjectionRebuildAction.Accumulate, Events = [] },
                 options, cancellationToken).ConfigureAwait(false);
         }
-        return await AccumulateStreamedOwnerAsync(serviceProvider, sessionStore, streamed, state, request,
+        if (partitioned is IAsyncDomainSharedProjectionStreamedOwnerHandler streamed)
+            return await AccumulateStreamedOwnerAsync(serviceProvider, sessionStore, streamed, state, request,
+                options, cancellationToken).ConfigureAwait(false);
+
+        // The original buffered-owner contract accepts one admitted complete input. Transport
+        // remains bounded; only this legacy interface materializes its required input array.
+        int count = await ReadExpectedOwnerEventCountAsync(sessionStore, handler.RebuildStoreName,
+            sessionKey, ownerOrdinal, request.AggregateId!, request.PartCount!.Value, cancellationToken).ConfigureAwait(false);
+        if (count < 1 || count > options.MaxRebuildEventCount)
+            return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.MalformedOutcome);
+        var events = new ProjectionEventDto[count];
+        int copied = 0;
+        for (int part = 0; part < request.PartCount; part++)
+        {
+            var page = await ReadOwnerPartAsync(sessionStore, handler.RebuildStoreName, sessionKey,
+                ownerOrdinal, request.AggregateId!, part, cancellationToken).ConfigureAwait(false);
+            if (page.Length > events.Length - copied)
+                return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.MalformedOutcome);
+            page.CopyTo(events, copied); copied += page.Length;
+        }
+        if (copied != count || DomainSharedProjectionRebuildFingerprint.ComputeHistory(request.AggregateId!, false,
+            events, request.ExpectedHistoryFingerprint) != request.ExpectedHistoryFingerprint)
+            return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        ValidateEventHistory(events, options.MaxRebuildEventCount);
+        if (events.Any(static item => !string.IsNullOrWhiteSpace(item.MessageId))
+            && events.Where(static item => !string.IsNullOrWhiteSpace(item.MessageId)).Select(static item => item.MessageId)
+                .Distinct(StringComparer.Ordinal).Count() != events.Count(static item => !string.IsNullOrWhiteSpace(item.MessageId)))
+            return FromState(state, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.MalformedOutcome);
+        return await AccumulateAsync(serviceProvider, sessionStore, handler,
+            request with { Action = DomainSharedProjectionRebuildAction.Accumulate, Events = events },
             options, cancellationToken).ConfigureAwait(false);
     }
 
@@ -455,11 +484,31 @@ public static class DomainSharedProjectionRebuildDispatcher {
         if (!request.IsErased && (expectedCount < 1 || expectedCount > options.MaxRebuildEventCount))
             return FromState(observedState, ProjectionDispatchStatus.Failed,
                 ProjectionDispatchReasonCodes.MalformedOutcome);
-        var positions = new long[expectedCount];
-        var capturedDigests = new byte[checked(expectedCount * 32)];
-        var messageIds = new HashSet<string>(StringComparer.Ordinal);
+        DomainSharedProjectionStoredPartitionManifest? legacyManifest = (await sessionStore
+            .GetAsync<DomainSharedProjectionStoredPartitionManifest>(handler.RebuildStoreName,
+                PartitionManifestKey(sessionKey, ownerOrdinal), cancellationToken).ConfigureAwait(false)).Value;
+        if (legacyManifest?.CapturedIdentityReference is not null) legacyManifest = null;
+        if (legacyManifest is not null && (legacyManifest.LastSequenceNumber != expectedCount
+            || legacyManifest.CapturedEventDigests?.LongLength != (long)expectedCount * 32))
+            return FromState(observedState, ProjectionDispatchStatus.Failed,
+                ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        // An older reader may have persisted the immutable inline manifest before accepting
+        // this ordinal. Resume that evidence in place; only new owners install paged evidence.
+        SharedProjectionCapturedIdentityReference? reserved = legacyManifest is not null ? null
+            : await ReserveCapturedIdentityAsync(sessionStore, coordinator, scope, handler, identity,
+                sessionKey, ownerOrdinal, owner, expectedCount, options, cancellationToken).ConfigureAwait(false);
+        var positions = new List<long>(SharedProjectionCapturedIdentityStore.EntriesPerPage);
+        var digests = new List<byte>(SharedProjectionCapturedIdentityStore.EntriesPerPage * 32);
+        var messages = new List<string>(SharedProjectionCapturedIdentityStore.EntriesPerPage);
         long precedingPosition = 0;
         int eventCount = 0;
+        async Task FlushIdentityPageAsync()
+        {
+            if (positions.Count == 0 || reserved is null) return;
+            await coordinator.CapturedIdentities.AppendAsync(scope, identity.OperationId, reserved,
+                eventCount - positions.Count + 1, [.. positions], [.. digests], [.. messages], cancellationToken).ConfigureAwait(false);
+            positions.Clear(); digests.Clear(); messages.Clear();
+        }
         using (var fingerprint = new DomainSharedProjectionHistoryFingerprintBuilder(owner,
             request.IsErased, expectedCount, request.ExpectedHistoryFingerprint))
         {
@@ -473,57 +522,76 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 if (evolved.Events.Length != partEvents.Length)
                     throw new InvalidOperationException("Owner payload evolution changed the event count.");
                 byte[] partDigests = ComputeCapturedEventDigests(handler, identity, owner, evolved.Events);
-                if (partDigests.Length > capturedDigests.Length - eventCount * 32)
-                    return FromState(observedState, ProjectionDispatchStatus.Failed,
-                        ProjectionDispatchReasonCodes.MalformedOutcome);
-                partDigests.CopyTo(capturedDigests.AsSpan(eventCount * 32));
-                foreach (ProjectionEventDto item in partEvents)
+                for (int index = 0; index < partEvents.Length; index++)
                 {
-                    if (item is null || item.SequenceNumber != eventCount + 1
+                    ProjectionEventDto item = partEvents[index];
+                    if (item is null || item.SequenceNumber != eventCount + 1 || eventCount >= expectedCount
                         || item.GlobalPosition <= precedingPosition || item.Payload is null
-                        || string.IsNullOrWhiteSpace(item.EventTypeName)
-                        || string.IsNullOrWhiteSpace(item.SerializationFormat)
-                        || !string.IsNullOrWhiteSpace(item.MessageId)
-                        && !messageIds.Add(Convert.ToHexString(SHA256.HashData(
-                            Encoding.UTF8.GetBytes(item.MessageId)))))
-                        return FromState(observedState, ProjectionDispatchStatus.Failed,
-                            ProjectionDispatchReasonCodes.MalformedOutcome);
-                    positions[eventCount++] = item.GlobalPosition;
-                    precedingPosition = item.GlobalPosition;
-                    fingerprint.Append(item);
+                        || string.IsNullOrWhiteSpace(item.EventTypeName) || string.IsNullOrWhiteSpace(item.SerializationFormat))
+                        return FromState(observedState, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.MalformedOutcome);
+                    if (legacyManifest is not null)
+                    {
+                        if (!partDigests.AsSpan(index * 32, 32).SequenceEqual(
+                            legacyManifest.CapturedEventDigests.AsSpan(eventCount * 32, 32)))
+                            return FromState(observedState, ProjectionDispatchStatus.Failed,
+                                ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+                    }
+                    else
+                    {
+                        positions.Add(item.GlobalPosition);
+                        digests.AddRange(partDigests.AsSpan(index * 32, 32).ToArray());
+                        messages.Add(string.IsNullOrWhiteSpace(item.MessageId) ? string.Empty
+                            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(item.MessageId))));
+                    }
+                    eventCount++; precedingPosition = item.GlobalPosition; fingerprint.Append(item);
+                    if (positions.Count == SharedProjectionCapturedIdentityStore.EntriesPerPage)
+                        await FlushIdentityPageAsync().ConfigureAwait(false);
                 }
             }
-
             if (eventCount != expectedCount || fingerprint.Finish() != request.ExpectedHistoryFingerprint)
-                return FromState(observedState, ProjectionDispatchStatus.Failed,
-                    ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+                return FromState(observedState, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
         }
-
-        if (!request.IsErased && !await coordinator.MatchesCapturedOwnerPositionAsync(scope,
-            identity.OperationId, handler.SourceStreamKey(identity.TenantId, owner), positions,
-            cancellationToken).ConfigureAwait(false))
-            return FromState(observedState, ProjectionDispatchStatus.Failed,
-                ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        await FlushIdentityPageAsync().ConfigureAwait(false);
+        if (!await coordinator.MatchesCapturedOwnerLastPositionAsync(scope, identity.OperationId,
+            handler.SourceStreamKey(identity.TenantId, owner), precedingPosition, cancellationToken).ConfigureAwait(false))
+            return FromState(observedState, ProjectionDispatchStatus.Failed, ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        SharedProjectionCapturedIdentityReference? capturedReference = reserved is null ? null
+            : await coordinator.CapturedIdentities.SealAsync(scope, identity.OperationId, reserved,
+                cancellationToken).ConfigureAwait(false);
 
         int foldedEvents = 0;
         async IAsyncEnumerable<ProjectionEventDto> EvolvedEvents(
             [EnumeratorCancellation] CancellationToken token = default)
         {
+            SharedProjectionCapturedIdentityPage? retained = null;
             for (int partOrdinal = 0; partOrdinal < partCount; partOrdinal++)
             {
                 ProjectionEventDto[] partEvents = await ReadOwnerPartAsync(sessionStore,
-                    handler.RebuildStoreName, sessionKey, ownerOrdinal, owner, partOrdinal,
-                    token).ConfigureAwait(false);
+                    handler.RebuildStoreName, sessionKey, ownerOrdinal, owner, partOrdinal, token).ConfigureAwait(false);
                 ProjectionRequest evolved = DomainProjectionDispatcher.UpcastRequest(serviceProvider,
                     new ProjectionRequest(identity.TenantId, identity.Domain, owner, partEvents));
+                if (evolved.Events.Length != partEvents.Length)
+                    throw new InvalidOperationException("Owner payload evolution changed the event count.");
                 byte[] evolvedDigests = ComputeCapturedEventDigests(handler, identity, owner, evolved.Events);
-                if (!evolvedDigests.AsSpan().SequenceEqual(capturedDigests.AsSpan(foldedEvents * 32,
-                    evolvedDigests.Length)))
-                    throw new InvalidOperationException("Owner evolution changed across streamed fold passes.");
-                foreach (ProjectionEventDto item in evolved.Events)
+                for (int index = 0; index < evolved.Events.Length; index++)
                 {
-                    foldedEvents++;
-                    yield return item;
+                    ProjectionEventDto item = evolved.Events[index];
+                    long sequence = (long)foldedEvents + 1;
+                    bool matches;
+                    if (capturedReference is null)
+                        matches = item.SequenceNumber == sequence && evolvedDigests.AsSpan(index * 32, 32)
+                            .SequenceEqual(legacyManifest!.CapturedEventDigests.AsSpan(foldedEvents * 32, 32));
+                    else
+                    {
+                        if (retained is null || sequence >= retained.FirstSequence + retained.Count)
+                            retained = await coordinator.CapturedIdentities.ReadPageAsync(scope, capturedReference, sequence, token).ConfigureAwait(false);
+                        int offset = checked((int)(sequence - retained.FirstSequence));
+                        matches = item.SequenceNumber == sequence && item.GlobalPosition == retained.Positions[offset]
+                            && evolvedDigests.AsSpan(index * 32, 32).SequenceEqual(retained.Digests.AsSpan(offset * 32, 32));
+                    }
+                    if (!matches)
+                        throw new InvalidOperationException("Owner evolution changed across streamed fold passes.");
+                    foldedEvents++; yield return item;
                 }
             }
         }
@@ -580,7 +648,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
 
         var manifest = new DomainSharedProjectionStoredPartitionManifest(ownerOrdinal, owner,
             request.ExpectedHistoryFingerprint!, request.IsErased, [], expectedCount,
-            request.IsErased ? null : capturedDigests, partCount, chunkHashes.Count, [.. pageDigests]);
+            legacyManifest?.CapturedEventDigests, partCount, chunkHashes.Count, [.. pageDigests], capturedReference);
         for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++)
         {
             ReadModelEntry<DomainSharedProjectionRebuildSessionState> entry = await sessionStore
@@ -623,6 +691,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 || prior.Value.LastSequenceNumber != manifest.LastSequenceNumber
                 || prior.Value.TransportPartCount != manifest.TransportPartCount
                 || prior.Value.StreamedChunkCount != manifest.StreamedChunkCount
+                || prior.Value.CapturedIdentityReference != manifest.CapturedIdentityReference
                 || !(prior.Value.ChunkHashPageDigests ?? []).SequenceEqual(
                     manifest.ChunkHashPageDigests ?? [], StringComparer.Ordinal)
                 || !prior.Value.ChunkHashes.SequenceEqual(manifest.ChunkHashes, StringComparer.Ordinal)
@@ -636,7 +705,8 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 InventoryFingerprint = DomainSharedProjectionRebuildFingerprint.AppendInventory(
                     state.InventoryFingerprint, ownerOrdinal, manifest.HistoryFingerprint),
                 LastAggregateId = owner,
-                PendingScratchChunkCount = -1
+                PendingScratchChunkCount = -1,
+                PendingCapturedIdentityReference = null
             };
             if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey,
                 updated, entry.ETag, cancellationToken).ConfigureAwait(false))
@@ -997,16 +1067,20 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 continue;
             }
 
-            var manifest = new DomainSharedProjectionStoredPartitionManifest(
-                ordinal, request.AggregateId!, historyFingerprint, request.IsErased, chunkHashes,
-                request.Events!.LongLength,
-                request.IsErased ? null : ComputeCapturedEventDigests(handler, identity,
-                    request.AggregateId!, evolvedOwner!.Events),
-                request.PartCount ?? 0);
             string manifestKey = PartitionManifestKey(sessionKey, ordinal);
             ReadModelEntry<DomainSharedProjectionStoredPartitionManifest> priorManifest = await sessionStore
                 .GetAsync<DomainSharedProjectionStoredPartitionManifest>(handler.RebuildStoreName, manifestKey, cancellationToken)
                 .ConfigureAwait(false);
+            bool legacyManifest = priorManifest.Value is { CapturedIdentityReference: null };
+            SharedProjectionCapturedIdentityReference? capturedReference = request.IsErased || legacyManifest ? null
+                : await StoreCapturedEventsAsync(sessionStore, captureCoordinator, FencedScope(handler, identity),
+                    handler, identity, sessionKey, ordinal, request.AggregateId!, evolvedOwner!.Events,
+                    options, cancellationToken).ConfigureAwait(false);
+            var manifest = new DomainSharedProjectionStoredPartitionManifest(
+                ordinal, request.AggregateId!, historyFingerprint, request.IsErased, chunkHashes,
+                request.Events!.LongLength, request.IsErased || !legacyManifest ? null
+                    : ComputeCapturedEventDigests(handler, identity, request.AggregateId!, evolvedOwner!.Events), request.PartCount ?? 0,
+                CapturedIdentityReference: capturedReference);
             if (priorManifest.Value is null) {
                 if (!await serviceProvider.GetRequiredService<SharedProjectionEpochCoordinator>()
                     .TryWriteScratchAsync(FencedScope(handler, identity), identity.OperationId,
@@ -1021,6 +1095,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 || priorManifest.Value.IsErased != manifest.IsErased
                 || priorManifest.Value.LastSequenceNumber != manifest.LastSequenceNumber
                 || priorManifest.Value.TransportPartCount != manifest.TransportPartCount
+                || priorManifest.Value.CapturedIdentityReference != manifest.CapturedIdentityReference
                 || !priorManifest.Value.ChunkHashes.SequenceEqual(manifest.ChunkHashes, StringComparer.Ordinal)
                 || !(priorManifest.Value.CapturedEventDigests ?? []).AsSpan()
                     .SequenceEqual(manifest.CapturedEventDigests ?? [])) {
@@ -1033,6 +1108,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                     state.InventoryFingerprint, ordinal, historyFingerprint),
                 LastAggregateId = request.AggregateId,
                 PendingScratchChunkCount = -1,
+                PendingCapturedIdentityReference = null,
             };
             if (await TrySaveAsync(sessionStore, handler.RebuildStoreName, sessionKey, updated, entry.ETag, cancellationToken)
                 .ConfigureAwait(false)) {
@@ -1190,6 +1266,8 @@ public static class DomainSharedProjectionRebuildDispatcher {
 
             if (state.ScratchCleanedOwnerCount == state.AcceptedAggregateCount)
             {
+                if (state.Phase == DomainSharedProjectionRebuildPhase.Aborted && state.PendingCapturedIdentityReference is { } pendingReference)
+                    await coordinator.CapturedIdentities.RetireAsync(scope, pendingReference, cancellationToken).ConfigureAwait(false);
                 if (state.TransportOwnerOrdinal >= state.AcceptedAggregateCount)
                 {
                     for (int part = 0; part < state.TransportReservedPartCount; part++)
@@ -1248,7 +1326,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
             DomainSharedProjectionStoredPartitionManifest value = manifest.Value
                 ?? throw new InvalidOperationException("A private owner manifest is missing before cleanup.");
             string retirementKey = PartitionManifestKey(sessionKey, ordinal) + ":retired";
-            var retirement = new DomainSharedProjectionScratchRetirement(identity, ordinal, value.MaterializedChunkCount, value.TransportPartCount);
+            var retirement = new DomainSharedProjectionScratchRetirement(identity, ordinal, value.MaterializedChunkCount, value.TransportPartCount, value.CapturedIdentityReference);
             DomainSharedProjectionScratchRetirement? retained = (await sessionStore.GetAsync<DomainSharedProjectionScratchRetirement>(
                 handler.RebuildStoreName, retirementKey, cancellationToken).ConfigureAwait(false)).Value;
             if (retained is null && !await sessionStore.TrySaveAsync(handler.RebuildStoreName, retirementKey, retirement,
@@ -1260,6 +1338,8 @@ public static class DomainSharedProjectionRebuildDispatcher {
             }
             if (retained is not null && retained != retirement)
                 throw new InvalidOperationException("Original private owner retirement inventory conflicts.");
+            if (state.Phase == DomainSharedProjectionRebuildPhase.Aborted && value.CapturedIdentityReference is { } abortedReference)
+                await coordinator.CapturedIdentities.RetireAsync(scope, abortedReference, cancellationToken).ConfigureAwait(false);
             for (int part = 0; part < value.TransportPartCount; part++)
             {
                 await DeleteTransportPartAsync(sessionStore, batches, coordinator, scope,
@@ -2372,7 +2452,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 if (request.AggregateOrdinal is null or < 0
                     || string.IsNullOrWhiteSpace(request.AggregateId)
                     || request.IsErased || request.Events is not { Length: > 0 and <= 256 }
-                    || request.PartOrdinal is null or < 0 or >= 10_000
+                    || request.PartOrdinal is null or < 0 || request.PartOrdinal >= options.MaxRebuildEventCount
                     || request.PartCount is not null || request.ExpectedHistoryFingerprint is not null
                     || hasFinalizeFields || JsonSerializer.SerializeToUtf8Bytes(request).Length > 2_097_152) {
                     throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.MalformedOutcome);
@@ -2389,7 +2469,7 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 if (request.AggregateOrdinal is null or < 0
                     || string.IsNullOrWhiteSpace(request.AggregateId)
                     || request.Events is not null || request.PartOrdinal is not null
-                    || request.PartCount is null or < 0 or > 10_000
+                    || request.PartCount is null or < 0 || request.PartCount > options.MaxRebuildEventCount
                     || request.IsErased && request.PartCount != 0
                     || string.IsNullOrWhiteSpace(request.ExpectedHistoryFingerprint)
                     || hasFinalizeFields) {
@@ -2744,18 +2824,72 @@ public static class DomainSharedProjectionRebuildDispatcher {
             if (!await coordinator.MatchesCapturedOwnerErasureAsync(scope, operationId,
                     sourceKey, manifest.IsErased, cancellationToken).ConfigureAwait(false)
                 || pendingJournalOwners.Contains(sourceKey)
-                    && !await coordinator.CanPromoteCapturedJournalOwnerAsync(
-                    scope, operationId, sourceKey, manifest.LastSequenceNumber,
-                    manifest.CapturedEventDigests, cancellationToken).ConfigureAwait(false)
+                    && !(manifest.CapturedIdentityReference is { } journalReference
+                        ? await coordinator.CanPromoteCapturedJournalOwnerIdentityAsync(scope, operationId,
+                            sourceKey, manifest.LastSequenceNumber, journalReference, cancellationToken).ConfigureAwait(false)
+                        : await coordinator.CanPromoteCapturedJournalOwnerAsync(scope, operationId,
+                            sourceKey, manifest.LastSequenceNumber, manifest.CapturedEventDigests, cancellationToken).ConfigureAwait(false))
                 || manifest.LastSequenceNumber > 0
-                && !await coordinator.CanPromoteCapturedOwnerAsync(scope, operationId,
-                    sourceKey, manifest.LastSequenceNumber, cancellationToken).ConfigureAwait(false))
+                && !(manifest.CapturedIdentityReference is { } ownerReference
+                    ? await coordinator.CanPromoteCapturedOwnerIdentityAsync(scope, operationId,
+                        sourceKey, manifest.LastSequenceNumber, ownerReference, cancellationToken).ConfigureAwait(false)
+                    : await coordinator.CanPromoteCapturedOwnerAsync(scope, operationId,
+                        sourceKey, manifest.LastSequenceNumber, cancellationToken).ConfigureAwait(false)))
             {
                 return false;
             }
         }
 
         return capturedOwners.All(acceptedSourceKeys.Contains);
+    }
+
+    private static async Task<SharedProjectionCapturedIdentityReference> ReserveCapturedIdentityAsync(
+        IReadModelStore store, SharedProjectionEpochCoordinator coordinator, SharedProjectionScope scope,
+        IAsyncDomainSharedProjectionEpochHandler handler, DomainSharedProjectionRebuildIdentity identity,
+        string sessionKey, long ordinal, string owner, int count, ProjectionDispatchOptions options,
+        CancellationToken token)
+    {
+        var status = await coordinator.GetStatusAsync(scope, token).ConfigureAwait(false);
+        var reference = SharedProjectionCapturedIdentityStore.Describe(scope, identity.OperationId,
+            handler.SourceStreamKey(identity.TenantId, owner), count, status.Epoch);
+        for (int attempt = 0; attempt < options.MaxRetryAttempts; attempt++)
+        {
+            var entry = await store.GetAsync<DomainSharedProjectionRebuildSessionState>(handler.RebuildStoreName, sessionKey, token).ConfigureAwait(false);
+            var state = entry.Value ?? throw new InvalidOperationException("Captured owner session is missing.");
+            if (state.Phase != DomainSharedProjectionRebuildPhase.Accumulating || state.AcceptedAggregateCount != ordinal)
+                throw new InvalidOperationException("Captured owner session lost its accumulation fence.");
+            if (state.PendingCapturedIdentityReference is { } prior)
+            {
+                if (prior != reference) throw new InvalidOperationException("Captured owner reservation conflicts with the pending original owner.");
+                return await coordinator.CapturedIdentities.BeginAsync(scope, identity.OperationId,
+                    handler.SourceStreamKey(identity.TenantId, owner), count, token).ConfigureAwait(false);
+            }
+            if (await TrySaveAsync(store, handler.RebuildStoreName, sessionKey,
+                state with { PendingCapturedIdentityReference = reference }, entry.ETag, token).ConfigureAwait(false))
+                return await coordinator.CapturedIdentities.BeginAsync(scope, identity.OperationId,
+                    handler.SourceStreamKey(identity.TenantId, owner), count, token).ConfigureAwait(false);
+        }
+        throw new InvalidOperationException("Captured owner reservation exhausted its session CAS retries.");
+    }
+
+    private static async Task<SharedProjectionCapturedIdentityReference> StoreCapturedEventsAsync(
+        IReadModelStore store, SharedProjectionEpochCoordinator coordinator, SharedProjectionScope scope,
+        IAsyncDomainSharedProjectionEpochHandler handler, DomainSharedProjectionRebuildIdentity identity,
+        string sessionKey, long ordinal, string owner, ProjectionEventDto[] events,
+        ProjectionDispatchOptions options, CancellationToken token)
+    {
+        var reference = await ReserveCapturedIdentityAsync(store, coordinator, scope, handler, identity,
+            sessionKey, ordinal, owner, events.Length, options, token).ConfigureAwait(false);
+        for (int first = 0; first < events.Length; first += SharedProjectionCapturedIdentityStore.EntriesPerPage)
+        {
+            ProjectionEventDto[] page = events.AsSpan(first, Math.Min(SharedProjectionCapturedIdentityStore.EntriesPerPage, events.Length - first)).ToArray();
+            await coordinator.CapturedIdentities.AppendAsync(scope, identity.OperationId, reference,
+                first + 1, page.Select(static item => item.GlobalPosition).ToArray(),
+                ComputeCapturedEventDigests(handler, identity, owner, page),
+                page.Select(static item => string.IsNullOrWhiteSpace(item.MessageId) ? string.Empty
+                    : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(item.MessageId)))).ToArray(), token).ConfigureAwait(false);
+        }
+        return await coordinator.CapturedIdentities.SealAsync(scope, identity.OperationId, reference, token).ConfigureAwait(false);
     }
 
     private static byte[] ComputeCapturedEventDigests(
@@ -2804,10 +2938,14 @@ public static class DomainSharedProjectionRebuildDispatcher {
 
             if (manifest.LastSequenceNumber > 0)
             {
-                await coordinator.SeedCapturedOwnerSequenceAsync(scope, operationId,
-                    handler.SourceStreamKey(identity.TenantId, manifest.AggregateId),
-                    manifest.LastSequenceNumber, cancellationToken,
-                    manifest.CapturedEventDigests).ConfigureAwait(false);
+                if (manifest.CapturedIdentityReference is { } reference)
+                    await coordinator.SeedCapturedOwnerIdentityAsync(scope, operationId,
+                        handler.SourceStreamKey(identity.TenantId, manifest.AggregateId),
+                        manifest.LastSequenceNumber, reference, cancellationToken).ConfigureAwait(false);
+                else
+                    await coordinator.SeedCapturedOwnerSequenceAsync(scope, operationId,
+                        handler.SourceStreamKey(identity.TenantId, manifest.AggregateId),
+                        manifest.LastSequenceNumber, cancellationToken, manifest.CapturedEventDigests).ConfigureAwait(false);
             }
         }
     }
@@ -2867,12 +3005,14 @@ public static class DomainSharedProjectionRebuildDispatcher {
                 if (original is null || original.Ordinal != owner || string.IsNullOrWhiteSpace(original.AggregateId)
                     || original.ChunkHashes is null || original.StreamedChunkCount < 0)
                     throw new InvalidOperationException("Original private owner retirement inventory is unavailable.");
-                retired = new(identity, owner, original.MaterializedChunkCount, original.TransportPartCount);
+                retired = new(identity, owner, original.MaterializedChunkCount, original.TransportPartCount, original.CapturedIdentityReference);
             }
             if (retired.Identity != identity || retired.OwnerOrdinal != owner || retired.ChunkCount < 0
                 || retired.ChunkCount > options.MaxRebuildEventCount || retired.TransportPartCount < 0
                 || retired.TransportPartCount > options.MaxRebuildEventCount)
                 throw new InvalidOperationException("Original private owner retirement inventory is invalid.");
+            if (state.Phase == DomainSharedProjectionRebuildPhase.Aborted && retired.CapturedIdentityReference is { } retiredReference)
+                await coordinator.CapturedIdentities.RetireAsync(scope, retiredReference, token).ConfigureAwait(false);
             await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, owner, -1), token).ConfigureAwait(false);
             for (int chunk = 0; chunk < retired.ChunkCount; chunk++)
                 await coordinator.ReconcileScratchBatchAsync(scope, OwnerScratchBatchId(identity, owner, chunk), token).ConfigureAwait(false);

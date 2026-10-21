@@ -71,11 +71,14 @@ public sealed class SharedProjectionSourceBeginProducerTests
         _ = await roster.DidNotReceiveWithAnyArgs().ReleaseAppendFenceAsync(default!, default!);
     }
 
-    [Fact]
-    public async Task TenThousandHighEntropyOwnersStreamMultipleEventsWithoutRetainingHistories()
+    [Theory]
+    [InlineData(10_000, 3, false)]
+    [InlineData(1, 10_001, false)]
+    [InlineData(1, 32_769, false)]
+    [InlineData(1, 10_001, true)]
+    [InlineData(1, 32_769, true)]
+    public async Task OriginalOwnersStreamBeyondTheFormerCaptureSequenceBoundary(int ownerCount, int eventsPerOwner, bool pendingWrite)
     {
-        const int ownerCount = 10_000;
-        const int eventsPerOwner = 3;
         var identity = new DomainSharedProjectionRebuildIdentity("tenant-a", "timesheets",
             "capability", "many-owner-pages", "catalog-a");
         var scope = new SharedProjectionSourceScope(identity.TenantId, identity.Domain);
@@ -89,8 +92,20 @@ public sealed class SharedProjectionSourceBeginProducerTests
         bool sealedCut = false;
         bool released = false;
         bool accumulated = false;
+        bool pendingReconciled = !pendingWrite;
+        int captureAttempts = 0;
         string? inventoryFingerprint = null;
-        roster.BeginCaptureAsync(scope, identity.OperationId).Returns(_ => { started = true; return 5L; });
+        roster.BeginCaptureAsync(scope, identity.OperationId).Returns(_ =>
+        {
+            captureAttempts++;
+            if (!pendingReconciled) return (long?)null;
+            started = true;
+            return 5L;
+        });
+        roster.ReadPendingWritesAsync(scope, identity.OperationId)
+            .Returns([new SharedProjectionSourcePendingWrite("pending-original-write", owners[0])]);
+        roster.CompleteWriteAsync(owners[0], "pending-original-write")
+            .Returns(_ => { pendingReconciled = true; return true; });
         roster.ReadCaptureProgressAsync(scope, identity.OperationId).Returns(_ => started
             ? new SharedProjectionSourceCaptureProgress(5, sealedCut, !released,
                 accumulated, inventoryFingerprint, ownerCount, false) : null);
@@ -113,7 +128,12 @@ public sealed class SharedProjectionSourceBeginProducerTests
         roster.CompleteCaptureAsync(scope, identity.OperationId).Returns(true);
 
         var aggregate = Substitute.For<IAggregateActor>();
-        aggregate.GetStreamMetadataAsync().Returns(new AggregateStreamMetadata(true, eventsPerOwner));
+        int metadataReads = 0;
+        aggregate.GetStreamMetadataAsync().Returns(_ =>
+        {
+            metadataReads++;
+            return new AggregateStreamMetadata(true, eventsPerOwner);
+        });
         var proxies = Substitute.For<IActorProxyFactory>();
         proxies.CreateActorProxy<ISharedProjectionSourceRosterActor>(new ActorId(scope.ActorId),
             SharedProjectionSourceRosterActor.ActorTypeName).Returns(roster);
@@ -147,6 +167,9 @@ public sealed class SharedProjectionSourceBeginProducerTests
             Arg.Any<CancellationToken>()).Returns<Task<IReadOnlyList<ProjectionEventDto>>>(_ =>
                 throw new InvalidOperationException("Bulk history path must not run."));
         int sentOwners = 0;
+        long sentEvents = 0;
+        int transportedParts = 0;
+        long finalSequence = 0;
         var beginParts = new List<DomainSharedProjectionRebuildRequest>();
         DomainSharedProjectionRebuildRequest? completedBegin = null;
         var gateway = Substitute.For<ISharedProjectionRebuildGateway>();
@@ -160,11 +183,27 @@ public sealed class SharedProjectionSourceBeginProducerTests
                 JsonSerializer.SerializeToUtf8Bytes(request).Length.ShouldBeLessThanOrEqualTo(524_288);
             }
             if (request.Action == DomainSharedProjectionRebuildAction.Begin) completedBegin = request;
+            if (request.Action is DomainSharedProjectionRebuildAction.Accumulate or DomainSharedProjectionRebuildAction.AccumulatePart)
+            {
+                sentEvents += request.Events!.LongLength;
+                finalSequence = request.Events[^1].SequenceNumber;
+            }
             if (request.Action == DomainSharedProjectionRebuildAction.Accumulate)
             {
                 released.ShouldBeTrue();
                 request.AggregateOrdinal.ShouldBe(sentOwners++);
                 request.Events!.Length.ShouldBe(eventsPerOwner);
+            }
+            if (request.Action == DomainSharedProjectionRebuildAction.AccumulatePart)
+            {
+                released.ShouldBeTrue();
+                request.Events!.Length.ShouldBeLessThanOrEqualTo(256);
+                request.PartOrdinal.ShouldBe(transportedParts++);
+            }
+            if (request.Action == DomainSharedProjectionRebuildAction.AccumulateComplete)
+            {
+                released.ShouldBeTrue();
+                request.AggregateOrdinal.ShouldBe(sentOwners++);
             }
             DomainSharedProjectionRebuildPhase phase = request.Action switch
             {
@@ -183,15 +222,30 @@ public sealed class SharedProjectionSourceBeginProducerTests
                 { EnabledDomains = ["timesheets"] }));
 
         (await producer.RebuildAsync(identity)).Phase.ShouldBe(DomainSharedProjectionRebuildPhase.Committed);
+        captureAttempts.ShouldBe(pendingWrite ? 2 : 1);
+        metadataReads.ShouldBe(ownerCount + (pendingWrite ? 1 : 0));
+        if (pendingWrite)
+            _ = await roster.Received(1).CompleteWriteAsync(owners[0], "pending-original-write");
         sentOwners.ShouldBe(ownerCount);
         pageReads.ShouldBe(ownerCount * eventsPerOwner * 2);
         peakReaders.ShouldBe(1);
         producer.PeakRetainedOwnerMetadata.ShouldBeLessThanOrEqualTo(2_000);
-        beginParts.Count.ShouldBeGreaterThan(0);
-        completedBegin.ShouldNotBeNull().PartCount.ShouldBe(beginParts.Count);
-        completedBegin.ExpectedAggregateCount.ShouldBe(ownerCount);
-        beginParts.SelectMany(part => part.SourceHighWatermarks!.Keys).Distinct(StringComparer.Ordinal)
-            .Count().ShouldBe(ownerCount);
+        sentEvents.ShouldBe((long)ownerCount * eventsPerOwner);
+        finalSequence.ShouldBe(eventsPerOwner);
+        completedBegin.ShouldNotBeNull();
+        if (ownerCount > 1)
+        {
+            beginParts.Count.ShouldBeGreaterThan(0);
+            completedBegin.PartCount.ShouldBe(beginParts.Count);
+            completedBegin.ExpectedAggregateCount.ShouldBe(ownerCount);
+            beginParts.SelectMany(part => part.SourceHighWatermarks!.Keys).Distinct(StringComparer.Ordinal).Count().ShouldBe(ownerCount);
+        }
+        else
+        {
+            beginParts.ShouldBeEmpty();
+            completedBegin.SourceHighWatermarks.ShouldNotBeNull().Single().Value.ShouldBe(eventsPerOwner);
+            transportedParts.ShouldBe((eventsPerOwner + 255) / 256);
+        }
     }
 
     [Fact]

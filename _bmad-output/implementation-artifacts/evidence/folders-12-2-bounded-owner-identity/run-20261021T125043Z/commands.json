@@ -1,0 +1,53 @@
+[
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 5.791,
+    "exitCode": 0,
+    "label": "build-Client",
+    "log": "build-Client.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.DomainService.Tests/Hexalith.EventStore.DomainService.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 3.081,
+    "exitCode": 0,
+    "label": "build-DomainService",
+    "log": "build-DomainService.log"
+  },
+  {
+    "command": [
+      "dotnet",
+      "build",
+      "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+      "-c",
+      "Debug",
+      "-m:1",
+      "-p:UseHexalithProjectReferences=true",
+      "--nologo"
+    ],
+    "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+    "elapsedSeconds": 14.456,
+    "exitCode": 0,
+    "label": "build-Server",
+    "log": "build-Server.log"
+  }
+]

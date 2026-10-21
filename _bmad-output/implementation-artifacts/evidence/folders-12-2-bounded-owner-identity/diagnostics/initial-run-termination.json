@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-21T12:11:20.725819+00:00",
+  "run": "run-20261021T120109Z",
+  "reason": "Stopped known-invalid source-drift diagnostic before the Dapr process lane; test corrections and the buffered-owner compatibility path changed captured sources. Original artifacts are preserved.",
+  "signals": [
+    {
+      "pid": 69350,
+      "signal": "SIGTERM",
+      "role": "qualification driver"
+    },
+    {
+      "pid": 90247,
+      "signal": "SIGTERM",
+      "role": "active Server suite"
+    }
+  ]
+}

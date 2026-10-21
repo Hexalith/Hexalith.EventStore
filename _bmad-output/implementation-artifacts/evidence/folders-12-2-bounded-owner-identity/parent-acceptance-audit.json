@@ -1,0 +1,124 @@
+{
+  "at": "2026-10-21T14:40:13.076392+00:00",
+  "baselineCommit": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+  "packet": "run-20261021T125151Z",
+  "packetManifestSha256": "FE824819E529F351CCBDCB916EAF135CBDC99AB0C904AEAEB26BFD12D17392EC",
+  "requiredMatrixCases": 50,
+  "requiredMatrixPassed": true,
+  "overallGatePassed": false,
+  "suiteResults": {
+    "Client": {
+      "failed": 0,
+      "passed": 1930,
+      "skipped": 2,
+      "total": 1932
+    },
+    "DomainService": {
+      "failed": 0,
+      "passed": 1091,
+      "skipped": 0,
+      "total": 1091
+    },
+    "Server": {
+      "failed": 6,
+      "passed": 6216,
+      "skipped": 25,
+      "total": 6247
+    },
+    "live-process": {
+      "failed": 0,
+      "passed": 4,
+      "skipped": 0,
+      "total": 4
+    }
+  },
+  "matrixRowAudit": [
+    {
+      "row": "Complete original owner beyond 10,000",
+      "methods": [
+        "ProductionDispatcherRebuildsGrowsAndRebuildsCompleteOriginalOwner",
+        "ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses"
+      ],
+      "passedCases": 8
+    },
+    {
+      "row": "Exact retry; changed earlier identity",
+      "methods": [
+        "DispatcherRejectsChangedRetainedEarlyMiddleAndFinalIdentitiesBeforePromotion",
+        "CompleteOriginalOwnerUsesBoundedNodesAndRetainsHistoricalProofAfterGrowth"
+      ],
+      "passedCases": 11
+    },
+    {
+      "row": "Growth; independent owners",
+      "methods": [
+        "ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses",
+        "MultipleOriginalOwnersKeepDistinctProofAndCoveredPendingJournalCatchUp"
+      ],
+      "passedCases": 5
+    },
+    {
+      "row": "Gap, alias, missing page or stale capture",
+      "methods": [
+        "OwnerSequenceGapPersistsUntilExactMissingPrefixAndDeliveryAreFolded",
+        "DispatcherRejectsCrossPageMessageAliasAndAbortRetainsDurableRetirementInventory",
+        "DistantMessageDuplicatesMissingAndCorruptNodesFailClosed",
+        "StaleCaptureIsRejectedBeforePromotionAndFreshRetryCanCommit"
+      ],
+      "passedCases": 4
+    },
+    {
+      "row": "Concurrent writers; interrupted promotion; new process",
+      "methods": [
+        "ConcurrentBeginAndOrdinaryDelivery_ConvergeWithoutLostWrite",
+        "SequenceSeedPrefixExtensionPreservesANewerConcurrentCheckpoint",
+        "ConcurrentEpochChangeCannotBeOverwrittenByAStaleCheckpointSeed",
+        "CopyOnWriteInheritsSelectedValuesWithPagedProofAndOrdinaryCatchUp",
+        "ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses"
+      ],
+      "passedCases": 8
+    }
+  ],
+  "workerPids": {
+    "streamed-10001": [
+      99331,
+      81832,
+      83255
+    ],
+    "streamed-32769": [
+      47640,
+      46563,
+      51687
+    ],
+    "buffered-10001": [
+      26769,
+      25905,
+      27510
+    ],
+    "buffered-32769": [
+      9224,
+      7597,
+      10700
+    ]
+  },
+  "measuredMaxima": {
+    "MaximumBatchOperations": 68,
+    "MaximumCanonicalBatchBytes": 110556,
+    "MaximumCheckpointValueBytes": 1696,
+    "MaximumIdentityValueBytes": 12302,
+    "MaximumOwnerManifestValueBytes": 1258,
+    "MaximumPhysicalValueBytes": 110556,
+    "PhysicalWrites": 153027
+  },
+  "independentIntegrityAudit": {
+    "packetFiles": 96,
+    "packetHashMismatches": 0,
+    "sourceFiles": 3654,
+    "sourceHashMismatches": 0,
+    "binaryFiles": 86,
+    "binaryHashMismatches": 0,
+    "baselineFailurePaths": 137,
+    "baselineFailureDiffBytes": 0
+  },
+  "scope": "EventStore source Debug graph; no package/release or Folders acceptance claim"
+}

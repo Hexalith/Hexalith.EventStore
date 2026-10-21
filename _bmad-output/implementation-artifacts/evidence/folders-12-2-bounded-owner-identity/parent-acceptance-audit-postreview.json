@@ -1,0 +1,204 @@
+{
+  "at": "2026-10-21T16:45:59.376831+00:00",
+  "baselineCommit": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+  "packet": "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/run-20261021T152119Z",
+  "packetManifestSha256": "3D2AD44D264EADC6735877981DF66DADCB36893D235C3D24C82B77890430C23A",
+  "requiredMatrixCases": 74,
+  "requiredMatrixPassed": true,
+  "overallGatePassed": false,
+  "qualificationErrors": [],
+  "suiteResults": {
+    "Client": {
+      "failed": 0,
+      "passed": 1936,
+      "skipped": 2,
+      "total": 1938
+    },
+    "DomainService": {
+      "failed": 1,
+      "passed": 1104,
+      "skipped": 0,
+      "total": 1105
+    },
+    "Server": {
+      "failed": 6,
+      "passed": 6218,
+      "skipped": 25,
+      "total": 6249
+    },
+    "live-process": {
+      "failed": 0,
+      "passed": 6,
+      "skipped": 0,
+      "total": 6
+    }
+  },
+  "matrixRowAudit": [
+    {
+      "row": "Complete original owner beyond 10,000",
+      "methods": [
+        "ProductionDispatcherRebuildsGrowsAndRebuildsCompleteOriginalOwner",
+        "ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses"
+      ],
+      "passedCases": 8
+    },
+    {
+      "row": "Exact retry; changed earlier identity",
+      "methods": [
+        "DispatcherRejectsChangedRetainedEarlyMiddleAndFinalIdentitiesBeforePromotion",
+        "CompleteOriginalOwnerUsesBoundedNodesAndRetainsHistoricalProofAfterGrowth",
+        "OlderReceiptReplayCannotDowngradeLegacyOwnerCheckpointBeforeGrowth",
+        "LegacySeedCannotDowngradeOrExtendPagedEvidence"
+      ],
+      "passedCases": 24
+    },
+    {
+      "row": "Growth; independent owners",
+      "methods": [
+        "ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses",
+        "MultipleOriginalOwnersKeepDistinctProofAndCoveredPendingJournalCatchUp"
+      ],
+      "passedCases": 5
+    },
+    {
+      "row": "Gap, alias, missing page or stale capture",
+      "methods": [
+        "OwnerSequenceGapPersistsUntilExactMissingPrefixAndDeliveryAreFolded",
+        "DispatcherRejectsCrossPageMessageAliasAndAbortRetainsDurableRetirementInventory",
+        "DistantMessageDuplicatesMissingAndCorruptNodesFailClosed",
+        "StaleCaptureIsRejectedBeforePromotionAndFreshRetryCanCommit"
+      ],
+      "passedCases": 5
+    },
+    {
+      "row": "Concurrent writers; interrupted promotion; new process",
+      "methods": [
+        "ConcurrentBeginAndOrdinaryDelivery_ConvergeWithoutLostWrite",
+        "SequenceSeedPrefixExtensionPreservesANewerConcurrentCheckpoint",
+        "ConcurrentEpochChangeCannotBeOverwrittenByAStaleCheckpointSeed",
+        "CopyOnWriteInheritsSelectedValuesWithPagedProofAndOrdinaryCatchUp",
+        "ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses",
+        "FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff",
+        "AbortReclaimsEveryLeafIndexNodeMessageAndPageInventoryWhileRetainingFence",
+        "DispatcherAbortReclaimsAcceptedAndPendingOwnerProof"
+      ],
+      "passedCases": 15
+    }
+  ],
+  "workerPids": {
+    "streamed-10001": [
+      87785,
+      84152,
+      86181
+    ],
+    "streamed-32769": [
+      88656,
+      73634,
+      76488
+    ],
+    "buffered-10001": [
+      57071,
+      59927,
+      62056
+    ],
+    "buffered-32769": [
+      7615,
+      63657,
+      70016
+    ],
+    "streamed-129": [
+      96864,
+      434,
+      1035
+    ],
+    "buffered-129": [
+      5578,
+      9021,
+      9260
+    ]
+  },
+  "measuredMaxima": {
+    "MaximumBatchOperations": 68,
+    "MaximumCanonicalBatchBytes": 110556,
+    "MaximumCheckpointValueBytes": 1696,
+    "MaximumIdentityValueBytes": 12302,
+    "MaximumOwnerManifestValueBytes": 1258,
+    "MaximumPhysicalValueBytes": 110556,
+    "PhysicalWrites": 153011
+  },
+  "integrity": {
+    "sources": {
+      "entries": 3654,
+      "mismatches": 0
+    },
+    "binaries": {
+      "entries": 86,
+      "mismatches": 0
+    },
+    "packet": {
+      "entries": 108,
+      "mismatches": 0
+    }
+  },
+  "exactByteGitCheck": {
+    "generatedFiles": 76,
+    "filesWithCRLF": 32,
+    "filteredHashMismatches": 0,
+    "attributesSha256": "340BB6816F4D0D428791A62017F43079F53CCCB014922789CBEC45C48F19C68B"
+  },
+  "baselineFailureComparison": {
+    "paths": 143,
+    "gitDiffExit": 0,
+    "diffBytes": 0,
+    "priorDetailedAudit": "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/diagnostics/broad-server-failure-baseline-audit.json",
+    "priorAuditSha256": "AA2E037EFA9E5EC9D8E3FAF825A915CAE9AF778CB36CB3C132215B63D1289CE5"
+  },
+  "fullSuiteFailures": [
+    {
+      "name": "Hexalith.EventStore.DomainService.Tests.Processes.ProcessSweepRenewalTests.SweepRenewalFaultPreservesCompletedSourceObservation",
+      "message": "Shouldly.ShouldAssertException : faulting.Fired\n    should be\nTrue\n    but was\nFalse"
+    },
+    {
+      "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 26, receiptLimit: 256)",
+      "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+    },
+    {
+      "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 36, receiptLimit: 256)",
+      "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+    },
+    {
+      "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 26, receiptLimit: 4096)",
+      "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+    },
+    {
+      "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 36, receiptLimit: 4096)",
+      "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+    },
+    {
+      "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionReplayRecoveryTests.CorruptOriginalManifestOrProviderState_FailsClosedWithoutRepreparation(invalidRecord: False)",
+      "message": "System.Text.Json.JsonReaderException : 's' is an invalid start of a property name. Expected a '\\\"'. LineNumber: 0 | BytePositionInLine: 1."
+    },
+    {
+      "name": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+      "message": "Shouldly.ShouldAssertException : violations.Length\n    should be\n0\n    but was\n139\n\nAdditional Info:\n    Tracked reusable content contains secret material. Only path and line are reported: _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json:80717, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json:107155, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json:84618, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json:117738, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json:98883, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json:71184, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json:65567, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json:60301, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json:70764, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json:60901, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json:83559, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json:66893, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json:67588, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json:78939, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json:68453, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json:87712, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json:3527, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json:3800, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json:3548, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json:3645, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json:3900, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json:3612, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json:60284, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json:80855, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json:68425, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json:83633, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json:60884, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json:107181, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json:117673, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json:66876, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json:98743, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json:78937, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json:87644, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json:67480, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json:65310, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json:70109, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json:71203, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json:84656, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json:80717, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json:107155, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json:84618, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json:117738, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json:98883, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json:71184, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json:65567, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json:60301, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json:70764, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json:60901, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json:83559, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json:66893, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json:67588, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json:78939, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json:68453, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json:87712, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json:3527, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json:3800, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json:3548, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json:3645, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json:3900, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json:3612, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json:67459, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json:66893, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json:87700, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json:83571, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json:65324, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json:110535, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json:84654, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json:80888, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json:68447, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json:98844, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json:70779, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json:78939, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json:117783, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json:71232, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json:107194, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json:60901, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json:60301, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093/case.json:6550, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json:60284, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json:80855, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json:68425, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json:83633, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json:60884, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json:107181, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json:117673, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json:66876, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json:98743, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json:78937, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json:87644, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json:67480, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json:65310, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json:70109, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json:71203, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json:84656, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_147c0acc7e2a45a09a03b8eab5859772.output-6260.json:12, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_8920f237a01b4c748a10c03b97b2846a.output-5805.json:12, _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/snapshots/supporting-credential-conformance/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs:268, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:225, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:278, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:289, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:524, _bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:262, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:315, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:327, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:583, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:265, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:318, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:330, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:586, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:265, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:318, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:330, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:586, tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs:268, tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs:35, tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs:79, tools/qualify-dapr-brokers.py:265, tools/qualify-dapr-brokers.py:318, tools/qualify-dapr-brokers.py:330, tools/qualify-dapr-brokers.py:586"
+    }
+  ],
+  "isolatedProcessSweepRetry": {
+    "passed": 1,
+    "failed": 0,
+    "doesNotClearFullSuiteFailure": true,
+    "artifacts": {
+      "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/diagnostics/process-sweep-isolated-20261021T164359Z/command.json": "F3B743C81BB5A97AA5E8C951A21BBFD66C41DB5F8D9BCB26F6821552D3690D47",
+      "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/diagnostics/process-sweep-isolated-20261021T164359Z/command.log": "9D699F0877BB6B524FA05ACC2446C42F7A24DE6362DD3EF236B42981CC611619",
+      "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/diagnostics/process-sweep-isolated-20261021T164359Z/result.xml": "F7A4906D6731DED0C42BAF6EAEE3EED992930412BFB1A04B3ED6F9F81CA67FF4"
+    }
+  },
+  "review": {
+    "layers": 3,
+    "findingsTriaged": 14,
+    "unresolvedOwnedFindings": 0,
+    "deferred": 0,
+    "lowFindingsRejected": true
+  },
+  "scope": "EventStore source Debug graph; no package/release or Folders acceptance claim."
+}

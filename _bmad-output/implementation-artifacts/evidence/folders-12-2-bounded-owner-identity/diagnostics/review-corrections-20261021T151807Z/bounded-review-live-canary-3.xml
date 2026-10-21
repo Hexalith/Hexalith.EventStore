@@ -1,0 +1,167 @@
+<assemblies schema-version="3" id="55f32821-e7c4-4f85-a478-3c18dc85075d" computer="DESKTOP-VIOG240" user="administrator" start-rtf="2026-10-21T15:13:29.1551865+00:00" finish-rtf="2026-10-21T15:13:47.0287746+00:00" timestamp="10/21/2026 17:13:47"><assembly environment="64-bit (x64) .NET 10.0.13 [collection-per-class, non-parallel]" id="e320c50f-0374-4642-a1d7-b38ee565dd1a" name="/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll" run-date="2026-10-21" run-time="15:13:29" start-rtf="2026-10-21T15:13:29.1551865+00:00" test-framework="xUnit.net v3 4.0.2+0c7aa4991f" target-framework=".NETCoreApp,Version=v10.0" errors="0" failed="2" finish-rtf="2026-10-21T15:13:47.0287746+00:00" not-run="0" passed="0" skipped="0" time="17.874" time-rtf="00:00:17.8740000" total="2"><collection name="DaprTestContainer" id="49994ec7-5dd6-4db1-b9a6-508bbb242af1" failed="2" not-run="0" passed="0" skipped="0" time="14.160" time-rtf="00:00:14.1600000" total="2"><test id="f9e2af7d-5c36-461b-a255-ff2f7d51003a" name="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bufferedOwner: False)" result="Fail" time="7.098" time-rtf="00:00:07.0980000" start-rtf="2026-10-21T15:13:32.7111095+00:00" finish-rtf="2026-10-21T15:13:39.8217211+00:00" type="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests" method="FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff" source-file="/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs" source-line="13"><output>BoundedIdentity phase=stage count=129 pid=74397 evidence=/tmp/bounded-review-live-canary-evidence-3/streamed-129-stage.json
+</output><traits><trait name="Category" value="LiveSidecar" /></traits><failure exception-type="Shouldly.ShouldAssertException"><message>Shouldly.ShouldAssertException : process.ExitCode
+    should be
+73
+    but was
+1
+
+Additional Info:
+    xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+      System.InvalidOperationException : Promoted handoff did not reach its armed real process interruption.
+      ---- Shouldly.ShouldAssertException : batch.Operations[1].Key
+          should be
+      \"shared-checkpoint:83snSUBHmC4jCvLYpUYET_kFu1uvMvuRyHTE4tYGEdQ:3C31BA8D4DAB9E1F45DC499D788D1DB449C91610C11B91122B194CD7E905FE2A\"
+          but was
+      \"shared-checkpoint:83snSUBHmC4jCvLYpUYET_kFu1uvMvuRyHTE4tYGEdQ:95256875151043ABDCAFDD26FD390C650D6311E1D7185DF477CE50736B6A5D0B\"
+          difference
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |        
+                     |      \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/       
+      Index          | ...  62   63   64   65   66   67   68   69   70   71   72   73   74   75   76   77   78   79   80   81   82   ...  
+      Expected Value | ...  3    C    3    1    B    A    8    D    4    D    A    B    9    E    1    F    4    5    D    C    4    ...  
+      Actual Value   | ...  9    5    2    5    6    8    7    5    1    5    1    0    4    3    A    B    D    C    A    F    D    ...  
+      Expected Code  | ...  51   67   51   49   66   65   56   68   52   68   65   66   57   69   49   70   52   53   68   67   52   ...  
+      Actual Code    | ...  57   53   50   53   54   56   55   53   49   53   49   48   52   51   65   66   68   67   65   70   68   ...  
+      
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |         |    |    |    |    |        
+                     |      \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/       \\|/  \\|/  \\|/  \\|/  \\|/       
+      Index          | ...  83   84   85   86   87   88   89   90   91   92   93   94   95   96   97   98   99   100  101  102  103  ...  
+      Expected Value | ...  9    9    D    7    8    8    D    1    D    B    4    4    9    C    9    1    6    1    0    C    1    ...  
+      Actual Value   | ...  D    2    6    F    D    3    9    0    C    6    5    0    D    6    3    1    1    E    1    D    7    ...  
+      Expected Code  | ...  57   57   68   55   56   56   68   49   68   66   52   52   57   67   57   49   54   49   48   67   49   ...  
+      Actual Code    | ...  68   50   54   70   68   51   57   48   67   54   53   48   68   54   51   49   49   69   49   68   55   ...  
+      
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |   
+                     |      \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  
+      Index          | ...  105  106  107  108  109  110  111  112  113  114  115  116  117  118  119  120  121  122  123  124  125  
+      Expected Value | ...  B    9    1    1    2    2    B    1    9    4    C    D    7    E    9    0    5    F    E    2    A    
+      Actual Value   | ...  8    5    D    F    4    7    7    C    E    5    0    7    3    6    B    6    A    5    D    0    B    
+      Expected Code  | ...  66   57   49   49   50   50   66   49   57   52   67   68   55   69   57   48   53   70   69   50   65   
+      Actual Code    | ...  56   53   68   70   52   55   55   67   69   53   48   55   51   54   66   54   65   53   68   48   66   
+      Stack Trace:
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(87,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(178,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.&lt;&gt;c__DisplayClass0_0.&lt;&lt;RunBoundedOwnerWorkerAsync&gt;g__CaptureInterruptionAsync|7&gt;d.MoveNext()
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(52,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.&lt;&gt;c__DisplayClass0_1.&lt;&lt;RunBoundedOwnerWorkerAsync&gt;b__16&gt;d.MoveNext()
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessExitInjector.cs(13,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessExitInjector.InjectAsync(ReadModelBatchPhase phase, Int32 ordinal, CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(602,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.InstallAsync(CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.ConfiguredTaskAwaitable`1.ConfiguredTaskAwaiter.GetResult()
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(426,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.RunResumableAsync(CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.ConfiguredTaskAwaitable`1.ConfiguredTaskAwaiter.GetResult()
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(64,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.ExecuteAsync(ReadModelBatch batch, IReadModelBatchFaultInjector injector, CancellationToken cancellationToken)
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.604s
+
+</message><stack-trace>   at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(Int32 count, Boolean bufferedOwner) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs:line 54
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+--- End of stack trace from previous location ---
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)</stack-trace></failure></test><test id="66dafeba-bdbf-4533-9bc3-461e280c24bd" name="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bufferedOwner: True)" result="Fail" time="7.062" time-rtf="00:00:07.0620000" start-rtf="2026-10-21T15:13:39.8241856+00:00" finish-rtf="2026-10-21T15:13:46.8876165+00:00" type="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests" method="FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff" source-file="/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs" source-line="13"><output>BoundedIdentity phase=stage count=129 pid=76570 evidence=/tmp/bounded-review-live-canary-evidence-3/buffered-129-stage.json
+</output><traits><trait name="Category" value="LiveSidecar" /></traits><failure exception-type="Shouldly.ShouldAssertException"><message>Shouldly.ShouldAssertException : process.ExitCode
+    should be
+73
+    but was
+1
+
+Additional Info:
+    xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+      System.InvalidOperationException : Promoted handoff did not reach its armed real process interruption.
+      ---- Shouldly.ShouldAssertException : batch.Operations[1].Key
+          should be
+      \"shared-checkpoint:q8QsLS-1tawhK0chLf1CPNSB5kawvDhdryekoY4aqCY:3C31BA8D4DAB9E1F45DC499D788D1DB449C91610C11B91122B194CD7E905FE2A\"
+          but was
+      \"shared-checkpoint:q8QsLS-1tawhK0chLf1CPNSB5kawvDhdryekoY4aqCY:95256875151043ABDCAFDD26FD390C650D6311E1D7185DF477CE50736B6A5D0B\"
+          difference
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |        
+                     |      \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/       
+      Index          | ...  62   63   64   65   66   67   68   69   70   71   72   73   74   75   76   77   78   79   80   81   82   ...  
+      Expected Value | ...  3    C    3    1    B    A    8    D    4    D    A    B    9    E    1    F    4    5    D    C    4    ...  
+      Actual Value   | ...  9    5    2    5    6    8    7    5    1    5    1    0    4    3    A    B    D    C    A    F    D    ...  
+      Expected Code  | ...  51   67   51   49   66   65   56   68   52   68   65   66   57   69   49   70   52   53   68   67   52   ...  
+      Actual Code    | ...  57   53   50   53   54   56   55   53   49   53   49   48   52   51   65   66   68   67   65   70   68   ...  
+      
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |         |    |    |    |    |        
+                     |      \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/       \\|/  \\|/  \\|/  \\|/  \\|/       
+      Index          | ...  83   84   85   86   87   88   89   90   91   92   93   94   95   96   97   98   99   100  101  102  103  ...  
+      Expected Value | ...  9    9    D    7    8    8    D    1    D    B    4    4    9    C    9    1    6    1    0    C    1    ...  
+      Actual Value   | ...  D    2    6    F    D    3    9    0    C    6    5    0    D    6    3    1    1    E    1    D    7    ...  
+      Expected Code  | ...  57   57   68   55   56   56   68   49   68   66   52   52   57   67   57   49   54   49   48   67   49   ...  
+      Actual Code    | ...  68   50   54   70   68   51   57   48   67   54   53   48   68   54   51   49   49   69   49   68   55   ...  
+      
+      Difference     |       |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |   
+                     |      \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  \\|/  
+      Index          | ...  105  106  107  108  109  110  111  112  113  114  115  116  117  118  119  120  121  122  123  124  125  
+      Expected Value | ...  B    9    1    1    2    2    B    1    9    4    C    D    7    E    9    0    5    F    E    2    A    
+      Actual Value   | ...  8    5    D    F    4    7    7    C    E    5    0    7    3    6    B    6    A    5    D    0    B    
+      Expected Code  | ...  66   57   49   49   50   50   66   49   57   52   67   68   55   69   57   48   53   70   69   50   65   
+      Actual Code    | ...  56   53   68   70   52   55   55   67   69   53   48   55   51   54   66   54   65   53   68   48   66   
+      Stack Trace:
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(87,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(178,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.&lt;&gt;c__DisplayClass0_0.&lt;&lt;RunBoundedOwnerWorkerAsync&gt;g__CaptureInterruptionAsync|7&gt;d.MoveNext()
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(52,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.&lt;&gt;c__DisplayClass0_1.&lt;&lt;RunBoundedOwnerWorkerAsync&gt;b__16&gt;d.MoveNext()
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessExitInjector.cs(13,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessExitInjector.InjectAsync(ReadModelBatchPhase phase, Int32 ordinal, CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(602,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.InstallAsync(CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.ConfiguredTaskAwaitable`1.ConfiguredTaskAwaiter.GetResult()
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(426,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.RunResumableAsync(CancellationToken cancellationToken)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+           at System.Runtime.CompilerServices.ConfiguredTaskAwaitable`1.ConfiguredTaskAwaiter.GetResult()
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchProtocol.cs(64,0): at Hexalith.EventStore.Client.Projections.ReadModelBatchProtocol.ExecuteAsync(ReadModelBatch batch, IReadModelBatchFaultInjector injector, CancellationToken cancellationToken)
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.593s
+
+</message><stack-trace>   at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(Int32 count, Boolean bufferedOwner) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs:line 54
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+--- End of stack trace from previous location ---
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)</stack-trace></failure></test></collection></assembly></assemblies>

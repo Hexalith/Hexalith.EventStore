@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-21T12:30:28.650904+00:00",
+  "run": "run-20261021T122316Z",
+  "reason": "Retained successful complete Client/DomainService and runtime preflight results; stopped before Dapr to close the final public null/zero-count proof validation gaps.",
+  "signals": [
+    {
+      "pid": 63741,
+      "signal": "SIGTERM",
+      "role": "driver"
+    },
+    {
+      "pid": 75766,
+      "signal": "SIGTERM",
+      "role": "active Server suite"
+    }
+  ]
+}

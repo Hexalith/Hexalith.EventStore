@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-21T16:49:02.549256+00:00",
+  "files": {
+    ".gitattributes": "340BB6816F4D0D428791A62017F43079F53CCCB014922789CBEC45C48F19C68B",
+    "docs/guides/named-projection-authoring.md": "AC3D3FAD4997E1797C0AFF1C552EFCB4111D3FF91403938AE33C428B7314E49B",
+    "_bmad-output/implementation-artifacts/spec-folders-12-2-bounded-owner-identity.md": "9E7E0A80D48305FEADD5EAE1B5B7E28EBBBFA2484DDE16832AD0784A95042325",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/README.md": "0C0477D9D222A9F2139BDFF277D951D20AB61897528ABDB5C3646D62CBC6AECD",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/parent-acceptance-audit-postreview.json": "421FF8F07B5D8640EC4F7CE612781357EBE4562DCF6E6E5D9564B70F42F9EC52",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/run-20261021T152119Z/packet-sha256.json": "3D2AD44D264EADC6735877981DF66DADCB36893D235C3D24C82B77890430C23A"
+  }
+}

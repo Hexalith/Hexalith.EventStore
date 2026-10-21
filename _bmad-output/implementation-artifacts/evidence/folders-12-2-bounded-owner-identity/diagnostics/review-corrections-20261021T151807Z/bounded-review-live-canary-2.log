@@ -1,0 +1,89 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'global-administrators' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1121]
+      Projection discovery: domain 'tenants' -> immediate mode (fire-and-forget after persistence)
+info: Hexalith.EventStore.Server.Projections.ProjectionDiscoveryHostedService[1124]
+      Projection discovery complete: 2 domains discovered. Default refresh interval: 0ms (0=immediate).
+info: Hexalith.EventStore.Server.Projections.ActiveRebuildIndexCleanupService[1200]
+      Active-rebuild-index cleanup service started: CadenceSeconds=60, Stage=ActiveRebuildIndexCleanupServiceStarted
+warn: Hexalith.EventStore.DomainService.ReminderReconciler[200213]
+      Reminder reconciliation is disabled; readiness stays degraded
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:40735
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Testing
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bufferedOwner: False) [FAIL]
+      Shouldly.ShouldAssertException : process.ExitCode
+          should be
+      73
+          but was
+      1
+      
+      Additional Info:
+          xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+        Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+        Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+        Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+          Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+            System.InvalidOperationException : Staging returned before its armed durable participant interruption: {"Version":1,"Phase":2,"Status":0,"AcceptedAggregateCount":2,"InventoryFingerprint":"v1:r_hcmLbLVm4_CwmJ0sqa5liAnVhsSNGiuCbMvMAcENA","BatchFingerprint":"stream:2D4B97A6B829BE0466CE93EAB194EC1E17CA765C9E5E4CB5AE313809D3386FDB:1","ReasonCode":null}
+            Stack Trace:
+              /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(79,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+              --- End of stack trace from previous location ---
+        Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+      === TEST EXECUTION SUMMARY ===
+         Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 6.146s
+      
+      
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs(54,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(Int32 count, Boolean bufferedOwner)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bufferedOwner: True) [FAIL]
+      Shouldly.ShouldAssertException : process.ExitCode
+          should be
+      73
+          but was
+      1
+      
+      Additional Info:
+          xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+        Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+        Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+        Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+          Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+            System.InvalidOperationException : Staging returned before its armed durable participant interruption: {"Version":1,"Phase":2,"Status":0,"AcceptedAggregateCount":2,"InventoryFingerprint":"v1:r_hcmLbLVm4_CwmJ0sqa5liAnVhsSNGiuCbMvMAcENA","BatchFingerprint":"stream:2D4B97A6B829BE0466CE93EAB194EC1E17CA765C9E5E4CB5AE313809D3386FDB:1","ReasonCode":null}
+            Stack Trace:
+              /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(79,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+              --- End of stack trace from previous location ---
+        Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+      === TEST EXECUTION SUMMARY ===
+         Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 6.342s
+      
+      
+      Stack Trace:
+        tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs(54,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(Int32 count, Boolean bufferedOwner)
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+        --- End of stack trace from previous location ---
+           at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+           at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+           at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 2, Errors: 0, Failed: 2, Skipped: 0, Not Run: 0, Time: 16.620s

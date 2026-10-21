@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Client.Projections;
+
 namespace Hexalith.EventStore.DomainService;
 
 /// <summary>Durable owner manifest written only after every contribution chunk is immutable.</summary>
@@ -19,7 +21,8 @@ internal sealed record DomainSharedProjectionStoredPartitionManifest(
     byte[]? CapturedEventDigests = null,
     int TransportPartCount = 0,
     int StreamedChunkCount = 0,
-    string[]? ChunkHashPageDigests = null)
+    string[]? ChunkHashPageDigests = null,
+    SharedProjectionCapturedIdentityReference? CapturedIdentityReference = null)
 {
     internal int MaterializedChunkCount => StreamedChunkCount > 0 ? StreamedChunkCount : ChunkHashes.Length;
 }

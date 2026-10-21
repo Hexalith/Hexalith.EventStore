@@ -6,4 +6,8 @@ namespace Hexalith.EventStore.Client.Projections;
 /// <param name="OwnerSequenceNumber">The accepted aggregate event sequence, or zero for a legacy checkpoint.</param>
 /// <param name="CapturedEventDigests">SHA-256 identities of rebuilt owner events in ordinal order, when captured.</param>
 public sealed record SharedProjectionCheckpoint(long Position, byte[] Token, long OwnerSequenceNumber = 0,
-    byte[]? CapturedEventDigests = null);
+    byte[]? CapturedEventDigests = null)
+{
+    /// <summary>Gets the sealed bounded identity evidence for the rebuilt owner prefix.</summary>
+    public SharedProjectionCapturedIdentityReference? CapturedIdentityReference { get; init; }
+}

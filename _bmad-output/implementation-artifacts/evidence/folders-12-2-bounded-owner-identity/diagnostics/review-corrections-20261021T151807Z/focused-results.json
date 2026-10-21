@@ -1,0 +1,47 @@
+{
+  "scope": "Focused correction verification only. No complete suite or full large-history Dapr rerun was started after review; parent owns full requalification.",
+  "lanes": {
+    "Client": {
+      "total": 63,
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "xml": "bounded-review-client-focused.xml",
+      "log": "bounded-review-client-focused.log"
+    },
+    "Domain bounded cases": {
+      "total": 33,
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "xml": "bounded-review-domain-focused-final.xml",
+      "log": "bounded-review-domain-focused-final.log"
+    },
+    "Producer boundaries": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "xml": "bounded-review-server-focused.xml",
+      "log": "bounded-review-server-focused.log"
+    },
+    "Live canary": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "xml": "bounded-review-live-canary-4.xml",
+      "log": "bounded-review-live-canary-4.log"
+    }
+  },
+  "requiredFullMatrixCaseCounts": {
+    "Client": 28,
+    "DomainService": 33,
+    "Server": 7,
+    "live-process": 6
+  },
+  "pythonSyntaxParsed": true,
+  "gitDiffCheckPassed": true,
+  "completedPreReviewPacketPreserved": "run-20261021T125151Z",
+  "remaining": "Fresh full source/binary qualification on parent side; earlier broad gate failures remain preserved."
+}

@@ -1,0 +1,55 @@
+<assemblies schema-version="3" id="f4c7d054-2be2-4066-9625-4327880c9447" computer="DESKTOP-VIOG240" user="administrator" start-rtf="2026-10-21T15:10:10.5738689+00:00" finish-rtf="2026-10-21T15:10:27.6760422+00:00" timestamp="10/21/2026 17:10:27"><assembly environment="64-bit (x64) .NET 10.0.13 [collection-per-class, non-parallel]" id="e48e64e9-5f3d-41a6-8f13-3eb0a4f7d445" name="/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll" run-date="2026-10-21" run-time="15:10:10" start-rtf="2026-10-21T15:10:10.5738689+00:00" test-framework="xUnit.net v3 4.0.2+0c7aa4991f" target-framework=".NETCoreApp,Version=v10.0" errors="0" failed="2" finish-rtf="2026-10-21T15:10:27.6760422+00:00" not-run="0" passed="0" skipped="0" time="17.103" time-rtf="00:00:17.1030000" total="2"><collection name="DaprTestContainer" id="3af925af-6f4e-4904-8dcb-5575e2b40ade" failed="2" not-run="0" passed="0" skipped="0" time="13.243" time-rtf="00:00:13.2430000" total="2"><test id="df5acb84-af87-49ef-bc1d-091afc856f0c" name="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bufferedOwner: False)" result="Fail" time="6.56" time-rtf="00:00:06.5599999" start-rtf="2026-10-21T15:10:14.2501981+00:00" finish-rtf="2026-10-21T15:10:20.8232765+00:00" type="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests" method="FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff" source-file="/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs" source-line="13"><traits><trait name="Category" value="LiveSidecar" /></traits><failure exception-type="Shouldly.ShouldAssertException"><message>Shouldly.ShouldAssertException : process.ExitCode
+    should be
+73
+    but was
+1
+
+Additional Info:
+    xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+      System.InvalidOperationException : Staging returned before its armed durable participant interruption.
+      Stack Trace:
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(74,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 6.325s
+
+</message><stack-trace>   at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(Int32 count, Boolean bufferedOwner) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs:line 54
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+--- End of stack trace from previous location ---
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)</stack-trace></failure></test><test id="d630f4f8-5307-4c9e-9bbf-cb245ad7667b" name="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bufferedOwner: True)" result="Fail" time="6.683" time-rtf="00:00:06.6830000" start-rtf="2026-10-21T15:10:20.8260988+00:00" finish-rtf="2026-10-21T15:10:27.5101948+00:00" type="Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests" method="FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff" source-file="/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs" source-line="13"><traits><trait name="Category" value="LiveSidecar" /></traits><failure exception-type="Shouldly.ShouldAssertException"><message>Shouldly.ShouldAssertException : process.ExitCode
+    should be
+73
+    but was
+1
+
+Additional Info:
+    xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+      System.InvalidOperationException : Staging returned before its armed durable participant interruption.
+      Stack Trace:
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(74,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 6.503s
+
+</message><stack-trace>   at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests.ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(Int32 count, Boolean bufferedOwner) in /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs:line 54
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)
+--- End of stack trace from previous location ---
+   at System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)
+   at System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task, ConfigureAwaitOptions options)</stack-trace></failure></test></collection></assembly></assemblies>

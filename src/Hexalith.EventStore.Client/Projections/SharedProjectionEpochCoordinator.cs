@@ -401,98 +401,8 @@ public sealed partial class SharedProjectionEpochCoordinator
         CancellationToken cancellationToken = default,
         byte[]? capturedEventDigests = null)
     {
-        ArgumentNullException.ThrowIfNull(scope);
-        scope.Validate();
-        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourceStream);
-        if (lastSequenceNumber <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(lastSequenceNumber));
-        }
-        if (capturedEventDigests is not null
-            && (lastSequenceNumber > 10_000 || capturedEventDigests.Length != checked(lastSequenceNumber * 32)))
-        {
-            throw new ArgumentException("Captured event identities must cover the complete owner history.", nameof(capturedEventDigests));
-        }
-
-        for (int attempt = 0; attempt < MaxRetries; attempt++)
-        {
-            SharedProjectionEpochState state = (await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false)).Value
-                ?? throw new InvalidOperationException("The shared projection has no selected rebuild.");
-            ValidateState(state);
-            ValidateBoundary(state, scope);
-            if (state.ActiveGeneration != state.Epoch
-                || !string.Equals(state.OperationId, operationId, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("The requested rebuild has not been promoted.");
-            }
-
-            long capturedPosition = await GetCapturedPositionAsync(scope, state, sourceStream, cancellationToken)
-                .ConfigureAwait(false)
-                ?? throw new InvalidOperationException("The owner is absent from the rebuild capture.");
-            string key = scope.CheckpointKey(sourceStream);
-            ReadModelEntry<SharedProjectionCheckpoint> entry = await _store
-                .GetAsync<SharedProjectionCheckpoint>(scope.StoreName, key, cancellationToken).ConfigureAwait(false);
-            if (await ReadOwnerCheckpointAsync(scope, state, sourceStream, cancellationToken)
-                .ConfigureAwait(false) is { } existing)
-            {
-                if (existing.Position > capturedPosition)
-                {
-                    throw new InvalidOperationException("The owner checkpoint is ahead of its rebuild capture without sequence continuity.");
-                }
-
-                if (existing.OwnerSequenceNumber > lastSequenceNumber)
-                {
-                    throw new InvalidOperationException("The owner checkpoint sequence exceeds its rebuild history.");
-                }
-
-                if (existing.CapturedEventDigests is { } knownIdentities)
-                {
-                    if (knownIdentities.Length == 0 || knownIdentities.Length % 32 != 0
-                        || knownIdentities.Length / 32 > existing.OwnerSequenceNumber)
-                    {
-                        throw new InvalidOperationException("The owner checkpoint has malformed captured event identities.");
-                    }
-
-                    if (capturedEventDigests is null && existing.OwnerSequenceNumber < lastSequenceNumber
-                        || capturedEventDigests is not null && (knownIdentities.Length > capturedEventDigests.Length
-                            || !knownIdentities.AsSpan().SequenceEqual(capturedEventDigests.AsSpan(0, knownIdentities.Length))))
-                    {
-                        throw new InvalidOperationException("The captured owner event identities conflict with the checkpoint.");
-                    }
-                }
-
-                if (existing.OwnerSequenceNumber == lastSequenceNumber)
-                {
-                    if (existing.Position != capturedPosition)
-                    {
-                        throw new InvalidOperationException("The owner checkpoint does not match its rebuild capture.");
-                    }
-
-                    if (capturedEventDigests is null
-                        || existing.CapturedEventDigests?.Length == capturedEventDigests.Length)
-                    {
-                        return;
-                    }
-
-                    // Ordinary delivery advances the checkpoint while retaining the last rebuilt
-                    // identity prefix. Extend a verified prefix through the same conditional save.
-                }
-            }
-
-            var checkpoint = new SharedProjectionCheckpoint(
-                capturedPosition,
-                JsonSerializer.SerializeToUtf8Bytes(capturedPosition),
-                lastSequenceNumber,
-                capturedEventDigests?.ToArray());
-            if (await _store.TrySaveAsync(scope.StoreName, key, checkpoint, entry.ETag ?? string.Empty,
-                cancellationToken).ConfigureAwait(false))
-            {
-                return;
-            }
-        }
-
-        throw RetryExhausted();
+        await SeedCapturedOwnerSequenceCoreAsync(scope, operationId, sourceStream, lastSequenceNumber,
+            capturedEventDigests, null, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Lists owners with deliveries that must be proved by the sealed rebuild history.</summary>
@@ -544,7 +454,7 @@ public sealed partial class SharedProjectionEpochCoordinator
             string.Equals(item.SourceStream, sourceStream, StringComparison.Ordinal)))
         {
             if (pending.Parked || pending.Failure is not null || !pending.PayloadReady
-                || lastSequenceNumber is < 1 or > 10_000
+                || lastSequenceNumber < 1
                 || pending.OwnerSequenceNumber <= 0 || pending.OwnerSequenceNumber > lastSequenceNumber
                 || capturedEventDigests is null || capturedEventDigests.Length != lastSequenceNumber * 32)
             {
@@ -842,7 +752,8 @@ public sealed partial class SharedProjectionEpochCoordinator
                     {
                         SharedProjectionCheckpoint? capturedOwner = await ReadOwnerCheckpointAsync(
                             scope, state, delivery.SourceStream, cancellationToken).ConfigureAwait(false);
-                        byte[]? identities = capturedOwner?.CapturedEventDigests;
+                        byte[]? identities = capturedOwner is null ? null : await CapturedIdentities.ReadDigestAsync(
+                            scope, delivery.SourceStream, capturedOwner, delivery.OwnerSequenceNumber, cancellationToken).ConfigureAwait(false);
                         if (identities is null)
                         {
                             // The older nonpartitioned rebuild contract did not seed event identities.
@@ -864,11 +775,11 @@ public sealed partial class SharedProjectionEpochCoordinator
                                 digest, cancellationToken).ConfigureAwait(false)) return SharedProjectionJournalResult.IdentityConflict;
                             continue;
                         }
-                        if (delivery.OwnerSequenceNumber > identities.Length / 32)
+                        if (capturedOwner is null || delivery.OwnerSequenceNumber > capturedOwner.OwnerSequenceNumber)
                         {
                             return SharedProjectionJournalResult.RebuildRequired;
                         }
-                        int offset = checked((int)(delivery.OwnerSequenceNumber - 1) * 32);
+                        int offset = 0;
                         if (!SharedProjectionCapturedEventIdentity.Compute(
                                 delivery.SourceStream, delivery.EnvelopePosition,
                                 delivery.OwnerSequenceNumber, delivery.CanonicalPayload).AsSpan()
@@ -1914,8 +1825,10 @@ public sealed partial class SharedProjectionEpochCoordinator
                     scope, state, head.SourceStream, cancellationToken).ConfigureAwait(false);
                 SharedProjectionDelivery covered = await RestoreDeliveryAsync(scope, head, cancellationToken)
                     .ConfigureAwait(false);
-                if (capturedOwner?.CapturedEventDigests is not { } identities
-                    || !CapturedIdentityMatches(head, covered.CanonicalPayload, identities))
+                byte[]? capturedDigest = capturedOwner is null ? null : await CapturedIdentities.ReadDigestAsync(
+                    scope, head.SourceStream, capturedOwner, head.OwnerSequenceNumber, cancellationToken).ConfigureAwait(false);
+                if (capturedDigest is null || !capturedDigest.AsSpan().SequenceEqual(SharedProjectionCapturedEventIdentity.Compute(
+                    head.SourceStream, head.EnvelopePosition, head.OwnerSequenceNumber, covered.CanonicalPayload)))
                 {
                     throw new InvalidOperationException("The journaled delivery conflicts with captured owner history.");
                 }
@@ -2553,7 +2466,7 @@ public sealed partial class SharedProjectionEpochCoordinator
         }
 
         return new SharedProjectionCheckpoint(checkpoint.Position, checkpoint.Token.ToArray(), checkpoint.OwnerSequenceNumber,
-            checkpoint.CapturedEventDigests?.ToArray());
+            checkpoint.CapturedEventDigests?.ToArray()) { CapturedIdentityReference = checkpoint.CapturedIdentityReference };
     }
 
     private async Task<SharedProjectionCheckpoint?> ReadOwnerCheckpointAsync(
@@ -2566,11 +2479,18 @@ public sealed partial class SharedProjectionEpochCoordinator
             .GetAsync<SharedProjectionCheckpoint>(scope.StoreName, scope.CheckpointKey(sourceStream), cancellationToken)
             .ConfigureAwait(false);
         state.ConsumerCheckpoints.TryGetValue(sourceStream, out SharedProjectionCheckpoint? legacy);
-        return indexed.Value is { } current
+        SharedProjectionCheckpoint? checkpoint = indexed.Value is { } current
             && (legacy is null || current.Position > legacy.Position
                 || current.Position == legacy.Position && current.OwnerSequenceNumber >= legacy.OwnerSequenceNumber)
             ? current
             : legacy;
+        if (checkpoint is not null)
+        {
+            SharedProjectionCapturedIdentityStore.ValidateCheckpoint(checkpoint);
+            if (checkpoint.CapturedIdentityReference is { } reference)
+                SharedProjectionCapturedIdentityStore.ValidateBinding(scope, reference, sourceStream);
+        }
+        return checkpoint;
     }
 
     /// <summary>Reads durable stage, promotion, and pending-delivery evidence.</summary>
@@ -3210,7 +3130,10 @@ public sealed partial class SharedProjectionEpochCoordinator
         {
             ReadModelEntry<SharedProjectionCheckpoint> entry = await _store
                 .GetAsync<SharedProjectionCheckpoint>(scope.StoreName, key, cancellationToken).ConfigureAwait(false);
-            if (entry.Value is { } existing)
+            SharedProjectionEpochState state = await RequireStateAsync(scope, cancellationToken).ConfigureAwait(false);
+            SharedProjectionCheckpoint? retained = await ReadOwnerCheckpointAsync(
+                scope, state, delivery.SourceStream, cancellationToken).ConfigureAwait(false);
+            if (retained is { } existing)
             {
                 if (existing.Position > delivery.EnvelopePosition)
                 {
@@ -3238,7 +3161,7 @@ public sealed partial class SharedProjectionEpochCoordinator
                 delivery.EnvelopePosition,
                 delivery.Checkpoint.ToArray(),
                 delivery.OwnerSequenceNumber,
-                entry.Value?.CapturedEventDigests?.ToArray());
+                retained?.CapturedEventDigests?.ToArray()) { CapturedIdentityReference = retained?.CapturedIdentityReference };
             if (await _store.TrySaveAsync(scope.StoreName, key, checkpoint, entry.ETag ?? string.Empty, cancellationToken)
                 .ConfigureAwait(false))
             {

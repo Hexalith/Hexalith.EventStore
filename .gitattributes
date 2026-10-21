@@ -152,3 +152,6 @@ _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-runtim
 
 # Story 2.13 review supplement retains exact overlay, source and receipt bytes.
 _bmad-output/implementation-artifacts/evidence/story-2-13/review-2026-10-21-runtime-recovery/** -text -whitespace
+
+# Folders 12.2 binds native evidence bytes, including embedded generated C# with CRLF.
+_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/** -text -whitespace

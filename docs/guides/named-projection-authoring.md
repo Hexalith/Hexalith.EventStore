@@ -213,7 +213,8 @@ must retain these records while relevant original writers can still resume.
 
 The exact-scope index has the same 64 KiB canonical physical bound as its version-2 fence.
 Each accepted-owner inventory has a fixed shape: the original five-field rebuild identity, one
-owner ordinal and two integer counts; it contains no chunk hashes, domain state or payload arrays.
+owner ordinal and two integer counts, plus an optional constant-size captured-identity reference;
+it contains no chunk hashes, domain state or payload arrays.
 Reconciliation checks its exact original identity/ordinal and bounds chunk/transport counts by
 `ProjectionDispatchOptions.MaxRebuildEventCount`; each transport part has at most 16 known fragment
 identities. There is one such inventory per accepted owner, under the existing accepted-owner limit.
@@ -244,3 +245,58 @@ not enlarge a model, manifest, pending control record or participant-proof limit
 A maintenance budget setup failure is also a `failure`: it retains durable cleanup, releases the
 scheduling gate, and completes existing waits. A subsequent owning operation can retry cleanup after
 the configuration is corrected; budget setup never leaves a permanent gate entry.
+
+### Complete original owner histories and bounded captured identity evidence
+
+Partitioned named rebuilds now seal a version-1 `SharedProjectionCapturedIdentityReference` instead
+of copying one digest vector per owner into a manifest and checkpoint. The namespace binds the
+projection scope, original source stream, rebuild operation and epoch. Immutable leaves contain at
+most 64 original positions, owner sequences and canonical event identities; index nodes contain at
+most 128 authenticated children. The root reference has constant size. An operation-scoped durable
+message-hash index rejects duplicates across distant leaves. Every retained prefix page, including a
+partial final leaf, is compared before promotion and seeding. Missing or corrupt proof fails closed.
+
+Folders consumes the existing public shared-rebuild transport: original owner IDs, original sequence
+numbers and original global positions, bounded `AccumulatePart` requests (at most 256 events and
+two MiB), then `AccumulateComplete` with the complete history fingerprint. Configure
+`ProjectionDispatchOptions.MaxRebuildEventCount` for the admitted complete history (for example,
+40,000 for the 32,770-event qualification). Transport part admission derives from that configured
+limit. This admission setting is an operational bound, not a domain-history truncation rule. The
+source actor remains authoritative; owners and retained events are unchanged. Existing Folders
+handlers implementing `IAsyncDomainSharedProjectionStreamingRebuildHandler` can consume this transport
+without a local persistence protocol or a handler interface migration. The SDK reconstructs the admitted
+complete input for that buffered-owner contract; its transient memory follows the configured event
+admission. `IAsyncDomainSharedProjectionStreamedOwnerHandler` additionally consumes input as a bounded
+stream and avoids materializing the complete owner input. Batches retain the existing 100-operation / one-MiB canonical-manifest limits.
+
+Checkpoint handoff holds the promoted epoch until every original owner is seeded. Each seed uses
+recoverable batching with both the current epoch and checkpoint ETags. Ordinary growth retains its
+sealed identity reference. Later selected or inherited generations retain earlier proof. Identity
+inventory lives outside disposable partition scratch; accepted-owner retirement inventory carries
+an optional constant-size identity reference. Abort first fences identity installers irreversibly,
+then reconciles deterministic original batch identities (including preparation before any participant
+was installed) and reclaims nodes, message indexes and page inventories. Its bounded reservation
+inventory and retirement fence remain. Start `RetireAsync` after abort and before starting another
+epoch; a retirement already fenced can be retried safely.
+A selected or inherited reference cannot be retired by an older operation. There is no automatic
+TTL or background deletion of selected evidence. Include identity inventories, nodes, message indexes,
+checkpoints and retained batch metadata in the same ordered backup/restore and retention policy.
+
+Upgrade every reader, writer and maintenance process before allowing paged checkpoints to be written.
+New readers continue decoding legacy inline `CapturedEventDigests`; the existing four-argument
+`SharedProjectionCheckpoint` constructor and legacy coordinator methods remain callable. Legacy seed
+retries preserve existing paged proof; extending it uses `SeedCapturedOwnerIdentityAsync`. Rebuild retries
+also resume an old inline owner manifest persisted before session acceptance: they validate every
+retained digest and preserve that immutable manifest through handoff. New owner manifests use paged
+evidence. Old readers
+cannot safely interpret paged checkpoints. Rollback after the first paged checkpoint therefore requires
+a compatible reader or a coordinated restore of the complete pre-upgrade epoch/checkpoint/proof state
+with writers drained. Removing reference fields or deleting proof is not a rollback procedure.
+
+Run `python3 tools/qualify-bounded-owner-identity.py` from this repository to capture source-mode
+Debug builds, complete affected unit suites and the opted-in Dapr process lane. The packet under
+`_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/` binds exact source
+hashes, PE/PDB hashes, loaded module identities, PDB document checksums, commands/results, physical value
+sizes, canonical batch sizes and distinct PIDs across interrupted staging and promoted handoff.
+Each build graph is recorded separately. This is EventStore source qualification; package/release
+qualification, Folders acceptance, pin changes, publishing and deployment remain separate work.

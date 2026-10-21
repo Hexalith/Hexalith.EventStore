@@ -1,3 +1,5 @@
+using Hexalith.EventStore.Client.Projections;
+
 namespace Hexalith.EventStore.DomainService;
 
 /// <summary>Durable private state for one shared-projection rebuild session.</summary>
@@ -23,4 +25,5 @@ internal sealed record DomainSharedProjectionRebuildSessionState(
     string? TransportAggregateId = null,
     int TransportNextPart = 0,
     int TransportReservedPartCount = 0,
-    int TransportReservedFragmentCount = 0);
+    int TransportReservedFragmentCount = 0,
+    SharedProjectionCapturedIdentityReference? PendingCapturedIdentityReference = null);

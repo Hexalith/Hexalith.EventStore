@@ -360,7 +360,7 @@ public sealed class SharedProjectionSourceRosterActor(ActorHost host,
             || root.PendingIntents.Count != 0 || partition >= root.CapturePageCount) return false;
         AggregateIdentity[] roster = await ReadPageContentsAsync(partition).ConfigureAwait(false);
         if (!roster.SequenceEqual(owners.Select(item => item.Owner))
-            || owners.Any(item => item.Sequence is < 0 or > 10_000 || item.Position < 0
+            || owners.Any(item => item.Sequence < 0 || item.Position < 0
                 || item.IsErased && item.Sequence != 0
                 || !item.IsErased && (item.Sequence == 0) != (item.Position == 0)))
             return false;

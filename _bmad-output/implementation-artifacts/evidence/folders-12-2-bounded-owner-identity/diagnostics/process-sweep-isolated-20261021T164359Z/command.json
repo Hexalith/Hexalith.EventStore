@@ -1,0 +1,15 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "-method",
+    "Hexalith.EventStore.DomainService.Tests.Processes.ProcessSweepRenewalTests.SweepRenewalFaultPreservesCompletedSourceObservation",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/diagnostics/process-sweep-isolated-20261021T164359Z/result.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/folders/references/Hexalith.EventStore",
+  "exitCode": 0,
+  "elapsedSeconds": 0.577,
+  "boundFullPacket": "run-20261021T152119Z",
+  "note": "One targeted retry of the unchanged failing test; does not replace or clear the full-suite failure."
+}

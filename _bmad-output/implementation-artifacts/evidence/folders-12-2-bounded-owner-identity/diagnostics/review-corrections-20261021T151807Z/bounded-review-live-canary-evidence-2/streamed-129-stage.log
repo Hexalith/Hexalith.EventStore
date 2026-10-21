@@ -1,0 +1,13 @@
+xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.13)
+  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
+  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
+  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
+    Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync [FAIL]
+      System.InvalidOperationException : Staging returned before its armed durable participant interruption: {"Version":1,"Phase":2,"Status":0,"AcceptedAggregateCount":2,"InventoryFingerprint":"v1:r_hcmLbLVm4_CwmJ0sqa5liAnVhsSNGiuCbMvMAcENA","BatchFingerprint":"stream:2D4B97A6B829BE0466CE93EAB194EC1E17CA765C9E5E4CB5AE313809D3386FDB:1","ReasonCode":null}
+      Stack Trace:
+        /home/administrator/projects/hexalith/folders/references/Hexalith.EventStore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs(79,0): at Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests.RunBoundedOwnerWorkerAsync()
+        --- End of stack trace from previous location ---
+  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = '470bf1e3a893fb013de1535e085de5236aed503cf58bae1a8a2ea3770ed33a57')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 6.146s
+

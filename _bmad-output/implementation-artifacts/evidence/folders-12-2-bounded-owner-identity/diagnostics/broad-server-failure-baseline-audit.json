@@ -1,0 +1,1450 @@
+{
+  "at": "2026-10-21T13:22:38.640586+00:00",
+  "baselineCommit": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+  "run": "_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/run-20261021T125151Z",
+  "historicalLocations": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+      "line": 80717
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+      "line": 107155
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+      "line": 84618
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+      "line": 117738
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+      "line": 98883
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+      "line": 71184
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+      "line": 65567
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+      "line": 60301
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+      "line": 70764
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+      "line": 60901
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+      "line": 83559
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+      "line": 66893
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+      "line": 67588
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+      "line": 61189
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+      "line": 78939
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+      "line": 68453
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+      "line": 61189
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+      "line": 87712
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+      "line": 110589
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json",
+      "line": 3527
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json",
+      "line": 3800
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json",
+      "line": 3548
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json",
+      "line": 3645
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json",
+      "line": 3900
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json",
+      "line": 3612
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json",
+      "line": 60284
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json",
+      "line": 80855
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json",
+      "line": 110589
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json",
+      "line": 68425
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json",
+      "line": 83633
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json",
+      "line": 61172
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json",
+      "line": 61172
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json",
+      "line": 60884
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json",
+      "line": 107181
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json",
+      "line": 117673
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json",
+      "line": 66876
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json",
+      "line": 98743
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json",
+      "line": 78937
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json",
+      "line": 87644
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json",
+      "line": 67480
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json",
+      "line": 65310
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json",
+      "line": 70109
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json",
+      "line": 71203
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json",
+      "line": 84656
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+      "line": 80717
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+      "line": 107155
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+      "line": 84618
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+      "line": 117738
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+      "line": 98883
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+      "line": 71184
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+      "line": 65567
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+      "line": 60301
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+      "line": 70764
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+      "line": 60901
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+      "line": 83559
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+      "line": 66893
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+      "line": 67588
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+      "line": 61189
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+      "line": 78939
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+      "line": 68453
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+      "line": 61189
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+      "line": 87712
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+      "line": 110589
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json",
+      "line": 3527
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json",
+      "line": 3800
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json",
+      "line": 3548
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json",
+      "line": 3645
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json",
+      "line": 3900
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json",
+      "line": 3612
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json",
+      "line": 67459
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json",
+      "line": 66893
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json",
+      "line": 87700
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json",
+      "line": 83571
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json",
+      "line": 65324
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json",
+      "line": 110535
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json",
+      "line": 84654
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json",
+      "line": 80888
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json",
+      "line": 68447
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json",
+      "line": 98844
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json",
+      "line": 70779
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json",
+      "line": 78939
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+      "line": 117783
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json",
+      "line": 71232
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json",
+      "line": 61189
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json",
+      "line": 107194
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json",
+      "line": 60901
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json",
+      "line": 60301
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json",
+      "line": 61189
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093/case.json",
+      "line": 6550
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json",
+      "line": 60284
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json",
+      "line": 80855
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json",
+      "line": 110589
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json",
+      "line": 68425
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json",
+      "line": 83633
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json",
+      "line": 61172
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json",
+      "line": 61172
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json",
+      "line": 60884
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json",
+      "line": 107181
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json",
+      "line": 117673
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json",
+      "line": 66876
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json",
+      "line": 98743
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json",
+      "line": 78937
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json",
+      "line": 87644
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json",
+      "line": 67480
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json",
+      "line": 65310
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json",
+      "line": 70109
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json",
+      "line": 71203
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json",
+      "line": 84656
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_147c0acc7e2a45a09a03b8eab5859772.output-6260.json",
+      "line": 12
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_8920f237a01b4c748a10c03b97b2846a.output-5805.json",
+      "line": 12
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/snapshots/supporting-credential-conformance/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs",
+      "line": 268
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "line": 274
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py",
+      "line": 225
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py",
+      "line": 278
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py",
+      "line": 289
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py",
+      "line": 524
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "line": 274
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "line": 274
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 262
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 315
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 327
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 583
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "line": 274
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py",
+      "line": 265
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py",
+      "line": 318
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py",
+      "line": 330
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py",
+      "line": 586
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "line": 274
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 265
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 318
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 330
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py",
+      "line": 586
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs",
+      "line": 268
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs",
+      "line": 35
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs",
+      "line": 79
+    },
+    {
+      "path": "tools/qualify-dapr-brokers.py",
+      "line": 265
+    },
+    {
+      "path": "tools/qualify-dapr-brokers.py",
+      "line": 318
+    },
+    {
+      "path": "tools/qualify-dapr-brokers.py",
+      "line": 330
+    },
+    {
+      "path": "tools/qualify-dapr-brokers.py",
+      "line": 586
+    }
+  ],
+  "historicalLocationCount": 139,
+  "historicalPathCount": 123,
+  "historicalPathComparisons": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+      "baselineBlob": "87f8c123635f3183768596014e8439283af51689",
+      "workingBlob": "87f8c123635f3183768596014e8439283af51689",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+      "baselineBlob": "84a270b90621ee15a1aab5212e2e82d7a8c45806",
+      "workingBlob": "84a270b90621ee15a1aab5212e2e82d7a8c45806",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+      "baselineBlob": "ceefaa3ac68cedb9a1e346af93ba0765c0913bd0",
+      "workingBlob": "ceefaa3ac68cedb9a1e346af93ba0765c0913bd0",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+      "baselineBlob": "6f5a6efab1436b314b14cdcef73c70e57a3cf725",
+      "workingBlob": "6f5a6efab1436b314b14cdcef73c70e57a3cf725",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+      "baselineBlob": "9857b20ac26f083d68067a1c8d579cefe77d7662",
+      "workingBlob": "9857b20ac26f083d68067a1c8d579cefe77d7662",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+      "baselineBlob": "42b8f3501b742947f0a72721760dc4d9a465756e",
+      "workingBlob": "42b8f3501b742947f0a72721760dc4d9a465756e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+      "baselineBlob": "15bcca23608a895a7174e781b7e6708bd97dedd7",
+      "workingBlob": "15bcca23608a895a7174e781b7e6708bd97dedd7",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+      "baselineBlob": "f3f81c2fee48fff82e9108fa778a0515e572ad4d",
+      "workingBlob": "f3f81c2fee48fff82e9108fa778a0515e572ad4d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+      "baselineBlob": "7d303c7f2fd15e8a2fb032f831f4734d5bfa4ec6",
+      "workingBlob": "7d303c7f2fd15e8a2fb032f831f4734d5bfa4ec6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+      "baselineBlob": "01b83ac4613248de2336a236735239b9c7b4d13d",
+      "workingBlob": "01b83ac4613248de2336a236735239b9c7b4d13d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+      "baselineBlob": "b42ce1ab0dccbd5a8c9cdfefdb7186fe64cb0935",
+      "workingBlob": "b42ce1ab0dccbd5a8c9cdfefdb7186fe64cb0935",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+      "baselineBlob": "951ac420690e3cfa6c888f1d62bb00f476701336",
+      "workingBlob": "951ac420690e3cfa6c888f1d62bb00f476701336",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+      "baselineBlob": "88e413810332298abb8e3e4eff07eafc0292454c",
+      "workingBlob": "88e413810332298abb8e3e4eff07eafc0292454c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+      "baselineBlob": "5cdee9894fc1c28933ac822ce9afd58794fc6184",
+      "workingBlob": "5cdee9894fc1c28933ac822ce9afd58794fc6184",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+      "baselineBlob": "b00891346c5ae391625a779d954cf9100fbc2eed",
+      "workingBlob": "b00891346c5ae391625a779d954cf9100fbc2eed",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+      "baselineBlob": "f4626caf20bddacecbdcdfd011eefcfbf0147b4c",
+      "workingBlob": "f4626caf20bddacecbdcdfd011eefcfbf0147b4c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+      "baselineBlob": "4a30792202d67dd59fc86ab847814384815f0ca1",
+      "workingBlob": "4a30792202d67dd59fc86ab847814384815f0ca1",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+      "baselineBlob": "0d7b12bd64df1d3906dfd7b747b59ea3c47de2d9",
+      "workingBlob": "0d7b12bd64df1d3906dfd7b747b59ea3c47de2d9",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+      "baselineBlob": "2f3323c60650c346df6bea1120aa76e92dade47c",
+      "workingBlob": "2f3323c60650c346df6bea1120aa76e92dade47c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json",
+      "baselineBlob": "99c505ce734b4de33c98e89ad4e4a7430b0d7961",
+      "workingBlob": "99c505ce734b4de33c98e89ad4e4a7430b0d7961",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json",
+      "baselineBlob": "ef4c420f6d078147295e095001224dad93fb9574",
+      "workingBlob": "ef4c420f6d078147295e095001224dad93fb9574",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json",
+      "baselineBlob": "93840dff3d360ff760f3af94e7c2a19ccd0253d6",
+      "workingBlob": "93840dff3d360ff760f3af94e7c2a19ccd0253d6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json",
+      "baselineBlob": "7969181ddeb79eafe28c93ab247de50c22b193ea",
+      "workingBlob": "7969181ddeb79eafe28c93ab247de50c22b193ea",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json",
+      "baselineBlob": "01986f2e0ec004b4bbd135940b8cbf2d48aab609",
+      "workingBlob": "01986f2e0ec004b4bbd135940b8cbf2d48aab609",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json",
+      "baselineBlob": "71ae2adb17997d0acf1b4dec15500e6395d09d5d",
+      "workingBlob": "71ae2adb17997d0acf1b4dec15500e6395d09d5d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json",
+      "baselineBlob": "def700c8c6e141541e7f1d64760aff069ddcdf20",
+      "workingBlob": "def700c8c6e141541e7f1d64760aff069ddcdf20",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json",
+      "baselineBlob": "09d3d2f2243fcb8e176b917285c55f029a4cef65",
+      "workingBlob": "09d3d2f2243fcb8e176b917285c55f029a4cef65",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json",
+      "baselineBlob": "adbb25d2e273fc616d7b66b172ee9b76370671b8",
+      "workingBlob": "adbb25d2e273fc616d7b66b172ee9b76370671b8",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json",
+      "baselineBlob": "3fa6572eccda4794f6e3008d5051c5288d567180",
+      "workingBlob": "3fa6572eccda4794f6e3008d5051c5288d567180",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json",
+      "baselineBlob": "d1812e269034b7e442e62f7787f98790e51bb523",
+      "workingBlob": "d1812e269034b7e442e62f7787f98790e51bb523",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json",
+      "baselineBlob": "5042bec9905878112a8b8b4d1448769270d097fa",
+      "workingBlob": "5042bec9905878112a8b8b4d1448769270d097fa",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json",
+      "baselineBlob": "67dc31eec1f4a68d9f6e881041307b2322fb87a9",
+      "workingBlob": "67dc31eec1f4a68d9f6e881041307b2322fb87a9",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json",
+      "baselineBlob": "ef00078bd5def0af231050f27ca889a5125c386c",
+      "workingBlob": "ef00078bd5def0af231050f27ca889a5125c386c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json",
+      "baselineBlob": "94d5b0cdca016b9656bea523fe294276343301aa",
+      "workingBlob": "94d5b0cdca016b9656bea523fe294276343301aa",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json",
+      "baselineBlob": "e199add16a25025058dbc7989feacbf5b4f05f22",
+      "workingBlob": "e199add16a25025058dbc7989feacbf5b4f05f22",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json",
+      "baselineBlob": "d96596870c50209baf9670d65d63f4fdd4c041ff",
+      "workingBlob": "d96596870c50209baf9670d65d63f4fdd4c041ff",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json",
+      "baselineBlob": "a0f78b849b0edcee5851246aa1e24a81977c8f1e",
+      "workingBlob": "a0f78b849b0edcee5851246aa1e24a81977c8f1e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json",
+      "baselineBlob": "4e252241ef09ee656c869972bd127bd7916e5c74",
+      "workingBlob": "4e252241ef09ee656c869972bd127bd7916e5c74",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json",
+      "baselineBlob": "d0d49348cf5bb8404f971e3df36c2851083d6a6f",
+      "workingBlob": "d0d49348cf5bb8404f971e3df36c2851083d6a6f",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json",
+      "baselineBlob": "b0a35c02e212d3c6c3a4e50fe6c018fbb1344e61",
+      "workingBlob": "b0a35c02e212d3c6c3a4e50fe6c018fbb1344e61",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json",
+      "baselineBlob": "12fb66c68ed085014ec4a758d465f60833b0f81a",
+      "workingBlob": "12fb66c68ed085014ec4a758d465f60833b0f81a",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json",
+      "baselineBlob": "adb8b454770f8de3fb5488cfb3abd05ff6a9edb6",
+      "workingBlob": "adb8b454770f8de3fb5488cfb3abd05ff6a9edb6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json",
+      "baselineBlob": "46781ed433b4913c09ea1f9b7fc5e82108a1a1fb",
+      "workingBlob": "46781ed433b4913c09ea1f9b7fc5e82108a1a1fb",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json",
+      "baselineBlob": "7a5dc29089d72fd2865e3007a57570feb0c3ded3",
+      "workingBlob": "7a5dc29089d72fd2865e3007a57570feb0c3ded3",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json",
+      "baselineBlob": "87f8c123635f3183768596014e8439283af51689",
+      "workingBlob": "87f8c123635f3183768596014e8439283af51689",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json",
+      "baselineBlob": "84a270b90621ee15a1aab5212e2e82d7a8c45806",
+      "workingBlob": "84a270b90621ee15a1aab5212e2e82d7a8c45806",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json",
+      "baselineBlob": "ceefaa3ac68cedb9a1e346af93ba0765c0913bd0",
+      "workingBlob": "ceefaa3ac68cedb9a1e346af93ba0765c0913bd0",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json",
+      "baselineBlob": "6f5a6efab1436b314b14cdcef73c70e57a3cf725",
+      "workingBlob": "6f5a6efab1436b314b14cdcef73c70e57a3cf725",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json",
+      "baselineBlob": "9857b20ac26f083d68067a1c8d579cefe77d7662",
+      "workingBlob": "9857b20ac26f083d68067a1c8d579cefe77d7662",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json",
+      "baselineBlob": "42b8f3501b742947f0a72721760dc4d9a465756e",
+      "workingBlob": "42b8f3501b742947f0a72721760dc4d9a465756e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json",
+      "baselineBlob": "15bcca23608a895a7174e781b7e6708bd97dedd7",
+      "workingBlob": "15bcca23608a895a7174e781b7e6708bd97dedd7",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json",
+      "baselineBlob": "f3f81c2fee48fff82e9108fa778a0515e572ad4d",
+      "workingBlob": "f3f81c2fee48fff82e9108fa778a0515e572ad4d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json",
+      "baselineBlob": "7d303c7f2fd15e8a2fb032f831f4734d5bfa4ec6",
+      "workingBlob": "7d303c7f2fd15e8a2fb032f831f4734d5bfa4ec6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json",
+      "baselineBlob": "01b83ac4613248de2336a236735239b9c7b4d13d",
+      "workingBlob": "01b83ac4613248de2336a236735239b9c7b4d13d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json",
+      "baselineBlob": "b42ce1ab0dccbd5a8c9cdfefdb7186fe64cb0935",
+      "workingBlob": "b42ce1ab0dccbd5a8c9cdfefdb7186fe64cb0935",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json",
+      "baselineBlob": "951ac420690e3cfa6c888f1d62bb00f476701336",
+      "workingBlob": "951ac420690e3cfa6c888f1d62bb00f476701336",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json",
+      "baselineBlob": "88e413810332298abb8e3e4eff07eafc0292454c",
+      "workingBlob": "88e413810332298abb8e3e4eff07eafc0292454c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json",
+      "baselineBlob": "5cdee9894fc1c28933ac822ce9afd58794fc6184",
+      "workingBlob": "5cdee9894fc1c28933ac822ce9afd58794fc6184",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json",
+      "baselineBlob": "b00891346c5ae391625a779d954cf9100fbc2eed",
+      "workingBlob": "b00891346c5ae391625a779d954cf9100fbc2eed",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json",
+      "baselineBlob": "f4626caf20bddacecbdcdfd011eefcfbf0147b4c",
+      "workingBlob": "f4626caf20bddacecbdcdfd011eefcfbf0147b4c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json",
+      "baselineBlob": "4a30792202d67dd59fc86ab847814384815f0ca1",
+      "workingBlob": "4a30792202d67dd59fc86ab847814384815f0ca1",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json",
+      "baselineBlob": "0d7b12bd64df1d3906dfd7b747b59ea3c47de2d9",
+      "workingBlob": "0d7b12bd64df1d3906dfd7b747b59ea3c47de2d9",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json",
+      "baselineBlob": "2f3323c60650c346df6bea1120aa76e92dade47c",
+      "workingBlob": "2f3323c60650c346df6bea1120aa76e92dade47c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json",
+      "baselineBlob": "99c505ce734b4de33c98e89ad4e4a7430b0d7961",
+      "workingBlob": "99c505ce734b4de33c98e89ad4e4a7430b0d7961",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json",
+      "baselineBlob": "ef4c420f6d078147295e095001224dad93fb9574",
+      "workingBlob": "ef4c420f6d078147295e095001224dad93fb9574",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json",
+      "baselineBlob": "93840dff3d360ff760f3af94e7c2a19ccd0253d6",
+      "workingBlob": "93840dff3d360ff760f3af94e7c2a19ccd0253d6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json",
+      "baselineBlob": "7969181ddeb79eafe28c93ab247de50c22b193ea",
+      "workingBlob": "7969181ddeb79eafe28c93ab247de50c22b193ea",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json",
+      "baselineBlob": "01986f2e0ec004b4bbd135940b8cbf2d48aab609",
+      "workingBlob": "01986f2e0ec004b4bbd135940b8cbf2d48aab609",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json",
+      "baselineBlob": "71ae2adb17997d0acf1b4dec15500e6395d09d5d",
+      "workingBlob": "71ae2adb17997d0acf1b4dec15500e6395d09d5d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json",
+      "baselineBlob": "344803c418f3710a6d6505add136703f4a2164fe",
+      "workingBlob": "344803c418f3710a6d6505add136703f4a2164fe",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json",
+      "baselineBlob": "1fada4682a632d1ab5ccdac6e34722260bffaa15",
+      "workingBlob": "1fada4682a632d1ab5ccdac6e34722260bffaa15",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json",
+      "baselineBlob": "42019c5a9cfb21045dccb14c0add4f0e878234df",
+      "workingBlob": "42019c5a9cfb21045dccb14c0add4f0e878234df",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json",
+      "baselineBlob": "d5e4587326b23b955ca3fa78c6e90781c1954506",
+      "workingBlob": "d5e4587326b23b955ca3fa78c6e90781c1954506",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json",
+      "baselineBlob": "c3d843fcd484cf720c2c73aa12b17456a09c9657",
+      "workingBlob": "c3d843fcd484cf720c2c73aa12b17456a09c9657",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json",
+      "baselineBlob": "a98b28a4b8670ecb225bae0eb4111ce42248369a",
+      "workingBlob": "a98b28a4b8670ecb225bae0eb4111ce42248369a",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json",
+      "baselineBlob": "8def2d6d03bac0315d7332b7b214803709b51215",
+      "workingBlob": "8def2d6d03bac0315d7332b7b214803709b51215",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json",
+      "baselineBlob": "418e8dc44c6cd99a3a23092bd0ccbab609890005",
+      "workingBlob": "418e8dc44c6cd99a3a23092bd0ccbab609890005",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json",
+      "baselineBlob": "6e35e32fe63fb117bfd92eb121b005e9ac01161a",
+      "workingBlob": "6e35e32fe63fb117bfd92eb121b005e9ac01161a",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json",
+      "baselineBlob": "8a9acd2ff940474f87fb44ceec5f1cb2fcdb1413",
+      "workingBlob": "8a9acd2ff940474f87fb44ceec5f1cb2fcdb1413",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json",
+      "baselineBlob": "4ff261a6066e2b35cfa91070a4182e01f1db7e0d",
+      "workingBlob": "4ff261a6066e2b35cfa91070a4182e01f1db7e0d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json",
+      "baselineBlob": "53b4c53d473290fd83232181af3a00e23cbc0914",
+      "workingBlob": "53b4c53d473290fd83232181af3a00e23cbc0914",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json",
+      "baselineBlob": "84e703e57dd739ab5e0e7602afa6394de533c34e",
+      "workingBlob": "84e703e57dd739ab5e0e7602afa6394de533c34e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json",
+      "baselineBlob": "e0fa521778111cc4b6063aa0c425044570f90b0f",
+      "workingBlob": "e0fa521778111cc4b6063aa0c425044570f90b0f",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json",
+      "baselineBlob": "d0075d53e3687f0138e6f4af80eead77d8b5904e",
+      "workingBlob": "d0075d53e3687f0138e6f4af80eead77d8b5904e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json",
+      "baselineBlob": "7d22ef3c55356cb8657b8ca7437e4f3832dba285",
+      "workingBlob": "7d22ef3c55356cb8657b8ca7437e4f3832dba285",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json",
+      "baselineBlob": "582c50508f1ac19700eef93f474eb7d4cf2fa1a7",
+      "workingBlob": "582c50508f1ac19700eef93f474eb7d4cf2fa1a7",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json",
+      "baselineBlob": "daf8cfd298055796244508c4d775c13067023fd8",
+      "workingBlob": "daf8cfd298055796244508c4d775c13067023fd8",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json",
+      "baselineBlob": "61c8ba00253e32a9d23348e4d4a90a29e2261ebf",
+      "workingBlob": "61c8ba00253e32a9d23348e4d4a90a29e2261ebf",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093/case.json",
+      "baselineBlob": "3cb9a2b9dd330931cb40ccd85ca2536328e3986a",
+      "workingBlob": "3cb9a2b9dd330931cb40ccd85ca2536328e3986a",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json",
+      "baselineBlob": "def700c8c6e141541e7f1d64760aff069ddcdf20",
+      "workingBlob": "def700c8c6e141541e7f1d64760aff069ddcdf20",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json",
+      "baselineBlob": "09d3d2f2243fcb8e176b917285c55f029a4cef65",
+      "workingBlob": "09d3d2f2243fcb8e176b917285c55f029a4cef65",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json",
+      "baselineBlob": "adbb25d2e273fc616d7b66b172ee9b76370671b8",
+      "workingBlob": "adbb25d2e273fc616d7b66b172ee9b76370671b8",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json",
+      "baselineBlob": "3fa6572eccda4794f6e3008d5051c5288d567180",
+      "workingBlob": "3fa6572eccda4794f6e3008d5051c5288d567180",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json",
+      "baselineBlob": "d1812e269034b7e442e62f7787f98790e51bb523",
+      "workingBlob": "d1812e269034b7e442e62f7787f98790e51bb523",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json",
+      "baselineBlob": "5042bec9905878112a8b8b4d1448769270d097fa",
+      "workingBlob": "5042bec9905878112a8b8b4d1448769270d097fa",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json",
+      "baselineBlob": "67dc31eec1f4a68d9f6e881041307b2322fb87a9",
+      "workingBlob": "67dc31eec1f4a68d9f6e881041307b2322fb87a9",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json",
+      "baselineBlob": "ef00078bd5def0af231050f27ca889a5125c386c",
+      "workingBlob": "ef00078bd5def0af231050f27ca889a5125c386c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json",
+      "baselineBlob": "94d5b0cdca016b9656bea523fe294276343301aa",
+      "workingBlob": "94d5b0cdca016b9656bea523fe294276343301aa",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json",
+      "baselineBlob": "e199add16a25025058dbc7989feacbf5b4f05f22",
+      "workingBlob": "e199add16a25025058dbc7989feacbf5b4f05f22",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json",
+      "baselineBlob": "d96596870c50209baf9670d65d63f4fdd4c041ff",
+      "workingBlob": "d96596870c50209baf9670d65d63f4fdd4c041ff",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json",
+      "baselineBlob": "a0f78b849b0edcee5851246aa1e24a81977c8f1e",
+      "workingBlob": "a0f78b849b0edcee5851246aa1e24a81977c8f1e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json",
+      "baselineBlob": "4e252241ef09ee656c869972bd127bd7916e5c74",
+      "workingBlob": "4e252241ef09ee656c869972bd127bd7916e5c74",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json",
+      "baselineBlob": "d0d49348cf5bb8404f971e3df36c2851083d6a6f",
+      "workingBlob": "d0d49348cf5bb8404f971e3df36c2851083d6a6f",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json",
+      "baselineBlob": "b0a35c02e212d3c6c3a4e50fe6c018fbb1344e61",
+      "workingBlob": "b0a35c02e212d3c6c3a4e50fe6c018fbb1344e61",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json",
+      "baselineBlob": "12fb66c68ed085014ec4a758d465f60833b0f81a",
+      "workingBlob": "12fb66c68ed085014ec4a758d465f60833b0f81a",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json",
+      "baselineBlob": "adb8b454770f8de3fb5488cfb3abd05ff6a9edb6",
+      "workingBlob": "adb8b454770f8de3fb5488cfb3abd05ff6a9edb6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json",
+      "baselineBlob": "46781ed433b4913c09ea1f9b7fc5e82108a1a1fb",
+      "workingBlob": "46781ed433b4913c09ea1f9b7fc5e82108a1a1fb",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json",
+      "baselineBlob": "7a5dc29089d72fd2865e3007a57570feb0c3ded3",
+      "workingBlob": "7a5dc29089d72fd2865e3007a57570feb0c3ded3",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_147c0acc7e2a45a09a03b8eab5859772.output-6260.json",
+      "baselineBlob": "2b1bf7bf9d909dad900c814b361b3782c7d062bf",
+      "workingBlob": "2b1bf7bf9d909dad900c814b361b3782c7d062bf",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_8920f237a01b4c748a10c03b97b2846a.output-5805.json",
+      "baselineBlob": "d377fdd43be8621ca923b1f6782c08fab6a414f4",
+      "workingBlob": "d377fdd43be8621ca923b1f6782c08fab6a414f4",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/snapshots/supporting-credential-conformance/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs",
+      "baselineBlob": "68023e11e95fc0013c189c03b8822ec722862cc9",
+      "workingBlob": "68023e11e95fc0013c189c03b8822ec722862cc9",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "baselineBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "workingBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py",
+      "baselineBlob": "a341f42eb1654a17966170eeaa14f97d5794248b",
+      "workingBlob": "a341f42eb1654a17966170eeaa14f97d5794248b",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "baselineBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "workingBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "baselineBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "workingBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py",
+      "baselineBlob": "3c27a4b397d641704db2e99d54542e5712d47e67",
+      "workingBlob": "3c27a4b397d641704db2e99d54542e5712d47e67",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "baselineBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "workingBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py",
+      "baselineBlob": "c757a907a90f485d5725caa293868b1a80d40acf",
+      "workingBlob": "c757a907a90f485d5725caa293868b1a80d40acf",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go",
+      "baselineBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "workingBlob": "90d89ecdd2fbbe7ae46101e117aa774fb8e261fe",
+      "matchesBaseline": true
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py",
+      "baselineBlob": "9ca2dc0a68db8d805def87fe99355f2da7cb4327",
+      "workingBlob": "9ca2dc0a68db8d805def87fe99355f2da7cb4327",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs",
+      "baselineBlob": "68023e11e95fc0013c189c03b8822ec722862cc9",
+      "workingBlob": "68023e11e95fc0013c189c03b8822ec722862cc9",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs",
+      "baselineBlob": "0f957365d85382083c9f433852b73ebf95fbaee3",
+      "workingBlob": "0f957365d85382083c9f433852b73ebf95fbaee3",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tools/qualify-dapr-brokers.py",
+      "baselineBlob": "c757a907a90f485d5725caa293868b1a80d40acf",
+      "workingBlob": "c757a907a90f485d5725caa293868b1a80d40acf",
+      "matchesBaseline": true
+    }
+  ],
+  "allHistoricalBytesMatchBaseline": true,
+  "codeComparisons": [
+    {
+      "path": "src/Hexalith.EventStore.Client/Projections/ReadModelBatchFingerprint.cs",
+      "baselineSha256": "1171641419751ff04f1b434b5bc827440586bf10f294b5e85259e85066f440b1",
+      "workingSha256": "1171641419751ff04f1b434b5bc827440586bf10f294b5e85259e85066f440b1",
+      "matchesBaseline": true
+    },
+    {
+      "path": "src/Hexalith.EventStore.DomainService/DomainProjectionReplayRecovery.cs",
+      "baselineSha256": "e918ee989f93e6e771f68a6a8453abf743bac0b95a11753a575e895ea56b43cb",
+      "workingSha256": "e918ee989f93e6e771f68a6a8453abf743bac0b95a11753a575e895ea56b43cb",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionReplayRecoveryTests.cs",
+      "baselineSha256": "801c332ac822ca4e3cb598b38b1741550d20aa872ffa23ea599dbd88107ae4d1",
+      "workingSha256": "801c332ac822ca4e3cb598b38b1741550d20aa872ffa23ea599dbd88107ae4d1",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Projections/ReplayRecoveryProductionFixture.cs",
+      "baselineSha256": "a0d7276b008467c7a38972a94f954809b9703c32b94671b37eb1b9f6c38205c7",
+      "workingSha256": "a0d7276b008467c7a38972a94f954809b9703c32b94671b37eb1b9f6c38205c7",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceIngestion.cs",
+      "baselineSha256": "2640304b4e511a7ff9ee78e078b2f1c19c4bc7bdd0918026af03512d7c679b6d",
+      "workingSha256": "2640304b4e511a7ff9ee78e078b2f1c19c4bc7bdd0918026af03512d7c679b6d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceRecognition.cs",
+      "baselineSha256": "53a9c5f7b3421f7c4fff7308dff9627495fbdb5e57898db354450cd29827821c",
+      "workingSha256": "53a9c5f7b3421f7c4fff7308dff9627495fbdb5e57898db354450cd29827821c",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+      "baselineSha256": "5301e922d191b4b983bad1e70c9c3d00c63b0077ecf2056b9ad957191f0b06b6",
+      "workingSha256": "5301e922d191b4b983bad1e70c9c3d00c63b0077ecf2056b9ad957191f0b06b6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.HistoricalLines.cs",
+      "baselineSha256": "cc08e79c8e933e8024203e7697e8537e5a02ca76ff8171c0d6ab7dbe7e0b40b3",
+      "workingSha256": "cc08e79c8e933e8024203e7697e8537e5a02ca76ff8171c0d6ab7dbe7e0b40b3",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.NuGetEvidence.cs",
+      "baselineSha256": "50e9e743dc3fad7912d6d3958e297bea7dc90e781b672f0046d3de005ef38048",
+      "workingSha256": "50e9e743dc3fad7912d6d3958e297bea7dc90e781b672f0046d3de005ef38048",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Reconciliation.cs",
+      "baselineSha256": "8462f8c7f5df0a0ab2d4c899ce43c911d4cb02747ecc4c45105dc41333421aad",
+      "workingSha256": "8462f8c7f5df0a0ab2d4c899ce43c911d4cb02747ecc4c45105dc41333421aad",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.Story64Retirement.cs",
+      "baselineSha256": "ab08f1bfb514e5fbb45c12e6c800cab6d3576631c9db3c0385bb709f5ec43a9a",
+      "workingSha256": "ab08f1bfb514e5fbb45c12e6c800cab6d3576631c9db3c0385bb709f5ec43a9a",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.XunitEvidence.cs",
+      "baselineSha256": "b7392b87fc8ad5946821f5c90121e697661db55c12f1c5827c75714be5eaa211",
+      "workingSha256": "b7392b87fc8ad5946821f5c90121e697661db55c12f1c5827c75714be5eaa211",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "baselineSha256": "3a1a0a910d47d7be83f8f3e3a60e4af5f2a6a44ec7402ca2feb0c0739f2639ec",
+      "workingSha256": "3a1a0a910d47d7be83f8f3e3a60e4af5f2a6a44ec7402ca2feb0c0739f2639ec",
+      "matchesBaseline": true
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Projections/ProjectionProofWorkingMemoryTests.cs",
+      "baselineSha256": "e7a6493834d42146a5a44b1eedb7d8fccefb9e9b4af3ac234f7e97f631117484",
+      "workingSha256": "e7a6493834d42146a5a44b1eedb7d8fccefb9e9b4af3ac234f7e97f631117484",
+      "matchesBaseline": true
+    }
+  ],
+  "allRelevantCodeBytesMatchBaseline": true,
+  "failures": [
+    {
+      "test": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+      "reason": "139 tracked historical evidence path/line findings; no finding points into the changed owner identity source or new untracked packet. Scanner and findings are unchanged from the baseline.",
+      "ownerIdentityCallPathInvolved": false
+    },
+    {
+      "test": "Hexalith.EventStore.Server.Tests.Projections.ProjectionReplayRecoveryTests.CorruptOriginalManifestOrProviderState_FailsClosedWithoutRepreparation(invalidRecord: False)",
+      "reason": "Test setup calls ComputeFromManifest on deliberately malformed JSON {sensitive-manifest at line 268. Unchanged Utf8JsonReader parsing throws JsonReaderException before SaveAsync and before the replay Commit assertion.",
+      "ownerIdentityCallPathInvolved": false
+    },
+    {
+      "test": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope",
+      "cases": 4,
+      "reason": "Unchanged test setup at line97 fingerprints an empty {} fixture. Unchanged ComputeFromManifest reads EndObject and ValueTextEquals throws InvalidOperationException before the intended retained working-memory measurements.",
+      "ownerIdentityCallPathInvolved": false
+    }
+  ],
+  "authority": "Read-only comparison; preserves broad gate failures and does not claim an overall qualified packet.",
+  "serverSuite": {
+    "total": 6247,
+    "passed": 6216,
+    "failed": 6,
+    "skipped": 25,
+    "failedCases": [
+      {
+        "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 26, receiptLimit: 256)",
+        "exceptionType": "System.InvalidOperationException",
+        "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+      },
+      {
+        "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 36, receiptLimit: 256)",
+        "exceptionType": "System.InvalidOperationException",
+        "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+      },
+      {
+        "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 26, receiptLimit: 4096)",
+        "exceptionType": "System.InvalidOperationException",
+        "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+      },
+      {
+        "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionProofWorkingMemoryTests.GuardCompletionRetainedProofAndActualSdkSendRootsFitApprovedEnvelope(idLength: 36, receiptLimit: 4096)",
+        "exceptionType": "System.InvalidOperationException",
+        "message": "System.InvalidOperationException : Cannot compare the value of a token type 'EndObject' to text."
+      },
+      {
+        "name": "Hexalith.EventStore.Server.Tests.Projections.ProjectionReplayRecoveryTests.CorruptOriginalManifestOrProviderState_FailsClosedWithoutRepreparation(invalidRecord: False)",
+        "exceptionType": "System.Text.Json.JsonReaderException",
+        "message": "System.Text.Json.JsonReaderException : 's' is an invalid start of a property name. Expected a '\\\"'. LineNumber: 0 | BytePositionInLine: 1."
+      },
+      {
+        "name": "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.TrackedReusableContent_DoesNotContainUsableSecrets",
+        "exceptionType": "Shouldly.ShouldAssertException",
+        "message": "Shouldly.ShouldAssertException : violations.Length\n    should be\n0\n    but was\n139\n\nAdditional Info:\n    Tracked reusable content contains secret material. Only path and line are reported: _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json:80717, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json:107155, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json:84618, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json:117738, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json:98883, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json:71184, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json:65567, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json:60301, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json:70764, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json:60901, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json:83559, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json:66893, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json:67588, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json:78939, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json:68453, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json:87712, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json:3527, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json:3800, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json:3548, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json:3645, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json:3900, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-canonical/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json:3612, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json:60284, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json:80855, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json:68425, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json:83633, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json:60884, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json:107181, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json:117673, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json:66876, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json:98743, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json:78937, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json:87644, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json:67480, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json:65310, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json:70109, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json:71203, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/canonical-resume-20261018T210839Z-b3f330/retained-historical/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json:84656, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/20d0ecf2a69246ea87dc37888b57b204.json:80717, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/276f461bb4a348b39248bf26baa8f04a.json:107155, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/2d9b0058d31c4d338601c3b27e2adaea.json:84618, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/464f1baf077a47f6ad38cae722fbf8e0.json:117738, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/48a0485f94b6400d89b2e22feb25f255.json:98883, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6ae6c2d881274df88b1a09d61e724df8.json:71184, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/6eac30e34fe0470b8ebc251ded89e530.json:65567, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/74c492d8ce104f3d9008f0f806eeff7e.json:60301, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/7b82894999ef43e29d1ac2b0b54cb3a1.json:70764, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/83fe83824cbe4f029b1eecd7e677d243.json:60901, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/8cd2f50bc77a4713b25092c57ca1a8d4.json:83559, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9cdec09477274ccf8ad22437161825d5.json:66893, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/9ecc542698334b50af1620f72b5eaac8.json:67588, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/bdb6277246024defbda4537a10e23eaf.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/c98442eff3e14a6e835b0c8f1412ae1a.json:78939, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/ca31eac987f24edaa6f2e7c1d32ab85c.json:68453, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/d3e297ddfe6048f8be2f9dea91cc57c9.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/dfc21774a1b1488ca8f66b992b59cce8.json:87712, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/execution-5d40d0c63beb4512adc644d086b5180e/receipts/e7dc6a0e1f4645d4922dd2a6b5d503ec.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-scheduled-restart-effect.json:3527, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-stale-generation-refusal.json:3800, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-92a4e8ab7103441597fa053337ab0b2a/case-tenant-preservation.json:3548, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-scheduled-restart-effect.json:3645, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-stale-generation-refusal.json:3900, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/completed-v3-rejected-import/reminder-smoke-v3-d158cf87ed27489d9025b04c8e13f4f7/case-tenant-preservation.json:3612, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/1fb40c00fa6b4e0cbd45bf2c52259a47.json:67459, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/20a9c9b57e6d465eb809ff6e06d51398.json:66893, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/2206829f70b143c58b1d9c7de63da2c0.json:87700, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/499329946db24d8fba43a13894bcbea3.json:83571, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/4bd8be6340254187ab664000f55c15da.json:65324, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/56a508037091441f889ef84dfb832357.json:110535, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/6234334cd6734fdb962aa04a947e05ab.json:84654, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/71e56950419f4b539a65f6dcaae61104.json:80888, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d0ade4bdd264c479a0bfcd4a70afbc1.json:68447, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/7d6f4c1409b7461aabd96a66828b7b05.json:98844, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/a3d76a779a904b43b9a2ea75b2f5724e.json:70779, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ad7d6927214b4fada23e153cff96d69b.json:78939, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/bd7de8d5c3d84984b4684e0abede681f.json:117783, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/c508ed7727304d23bc87d233839dd457.json:71232, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d76522132d8346cc9c4def29601c9520.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/d8428e6c6ce24bd09050fa9803a01359.json:107194, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/ec60f7b417b34ca5ae651a7709612637.json:60901, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/f24d5b2063a040cebf8b5b51789ae6f8.json:60301, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/execution-e262ce52e42b4c64a436ac3841c17ac9/receipts/fe06bd58e6a745b095834ef2152fd4c5.json:61189, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/final-attempt/snapshot-get-smoke-a84c723216b74a38b919ed5155de0093/case.json:6550, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0930e0f6c157426aadebc9a36fc42d30.json:60284, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/09473ae100784567bedc17f69df1cb10.json:80855, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/0bcee0e8273a49f399fdcb00dbfd265d.json:110589, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/188200a69dc84bb09c7c35d165e7b7ce.json:68425, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/24b9dcd86dda4d7eaf04815814f5d95c.json:83633, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2aa1db103cb84dc29378c1ebbb4a95b1.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/2f1f1d29f39a444686ad9096641a974f.json:61172, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/3a1cd8be58774af48b0a601e09e5ceb3.json:60884, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/474018a8a8a34f1096b830e5a079df28.json:107181, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/7f9678df745144a79d49a1cf447019e8.json:117673, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/87ac8ab5c0e743308b3c2035e38b7cf8.json:66876, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/a294598af8d84eb292df49794f843d5d.json:98743, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/b70fdd3745534166bb0268db01a42c51.json:78937, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/bec935c27860452a9220f649d358ddd5.json:87644, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c1aa09601ef64b15ac2fde7f9c3badea.json:67480, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/c847e66da33a4b75936f884109ab68a1.json:65310, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d61a7cc221954e5fad951fa5c86b2e8b.json:70109, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/d8d5540fe9fc4843883d0a026fabed43.json:71203, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/initial-attempt/execution-bc3c2bca738541538fdcecdd40c3a6f3/receipts/e7fd3d3b05f045e79dce6a8bcba8264d.json:84656, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_147c0acc7e2a45a09a03b8eab5859772.output-6260.json:12, _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/parent-call-history-57af736d095149c3a14de49bcd8f9187/call_8920f237a01b4c748a10c03b97b2846a.output-5805.json:12, _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/snapshots/supporting-credential-conformance/tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs:268, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:225, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:278, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:289, _bmad-output/implementation-artifacts/evidence/story-3-21/implementation-2026-10-20/attempt-11/inputs/tools/qualify-dapr-brokers.py:524, _bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:262, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:315, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:327, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/earlier-valid-local-run/inputs/tools/qualify-dapr-brokers.py:583, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:265, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:318, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:330, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/packet/inputs/tools/qualify-dapr-brokers.py:586, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go:274, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:265, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:318, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:330, _bmad-output/implementation-artifacts/evidence/story-3-21/verification-2026-10-20/rejected-preservation-run/inputs/tools/qualify-dapr-brokers.py:586, tests/Hexalith.EventStore.Server.Tests/Authentication/WorkloadBindingAuthorityTests.QueryAuthority.cs:268, tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs:35, tests/Hexalith.EventStore.Server.Tests/Streams/NativeSourceMetadataReaderTests.cs:79, tools/qualify-dapr-brokers.py:265, tools/qualify-dapr-brokers.py:318, tools/qualify-dapr-brokers.py:330, tools/qualify-dapr-brokers.py:586"
+      }
+    ]
+  }
+}
