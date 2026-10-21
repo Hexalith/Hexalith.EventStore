@@ -1,0 +1,78 @@
+// Supplemental retirement probe against the same pinned resolver/subchannel churn.
+package router_test
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/dapr/dapr/pkg/api/grpc/manager"
+	"github.com/dapr/dapr/pkg/modes"
+	securityfake "github.com/dapr/dapr/pkg/security/fake"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/balancer/roundrobin"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/resolver/manual"
+)
+
+func TestRetirementResolverChurn(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	var listeners []net.Listener
+	var addresses []resolver.Address
+	for range 12 {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		listeners = append(listeners, listener)
+		addresses = append(addresses, resolver.Address{Addr: listener.Addr().String()})
+	}
+	for _, listener := range listeners {
+		require.NoError(t, listener.Close())
+	}
+	var updates atomic.Int32
+	for iteration := range 25 {
+		scheme := fmt.Sprintf("story213-retire-%d", iteration)
+		address := scheme + ":///target"
+		builder := manual.NewBuilderWithScheme(scheme)
+		builder.InitialState(resolver.State{Addresses: addresses[:6]})
+		mgr := manager.NewManager(securityfake.New(), modes.StandaloneMode, &manager.AppChannelConfig{})
+		conn, release, err := mgr.GetGRPCConnection(ctx, address, "target", "default", grpc.WithResolvers(builder))
+		require.NoError(t, err)
+		conn.Connect()
+		require.Eventually(t, func() bool { return conn.GetState() == connectivity.TransientFailure }, time.Second, time.Millisecond)
+		entered := make(chan struct{})
+		beginClose := make(chan struct{})
+		var group sync.WaitGroup
+		group.Go(func() {
+			builder.UpdateState(resolver.State{Addresses: addresses[6:]})
+			close(entered)
+			<-beginClose
+			for index := range 1000 {
+				start := (index % 2) * 6
+				builder.UpdateState(resolver.State{Addresses: addresses[start : start+6]})
+				updates.Add(1)
+			}
+		})
+		<-entered
+		mgr.RetireGRPCConnection(address, conn)
+		require.NotEqual(t, connectivity.Shutdown, conn.GetState(), "marking retirement retains the outstanding caller lease")
+		replacementBuilder := manual.NewBuilderWithScheme(scheme)
+		replacementBuilder.InitialState(resolver.State{Addresses: addresses[:6]})
+		next, teardown, err := mgr.GetGRPCConnection(ctx, address, "target", "default", grpc.WithResolvers(replacementBuilder))
+		require.NoError(t, err)
+		require.NotSame(t, conn, next)
+		close(beginClose)
+		release(false)
+		group.Wait()
+		require.Equal(t, connectivity.Shutdown, conn.GetState())
+		teardown(true)
+	}
+	require.Equal(t, int32(25000), updates.Load())
+	t.Logf("25 independently pooled channels retired and drained beside %d resolver updates; no shared backoff reset API", updates.Load())
+}

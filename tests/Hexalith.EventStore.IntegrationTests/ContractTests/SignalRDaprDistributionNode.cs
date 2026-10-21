@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -20,6 +21,13 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     public SignalRDaprDistributionNode(string name)
     {
         Name = name;
+        string? selectedRuntime = Environment.GetEnvironmentVariable("HEXALITH_STORY_2_13_DAPRD_PATH");
+        SidecarExecutablePath = string.IsNullOrWhiteSpace(selectedRuntime)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", "daprd")
+            : Path.IsPathFullyQualified(selectedRuntime)
+                ? selectedRuntime
+                : throw new ArgumentException("The fixture-only Dapr runtime selection must be an absolute path.");
+        SidecarExecutableSha256 = HashSidecarExecutable();
         AppPort = ReservePort();
         DaprHttpPort = ReservePort();
         DaprGrpcPort = ReservePort();
@@ -32,6 +40,12 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     /// <summary>Gets the fixture-local node label.</summary>
     public string Name { get; }
 
+    /// <summary>Gets the explicitly selected fixture runtime, or the installed runtime when no selection is supplied.</summary>
+    public string SidecarExecutablePath { get; }
+
+    /// <summary>Gets the selected runtime hash, which must remain unchanged across starts and restarts.</summary>
+    public string SidecarExecutableSha256 { get; }
+
     /// <summary>Gets the application HTTP port.</summary>
     public int AppPort { get; }
 
@@ -42,7 +56,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     public int DaprGrpcPort { get; }
 
     /// <summary>Gets the sidecar internal gRPC port.</summary>
-    public int DaprInternalGrpcPort { get; }
+    public int DaprInternalGrpcPort { get; private set; }
 
     /// <summary>Gets the sidecar metrics port.</summary>
     public int MetricsPort { get; }
@@ -110,6 +124,8 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         application.Environment["EventStore__SignalR__Enabled"] = "true";
         application.Environment["EventStore__OpenApi__Enabled"] = "false";
         application.Environment["Logging__LogLevel__Default"] = "Information";
+        application.Environment["Logging__LogLevel__Hexalith.EventStore.Controllers.ProjectionNotificationController"] = "Debug";
+        application.Environment["Logging__LogLevel__Hexalith.EventStore.Server.Actors.ETagActor"] = "Debug";
         if (enablePubSubProjectionTransport)
         {
             application.Environment["EventStore__ProjectionChanges__Transport"] = "PubSub";
@@ -153,20 +169,32 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     }
 
     /// <summary>Starts this node's sidecar after an outage.</summary>
-    public async Task StartSidecarAsync(string componentsPath, CancellationToken cancellationToken)
+    public async Task StartSidecarAsync(
+        string componentsPath,
+        CancellationToken cancellationToken,
+        bool renewInternalGrpcEndpoint = false)
     {
         if (_sidecar is not null)
         {
             throw new InvalidOperationException("Sidecar is already running.");
         }
 
-        string daprd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", "daprd");
-        if (!File.Exists(daprd))
+        if (renewInternalGrpcEndpoint)
         {
-            throw new FileNotFoundException("Dapr 1.18 sidecar is required for the runtime proof.", daprd);
+            int replacementPort = ReservePort();
+            if (replacementPort == DaprInternalGrpcPort)
+            {
+                throw new InvalidOperationException("The diagnostic replacement must have a fresh internal gRPC endpoint.");
+            }
+            DaprInternalGrpcPort = replacementPort;
         }
 
-        var sidecar = new ProcessStartInfo(daprd)
+        if (!string.Equals(HashSidecarExecutable(), SidecarExecutableSha256, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The selected fixture runtime changed after its identity was captured.");
+        }
+
+        var sidecar = new ProcessStartInfo(SidecarExecutablePath)
         {
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -185,7 +213,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
             "--resources-path", componentsPath,
             "--placement-host-address", "127.0.0.1:50005",
             "--scheduler-host-address", "127.0.0.1:50006",
-            "--log-level", "info",
+            "--log-level", "debug",
         ];
         foreach (string argument in arguments)
         {
@@ -245,6 +273,8 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         {
             id = root.GetProperty("id").GetString(),
             runtimeVersion = root.GetProperty("runtimeVersion").GetString(),
+            actorRuntime = root.TryGetProperty("actorRuntime", out JsonElement actorRuntime) ? actorRuntime : (JsonElement?)null,
+            actors = root.TryGetProperty("actors", out JsonElement actors) ? actors : (JsonElement?)null,
             components = root.GetProperty("components").EnumerateArray().Select(component => new
             {
                 name = component.GetProperty("name").GetString(),
@@ -266,6 +296,17 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         await StopAsync().ConfigureAwait(false);
     }
 
+    private string HashSidecarExecutable()
+    {
+        if (!File.Exists(SidecarExecutablePath))
+        {
+            throw new FileNotFoundException("The selected Dapr runtime is required; fixture selection never falls back.", SidecarExecutablePath);
+        }
+
+        using FileStream executable = File.OpenRead(SidecarExecutablePath);
+        return Convert.ToHexStringLower(SHA256.HashData(executable));
+    }
+
     private static int ReservePort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -276,11 +317,12 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     private static Process StartCapturedProcess(ProcessStartInfo info, ConcurrentQueue<string> log)
     {
         Process process = Process.Start(info) ?? throw new InvalidOperationException($"Could not start {info.FileName}.");
+        int processId = process.Id;
         process.OutputDataReceived += (_, args) =>
         {
             if (args.Data is not null)
             {
-                log.Enqueue(args.Data);
+                log.Enqueue($"{DateTimeOffset.UtcNow:O} pid={processId} {args.Data}");
                 TrimLog(log);
             }
         };
@@ -288,7 +330,7 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
         {
             if (args.Data is not null)
             {
-                log.Enqueue(args.Data);
+                log.Enqueue($"{DateTimeOffset.UtcNow:O} pid={processId} {args.Data}");
                 TrimLog(log);
             }
         };

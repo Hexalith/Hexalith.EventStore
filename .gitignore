@@ -470,13 +470,13 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 .bmad-loop/cache/
 .bmad-loop/policy.toml
 
-# Story evidence logs are durable acceptance artifacts, not build output. The `[Ll]ogs/` and `*.log`
+# Historical story evidence logs are durable inputs. The `[Ll]ogs/` and `*.log`
 # rules above silently excluded them, so evidence receipts bound maintainer acceptance to files that
 # were never committed and would vanish on `git clean -xdf` (found in the Story 2.12 code review,
 # 2026-07-28). These negations must stay after the `[Ll]ogs/` and `*.log` rules they override —
 # the last matching pattern wins, and git cannot re-include a file whose parent directory is still
-# excluded, so the directory is re-included first. The evidence packages/ block below must remain
-# the last matching patterns.
+# excluded, so the directory is re-included first. The evidence packages/ block below precedes
+# the generated-evidence exclusions.
 #
 # Corrected 2026-07-28 (delta code review). The first version was both too narrow and too broad:
 #   too narrow — it matched only a lowercase `logs/` directory under `implementation-artifacts`, so
@@ -502,7 +502,47 @@ _bmad/render/
 # ignores the archives themselves. **/[Pp]ackages/* ignores children of a
 # packages/ directory, not the directory. Still re-include the directory first,
 # then the archives, because git cannot re-include a file whose parent directory
-# is excluded. These negations must stay LAST. Do not use !…/logs/** — that
+# is excluded. These negations precede generated-evidence exclusions. Do not use !…/logs/** — that
 # re-included build nupkgs in 2026-07-28.
 !_bmad-output/**/evidence/**/packages/
 !_bmad-output/**/evidence/**/packages/*.nupkg
+
+# Story 3.22: new generated evidence belongs in external storage. These rules
+# intentionally follow the legacy log/package negations: final match wins.
+# Existing tracked evidence and source/snapshot baselines remain historical input.
+_bmad-output/**/evidence/**/*.zip
+_bmad-output/**/evidence/**/*.tar
+_bmad-output/**/evidence/**/*.tar.gz
+_bmad-output/**/evidence/**/*.tgz
+_bmad-output/**/evidence/**/*.7z
+_bmad-output/**/evidence/**/*.gz
+_bmad-output/**/evidence/**/*.nupkg
+_bmad-output/**/evidence/**/*.part
+_bmad-output/**/evidence/**/*.part.*
+_bmad-output/**/evidence/**/*.webm
+_bmad-output/**/evidence/**/*.mp4
+_bmad-output/**/evidence/**/*.mov
+_bmad-output/**/evidence/**/*.avi
+_bmad-output/**/evidence/**/*.trace
+_bmad-output/**/evidence/**/*.nettrace
+_bmad-output/**/evidence/**/*.har
+_bmad-output/**/evidence/**/trace.dat
+_bmad-output/**/evidence/**/trace.json
+_bmad-output/**/evidence/**/traces/
+_bmad-output/**/evidence/**/commands.json
+_bmad-output/**/evidence/**/command-journal*.json
+_bmad-output/**/evidence/**/reports/
+_bmad-output/**/evidence/**/results/
+_bmad-output/**/evidence/**/TestResults/
+_bmad-output/**/evidence/**/playwright-report/
+_bmad-output/**/evidence/**/test-results/
+_bmad-output/**/evidence/**/screenshots/
+_bmad-output/**/evidence/**/*.log
+_bmad-output/**/evidence/**/*.trx
+_bmad-output/**/evidence/**/*.trx.xml
+_bmad-output/**/evidence/**/*.junit.xml
+_bmad-output/**/evidence/**/report.json
+_bmad-output/**/evidence/**/result.json
+_bmad-output/**/evidence/**/results.json
+_bmad-output/**/evidence/**/*-report.json
+_bmad-output/**/evidence/**/*-results.json

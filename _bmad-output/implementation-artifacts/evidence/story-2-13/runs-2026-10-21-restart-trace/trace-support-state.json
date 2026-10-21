@@ -1,0 +1,238 @@
+{
+  "command": [
+    "aspire",
+    "describe",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--format",
+    "Json",
+    "--non-interactive"
+  ],
+  "exitCode": 0,
+  "observedUtc": "2026-10-21T08:20:13.072095+00:00",
+  "resources": [
+    {
+      "name": "eventstore-admin-dapr-cli-eenbbffz",
+      "displayName": "eventstore-admin-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.07+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-gcgjcxnw",
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.16+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-qgybmtem",
+      "displayName": "eventstore-admin-ui",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.19+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-yfwxahnn",
+      "displayName": "eventstore-admin",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.07+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-app-api-token",
+      "displayName": "eventstore-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-dapr-cli-qyhbrmma",
+      "displayName": "eventstore-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.07+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-hneunkyc",
+      "displayName": "eventstore",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.07+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-admin-password",
+      "displayName": "local-auth-admin-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-admin-user-id",
+      "displayName": "local-auth-admin-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-admin-username",
+      "displayName": "local-auth-admin-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-sample-password",
+      "displayName": "local-auth-sample-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-sample-user-id",
+      "displayName": "local-auth-sample-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-sample-username",
+      "displayName": "local-auth-sample-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-signing-key",
+      "displayName": "local-auth-signing-key",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-workload-client-secret",
+      "displayName": "local-auth-workload-client-secret",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-aehkbngx",
+      "displayName": "sample",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.17+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-api-dapr-cli-bspbynax",
+      "displayName": "sample-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.19+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-api-tpbhtnry",
+      "displayName": "sample-api",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.17+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-app-api-token",
+      "displayName": "sample-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-blazor-ui-dapr-cli-vegvqrap",
+      "displayName": "sample-blazor-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.14+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-blazor-ui-vxaamdqc",
+      "displayName": "sample-blazor-ui",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.18+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-dapr-cli-dsgvmamb",
+      "displayName": "sample-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.16+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-api-dapr-cli-jsbgdedz",
+      "displayName": "tenants-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.19+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-api-xpppvutx",
+      "displayName": "tenants-api",
+      "resourceType": "Project",
+      "state": "Finished",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.21+00:00",
+      "stopTimestamp": "2026-10-21T08:19:20.081975+00:00",
+      "exitCode": 1
+    },
+    {
+      "name": "tenants-app-api-token",
+      "displayName": "tenants-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-dapr-cli-rgpdtqqn",
+      "displayName": "tenants-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.16+00:00",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-xakkwrdh",
+      "displayName": "tenants",
+      "resourceType": "Project",
+      "state": "Finished",
+      "creationTimestamp": "2026-10-21T08:19:18+00:00",
+      "startTimestamp": "2026-10-21T08:19:18.22+00:00",
+      "stopTimestamp": "2026-10-21T08:19:20.194914+00:00",
+      "exitCode": 1
+    }
+  ]
+}

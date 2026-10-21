@@ -139,8 +139,16 @@ _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-followup-20261020/*
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-19/** -text
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20/** -text -whitespace
 _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-20-network/** -text -whitespace
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-blackhole/** -text -whitespace
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-restart-trace/** -text -whitespace
 
 # Story 9.1 and ES-DIAG retain exact authority and evidence bytes across checkouts.
 _bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/** -text
 _bmad-output/implementation-artifacts/evidence/story-9-1-es-diag-bootstrap-2026-10-20/** -text
 _bmad-output/implementation-artifacts/evidence/story-3-21/es-diag-2026-10-20/** -text
+
+# Story 2.13 isolated runtime evaluation retains exact source, patch and command bytes.
+_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-runtime-recovery/** -text -whitespace
+
+# Story 2.13 review supplement retains exact overlay, source and receipt bytes.
+_bmad-output/implementation-artifacts/evidence/story-2-13/review-2026-10-21-runtime-recovery/** -text -whitespace

@@ -1,0 +1,7 @@
+{
+  "diff": "/tmp/story-2-13-concurrency-review-zmroofck/continuation.diff",
+  "sha256": "eaa4fd77c4ed47b84defe1e4039f0922c8c283b338ed7837a771f8b8546abee9",
+  "bytes": 137422,
+  "scope": "Current authorized concurrency continuation: disposable runtime correction, controls, evidence tooling, report and spec delta. Frozen historical baseline remains unchanged; historical packets are checked by complete byte inventories, rather than included as millions of unrelated diff lines. Unrelated concurrent changes are excluded and preserved.",
+  "status": "in-progress by explicit user instruction; no staging or version-control mutation"
+}

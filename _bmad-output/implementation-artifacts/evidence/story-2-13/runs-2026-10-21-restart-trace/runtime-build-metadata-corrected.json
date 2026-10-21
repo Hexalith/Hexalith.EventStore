@@ -1,0 +1,16 @@
+{
+  "observedUtc": "2026-10-21T08:49:49.479501+00:00",
+  "runtimeBinarySha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+  "method": "Parse inline-length Go build-info strings from the Go buildinf section; retain only module/grpc/vcs records",
+  "goVersion": "go1.26.9",
+  "records": [
+    "path\tgithub.com/dapr/dapr/cmd/daprd",
+    "mod\tgithub.com/dapr/dapr\tv1.18.7\t",
+    "dep\tgoogle.golang.org/grpc\tv1.83.2\th1:EManeRomTObA0BU7I8vXgg/78uE5MJ9M8B39EX2WscU=",
+    "build\tvcs.revision=b32a815fa2260983e181b95272ea555fe17d3895",
+    "build\tvcs.time=2026-10-09T19:55:46Z",
+    "build\tvcs.modified=false"
+  ],
+  "corrects": "runtime-build-metadata.json generic path marker matched executable instruction bytes and must not be treated as a Go build record; specific module/grpc/vcs fields agree with this structural parse",
+  "goToolBlocker": "go executable unavailable; no runtime dependency was installed"
+}

@@ -4,7 +4,7 @@
 
 ## Goal
 
-Make EventStore builds, tests, packaging, publication, and runtime verification reproducible independently of local checkout state. Preserve rejected candidates as non-authorizing evidence, prove exact package and deployed-runtime lineage, and keep evidence validation distinct from release, production promotion, and consumer-removal authority.
+Make EventStore builds, tests, packaging, publication, and verification reproducible independently of local checkout state. Maintainers must identify the exact package and deployed-runtime lineage, reject invalid candidates without granting authority, and retain trustworthy proof without making source checkouts grow with raw qualification output.
 
 ## Stories
 
@@ -29,43 +29,35 @@ Make EventStore builds, tests, packaging, publication, and runtime verification 
 - Story 3.19: Publication Authority Record And Canonical Production Profile
 - Story 3.20: Consumer-Removal Authority Manifest And Validator
 - Story 3.21: Production DAPR Runtime Pin And Durable Broker Qualification
+- Story 3.22: Bounded Qualification Evidence Production And Admission
+- Story 3.23: Retire Bulky Qualification Evidence
 
 ## Requirements & Constraints
 
-Separate deterministic release gates from dedicated live-sidecar coverage. Higher-tier proof must exercise production paths and persisted end states through the owning Dapr state or actor boundary; HTTP success, mocks, direct-backend diagnostics, and environment failures establish no correctness claim. Use bounded readiness and distinguish infrastructure blockers from product failures.
-
-Package mode is the default in every configuration; source intent requires explicit opt-in and an available root-declared source. Hexalith.Builds owns source dependency versions; compatible coupled families move together with restore, build, test, and representative-consumer evidence. Use `.slnx` for restore/build and run tests per project. Initialize only root-declared submodules, preserve unrelated work, and never silently refresh release-bound evidence.
-
-Release packaging is manifest-driven and excludes submodule packages. Public source/binary APIs, generated surfaces, wire contracts, and package assets need one compatibility inventory and passing baselines; incompatible changes require an approved SemVer-major proposal. Package additions and retirements require an atomic inventory transition. Deferred supply-chain work conveys no implementation authority.
-
-Production qualification binds exact runtime, CLI compatibility, placement, scheduler, component, and backend identities. The runtime floor is `1.18.3`; mutable runtime identities and lower production pins fail closed. Qualify broker redelivery after subscriber failure, dead-letter handling, retention, CloudEvent identity, scopes, and secret references; unknown guarantees remain unresolved. Sealed OQ8 workflow inputs may change only through their planned reseal; otherwise use a new qualification workflow. Guide drift is reported separately, and Builds retains CLI/catalog ownership.
-
-Passing qualification never selects a production broker or runtime. Selection requires an authenticated owner ratification or approved replacement. Production traffic, promotion, readiness, and consumer migration remain blocked while required authority, profile, operating-envelope, restore, security, or compatibility evidence is missing.
+- Keep deterministic release tests separate from live-sidecar tests. Live qualification needs dedicated execution, readiness retries, and persisted-state assertions; an infrastructure outage leaves proof unestablished and is distinguished from a product failure.
+- Preserve production actor-request timeout defaults while permitting integration overrides. Use the logical Aspire resource name `security` for Keycloak.
+- Source references require explicit `UseHexalithProjectReferences=true` and available root-declared sources. Unset or false selects packages in every configuration. Release commands assert package mode and cannot publish dependency-submodule projects.
+- The shared Builds catalog owns all source-owned NuGet versions. Refresh compatible families coherently with validation; retained exceptions need reasons, evidence, and removal triggers. Submodules live under `references/`; nested initialization is forbidden.
+- Package scope is manifest-governed. Container publication requires an immutable OCI index with exactly `linux/amd64` and `linux/arm64`. Published versions, including rejected releases, remain immutable; correction uses a later conforming version.
+- Retain bounded candidate/run/attempt summaries with original failed and interrupted dispositions. Attempt metadata is at most 10 MiB and command excerpts at most 2,048 UTF-8 bytes. Full command output, large history inventories, generated reports, traces, videos, run screenshots, and archives belong in external storage. Source-owned regression baselines remain tracked.
+- Diagnostic retention is 30 days; acceptance-relevant bytes need durable immutable retrieval, and active holds preserve required proof. Redact before storing artifacts or excerpts. Missing or mismatched bytes fail their consuming gate.
+- Automatic Git admission excludes blobs over 10 MiB and generated-evidence selections over 50 MiB with explicit omission reporting. Splitting archives cannot bypass limits. Historical retirement requires enumerated consumer migration, verified availability, and preservation amendments; it never rewrites sealed subjects or approvals.
 
 ## Technical Decisions
 
-Dapr is the runtime infrastructure boundary. Each operation maps to a qualified API/component and exact supported profile, or an architecture-owner-accepted exception with narrowly isolated purpose and paths. Provider credentials and clients never enter application code for operations Dapr supplies. Configuration, provisioning, fault injection, and diagnostics are distinct from application runtime authority. Changes to bound runtime/component/catalog versions require requalification; a runtime minor change also requires append-envelope re-proof.
+Release artifacts and evidence bind immutable source, package, OCI, producer/validator, and receipt identities. The shared SHA-pinned Builds publisher/validator owns OCI validation and `ReleaseEvidenceCodec`; EventStore consumes that implementation instead of duplicating it. Shared security workflows use the mandated shared reference while third-party actions remain pinned through those workflows.
 
-The production target awaiting ratification is self-managed Kubernetes with per-app sidecars, a separate PostgreSQL v1 actor-state component per actor-hosting app, a durable broker, production resiliency, OpenBao, and the qualified PostgreSQL idempotency profile. Redis remains Development/test only. Production components use `secretKeyRef` and OpenBao with default-deny scopes; Kubernetes Secrets are limited to documented bootstrap exceptions. Shared physical infrastructure creates no transaction across state components, actors, or pub/sub.
+Publication advances through `built`, `evidence-candidate-published`, `evidence-validated`, `release-available`, and `production-promoted`. Evidence validation alone grants no release, deployment, readiness, or consumer-removal authority. Later states need authenticated role-bound predecessor records, exact subjects, validity and revocation checks, and the applicable sealed transition evaluation. A changed subject starts again at `built`.
 
-The canonical production-profile slot is `deploy/dapr/production-profile.yaml`. Its digest binds exact immutable runtime identity, CLI compatibility, scheduler/placement, component physical targets and app scopes, ACLs, API tokens, resiliency, secret contract, route/idempotency catalogs, infrastructure inventory, writer envelope, replica posture, restore posture, and evidence. Qualification inputs cannot silently become that authorizing profile.
+High-risk proof observes the owning Dapr state/actor boundary; direct broker/backend diagnostics do not substitute. Runtime infrastructure must map to a qualified Dapr API/component or an explicitly accepted, narrowly scoped architecture exception. Repository fixtures establish repository behavior; Platform owns shared-host Kubernetes rehearsal and composed deployment subjects. Production-profile selection remains subject to owner ratification and exact qualification gates.
 
-Container publication uses .NET SDK support and an immutable OCI index with exactly `linux/amd64` and `linux/arm64` children. SHA-pinned shared publishing/validation owns raw-byte lineage and provenance. Published tags, including rejected candidates, are never repointed or deleted; corrections use a new semantic version.
-
-An unchanged subject advances through `built`, `evidence-candidate-published`, `evidence-validated`, `release-available`, and `production-promoted`. Each authority transition binds authenticated role, predecessor, subject, evidence, validity, and profile/deployment identity where applicable. Evidence validation grants no later authority. Consumer removal additionally requires its own complete manifest and consumer-owner receipt. High-risk transitions require sealed CI validation and the assurance level supported by the human-owner registry; tool personas confer no approval identity. Missing owner records produce truthful FAIL results, without turning non-authorizing live evaluations into release permission.
+External evidence uses a versioned manifest binding artifact identity, exact bytes, source/producer, attempt disposition, and retention. Content-dependent readers materialize and verify complete output before parsing; hashes and excerpts alone cannot establish witnesses. Preserve legacy readers for original sealed packets, bounded offline regression fixtures, source seals, and adjacent-credential rejection. Storage migration appends records without repinning historical receipts or manufacturing qualification authority.
 
 ## Cross-Story Dependencies
 
-The test split and references layout underpin dependency modes, manifest packaging, and shared workflows. Corrective OCI publication feeds independent runtime parity validation; the rejected historical candidate never supplies positive replacement lineage. Catalog maintenance, infrastructure-boundary enforcement, and public compatibility remain separate authorities.
-
-Infrastructure inventory precedes runtime/broker binding. Production-profile issuance also needs production component parity, activated route/idempotency catalogs, scheduler-inclusive restore proof, the shared release-evidence codec, append-envelope proof, and owner ratification. Runtime/broker evidence feeds component parity and publication authority; those records feed consumer-removal authority. Epic 9 owns corrective authorization and sealed high-risk controls. Notification distribution and payload-key qualification coordinate with the infrastructure inventory without creating prerequisite cycles.
-
-## Shared Platform Host Reconciliation (approved 2026-10-20)
-
-The user approved `planning-artifacts/sprint-change-proposal-2026-10-20.md` and the ES-DIAG frozen intent. The exact-subject conversation planning receipt is `evidence/story-3-21-platform-host-reconciliation-2026-10-20/approval/approval.json`; it grants no AD-26, publication or production authority. A valid current-subject Story 9.1 authorization remains a build preflight.
-
-EventStore Story 3.21 owns local Dapr/component qualification, failed guarantees and accepted inventory/component/profile-input handoffs. Platform owns shared composition, runner-owned environment lifecycle, disposable self-hosted Kubernetes rehearsal and the later exact deployment/restore bundle; Builds owns catalog, CLI, control-plane and embedded tool pins. Repository AppHosts/fixtures establish repository evidence only. Platform tests consume its environment descriptor without launching another host.
-
-ES-DIAG is a separate bounded diagnostic slice: exclusively allocated local Unix-socket Docker worker, full unrelated-container preservation, both rotation failures and RabbitMQ backpressure/missing bindings, all 24 observations, exact packet inventory and independent Dapr persisted readback. Integrity-valid rejected observations may complete that slice while qualification fails and parent 3.21 stays in progress. Existing packets, including pre-existing unlisted bytecode and rejected preservation runs, remain unchanged.
-
-Restore design/drills consume candidate scheduler/placement evidence before parent completion; selected parity and final append-envelope proof use the ratified profile. Upstream qualification never waits for Story 3.19 to issue records that consume it. The sole canonical resolved profile remains `deploy/dapr/production-profile.yaml`. EventStore server/package and Platform-composed images have separate subjects and registered issuers; old records never transfer. No broker is selected automatically and no sealed input or planning digest is silently repinned.
+- Layout and dependency-mode work precede manifest packaging; packaging and the deterministic/live split support workflow migration and publishing validation.
+- Generated API smoke preflight depends on Epic 2's generated Sample API and complements the dedicated live lane.
+- Stories 3.13–3.15 distinguish rejected historical evidence, a corrective candidate, and bounded parity validation; none substitutes for later publication authority.
+- Story 3.19 consumes production component, qualified runtime/broker, restore, route/catalog, shared-codec, and assurance inputs. Story 3.20 additionally requires exact per-consumer removal authority.
+- Corrective high-risk work requires applicable current-subject Story 9.1 authorization; Stories 9.2 and 9.3 own assurance controls and planning-baseline reconciliation.
+- Story 3.22 coordinates admission changes with the Hexalith.AI.Tools owner. Story 3.23 follows migrated readers and verified external availability. Initial retirement excludes OQ8 packets unless their migration is separately proven safe.

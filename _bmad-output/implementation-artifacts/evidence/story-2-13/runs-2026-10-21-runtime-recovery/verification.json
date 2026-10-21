@@ -1,0 +1,80 @@
+{
+  "result": "retained-byte-integrity-only",
+  "commands": 28,
+  "scenarioCount": 18,
+  "historicalFilesPreserved": 7564,
+  "scenarios": [
+    [
+      "provider-network-blackhole",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "provider-network-blackhole",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "provider-network-outage",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "provider-network-outage",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "real-projection-distribution",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-fresh-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-fresh-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-reused-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-reused-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-reused-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-reused-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "replica-restart-reused-internal-endpoint",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "synthetic-distribution",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "synthetic-distribution",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "topic-catalog-after-rollout",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "topic-catalog-after-rollout",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "topic-catalog-before-rollout",
+      "passed-scenario-assertions-only"
+    ],
+    [
+      "topic-catalog-before-rollout",
+      "passed-scenario-assertions-only"
+    ]
+  ]
+}

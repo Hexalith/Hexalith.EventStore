@@ -1,0 +1,32 @@
+{
+  "command": [
+    "python3",
+    "-O",
+    "-B",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/run-overlay-control.py",
+    "caller-lease-candidate",
+    "unused.overlay.json",
+    ".",
+    "./pkg/actors/router"
+  ],
+  "startedUtc": "2026-10-21T13:30:42.092153+00:00",
+  "completedUtc": "2026-10-21T13:30:42.559273+00:00",
+  "exitCode": 1,
+  "expectedExitCode": 1,
+  "existingFilesUnchanged": true,
+  "before": {
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate.overlay.json": "19406fffcdac4f51ba97546cb85f8075bd18c35afcde0df90bf6421721243d43",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate.log": "f417faca320b0e54b15f640cc922b87efc2d232809227e921cc1e7f5df192a89",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate-before-inventories.json": "dee8c00ddfa738e51fa74539a56f29f9b7af57378e6e8ddb1f4d33b84e36c740",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate-after-inventories.json": "dee8c00ddfa738e51fa74539a56f29f9b7af57378e6e8ddb1f4d33b84e36c740",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate.json": "db011c9ba3b075e4a9ccaf0bdd31d7c7e33b5792a4478240e20ed708404f109a"
+  },
+  "after": {
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate.overlay.json": "19406fffcdac4f51ba97546cb85f8075bd18c35afcde0df90bf6421721243d43",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate.log": "f417faca320b0e54b15f640cc922b87efc2d232809227e921cc1e7f5df192a89",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate-before-inventories.json": "dee8c00ddfa738e51fa74539a56f29f9b7af57378e6e8ddb1f4d33b84e36c740",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate-after-inventories.json": "dee8c00ddfa738e51fa74539a56f29f9b7af57378e6e8ddb1f4d33b84e36c740",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/caller-lease-candidate.json": "db011c9ba3b075e4a9ccaf0bdd31d7c7e33b5792a4478240e20ed708404f109a"
+  },
+  "outputSha256": "30018f0fffd66aeaabce4956653ec8dfef91f010d8c64c808e66ea54ae9c2ab5"
+}

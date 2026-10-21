@@ -1,0 +1,8 @@
+{
+  "revision": "b32a815fa2260983e181b95272ea555fe17d3895",
+  "originalSha256": "7e5882d35233e4ebbe4b888c2a61d2832a1302da14432404ae28e7f94a555fed",
+  "beforeDiagnosticCorrectionSha256": "bffdb2cc73d73cdeefefbb9b8c6c70e417db92e70b8e27263cfbe79467dafde1",
+  "afterSha256": "c2ee69279c8eeedb469f5e708cbc64467ca8a9591243b2eff23966c8a8a78aa9",
+  "patchSha256": "00e2d09560be33d97166e5bb76632066ac6b9a96e4b3ae7879d6c3bd0a3e3f9d",
+  "change": "identical eviction logic; register logger at package initialization so --log-level applies"
+}

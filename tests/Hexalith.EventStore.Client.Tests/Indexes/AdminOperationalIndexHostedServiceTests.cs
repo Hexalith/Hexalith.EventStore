@@ -3,8 +3,13 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
+using Dapr;
 using Dapr.Client;
 
+using Grpc.Core;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Projections;
+using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
 using Hexalith.EventStore.Client.Projections;
 using Hexalith.EventStore.Contracts.Projections;
 using Hexalith.EventStore.Indexes;
@@ -117,6 +122,140 @@ public class AdminOperationalIndexHostedServiceTests {
                 request.AppId == "sample"
                 && request.ServiceVersion == "v1"
                 && request.Domains.SequenceEqual(new[] { "counter" }, StringComparer.Ordinal)));
+    }
+
+    [Theory]
+    [InlineData("admin:query-types:tenants")]
+    [InlineData("admin:projections:all")]
+    [InlineData("admin:type-catalog:events:all")]
+    public async Task StartAsync_InitiallyUnavailable_ReplaysSnapshotAndCompletesAllWrites(string failingKey)
+    {
+        DaprClient daprClient = CreateDaprClient();
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        var persisted = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        int failures = 0;
+        Task Save(string key, object? value, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            catalog.DidNotReceiveWithAnyArgs().Replace(default!);
+            if (key == failingKey && failures++ == 0)
+            {
+                return Task.FromException(new DaprException("Sidecar is starting.", new RpcException(new Status(StatusCode.Unavailable, "Connection refused."))));
+            }
+
+            persisted[key] = JsonSerializer.SerializeToElement(value, JsonSerializerOptions.Web);
+            return Task.CompletedTask;
+        }
+
+        ConfigureStateWrites<List<string>>(daprClient, Save);
+        ConfigureStateWrites<IReadOnlyList<ProjectionStatus>>(daprClient, Save);
+        ConfigureStateWrites<IReadOnlyList<EventTypeInfo>>(daprClient, Save);
+        ConfigureStateWrites<IReadOnlyList<CommandTypeInfo>>(daprClient, Save);
+        ConfigureStateWrites<IReadOnlyList<AggregateTypeInfo>>(daprClient, Save);
+        AdminOperationalIndexHostedService service = CreateHostedService(
+            daprClient,
+            CreateHttpClientFactory(() => JsonResponse(CreateTenantsMetadataResponse(["list-tenants", "get-tenant"]))),
+            catalog,
+            new DomainServiceRegistration("tenants", "process", "*", "tenants", "v1"));
+
+        await service.StartAsync(CancellationToken.None);
+        await service.StopAsync(CancellationToken.None);
+
+        failures.ShouldBe(2);
+        persisted.Keys.Order(StringComparer.Ordinal).ShouldBe(new[] {
+            "admin:projections:all",
+            "admin:query-types:tenants",
+            "admin:type-catalog:aggregates:all",
+            "admin:type-catalog:aggregates:tenants",
+            "admin:type-catalog:commands:all",
+            "admin:type-catalog:commands:tenants",
+            "admin:type-catalog:events:all",
+            "admin:type-catalog:events:tenants",
+        });
+        persisted["admin:query-types:tenants"].Deserialize<string[]>().ShouldBe(["get-tenant", "list-tenants"]);
+        persisted["admin:projections:all"].Deserialize<ProjectionStatus[]>(JsonSerializerOptions.Web)!
+            .ShouldHaveSingleItem().Name.ShouldBe("tenants");
+        persisted["admin:type-catalog:events:tenants"].Deserialize<EventTypeInfo[]>(JsonSerializerOptions.Web)!
+            .ShouldHaveSingleItem().TypeName.ShouldBe("Hexalith.Tenants.Contracts.Events.TenantCreated");
+        catalog.Received(1).Replace(Arg.Any<NamedProjectionRouteCatalogSnapshot>());
+    }
+
+    [Fact]
+    public async Task StartAsync_CancellationDuringRetry_StopsWithoutPublishingCatalog()
+    {
+        DaprClient daprClient = CreateDaprClient();
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        using var cancellation = new CancellationTokenSource();
+        var attempted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int attempts = 0;
+        ConfigureStateWrites<IReadOnlyList<ProjectionStatus>>(daprClient, (_, _, token) =>
+        {
+            token.ShouldBe(cancellation.Token);
+            attempts++;
+            attempted.SetResult();
+            return Task.FromException(new DaprException("Sidecar is starting.", new RpcException(new Status(StatusCode.Unavailable, "Connection refused."))));
+        });
+        AdminOperationalIndexHostedService service = CreateHostedService(daprClient,
+            CreateHttpClientFactory(() => new HttpResponseMessage(HttpStatusCode.NotFound)), catalog);
+
+        Task startup = service.StartAsync(cancellation.Token);
+        await attempted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await cancellation.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => startup);
+        await service.StopAsync(CancellationToken.None);
+
+        attempts.ShouldBe(1);
+        catalog.DidNotReceiveWithAnyArgs().Replace(default!);
+    }
+
+    [Fact]
+    public async Task StartAsync_PersistentlyUnavailable_ExhaustsFiniteRetryAndPropagatesFailure()
+    {
+        DaprClient daprClient = CreateDaprClient();
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        var failure = new DaprException("Sidecar is unavailable.", new RpcException(new Status(StatusCode.Unavailable, "Connection refused.")));
+        int attempts = 0;
+        ConfigureStateWrites<IReadOnlyList<ProjectionStatus>>(daprClient, (_, _, _) =>
+        {
+            attempts++;
+            return Task.FromException(failure);
+        });
+        AdminOperationalIndexHostedService service = CreateHostedService(daprClient,
+            CreateHttpClientFactory(() => new HttpResponseMessage(HttpStatusCode.NotFound)), catalog);
+
+        DaprException actual = await Should.ThrowAsync<DaprException>(
+            () => service.StartAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(45)));
+        await service.StopAsync(CancellationToken.None);
+
+        actual.ShouldBeSameAs(failure);
+        attempts.ShouldBe(30);
+        catalog.DidNotReceiveWithAnyArgs().Replace(default!);
+    }
+
+    [Theory]
+    [InlineData(StatusCode.PermissionDenied)]
+    [InlineData(StatusCode.InvalidArgument)]
+    [InlineData(StatusCode.Internal)]
+    public async Task StartAsync_NontransientWriteFailure_PropagatesWithoutRetry(StatusCode status)
+    {
+        DaprClient daprClient = CreateDaprClient();
+        INamedProjectionRouteCatalog catalog = Substitute.For<INamedProjectionRouteCatalog>();
+        var failure = new DaprException("Index write rejected.", new RpcException(new Status(status, "Rejected.")));
+        int attempts = 0;
+        ConfigureStateWrites<IReadOnlyList<ProjectionStatus>>(daprClient, (_, _, _) =>
+        {
+            attempts++;
+            return Task.FromException(failure);
+        });
+        AdminOperationalIndexHostedService service = CreateHostedService(daprClient,
+            CreateHttpClientFactory(() => new HttpResponseMessage(HttpStatusCode.NotFound)), catalog);
+
+        DaprException actual = await Should.ThrowAsync<DaprException>(() => service.StartAsync(CancellationToken.None));
+        await service.StopAsync(CancellationToken.None);
+
+        actual.ShouldBeSameAs(failure);
+        attempts.ShouldBe(1);
+        catalog.DidNotReceiveWithAnyArgs().Replace(default!);
     }
 
     [Fact]
@@ -447,6 +586,15 @@ public class AdminOperationalIndexHostedServiceTests {
                 HttpMethod.Post,
                 $"http://metadata/{callInfo.ArgAt<string>(1)}"));
         return daprClient;
+    }
+
+    private static void ConfigureStateWrites<TValue>(
+        DaprClient daprClient,
+        Func<string, object?, CancellationToken, Task> save)
+    {
+        _ = daprClient.SaveStateAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TValue>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(call => save(call.ArgAt<string>(1), call.ArgAt<TValue>(2), call.ArgAt<CancellationToken>(5)));
     }
 
     private static IHttpClientFactory CreateHttpClientFactory(Func<HttpResponseMessage> responseFactory)

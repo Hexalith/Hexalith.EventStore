@@ -1,0 +1,189 @@
+{
+  "id": "eventstore",
+  "runtimeVersion": "1.18.7",
+  "actorRuntime": {
+    "runtimeStatus": "RUNNING",
+    "activeActors": [
+      {
+        "type": "CoordinatedCommandActor"
+      },
+      {
+        "type": "IdempotencyTenantLifecycleActor"
+      },
+      {
+        "type": "IdempotencyLegacyInventoryActor"
+      },
+      {
+        "type": "GlobalPositionActor"
+      },
+      {
+        "type": "SharedProjectionSourceRosterActor"
+      },
+      {
+        "type": "AggregateActor"
+      },
+      {
+        "type": "ETagActor"
+      },
+      {
+        "type": "IdentityActorRegistryActor"
+      },
+      {
+        "type": "IdempotencyAdmissionActor"
+      },
+      {
+        "type": "ProjectionActor"
+      },
+      {
+        "type": "ProjectionLifecycleActor"
+      },
+      {
+        "type": "IdempotencyAdmissionDirectoryActor"
+      }
+    ],
+    "hostReady": true,
+    "placement": "placement: connected"
+  },
+  "actors": [
+    {
+      "type": "CoordinatedCommandActor"
+    },
+    {
+      "type": "IdempotencyTenantLifecycleActor"
+    },
+    {
+      "type": "IdempotencyLegacyInventoryActor"
+    },
+    {
+      "type": "GlobalPositionActor"
+    },
+    {
+      "type": "SharedProjectionSourceRosterActor"
+    },
+    {
+      "type": "AggregateActor"
+    },
+    {
+      "type": "ETagActor"
+    },
+    {
+      "type": "IdentityActorRegistryActor"
+    },
+    {
+      "type": "IdempotencyAdmissionActor"
+    },
+    {
+      "type": "ProjectionActor"
+    },
+    {
+      "type": "ProjectionLifecycleActor"
+    },
+    {
+      "type": "IdempotencyAdmissionDirectoryActor"
+    }
+  ],
+  "components": [
+    {
+      "name": "pubsub",
+      "type": "pubsub.redis",
+      "version": "v1"
+    },
+    {
+      "name": "statestore",
+      "type": "state.redis",
+      "version": "v1"
+    }
+  ],
+  "subscriptions": [
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-0.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-1.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-10.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-11.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-12.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-13.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-14.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-15.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restored-099259067a11.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-2.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-3.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-4.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-5.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-6.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-7.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-8.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-099259067a11.restart-099259067a11-9.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "*.*.projection-changed",
+      "type": "PROGRAMMATIC"
+    }
+  ]
+}

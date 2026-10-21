@@ -1,0 +1,19 @@
+  Discovering: Hexalith.EventStore.IntegrationTests
+  Discovered:  Hexalith.EventStore.IntegrationTests
+  Starting:    Hexalith.EventStore.IntegrationTests
+    Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState [FAIL]
+      System.OperationCanceledException : The operation was canceled.
+      Stack Trace:
+           at System.Threading.Channels.AsyncOperation`2.GetResult(Int16 token)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(1188,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.ReadAsync[T](ChannelReader`1 reader, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(477,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(552,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(552,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(552,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(552,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(552,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        --- End of stack trace from previous location ---
+Cancelling... (Press Ctrl+C again to terminate)
+  Finished:    Hexalith.EventStore.IntegrationTests (ID = '080c5c73212076b88a7bac03bc2edc7c83015343fa22802d831d2ce3da83b6ee')
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.IntegrationTests  Total: 2, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 277.790s

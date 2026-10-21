@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-21T13:35:56.311121+00:00",
+  "ceiling": 2097152,
+  "accessibleWatchLinesPerFd": 1054941,
+  "perProcessName": {
+    "dotnet": 2171,
+    "codex": 2781,
+    "fluentui-mcp": 1049337,
+    "dbus-daemon": 5,
+    "MainThread": 13,
+    "claude": 41,
+    "agy": 16,
+    "daprd": 15,
+    "Hexalith.EventS": 111,
+    "Hexalith.Tenant": 366,
+    "Aspire.Dashboar": 1,
+    "Hexalith.Memori": 84
+  },
+  "failedOrRacedReads": 1,
+  "overcountCaveat": "Inherited/shared instances may be counted multiple times. No unrelated process changed.",
+  "restoreTo": 1048576,
+  "restoreBlockedByObservedUse": true
+}

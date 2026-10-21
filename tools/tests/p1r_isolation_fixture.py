@@ -18,6 +18,19 @@ import p1r_qualification as preparation
 _SOURCE_BINDING = preparation.source_binding
 
 
+def submitted_mounts(arguments):
+    """Model only mounts literally requested by the controller create command."""
+    result = []
+    for index, argument in enumerate(arguments):
+        if argument != "--mount":
+            continue
+        fields = dict(part.split("=", 1) for part in str(arguments[index + 1]).split(",") if "=" in part)
+        row = {"Type": fields["type"], "Destination": fields["dst"], "RW": "readonly" not in str(arguments[index + 1]).split(",")}
+        row["Source" if fields["type"] == "bind" else "Name"] = fields["src"]
+        result.append(row)
+    return result
+
+
 @contextmanager
 def separate_source_fixture(root):
     """Use real disposable Git inventories; only replace the immutable release coordinates."""
@@ -132,13 +145,13 @@ class DockerBoundary:
                      'NetworkMode':'bridge' if role=='daemon' else 'none', 'PidMode':'',
                      'Ports':{}, 'Privileged':role=='daemon',
                      'Mounts':[{'Destination':'/var/lib/docker','Type':'volume','Name':self.worker.volume,'RW':True}] if role=='daemon' else []}
+            value['Mounts'] = submitted_mounts(args)
             if role == 'sdk':
-                value.update(NetworkMode='container:'+'d'*64,PidMode='container:'+'d'*64,Ports={},Privileged=False,
-                    Mounts=[{'Destination':'/var/lib/docker','Type':'volume','Name':self.worker.volume,'RW':True},
-                            {'Destination':str(self.worker.workspace),'Source':('/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/fixture/'+('a'*64)
-                                      if self.mapped_bind else str(self.worker.workspace)),'Type':'bind','RW':True}])
-            if role == 'sdk' and self.worker.source_root is not None and not self.worker.source_root.is_relative_to(self.worker.workspace):
-                value['Mounts'].append({'Destination':str(self.worker.source_root),'Source':str(self.worker.source_root),'Type':'bind','RW':True})
+                value.update(NetworkMode=args[args.index('--network') + 1], PidMode=args[args.index('--pid') + 1])
+                if self.mapped_bind:
+                    for mount in value['Mounts']:
+                        if mount.get('Source') == str(self.worker.workspace):
+                            mount['Source'] = '/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/fixture/' + 'a' * 64
             self.containers[identity] = value
             Path(args[args.index('--cidfile')+1]).write_text(identity)
             output = identity+'\n'
@@ -234,7 +247,8 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
         command += ['--source-root',str(source_paths[0]),'--source-builds-root',str(source_paths[1])]
     elif source_root is not None:
         command += ['--source-root', str(source_root)]
-    with mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
+    with mock.patch.object(preparation, 'source_binding', return_value=context['source_binding']), \
+            mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
             mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
             mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):
         worker = isolation.IsolatedRunner(root/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',source_root=source_root)

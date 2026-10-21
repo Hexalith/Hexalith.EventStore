@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/disseminator/disseminator.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/disseminator/disseminator.go",
+    "retrievedUtc": "2026-10-21T08:27:24.107324+00:00",
+    "sha256": "e7ef8d0acb7504b3c942dbc987b1f3018186dbb64b3e68a9b9fa1e671aaa5b4b"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/disseminator/inflight/inflight.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/disseminator/inflight/inflight.go",
+    "retrievedUtc": "2026-10-21T08:27:24.352644+00:00",
+    "sha256": "8bd34e4b4a26a04accbb21224fdb2d2066c6ac22a86a43efe799b94c683a1d7e"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/disseminator/inflight/lock/lock.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/disseminator/inflight/lock/lock.go",
+    "retrievedUtc": "2026-10-21T08:27:24.597385+00:00",
+    "sha256": "2444686468eff77745806e2b2660c5e8bb7927b1ad2a07abd99fa3deb161fd89"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/disseminator/order.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/disseminator/order.go",
+    "retrievedUtc": "2026-10-21T08:27:24.809413+00:00",
+    "sha256": "6685042d95274e05be54dc1d6d7af4c3a9c5d263201593991c5c27ace78bd9b9"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/disseminator/timeout/dissemination.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/disseminator/timeout/dissemination.go",
+    "retrievedUtc": "2026-10-21T08:27:25.090364+00:00",
+    "sha256": "500a980fee1f80d95057aa7736dbdc77093cf7a84f37d979c653cb2785e4de7d"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/disseminator/timeout/timeout.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/disseminator/timeout/timeout.go",
+    "retrievedUtc": "2026-10-21T08:27:25.347165+00:00",
+    "sha256": "f273807c5eac1129b78be2608f36fe14f2343645b25f32afe1a2fa088fd04ea8"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/errors.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/errors.go",
+    "retrievedUtc": "2026-10-21T08:27:25.599728+00:00",
+    "sha256": "1bf8c0644f576e9bb7b8dc4edd959e7a3f3d626e82fd2e7a7f7665c8288bef74"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/loops.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/loops.go",
+    "retrievedUtc": "2026-10-21T08:27:25.830582+00:00",
+    "sha256": "31d1977ab77ca26870b510d89244c765eb72198f03d74c3752c5037d47fb0069"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/placement/placement.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/placement/placement.go",
+    "retrievedUtc": "2026-10-21T08:27:26.102628+00:00",
+    "sha256": "98865c7befde9f66b8c25d80e078df0e0adb81b9d436332f8d3ab70c11018191"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/stream/recv.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/stream/recv.go",
+    "retrievedUtc": "2026-10-21T08:27:26.329797+00:00",
+    "sha256": "23b5063989297bb16542aae57dbe915d88ba9f13a3f086c3836373a4c94b9973"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/loops/stream/stream.go",
+    "retainedPath": "pkg/actors/internal/placement/loops/stream/stream.go",
+    "retrievedUtc": "2026-10-21T08:27:26.551693+00:00",
+    "sha256": "4077d44fd375c93506dbe3486a16d40307a2983b97df67e079474f0121f7fa98"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/dapr/dapr/v1.18.7/pkg/actors/internal/placement/placement.go",
+    "retainedPath": "pkg/actors/internal/placement/placement.go",
+    "retrievedUtc": "2026-10-21T08:27:26.787951+00:00",
+    "sha256": "3e2d4c3bfb2d5ab75529c03175ba22f9b9ad4aa5a4cc3e27bb96c35f7ba75608"
+  }
+]

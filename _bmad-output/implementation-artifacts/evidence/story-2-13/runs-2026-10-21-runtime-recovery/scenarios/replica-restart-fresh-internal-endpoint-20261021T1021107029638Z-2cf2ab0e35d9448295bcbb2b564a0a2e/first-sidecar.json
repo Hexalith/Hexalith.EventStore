@@ -1,0 +1,191 @@
+{
+  "id": "eventstore",
+  "runtimeVersion": "1.18.7-local-2-13-recovery",
+  "actorRuntime": {
+    "runtimeStatus": "RUNNING",
+    "activeActors": [
+      {
+        "type": "SharedProjectionSourceRosterActor"
+      },
+      {
+        "type": "CoordinatedCommandActor"
+      },
+      {
+        "type": "GlobalPositionActor"
+      },
+      {
+        "type": "IdempotencyTenantLifecycleActor"
+      },
+      {
+        "type": "IdempotencyLegacyInventoryActor"
+      },
+      {
+        "type": "AggregateActor"
+      },
+      {
+        "type": "IdempotencyAdmissionDirectoryActor"
+      },
+      {
+        "type": "ProjectionActor"
+      },
+      {
+        "type": "ProjectionLifecycleActor"
+      },
+      {
+        "type": "ETagActor",
+        "count": 2
+      },
+      {
+        "type": "IdempotencyAdmissionActor"
+      },
+      {
+        "type": "IdentityActorRegistryActor"
+      }
+    ],
+    "hostReady": true,
+    "placement": "placement: connected"
+  },
+  "actors": [
+    {
+      "type": "SharedProjectionSourceRosterActor"
+    },
+    {
+      "type": "CoordinatedCommandActor"
+    },
+    {
+      "type": "GlobalPositionActor"
+    },
+    {
+      "type": "IdempotencyTenantLifecycleActor"
+    },
+    {
+      "type": "IdempotencyLegacyInventoryActor"
+    },
+    {
+      "type": "AggregateActor"
+    },
+    {
+      "type": "IdempotencyAdmissionDirectoryActor"
+    },
+    {
+      "type": "ProjectionActor"
+    },
+    {
+      "type": "ProjectionLifecycleActor"
+    },
+    {
+      "type": "ETagActor",
+      "count": 2
+    },
+    {
+      "type": "IdempotencyAdmissionActor"
+    },
+    {
+      "type": "IdentityActorRegistryActor"
+    }
+  ],
+  "components": [
+    {
+      "name": "pubsub",
+      "type": "pubsub.redis",
+      "version": "v1"
+    },
+    {
+      "name": "statestore",
+      "type": "state.redis",
+      "version": "v1"
+    }
+  ],
+  "subscriptions": [
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-0.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-1.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-10.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-11.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-12.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-13.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-14.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-15.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restored-6a58e8567734.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-2.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-3.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-4.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-5.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-6.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-7.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-8.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-6a58e8567734.restart-6a58e8567734-9.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "*.*.projection-changed",
+      "type": "PROGRAMMATIC"
+    }
+  ]
+}

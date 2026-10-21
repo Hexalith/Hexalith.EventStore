@@ -1,0 +1,2566 @@
+{
+  "resources": [
+    {
+      "name": "eventstore-admin-dapr-cli-axjbzgpp",
+      "displayName": "eventstore-admin-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.38+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-dapr-cli-axjbzgpp",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "eventstore-admin-hrawgwvv"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:33851"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:35645"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:35607"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 12993,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-id",
+          "eventstore-admin",
+          "--config",
+          "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.eventstore-admin.yaml",
+          "--placement-host-address",
+          "localhost:50005",
+          "--resources-path",
+          "/tmp/hexalith-eventstore-dapr-components/statestore",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "8090",
+          "--dapr-grpc-port",
+          "22272",
+          "--dapr-http-port",
+          "22271",
+          "--metrics-port",
+          "22270",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "eventstore-admin-hrawgwvv"
+      },
+      "environment": {
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=axjbzgpp",
+        "OTEL_SERVICE_NAME": "eventstore-admin-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/eventstore-admin-dapr-cli-axjbzgpp/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "eventstore-admin-hrawgwvv",
+      "displayName": "eventstore-admin",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.38+00:00",
+      "source": "Hexalith.EventStore.Admin.Server.Host.csproj",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-hrawgwvv",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        }
+      ],
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:8090"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:8091"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 12986,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server.Host",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "AdminServer__EventStoreDaprHttpEndpoint": "http://localhost:3501",
+        "AdminServer__LogsUrl": "https://localhost:17017/structuredlogs",
+        "AdminServer__MetricsUrl": "https://localhost:17017/metrics",
+        "AdminServer__ResiliencyConfigPath": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/DaprComponents/resiliency.yaml",
+        "AdminServer__StateStoreName": "statestore",
+        "AdminServer__TraceUrl": "https://localhost:17017/traces",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "8091",
+        "ASPNETCORE_URLS": "https://localhost:22292;http://localhost:22291",
+        "Authentication__JwtBearer__AllowedAlgorithms__0": "HS256",
+        "Authentication__JwtBearer__Audience": "hexalith-eventstore",
+        "Authentication__JwtBearer__Authority": "",
+        "Authentication__JwtBearer__Issuer": "hexalith-dev",
+        "Authentication__JwtBearer__RequireHttpsMetadata": "false",
+        "Authentication__JwtBearer__SigningKey": null,
+        "Authentication__JwtBearer__ValidAudiences__0": "hexalith-eventstore",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:35607",
+        "DAPR_GRPC_PORT": "35607",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:35645",
+        "DAPR_HTTP_PORT": "35645",
+        "DOTNET_LAUNCH_PROFILE": "https",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EVENTSTORE_HTTP": "http://localhost:8080",
+        "EVENTSTORE_HTTPS": "https://localhost:7141",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/eventstore-admin-hrawgwvv/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=hrawgwvv",
+        "OTEL_SERVICE_NAME": "eventstore-admin",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore__http__0": "http://localhost:8080",
+        "services__eventstore__https__0": "https://localhost:7141",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/eventstore-admin-hrawgwvv/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource. Source code is not recompiled.",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-pecbypez",
+      "displayName": "eventstore-admin-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.44+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-ui-dapr-cli-pecbypez",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "eventstore-admin-ui-ppfvrxkc"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:38879"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:40029"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:33117"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 13139,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-id",
+          "eventstore-admin-ui",
+          "--placement-host-address",
+          "localhost:50005",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "8092",
+          "--dapr-grpc-port",
+          "22269",
+          "--dapr-http-port",
+          "22268",
+          "--metrics-port",
+          "22267",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "eventstore-admin-ui-ppfvrxkc"
+      },
+      "environment": {
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=pecbypez",
+        "OTEL_SERVICE_NAME": "eventstore-admin-ui-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/eventstore-admin-ui-dapr-cli-pecbypez/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "eventstore-admin-ui-ppfvrxkc",
+      "displayName": "eventstore-admin-ui",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.5+00:00",
+      "source": "Hexalith.EventStore.Admin.UI.csproj",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-admin-ui-ppfvrxkc",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-admin-hrawgwvv"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-admin-hrawgwvv"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-user-id"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-admin-hrawgwvv"
+        }
+      ],
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:8092"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:8093"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 13225,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.UI",
+        "project.launchProfile": "Hexalith.EventStore.Admin.UI",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "8093",
+        "ASPNETCORE_URLS": "https://localhost:22290;http://localhost:22289",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:33117",
+        "DAPR_GRPC_PORT": "33117",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:40029",
+        "DAPR_HTTP_PORT": "40029",
+        "DOTNET_LAUNCH_PROFILE": "Hexalith.EventStore.Admin.UI",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EventStore__AdminServer__SwaggerUrl": "https://localhost:8091/swagger/index.html",
+        "EventStore__Authentication__Audience": "hexalith-eventstore",
+        "EventStore__Authentication__Authority": "",
+        "EventStore__Authentication__Domains__0": "counter",
+        "EventStore__Authentication__GlobalAdmin": "true",
+        "EventStore__Authentication__Issuer": "hexalith-dev",
+        "EventStore__Authentication__Permissions__0": "command:submit",
+        "EventStore__Authentication__Permissions__1": "query:read",
+        "EventStore__Authentication__Permissions__2": "admin:read",
+        "EventStore__Authentication__Permissions__3": "admin:write",
+        "EventStore__Authentication__SigningKey": null,
+        "EventStore__Authentication__Subject": "70c8a75a-8646-4176-bd8f-bbceebce3e0a",
+        "EventStore__Authentication__Tenants__0": "tenant-a",
+        "EVENTSTORE_ADMIN_HTTP": "http://localhost:8090",
+        "EVENTSTORE_ADMIN_HTTPS": "https://localhost:8091",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/eventstore-admin-ui-ppfvrxkc/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=ppfvrxkc",
+        "OTEL_SERVICE_NAME": "eventstore-admin-ui",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore-admin__http__0": "http://localhost:8090",
+        "services__eventstore-admin__https__0": "https://localhost:8091",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/eventstore-admin-ui-ppfvrxkc/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource. Source code is not recompiled.",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "eventstore-app-api-token",
+      "displayName": "eventstore-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:eventstore-app-api-token",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-app-api-token",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:eventstore-app-api-token",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "eventstore-app-api-token",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for eventstore-app-api-token",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "eventstore-dapr-cli-xggzsevs",
+      "displayName": "eventstore-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.38+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-dapr-cli-xggzsevs",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "eventstore-qxradbec"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:40065"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:3501"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:37691"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 12987,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-id",
+          "eventstore",
+          "--config",
+          "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.yaml",
+          "--placement-host-address",
+          "localhost:50005",
+          "--resources-path",
+          "/tmp/hexalith-eventstore-dapr-components/statestore",
+          "--resources-path",
+          "/tmp/aspire-dapr.rgx4qJ/pubsub",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "8080",
+          "--dapr-grpc-port",
+          "22275",
+          "--dapr-http-port",
+          "22274",
+          "--metrics-port",
+          "22273",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "eventstore-qxradbec"
+      },
+      "environment": {
+        "APP_API_TOKEN": null,
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=xggzsevs",
+        "OTEL_SERVICE_NAME": "eventstore-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/eventstore-dapr-cli-xggzsevs/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "eventstore-qxradbec",
+      "displayName": "eventstore",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.38+00:00",
+      "source": "Hexalith.EventStore.csproj",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=eventstore-qxradbec",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-app-api-token"
+        }
+      ],
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:8080"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:7141"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 12989,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Hexalith.EventStore.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "APP_API_TOKEN": null,
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "7141",
+        "ASPNETCORE_URLS": "https://localhost:22294;http://localhost:22293",
+        "Authentication__JwtBearer__AllowedAlgorithms__0": "HS256",
+        "Authentication__JwtBearer__Audience": "hexalith-eventstore",
+        "Authentication__JwtBearer__Authority": "",
+        "Authentication__JwtBearer__Issuer": "hexalith-dev",
+        "Authentication__JwtBearer__RequireHttpsMetadata": "false",
+        "Authentication__JwtBearer__SigningKey": null,
+        "Authentication__JwtBearer__ValidAudiences__0": "hexalith-eventstore",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:37691",
+        "DAPR_GRPC_PORT": "37691",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:3501",
+        "DAPR_HTTP_PORT": "3501",
+        "DOTNET_LAUNCH_PROFILE": "https",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EventStore__CommandStatus__StateStoreName": "statestore",
+        "EventStore__ProjectionChanges__PubSubName": "pubsub",
+        "EventStore__Projections__CheckpointStateStoreName": "statestore",
+        "EventStore__Projections__ReadModelStateStoreName": "statestore",
+        "EventStore__Publisher__PubSubName": "pubsub",
+        "EventStore__SignalR__Enabled": "true",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/eventstore-qxradbec/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=qxradbec",
+        "OTEL_SERVICE_NAME": "eventstore",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/eventstore-qxradbec/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource. Source code is not recompiled.",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "local-auth-admin-password",
+      "displayName": "local-auth-admin-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-admin-password",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-admin-password",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-admin-password",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-admin-password",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-admin-password",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-admin-user-id",
+      "displayName": "local-auth-admin-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-admin-user-id",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-admin-user-id",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-admin-user-id",
+        "Value": "70c8a75a-8646-4176-bd8f-bbceebce3e0a"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-admin-user-id",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-admin-user-id",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-admin-username",
+      "displayName": "local-auth-admin-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-admin-username",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-admin-username",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-admin-username",
+        "Value": "local-4bdb6e7f34caf25d193a760f"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-admin-username",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-admin-username",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-sample-password",
+      "displayName": "local-auth-sample-password",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-sample-password",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-sample-password",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-sample-password",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-sample-password",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-sample-password",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-sample-user-id",
+      "displayName": "local-auth-sample-user-id",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-sample-user-id",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-sample-user-id",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-sample-user-id",
+        "Value": "7acc1bf3-3c0d-4ea6-87e0-89b205b6a333"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-sample-user-id",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-sample-user-id",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-sample-username",
+      "displayName": "local-auth-sample-username",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-sample-username",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-sample-username",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-sample-username",
+        "Value": "tenant-a-user"
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-sample-username",
+              "inputType": "Text",
+              "required": true,
+              "placeholder": "Enter value for local-auth-sample-username",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-signing-key",
+      "displayName": "local-auth-signing-key",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-signing-key",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-signing-key",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-signing-key",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-signing-key",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-signing-key",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "local-auth-workload-client-secret",
+      "displayName": "local-auth-workload-client-secret",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:local-auth-workload-client-secret",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=local-auth-workload-client-secret",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:local-auth-workload-client-secret",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "local-auth-workload-client-secret",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for local-auth-workload-client-secret",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "sample-api-dapr-cli-ccpzzznf",
+      "displayName": "sample-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.49+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-api-dapr-cli-ccpzzznf",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "sample-api-xwybrquq"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:46015"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:44571"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:44703"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 13213,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-id",
+          "sample-api",
+          "--placement-host-address",
+          "localhost:50005",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "5016",
+          "--dapr-grpc-port",
+          "22254",
+          "--dapr-http-port",
+          "22253",
+          "--metrics-port",
+          "22252",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "sample-api-xwybrquq"
+      },
+      "environment": {
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=ccpzzznf",
+        "OTEL_SERVICE_NAME": "sample-api-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/sample-api-dapr-cli-ccpzzznf/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "sample-api-xwybrquq",
+      "displayName": "sample-api",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.52+00:00",
+      "source": "Hexalith.EventStore.Sample.Api.csproj",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-api-xwybrquq",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        }
+      ],
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:5016"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:5015"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 13301,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.Api/Hexalith.EventStore.Sample.Api.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "5015",
+        "ASPNETCORE_URLS": "https://localhost:22280;http://localhost:22279",
+        "Authentication__JwtBearer__AllowedAlgorithms__0": "HS256",
+        "Authentication__JwtBearer__Audience": "hexalith-eventstore",
+        "Authentication__JwtBearer__Authority": "",
+        "Authentication__JwtBearer__Issuer": "hexalith-dev",
+        "Authentication__JwtBearer__RequireHttpsMetadata": "false",
+        "Authentication__JwtBearer__SigningKey": null,
+        "Authentication__JwtBearer__ValidAudiences__0": "hexalith-eventstore",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:44703",
+        "DAPR_GRPC_PORT": "44703",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:44571",
+        "DAPR_HTTP_PORT": "44571",
+        "DOTNET_LAUNCH_PROFILE": "https",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EVENTSTORE_HTTP": "http://localhost:8080",
+        "EVENTSTORE_HTTPS": "https://localhost:7141",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/sample-api-xwybrquq/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=xwybrquq",
+        "OTEL_SERVICE_NAME": "sample-api",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore__http__0": "http://localhost:8080",
+        "services__eventstore__https__0": "https://localhost:7141",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/sample-api-xwybrquq/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "issue-smoke-token": {
+          "displayName": "Issue local smoke token",
+          "description": "Returns one short-lived bearer token without exposing AppHost signing material.",
+          "state": "Enabled",
+          "sortOrder": 0
+        },
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 4
+        },
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource. Source code is not recompiled.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        }
+      }
+    },
+    {
+      "name": "sample-app-api-token",
+      "displayName": "sample-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:sample-app-api-token",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-app-api-token",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:sample-app-api-token",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "sample-app-api-token",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for sample-app-api-token",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "sample-blazor-ui-dapr-cli-ybvggmfk",
+      "displayName": "sample-blazor-ui-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.49+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-blazor-ui-dapr-cli-ybvggmfk",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "sample-blazor-ui-ghhcxrwn"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:38149"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:44839"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:45569"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 13214,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-id",
+          "sample-blazor-ui",
+          "--placement-host-address",
+          "localhost:50005",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "5004",
+          "--dapr-grpc-port",
+          "22257",
+          "--dapr-http-port",
+          "22256",
+          "--metrics-port",
+          "22255",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "sample-blazor-ui-ghhcxrwn"
+      },
+      "environment": {
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=ybvggmfk",
+        "OTEL_SERVICE_NAME": "sample-blazor-ui-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/sample-blazor-ui-dapr-cli-ybvggmfk/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "sample-blazor-ui-ghhcxrwn",
+      "displayName": "sample-blazor-ui",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.57+00:00",
+      "source": "Hexalith.EventStore.Sample.BlazorUI.csproj",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-blazor-ui-ghhcxrwn",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-sample-user-id"
+        }
+      ],
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:5004"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:5003"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 13407,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample.BlazorUI/Hexalith.EventStore.Sample.BlazorUI.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "5003",
+        "ASPNETCORE_URLS": "https://localhost:22282;http://localhost:22281",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:45569",
+        "DAPR_GRPC_PORT": "45569",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:44839",
+        "DAPR_HTTP_PORT": "44839",
+        "DOTNET_LAUNCH_PROFILE": "https",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EventStore__Authentication__Audience": "hexalith-eventstore",
+        "EventStore__Authentication__Authority": "",
+        "EventStore__Authentication__Domains__0": "counter",
+        "EventStore__Authentication__Issuer": "hexalith-dev",
+        "EventStore__Authentication__Permissions__0": "command:submit",
+        "EventStore__Authentication__Permissions__1": "query:read",
+        "EventStore__Authentication__SigningKey": null,
+        "EventStore__Authentication__Subject": "7acc1bf3-3c0d-4ea6-87e0-89b205b6a333",
+        "EventStore__Authentication__Tenants__0": "tenant-a",
+        "EventStore__SignalR__HubUrl": "https://localhost:7141/hubs/projection-changes",
+        "EVENTSTORE_HTTP": "http://localhost:8080",
+        "EVENTSTORE_HTTPS": "https://localhost:7141",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/sample-blazor-ui-ghhcxrwn/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=ghhcxrwn",
+        "OTEL_SERVICE_NAME": "sample-blazor-ui",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore__http__0": "http://localhost:8080",
+        "services__eventstore__https__0": "https://localhost:7141",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/sample-blazor-ui-ghhcxrwn/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource. Source code is not recompiled.",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "sample-dapr-cli-ugjbnkws",
+      "displayName": "sample-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.57+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-dapr-cli-ugjbnkws",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "sample-nkbkmpct"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:35615"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:43163"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:33175"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 13404,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-health-check-path",
+          "/alive",
+          "--app-id",
+          "sample",
+          "--config",
+          "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.sample.yaml",
+          "--enable-app-health-check",
+          "--placement-host-address",
+          "localhost:50005",
+          "--resources-path",
+          "/tmp/hexalith-eventstore-empty-dapr-resources",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "5189",
+          "--dapr-grpc-port",
+          "22260",
+          "--dapr-http-port",
+          "22259",
+          "--metrics-port",
+          "22258",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "sample-nkbkmpct"
+      },
+      "environment": {
+        "APP_API_TOKEN": null,
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=ugjbnkws",
+        "OTEL_SERVICE_NAME": "sample-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/sample-dapr-cli-ugjbnkws/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "sample-nkbkmpct",
+      "displayName": "sample",
+      "resourceType": "Project",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.51+00:00",
+      "source": "Hexalith.EventStore.Sample.csproj",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=sample-nkbkmpct",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "sample-app-api-token"
+        }
+      ],
+      "urls": [
+        {
+          "name": "http",
+          "url": "http://localhost:5189"
+        },
+        {
+          "name": "https",
+          "url": "https://localhost:7157"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 13263,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample",
+        "project.launchProfile": "https",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/samples/Hexalith.EventStore.Sample/Hexalith.EventStore.Sample.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "APP_API_TOKEN": null,
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "7157",
+        "ASPNETCORE_URLS": "https://localhost:22284;http://localhost:22283",
+        "Authentication__JwtBearer__AllowedAlgorithms__0": "HS256",
+        "Authentication__JwtBearer__Audience": "hexalith-eventstore",
+        "Authentication__JwtBearer__Authority": "",
+        "Authentication__JwtBearer__Issuer": "hexalith-dev",
+        "Authentication__JwtBearer__RequireHttpsMetadata": "false",
+        "Authentication__JwtBearer__SigningKey": null,
+        "Authentication__JwtBearer__ValidAudiences__0": "hexalith-eventstore",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:33175",
+        "DAPR_GRPC_PORT": "33175",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:43163",
+        "DAPR_HTTP_PORT": "43163",
+        "DOTNET_LAUNCH_PROFILE": "https",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EventStore__DomainService__AppId": "sample",
+        "EventStore__DomainService__ServiceVersion": "v1",
+        "EVENTSTORE_HTTP": "http://localhost:8080",
+        "EVENTSTORE_HTTPS": "https://localhost:7141",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/sample-nkbkmpct/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=nkbkmpct",
+        "OTEL_SERVICE_NAME": "sample",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore__http__0": "http://localhost:8080",
+        "services__eventstore__https__0": "https://localhost:7141",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/sample-nkbkmpct/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource. Source code is not recompiled.",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "tenants-api-dapr-cli-skjjjfag",
+      "displayName": "tenants-api-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.49+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-api-dapr-cli-skjjjfag",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "tenants-api-rjtqwxhq"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:40857"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:44585"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:44781"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 13221,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-id",
+          "tenants-api",
+          "--placement-host-address",
+          "localhost:50005",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "51096",
+          "--dapr-grpc-port",
+          "22263",
+          "--dapr-http-port",
+          "22262",
+          "--metrics-port",
+          "22261",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "tenants-api-rjtqwxhq"
+      },
+      "environment": {
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=skjjjfag",
+        "OTEL_SERVICE_NAME": "tenants-api-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/tenants-api-dapr-cli-skjjjfag/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "tenants-api-rjtqwxhq",
+      "displayName": "tenants-api",
+      "resourceType": "Project",
+      "state": "Finished",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.46+00:00",
+      "stopTimestamp": "2026-10-21T10:08:22.208176+00:00",
+      "source": "Hexalith.Tenants.Api.csproj",
+      "exitCode": 1,
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-api-rjtqwxhq",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-qxradbec"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 13165,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Api",
+        "project.launchProfile": "Hexalith.Tenants.Api",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants.Api/Hexalith.Tenants.Api.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "51095",
+        "ASPNETCORE_URLS": "https://localhost:22286;http://localhost:22285",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:44781",
+        "DAPR_GRPC_PORT": "44781",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:44585",
+        "DAPR_HTTP_PORT": "44585",
+        "DOTNET_LAUNCH_PROFILE": "Hexalith.Tenants.Api",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EVENTSTORE_HTTP": "http://localhost:8080",
+        "EVENTSTORE_HTTPS": "https://localhost:7141",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/tenants-api-rjtqwxhq/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=rjtqwxhq",
+        "OTEL_SERVICE_NAME": "tenants-api",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore__http__0": "http://localhost:8080",
+        "services__eventstore__https__0": "https://localhost:7141",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/tenants-api-rjtqwxhq/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    },
+    {
+      "name": "tenants-app-api-token",
+      "displayName": "tenants-app-api-token",
+      "resourceType": "Parameter",
+      "state": "Running",
+      "source": "Parameters:tenants-app-api-token",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-app-api-token",
+      "relationships": [],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "resource.source": "Parameters:tenants-app-api-token",
+        "Value": null
+      },
+      "environment": {},
+      "healthReports": {},
+      "commands": {
+        "delete-parameter": {
+          "displayName": "Delete parameter",
+          "description": "Delete parameter value",
+          "state": "Enabled",
+          "sortOrder": 1,
+          "argumentInputs": [
+            {
+              "name": "DeleteFromUserSecrets",
+              "label": "Delete from user secrets",
+              "description": "Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            }
+          ]
+        },
+        "set-parameter": {
+          "displayName": "Set parameter",
+          "description": "Set parameter value",
+          "state": "Enabled",
+          "sortOrder": 0,
+          "argumentInputs": [
+            {
+              "name": "Value",
+              "label": "tenants-app-api-token",
+              "inputType": "SecretText",
+              "required": true,
+              "placeholder": "Enter value for tenants-app-api-token",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true
+              }
+            },
+            {
+              "name": "SaveToUserSecrets",
+              "label": "Save to user secrets",
+              "description": "Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.",
+              "enableDescriptionMarkdown": true,
+              "inputType": "Boolean",
+              "dynamicLoading": {
+                "alwaysLoadOnStart": true,
+                "dependsOnInputs": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "tenants-dapr-cli-fgnyabta",
+      "displayName": "tenants-dapr-cli",
+      "resourceType": "Executable",
+      "state": "Running",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.49+00:00",
+      "source": "dapr",
+      "healthStatus": "Healthy",
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-dapr-cli-fgnyabta",
+      "relationships": [
+        {
+          "type": "Parent",
+          "resourceName": "tenants-vcgqjxmk"
+        }
+      ],
+      "urls": [
+        {
+          "name": "metrics",
+          "url": "http://localhost:39579"
+        },
+        {
+          "name": "http",
+          "url": "http://localhost:36045"
+        },
+        {
+          "name": "grpc",
+          "url": "http://localhost:41873"
+        }
+      ],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "/usr/local/bin/dapr",
+        "executable.pid": 13209,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost",
+        "resource.appArgs": [
+          "run",
+          "--app-health-check-path",
+          "/alive",
+          "--app-id",
+          "tenants",
+          "--config",
+          "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.tenants.yaml",
+          "--enable-app-health-check",
+          "--placement-host-address",
+          "localhost:50005",
+          "--resources-path",
+          "/tmp/hexalith-eventstore-dapr-components/statestore",
+          "--resources-path",
+          "/tmp/aspire-dapr.rgx4qJ/pubsub",
+          "--scheduler-host-address",
+          "localhost:50006",
+          "--app-port",
+          "61448",
+          "--dapr-grpc-port",
+          "22266",
+          "--dapr-http-port",
+          "22265",
+          "--metrics-port",
+          "22264",
+          "--app-channel-address",
+          "localhost",
+          "--app-protocol",
+          "http"
+        ],
+        "resource.appArgsSensitivity": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "resource.parentName": "tenants-vcgqjxmk"
+      },
+      "environment": {
+        "APP_API_TOKEN": null,
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=fgnyabta",
+        "OTEL_SERVICE_NAME": "tenants-dapr-cli",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/tenants-dapr-cli-fgnyabta/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust"
+      },
+      "healthReports": {},
+      "commands": {
+        "restart": {
+          "displayName": "Restart",
+          "description": "Restart resource",
+          "state": "Enabled",
+          "sortOrder": 2
+        },
+        "stop": {
+          "displayName": "Stop",
+          "description": "Stop resource",
+          "state": "Enabled",
+          "sortOrder": 1
+        }
+      }
+    },
+    {
+      "name": "tenants-vcgqjxmk",
+      "displayName": "tenants",
+      "resourceType": "Project",
+      "state": "Finished",
+      "creationTimestamp": "2026-10-21T10:08:20+00:00",
+      "startTimestamp": "2026-10-21T10:08:19.55+00:00",
+      "stopTimestamp": "2026-10-21T10:08:22.24669+00:00",
+      "source": "Hexalith.Tenants.csproj",
+      "exitCode": 1,
+      "dashboardUrl": "https://localhost:17017/?resource=tenants-vcgqjxmk",
+      "relationships": [
+        {
+          "type": "Reference",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "WaitFor",
+          "resourceName": "eventstore-qxradbec"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-admin-user-id"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "local-auth-signing-key"
+        },
+        {
+          "type": "Reference",
+          "resourceName": "tenants-app-api-token"
+        }
+      ],
+      "urls": [],
+      "volumes": [],
+      "properties": {
+        "executable.args": null,
+        "executable.path": "dotnet",
+        "executable.pid": 13375,
+        "executable.workDir": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants",
+        "project.launchProfile": "Hexalith.Tenants",
+        "project.path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj",
+        "resource.appArgs": [],
+        "resource.appArgsSensitivity": [],
+        "resource.launchConfigurationType": "project"
+      },
+      "environment": {
+        "APP_API_TOKEN": null,
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTPS_PORT": "61445",
+        "ASPNETCORE_URLS": "https://localhost:22288;http://localhost:22287",
+        "Authentication__JwtBearer__AllowedAlgorithms__0": "HS256",
+        "Authentication__JwtBearer__Audience": "hexalith-eventstore",
+        "Authentication__JwtBearer__Authority": "",
+        "Authentication__JwtBearer__Issuer": "hexalith-dev",
+        "Authentication__JwtBearer__RequireHttpsMetadata": "false",
+        "Authentication__JwtBearer__SigningKey": null,
+        "Authentication__JwtBearer__ValidAudiences__0": "hexalith-eventstore",
+        "DAPR_GRPC_ENDPOINT": "http://localhost:41873",
+        "DAPR_GRPC_PORT": "41873",
+        "DAPR_HTTP_ENDPOINT": "http://localhost:36045",
+        "DAPR_HTTP_PORT": "36045",
+        "DOTNET_LAUNCH_PROFILE": "Hexalith.Tenants",
+        "DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION": "true",
+        "EventStore__DomainService__AppId": "tenants",
+        "EventStore__DomainService__ServiceVersion": "v1",
+        "EVENTSTORE_HTTP": "http://localhost:8080",
+        "EVENTSTORE_HTTPS": "https://localhost:7141",
+        "Kestrel__Certificates__Default__Path": "/tmp/aspire-dcpMVcFVw/tenants-vcgqjxmk/private/ED6C9438F604A23BCB61B2E08EE0F6E33DD3CA06.pfx",
+        "LOGGING__CONSOLE__FORMATTERNAME": "simple",
+        "OTEL_BLRP_SCHEDULE_DELAY": "1000",
+        "OTEL_BSP_SCHEDULE_DELAY": "1000",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_HTTPCLIENT_DISABLE_URL_QUERY_REDACTION": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "https://localhost:21079",
+        "OTEL_EXPORTER_OTLP_HEADERS": "x-otlp-api-key=[redacted]",
+        "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
+        "OTEL_METRIC_EXPORT_INTERVAL": "1000",
+        "OTEL_METRICS_EXEMPLAR_FILTER": "trace_based",
+        "OTEL_RESOURCE_ATTRIBUTES": "service.instance.id=vcgqjxmk",
+        "OTEL_SERVICE_NAME": "tenants",
+        "OTEL_TRACES_SAMPLER": "always_on",
+        "services__eventstore__http__0": "http://localhost:8080",
+        "services__eventstore__https__0": "https://localhost:7141",
+        "SSL_CERT_DIR": "/tmp/aspire-dcpMVcFVw/tenants-vcgqjxmk/certs:/usr/lib/ssl/certs:/home/administrator/.aspnet/dev-certs/trust",
+        "Tenants__BootstrapGlobalAdminUserId": "70c8a75a-8646-4176-bd8f-bbceebce3e0a"
+      },
+      "healthReports": {},
+      "commands": {
+        "rebuild": {
+          "displayName": "Rebuild",
+          "description": "Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.",
+          "state": "Enabled",
+          "sortOrder": 3
+        },
+        "start": {
+          "displayName": "Start",
+          "description": "Start resource",
+          "state": "Enabled",
+          "sortOrder": 0
+        }
+      }
+    }
+  ]
+}

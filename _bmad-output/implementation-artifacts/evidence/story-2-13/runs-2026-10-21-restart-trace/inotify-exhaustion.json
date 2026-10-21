@@ -1,0 +1,15 @@
+{
+  "observedUtc": "2026-10-21T08:09:03.764714+00:00",
+  "max_user_watches": 1048576,
+  "max_user_instances": 8192,
+  "watchesByProcessName": {
+    "fluentui-mcp": 1046077,
+    "codex": 2396,
+    "claude": 41,
+    "agy": 16,
+    "MainThread": 13,
+    "dbus-daemon": 4
+  },
+  "usageMethod": "Count inotify wd lines per accessible /proc/<pid>/fdinfo/*; diagnostic snapshot, may race process changes",
+  "remedy": "temporary max_user_watches=2097152; restore original when usage permits; no persistent sysctl configuration"
+}

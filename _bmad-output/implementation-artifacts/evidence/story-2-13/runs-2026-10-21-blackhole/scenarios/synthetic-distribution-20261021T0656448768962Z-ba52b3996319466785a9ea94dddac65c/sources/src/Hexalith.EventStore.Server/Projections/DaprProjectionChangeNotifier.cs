@@ -1,0 +1,243 @@
+
+
+using Dapr.Actors;
+using Dapr.Actors.Client;
+using Dapr.Client;
+
+using Hexalith.EventStore.Client.Conventions;
+using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Hexalith.EventStore.Server.Projections;
+
+/// <summary>
+/// In-process DAPR implementation of <see cref="IProjectionChangeNotifier"/>.
+/// The direct transport calls <see cref="IETagActor.RegenerateAsync"/> via actor proxy (no pub/sub hop). The
+/// pub/sub transport publishes a notification carrying signed publisher provenance bound to its tenant and topic;
+/// without provenance nothing is published, because the receiver would deny it (FR28).
+/// Used by <c>EventStoreProjection</c> auto-notify within the EventStore server process.
+/// </summary>
+public partial class DaprProjectionChangeNotifier(
+    DaprClient daprClient,
+    IActorProxyFactory actorProxyFactory,
+    IProjectionChangedBroadcaster broadcaster,
+    IOptions<ProjectionChangeNotifierOptions> options,
+    ILogger<DaprProjectionChangeNotifier> logger,
+    IWorkloadAssertionIssuer? provenanceIssuer = null) : IProjectionChangeNotifier {
+    private const int MaxGroupScopeLength = 64;
+
+    /// <inheritdoc/>
+    public async Task NotifyProjectionChangedAsync(
+        string projectionType,
+        string tenantId,
+        string? entityId = null,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectionType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+
+        ProjectionChangeTransport transport = options.Value.Transport;
+        string topic = NamingConventionEngine.GetProjectionChangedTopic(projectionType, tenantId);
+
+        Log.NotificationReceived(logger, projectionType, tenantId, entityId, transport.ToString());
+
+        if (transport == ProjectionChangeTransport.PubSub) {
+            string? provenance = await IssueProvenanceAsync(projectionType, tenantId, topic, cancellationToken).ConfigureAwait(false);
+            if (provenance is null) {
+                return;
+            }
+
+            var notification = new ProjectionChangedNotification(projectionType, tenantId, entityId) { Provenance = provenance };
+            await daprClient.PublishEventAsync(
+                options.Value.PubSubName,
+                topic,
+                notification,
+                cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        string actorId = $"{projectionType}:{tenantId}";
+
+        IETagActor proxy = actorProxyFactory.CreateActorProxy<IETagActor>(
+            new ActorId(actorId),
+            ETagActor.ETagActorTypeName);
+
+        _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+
+        // Broadcast to SignalR clients (fail-open — ADR-18.5a)
+        try {
+            await broadcaster.BroadcastChangedAsync(projectionType, tenantId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.BroadcastFailed(logger, projectionType, tenantId, ex.GetType().Name);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task NotifyProjectionChangedAsync(
+        ProjectionChangedDetail detail,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(detail);
+        ArgumentException.ThrowIfNullOrWhiteSpace(detail.ProjectionType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(detail.TenantId);
+
+        if (detail.ProjectionType.Contains(':', StringComparison.Ordinal)
+            || detail.TenantId.Contains(':', StringComparison.Ordinal)) {
+            throw new ArgumentException("Projection type and tenant id must not contain colons.", nameof(detail));
+        }
+
+        string? groupScope = string.IsNullOrWhiteSpace(detail.GroupScope) ? null : detail.GroupScope;
+        if (groupScope is not null && groupScope.Contains(':', StringComparison.Ordinal)) {
+            throw new ArgumentException("Group scope must not contain colons.", nameof(detail));
+        }
+
+        if (groupScope is not null && groupScope.Length > MaxGroupScopeLength) {
+            throw new ArgumentException($"Group scope must not exceed {MaxGroupScopeLength} characters.", nameof(detail));
+        }
+
+        ProjectionChangeNotifierOptions currentOptions = options.Value;
+        (IReadOnlyDictionary<string, string> metadata, bool clipped, int originalCount) =
+            BoundMetadata(detail.Metadata, currentOptions);
+        ProjectionChangedDetail normalizedDetail = detail with {
+            GroupScope = groupScope,
+            Metadata = metadata,
+        };
+
+        string topic = NamingConventionEngine.GetProjectionChangedTopic(detail.ProjectionType, detail.TenantId);
+
+        if (clipped) {
+            Log.DetailMetadataClipped(
+                logger,
+                detail.ProjectionType,
+                detail.TenantId,
+                groupScope,
+                originalCount,
+                metadata.Count);
+        }
+
+        Log.DetailNotificationReceived(
+            logger,
+            detail.ProjectionType,
+            detail.TenantId,
+            groupScope,
+            normalizedDetail.Metadata.Count,
+            currentOptions.Transport.ToString());
+
+        if (currentOptions.Transport == ProjectionChangeTransport.PubSub) {
+            string? provenance = await IssueProvenanceAsync(detail.ProjectionType, detail.TenantId, topic, cancellationToken).ConfigureAwait(false);
+            if (provenance is null) {
+                return;
+            }
+
+            var notification = new ProjectionChangedNotification(
+                detail.ProjectionType,
+                detail.TenantId,
+                EntityId: null,
+                GroupScope: groupScope,
+                Metadata: normalizedDetail.Metadata) {
+                Provenance = provenance,
+            };
+
+            await daprClient.PublishEventAsync(
+                currentOptions.PubSubName,
+                topic,
+                notification,
+                cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        string actorId = $"{detail.ProjectionType}:{detail.TenantId}";
+
+        IETagActor proxy = actorProxyFactory.CreateActorProxy<IETagActor>(
+            new ActorId(actorId),
+            ETagActor.ETagActorTypeName);
+
+        _ = await proxy.RegenerateAsync().ConfigureAwait(false);
+
+        // Broadcast to SignalR clients (fail-open — ADR-18.5a)
+        try {
+            await broadcaster.BroadcastChangedAsync(normalizedDetail, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.DetailBroadcastFailed(logger, detail.ProjectionType, detail.TenantId, groupScope, ex.GetType().Name);
+        }
+    }
+
+    private async Task<string?> IssueProvenanceAsync(
+        string projectionType,
+        string tenantId,
+        string topic,
+        CancellationToken cancellationToken) {
+        string? provenance = provenanceIssuer is null
+            ? null
+            : await provenanceIssuer.IssueAsync(
+                new WorkloadAssertionRequest(
+                    options.Value.ProvenanceAudience,
+                    EventStoreWorkloadOperations.ProjectionNotify,
+                    new Dictionary<string, string>(StringComparer.Ordinal) {
+                        [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = tenantId,
+                        [EventStoreWorkloadAuthenticationDefaults.ProjectionTypeBindingClaimType] = projectionType,
+                        [EventStoreWorkloadAuthenticationDefaults.TopicBindingClaimType] = topic,
+                    }),
+                cancellationToken).ConfigureAwait(false);
+        if (provenance is null) {
+            Log.ProvenanceUnavailable(logger, projectionType, tenantId);
+        }
+
+        return provenance;
+    }
+
+    private static (IReadOnlyDictionary<string, string> Bounded, bool Clipped, int OriginalCount) BoundMetadata(
+        IReadOnlyDictionary<string, string>? metadata,
+        ProjectionChangeNotifierOptions options) {
+        IReadOnlyDictionary<string, string> bounded = ProjectionChangedMetadataLimits.Bound(
+            metadata, options.MaxDetailMetadataEntries, options.MaxDetailMetadataBytes);
+        int originalCount = metadata?.Count ?? 0;
+        return (bounded, bounded.Count != originalCount, originalCount);
+    }
+
+    private static partial class Log {
+        [LoggerMessage(
+            EventId = 1051,
+            Level = LogLevel.Debug,
+            Message = "Projection change notification received. ProjectionType: {ProjectionType}, TenantId: {TenantId}, EntityId: {EntityId}, Transport: {Transport}")]
+        public static partial void NotificationReceived(ILogger logger, string projectionType, string tenantId, string? entityId, string transport);
+
+        [LoggerMessage(
+            EventId = 1088,
+            Level = LogLevel.Warning,
+            Message = "SignalR broadcast failed after ETag regeneration (fail-open). ProjectionType: {ProjectionType}, TenantId: {TenantId}, ExceptionType: {ExceptionType}")]
+        public static partial void BroadcastFailed(ILogger logger, string projectionType, string tenantId, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1089,
+            Level = LogLevel.Debug,
+            Message = "Projection detail change notification received. ProjectionType: {ProjectionType}, TenantId: {TenantId}, GroupScope: {GroupScope}, MetadataCount: {MetadataCount}, Transport: {Transport}")]
+        public static partial void DetailNotificationReceived(ILogger logger, string projectionType, string tenantId, string? groupScope, int metadataCount, string transport);
+
+        [LoggerMessage(
+            EventId = 1090,
+            Level = LogLevel.Warning,
+            Message = "SignalR detail broadcast failed after ETag regeneration (fail-open). ProjectionType: {ProjectionType}, TenantId: {TenantId}, GroupScope: {GroupScope}, ExceptionType: {ExceptionType}")]
+        public static partial void DetailBroadcastFailed(ILogger logger, string projectionType, string tenantId, string? groupScope, string exceptionType);
+
+        [LoggerMessage(
+            EventId = 1091,
+            Level = LogLevel.Warning,
+            Message = "Projection detail metadata clipped to configured bounds before publish. ProjectionType: {ProjectionType}, TenantId: {TenantId}, GroupScope: {GroupScope}, OriginalCount: {OriginalCount}, BoundedCount: {BoundedCount}")]
+        public static partial void DetailMetadataClipped(ILogger logger, string projectionType, string tenantId, string? groupScope, int originalCount, int boundedCount);
+
+        [LoggerMessage(
+            EventId = 5551,
+            Level = LogLevel.Warning,
+            Message = "Projection change notification not published: signed publisher provenance could not be issued. ProjectionType: {ProjectionType}, TenantId: {TenantId}")]
+        public static partial void ProvenanceUnavailable(ILogger logger, string projectionType, string tenantId);
+    }
+}

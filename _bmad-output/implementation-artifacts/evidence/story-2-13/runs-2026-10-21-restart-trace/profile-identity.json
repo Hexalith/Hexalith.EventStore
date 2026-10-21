@@ -1,0 +1,51 @@
+{
+  "observedUtc": "2026-10-21T08:18:46.055250+00:00",
+  "head": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+  "versions": {
+    "dotnet": {
+      "command": [
+        "dotnet",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "10.0.402\n"
+    },
+    "dapr": {
+      "command": [
+        "dapr",
+        "version"
+      ],
+      "exitCode": 0,
+      "output": "CLI version: 1.18.2 \nRuntime version: 1.18.7\n"
+    },
+    "daprd": {
+      "command": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "1.18.7\n"
+    },
+    "aspire": {
+      "command": [
+        "aspire",
+        "--version"
+      ],
+      "exitCode": 0,
+      "output": "13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8\n"
+    }
+  },
+  "localRuntimeBinaries": {
+    "/home/administrator/.dapr/bin/daprd": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+  },
+  "sharedContainerObservation": {
+    "command": [
+      "docker",
+      "ps",
+      "--format",
+      "{{.ID}} {{.Image}} {{.Names}}"
+    ],
+    "exitCode": 0,
+    "output": "f1e0a30a3a93 daprio/dapr:1.18.7 dapr_placement\n8623af8b7bbd daprio/dapr:1.18.7 dapr_scheduler\n8d0788f8322f redis:6 dapr_redis\ncb7c12622c18 openzipkin/zipkin dapr_zipkin\n"
+  }
+}

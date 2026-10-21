@@ -1,0 +1,193 @@
+{
+  "id": "eventstore",
+  "runtimeVersion": "1.18.7-local-2-13-retirement",
+  "actorRuntime": {
+    "runtimeStatus": "RUNNING",
+    "activeActors": [
+      {
+        "type": "IdempotencyAdmissionActor"
+      },
+      {
+        "type": "IdempotencyLegacyInventoryActor"
+      },
+      {
+        "type": "IdempotencyAdmissionDirectoryActor"
+      },
+      {
+        "type": "AggregateActor",
+        "count": 2
+      },
+      {
+        "type": "ProjectionLifecycleActor"
+      },
+      {
+        "type": "GlobalPositionActor"
+      },
+      {
+        "type": "IdempotencyTenantLifecycleActor"
+      },
+      {
+        "type": "IdentityActorRegistryActor"
+      },
+      {
+        "type": "ETagActor",
+        "count": 2
+      },
+      {
+        "type": "ProjectionActor"
+      },
+      {
+        "type": "SharedProjectionSourceRosterActor"
+      },
+      {
+        "type": "CoordinatedCommandActor"
+      }
+    ],
+    "hostReady": true,
+    "placement": "placement: connected"
+  },
+  "actors": [
+    {
+      "type": "IdempotencyAdmissionActor"
+    },
+    {
+      "type": "IdempotencyLegacyInventoryActor"
+    },
+    {
+      "type": "IdempotencyAdmissionDirectoryActor"
+    },
+    {
+      "type": "AggregateActor",
+      "count": 2
+    },
+    {
+      "type": "ProjectionLifecycleActor"
+    },
+    {
+      "type": "GlobalPositionActor"
+    },
+    {
+      "type": "IdempotencyTenantLifecycleActor"
+    },
+    {
+      "type": "IdentityActorRegistryActor"
+    },
+    {
+      "type": "ETagActor",
+      "count": 2
+    },
+    {
+      "type": "ProjectionActor"
+    },
+    {
+      "type": "SharedProjectionSourceRosterActor"
+    },
+    {
+      "type": "CoordinatedCommandActor"
+    }
+  ],
+  "components": [
+    {
+      "name": "pubsub",
+      "type": "pubsub.redis",
+      "version": "v1"
+    },
+    {
+      "name": "statestore",
+      "type": "state.redis",
+      "version": "v1"
+    }
+  ],
+  "subscriptions": [
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-0.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-1.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-10.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-11.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-12.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-13.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-14.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-15.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restored-cbf31b783143.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-2.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-3.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-4.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-5.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-6.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-7.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-8.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "tenant-a-cbf31b783143.restart-cbf31b783143-9.projection-changed",
+      "type": "DECLARATIVE"
+    },
+    {
+      "pubsubname": "pubsub",
+      "topic": "*.*.projection-changed",
+      "type": "PROGRAMMATIC"
+    }
+  ]
+}

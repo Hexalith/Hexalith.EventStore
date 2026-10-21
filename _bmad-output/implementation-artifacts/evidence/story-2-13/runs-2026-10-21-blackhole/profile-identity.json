@@ -1,0 +1,225 @@
+{
+  "observedUtc": "2026-10-21T06:22:40.462227+00:00",
+  "authority": "Development qualification only; no production authority",
+  "commands": [
+    {
+      "command": [
+        "dotnet",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "10.0.402",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "dapr",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "CLI version: 1.18.2 \nRuntime version: 1.18.7",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "1.18.7",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "aspire",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "ls-tree",
+        "HEAD",
+        "references/Hexalith.Builds"
+      ],
+      "exitCode": 0,
+      "stdout": "160000 commit fff4a212180d8cd1c5c0759655a9bc4fb6963c45\treferences/Hexalith.Builds",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "references/Hexalith.Builds",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "fff4a212180d8cd1c5c0759655a9bc4fb6963c45",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Name}} {{.Id}} {{.Image}} {{.Config.Image}}",
+        "dapr_redis",
+        "dapr_placement",
+        "dapr_scheduler"
+      ],
+      "exitCode": 0,
+      "stdout": "/dapr_redis 8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922 sha256:c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf docker.io/redis:6\n/dapr_placement f1e0a30a3a93a1542ee5ad74856e44d483a94f7a8e5ef769f398827815cc1da6 sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc docker.io/daprio/dapr:1.18.7\n/dapr_scheduler 8623af8b7bbd8ebd3d73221af72615162475f3f8a7190432e09e64e51befc826 sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc docker.io/daprio/dapr:1.18.7",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "dapr_redis",
+        "redis-server",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "Redis server v=6.2.21 sha=00000000:0 malloc=jemalloc-5.1.0 bits=64 build=bfa2c172d6556ada",
+      "stderr": ""
+    }
+  ],
+  "binaries": {
+    "/home/administrator/.dapr/bin/daprd": {
+      "sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+    },
+    "/usr/local/bin/dapr": {
+      "sha256": "43429557ff18a7230737b945699417ec391ad41bd431244c175b79ab3c904ce5"
+    }
+  },
+  "packageLibraries": {
+    "Aspire.Hosting/13.6.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-gIcP7+rPSBPWLlEpFGCWGKdjoXvyn0rZRCbjxUHTMnw8Y+a6Esp915o8MOROpYI++MQN3Fo55Yu0XuBJ6MqEIw==",
+      "path": "aspire.hosting/13.6.1",
+      "hashPath": "aspire.hosting.13.6.1.nupkg.sha512"
+    },
+    "Dapr.Actors/1.18.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-TEEoB9nnR5hA8XCzidjDKZPxv8r2zQ8nfP1fcs0iUjXBKH3Bw/DiuDlrkwaSVyjakYu+XN/q+8RQcz1u73ekDg==",
+      "path": "dapr.actors/1.18.10",
+      "hashPath": "dapr.actors.1.18.10.nupkg.sha512"
+    },
+    "Dapr.Actors.AspNetCore/1.18.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0QBdTdtPjYWawiSQujP1kK/4q3M1GAuDGjUduHn0Xs4GggE3YyW3Vt1hPoRA1/Yn4zYHtdsaVrxKLPNMZobWPA==",
+      "path": "dapr.actors.aspnetcore/1.18.10",
+      "hashPath": "dapr.actors.aspnetcore.1.18.10.nupkg.sha512"
+    },
+    "Dapr.AspNetCore/1.18.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fMnPpQ64fUqaAXJ4SzFTDxTsBAKE3mj4ei7uzqAwSSNoSt0KADz2kvmkUdslc7LJO/a9AhU5Lv1Ml7UVdHKoaA==",
+      "path": "dapr.aspnetcore/1.18.10",
+      "hashPath": "dapr.aspnetcore.1.18.10.nupkg.sha512"
+    },
+    "Dapr.Client/1.18.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-PZ/KP37LtLXv5oIIjpOpPSZaEB0mvJzT24oIoMwI/Nm0d3DpO3QdhmgkDPUWTkxkSQ7qunsEZ5ltlKv/axeXOg==",
+      "path": "dapr.client/1.18.10",
+      "hashPath": "dapr.client.1.18.10.nupkg.sha512"
+    },
+    "Dapr.Common/1.18.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-JsbUiR+V9DKZAMHhsnQREXLZJuY7Zee6hMY+PM/88jaufPVPXICUM3TQZCD2yJDFyYPXwu9iibGug6ea5SgfIw==",
+      "path": "dapr.common/1.18.10",
+      "hashPath": "dapr.common.1.18.10.nupkg.sha512"
+    },
+    "Dapr.Protos/1.18.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-g0ZOJeTc7EosqBQIOynQOgg95icJrkYhccVRcWv1Naurx1xt+bRJp39wLkVRhtyCf/2ZIRgkEybCF+muJjFhwA==",
+      "path": "dapr.protos/1.18.10",
+      "hashPath": "dapr.protos.1.18.10.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.SignalR.Client/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-17fMUI5gkRwR9qXXTELd5OChcFn3lkgWpiblaaELQ45zOL7VuU7HJYAYnMk+Irjf2jpRxHT7b0imy+NVIFyoYQ==",
+      "path": "microsoft.aspnetcore.signalr.client/10.0.13",
+      "hashPath": "microsoft.aspnetcore.signalr.client.10.0.13.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.SignalR.Client.Core/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-zfCQ0/J/rATKKcpwcpQYFz8sxhvrzgGyblsATcfxqSCibRkPFmDZcFmfD0UfLi38q+VDMpwEVuzOCO3TpRy99Q==",
+      "path": "microsoft.aspnetcore.signalr.client.core/10.0.13",
+      "hashPath": "microsoft.aspnetcore.signalr.client.core.10.0.13.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.SignalR.StackExchangeRedis/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Lu3qGumdCbaWYqiBF2CNexw04lig2AAh+pEiUJygDGKOP/+g2SgPG2dnC3zhcUwg2iv99XaAHV9SK7mozUvMiA==",
+      "path": "microsoft.aspnetcore.signalr.stackexchangeredis/10.0.13",
+      "hashPath": "microsoft.aspnetcore.signalr.stackexchangeredis.10.0.13.nupkg.sha512"
+    },
+    "StackExchange.Redis/3.4.5": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ==",
+      "path": "stackexchange.redis/3.4.5",
+      "hashPath": "stackexchange.redis.3.4.5.nupkg.sha512"
+    },
+    "xunit.v3/4.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-TdjM2OAx7w/0E88E6PgaigLoTbQaxbSR3HF/8p92plchTjf29jPHW27ylvEOz+Nx8CvPwWKGQlOR1fDv6/Qh5A==",
+      "path": "xunit.v3/4.0.2",
+      "hashPath": "xunit.v3.4.0.2.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.SignalR.Common.Reference/10.0.0.0": {
+      "type": "referenceassembly",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.AspNetCore.SignalR.Core/10.0.0.0": {
+      "type": "referenceassembly",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.AspNetCore.SignalR.Protocols.Json.Reference/10.0.0.0": {
+      "type": "referenceassembly",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.AspNetCore.SignalR.Common/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Rd6v57QqwW7Uayx0//qsf6J8MGcdw4Lw3Bq3dfT33KWnydaf0HsXoBxHQze/EowSsYQUx2yi9+PWCob9A9GuFw==",
+      "path": "microsoft.aspnetcore.signalr.common/10.0.13",
+      "hashPath": "microsoft.aspnetcore.signalr.common.10.0.13.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.SignalR.Protocols.Json/10.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8TvhozBxdbcmS+4S4mb2FN2ls5NU99zwapQAUIse8oWV7CwvUTq0bBJ5/0+0B0JW9wnrxBpMrJ6jkivnG+f7fg==",
+      "path": "microsoft.aspnetcore.signalr.protocols.json/10.0.13",
+      "hashPath": "microsoft.aspnetcore.signalr.protocols.json.10.0.13.nupkg.sha512"
+    }
+  },
+  "depsSha256": "c3dee396f528bb797ececc22c4f750bb30868dedce5eba7674169449648bb64d"
+}

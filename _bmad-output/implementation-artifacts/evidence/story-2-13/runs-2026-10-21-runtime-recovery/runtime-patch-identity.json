@@ -1,0 +1,8 @@
+{
+  "revision": "b32a815fa2260983e181b95272ea555fe17d3895",
+  "path": "pkg/actors/router/router.go",
+  "beforeSha256": "7e5882d35233e4ebbe4b888c2a61d2832a1302da14432404ae28e7f94a555fed",
+  "afterSha256": "bffdb2cc73d73cdeefefbb9b8c6c70e417db92e70b8e27263cfbe79467dafde1",
+  "patchSha256": "725602280e428d440be6aa024340cfe13c4eb3c98178755a9a174ccf18f27205",
+  "scope": "ordinary remote actor invocations only; reminder/stream and global backoff defaults unchanged"
+}

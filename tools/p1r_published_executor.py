@@ -28,6 +28,7 @@ import uuid
 
 import p1r_check_witnesses as witnesses
 import p1r_published_qualification as qualification
+import p1r_evidence_storage as storage
 import p1r_qualification as preparation
 import p1r_qualification_runtime as runtime
 from p1r_qualification import InvalidPacket, canonical, checks_counter, digest, regular, require, stamp, write_json as _write_json
@@ -499,7 +500,7 @@ class Executor:
     def versions(self, value):
         self._versions = value
 
-    def __init__(self, output, inputs=None, source_root=None, source_builds_root=None, tooling=None):
+    def __init__(self, output, inputs=None, source_root=None, source_builds_root=None, tooling=None, inputs_sha256=None, observation=None, observation_sha256=None):
         selected_tooling = inputs.get("tooling") if inputs is not None else tooling
         if selected_tooling is not None:
             initial_binding = preparation.source_binding(ROOT, selected_tooling, source_root, source_builds_root)
@@ -509,8 +510,10 @@ class Executor:
             require(source_builds_root is None, "source builds path requires selected tooling pins")
         self.output = Path(output).absolute()
         require(not self.output.exists() and self.output == self.output.resolve(), "output exists or is substituted")
+        storage.safe_directory(self.output.parent, ROOT, create=True)
         self.output.mkdir(parents=True)
         self.invocation = uuid.uuid4().hex
+        self.storage = storage.Store(self.output.parent / ".p1r-artifacts", storage.context(self.invocation, ROOT))
         self.scratch = Path(tempfile.mkdtemp(prefix="p1r-published-" + self.invocation + "-"))
         self.inputs = inputs
         self.source_root = Path(source_root).absolute() if source_root is not None else ROOT
@@ -518,7 +521,12 @@ class Executor:
         self.source_builds_root = Path(source_builds_root).absolute() if source_builds_root is not None else None
         self.candidate = inputs["candidate"]["version"] if inputs else CANDIDATE
         self.versions = ("3.110.0", "3.70.1", self.candidate)
-        self.inputs_sha256 = digest(canonical(inputs)) if inputs else None
+        self.inputs_sha256 = inputs_sha256 or (digest(canonical(inputs)) if inputs else None)
+        self.observation_capture = observation is not None
+        self.storage.context.update(inputs=self.inputs_sha256 if inputs is not None else
+            observation_sha256 or (digest(canonical(observation)) if observation is not None else None),
+            candidate=digest(canonical(inputs["candidate"])) if inputs is not None else
+                digest(canonical(observation["candidate_proposed"])) if observation is not None else None)
         self.commands, self.containers, self.processes, self.active = [], {}, [], []
         self.pending_containers = {}
         preparation.subreaper()
@@ -549,6 +557,7 @@ class Executor:
                                    preparation.source_binding())
             write_json(self.output / "executor-source.json", self.source_binding)
             self.result["executor_source_sha256"] = digest(regular(self.output / "executor-source.json"))
+            self.storage.context["source"] = self.result["executor_source_sha256"]
             self.shared_before = self.shared()
             self.save()
         except BaseException as error:
@@ -557,15 +566,21 @@ class Executor:
             raise
 
     def save(self):
+        if hasattr(self, "storage"):
+            self.result["capture_context"] = dict(self.storage.context)
         write_json(self.output / "commands.json", self.commands)
         self.result.update(receipts=self.receipts, errors=self.errors)
         write_json(self.output / "execution.json", self.result)
 
     def record(self, argv, cwd, started, code, data, retain=True, ownership=None, cleanup=None, timeout=None, input_bytes=None):
-        output = data.decode("utf-8", "replace") if retain else None
         row = {"id": len(self.commands) + 1, "argv": [str(arg) for arg in argv], "cwd": str(cwd),
                "started_utc": started, "finished_utc": max(started, stamp()), "exit_code": code,
-               "output_sha256": digest(output.encode() if retain else data), "output": output}
+               "output_sha256": digest(data)}
+        if hasattr(self, "storage") and retain:
+            self.storage.command(row, data)
+        else:
+            output = data.decode("utf-8", "replace") if retain else None
+            row.update(output=output, output_sha256=digest(output.encode() if retain else data))
         if timeout is not None:
             row["timeout_seconds"] = timeout
         if input_bytes is not None:
@@ -588,6 +603,14 @@ class Executor:
         self.commands.append(row)
         self.save()
         return row
+
+    def command_output(self, row):
+        if "output_ref" not in row:
+            return row.get("output")
+        return storage.command_text(row, self.storage.context)
+
+    def retain_packet(self, value):
+        return storage.retain_inventories(value, self.storage) if hasattr(self, "storage") else value
 
     def run(self, argv, cwd=None, env=None, timeout=180, input_bytes=None, retain=True, check=True):
         """Own synchronous trees, including nonce-registered detached descendants."""
@@ -784,10 +807,10 @@ class Executor:
             data = self.run(preparation.source_evaluation_arguments(project, self.source_binding, "evaluation"),
                             cwd=root, env=environment)
             value = {"project": str(project), "imports": imports, "evaluation": self.commands[-1]}
-            qualification.validate_source_evaluation(value, self.source_binding, root)
+            qualification.validate_source_evaluation(storage.materialize(value, self.storage.context) if hasattr(self, "storage") else value, self.source_binding, root)
             measured.append(value)
             pending.extend(Path(row["FullPath"]) for row in json.loads(data)["Items"]["ProjectReference"])
-        qualification.validate_source_evaluations({"source_evaluations": measured}, self.source_binding, root)
+        qualification.validate_source_evaluations({"source_evaluations": storage.materialize(measured, self.storage.context) if hasattr(self, "storage") else measured}, self.source_binding, root)
         return measured
 
     def build_consumers(self, version, source=False):
@@ -889,7 +912,7 @@ class Executor:
                     and nuspec["repository_commit"] == package["repository_commit"] == candidate["tag_commit"],
                     "candidate archive differs from selected published identity")
             self.run(["dotnet", "nuget", "verify", "--all", archive, "--verbosity", "minimal"], cwd=root)
-            require(qualification.REPOSITORY_SIGNATURE in self.commands[-1]["output"],
+            require(qualification.REPOSITORY_SIGNATURE in self.command_output(self.commands[-1]),
                     "candidate repository signature not verified")
 
     def observe_inputs(self, planning, reference):
@@ -959,7 +982,7 @@ class Executor:
                     expected = next(package for package in candidate["packages"] if package["id"] == identifier)
                     require(all(row[key] == expected[key] for key in row), "candidate archive differs from approved observation")
                 self.run(["dotnet", "nuget", "verify", "--all", archive, "--verbosity", "minimal"], cwd=root)
-                require(qualification.REPOSITORY_SIGNATURE in self.commands[-1]["output"], "repository signature not verified")
+                require(qualification.REPOSITORY_SIGNATURE in self.command_output(self.commands[-1]), "repository signature not verified")
                 target = self.output / "archives" / (identifier + "." + version + ".nupkg")
                 target.parent.mkdir(exist_ok=True)
                 shutil.copyfile(archive, target)
@@ -989,6 +1012,7 @@ class Executor:
         write_json(self.output / "owner-inputs.json", inputs)
         self.inputs_sha256 = digest(regular(self.output / "owner-inputs.json"))
         self.result["inputs_sha256"] = self.inputs_sha256
+        self.result["generated_owner_inputs_sha256"] = self.inputs_sha256
         decisions = {"schema": qualification.DECISIONS_SCHEMA, "fixture": None, "inputs_sha256": self.inputs_sha256,
                      "decisions": [{"role": role, "decision": "pending", "owner": None, "date": None, "reference": None}
                                    for role in qualification.DECISION_ROLES],
@@ -1638,9 +1662,12 @@ class Executor:
                    "identities": identities, "cases": cases, "assertions": counter,
                    "execution": "passed" if passed else "failed",
                    "compatibility": "incompatible" if incompatible else "compatible" if passed else "unverified"}
+        if hasattr(self, "storage"):
+            receipt["execution_evidence"] = self.retain_packet(receipt["execution_evidence"])
+            receipt["output_sha256"] = digest(canonical(receipt["execution_evidence"]))
         qualification.lane_outcome(receipt)
         path = self.output / "receipts" / (receipt["id"] + ".json")
-        write_json(path, receipt)
+        write_json(path, self.retain_packet(receipt))
         self.receipts.append(str(path))
         self.save()
         print(json.dumps({"lane": name, "execution": receipt["execution"], "compatibility": receipt["compatibility"],
@@ -1682,7 +1709,7 @@ class Executor:
             archive = root / "packages" / lower / identifier / (lower + "." + identifier + ".nupkg")
             checks.check(package["id"] + ":archive-sha256", digest(regular(archive)) == package["archive_sha256"])
             self.run(["dotnet", "nuget", "verify", "--all", archive, "--verbosity", "minimal"])
-            checks.check(package["id"] + ":signature", qualification.REPOSITORY_SIGNATURE in self.commands[-1]["output"])
+            checks.check(package["id"] + ":signature", qualification.REPOSITORY_SIGNATURE in self.command_output(self.commands[-1]))
         return observed, "effect", "compatible"
 
     def mixed_case(self, identifier, checks):
@@ -1920,7 +1947,7 @@ class Executor:
                     and append.get("sequence") in appended_events else None,
                 "state_after_restart": replay.get("sequence") if replay.get("accepted") is True else None,
                 "restore_checks": checks.checks,
-                "responses": {name: {"command": identity, "output": command.get("output", ""), "observation": observation}
+                "responses": {name: {"command": identity, **({"output_command": command} if "output_ref" in command else {"output": command.get("output", "")}), "observation": observation}
                     for name, identity, command, observation in (("primary", primary_id, primary_command, before),
                         ("append", append_id, append_command, append), ("replay", replay_id, replay_command, replay),
                         ("secondary", secondary_id, secondary_command, second))}}}
@@ -2322,14 +2349,15 @@ class Executor:
             if self.pending_restore is not None:
                 receipt = self.pending_restore
                 receipt["cleanup"] = cleanup
-                commands = runtime.validate_commands(receipt["commands"])
-                rows = {name: value["rows"] for name, value in receipt["inventories"].items()}
-                receipt["checks"] = runtime.restore_observations(receipt, commands, rows)
+                observed = storage.materialize(receipt, self.storage.context) if hasattr(self, "storage") else receipt
+                commands = runtime.validate_commands(observed["commands"])
+                rows = {name: value["rows"] for name, value in observed["inventories"].items()}
+                receipt["checks"] = runtime.restore_observations(observed, commands, rows)
                 receipt["assertions"] = checks_counter(receipt["checks"])
                 receipt["execution"], receipt["compatibility"] = runtime.disposition("operational", receipt["assertions"]["failed"] == 0)
-                runtime.restore_outcome(receipt)
+                runtime.restore_outcome(receipt, self.storage.context if hasattr(self, "storage") else None)
                 path = self.output / "receipts" / (receipt["id"] + ".json")
-                write_json(path, receipt)
+                write_json(path, self.retain_packet(receipt))
                 self.receipts.append(str(path))
             self.save()
 
@@ -2415,7 +2443,7 @@ class Executor:
         if scope != "local-process-control":
             runtime.cleanup_outcome(receipt)
         path = self.output / "receipts" / (receipt["id"] + ".json")
-        write_json(path, receipt)
+        write_json(path, self.retain_packet(receipt))
         if scope != "local-process-control":
             self.receipts.append(str(path))
         else:

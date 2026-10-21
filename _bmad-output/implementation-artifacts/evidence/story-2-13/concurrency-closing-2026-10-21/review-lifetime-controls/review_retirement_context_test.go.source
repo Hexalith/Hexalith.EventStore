@@ -1,0 +1,111 @@
+// Closing-review caller budgets after explicit retirement of a live RPC lease.
+package router
+
+import (
+	"context"
+	"net"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/dapr/dapr/pkg/actors/api"
+	"github.com/dapr/dapr/pkg/api/grpc/manager"
+	"github.com/dapr/dapr/pkg/modes"
+	internalv1pb "github.com/dapr/dapr/pkg/proto/internals/v1"
+	securityfake "github.com/dapr/dapr/pkg/security/fake"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/status"
+)
+
+func TestClosingCallerContextAfterRetirement(t *testing.T) {
+	for _, kind := range []string{"actor", "reminder", "stream"} {
+		for _, budget := range []string{"cancel", "deadline"} {
+			t.Run(kind+"/"+budget, func(t *testing.T) {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				require.NoError(t, err)
+				sink := &concurrencySink{entered: make(chan string, 1), release: make(chan struct{}), cancelled: make(chan string, 1)}
+				server := grpc.NewServer()
+				internalv1pb.RegisterServiceInvocationServer(server, sink)
+				go server.Serve(listener)
+				t.Cleanup(server.Stop)
+				mgr := manager.NewManager(securityfake.New(), modes.StandaloneMode, &manager.AppChannelConfig{})
+				conn, release, err := mgr.GetGRPCConnection(t.Context(), listener.Addr().String(), "target", "default")
+				require.NoError(t, err)
+				defer conn.Close()
+				release(false)
+				conn.Connect()
+				require.Eventually(t, func() bool { return conn.GetState() == connectivity.Ready }, time.Second, time.Millisecond)
+				var ctx context.Context
+				var cancel context.CancelFunc
+				if budget == "deadline" {
+					ctx, cancel = context.WithTimeout(t.Context(), 600*time.Millisecond)
+				} else {
+					ctx, cancel = context.WithCancel(t.Context())
+				}
+				defer cancel()
+				r := &router{grpc: mgr, namespace: "default"}
+				target := &api.LookupActorResponse{Address: listener.Addr().String(), AppID: "target"}
+				completed := make(chan error, 1)
+				var messages atomic.Int32
+				go func() {
+					var callErr error
+					switch kind {
+					case "actor":
+						_, callErr = r.callRemoteActor(ctx, target, concurrencyRequest("held"))
+					case "reminder":
+						callErr = r.callRemoteActorReminder(ctx, target, &api.Reminder{ActorType: "test-type", ActorID: "held", Name: "held"})
+					case "stream":
+						callErr = r.callRemoteActorStream(ctx, target, concurrencyRequest("held"), func(*internalv1pb.InternalInvokeResponse) (bool, error) {
+							messages.Add(1)
+							return false, nil
+						})
+					}
+					completed <- callErr
+				}()
+				select {
+				case entered := <-sink.entered:
+					require.Equal(t, kind, entered)
+				case <-time.After(time.Second):
+					t.Fatal("RPC did not reach the held-server barrier")
+				}
+				if kind == "stream" {
+					require.Eventually(t, func() bool { return messages.Load() == 1 }, time.Second, time.Millisecond)
+				}
+				require.NoError(t, ctx.Err(), "caller budget must still be active when retirement is marked")
+				mgr.RetireGRPCConnection(target.Address, conn)
+				require.Equal(t, connectivity.Ready, conn.GetState(), "retirement must leave the active caller lease open")
+				fresh, teardown, err := mgr.GetGRPCConnection(t.Context(), target.Address, "target", "default")
+				require.NoError(t, err)
+				defer teardown(true)
+				require.NotSame(t, conn, fresh)
+				retiredAt := time.Now()
+				expected := codes.DeadlineExceeded
+				if budget == "cancel" {
+					expected = codes.Canceled
+					cancel()
+				}
+				select {
+				case callErr := <-completed:
+					require.Equal(t, expected, status.Code(callErr), "retirement must preserve the caller's cancellation/deadline result")
+				case <-time.After(2 * time.Second):
+					t.Fatal("retired RPC exceeded its existing caller budget")
+				}
+				require.Equal(t, connectivity.Shutdown, conn.GetState(), "cancelled final lease closes the retired connection")
+				require.NotEqual(t, connectivity.Shutdown, fresh.GetState(), "old cancellation must not close the replacement")
+				select {
+				case cancelled := <-sink.cancelled:
+					require.Equal(t, kind, cancelled)
+				case <-time.After(time.Second):
+					t.Fatal("caller cancellation did not reach the held server")
+				}
+				if kind == "stream" {
+					require.Equal(t, int32(1), messages.Load())
+				}
+				t.Logf("%s/%s: caller remained active through retirement, completed with %s after %s, old channel drained and replacement retained", kind, budget, expected, time.Since(retiredAt))
+			})
+		}
+	}
+}

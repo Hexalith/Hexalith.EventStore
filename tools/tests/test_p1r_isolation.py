@@ -19,8 +19,11 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import p1r_evidence_storage as storage
 import p1r_isolation as isolation
 import p1r_qualification as preparation
+
+from p1r_isolation_fixture import submitted_mounts
 
 
 class PrivateEndpointTests(unittest.TestCase):
@@ -106,12 +109,12 @@ class ControllerTests(unittest.TestCase):
     def testObservePlanningIdentitySurvivesProvisioningAndRefusesChangedBytes(self):
         for changed in (False,True):
             with self.subTest(changed=changed):
-                worker = isolation.IsolatedRunner(self.worker.workspace/str(changed),workspace=self.worker.workspace,outer_host='unix:///outer')
+                worker = isolation.IsolatedRunner(self.worker.output.parent/str(changed),workspace=self.worker.workspace,outer_host='unix:///outer')
                 self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
                 planning = worker.workspace/'planning.json'
                 planning.write_text('{"candidate_proposed":{}}')
                 command = ['python3',str(worker.workspace/'tools/p1r-published-executor.py'),'observe',
-                           '--out',str(worker.workspace/'observation'),'--planning-observations',str(planning),
+                           '--out',str(worker.output.parent/'observation'),'--planning-observations',str(planning),
                            '--selection-reference','fixture']
                 def docker(argv, **kwargs):
                     if argv[:1] == ['info']: return 0,b'outer\n'
@@ -120,12 +123,15 @@ class ControllerTests(unittest.TestCase):
                     if '_proof' in argv and changed:
                         planning.write_text('{"candidate_proposed":{"changed":true}}')
                     if '_inner' in argv:
+                        worker.result['commands'].append(worker.storage.command({'id':1, 'argv':list(map(str,argv)), 'cwd':str(worker.workspace),
+                            'started_utc':preparation.stamp(), 'finished_utc':preparation.stamp(), 'exit_code':0}, b'{}'))
                         isolation.write_json(worker.output/'private-execution.json',{'passed':True})
                     return 0,b'{}'
                 def cleanup(): worker.result['passed'] = not worker.result['errors']
                 proof = {'NetworkMode':'container:daemon','PidMode':'container:daemon','Ports':{},'Privileged':False,
-                         'Mounts':[{'Destination':'/var/lib/docker'},{'Destination':str(worker.workspace)}]}
-                with mock.patch.object(worker,'docker',side_effect=docker) as boundary, \
+                         'Mounts':[{'Destination':'/var/lib/docker'},{'Destination':str(worker.workspace)}, {'Destination':str(worker.external_root)}]}
+                with mock.patch.object(preparation, 'source_binding', return_value={'repository':str(worker.workspace)}), \
+                        mock.patch.object(worker,'docker',side_effect=docker) as boundary, \
                         mock.patch.object(worker,'create',side_effect=['daemon','python','sdk']), \
                         mock.patch.object(worker,'private_finished',return_value=True), \
                         mock.patch.object(worker,'inspect',return_value=proof), mock.patch.object(worker,'cleanup',side_effect=cleanup) as cleaned:
@@ -138,13 +144,15 @@ class ControllerTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         root = Path(self.temporary.name)
-        patcher = mock.patch.object(isolation, "ROOT", root)
+        repository = root / "repository"
+        repository.mkdir()
+        patcher = mock.patch.object(isolation, "ROOT", repository)
         patcher.start()
         self.addCleanup(patcher.stop)
         declarations = mock.patch.object(preparation, "declared_dependencies", return_value=[])
         declarations.start()
         self.addCleanup(declarations.stop)
-        self.worker = isolation.IsolatedRunner(root / "evidence", workspace=root, outer_host="unix:///explicit-outer.sock")
+        self.worker = isolation.IsolatedRunner(root / "evidence", workspace=repository, outer_host="unix:///explicit-outer.sock")
         self.addCleanup(lambda: __import__("shutil").rmtree(self.worker.scratch, ignore_errors=True))
 
     def observed(self, identity="owned-id", label=None):
@@ -157,9 +165,10 @@ class ControllerTests(unittest.TestCase):
         with mock.patch.object(subprocess, 'run', return_value=completed):
             self.worker.docker(['info'])
         row = self.worker.result['commands'][-1]
-        self.assertEqual(base64.b64decode(row['raw_output_base64']), completed.stdout)
+        self.assertEqual(storage.resolve(row['output_ref'], self.worker.storage.context,
+            {key:row[key] for key in storage.COMMAND_FIELDS}), completed.stdout)
         self.assertEqual(row['raw_output_sha256'], preparation.digest(completed.stdout))
-        self.assertEqual(row['output_sha256'], preparation.digest(row['output'].encode()))
+        self.assertEqual(row['output_sha256'], preparation.digest(storage.command_text(row, self.worker.storage.context).encode()))
         self.worker.result['command_exit_code'] = 0
         self.worker.cleanup()
         self.assertFalse(self.worker.result['passed'])
@@ -175,7 +184,7 @@ class ControllerTests(unittest.TestCase):
             self.assertEqual(caught.exception.signum, signum)
             retained = json.loads((self.worker.output / "isolation.json").read_bytes())
             self.assertEqual(retained["commands"][-1]["exit_code"], 130)
-            self.assertEqual(retained["commands"][-1]["output"], "outer command interrupted")
+            self.assertEqual(storage.command_text(retained["commands"][-1], self.worker.storage.context), "outer command interrupted")
 
     def testCleanupRetriesExactOwnedTargetsAndRetainsTransientFailure(self):
         worker = self.worker
@@ -255,6 +264,9 @@ class ControllerTests(unittest.TestCase):
             if argv[:1] == ["version"] or "_proof" in argv:
                 return 0,b"{}"
             if argv[:2] == ["exec", "sdk"]:
+                worker.result["commands"].append(worker.storage.command({"id": 1, "argv": list(map(str, argv)),
+                    "cwd": str(worker.workspace), "started_utc": preparation.stamp(),
+                    "finished_utc": preparation.stamp(), "exit_code": 0}, b""))
                 isolation.write_json(worker.output / "private-execution.json", {"passed": True,
                     "invocation": worker.invocation, "finished_utc": preparation.stamp(),
                     "cleanup": [{"remaining": [], "errors": []}] * 2})
@@ -273,31 +285,74 @@ class ControllerTests(unittest.TestCase):
             observed = self.observed(identity)
             if identity == "sdk":
                 observed.update(NetworkMode="container:daemon", PidMode="container:daemon", Ports={}, Privileged=False,
-                                Mounts=[{"Destination": "/var/lib/docker"}, {"Destination": str(worker.workspace)}])
+                                Mounts=submitted_mounts(plans["sdk"][1]))
             return observed
         with mock.patch.object(worker, "create", side_effect=create), mock.patch.object(worker, "docker", side_effect=docker), \
                 mock.patch.object(worker, "inspect", side_effect=inspect):
-            self.assertEqual(worker.run(["python3", "verification.py"]), 0)
+            self.assertEqual(worker.run(["python3", "verification.py"]), 0, worker.result["errors"])
         sdk_options = plans["sdk"][1]
         self.assertEqual(sdk_options[sdk_options.index("--network") + 1], "container:daemon")
         self.assertEqual(sdk_options[sdk_options.index("--pid") + 1], "container:daemon")
+        external = [row for row in submitted_mounts(sdk_options) if row["Destination"] == str(worker.external_root)]
+        self.assertEqual(external, [{"Type": "bind", "Source": str(worker.external_root),
+            "Destination": str(worker.external_root), "RW": True}])
         self.assertNotIn("--privileged", sdk_options)
         self.assertTrue(all("docker.sock" not in arg or arg == "DOCKER_HOST=" + isolation.SOCKET for arg in sdk_options))
         self.assertTrue(all(arg not in ("host", "-p", "--publish", "--publish-all") for arg in sdk_options))
         self.assertEqual(plans["daemon"][2][0], "--host=" + isolation.SOCKET)
         self.assertTrue(worker.result["passed"])
 
-    def testUnmountedOutputRefusesBeforeAnyDockerProvisioningAndRetainsReason(self):
-        output = Path(self.temporary.name).parent / ("p1r-unmounted-" + self.worker.invocation)
-        self.addCleanup(lambda: shutil.rmtree(output, ignore_errors=True))
+    def testMissingExternalMountCannotPassTheSuccessfulControllerControl(self):
+        original = isolation.sdk_arguments
+        def removed(*args, **kwargs):
+            arguments = original(*args, **kwargs)
+            mount = "type=bind,src=" + str(self.worker.external_root) + ",dst=" + str(self.worker.external_root)
+            index = arguments.index(mount)
+            del arguments[index - 1:index + 1]
+            return arguments
+        with mock.patch.object(isolation, "sdk_arguments", side_effect=removed):
+            with self.assertRaises(AssertionError):
+                self.testSuccessfulPlanSharesOnlyPrivateNamespacesAndNeverPublishesRunnerPorts()
+
+    def testProducerBoundaryDerivesExternalMountFromSubmittedCreateArguments(self):
+        import test_p1r_published_executor as published_tests
+        from p1r_isolation_fixture import run_controller
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                witness = published_tests.ProposedQualifiedSnapshotWitnessTests()
+                witness.setUp()
+                self.addCleanup(witness.doCleanups)
+                with mock.patch.object(witness, "attach_isolation", side_effect=lambda receipt, context: receipt):
+                    receipt, context = witness.import_fixture(scope="operational")
+                original = isolation.sdk_arguments
+                def arguments(*args, **kwargs):
+                    result = original(*args, **kwargs)
+                    if missing:
+                        external = args[6] if len(args) > 6 else kwargs["external_root"]
+                        mount = "type=bind,src=" + str(external) + ",dst=" + str(external)
+                        index = result.index(mount)
+                        del result[index - 1:index + 1]
+                    return result
+                with mock.patch.object(isolation, "ROOT", preparation.ROOT), \
+                        mock.patch.object(isolation, "sdk_arguments", side_effect=arguments):
+                    code, worker, retained = run_controller(Path(witness.temporary.name), receipt, context)
+                self.assertEqual(code, 2 if missing else 0, worker.result["errors"])
+                if missing:
+                    self.assertNotIn("isolation", retained["execution_evidence"])
+                    self.assertTrue(worker.result["errors"])
+                else:
+                    mounts = worker.result["runner_proof"]["Mounts"]
+                    self.assertEqual([row for row in mounts if row.get("Destination") == str(worker.external_root)],
+                        [{"Type": "bind", "Source": str(worker.external_root),
+                          "Destination": str(worker.external_root), "RW": True}])
+
+    def testCheckoutOutputRefusesBeforeAnyDockerProvisioning(self):
+        output = self.worker.workspace / "generated" / "run"
         with mock.patch.object(isolation.IsolatedRunner, "docker") as docker:
-            with self.assertRaisesRegex(preparation.InvalidPacket, "outside the mounted workspace"):
-                isolation.IsolatedRunner(output, workspace=Path(self.temporary.name), outer_host="unix:///outer")
+            with self.assertRaisesRegex(preparation.InvalidPacket, "inside checkout"):
+                isolation.IsolatedRunner(output, workspace=self.worker.workspace, outer_host="unix:///outer")
         docker.assert_not_called()
-        result = json.loads((output / "isolation.json").read_bytes())
-        self.assertFalse(result["passed"])
-        self.assertIn("outside the mounted workspace", result["errors"][0])
-        self.assertEqual(len(result["cleanup"]), 2)
+        self.assertFalse(output.parent.exists())
 
     def testUnexpectedOrUnobservableInnerContainersPreserveDaemonAndVolume(self):
         for status, data in ((0, b"unexpected-inner-id\n"), (1, b"private socket unavailable")):
@@ -751,15 +806,16 @@ class ExecutorOutputOwnershipTests(unittest.TestCase):
             wrapper,run = root/'wrapper',root/'execution'
             wrapper.mkdir();(run/'receipts').mkdir(parents=True)
             inputs=root/'inputs.json';inputs.write_text('{"controlled":true}\n')
-            binding={'repository':str(root),'scope':'controlled ownership boundary; no qualification'}
+            repository = root/'repository';repository.mkdir()
+            binding={'repository':str(repository),'scope':'controlled ownership boundary; no qualification'}
             preparation.write_json(run/'executor-source.json',binding)
             receipt=run/'receipts/receipt.json';preparation.write_json(receipt,{'controlled':True})
             preparation.write_json(run/'execution.json',{'schema':'hexalith.p1r.executor.v1','invocation':'a'*32,
                 'finished_utc':'2026-10-18T00:00:00+00:00','inputs_sha256':preparation.digest(inputs.read_bytes()),
                 'executor_source_sha256':preparation.digest((run/'executor-source.json').read_bytes()),'receipts':[str(receipt)]})
-            command=['python3',str(root/'tools/p1r-published-executor.py'),'run','--out',str(run),'--inputs',str(inputs),
+            command=['python3',str(repository/'tools/p1r-published-executor.py'),'run','--out',str(run),'--inputs',str(inputs),
                      '--source-root',str(root/'selected-source')]
-            with mock.patch.object(isolation,'ROOT',root):yield root,wrapper,run,binding,command
+            with mock.patch.object(isolation,'ROOT',repository):yield root,wrapper,run,binding,command
 
     def testOwnershipHandoffChangesOnlyExactCompletedRunDirectories(self):
         with self.fixture() as (root,wrapper,run,binding,command):
@@ -780,7 +836,7 @@ class ExecutorOutputOwnershipTests(unittest.TestCase):
                 execution['executor_source_sha256'] = preparation.digest((run/'executor-source.json').read_bytes())
                 preparation.write_json(run/'execution.json',execution)
                 template = run.rename(root/'template')
-                script = root/'tools/p1r-published-executor.py'
+                script = Path(command[1])
                 script.parent.mkdir()
                 script.write_text('import shutil,sys\nshutil.copytree('+repr(str(template))
                                   + ',sys.argv[sys.argv.index("--out")+1])\n')
@@ -837,7 +893,7 @@ class ExecutorOutputOwnershipTests(unittest.TestCase):
                         'import p1r_isolation as i;i.ROOT=Path(sys.argv[2]);'
                         'r=i.handoff_executor_output(json.loads(sys.argv[3]),Path(sys.argv[4]),json.loads(sys.argv[5]),Path(sys.argv[6]),True);'
                         'print(json.dumps(r))')
-                process=subprocess.run([*sudo,script,str(preparation.ROOT/'tools'),str(root),json.dumps(command),
+                process=subprocess.run([*sudo,script,str(preparation.ROOT/'tools'),binding['repository'],json.dumps(command),
                                         str(wrapper),json.dumps(binding),command[-1]],check=True,capture_output=True,text=True)
                 result=json.loads(process.stdout)
                 self.assertTrue(all(row['before']['uid']==0 and row['after']['uid']==os.getuid() for row in result['directories']))
@@ -850,7 +906,7 @@ class ExecutorOutputOwnershipTests(unittest.TestCase):
         with self.fixture() as (root,wrapper,run,binding,command):
             legacy=command[:7]
             legacy[4]=str(root.parent/'umbrella-output')
-            self.assertEqual(isolation.executor_input(legacy,root)['path'],str(root/'inputs.json'))
+            self.assertEqual(isolation.executor_input(legacy,Path(binding['repository']))['path'],str(root/'inputs.json'))
             with mock.patch.object(isolation.os,'chown') as chown:
                 self.assertIsNone(isolation.handoff_executor_output(legacy,wrapper,binding,None,False))
                 chown.assert_not_called()

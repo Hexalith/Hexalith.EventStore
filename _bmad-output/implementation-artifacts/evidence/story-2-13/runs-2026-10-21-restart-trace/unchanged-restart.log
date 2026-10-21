@@ -1,0 +1,20 @@
+  Discovering: Hexalith.EventStore.IntegrationTests
+  Discovered:  Hexalith.EventStore.IntegrationTests
+  Starting:    Hexalith.EventStore.IntegrationTests
+    Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState [FAIL]
+      System.InvalidOperationException : first sidecar failed to start. time="2026-10-21T10:07:56.497267778+02:00" level=fatal msg="Fatal error from runtime: failed to create watcher: failed to add target /tmp/eventstore-2-13-b8cd8c698530485f985fb3485bf84916: no space left on device" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7
+      ---- System.InvalidOperationException : Process 70771 exited with code 1 before health.
+      Stack Trace:
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs(204,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionNode.StartSidecarAsync(String componentsPath, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs(125,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionNode.StartAsync(String repositoryRoot, String componentsPath, CancellationToken cancellationToken, Boolean enablePubSubProjectionTransport, String aggregateActorTypeName)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs(66,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionFixture.StartAsync(IReadOnlyList`1 topics, CancellationToken cancellationToken, Boolean enablePubSubProjectionTransport, String aggregateActorTypeName, Int32 redisPort)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs(83,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionFixture.StartAsync(IReadOnlyList`1 topics, CancellationToken cancellationToken, Boolean enablePubSubProjectionTransport, String aggregateActorTypeName, Int32 redisPort)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs(384,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionRuntimeProofTests.DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        --- End of stack trace from previous location ---
+        ----- Inner Stack Trace -----
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs(318,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionNode.WaitForHealthyAsync(Uri endpoint, String path, Process process, CancellationToken cancellationToken)
+        tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs(200,0): at Hexalith.EventStore.IntegrationTests.ContractTests.SignalRDaprDistributionNode.StartSidecarAsync(String componentsPath, CancellationToken cancellationToken)
+  Finished:    Hexalith.EventStore.IntegrationTests (ID = '080c5c73212076b88a7bac03bc2edc7c83015343fa22802d831d2ce3da83b6ee')
+Cancelling due to test failure...
+=== TEST EXECUTION SUMMARY ===
+   Hexalith.EventStore.IntegrationTests  Total: 1, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0.561s

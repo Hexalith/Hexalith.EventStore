@@ -113,7 +113,8 @@ def regular(path):
     require(path.is_file() and not path.is_symlink(), "missing or substituted input")
     # A symlink in a parent is also a substitution.
     require(path.absolute() == path.resolve(), "symlink input path")
-    return path.read_bytes()
+    from p1r_evidence_storage import bounded_file
+    return bounded_file(path)
 
 
 def relative(name):

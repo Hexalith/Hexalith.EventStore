@@ -1,0 +1,4 @@
+{"utc": "2026-10-21T12:42:40.911600+00:00", "event": "start", "ceiling": 2097152}
+{"utc": "2026-10-21T12:50:16.501464+00:00", "event": "observed-change-origin-unknown", "ceiling": 1048576}
+{"utc": "2026-10-21T12:50:48.528128+00:00", "event": "observed-change-origin-unknown", "ceiling": 2097152}
+{"utc": "2026-10-21T12:55:37.145111+00:00", "event": "owned-observer-stopped", "ceiling": 2097152}

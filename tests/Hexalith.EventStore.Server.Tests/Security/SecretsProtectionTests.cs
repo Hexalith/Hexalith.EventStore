@@ -44,10 +44,7 @@ public sealed partial class SecretsProtectionTests
         string[] trackedFiles = GetTrackedFiles();
         trackedFiles.ShouldNotBeEmpty("Git should return tracked repository content.");
 
-        string[] violations = trackedFiles
-            .SelectMany(path => ScanTrackedFile(path))
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        string[] violations = ScanTrackedFiles(trackedFiles);
 
         violations.Length.ShouldBe(
             0,
@@ -1199,13 +1196,8 @@ public sealed partial class SecretsProtectionTests
             }
         }
 
-        foreach (Match match in SecretAssignmentPattern().Matches(content))
+        foreach (Match match in FindCredentialAssignments(content))
         {
-            if (!IsCredentialName(match.Groups["name"].Value))
-            {
-                continue;
-            }
-
             ReadOnlySpan<char> assignmentSeparator = content.AsSpan(
                 match.Groups["name"].Index + match.Groups["name"].Length,
                 match.Groups["value"].Index - match.Groups["name"].Index - match.Groups["name"].Length);
@@ -3662,10 +3654,21 @@ public sealed partial class SecretsProtectionTests
     [GeneratedRegex(@"\bcurl\b[^\r\n]*?(?:-u|--user(?:=|\s+))\s*[\""']?(?<userinfo>[^\s\""']+)", RegexOptions.CultureInvariant)]
     private static partial Regex CurlUserCredentialPattern();
 
-    [GeneratedRegex(
-        @"(?<![A-Za-z0-9_.:-])(?=(?:\[[\t ]*)?[\""']?(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)[\""']?(?:[\t ]*\])?[\t ]*(?::(?![-+?])|=(?![=>]))\s*(?<value>(?:\""(?<double>(?:\\.|[^\""\\])*)\""|'(?<single>(?:\\.|[^'\\])*)'|`(?<template>(?:\\.|[^`\\])*)`|(?<bare>[^\s,;#`)\""']+))))",
+    private const string SecretAssignmentGrammar =
+        @"(?<![A-Za-z0-9_.:-])(?=(?:\[[\t ]*)?[\""']?(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)[\""']?(?:[\t ]*\])?[\t ]*(?::(?![-+?])|=(?![=>]))\s*(?<value>(?:\""(?<double>(?:\\.|[^\""\\])*)\""|'(?<single>(?:\\.|[^'\\])*)'|`(?<template>(?:\\.|[^`\\])*)`|(?<bare>[^\s,;#`)\""']+))))";
+
+    [GeneratedRegex(SecretAssignmentGrammar,
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex SecretAssignmentPattern();
+
+    [GeneratedRegex(@"\G" + SecretAssignmentGrammar,
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex AnchoredSecretAssignmentPattern();
+
+    [GeneratedRegex(
+        @"(?<![A-Za-z0-9_.:-])(?=(?:\[[\t ]*)?[\""']?(?<name>[A-Za-z_][A-Za-z0-9_.:-]*)[\""']?(?:[\t ]*\])?[\t ]*(?::(?![-+?])|=(?![=>])))",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex SecretAssignmentStartPattern();
 
     [GeneratedRegex(@"\""type\""\s*:\s*\""password\""[\s\S]{0,160}?\""value\""\s*:\s*\""(?<value>[^\""\r\n]*)\""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex RealmPasswordPattern();

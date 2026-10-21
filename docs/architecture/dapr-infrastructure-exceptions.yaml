@@ -1,6 +1,6 @@
 # Preliminary planning register; Story 3.17 owns the final validated schema/guard.
 schema_version: 1
-updated: '2026-10-20'
+updated: '2026-10-21'
 status: preliminary-unqualified
 policy: _bmad-output/planning-artifacts/prd.md#84-dapr-infrastructure-boundary
 inventory_owner_story: 3-17-dapr-boundary-inventory-and-enforcement
@@ -27,6 +27,7 @@ unresolved:
     qualification_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md
     historical_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-19.md
     network_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20-network.md
+    blackhole_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-blackhole.md
     observed_gap: >-
       Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
       but the shipped *.*.projection-changed wildcard subscribed to a literal Redis
@@ -49,7 +50,13 @@ unresolved:
       wire compatibility and real two-host signal/detail readback. Shipped
       enrollment, canonical freshness/completion under faults, a selected
       production durable broker/runtime/enrolled issuer and full transition,
-      rollback and disposition remain unresolved. No exception is accepted.
+      rollback and disposition remain unresolved. The October 21 continuation
+      adds passing reset and silent byte-discard fault cases with a declared
+      auxiliary local AppHost/sample dependency. Standalone startup failures
+      and intermittent post-restart signal timeouts remain retained; a focused
+      restart pass does not resolve the two broader-run failures. Current
+      Story 3.21 candidate inputs still select no production broker/profile.
+      No exception is accepted.
     required_evidence:
       - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
       - negotiation-group-membership-reconnect-rejoin-and-tenant-denial

@@ -1,0 +1,11 @@
+﻿apiVersion: dapr.io/v2alpha1
+kind: Subscription
+metadata:
+  name: projection-qualification-8
+spec:
+  pubsubname: pubsub
+  topic: "tenant-a-6a58e8567734.restart-6a58e8567734-8.projection-changed"
+  routes:
+    default: /projections/changed
+scopes:
+  - eventstore

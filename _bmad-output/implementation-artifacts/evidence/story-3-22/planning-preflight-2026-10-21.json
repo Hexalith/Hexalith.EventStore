@@ -1,0 +1,30 @@
+{
+  "baseline_commit": "d01c6756c769dcbd8d4d5fff472d07339ebeb22a",
+  "captured_utc": "2026-10-21T12:19:23.244151+00:00",
+  "command": [
+    "python3",
+    "tools/validate-corrective-work-authorization.py",
+    "_bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/G-BASELINE/story-3-22-20261021.json",
+    "--changed-paths-from",
+    "d01c6756c769dcbd8d4d5fff472d07339ebeb22a"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "exit_code": 1,
+  "note": "Proposed Story 3.22 record is absent; the existing ES-DIAG record covers different paths.",
+  "schema": "hexalith.story-3-22.planning-preflight.v1",
+  "scope": "planning only; no implementation dispatch or authority inferred",
+  "stderr": "",
+  "verdict": {
+    "corrective-work-only": true,
+    "deployment": false,
+    "detail": "missing repository file: _bmad-output/implementation-artifacts/evidence/corrective-work-authorizations/G-BASELINE/story-3-22-20261021.json",
+    "migration": false,
+    "phase": "preflight",
+    "production": false,
+    "readiness": false,
+    "reason": "missing-input",
+    "release": false,
+    "removal": false,
+    "result": "FAIL"
+  }
+}

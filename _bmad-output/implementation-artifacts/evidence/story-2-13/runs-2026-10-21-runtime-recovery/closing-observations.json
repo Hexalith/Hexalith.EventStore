@@ -1,0 +1,36 @@
+{
+  "observedUtc": "2026-10-21T10:48:30.036786+00:00",
+  "ownedCandidateSidecarsRemaining": [],
+  "matchingEventStoreHostProcessesObserved": [],
+  "fixturePatternDirectoriesObserved": [],
+  "recordedFixturePortsCurrentlyListening": [],
+  "socketObservationExitCode": 0,
+  "installedRuntimeSha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+  "installedRuntimeUnchanged": true,
+  "maxUserWatches": 2097152,
+  "observedWatchesPerFd": 1095412,
+  "watchesByProcessName": {
+    "fluentui-mcp": 1092556,
+    "codex": 2781,
+    "dbus-daemon": 5,
+    "MainThread": 13,
+    "claude": 41,
+    "agy": 16
+  },
+  "method": "count accessible per-fd inotify watch lines; possible inherited/shared instance overcount",
+  "originalMaxUserWatches": 1048576,
+  "restorePermittedByObservedUse": false,
+  "sharedContainers": {
+    "command": [
+      "docker",
+      "ps",
+      "--format",
+      "{{.ID}} {{.Image}} {{.Names}}"
+    ],
+    "exitCode": 0,
+    "output": "f1e0a30a3a93 daprio/dapr:1.18.7 dapr_placement\n8623af8b7bbd daprio/dapr:1.18.7 dapr_scheduler\n8d0788f8322f redis:6 dapr_redis\ncb7c12622c18 openzipkin/zipkin dapr_zipkin\n"
+  },
+  "disposableRuntimeDirectoryRetainedForReproduction": "/tmp/eventstore-2-13-runtime-81posyys",
+  "sourceDeclaredEmptyDirectoryExists": true,
+  "sourceDeclaredEmptyDirectoryDisposition": "not removed without a retained run-start ownership observation; no unrelated process or persistent sysctl configuration changed"
+}

@@ -1,0 +1,229 @@
+{
+  "source": "derived from retained final-candidate first/second logs; no historical channel-field measurement claimed",
+  "timelines": [
+    {
+      "manifest": "scenarios/replica-restart-reused-internal-endpoint-20261021T1237043331628Z-b1cf24c89f764ca1a482079c41235fc2/manifest.json",
+      "manifestSha256": "011484504be495cc846cbab902e87dc338f93d3192167523c6fe3158f7a4d4c2",
+      "firstLogSha256": "e9c593f6721b6b63df37ff5d28cfe4d3ad0cc7819dc065fea4ff284bdcbc0a4c",
+      "secondLogSha256": "23114195a78bb07cd5a996f8b6debc037ba0793a9d56e3fba45e467d0b497908",
+      "candidateSha256": "a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6",
+      "sameInternalPort": true,
+      "internalPort": 35457,
+      "initialOwner": "second-proof-host",
+      "candidateSelectionCount": 5,
+      "actor": "restart-cbf31b783143-4:tenant-a-cbf31b783143",
+      "requestId": "0HNPFE02279CA:00000010",
+      "receivedUtc": "2026-10-21T12:37:46.8326026+00:00",
+      "invocationStartedUtc": "2026-10-21T12:37:46.8326169+00:00",
+      "invocationCompletedUtc": "2026-10-21T12:37:47.8382330+00:00",
+      "broadcastStartedUtc": "2026-10-21T12:37:47.8388276+00:00",
+      "invocationElapsedMillisecondsFromCapturedUtc": 1005.617,
+      "signalWaitBoundMilliseconds": 15000,
+      "restoredActorPostPersistenceUtc": [
+        "2026-10-21T12:37:46.9137674+00:00",
+        "2026-10-21T12:37:46.9219279+00:00",
+        "2026-10-21T12:37:46.9251900+00:00",
+        "2026-10-21T12:37:46.9274577+00:00",
+        "2026-10-21T12:37:47.8365597+00:00"
+      ],
+      "runtimeEvents": [
+        "2026-10-21T12:37:46.8326296+00:00 pid=71225 time=\"2026-10-21T14:37:46.831681122+02:00\" level=debug msg=\"Retiring unavailable pooled remote actor channel without interrupting active leases in isolated concurrency evaluation\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.router.local-recovery type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:37:46.8326337+00:00 pid=71225 time=\"2026-10-21T14:37:46.83185454+02:00\" level=debug msg=\"Error for operation DaprBuiltInActorNotFoundRetries was: failed to invoke target 172.21.201.86:35457 after 0 retries. Error: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 172.21.201.86:35457: connect: connection refused\\\"\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:37:47.8375679+00:00 pid=71225 time=\"2026-10-21T14:37:47.837423124+02:00\" level=info msg=\"Recovered processing operation DaprBuiltInActorNotFoundRetries after 2 attempts\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement"
+      ],
+      "observedRetirementAndRecoveryWithinMeasuredInvocation": true,
+      "independentTcpObservations": [
+        {
+          "AttemptedUtc": "2026-10-21T12:37:46.8322892+00:00",
+          "CompletedUtc": "2026-10-21T12:37:46.8336605+00:00",
+          "Address": "172.21.201.86",
+          "Port": 35457,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        },
+        {
+          "AttemptedUtc": "2026-10-21T12:37:47.8314442+00:00",
+          "CompletedUtc": "2026-10-21T12:37:47.8317372+00:00",
+          "Address": "172.21.201.86",
+          "Port": 35457,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        }
+      ],
+      "assertionResult": "passed-scenario-assertions-only",
+      "readModelVersion": 2,
+      "exactMetadataBoundary": 2048
+    },
+    {
+      "manifest": "scenarios/replica-restart-reused-internal-endpoint-20261021T1238501925491Z-8e53017219eb4e2a99b9677c508d2efb/manifest.json",
+      "manifestSha256": "7ce579cdb20d85cdac5616fe59fe387599e26fc787ba0f9ae6a80b32c2c00b9d",
+      "firstLogSha256": "f3edb47d391dd9cfc695cbce2fbab66a1dadfda9442623d7ea9c782f977570c1",
+      "secondLogSha256": "5cbf6a793497d698aefd555a0dd9fb4933e87b05c80865ea34f362af3818a498",
+      "candidateSha256": "a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6",
+      "sameInternalPort": true,
+      "internalPort": 45581,
+      "initialOwner": "second-proof-host",
+      "candidateSelectionCount": 4,
+      "actor": "restart-65135410feb5-3:tenant-a-65135410feb5",
+      "requestId": "0HNPFE11H0GE3:00000005",
+      "receivedUtc": "2026-10-21T12:39:31.9042505+00:00",
+      "invocationStartedUtc": "2026-10-21T12:39:31.9042572+00:00",
+      "invocationCompletedUtc": "2026-10-21T12:39:32.9171489+00:00",
+      "broadcastStartedUtc": "2026-10-21T12:39:32.9171609+00:00",
+      "invocationElapsedMillisecondsFromCapturedUtc": 1012.891,
+      "signalWaitBoundMilliseconds": 15000,
+      "restoredActorPostPersistenceUtc": [
+        "2026-10-21T12:39:31.9221080+00:00",
+        "2026-10-21T12:39:31.9279893+00:00",
+        "2026-10-21T12:39:31.9312762+00:00",
+        "2026-10-21T12:39:31.9336127+00:00",
+        "2026-10-21T12:39:32.9153141+00:00"
+      ],
+      "runtimeEvents": [
+        "2026-10-21T12:39:31.9062478+00:00 pid=18671 time=\"2026-10-21T14:39:31.904465784+02:00\" level=debug msg=\"Retiring unavailable pooled remote actor channel without interrupting active leases in isolated concurrency evaluation\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.router.local-recovery type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:39:31.9062500+00:00 pid=18671 time=\"2026-10-21T14:39:31.904706422+02:00\" level=debug msg=\"Error for operation DaprBuiltInActorNotFoundRetries was: failed to invoke target 172.21.201.86:45581 after 0 retries. Error: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 172.21.201.86:45581: connect: connection refused\\\"\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:39:32.9167518+00:00 pid=18671 time=\"2026-10-21T14:39:32.91539213+02:00\" level=info msg=\"Recovered processing operation DaprBuiltInActorNotFoundRetries after 2 attempts\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement"
+      ],
+      "observedRetirementAndRecoveryWithinMeasuredInvocation": true,
+      "independentTcpObservations": [
+        {
+          "AttemptedUtc": "2026-10-21T12:39:31.9059748+00:00",
+          "CompletedUtc": "2026-10-21T12:39:31.9103377+00:00",
+          "Address": "172.21.201.86",
+          "Port": 45581,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        },
+        {
+          "AttemptedUtc": "2026-10-21T12:39:32.9065631+00:00",
+          "CompletedUtc": "2026-10-21T12:39:32.9069391+00:00",
+          "Address": "172.21.201.86",
+          "Port": 45581,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        }
+      ],
+      "assertionResult": "passed-scenario-assertions-only",
+      "readModelVersion": 2,
+      "exactMetadataBoundary": 2048
+    },
+    {
+      "manifest": "scenarios/replica-restart-reused-internal-endpoint-20261021T1242276420192Z-f71cfbc6c7b847aa8c4d13048e9ac81d/manifest.json",
+      "manifestSha256": "06ead3f453313145dd48c692be50c674b7c846d8c2451aab20f738c02fd989ef",
+      "firstLogSha256": "765174bc3449a37ce5faed29d63889b709896bd9d034b6d12ee2190375048896",
+      "secondLogSha256": "b245e71cf1d1db25ecd2dec0d51d7bbf602a1f8f7bc38327edcc2506b312be45",
+      "candidateSha256": "a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6",
+      "sameInternalPort": true,
+      "internalPort": 45635,
+      "initialOwner": "second-proof-host",
+      "candidateSelectionCount": 1,
+      "actor": "restart-988f8e3e76e8-0:tenant-a-988f8e3e76e8",
+      "requestId": "0HNPFE326OIQE:00000059",
+      "receivedUtc": "2026-10-21T12:43:10.0848416+00:00",
+      "invocationStartedUtc": "2026-10-21T12:43:10.0848561+00:00",
+      "invocationCompletedUtc": "2026-10-21T12:43:11.0943963+00:00",
+      "broadcastStartedUtc": "2026-10-21T12:43:11.0944061+00:00",
+      "invocationElapsedMillisecondsFromCapturedUtc": 1009.5400000000001,
+      "signalWaitBoundMilliseconds": 15000,
+      "restoredActorPostPersistenceUtc": [
+        "2026-10-21T12:43:10.1087648+00:00",
+        "2026-10-21T12:43:10.1175112+00:00",
+        "2026-10-21T12:43:10.1202077+00:00",
+        "2026-10-21T12:43:10.1224286+00:00",
+        "2026-10-21T12:43:11.0921946+00:00"
+      ],
+      "runtimeEvents": [
+        "2026-10-21T12:43:10.0857565+00:00 pid=40439 time=\"2026-10-21T14:43:10.085433405+02:00\" level=debug msg=\"Retiring unavailable pooled remote actor channel without interrupting active leases in isolated concurrency evaluation\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.router.local-recovery type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:43:10.0857629+00:00 pid=40439 time=\"2026-10-21T14:43:10.085582555+02:00\" level=debug msg=\"Error for operation DaprBuiltInActorNotFoundRetries was: failed to invoke target 172.21.201.86:45635 after 0 retries. Error: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 172.21.201.86:45635: connect: connection refused\\\"\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:43:11.0935900+00:00 pid=40439 time=\"2026-10-21T14:43:11.093394711+02:00\" level=info msg=\"Recovered processing operation DaprBuiltInActorNotFoundRetries after 2 attempts\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement"
+      ],
+      "observedRetirementAndRecoveryWithinMeasuredInvocation": true,
+      "independentTcpObservations": [
+        {
+          "AttemptedUtc": "2026-10-21T12:43:10.0849499+00:00",
+          "CompletedUtc": "2026-10-21T12:43:10.0862169+00:00",
+          "Address": "172.21.201.86",
+          "Port": 45635,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        },
+        {
+          "AttemptedUtc": "2026-10-21T12:43:11.0875999+00:00",
+          "CompletedUtc": "2026-10-21T12:43:11.088003+00:00",
+          "Address": "172.21.201.86",
+          "Port": 45635,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        }
+      ],
+      "assertionResult": "passed-scenario-assertions-only",
+      "readModelVersion": 2,
+      "exactMetadataBoundary": 2048
+    },
+    {
+      "manifest": "scenarios/replica-restart-reused-internal-endpoint-20261021T1244032928161Z-30364bbede514831949699b42f1436ad/manifest.json",
+      "manifestSha256": "7f6a820ab038932ef9fc17a7964b52230d5fb2e66745296cb95a040e3ad4da71",
+      "firstLogSha256": "1d87b9642d7a57e8b8252d4e00ce73c88b6db48367d83b8d1bd33118e4f10c41",
+      "secondLogSha256": "02d59f222c9b4b064cc25f36234eae80cc465b9e009443e02c150dce6beffefc",
+      "candidateSha256": "a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6",
+      "sameInternalPort": true,
+      "internalPort": 33263,
+      "initialOwner": "second-proof-host",
+      "candidateSelectionCount": 5,
+      "actor": "restart-53a38255cfed-4:tenant-a-53a38255cfed",
+      "requestId": "0HNPFE3UNJL74:00000049",
+      "receivedUtc": "2026-10-21T12:44:35.6484545+00:00",
+      "invocationStartedUtc": "2026-10-21T12:44:35.6485125+00:00",
+      "invocationCompletedUtc": "2026-10-21T12:44:36.6583563+00:00",
+      "broadcastStartedUtc": "2026-10-21T12:44:36.6583666+00:00",
+      "invocationElapsedMillisecondsFromCapturedUtc": 1009.8439999999999,
+      "signalWaitBoundMilliseconds": 15000,
+      "restoredActorPostPersistenceUtc": [
+        "2026-10-21T12:44:36.6569969+00:00"
+      ],
+      "runtimeEvents": [
+        "2026-10-21T12:44:35.6501258+00:00 pid=97523 time=\"2026-10-21T14:44:35.649281589+02:00\" level=debug msg=\"Retiring unavailable pooled remote actor channel without interrupting active leases in isolated concurrency evaluation\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.router.local-recovery type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:44:35.6501283+00:00 pid=97523 time=\"2026-10-21T14:44:35.649426551+02:00\" level=debug msg=\"Error for operation DaprBuiltInActorNotFoundRetries was: failed to invoke target 172.21.201.86:33263 after 0 retries. Error: rpc error: code = Unavailable desc = connection error: desc = \\\"transport: Error while dialing: dial tcp 172.21.201.86:33263: connect: connection refused\\\"\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement",
+        "2026-10-21T12:44:36.6577805+00:00 pid=97523 time=\"2026-10-21T14:44:36.65762314+02:00\" level=info msg=\"Recovered processing operation DaprBuiltInActorNotFoundRetries after 2 attempts\" app_id=eventstore instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7-local-2-13-retirement"
+      ],
+      "observedRetirementAndRecoveryWithinMeasuredInvocation": true,
+      "independentTcpObservations": [
+        {
+          "AttemptedUtc": "2026-10-21T12:44:35.6471247+00:00",
+          "CompletedUtc": "2026-10-21T12:44:35.6474965+00:00",
+          "Address": "172.21.201.86",
+          "Port": 33263,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        },
+        {
+          "AttemptedUtc": "2026-10-21T12:44:36.6476435+00:00",
+          "CompletedUtc": "2026-10-21T12:44:36.6516388+00:00",
+          "Address": "172.21.201.86",
+          "Port": 33263,
+          "Connected": true,
+          "Failure": null,
+          "SentPayloadBytes": 0,
+          "Purpose": "independent-tcp-diagnostic-not-dapr-correctness-evidence"
+        }
+      ],
+      "assertionResult": "passed-scenario-assertions-only",
+      "readModelVersion": 2,
+      "exactMetadataBoundary": 2048
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+# Preliminary planning register; Story 3.17 owns the final validated schema/guard.
+schema_version: 1
+updated: '2026-10-21'
+status: preliminary-unqualified
+policy: _bmad-output/planning-artifacts/prd.md#84-dapr-infrastructure-boundary
+inventory_owner_story: 3-17-dapr-boundary-inventory-and-enforcement
+accepted_exceptions: []
+unresolved:
+  - id: signalr-replica-distribution
+    disposition: unresolved-retained-runtime-integration
+    owner: SignalR transport owner with Architecture and Test owners
+    owner_story: 2-13-dapr-notification-distribution-qualification
+    operations:
+      - self-hosted-hub-cross-replica-distribution
+      - authenticated-connection-and-group-membership
+    observed_paths:
+      - src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs
+      - src/Hexalith.EventStore/Hexalith.EventStore.csproj
+      - src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj
+    observed_configuration:
+      - EventStore:SignalR:BackplaneRedisConnectionString
+      - EVENTSTORE_SIGNALR_REDIS
+    candidate_interfaces:
+      - Dapr pub/sub fan-out to local hubs
+      - Dapr bindings.azure.signalr output binding
+    qualification_packet: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md
+    qualification_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md
+    historical_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-19.md
+    network_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20-network.md
+    blackhole_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-blackhole.md
+    observed_gap: >-
+      Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
+      but the shipped *.*.projection-changed wildcard subscribed to a literal Redis
+      stream and delivered no concrete tenant-topic notification. Dynamic tenant
+      enrollment, production identity/profile gates, and Azure
+      SignalR equivalence remain unproven. A test-only exact-topic profile delivered
+      a real projection signal to two hosts with matching readback. The October 19
+      continuation records fresh profile-bound scenarios and the serialized versus
+      keys-plus-values metadata-bound discrepancy. The October 20 user decision
+      enforces the serialized contract across producer, receiver, and broadcaster;
+      its continuation adds complete replica restart and Dapr reconciliation.
+      Neither continuation grants a production profile or accepted exception.
+      A separate network-fault continuation exercises a fixture-only provider
+      connection-reset profile and Dapr reconciliation. The user-selected MVP
+      target is self-hosted Kubernetes at 192.168.1.30; Azure/AWS are comparison
+      only and outside MVP. Observed isolated cluster Dapr 1.18.1 is not the
+      locally tested 1.18.7 profile and does not meet the AD-26 runtime floor.
+      Fixture-only exact-topic catalog rollout and optional legacy-projection
+      detail now have local evidence, including persisted actor hints, old/new
+      wire compatibility and real two-host signal/detail readback. Shipped
+      enrollment, canonical freshness/completion under faults, a selected
+      production durable broker/runtime/enrolled issuer and full transition,
+      rollback and disposition remain unresolved. The October 21 continuation
+      adds passing reset and silent byte-discard fault cases with a declared
+      auxiliary local AppHost/sample dependency. Standalone startup failures
+      and intermittent post-restart signal timeouts remain retained; a focused
+      restart pass does not resolve the two broader-run failures. Current
+      Story 3.21 candidate inputs still select no production broker/profile.
+      No exception is accepted.
+    required_evidence:
+      - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
+      - negotiation-group-membership-reconnect-rejoin-and-tenant-denial
+      - ordering-duplicates-outage-freshness-compatibility-and-rollback
+    decision: pending-qualification-and-architecture-owner-decision
+    review_removal_trigger: >-
+      Resolve in Story 2.13 before extending or retiring the backplane; a runtime,
+      component, distribution, or topology change requires renewed qualification.
+  - id: payload-production-key-operations
+    disposition: unresolved-planned-integration
+    owner: Payload owner with Architecture, Security, Operations, and Release owners
+    owner_story: 8-6-azure-key-vault-production-adapter-conformance
+    operations:
+      - current-version-discovery-and-key-profile-validation
+      - exact-version-wrap-and-unwrap
+    planned_paths:
+      - src/Hexalith.EventStore.PayloadProtection.AzureKeyVault/
+    candidate_interfaces:
+      - Dapr cryptography API with crypto.azure.keyvault
+    required_evidence:
+      - exact-runtime-client-component-and-emitted-provider-api-versions
+      - rsa-hsm-profile-identity-custody-cancellation-retry-and-typed-failures
+      - pdenc-v2-aad-buffer-ownership-historical-reads-and-post-v2-rollback
+    decision: pending-qualification-and-detached-amendment-reapproval
+    review_removal_trigger: >-
+      Resolve before provider dependency selection or Story 8.6 implementation;
+      any approved design, profile, format, or dependency change rebinds affected
+      predecessor, release, compatibility, and G5 evidence.

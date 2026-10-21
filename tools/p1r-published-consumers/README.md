@@ -349,3 +349,83 @@ cross-version writer substitution remain refused. Historical 3.125.1 identities,
 measurements and failures are preserved. Enrollment and synthetic controls grant
 no P1R support boundary, conformance, acceptance, downgrade, or consumer adoption.
 Keep comparison-only 3.70.1/3.110.0, rollback null and AD-17 forward recovery.
+
+## Bounded evidence capture (Story 3.22)
+
+Published executor and isolated-runner full packets default to an external
+`~/.local/share/hexalith/p1r-evidence/` attempt directory. Set
+`HEXALITH_P1R_EVIDENCE_ROOT` to select another external root. `--out` still means
+the complete packet directory; it must be outside this checkout and any enclosing
+checkout. `--summary-out` exports a fresh directory containing one `summary.json`.
+Use that summary as the reviewable Git artifact. It contains totals, the attempt
+outcome, and one external complete-index reference. Full journals, generated
+reports, videos, traces, archives and screenshot trees are excluded from new Git
+admission; existing tracked historical packets remain inputs.
+
+Every retained command stores its complete raw bytes once in a private content-addressed
+object directory. Repeated case/cleanup references reuse those bytes. Inventory
+payloads and final preservation files use the same store. Command metadata binds
+the command, status and interval, the attempt, repository/source/candidate and
+selected-input identities, producer/schema, representation, size and hashes,
+locator, retention and disposition. Raw-byte SHA-256 and replacement-decoded
+UTF-8 SHA-256 are separate fields. Excerpts occupy at most 2,048 UTF-8 bytes and
+never serve as a witness. Aggregate committed metadata for an exported attempt
+is at most 10 MiB. Overflow remains one complete external index, with no split
+indexes or output-dependent committed file count.
+
+Commands captured with `retain=False` remain hash-only: their output produces no
+payload or excerpt and cannot satisfy an output-dependent witness. Payloads and
+aggregate materialization I/O/decoded bytes are bounded at 256 MiB; manifests
+are bounded at 1 MiB. Exceeding a reader budget refuses the proof.
+
+For materialization, use `p1r_evidence_storage.command_text(row, enclosing)` for
+commands, `preserved_bytes(reference, enclosing)` for retained files, or
+`materialize(value, enclosing)` for a tree. Supply the enclosing receipt/source
+identity, never the untrusted artifact's own context. These readers bound I/O,
+verify the immutable manifest and complete physical bytes, and check enclosing
+identity and retention before returning text or parsing inventory JSON. Missing,
+corrupt, truncated, substituted, wrong-attempt, expired unheld and unavailable
+objects refuse the witness. Unknown versions and mixed inline/external forms
+are rejected. Historical inline packets retain their original hashes and exact
+membership checks. Source-binding validation remains authoritative.
+
+Local captures are diagnostic-only, retained for 30 days. A hold retains required
+bytes beyond expiry; this producer does not automatically delete objects. Moving
+a summary does not move its proof: retain its entire object/manifest root and
+materialize using the recorded locators. Before treating any bytes as enduring
+acceptance evidence, a separately governed storage service must provide durable
+immutable retrieval and retention/hold enforcement; local storage never supplies
+that authority. No qualification, readiness, publication, selection or digest
+change follows from this storage format.
+
+Isolation mounts the single admitted external root at the same path inside the
+private SDK container. Workspace/source mounts and existing socket exclusions
+remain enforced. The external tree also rejects the outer Unix socket, physical
+aliases and nested mounts. Cleanup continues to target only registered owned
+resources; evidence roots are preserved. Historical retirement belongs to Story
+3.23. Shared `/pushall` rollout and admission enforcement belong to
+Hexalith.AI.Tools P5 and are not delivered by this repository change.
+
+
+The repository secret gate scans the complete tracked inventory with at most four
+workers and stable path/line reporting. It does not skip retained journals or
+source captures to meet its time budget. Credential assignment discovery retains
+the original value grammar, including overlapping assignments and colon
+backtracking; structural exemptions and their original seals still apply.
+
+The Contracts package-authority gate distinguishes frozen MSBuild captures from
+active inputs. A new exact inventory binds all 984 retained historical MSBuild
+paths and their original raw bytes at revision
+`f4d29263bd9d22dd432a6a464ee145e57eff3acd`; previous evidence seals remain unchanged.
+Any added, removed, renamed, edited or link-substituted member fails that check.
+This is an exact inventory, not an evidence-directory policy exemption. New
+adjacent MSBuild files retain package-authority enforcement.
+
+Active projects must not consume archived MSBuild inputs. Read-only evaluations
+cover Debug/source and Release/package modes, every declared inner framework,
+and transitive project references with their property metadata. Import boundary
+records, executable MSBuild task/project-reference expressions, and both lexical
+and physical paths are checked. All local verification builds remain Debug with
+local project references. Historical captures remain evidence inputs for their
+original readers; classifying them as frozen grants no execution, acceptance,
+qualification or publication authority.

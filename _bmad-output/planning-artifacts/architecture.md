@@ -7,11 +7,12 @@ paradigm: DAPR-backed hexagonal event-sourcing platform
 scope: Hexalith.EventStore Phase 4 implementation readiness recovery
 status: draft
 created: 2026-07-05
-updated: 2026-10-20
+updated: 2026-10-21
 binds:
   - FR1-FR37
   - NFR1-NFR19
 sources:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-07-architecture-routing.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-07.md
   - _bmad-output/planning-artifacts/implementation-readiness.md
@@ -219,6 +220,8 @@ is package intent in every configuration, including Debug.
 
 **Gate validators (truthful-FAIL rule, owner 2026-10-07).** Each gate validator has a required fixture job that blocks merges, whose negative fixtures are observed failing beside a positive control, and a non-required live-evaluation job, in a new workflow file or the Story 9.1 workflow, that publishes a retrievable, content-bound PASS or FAIL on every push to `main` without blocking merges. Live-evaluation results are evidence only and never seal. A seal, under the PRD Assurance Control, is the gate validator's result retrieved from the CI platform for a required run of a dedicated transition workflow on the exact head SHA and workflow-file digest under the platform's authenticated CI identity, never an author-supplied file. Story 9.2 owns that workflow beside its truthful-FAIL matrix validator; each run is triggered for one guarded transition (a high-risk gate result to PASS, a story recorded against a high-risk NFR to `done`, readiness, `release-available`, `production-promoted`, or consumer removal), so a truthful FAIL blocks only that transition and never `main`. Required means the guarded transition is effective only when its validator finds that sealed run; it is never a branch-protection or ruleset check on `main`, which a bypass push skips. A seal attaches to a transition, never to an owner record: an attestation or ratification, including an AD-26 record, binds its required level and attestation evidence, and the sealed run of the transition that consumes it checks the record and computes and labels its achieved level. A predecessor validator result that a guarded transition consumes, such as `evidence-validated`, is re-run inside that transition's sealed run with the validator identity its record binds, retrieved from that identity's pinned commit; a mismatch voids the predecessor.
 
+**Evidence storage (approved 2026-10-21).** Persisted proof may be stored outside the source checkout. A versioned manifest binds immutable artifact identity, exact retained bytes, source/producer identity, attempt disposition, and retention. A consumer that needs literal output must materialize and verify it before evaluation; a hash or excerpt alone cannot satisfy a content-dependent witness. Unit regressions use bounded fixtures; historical exact-byte verification uses an explicit materialization lane. Storage relocation preserves original subjects and approvals. New manifests describe the migration and never rewrite sealed receipts or confer release/readiness authority. Implementation is owned by backlog Stories 3.22 and 3.23 under the [approved proposal](sprint-change-proposal-2026-10-21.md). Diagnostic retention is 30 days; acceptance-relevant bytes require durable retrieval, and active holds retain required proof. Existing privacy/redaction rules apply before external storage. The production topology and AD-12 seal/assurance rules do not change.
+
 ### AD-13 - Cost And Evolution Changes Are Spec-First [ADOPTED]
 
 - **Binds:** FR33, NFR8
@@ -420,6 +423,7 @@ three bind repository, path, and commit (Story 4.17, G-OQ8). Absence or mismatch
 | Identity | `MessageId` follows the AD-17 versioned grammar; ULID-safe handling applies to v2 MessageIds and to sortable aggregate and causation IDs. Correlation follows AD-32 and is never validated as a ULID or GUID; AD-32 overrides generic identifier guidance. `Guid.TryParse` validates none of them. See AD-6, AD-17, and AD-32. |
 | Infrastructure access | Dapr boundary, operation qualification, and accepted exceptions follow AD-1 and AD-34. |
 | Approval and assurance | Every owner record, ratification, receipt, and approval carries the AD-11 assurance level computed from the owner-role registry (`single-maintainer-attested` while one human holds every role); a downstream record carries the lowest level of its inputs. Tool-persona reviews are evidence, never approval identities, and are never labelled `independent`. |
+| Evidence storage | AD-12 storage amendment and PRD §8.1: producer → external artifact → hash/size-verified materializer → existing verifier; Git retains bounded summaries, references and actual dispositions. Storage migration preserves original subjects; Story 9.3 owns planning-binding reconciliation. |
 | Naming | Domains, message and projection types, component names, topics, and app IDs follow platform conventions; tenant/domain identity follows AD-27. |
 | Mutation | Business correction uses compensating commands, never event edits or deletes. See AD-5 and AD-25. |
 | Errors | External failures are safe problem details or typed rejections; domain failures are results, not infrastructure exceptions. |

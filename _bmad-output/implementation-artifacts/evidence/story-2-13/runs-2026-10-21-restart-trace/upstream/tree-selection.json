@@ -1,0 +1,23 @@
+{
+  "url": "https://api.github.com/repos/dapr/dapr/git/trees/v1.18.7?recursive=1",
+  "treeSha": "b32a815fa2260983e181b95272ea555fe17d3895",
+  "selectedPaths": [
+    "pkg/actors/internal/placement/connector/connector.go",
+    "pkg/actors/internal/placement/connector/dnslookup/dnslookup.go",
+    "pkg/actors/internal/placement/connector/static/static.go",
+    "pkg/actors/internal/placement/fake/fake.go",
+    "pkg/actors/internal/placement/loops/disseminator/disseminator.go",
+    "pkg/actors/internal/placement/loops/disseminator/inflight/inflight.go",
+    "pkg/actors/internal/placement/loops/disseminator/inflight/lock/lock.go",
+    "pkg/actors/internal/placement/loops/disseminator/order.go",
+    "pkg/actors/internal/placement/loops/disseminator/timeout/dissemination.go",
+    "pkg/actors/internal/placement/loops/disseminator/timeout/timeout.go",
+    "pkg/actors/internal/placement/loops/errors.go",
+    "pkg/actors/internal/placement/loops/loops.go",
+    "pkg/actors/internal/placement/loops/placement/placement.go",
+    "pkg/actors/internal/placement/loops/stream/recv.go",
+    "pkg/actors/internal/placement/loops/stream/stream.go",
+    "pkg/actors/internal/placement/placement.go"
+  ],
+  "retrievedUtc": "2026-10-21T08:27:08.050751+00:00"
+}

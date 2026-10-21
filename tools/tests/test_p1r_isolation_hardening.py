@@ -15,6 +15,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import p1r_evidence_storage as storage
 import p1r_isolation as isolation
 import p1r_isolation_evidence as isolation_evidence
 import p1r_published_qualification as qualification
@@ -108,7 +109,9 @@ class LifecycleTests(unittest.TestCase):
         with mock.patch.object(witness,'attach_isolation',side_effect=lambda receipt,context:receipt):
             receipt,context = witness.import_fixture(scope='operational')
         root = Path(witness.temporary.name)
-        source, builds = root/'release-source',root/'release-builds'
+        source_tree = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+        self.addCleanup(source_tree.cleanup)
+        source, builds = Path(source_tree.name)/'release-source',Path(source_tree.name)/'release-builds'
         (source/'deploy/dapr').mkdir(parents=True)
         builds.mkdir()
         shutil.copyfile(preparation.ROOT/'deploy/dapr/statestore-postgresql.yaml',source/'deploy/dapr/statestore-postgresql.yaml')
@@ -131,9 +134,10 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(code,0,worker.result['errors'])
             self.assert_imports(retained,context)
             reference = retained['execution_evidence']['isolation']
-            wrapper = json.loads(reference['wrapper']['content'])
-            private = json.loads(reference['private']['content'])
-            execution = json.loads(reference['execution']['content'])
+            wrapper = json.loads(storage.preserved_bytes(reference['wrapper'], storage.receipt_context(retained, context["source_binding"], context["inputs"]["value"])))
+            wrapper = storage.materialize(wrapper, wrapper['evidence_context'])
+            private = json.loads(storage.preserved_bytes(reference['private'], storage.receipt_context(retained, context["source_binding"], context["inputs"]["value"])))
+            execution = json.loads(storage.preserved_bytes(reference['execution'], storage.receipt_context(retained, context["source_binding"], context["inputs"]["value"])))
             with tempfile.TemporaryDirectory() as outside:
                 for role,index in (('source',-3),('builds',-1)):
                     submitted,changed = copy.deepcopy(context),copy.deepcopy(wrapper)
@@ -141,6 +145,10 @@ class LifecycleTests(unittest.TestCase):
                     if role == 'source': runtime['repository'] = outside
                     else: runtime['builds']['path'] = outside
                     changed['inner_command'][index] = outside
+                    with self.subTest(context_mismatch=role), self.assertRaisesRegex(preparation.InvalidPacket,'isolation artifact context differs'):
+                        isolation_evidence.validate(changed,private,dict(submitted,execution=execution),root,
+                                                    reference['wrapper']['path'],qualification.validate_times)
+                    changed['evidence_context']['source'] = storage.source_identity(submitted['source_binding'])
                     with self.subTest(role=role), self.assertRaisesRegex(preparation.InvalidPacket,'outside the isolated workspace'):
                         isolation_evidence.validate(changed,private,dict(submitted,execution=execution),root,
                                                     reference['wrapper']['path'],qualification.validate_times)
@@ -492,7 +500,7 @@ class LifecycleTests(unittest.TestCase):
     def testRealLateDiscoveryExtendsOwnershipAndCleansFreshRegisteredProcess(self):
         witness,code,worker,receipt,context = self.fixture(real_inner=True,late_process=True)
         self.assertEqual(code,0,worker.result['errors'])
-        private = json.loads(receipt['execution_evidence']['isolation']['private']['content'])
+        private = json.loads(storage.preserved_bytes(receipt['execution_evidence']['isolation']['private'], storage.receipt_context(receipt, context["source_binding"], context["inputs"]["value"])))
         first,second = private['cleanup']
         self.assertEqual(first['remaining'],[])
         self.assertTrue(second['before'])
@@ -526,7 +534,7 @@ class LifecycleTests(unittest.TestCase):
     def testActualInnerSupervisorProcessesSupplyFinalizedImportEvidence(self):
         _,code,worker,receipt,context = self.fixture(real_inner=True)
         self.assertEqual(code,0,worker.result['errors'])
-        private = json.loads(receipt['execution_evidence']['isolation']['private']['content'])
+        private = json.loads(storage.preserved_bytes(receipt['execution_evidence']['isolation']['private'], storage.receipt_context(receipt, context["source_binding"], context["inputs"]["value"])))
         self.assertEqual(private['supervisor']['pid'],os.getpid())
         self.assertGreaterEqual(len(private['owned_processes']),2)
         self.assertTrue(private['cleanup'][0]['before'])
@@ -561,7 +569,7 @@ class LifecycleTests(unittest.TestCase):
 
     def testPhysicalSelectedInputMutationIsRefusedEvenWhenSelectionValueIsUnchanged(self):
         _,_,_,receipt,context = self.fixture()
-        wrapper = json.loads(receipt['execution_evidence']['isolation']['wrapper']['content'])
+        wrapper = json.loads(storage.preserved_bytes(receipt['execution_evidence']['isolation']['wrapper'], storage.receipt_context(receipt, context["source_binding"], context["inputs"]["value"])))
         selected = Path(wrapper['selected_input']['path'])
         selected.write_bytes(selected.read_bytes()+b'\n')
         with self.assertRaisesRegex(preparation.InvalidPacket,'physical input'):
@@ -575,7 +583,7 @@ class LocalStartupTests(unittest.TestCase):
             root.mkdir()
             for index, workspace in enumerate(('/', directory, str(root) + '/.', str(root) + '/',
                                                str(root) + '/a/..', '/proc', '/dev', 'relative', '/tmp/repo,socket')):
-                output = root / ('refusal-' + str(index))
+                output = root.parent / ('refusal-' + str(index))
                 with self.subTest(workspace=workspace), mock.patch.object(isolation, 'ROOT', root), \
                         mock.patch.object(preparation, 'git', return_value=b''), \
                         mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
@@ -599,7 +607,7 @@ class LocalStartupTests(unittest.TestCase):
                     with self.subTest(endpoint=endpoint), mock.patch.object(isolation, 'ROOT', root), \
                             mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
                         with self.assertRaisesRegex(preparation.InvalidPacket, 'outer Docker socket'):
-                            isolation.IsolatedRunner(root / ('refusal-' + endpoint.name), workspace=root,
+                            isolation.IsolatedRunner(parent / ('refusal-' + endpoint.name), workspace=root,
                                                      outer_host='unix://' + str(endpoint))
                         docker.assert_not_called()
                 alias.unlink()
@@ -632,7 +640,7 @@ class LocalStartupTests(unittest.TestCase):
                         mock.patch.object(isolation, 'ROOT', root), \
                         mock.patch.object(isolation.IsolatedRunner, 'docker') as docker:
                     with self.assertRaisesRegex(preparation.InvalidPacket, 'workspace contents unavailable'):
-                        isolation.IsolatedRunner(root / 'refusal', workspace=root, outer_host='unix://' + str(selected))
+                        isolation.IsolatedRunner(parent / 'refusal', workspace=root, outer_host='unix://' + str(selected))
                     docker.assert_not_called()
 
     def testEarlyConfigurationAndInitialSaveFailuresCleanOwnedScratch(self):
@@ -685,8 +693,9 @@ class LocalStartupTests(unittest.TestCase):
         for mode in ('hung','failed','late-success'):
             with self.subTest(mode=mode),tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                with mock.patch.object(isolation,'ROOT',root):
-                    worker = isolation.IsolatedRunner(root/'evidence',workspace=root,outer_host='unix:///outer')
+                repository = root/'repo';repository.mkdir()
+                with mock.patch.object(isolation,'ROOT',repository):
+                    worker = isolation.IsolatedRunner(root/'evidence',workspace=repository,outer_host='unix:///outer')
                 self.addCleanup(lambda path=worker.scratch:shutil.rmtree(path,ignore_errors=True))
                 clock = [0.0]
                 calls = []

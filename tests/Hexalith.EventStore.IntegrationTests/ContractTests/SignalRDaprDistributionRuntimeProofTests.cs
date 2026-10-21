@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -181,9 +183,12 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         }, cancellation.Token).ConfigureAwait(true);
     }
 
-    /// <summary>Checks a provider network fault shared by both sidecars without stopping the shared provider.</summary>
-    [Fact]
-    public async Task DaprRedisStreams_ProviderNetworkOutage_BoundsFailureAndRestoresReadbackAndHints()
+    /// <summary>Checks reset and silent-blackhole faults shared by both sidecars without stopping the shared provider.</summary>
+    /// <param name="blackhole">Whether to silently discard traffic instead of severing connections and refusing reconnects.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DaprRedisStreams_ProviderNetworkOutage_BoundsFailureAndRestoresReadbackAndHints(bool blackhole)
     {
         DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
@@ -252,9 +257,17 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         int activeBefore = network.ActiveConnections;
         activeBefore.ShouldBeGreaterThan(0);
         DateTimeOffset faultStartedUtc = DateTimeOffset.UtcNow;
-        await network.BlockAsync(cancellation.Token).ConfigureAwait(true);
-        network.ActiveConnections.ShouldBe(0);
-        network.DisconnectedConnections.ShouldBeGreaterThan(0);
+        if (blackhole)
+        {
+            network.Blackhole();
+            network.ActiveConnections.ShouldBeGreaterThan(0, "the silent fault retains established TCP connections");
+        }
+        else
+        {
+            await network.BlockAsync(cancellation.Token).ConfigureAwait(true);
+            network.ActiveConnections.ShouldBe(0);
+            network.DisconnectedConnections.ShouldBeGreaterThan(0);
+        }
 
         // Failed/cancelled calls establish no absence, completion, or freshness. Retain their outcomes as unknown.
         var outageNotice = new ProjectionChangedNotification(projection, tenant, GroupScope: scope,
@@ -274,7 +287,16 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
             ReceivesWithinAsync(firstDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token),
             ReceivesWithinAsync(secondDetails.Reader, TimeSpan.FromSeconds(1), cancellation.Token)).ConfigureAwait(true);
         outageHints.Any(static received => received).ShouldBeFalse("both sidecars have lost their only provider route");
-        network.RejectedConnections.ShouldBeGreaterThan(0);
+        if (blackhole)
+        {
+            network.BlackholedBytes.ShouldBeGreaterThan(0, "real sidecar traffic must encounter the silent fault");
+            network.DisconnectedConnections.ShouldBe(0, "the proxy must not turn a silent fault into a reset");
+            network.RejectedConnections.ShouldBe(0, "the proxy must accept reconnects during a silent fault");
+        }
+        else
+        {
+            network.RejectedConnections.ShouldBeGreaterThan(0);
+        }
         DateTimeOffset faultRestoredUtc = DateTimeOffset.UtcNow;
         network.Restore();
 
@@ -323,12 +345,13 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         final.Value!["version"].ShouldBe(2);
         final.ETag.ShouldBe(changed.ETag);
 
-        await fixture.CaptureEvidenceAsync("provider-network-outage", startedUtc, new
+        await fixture.CaptureEvidenceAsync(blackhole ? "provider-network-blackhole" : "provider-network-outage", startedUtc, new
         {
             Tenant = tenant, OtherTenant = otherTenant, Topic = topic, RecoveryTopic = recoveryTopic,
+            FaultMode = blackhole ? "silent-bidirectional-byte-discard" : "connection-reset-and-refuse-reconnect",
             FaultStartedUtc = faultStartedUtc, FaultRestoredUtc = faultRestoredUtc,
             ProxyPort = network.Port, ActiveConnectionsBeforeFault = activeBefore,
-            network.DisconnectedConnections, network.RejectedConnections,
+            network.DisconnectedConnections, network.RejectedConnections, network.BlackholedBytes,
             PublishFailure = publishFailure, PublishMilliseconds = publishMilliseconds,
             FirstReadFailure = firstReadFailure, FirstReadMilliseconds = firstReadMilliseconds,
             SecondReadFailure = secondReadFailure, SecondReadMilliseconds = secondReadMilliseconds,
@@ -340,32 +363,45 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
             FinalVersion = final.Value!["version"], FinalETag = final.ETag,
             DeniedClientsReceivedHints = false, OutagePublicationDisposition = "unknown-until-reconciliation",
             Limits = new[] { "synthetic-read-model-not-real-projection-completion", "no-canonical-ui-freshness-proof",
-                "connection-reset-fault-only-no-saturation-or-blackhole", "exact-topic-development-profile-only",
+                "no-saturation-backpressure-or-retention-proof", "exact-topic-development-profile-only",
                 "no-production-issuer-or-profile", "no-transition-or-rollback-approval" },
         }, cancellation.Token).ConfigureAwait(true);
     }
 
     /// <summary>Checks replica restart, lost-hint reconciliation, and serialized-metadata rejection on both hosts.</summary>
     [Fact]
-    public async Task DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+    public Task DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState()
+        => RunReplicaRestartAsync(renewInternalGrpcEndpoint: false);
+
+    /// <summary>Compares a fresh sidecar-internal endpoint with the retained same-endpoint restart profile.</summary>
+    [Fact]
+    public Task DaprRedisStreams_ReplicaRestart_FreshInternalEndpoint_ReauthorizesAndReconcilesPersistedState()
+        => RunReplicaRestartAsync(renewInternalGrpcEndpoint: true);
+
+    private static async Task RunReplicaRestartAsync(bool renewInternalGrpcEndpoint)
     {
         DateTimeOffset startedUtc = DateTimeOffset.UtcNow;
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(3));
         string suffix = Guid.NewGuid().ToString("N")[..12];
         string tenant = $"tenant-a-{suffix}";
         string otherTenant = $"tenant-b-{suffix}";
-        string projection = $"restart-{suffix}";
+        string[] projectionCandidates = Enumerable.Range(0, 16).Select(index => $"restart-{suffix}-{index}").ToArray();
         string recoveryProjection = $"restored-{suffix}";
         string scope = $"scope-{suffix}";
-        string topic = NamingConventionEngine.GetProjectionChangedTopic(projection, tenant);
         string recoveryTopic = NamingConventionEngine.GetProjectionChangedTopic(recoveryProjection, tenant);
-        string readModelKey = $"story-2-13:{tenant}:{projection}";
         await using SignalRDaprDistributionFixture fixture = await SignalRDaprDistributionFixture
-            .StartAsync([topic, recoveryTopic], cancellation.Token).ConfigureAwait(true);
+            .StartAsync(projectionCandidates.Select(candidate => NamingConventionEngine.GetProjectionChangedTopic(candidate, tenant))
+                .Append(recoveryTopic).ToArray(), cancellation.Token).ConfigureAwait(true);
         int originalHostProcessId = fixture.Second.ApplicationProcessId;
         int originalSidecarProcessId = fixture.Second.SidecarProcessId;
+        int originalInternalGrpcPort = fixture.Second.DaprInternalGrpcPort;
         using DaprClient publisher = new DaprClientBuilder().UseGrpcEndpoint(fixture.First.DaprGrpcEndpoint).Build();
         using DaprClient reader = new DaprClientBuilder().UseGrpcEndpoint(fixture.Second.DaprGrpcEndpoint).Build();
+        int selectedCandidateIndex = await SelectSecondOwnedProjectionAsync(
+            fixture, publisher, projectionCandidates, tenant, startedUtc, cancellation.Token).ConfigureAwait(true);
+        string projection = projectionCandidates[selectedCandidateIndex];
+        string topic = NamingConventionEngine.GetProjectionChangedTopic(projection, tenant);
+        string readModelKey = $"story-2-13:{tenant}:{projection}";
         var writerStore = new DaprReadModelStore(publisher);
         var readerStore = new DaprReadModelStore(reader);
         await writerStore.SaveAsync("statestore", readModelKey,
@@ -395,7 +431,7 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         }
 
         await publisher.PublishEventAsync("pubsub", topic,
-            new ProjectionChangedNotification(projection, tenant)
+            new ProjectionChangedNotification(projection, tenant, EntityId: "before-replica-stop")
             {
                 Provenance = CreateProvenance(projection, tenant, topic),
             }, cancellation.Token).ConfigureAwait(true);
@@ -415,7 +451,7 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         await writerStore.SaveAsync("statestore", readModelKey,
             new Dictionary<string, int> { ["version"] = 2 }, cancellation.Token).ConfigureAwait(true);
         await publisher.PublishEventAsync("pubsub", topic,
-            new ProjectionChangedNotification(projection, tenant)
+            new ProjectionChangedNotification(projection, tenant, EntityId: "while-replica-stopped")
             {
                 Provenance = CreateProvenance(projection, tenant, topic),
             }, cancellation.Token).ConfigureAwait(true);
@@ -423,9 +459,17 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         (await ReceivesWithinAsync(secondSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token).ConfigureAwait(true))
             .ShouldBeFalse("the stopped replica cannot deliver the missed hint");
 
-        await fixture.RestartSecondAsync(cancellation.Token).ConfigureAwait(true);
+        await fixture.RestartSecondAsync(cancellation.Token, renewInternalGrpcEndpoint).ConfigureAwait(true);
         fixture.Second.ApplicationProcessId.ShouldNotBe(originalHostProcessId);
         fixture.Second.SidecarProcessId.ShouldNotBe(originalSidecarProcessId);
+        if (renewInternalGrpcEndpoint)
+        {
+            fixture.Second.DaprInternalGrpcPort.ShouldNotBe(originalInternalGrpcPort);
+        }
+        else
+        {
+            fixture.Second.DaprInternalGrpcPort.ShouldBe(originalInternalGrpcPort);
+        }
         ReadModelEntry<Dictionary<string, int>> restored = await WaitForReadbackAsync(
             readerStore, readModelKey, cancellation.Token).ConfigureAwait(true);
         restored.Value!["version"].ShouldBe(2);
@@ -449,11 +493,57 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
         await denied.InvokeAsync("JoinGroupScoped", recoveryProjection, otherTenant, scope, cancellation.Token).ConfigureAwait(true);
 
         await publisher.PublishEventAsync("pubsub", topic,
-            new ProjectionChangedNotification(projection, tenant)
+            new ProjectionChangedNotification(projection, tenant, EntityId: "after-replica-restart")
             {
                 Provenance = CreateProvenance(projection, tenant, topic),
             }, cancellation.Token).ConfigureAwait(true);
-        (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        using var endpointProbeBudget = CancellationTokenSource.CreateLinkedTokenSource(cancellation.Token);
+        endpointProbeBudget.CancelAfter(s_positiveWait);
+        Task<IReadOnlyList<object>> endpointProbe = ObserveInternalEndpointAsync(fixture.Second, endpointProbeBudget.Token);
+        try
+        {
+            (await ReadAsync(firstSignals.Reader, cancellation.Token).ConfigureAwait(true)).ShouldBe((projection, tenant));
+        }
+        catch (OperationCanceledException exception)
+        {
+            endpointProbeBudget.Cancel();
+            IReadOnlyList<object> failedEndpointObservations = await endpointProbe.ConfigureAwait(true);
+            string captureStatus = "retained";
+            using var diagnosticsBudget = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                await fixture.CaptureEvidenceAsync("replica-restart-signal-timeout", startedUtc, new
+                {
+                    Projection = projection, Tenant = tenant, Topic = topic,
+                    Stage = "first-host-signal-after-second-replica-restart",
+                    SignalWaitBoundMilliseconds = s_positiveWait.TotalMilliseconds,
+                    ScenarioCancellationRequested = cancellation.IsCancellationRequested,
+                    FirstConnectionId = first.ConnectionId, ReplacementConnectionId = replacement.ConnectionId,
+                    FailureKind = exception.GetType().Name,
+                    InitialETagActorOwner = "second-proof-host",
+                    InitialETagActorOwnerProcessId = originalHostProcessId,
+                    ActorOwnerSelectionCandidateCount = selectedCandidateIndex + 1,
+                    ActorOwnerSelectionPoolSize = projectionCandidates.Length,
+                    OriginalSecondInternalGrpcPort = originalInternalGrpcPort,
+                    RestoredSecondInternalGrpcPort = fixture.Second.DaprInternalGrpcPort,
+                    RenewInternalGrpcEndpoint = renewInternalGrpcEndpoint,
+                    IndependentTcpObservations = failedEndpointObservations,
+                    Limits = new[] { "failed-diagnostics-only-no-root-cause-or-disposition" },
+                }, diagnosticsBudget.Token, scenarioAssertionsPassed: false).ConfigureAwait(true);
+            }
+            catch (Exception diagnosticsException)
+            {
+                captureStatus = $"capture failed ({diagnosticsException.GetType().Name})";
+            }
+
+            string firstDiagnostics = string.Join('\n', fixture.First.SnapshotRedactedLogs().Split('\n').TakeLast(40));
+            string secondDiagnostics = string.Join('\n', fixture.Second.SnapshotRedactedLogs().Split('\n').TakeLast(40));
+            throw new TimeoutException(
+                $"First-host post-restart signal exceeded its unchanged wait bound. Diagnostics {captureStatus}. "
+                + $"First: {firstDiagnostics} Second: {secondDiagnostics}", exception);
+        }
+        endpointProbeBudget.Cancel();
+        IReadOnlyList<object> endpointObservations = await endpointProbe.ConfigureAwait(true);
         (await ReceivesWithinAsync(restoredSignals.Reader, TimeSpan.FromSeconds(1), cancellation.Token).ConfigureAwait(true))
             .ShouldBeFalse("the old process's membership must not authorize the replacement connection");
 
@@ -528,7 +618,8 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
             .GetAsync<Dictionary<string, int>>("statestore", readModelKey, cancellation.Token).ConfigureAwait(true);
         final.Value!["version"].ShouldBe(2);
         final.ETag.ShouldBe(restored.ETag, "replayed and oversized hints must not advance persisted state");
-        await fixture.CaptureEvidenceAsync("replica-restart-and-serialized-bounds", startedUtc, new
+        await fixture.CaptureEvidenceAsync(renewInternalGrpcEndpoint
+            ? "replica-restart-fresh-internal-endpoint" : "replica-restart-reused-internal-endpoint", startedUtc, new
         {
             Tenant = tenant,
             OtherTenant = otherTenant,
@@ -537,6 +628,16 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
             Scope = scope,
             OriginalHostProcessId = originalHostProcessId,
             OriginalSidecarProcessId = originalSidecarProcessId,
+            InitialETagActorOwner = "second-proof-host",
+            InitialETagActorOwnerProcessId = originalHostProcessId,
+            ActorOwnerSelectionCandidateCount = selectedCandidateIndex + 1,
+            ActorOwnerSelectionPoolSize = projectionCandidates.Length,
+            ActorOwnerSelectionWaitBoundMilliseconds = s_positiveWait.TotalMilliseconds,
+            SetupPublicationEntityId = "actor-owner-selection",
+            OriginalSecondInternalGrpcPort = originalInternalGrpcPort,
+            RestoredSecondInternalGrpcPort = fixture.Second.DaprInternalGrpcPort,
+            RenewInternalGrpcEndpoint = renewInternalGrpcEndpoint,
+            IndependentTcpObservations = endpointObservations,
             OriginalConnectionId = originalConnectionId,
             ReplacementConnectionId = replacement.ConnectionId,
             DeniedConnectionId = denied.ConnectionId,
@@ -554,7 +655,7 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
             SerializedMetadataCeilingQualified = true,
             ExactBoundaryAcceptedOnBothHosts = 2_048,
             QualificationDisposition = "unresolved-production-profile-and-disposition",
-            Scenarios = new[] { "complete-replica-stop-and-new-process-identity", "bounded-host-unavailable",
+            Scenarios = new[] { "second-proof-host-actor-ownership-before-stop", "complete-replica-stop-and-new-process-identity", "bounded-host-unavailable",
                 "missed-hint-reconciliation-through-dapr", "no-inherited-group-membership", "reauthorized-scoped-rejoin",
                 "fresh-unused-topic-signal-detail-control", "wrong-tenant-rejoin-denied",
                 "serialized-oversize-rejected-on-both-hosts-with-exact-boundary-control" },
@@ -1057,6 +1158,133 @@ public sealed class SignalRDaprDistributionRuntimeProofTests
                 "JoinGroupScoped", projection, tenantA, "forged-scope", cancellationToken)).ConfigureAwait(true);
             await Should.ThrowAsync<HubException>(() => denied.InvokeAsync(
                 "JoinGroup", projection, "malformed:tenant", cancellationToken)).ConfigureAwait(true);
+        }
+    }
+
+    private static async Task<IReadOnlyList<object>> ObserveInternalEndpointAsync(
+        SignalRDaprDistributionNode node,
+        CancellationToken cancellationToken)
+    {
+        var observations = new List<object>();
+        Match advertised = Regex.Match(node.SnapshotRedactedLogs(),
+            @"local service entry announced: eventstore -> (?<address>[0-9.]+):" + node.DaprInternalGrpcPort);
+        if (!IPAddress.TryParse(advertised.Groups["address"].Value, out IPAddress? address))
+        {
+            observations.Add(new { Failure = "advertised-ipv4-endpoint-not-observed", Purpose = "diagnostic-only" });
+            return observations;
+        }
+
+        long started = Stopwatch.GetTimestamp();
+        int[] offsetsMilliseconds = [0, 1_000, 3_000, 5_000, 10_000];
+        foreach (int offset in offsetsMilliseconds)
+        {
+            try
+            {
+                double remaining = offset - Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+                if (remaining > 0)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(remaining), cancellationToken).ConfigureAwait(false);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                DateTimeOffset attemptedUtc = DateTimeOffset.UtcNow;
+                bool connected = false;
+                string? failure = null;
+                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                attempt.CancelAfter(TimeSpan.FromMilliseconds(250));
+                using var client = new TcpClient();
+                try
+                {
+                    await client.ConnectAsync(address, node.DaprInternalGrpcPort, attempt.Token).ConfigureAwait(false);
+                    connected = true;
+                }
+                catch (SocketException exception)
+                {
+                    failure = exception.SocketErrorCode.ToString();
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                {
+                    failure = "connect-budget-expired";
+                }
+                observations.Add(new
+                {
+                    AttemptedUtc = attemptedUtc,
+                    CompletedUtc = DateTimeOffset.UtcNow,
+                    Address = address.ToString(),
+                    Port = node.DaprInternalGrpcPort,
+                    Connected = connected,
+                    Failure = failure,
+                    SentPayloadBytes = 0,
+                    Purpose = "independent-tcp-diagnostic-not-dapr-correctness-evidence",
+                });
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+        }
+        return observations;
+    }
+
+    private static async Task<int> SelectSecondOwnedProjectionAsync(
+        SignalRDaprDistributionFixture fixture,
+        DaprClient publisher,
+        IReadOnlyList<string> candidates,
+        string tenant,
+        DateTimeOffset startedUtc,
+        CancellationToken cancellationToken)
+    {
+        using var selectionBudget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        selectionBudget.CancelAfter(s_positiveWait);
+        int attemptedCandidates = 0;
+        try
+        {
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                attemptedCandidates++;
+                string projection = candidates[index];
+                string topic = NamingConventionEngine.GetProjectionChangedTopic(projection, tenant);
+                await publisher.PublishEventAsync("pubsub", topic,
+                    new ProjectionChangedNotification(projection, tenant, EntityId: "actor-owner-selection")
+                    {
+                        Provenance = CreateProvenance(projection, tenant, topic),
+                    }, selectionBudget.Token).ConfigureAwait(false);
+
+                // Setup completes before any measured client connects; both callbacks must finish broadcasting.
+                string completed = $"SignalR broadcast completed. ProjectionType: {projection}, TenantId: {tenant},";
+                while (!fixture.First.SnapshotRedactedLogs().Contains(completed, StringComparison.Ordinal)
+                    || !fixture.Second.SnapshotRedactedLogs().Contains(completed, StringComparison.Ordinal))
+                {
+                    await Task.Delay(25, selectionBudget.Token).ConfigureAwait(false);
+                }
+
+                string actorPersisted = $"ETag regenerated for actor {projection}:{tenant}.";
+                if (fixture.Second.SnapshotRedactedLogs().Contains(actorPersisted, StringComparison.Ordinal))
+                {
+                    return index;
+                }
+            }
+
+            throw new InvalidOperationException("No candidate ETagActor was observed on the second proof host.");
+        }
+        catch (Exception exception)
+        {
+            using var diagnosticsBudget = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                await fixture.CaptureEvidenceAsync("replica-restart-actor-owner-selection-failure", startedUtc, new
+                {
+                    Stage = "bounded-second-proof-host-actor-owner-selection",
+                    AttemptedCandidates = attemptedCandidates,
+                    CandidatePoolSize = candidates.Count,
+                    SelectionWaitBoundMilliseconds = s_positiveWait.TotalMilliseconds,
+                    FailureKind = exception.GetType().Name,
+                }, diagnosticsBudget.Token, scenarioAssertionsPassed: false).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Evidence capture must not replace the bounded selection failure.
+            }
+            throw;
         }
     }
 

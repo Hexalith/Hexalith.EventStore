@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-20
+# last_updated: 2026-10-21
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -56,7 +56,7 @@
 #   ./tests/Hexalith.EventStore.Contracts.Tests/bin/Release/net10.0/Hexalith.EventStore.Contracts.Tests
 
 generated: '2026-07-05T20:01:46+02:00'
-last_updated: '10-20-2026'
+last_updated: '10-21-2026 16:10'
 project: eventstore
 project_key: NOKEY
 tracking_system: file-system
@@ -113,6 +113,8 @@ development_status:
   2-11-query-provenance-consumption-in-generated-rest-and-tenants: done
   2-12-tenants-runtime-identity-adoption-and-package-mode-validation: done
   2-13-dapr-notification-distribution-qualification: in-progress
+  # 2.13: October 21 reset/blackhole pair passed locally; intermittent replica-restart
+  # delivery and production profile/issuer/transition/rollback/disposition remain open.
   # 2.13: rejected because Stories 6.2, 6.3, and 6.4 remain unfinished
   2-14-canonical-tenant-boundary-in-generated-and-tenants-hosts: backlog
   2-15-messageid-only-command-status-identity: backlog
@@ -172,6 +174,9 @@ development_status:
   # Added 2026-10-07 (sprint-change-proposal-2026-10-07-architecture-routing): runtime pin and
   # durable-broker qualification for the AD-26 profile; a Story 3.19 issue-step prerequisite.
   3-21-production-dapr-runtime-pin-and-durable-broker-qualification: in-progress
+  # Approved 2026-10-21: bounded evidence first, retirement after consumer migration.
+  3-22-bounded-qualification-evidence-production-and-admission: in-progress
+  3-23-retire-bulky-qualification-evidence: backlog
   epic-3-retrospective: done
 
   epic-4: in-progress

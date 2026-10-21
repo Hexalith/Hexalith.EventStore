@@ -1,0 +1,42 @@
+Getting logs...
+[sample-dapr-cli] [sys] Starting process...: Cmd = /usr/local/bin/dapr, Args = ["run", "--app-health-check-path", "/alive", "--app-id", "sample", "--config", 
+"/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/DaprComponents/accesscontrol.sample.yaml", "--enable-app-health-check", 
+"--placement-host-address", "localhost:50005", "--resources-path", "/tmp/hexalith-eventstore-empty-dapr-resources", "--scheduler-host-address", 
+"localhost:50006", "--app-port", "5189", "--dapr-grpc-port", "23542", "--dapr-http-port", "23541", "--metrics-port", "23540", "--app-channel-address", 
+"localhost", "--app-protocol", "http"]
+[sample-dapr-cli] time="2026-10-21T10:27:36.981583931+02:00" level=info msg="Closing connection to placement: context canceled" app_id=sample 
+instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981601425+02:00" level=info msg="Scheduler stream disconnected" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.runtime.scheduler.cluster type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981523634+02:00" level=info msg="workers stopping and draining..." app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.wfengine.durabletask.backend type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981565045+02:00" level=info msg="workflow-processor: worker stopped" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.wfengine.durabletask.backend type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981570716+02:00" level=info msg="activity-processor: worker stopped" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.wfengine.durabletask.backend type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981632225+02:00" level=info msg="finished stopping and draining workers!" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.wfengine.durabletask.backend type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981638878+02:00" level=info msg="Workflow engine stopped" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.runtime.wfengine type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981638247+02:00" level=warning msg="Error receiving from stream: rpc error: code = Canceled desc = context canceled"
+app_id=sample instance=DESKTOP-VIOG240 scope=dapr.runtime.actors.placement.loops.stream type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981656261+02:00" level=info msg="Scheduler stream disconnected" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.runtime.scheduler.cluster type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981667834+02:00" level=info msg="App health probes stopping" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.apphealth type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.98167097+02:00" level=info msg="Scheduler stream disconnected" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.runtime.scheduler.cluster type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.981686851+02:00" level=info msg="Actor runtime stopped" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.runtime.actor type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.982060795+02:00" level=info msg="Closing HTTP server [::]:23541…" app_id=sample instance=DESKTOP-VIOG240 
+scope=dapr.runtime.http type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.982070154+02:00" level=info msg="Dapr is shutting down" app_id=sample instance=DESKTOP-VIOG240 scope=dapr.runtime 
+type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.982106214+02:00" level=info msg="Dapr runtime stopped" app_id=sample instance=DESKTOP-VIOG240 scope=dapr.runtime 
+type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.982154196+02:00" level=info msg="stopping mDNS server for app id: sample" app_id=sample component="nr (mdns/v1)" 
+instance=DESKTOP-VIOG240 scope=dapr.contrib type=log ver=1.18.7
+[sample-dapr-cli] time="2026-10-21T10:27:36.982430141+02:00" level=fatal msg="Fatal error from runtime: failed to read resource directories: open 
+/tmp/hexalith-eventstore-empty-dapr-resources: no such file or directory" app_id=sample instance=DESKTOP-VIOG240 scope=dapr.runtime type=log ver=1.18.7
+[sample-dapr-cli] ℹ️  
+[sample-dapr-cli] terminated signal received: shutting down

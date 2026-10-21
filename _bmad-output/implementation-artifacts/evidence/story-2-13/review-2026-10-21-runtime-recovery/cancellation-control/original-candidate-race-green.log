@@ -1,0 +1,4 @@
+=== RUN   TestReviewCanceledUnavailableRetainsChannel
+--- PASS: TestReviewCanceledUnavailableRetainsChannel (0.00s)
+PASS
+ok  	github.com/dapr/dapr/pkg/actors/router	0.019s

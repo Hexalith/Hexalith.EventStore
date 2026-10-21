@@ -1,0 +1,13 @@
+# Shared-channel continuation closure
+
+Overall qualification is **incomplete**. Read the [report](../qualification-2026-10-21-concurrency-retirement.md), [disposition](disposition.json) and [review triage](review-triage.json).
+
+Run `python3 -B _bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/verify-closing.py` from the repository root to check retained bytes, measurements and the incomplete disposition. Integrity success grants no qualification, approval, accepted exception or production authority. The separate `qualification-gate.py` uses the actual receipt names and exits 1 because real projection composition and ordinary Direct failed. The existing Contracts blocker remains independent.
+
+The earlier preparation tools `runs-2026-10-21-concurrency-safety/finalize-packet.py`, its drafted verifier, and `runs-2026-10-21-concurrency-retirement/verify-measurements.py` are retained, superseded drafts. They were not completed qualification gates and must not be used to finalize these packets. The reset finalizer names an abandoned report; the retirement draft checker requests planned receipt names absent from the measured packet. Their bytes remain preserved. Both old `run-command.py` tools are also retired for future recording: they used assert-only guards and omitted effective overlay inputs. Actual historical invocations did not use Python optimization; preservation observations check their recorded bytes. New review recording uses unconditional exclusive creation and binds overlay/replacement inputs before and after execution.
+
+The source/configuration snapshots in `retrospective-fixture-observation/` were captured **after** the failed application runs. They are observations, not retroactive pre-run provenance. Complete fixture/configuration capture remains required for future qualification. Launch-identity hardening remains explicitly deferred; independent product-path cleanup observation does not implement it.
+
+The frozen baseline and initial handoff remain distinct from the final spec snapshot. Both new candidate packets remain separate, including deliberate mutations, the rejected reset API race, environmental startup failures, application failures and passes. No existing failure is replaced by a rerun.
+
+At seal time (13:35:56 UTC), accessible per-fd watch lines are 1,054,941 and the ceiling is 2,097,152. Restoration to 1,048,576 remains blocked; see `inotify-at-seal.json`. The final Redis receipt has nine before/after assembly/deps differences, so its passing body is not stable-binary compatibility evidence. The final qualification gate retains this identity ambiguity beside both failed projection regressions.

@@ -1,0 +1,12 @@
+{
+  "observedUtc": "2026-10-21T11:07:49.400854+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/review-2026-10-21-runtime-recovery/test_verifiers.py"
+  ],
+  "exitCode": 0,
+  "output": "verifier-tests.log",
+  "outputSha256": "403d881939b66f33726d34cacc758367bf3aa1cd9de186f748ba866c6eaaeda5",
+  "scope": "only new supplement verifier/source comparator mutation controls; no Go/.NET/runtime tests rerun"
+}

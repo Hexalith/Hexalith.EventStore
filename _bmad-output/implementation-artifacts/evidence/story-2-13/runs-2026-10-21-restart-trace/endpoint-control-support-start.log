@@ -1,0 +1,11 @@
+Starting Aspire AppHost in the background...
+
+     AppHost:  src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj                                          
+                                                                                                                           
+   Dashboard:  https://localhost:17017/login?t=[redacted]                                            
+                                                                                                                           
+        Logs:  /home/administrator/.aspire/logs/cli_20261021T084811845_detach-child_94850d25e86e4222b56a66542bda9f77.log   
+                                                                                                                           
+         PID:  98808                                                                                                       
+
+✅ AppHost started successfully.

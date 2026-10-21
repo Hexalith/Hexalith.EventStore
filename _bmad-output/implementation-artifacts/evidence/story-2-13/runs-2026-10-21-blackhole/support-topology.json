@@ -1,0 +1,181 @@
+{
+  "observedUtc": "2026-10-21T06:35:24.058078+00:00",
+  "waits": [
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "eventstore",
+        "--timeout",
+        "45",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "output": "Waiting for resource 'eventstore' to be healthy...\n\n\u2705 Resource 'eventstore' is healthy. (0.0s)\n"
+    },
+    {
+      "command": [
+        "aspire",
+        "wait",
+        "sample",
+        "--timeout",
+        "45",
+        "--apphost",
+        "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+        "--non-interactive"
+      ],
+      "exitCode": 0,
+      "output": "Waiting for resource 'sample' to be healthy...\n\n\u2705 Resource 'sample' is healthy. (0.0s)\n"
+    }
+  ],
+  "describeCommand": [
+    "aspire",
+    "describe",
+    "--format",
+    "Json",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "describeExitCode": 0,
+  "resources": [
+    {
+      "name": "eventstore-admin-dapr-cli-vbxywdhh",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-mvrbqxfb",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-dapr-cli-crdnappz",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-admin-ui-evxdadtq",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-app-api-token",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-dapr-cli-zftzabqu",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "eventstore-qmfxxatt",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-admin-password",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-admin-user-id",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-admin-username",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-sample-password",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-sample-user-id",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-sample-username",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-signing-key",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "local-auth-workload-client-secret",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-api-dapr-cli-zhabujby",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-api-eztxtmwc",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-app-api-token",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-blazor-ui-dapr-cli-nqgqqdxq",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-blazor-ui-dhxdekff",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-dapr-cli-ttvrbjta",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "sample-zurayrjv",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-api-dapr-cli-ppadekzt",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-api-umxvbukd",
+      "state": "Finished",
+      "healthStatus": null
+    },
+    {
+      "name": "tenants-app-api-token",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-dapr-cli-emsuhdhm",
+      "state": "Running",
+      "healthStatus": "Healthy"
+    },
+    {
+      "name": "tenants-tgwmkkns",
+      "state": "Finished",
+      "healthStatus": null
+    }
+  ],
+  "purpose": "Auxiliary AppHost topology; proof clients connect only to the two independently retained fixture hosts. Direct transport on the auxiliary EventStore is not replacement proof."
+}

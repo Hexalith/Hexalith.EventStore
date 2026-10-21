@@ -1,0 +1,38 @@
+{
+  "observedUtc": "2026-10-21T08:11:59.122629+00:00",
+  "purpose": "Supplemental in-run loaded-host candidate assembly identities; no earlier before-hash inferred",
+  "binaries": {
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.AspNetCore.dll": "c7deffe0f4b6c754fff3935a42ad378d729e85b277da853fbc8924790482d8b0",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.dll": "98d77fb28b39fe6832e06cb2bd66d58024b9587411b04965da385909f32a9dfa",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.AspNetCore.dll": "4db46444a22bbfd473e0f132139d943cec95e3637cdbf61077d88e618a48213d",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Client.dll": "cc7b8e629416c52be2569d7610c5c830b19ba690d4f54300ffdee901dec99115",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Common.dll": "9c10b91825371c10e469e91627080414bde4e8fa5acd894a2dbe398af03e1893",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Protos.dll": "659938b9475b4951bd49086a66d8ad24f89ac6c1c33d6888adfefb8420edf03c",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "73db021277a5c3cc2af66a0ac117d108ec2b9f1708199984880772a575018b8e",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": "c0022a0858c17358b6acc5fc8515eab7d89316160479b8dc98d699314a57a804",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "63b0ed1639fe353ddd9fea05ea605e2765acb90824a5723ef96fa7bff6337d31",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "0337f8a89a8102bb16bc854c8232d1d2d411a3f9b1ebaee14aa1763ba9c13876",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "e5be04763be892f418822eae3fa525ef842cfe5436401d1257ae6fdf6e4e9554",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "329b4724d35de697d714fef6ef870ffe3f10acdb4d818dfb97c036e3fbff2fd3",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "2239ad0939f7a11c18d8ed6d1c84ea19cd69eca8c5caedceab51fc4e008869ef",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "5063ddc92a5e2af8c0e2c00563e6c47ae0449fa451433faa43f4d578bcb63f4b",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll": "208f09fec2464c9fd7a42fc0103b851f396505491b84f9573616df91b3505cee"
+  },
+  "lastWriteUtc": {
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.AspNetCore.dll": "2026-09-24T20:48:32+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Actors.dll": "2026-09-24T20:48:30+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.AspNetCore.dll": "2026-09-24T20:48:28+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Client.dll": "2026-09-24T20:48:30+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Common.dll": "2026-09-24T20:48:30+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Dapr.Protos.dll": "2026-09-24T20:48:30+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll": "2026-10-18T15:47:10+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll": "2026-10-21T06:51:12.947211+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.dll": "2026-10-21T06:51:14.515273+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll": "2026-10-21T06:51:12.823206+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll": "2026-10-21T06:51:15.703320+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll": "2026-10-21T06:51:18.731440+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll": "2026-10-21T06:51:17.999411+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll": "2026-10-21T06:51:13.947250+00:00",
+    "src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll": "2026-10-21T06:51:18.919447+00:00"
+  }
+}

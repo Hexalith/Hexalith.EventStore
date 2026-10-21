@@ -175,15 +175,22 @@ try {
     [IO.File]::WriteAllText(
         (Join-Path $temporaryDirectory 'validate-central-package-versions.ps1'),
         $companionSource, [Text.UTF8Encoding]::new($false))
-    $arguments = @(
-        '-NoProfile', '-File', $derivedAuthority,
-        '-RepositoryRoot', $resolvedRoot, '-CatalogPath', $resolvedCatalog
-    )
-    if ($ExcludedPath.Count -gt 0) {
-        $arguments += @('-ExcludedPath', [string]::Join(';', $ExcludedPath))
+    # Exact retained inventories can exceed the OS per-argument length limit.
+    # Transport structured arguments outside the checkout, preserving array membership.
+    $argumentFile = Join-Path $temporaryDirectory 'arguments.json'
+    $parameters = @{
+        RepositoryRoot = $resolvedRoot
+        CatalogPath = $resolvedCatalog
+        ExcludedPath = @($ExcludedPath)
     }
+    [IO.File]::WriteAllText($argumentFile, ($parameters | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+    $invocation = '$parameters = Get-Content -LiteralPath ''' + $argumentFile.Replace("'", "''") +
+        ''' -Raw | ConvertFrom-Json -AsHashtable' + $lf +
+        '& ''' + $derivedAuthority.Replace("'", "''") + ''' @parameters' + $lf +
+        'exit $LASTEXITCODE'
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($invocation))
     $pwsh = Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })
-    & $pwsh @arguments
+    & $pwsh -NoProfile -EncodedCommand $encoded
     $exitCode = $LASTEXITCODE
 }
 catch {

@@ -18,9 +18,10 @@ prd_finalize_assessed: 2026-09-10
 prd_finalize_reviewed_head: dd55a6d1e128989777ae6c47459da0f746e84e53
 prd_finalize_baseline_status: examined-dirty-unapproved
 created: 2026-07-05
-updated: 2026-10-20
+updated: 2026-10-21
 project: eventstore
 source_artifacts:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-global-event-ordering.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02-rest-api-external-host.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-02.md
@@ -447,6 +448,10 @@ The top-level FR/NFR IDs remain stable. The clause IDs below expose existing ind
 - Publish the EventStore container as one immutable OCI image index containing exactly the supported platform set, `linux/amd64` and `linux/arm64`; release validation must fail closed on any other manifest shape or platform set. No EventStore build file declares this platform set: it is enforced by the pinned Hexalith.Builds `publish-containers` gate reached through `release.yml`, with EventStore-side evidence produced by `tools/release_evidence_handlers/v3.py`. The constraint is therefore not verifiable from this repository alone.
 - Never initialize nested submodules; only root-declared submodules under `references/` are valid.
 
+**Evidence storage (approved 2026-10-21).** Generated qualification evidence retains one bounded candidate/run/attempt summary and content-bound references in Git. Full output and generated reports, traces, videos, screenshots, history captures, and archives use external artifact storage. Acceptance-relevant bytes remain durably retrievable and verified; missing or mismatched proof fails its consuming gate. New attempt metadata totals at most 10 MiB, command excerpts at most 2,048 UTF-8 bytes, and automatic Git admission omits blobs over 10 MiB and generated-evidence selections over 50 MiB with an explicit warning. Archive splitting cannot bypass these limits. Existing bound evidence is retired only through an enumerated consumer migration preserving historical identities and dispositions.
+
+Routine diagnostic retention is 30 days; acceptance-relevant bytes require durable immutable retrieval before checkout removal, and active failures/holds retain required bytes until disposition. Redaction precedes artifact/excerpt storage. Source-owned visual/regression baselines remain tracked. Archive exclusions apply regardless of size; aggregate automatic admission selects complete summary/receipt groups and reports omissions while preserving user work/index state. Full command journals remain external when their committed metadata would exceed the attempt budget. See the [approved proposal](sprint-change-proposal-2026-10-21.md).
+
 ### 8.2 Identity And Authorization
 
 - Message, correlation, causation, and EventStore aggregate identifiers must use ULID-safe handling where EventStore envelope semantics require sortable unique IDs.
@@ -666,6 +671,8 @@ The PRD, architecture, UX, epics, sprint status, and implementation evidence exi
   - `_bmad-output/planning-artifacts/backlog/iam-1-admin-oidc-login.md`
   - `_bmad-output/planning-artifacts/backlog/kit-1-aggregate-test-kit.md`
   - `_bmad-output/planning-artifacts/backlog/rest-generator-hardening.md`
+
+**Approved evidence-storage ownership (2026-10-21).** Story 3.22 owns bounded P1R production/readers and EventStore Git admission; Story 3.23 owns exact-path retirement after fixture/consumer migration. Hexalith.AI.Tools owns the shared `/pushall` selection and installation rollout (proposal P5); FrontComposer owns corresponding Stories 15.6 and 15.7. All four new stories are backlog. Existing completed stories retain their recorded scope; planning digest reconciliation remains with Story 9.3, and no readiness/release gate changes state.
 
 ### 11.4 Phase 4 MVP Exit Decision Contract
 

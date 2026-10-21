@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "label": "handoff-check",
+  "command": [
+    "python3",
+    "-B",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-blackhole/validate-handoff.py"
+  ],
+  "startedUtc": "2026-10-21T06:43:53.277215+00:00",
+  "completedUtc": "2026-10-21T06:43:53.321976+00:00",
+  "exitCode": 0,
+  "runStartRevision": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+  "revisionAfter": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
+  "sourcesBefore": {
+    "docs/concepts/dapr-infrastructure-boundary.md": "46dd75d7e63203059a6dd5f32167c168f83823bab21625b0db5c48618107edb3",
+    "docs/architecture/dapr-infrastructure-exceptions.yaml": "d2bf3bc91f313fb835528a69a6351b36d9a1a8b1be913685a52941860f44cdcf",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "ef09ae40ff31eac06d679b6cdca1ea87f74534ef308a5cd9a58a379db763cbca",
+    "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md": "f52d5392d11186f0d9104771d4f641e61e9f9747623ecab30ccb21f53e435aba",
+    "_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md": "af88e6c074bdae924681bfe1d615900652dbd9f5fd1e5cd41ed442ae8d21a511",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-blackhole/validate-handoff.py": "309fc9a1171a45f2cb30d177032a8b5c0bb664ca6c27d114e1e8622849e6423c"
+  },
+  "sourcesAfter": {
+    "docs/concepts/dapr-infrastructure-boundary.md": "46dd75d7e63203059a6dd5f32167c168f83823bab21625b0db5c48618107edb3",
+    "docs/architecture/dapr-infrastructure-exceptions.yaml": "d2bf3bc91f313fb835528a69a6351b36d9a1a8b1be913685a52941860f44cdcf",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": "ef09ae40ff31eac06d679b6cdca1ea87f74534ef308a5cd9a58a379db763cbca",
+    "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md": "f52d5392d11186f0d9104771d4f641e61e9f9747623ecab30ccb21f53e435aba",
+    "_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md": "af88e6c074bdae924681bfe1d615900652dbd9f5fd1e5cd41ed442ae8d21a511",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-blackhole/validate-handoff.py": "309fc9a1171a45f2cb30d177032a8b5c0bb664ca6c27d114e1e8622849e6423c"
+  },
+  "binariesBefore": {},
+  "binariesAfter": {},
+  "outputSha256": "46a5894675b8a788c71e55c8cbf998d49a50b51b5c3adbb7336b46db64406f70",
+  "snapshot": "snapshots/handoff-check",
+  "authority": "local qualification only; no owner approval, CI seal or production authority"
+}

@@ -11,6 +11,7 @@ story_key: '2-13-dapr-notification-distribution-qualification'
 context:
   - _bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md
   - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-restart-trace.md
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -63,6 +64,117 @@ context:
 
 ## Implementation Notes
 
+### Active continuation: shared-channel concurrency safety
+
+Measured continuation decision: the first concurrency packet demonstrates that
+retained eviction cancels held actor/reminder/stream RPC attempts. Its evaluated
+TransientFailure-only ResetConnectBackoff alternative passes fixed-loopback
+controls and all six distribution cases, but a pinned grpc-go resolver-churn race
+probe reports concurrent map access and a fatal error. Preserve that candidate
+and all measurements as limited/rejected wider-profile evidence. This supports
+evaluating a second runtime-only correction in a second disposable tree and
+`evidence/story-2-13/runs-2026-10-21-concurrency-retirement/`, without dependency
+updates or patches. The source-supported design may mark the failed pooled
+channel retired, exclude it from new leases, and close it only after the last
+active lease releases; the current caller must release exactly once. Qualify pool
+lifetime/concurrency and cancellation-guard discrimination, then the unchanged
+focused reused-endpoint case, complete distribution class without stopOnFail and
+relevant regressions. No ResetConnectBackoff call belongs in that candidate.
+The initial candidate's successes cannot erase either measured failure.
+
+
+Resume from `evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md`,
+`evidence/story-2-13/review-2026-10-21-runtime-recovery/README.md` and
+`evidence/story-2-13/closing-after-review-2026-10-21.json`. The existing working
+tree is expressly authorized; preserve all prior work. This continuation only
+qualifies shared-channel concurrency safety of the isolated Dapr correction.
+
+The retained runtime destroys an Unavailable pooled actor channel. In a new
+disposable source tree, use controlled overlapping calls against the retained
+candidate source to measure whether that action interrupts other active actor
+invocations, remote reminders or actor streams. Distinguish a transport failure
+from Unavailable returned by a healthy server. Preserve the original acquired
+source, candidate source/binaries, reports and evidence packets byte-for-byte.
+Record new evidence only under `evidence/story-2-13/runs-2026-10-21-concurrency-safety/`
+and a new qualification report; `start-preservation.json` and `spec-before.source`
+already record parent start state. Never stage, commit, push or create a branch.
+
+Only evaluate an isolated correction after pinned runtime/dependency sources and
+measured failures support it. Retain complete before-build source inventories,
+exact patch, unchanged dependency/toolchain identities and binary hashes. Preserve
+caller cancellation/deadline semantics and the discriminating cancelled-Unavailable
+control from the retained review supplement (the old controls alone missed that
+regression). Keep retry/cancellation budgets, actor persistence before broadcast,
+authorization, serialized metadata bounds and the 15-second signal wait unchanged.
+The installed runtime and production graphs must remain unchanged. Launch-identity
+hardening is explicitly deferred unless required to establish trustworthy evidence.
+
+After any supported correction run focused concurrency controls and the reused-
+endpoint case, then the entire distribution class without stopping on failure,
+then relevant Go runtime and existing application regressions. Bind failures and
+passes to exact source/runtime/binary identities; successful reruns alone establish
+no resolution. Fresh-endpoint replacement is comparison evidence only. Preserve
+existing .NET binary identities unless a necessary rebuild is supported and
+recorded separately. Keep the existing Contracts validator blocker separate; do
+not weaken or exempt it. Reassess inotify restoration to 1,048,576 by observing
+accessible watches without disturbing unrelated processes; retain blockers and
+every ceiling change. Use the permitted Aspire workflow for lifecycle operations
+and capture exact owned-process/resource identities and cleanup observations.
+
+The spec and sprint row remain in-progress, original story backlog, and
+`accepted_exceptions: []`. No completion/review advancement, production transition,
+runtime installation, owner approval or qualification/disposition gate is implied
+by local qualification. Whole-story gated tasks remain unchecked. This user scope
+overrides any generic workflow instruction to complete gated production work.
+
+
+### Active continuation: isolated reused-endpoint runtime correction
+
+The user resumes from `evidence/story-2-13/qualification-2026-10-21-restart-trace.md`
+and authorizes local evaluation of an isolated Dapr runtime or configuration
+correction for the reused-endpoint remote-actor recovery failure. Use the retained
+failures, successful TCP probes and pinned runtime sources to establish the pooled
+gRPC reconnect/backoff mechanism before implementing a correction. Preserve the
+installed runtime, production graphs, dependencies, historical packets and frozen
+baseline. A candidate runtime may be built in a disposable local directory and
+selected explicitly for the test fixture only; retain exact source revision,
+patch, toolchain/dependency and executable hashes, command receipts, failures and
+passes in a new packet. A fresh internal endpoint remains comparison evidence and
+does not resolve reused-endpoint recovery. Do not infer resolution from passing
+reruns alone. Preserve authorization, serialized metadata bounds, cancellation
+budgets, actor-persistence-before-broadcast ordering and the 15-second signal
+deadline. Run the focused reused-endpoint case first, then the complete distribution
+class without `-stopOnFail`, then relevant regressions. Report the existing
+Contracts validator blocker separately. Reassess restoration of the temporary
+inotify ceiling to 1,048,576 without disturbing unrelated processes and retain any
+restoration blocker. Keep this spec and its sprint row in-progress, the original
+story backlog and `accepted_exceptions: []`. Production qualification, approval,
+rollback and disposition tasks remain gated; this continuation must stop short of
+whole-story completion and must not advance a completion/review status merely
+because its local evaluation finishes. Record supported corrections and unresolved
+gaps candidly, including any inability to build or qualify an isolated runtime.
+
+### Active continuation: October 21 restart timeout investigation
+
+The user explicitly resumed the existing dirty working tree from
+`evidence/story-2-13/qualification-2026-10-21-blackhole.md`. Preserve that work
+and every historical packet. This continuation focuses only on the unresolved
+first-host signal timeout after the second replica restarts. Use the existing
+failure capture to reproduce and trace Dapr delivery →
+`ProjectionNotificationController` → `ETagActor.RegenerateAsync` → SignalR
+broadcast. Establish the cause before changing behavior. Implement a fix only
+when justified by retained evidence; do not infer resolution from passing
+reruns alone. Preserve authorization, metadata bounds, caller cancellation
+budgets, and the 15-second signal deadline. Retain failures and passes on their
+exact source and binary identities in a new continuation packet (never rewrite
+the blackhole packet). Include actor/controller/broadcaster sources in new
+identity captures. Run the focused restart case, then the full distribution
+class. Report the existing Contracts validator blocker separately. Production
+graph/profile changes remain gated; keep the active spec and sprint row
+in-progress and the original backlog story uncompleted until all remaining
+qualification and approval requirements pass. Do not execute gated production
+tasks or claim whole-story completion during this focused continuation.
+
 - The [qualification packet](evidence/story-2-13/qualification.md) records a passing test-only two-host, two-sidecar exact-topic Dapr proof, a real projection-triggered signal with projection-backed readback, and a scoped Redis exception proposal that has **not** been accepted.
 - The shipped Redis Streams wildcard subscription did not deliver concrete tenant topics. Dynamic tenant subscription, real projection-triggered detail, full outage/freshness and rollback behavior, and owner approvals remain open. No production profile or backplane dependency changed; the original story remains backlog.
 - The ordinary Aspire regression test body passed, but collection teardown failed while restoring the shared writer-protocol marker. The packet records the exact result and unresolved lock interference. The local inotify limit also remains elevated while unrelated processes hold more watches than the original limit.
@@ -74,12 +186,105 @@ context:
 
 The final local continuation passed the full Debug graph, 186 focused detail/compatibility cases, real two-host projection signal/detail/readback and tenant denials, ordinary Direct regression, and 182 supporting client/credential cases. The four-scenario network/catalog/runtime run also passed against its separately retained earlier source/binary identity. Optional legacy projection-response detail is implemented; named v2 outcomes are unchanged. Remaining gates are the selected production runtime/durable broker/enrolled issuer, shipped enrollment, canonical completion/freshness fault profile, atomic graph transition/rollback and authorized disposition. Story status and whole-task checkboxes remain open; no exception or production profile is accepted.
 
+The [October 21 local continuation](evidence/story-2-13/qualification-2026-10-21-blackhole.md) adds silent bidirectional traffic discard beside connection reset in the existing test-only network proxy and distribution runtime proof. Both cases pass under a declared auxiliary AppHost/sample topology, with unchanged caller cancellation/readback limits, fresh two-host delivery and tenant denials. The full Debug source-reference graph passes. An unchanged focused replica-restart run passes, but two broader runs time out at the first-host post-restart signal; that intermittent delivery gap and the separate standalone startup failure remain retained. Run-start revision is `7217b5bf740b80ae92858378785b496e6b564285`; the frozen baseline is unchanged. Current Story 3.21 inputs still select no production broker/profile. Production runtime/broker/issuer, canonical completion/freshness, atomic transition/rollback and authorized disposition remain required gates; no whole-story checkbox or completion status is advanced.
+
+The local restart diagnostic phase adds failure-only evidence retention in the existing fixture/runtime proof and targeted controller receipt logging in `SignalRDaprDistributionNode.cs`. Failed captures are explicitly separate from passed assertions; the signal wait remains 15 seconds and capture has its own bounded budget. New fixture/runner captures retain MSBuild inputs with a `.source` suffix and explicit original-path mappings. Earlier new-packet file names may be transformed with recorded aliases while their bytes and emitted manifests remain unchanged; historical packets remain untouched.
+
 ## Spec Change Log
+
+The [shared-channel concurrency evaluation](evidence/story-2-13/qualification-2026-10-21-concurrency-retirement.md)
+reproduces eviction cancelling held actor/reminder/stream RPC attempts and rejects
+a reset alternative after a pinned grpc-go resolver-churn data race/fatal error.
+A second disposable runtime uses pool retirement and final-lease closure; focused
+race/context controls, reused-endpoint recovery, the complete six-case class,
+post-class Go/churn checks, 66 focused application checks and Redis pass. Initial
+watcher startup failures remain retained beside a measured external ceiling drop.
+Real projection composition and ordinary Direct projection fail and remain
+unresolved; this is not overall qualification. Historical packets, original
+runtime/source subjects, production graphs, frozen intent and accepted-exception
+register remain preserved. The active spec/sprint stay in-progress and original
+story backlog; launch-identity hardening and all production/disposition gates
+remain deferred/gated. No staging, commit or push was performed by this task.
+
+
+The [October 21 isolated runtime evaluation](evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md)
+retains a deterministic pooled-backoff red/green regression and a disposable,
+explicitly selected Dapr candidate. Three final-binary reused-endpoint traces
+observe eviction, the unchanged built-in retry, restored actor persistence and
+broadcast in about one second. The final distribution class passes all six
+cases; upstream router/manager controls, the Debug graph, 66 focused checks,
+real projection composition, Direct and retained Redis regressions pass on their
+recorded identities. An externally observed inotify ceiling drop and all startup
+failures remain retained; original-ceiling restoration remains blocked by
+unrelated watch use. The installed runtime, production graphs, historical packets,
+frozen baseline, original backlog story and accepted-exception register stay
+unchanged. Local evaluation advances no whole-story checkbox or completion/review
+status; production qualification, rollback and authorized disposition remain gated.
+
+
+The [October 21 restart routing continuation](evidence/story-2-13/qualification-2026-10-21-restart-trace.md)
+reproduces the surviving host's failed remote ETag invocation after restart.
+Both controlled reused-endpoint failures retain successful independent TCP
+connects during the unchanged 15-second signal wait; the additive fresh internal
+endpoint profile passes twice with initial second-host actor ownership proved.
+Pinned runtime/pool/backoff sources support retained gRPC reconnect state, with
+no direct channel-state capture or runtime repair claimed. The final full class
+records 5 passed and 1 failed of 6, and the Debug graph plus 66 focused existing
+checks pass. Same-endpoint recovery and all production/disposition gates remain
+open; this continuation advances no whole-story checkbox or completion status.
 
 - 2026-10-20 — The user resolved the metadata accounting conflict: "Enforce the serialized-byte limit in the approved story spec." The frozen intent is unchanged. Compact default System.Text.Json metadata sizing now includes punctuation and escaping across producer, receiver and broadcaster, with Contracts-owned ceilings. The [October 20 continuation](evidence/story-2-13/qualification-2026-10-20.md) separates the observed pre-fix gap from final-source qualification and replica restart evidence. Profile/owner gates and the retained Redis disposition remain unresolved.
 - 2026-10-20 — The user clarified: "production is on local 192.168.1.30 kubernetes server. Azure or AWS is not MVP." This narrows the target; it approves no issuer, broker, runtime upgrade, cluster mutation, or production transition. The frozen intent and required candidate comparison are unchanged.
 
 ## Review Triage Log
+
+Review scope is the authorized local reused-endpoint continuation from run-start
+`bbfd0fada14ce11e137365637238af4fec2f7f7f`; the frozen story baseline is preserved.
+The original runtime packet/report remain immutable. Review does not advance status
+or production authority. Follow-up evidence belongs in a separate review supplement.
+
+| Finding | Verdict | Evidence and route |
+| --- | --- | --- |
+| Blind 1: whitespace selector falls back | low | Whitespace/empty selection deliberately uses the installed default. The report's invalid-selection wording can be read more broadly; clarify this interface in the supplement, without changing tested fixture behavior. |
+| Blind 2: healthy-server Unavailable evicts | medium | The patch deliberately classifies by status, not connection state; a server-originated Unavailable also evicts. This wider behavior remains a runtime qualification gate. Reject a wider recovery redesign in this local experiment; no installed/production runtime is changed. |
+| Blind 3: shared-channel concurrent users | medium | Pool destruction closes the channel and can interrupt concurrent users. The original report explicitly retains this unqualified risk. Broader runtime/concurrency qualification and production selection remain gated by the user's intent; no production safety claim or exception is supplied. |
+| Blind 4: incomplete extracted-tree identity | medium | Build receipts bind the archive, router and manifests, rather than every extracted file. Add a complete read-only post-build tree comparison to the supplement; it cannot retroactively supply a pre-build observation. |
+| Blind 5: timeline correlation | false | Each of the three retained measured windows has exactly one first-controller actor invocation and one retry error naming the selected reused endpoint, followed by recovery and the matching request completion. No competing invocation is present in these captures. Wider concurrent profiles remain unqualified. |
+| Blind 6: handoff not checked by verifier | medium | The original verifier checks indexed packet bytes but does not compare external handoff documents. Add explicit successor handoff checks while preserving the original handoff and its spec snapshot. |
+| Blind 7: candidate provenance cross-checks | medium | Equal host hashes alone do not mechanically compare final scenario/build/patch/runtime records. Add those comparisons in the separate review verifier. |
+| Blind 8: optional final artifacts | medium | Removing the original index/timelines skips their guarded checks. Require final artifacts in the successor verifier and validate the final class independently. |
+| Blind 9: optimized Python removes assertions | medium | PYTHONOPTIMIZE can suppress original assertions. The successor verifier must explicitly reject optimized execution and run the original verifier with optimization disabled. |
+| Edge 1: closing active shared users | medium | Same demonstrated close semantics and gated limitation as Blind 3. Reject a pool-retirement redesign in this scoped local continuation; concurrent production behavior remains unqualified. |
+| Edge 2: executable hash/start race | maybe-false | No executable mutation occurred in retained before/after observations, but they do not exclude a change-and-restore race. A concurrent mutation experiment or atomic launch/image-identity mechanism would settle this unverified medium risk; defer that fixture hardening. |
+| Edge 3: recorder spawn error | low | OSError would bypass the receipt writer for an absent executable, but all 28 recorded commands actually spawned. Reject added generic recorder recovery complexity for this immutable one-off packet. |
+| Edge 4: recorder command hang | low | The recorder has no global watchdog, but no command hung; scenario and call budgets remain tested. Reject new generic process-tree timeout/cleanup machinery in this continuation. |
+| Verification 1: cancellation predicate survives mutation | medium | A temporary overlay proves existing controls pass with the ctx.Err guard removed. The new deterministic cancelled-Unavailable control passes the candidate and rejects that mutation. Retain its exact source, commands and logs in the separate supplement; no runtime or application code changes. |
+
+
+### Shared-channel continuation review — 2026-10-21
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| B1 | medium | patch | Draft verifier requests missing receipt names. Preserve the draft; canonical integrity checks and a separate qualification gate will use actual filenames. Failed regressions must still fail qualification. |
+| B2 | medium | patch | Final closing bindings were pending during review; finish inventory, spec snapshot and preservation checks before closure. |
+| B3 | medium | patch | Old recorders omit effective Go overlays before/after execution. Preserve old receipts and rerun final Go checks using complete overlay capture on unchanged product source. |
+| B4 | medium | defer | Some regression source snapshots omit application fixtures/configuration. Application binaries are hash-bound, but that is not full source provenance. Retain a retrospective observation and require fuller future qualification inputs; do not claim pre-run capture. |
+| B5 | medium | patch | Retained recorders use assertions for immutability. Actual runs used ordinary Python and no overwrite is observed. Preserve old tools and use unconditional exclusive creation for new records. |
+| B6 | medium | patch | Existing concurrency barrier starts after retirement. Add an initially-active retirement/acquisition/final-release race control via overlay. |
+| B7 | medium | patch | Post-retirement cancellation/deadline cases were absent. Add live caller controls and verify replacement-channel users stay healthy. |
+| B8 | medium | patch | Counter-only Close cannot prove pool lock availability. Add a blocking Close control and simultaneous acquisition. |
+| B9 | medium | patch | Manifest-only PID discovery misses failed starts. Supplement with an independent workspace product-path scan; retain launch-identity deferral. |
+| B10 | medium | patch | Timeline helper permits empty persistence lists. Actual four lists are nonempty; canonical checks must reparse actor-correlated events and require persistence before broadcast. |
+| E1 | medium | patch | Duplicate B1: missing filenames are real. The two projection failures must remain failures and qualification incomplete. |
+| E2 | low | patch | Abandoned first-candidate finalizer targets an uncreated report. Preserve and explicitly retire it; use the closing directory instead. |
+| G1 | medium | patch | Pre-verified gap: extra-release router mutant passes old controls. Retain/rerun the second-lease control and mutant with complete identities. |
+| G2 | medium | patch | Duplicate B1/E1: planned checker cannot read actual receipt names. Its all-pass qualification gate remains unsatisfied; no waiver. |
+
+
+Review follow-up retains passing additional lifetime controls and a full Go race replay with complete overlay identities in `evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/`. The caller-lease mutant is rejected, persistence is checked against raw actor-correlated logs, and retired tooling is documented separately. B4 remains deferred: retrospective application fixture snapshots cannot provide pre-run provenance. The canonical qualification gate remains failed for both projection regressions; no status or authority advances.
+
+
+Closing audit: the Redis test body passes, but its receipt records nine assembly/deps before/after differences, so stable-binary compatibility remains unqualified. Later workspace output drift is separately retained; its writer is unattributed and current user outputs are preserved. The final qualification gate fails for the two projection regressions and this identity ambiguity. Complete raw-log, overlay and historical preservation checks do not grant qualification or approval.
 
 ## Verification
 

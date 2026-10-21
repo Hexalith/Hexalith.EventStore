@@ -1,0 +1,18 @@
+--- a/local_recovery_test.go
++++ b/local_recovery_test.go
+@@ -61,9 +61,13 @@
+ 	response, err := r.Call(ctx, &internalv1pb.InternalInvokeRequest{Actor: &internalv1pb.Actor{ActorType: "test-type", ActorId: "same-endpoint"}})
+ 	require.NoError(t, err)
+ 	require.NotNil(t, response)
+-	require.Equal(t, connectivity.Shutdown, conn.GetState(), "failed channel must be evicted, not released with backoff intact")
++	require.Equal(t, connectivity.Ready, conn.GetState(), "failed transport backoff wakes without closing the shared channel")
++	next, teardown, getErr := mgr.GetGRPCConnection(ctx, address, "target", "default")
++	require.NoError(t, getErr)
++	defer teardown(true)
++	require.Same(t, conn, next)
+ 	require.Less(t, time.Since(started), 5*time.Second)
+-	t.Log("bounded actor retry recovered on unchanged endpoint after eviction; elapsed", time.Since(started))
++	t.Log("bounded actor retry recovered on unchanged endpoint after in-place backoff reset; elapsed", time.Since(started))
+ }
+ 
+ func TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel(t *testing.T) {
