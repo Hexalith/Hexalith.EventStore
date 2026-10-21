@@ -23,3 +23,6 @@ jobs:
       contents: read
     with:
       languages: csharp
+      # The complete tracked-source scan exceeded the former 30-minute job cap.
+      # Retain its scope and analysis settings with a bounded longer allowance.
+      timeout-minutes: 60
