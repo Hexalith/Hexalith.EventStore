@@ -28,7 +28,10 @@ env:
 jobs:
   live-sidecar:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The six serial owner-replacement cases add substantial work to the live
+    # suite. Allow the complete suite and OQ8 capture to finish while retaining
+    # every test and each process phase's existing twenty-minute bound.
+    timeout-minutes: 90
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
