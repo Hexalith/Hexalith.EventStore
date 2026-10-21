@@ -156,11 +156,23 @@ public sealed partial class StreamsController(
             }
 
             long currentSequence = streamMetadata.CurrentSequence;
+            if (native is not null && request.PageSize > 255) return BadRequest();
+            if (native is not null && request.FromSequence == 0 && request.ToSequence == 0)
+            {
+                // Metadata inspection must never enter the event-range or payload/readability path.
+                // Compare the whole observation, including incarnation, prefix, retention and erasure.
+                if (await actor.InspectSourceProofAsync().WaitAsync(cancellationToken).ConfigureAwait(false) != native)
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                cancellationToken.ThrowIfCancellationRequested();
+                return Ok(new StreamReadPage(identity.TenantId, identity.Domain, identity.AggregateId, [],
+                    new StreamReadMetadata(0, 0, null, currentSequence, 0, false, null)
+                    { NativeProof = SourceProofCodec.ToNative(native.Proof!) }));
+            }
+
             ServerEventEnvelope[] pageEvents;
             try {
                 if (native is not null)
                 {
-                    if (request.PageSize > 255) return BadRequest();
                     SourceEventRange range = await actor.ReadNativeEventsBoundedRangeAsync(request.FromSequence,
                         Math.Max(request.FromSequence, Math.Min(request.ToSequence ?? currentSequence, currentSequence)),
                         request.PageSize + 1, 2_097_152).WaitAsync(cancellationToken).ConfigureAwait(false);

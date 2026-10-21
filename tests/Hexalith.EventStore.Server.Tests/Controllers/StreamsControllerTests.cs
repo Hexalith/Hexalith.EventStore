@@ -1,10 +1,17 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
 
 using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Authentication;
+using Hexalith.EventStore.Client.Gateway;
+using Hexalith.EventStore.Client.Streams;
+using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Problems;
 using Hexalith.EventStore.Contracts.Security;
 using Hexalith.EventStore.Contracts.Streams;
@@ -12,13 +19,23 @@ using Hexalith.EventStore.Controllers;
 using Hexalith.EventStore.ErrorHandling;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.Server.Tests.Fakes;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.Testing.Fakes;
 using Hexalith.EventStore.Testing.Security;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -33,6 +50,350 @@ public class StreamsControllerTests {
     private const string Tenant = "tenant-a";
     private const string Domain = "party";
     private const string AggregateId = "party-1";
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(5, true)]
+    [InlineData(0, false)]
+    [InlineData(5, false)]
+    public async Task NativeHeadGatewayCrossesRealWorkloadMiddlewareWithJwtBindingsOrExactSignedProof(int head, bool jwtBindings)
+    {
+        using RSA key = RSA.Create(2048);
+        const string channelToken = "native-head-test-channel";
+        SourceProofInspection inspection = NativeInspection(head, head + 1);
+        IAggregateActor actor = HeadOnlyActor(inspection);
+        IActorProxyFactory proxies = Substitute.For<IActorProxyFactory>();
+        proxies.CreateActorProxy<IAggregateActor>(Arg.Any<ActorId>(), "AggregateActor", Arg.Any<ActorProxyOptions?>()).Returns(actor);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        var tenantValidator = new FakeTenantValidator { ConfiguredResult = TenantValidationResult.Denied("denied") };
+        var rbacValidator = new FakeRbacValidator { ConfiguredResult = RbacValidationResult.Denied("denied") };
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [DaprAppChannelToken.ConfigurationKey] = channelToken,
+            ["Authentication:JwtBearer:Authority"] = null,
+            ["Authentication:JwtBearer:Issuer"] = WorkloadAssertionTestTokens.Issuer,
+            ["Authentication:JwtBearer:Audience"] = DaprInternalAuthenticationOptions.DefaultAudience,
+            ["Authentication:JwtBearer:SigningKey"] = AuthenticationTestEnvironment.SigningKey,
+            ["Authentication:JwtBearer:AllowedAlgorithms:0"] = "HS256",
+            ["Authentication:BoundStreamRead:PublicKeys:projects"] = Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()),
+            ["Authentication:BoundStreamRead:AllowedDomains:projects"] = Domain,
+        });
+        builder.Services.AddAuthentication(DaprInternalAuthenticationOptions.SchemeName)
+            .AddEventStoreWorkloadScheme(DaprInternalAuthenticationOptions.SchemeName, "Authentication:DaprInternal", (options, _) =>
+            { options.Audience = DaprInternalAuthenticationOptions.DefaultAudience; options.AllowedCallers = ["projects"]; });
+        builder.Services.AddEventStoreWorkloadPolicies(DaprInternalAuthenticationOptions.SchemeName,
+            [EventStoreWorkloadOperations.GatewayStreamRead]);
+        builder.Services.AddControllers().AddApplicationPart(typeof(StreamsController).Assembly);
+        builder.Services.AddSingleton(proxies);
+        builder.Services.AddSingleton<Hexalith.EventStore.Authorization.ITenantValidator>(tenantValidator);
+        builder.Services.AddSingleton<IRbacValidator>(rbacValidator);
+        builder.Services.AddSingleton(protection);
+        await using WebApplication app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllers();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        using HttpClient http = app.GetTestClient();
+        http.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, channelToken);
+        IReadOnlyDictionary<string, string>? bindings = jwtBindings ? new Dictionary<string, string>
+        {
+            [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType] = Tenant,
+            [EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType] = Domain,
+        } : null;
+        string assertion = WorkloadAssertionTestTokens.Create(DaprInternalAuthenticationOptions.DefaultAudience, "projects",
+            [EventStoreWorkloadOperations.GatewayStreamRead], bindings: bindings);
+        var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
+        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, Tenant, Arg.Any<CancellationToken>())
+            .Returns(ValueTask.FromResult<string?>(assertion));
+        var proofs = Substitute.For<IEventStoreGatewayStreamReadProofSource>();
+        proofs.IssueAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call => ValueTask.FromResult<string?>(
+            BoundStreamReadProof.Issue(call.Arg<StreamReadRequest>(), "projects", Convert.ToBase64String(key.ExportPkcs8PrivateKey()), DateTimeOffset.UtcNow)));
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions { UseWorkloadTransport = true }),
+            assertions, jwtBindings ? null : proofs);
+
+        NativeSourceObservation? observation = await new GatewayNativeSourceMetadataReader(gateway, TimeProvider.System)
+            .ReadAsync(new(Tenant, Domain, AggregateId), TestContext.Current.CancellationToken);
+
+        observation.ShouldNotBeNull().Proof.ShouldBe(SourceProofCodec.ToNative(inspection.Proof!));
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+            .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
+        protection.ReceivedCalls().ShouldBeEmpty();
+        tenantValidator.ReceivedRequests.ShouldBeEmpty();
+        rbacValidator.ReceivedRequests.ShouldBeEmpty();
+
+        // Exercise the same middleware and exact proof with denied enrollment/operation/target variants.
+        foreach (string denial in new[] { "operation", "workload", "channel", "target", "missing-binding" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/streams/read/workload")
+            { Content = JsonContent.Create(denial == "target" ? HeadRequest() with { AggregateId = "foreign-target" } : HeadRequest()) };
+            request.Headers.Add(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName,
+                WorkloadAssertionTestTokens.Create(DaprInternalAuthenticationOptions.DefaultAudience,
+                    denial == "workload" ? "unenrolled" : "projects",
+                    [denial == "operation" ? EventStoreWorkloadOperations.TrustedEffect : EventStoreWorkloadOperations.GatewayStreamRead]));
+            if (denial is not ("channel" or "missing-binding"))
+                request.Headers.Add(BoundStreamReadProof.HeaderName,
+                    BoundStreamReadProof.Issue(HeadRequest(), "projects", Convert.ToBase64String(key.ExportPkcs8PrivateKey()), DateTimeOffset.UtcNow));
+            if (denial == "channel") http.DefaultRequestHeaders.Remove(DaprAppChannelToken.HeaderName);
+            using HttpResponseMessage response = await http.SendAsync(request, TestContext.Current.CancellationToken);
+            response.StatusCode.ShouldBe(denial is "workload" or "channel" ? HttpStatusCode.Unauthorized : HttpStatusCode.Forbidden);
+            if (denial == "channel") http.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, channelToken);
+        }
+        actor.ReceivedCalls().Count().ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(5, 1)]
+    [InlineData(5, 3)]
+    [InlineData(5, 6)]
+    public async Task NativeHeadInspectionReturnsOnlyStableProofWithoutRangeOrPayloadCalls(int head, int retainedFloor)
+    {
+        SourceProofInspection inspection = NativeInspection(head, retainedFloor);
+        IAggregateActor actor = HeadOnlyActor(inspection);
+        IEventPayloadProtectionService protection = Substitute.For<IEventPayloadProtectionService>();
+        (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController(actor, protection);
+        BindWorkload(controller);
+
+        StreamReadPage page = (await controller.ReadWorkloadStreamAsync(HeadRequest()))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>();
+
+        page.Tenant.ShouldBe(Tenant);
+        page.Domain.ShouldBe(Domain);
+        page.AggregateId.ShouldBe(AggregateId);
+        page.Events.ShouldBeEmpty();
+        page.Metadata.ShouldBe(new StreamReadMetadata(0, 0, null, head, 0, false, null)
+            { NativeProof = SourceProofCodec.ToNative(inspection.Proof!) });
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+            .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
+        protection.ReceivedCalls().ShouldBeEmpty();
+        proxies.Received(1).CreateActorProxy<IAggregateActor>(new ActorId($"{Tenant}:{Domain}:{AggregateId}"), "AggregateActor", Arg.Any<ActorProxyOptions?>());
+    }
+
+    [Theory]
+    [InlineData("replaced")]
+    [InlineData("regressed")]
+    [InlineData("revoked")]
+    [InlineData("erased")]
+    [InlineData("missing")]
+    [InlineData("digest")]
+    [InlineData("retention")]
+    [InlineData("head-message")]
+    public async Task NativeHeadInspectionRejectsAnyChangedSecondObservation(string change)
+    {
+        SourceProofInspection initial = NativeInspection(5);
+        SourceProofInspection changed = change switch
+        {
+            "replaced" => initial with { Proof = initial.Proof! with { SourceIncarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAW" } },
+            "regressed" => NativeInspection(4),
+            "revoked" => initial with { Status = SourceProofInspectionStatus.Unsupported, Proof = null },
+            "erased" => initial with { Erased = true, Proof = initial.Proof! with { Erased = true } },
+            "missing" => initial with { Exists = false },
+            "digest" => initial with { Proof = initial.Proof! with { CumulativeDigest = new string('a', 64) } },
+            "retention" => initial with { Proof = initial.Proof! with { RetainedFloor = 2 } },
+            _ => initial with { Proof = initial.Proof! with { HeadMessageId = "other-message" } },
+        };
+        IAggregateActor actor = HeadOnlyActor(initial);
+        actor.InspectSourceProofAsync().Returns(initial, changed);
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        (await controller.ReadWorkloadStreamAsync(HeadRequest())).ShouldBeOfType<StatusCodeResult>()
+            .StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name)
+            .ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync), nameof(IAggregateActor.InspectSourceProofAsync)]);
+    }
+
+    [Theory]
+    [InlineData("unsupported")]
+    [InlineData("invalid")]
+    [InlineData("erased")]
+    [InlineData("missing")]
+    [InlineData("foreign-tenant")]
+    [InlineData("foreign-domain")]
+    [InlineData("foreign-aggregate")]
+    [InlineData("bad-empty-seed")]
+    [InlineData("bad-digest")]
+    public async Task NativeHeadInspectionRefusesUnavailableOrInvalidSourceWithoutReadingEvents(string change)
+    {
+        SourceProofInspection initial = NativeInspection(0);
+        initial = change switch
+        {
+            "unsupported" => initial with { Status = SourceProofInspectionStatus.Unsupported, Proof = null },
+            "invalid" => initial with { Status = SourceProofInspectionStatus.Invalid },
+            "erased" => initial with { Erased = true },
+            "missing" => initial with { Exists = false },
+            "foreign-tenant" => initial with { Proof = initial.Proof! with { TenantId = "other-tenant" } },
+            "foreign-domain" => initial with { Proof = initial.Proof! with { Domain = "other-domain" } },
+            "foreign-aggregate" => initial with { Proof = initial.Proof! with { AggregateId = "other-aggregate" } },
+            "bad-empty-seed" => initial with { Proof = initial.Proof! with { CumulativeDigest = new string('a', 64) } },
+            _ => initial with { Proof = initial.Proof! with { CumulativeDigest = "bad" } },
+        };
+        IAggregateActor actor = HeadOnlyActor(initial);
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        IActionResult result = await controller.ReadWorkloadStreamAsync(HeadRequest());
+        if (change == "missing") AssertProblem(result, StatusCodes.Status404NotFound);
+        else result.ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
+    }
+
+    [Theory]
+    [InlineData("workload")]
+    [InlineData("tenant")]
+    [InlineData("domain")]
+    [InlineData("aggregate")]
+    public async Task NativeHeadInspectionRejectsChangedSignedTargetOrWorkloadBeforeActor(string change)
+    {
+        using RSA key = RSA.Create(2048);
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:BoundStreamRead:AllowedDomains:projects"] = Domain,
+            ["Authentication:BoundStreamRead:PublicKeys:projects"] = Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()),
+        }).Build();
+        (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController(configuration: configuration);
+        BindWorkload(controller, change == "workload" ? "foreign-workload" : "projects");
+        StreamReadRequest original = HeadRequest();
+        controller.Request.Headers[BoundStreamReadProof.HeaderName] = BoundStreamReadProof.Issue(original, "projects",
+            Convert.ToBase64String(key.ExportPkcs8PrivateKey()), DateTimeOffset.UtcNow);
+        StreamReadRequest request = change switch
+        {
+            "tenant" => original with { Tenant = "other-tenant" },
+            "domain" => original with { Domain = "other-domain" },
+            "aggregate" => original with { AggregateId = "other-aggregate" },
+            _ => original,
+        };
+
+        (await controller.ReadWorkloadStreamAsync(request)).ShouldBeOfType<ForbidResult>();
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task NativeHeadInspectionPreservesPublicDenialAndNativePageSizeBound()
+    {
+        IAggregateActor actor = HeadOnlyActor(NativeInspection(5));
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        (await controller.ReadStreamAsync(HeadRequest())).ShouldBeOfType<ForbidResult>();
+        actor.ReceivedCalls().ShouldBeEmpty();
+        BindWorkload(controller);
+        (await controller.ReadWorkloadStreamAsync(HeadRequest() with { PageSize = 256 })).ShouldBeOfType<BadRequestResult>();
+        actor.ReceivedCalls().Select(call => call.GetMethodInfo().Name).ShouldBe([nameof(IAggregateActor.InspectSourceProofAsync)]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativeHeadInspectionPropagatesCancellationDuringEitherObservation(bool second)
+    {
+        using var canceled = new CancellationTokenSource();
+        IAggregateActor actor = HeadOnlyActor(NativeInspection(5));
+        int calls = 0;
+        actor.InspectSourceProofAsync().Returns(_ =>
+        {
+            if (++calls == (second ? 2 : 1))
+            {
+                canceled.Cancel();
+                return new TaskCompletionSource<SourceProofInspection>().Task;
+            }
+            return Task.FromResult(NativeInspection(5));
+        });
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+        await Should.ThrowAsync<OperationCanceledException>(() => controller.ReadWorkloadStreamAsync(HeadRequest(), canceled.Token));
+        calls.ShouldBe(second ? 2 : 1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativeHeadInspectionNormalizesTransportFailureDuringEitherObservation(bool second)
+    {
+        IAggregateActor actor = HeadOnlyActor(NativeInspection(5));
+        int calls = 0;
+        actor.InspectSourceProofAsync().Returns(_ => ++calls == (second ? 2 : 1)
+            ? Task.FromException<SourceProofInspection>(new HttpRequestException("private transport diagnostics"))
+            : Task.FromResult(NativeInspection(5)));
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+        ProblemDetails problem = AssertProblem(await controller.ReadWorkloadStreamAsync(HeadRequest()), StatusCodes.Status503ServiceUnavailable);
+        JsonSerializer.Serialize(problem).ShouldNotContain("private transport diagnostics");
+        actor.ReceivedCalls().All(call => call.GetMethodInfo().Name == nameof(IAggregateActor.InspectSourceProofAsync)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("range")]
+    [InlineData("continuation")]
+    [InlineData("page-size")]
+    [InlineData("identity")]
+    public async Task NativeHeadInspectionKeepsOrdinaryInputValidationBeforeActorAccess(string invalid)
+    {
+        (StreamsController controller, IActorProxyFactory proxies, _, _) = CreateController();
+        BindWorkload(controller);
+        StreamReadRequest request = invalid switch
+        {
+            "range" => HeadRequest() with { FromSequence = -1 },
+            "continuation" => HeadRequest() with { ContinuationToken = new("unexpected") },
+            "page-size" => HeadRequest() with { PageSize = 0 },
+            _ => HeadRequest() with { AggregateId = "invalid/identity" },
+        };
+        AssertProblem(await controller.ReadWorkloadStreamAsync(request), StatusCodes.Status400BadRequest);
+        proxies.ReceivedCalls().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task OrdinaryNativeEventPageStillReadsRangeAndRechecksProof()
+    {
+        SourceProofInspection inspection = NativeInspection(1);
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.InspectSourceProofAsync().Returns(inspection);
+        actor.ReadNativeEventsBoundedRangeAsync(0, 1, 101, 2_097_152)
+            .Returns(new SourceEventRange([BuildEnvelope(1)], 1));
+        (StreamsController controller, _, _, _) = CreateController(actor);
+        BindWorkload(controller);
+
+        StreamReadPage page = (await controller.ReadWorkloadStreamAsync(HeadRequest() with { ToSequence = null }))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<StreamReadPage>();
+        page.Events.Single().SequenceNumber.ShouldBe(1);
+        page.Events.Single().NativeEventDigest.ShouldBe(SourceProofCodec.ComputeEventHash(BuildEnvelope(1)));
+        page.Metadata.EventCount.ShouldBe(1);
+        page.Metadata.NativeProof.ShouldBe(SourceProofCodec.ToNative(inspection.Proof!));
+        await actor.Received(2).InspectSourceProofAsync();
+        await actor.Received(1).ReadNativeEventsBoundedRangeAsync(0, 1, 101, 2_097_152);
+    }
+
+    private static StreamReadRequest HeadRequest()
+        => new(Tenant, Domain, AggregateId, FromSequence: 0, ToSequence: 0) { RequireNativeProof = true };
+
+    private static SourceProofInspection NativeInspection(int head, int retainedFloor = 1)
+    {
+        var identity = new AggregateIdentity(Tenant, Domain, AggregateId);
+        SourceProof proof = SourceProofCodec.CreateSeed(identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        for (int sequence = 1; sequence <= head; sequence++) proof = SourceProofCodec.Extend(proof, BuildEnvelope(sequence));
+        proof = proof with { RetainedFloor = retainedFloor };
+        return new(SourceProofInspectionStatus.Available, true, head, false, proof);
+    }
+
+    private static IAggregateActor HeadOnlyActor(SourceProofInspection inspection)
+    {
+        IAggregateActor actor = Substitute.For<IAggregateActor>();
+        actor.InspectSourceProofAsync().Returns(inspection);
+        actor.GetStreamMetadataAsync().ThrowsAsync(new InvalidOperationException("Metadata inspection used legacy stream read."));
+        actor.ReadEventsRangeAsync(Arg.Any<long>(), Arg.Any<long?>(), Arg.Any<int>())
+            .ThrowsAsync(new InvalidOperationException("Metadata inspection fetched events."));
+        actor.ReadNativeEventsBoundedRangeAsync(Arg.Any<long>(), Arg.Any<long>(), Arg.Any<int>(), Arg.Any<int>())
+            .ThrowsAsync(new InvalidOperationException("Metadata inspection fetched native events."));
+        return actor;
+    }
+
+    private static void BindWorkload(StreamsController controller, string workload = "projects")
+        => controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(EventStoreWorkloadAuthenticationDefaults.WorkloadClaimType, workload),
+            new Claim(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType, Tenant),
+            new Claim(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType, Domain),
+        ], "test-workload"));
 
     [Fact]
     public async Task ReadStreamAsyncWithInvalidRangeRejectsBeforeActorProxy() {
@@ -501,7 +862,8 @@ public class StreamsControllerTests {
 
     private static (StreamsController Controller, IActorProxyFactory ActorProxyFactory, FakeTenantValidator TenantValidator, FakeRbacValidator RbacValidator) CreateController(
         IAggregateActor? actor = null,
-        IEventPayloadProtectionService? payloadProtectionService = null) {
+        IEventPayloadProtectionService? payloadProtectionService = null,
+        IConfiguration? configuration = null) {
         IActorProxyFactory actorProxyFactory = Substitute.For<IActorProxyFactory>();
         if (actor is not null) {
             _ = actorProxyFactory
@@ -520,7 +882,8 @@ public class StreamsControllerTests {
             tenantValidator,
             rbacValidator,
             NullLogger<StreamsController>.Instance,
-            payloadProtectionService) {
+            payloadProtectionService,
+            configuration) {
             ControllerContext = new ControllerContext {
                 HttpContext = new DefaultHttpContext {
                     User = new ClaimsPrincipal(new ClaimsIdentity([

@@ -13,4 +13,4 @@ namespace Hexalith.EventStore.Contracts.Streams;
 /// <param name="Erased">Whether the native source is erased.</param>
 public sealed record NativeSourceProof(int CodecVersion, string TenantId, string Domain, string AggregateId,
     string SourceIncarnation, long HeadSequence, string? HeadMessageId, string CumulativeDigest,
-    long RetainedFloor, bool Erased);
+    long RetainedFloor, [property: System.Text.Json.Serialization.JsonRequired] bool Erased);
