@@ -190,8 +190,21 @@ class Store:
             require(target.parent == target.parent.resolve()
                     and (expected.st_dev, expected.st_ino) == (target.parent.stat().st_dev, target.parent.stat().st_ino),
                     "artifact directory substituted")
+            def read_published():
+                # A peer dropping its temporary hard link changes ctime without changing
+                # the published bytes. Retry that race and still reject a different payload.
+                changed = None
+                for _ in range(3):
+                    try:
+                        return bounded_file(target, len(data), max(READ_BYTES, MANIFEST_BYTES))
+                    except InvalidPacket as error:
+                        if str(error) != "artifact changed while reading":
+                            raise
+                        changed = error
+                raise changed
+
             if target.exists() or target.is_symlink():
-                require(bounded_file(target, len(data), max(READ_BYTES, MANIFEST_BYTES)) == data, "immutable artifact collision")
+                require(read_published() == data, "immutable artifact collision")
                 return str(target)
             fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=parent)
             with os.fdopen(fd, "wb") as handle:
@@ -203,7 +216,7 @@ class Store:
                 # link is exclusive and publishes the already-complete inode atomically.
                 os.link(temporary, name, src_dir_fd=parent, dst_dir_fd=parent, follow_symlinks=False)
             except FileExistsError:
-                require(bounded_file(target, len(data), max(READ_BYTES, MANIFEST_BYTES)) == data, "immutable artifact collision")
+                require(read_published() == data, "immutable artifact collision")
             os.fsync(parent)
             require(target.parent == target.parent.resolve()
                     and (target.parent.stat().st_dev, target.parent.stat().st_ino) == (expected.st_dev, expected.st_ino),
