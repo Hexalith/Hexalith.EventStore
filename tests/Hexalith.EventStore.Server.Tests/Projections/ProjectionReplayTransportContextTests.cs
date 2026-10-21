@@ -19,8 +19,9 @@ public sealed class ProjectionReplayTransportContextTests
         ProjectionDispatchRequest request = Request();
         typeof(ProjectionRequest).GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(static property => property.Name).Order().ShouldBe(new[]
-            { "AggregateId", "Domain", "EventEvolutionProof", "Events", "RebuildSourceErased",
-                "RebuildSourceHeadSequence", "TenantId", "VerifiedEffectiveEvents" });
+            { "AggregateId", "Domain", "EventEvolutionProof", "Events", "NativeSourceProof",
+                "RebuildSourceErased", "RebuildSourceHeadSequence", "TenantId",
+                "VerifiedEffectiveEvents", "VerifiedNativeSourceProof" });
         string json = JsonSerializer.Serialize(request.Request, JsonSerializerOptions.Web);
         json.ShouldBe("{\"tenantId\":\"tenant-a\",\"domain\":\"counter\",\"aggregateId\":\"counter-1\",\"events\":[],\"rebuildSourceHeadSequence\":1}");
         ProjectionDispatchRequest publicCopy = JsonSerializer.Deserialize<ProjectionDispatchRequest>(
