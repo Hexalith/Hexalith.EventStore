@@ -63,7 +63,9 @@ public sealed partial class SecretsProtectionTests
             // Malformed/control-prefixed JSON cannot establish schema recognition.
             Scan(content, encoding is "malformed-utf8" or "control-prefix");
             Scan(content + " trailing-text", true);
-            Scan(content.Replace("10.0.0.0", RandomSecret(), StringComparison.Ordinal), true);
+            // Base64 can accidentally be a valid NuGet version (for example a digit plus
+            // build metadata). This rejection control must generate an invalid version.
+            Scan(content.Replace("10.0.0.0", "credential-" + RandomSecret(), StringComparison.Ordinal), true);
             Scan(content.Replace(package, "database.password", StringComparison.Ordinal), true);
             Scan(new JsonObject { [package] = "10.0.0.0" }.ToJsonString(), true);
             if (shape == "central")

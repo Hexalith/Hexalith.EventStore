@@ -22,6 +22,8 @@ public sealed partial class SecretsProtectionTests
             "tools/tests/test_p1r_evidence_storage.py",
             "tools/tests/test_p1r_published_qualification.py",
             "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.BoundedEvidence.cs",
+            "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.ScanPerformance.cs",
+            "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs",
             "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/independent-repair-audit.py",
             "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-and-audit.py",
             "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verify-repair.py",
