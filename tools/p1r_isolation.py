@@ -131,7 +131,8 @@ def handoff_executor_output(command, wrapper_output, binding, source_root, outpu
     require(command_source_root(command) == source_root and output_was_absent,
             "executor ownership handoff lacks an invocation-owned output")
     run = Path(command[4])
-    require(run != ROOT and not run.is_relative_to(ROOT) and run == run.resolve() and run.is_dir(),
+    require(run != ROOT and not run.is_relative_to(ROOT) and run.parent == Path(wrapper_output).parent
+            and run == run.resolve() and run.is_dir(),
             "executor ownership output escaped verifier")
     require(binding.get("repository") == str(ROOT), "executor ownership source root substituted")
     source_path, execution_path = run / "executor-source.json", run / "execution.json"
@@ -447,14 +448,18 @@ def sdk_arguments(workspace, repository, invocation, daemon, volume, source_path
 class IsolatedRunner:
     """Own only exact outer container/volume identities carrying this invocation label."""
 
-    def __init__(self, output, workspace=None, outer_host=None, source_root=None):
+    def __init__(self, output, workspace=None, outer_host=None, source_root=None, source_builds_root=None):
         with signal_handling():
-            self.initialize(output, workspace, outer_host, source_root)
+            self.initialize(output, workspace, outer_host, source_root, source_builds_root)
 
-    def initialize(self, output, workspace=None, outer_host=None, source_root=None):
+    def initialize(self, output, workspace=None, outer_host=None, source_root=None, source_builds_root=None):
         self.owns_attempt = False
         self.output = Path(output).absolute()
         self.source_root = Path(source_root).absolute() if source_root is not None else None
+        self.source_builds_root = Path(source_builds_root).absolute() if source_builds_root is not None else None
+        for checkout in (ROOT, self.source_root, self.source_builds_root):
+            if checkout is not None:
+                storage.external_path(self.output.parent, checkout)
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
         self.invocation = uuid.uuid4().hex
         # The sole evidence bind must be created by this invocation. Adopting an
@@ -498,8 +503,9 @@ class IsolatedRunner:
             if self.source_root is not None:
                 validate_workspace(self.source_root, self.source_root, self.outer_host)
                 self.result["source_root"] = str(self.source_root)
-                self.controller_binding = preparation.source_binding(ROOT, self.source_root)
-                self.result["controller_source_binding"] = self.controller_binding
+                if self.source_builds_root is None:
+                    self.controller_binding = preparation.source_binding(ROOT, self.source_root)
+                    self.result["controller_source_binding"] = self.controller_binding
             validate_external_root(self.external_root, ROOT, self.outer_host)
             self.result["external_root"] = str(self.external_root)
             self.result["outer_host"] = self.outer_host
@@ -886,17 +892,32 @@ def main(arguments=None):
         return inner(args.out, args.outer_id, command, args.source_root)
     output = args.out or storage.default_root() / ("attempt-" + uuid.uuid4().hex) / "isolation"
     runner = IsolatedRunner.__new__(IsolatedRunner)
-    failure = None
+    failure, summary_checked = None, False
+    known_roots = [args.source_root.absolute()] if args.source_root is not None else []
     try:
+        if args.summary_out is not None:
+            storage.validate_summary_destination(output, args.summary_out)
+            summary_checked = True
         with signal_handling():
-            runner.initialize(output, args.workspace, args.outer_host, args.source_root)
+            paths = source_arguments(command)
+            selected_source = paths[0] if paths else command_source_root(command)
+            known_roots.extend(paths or ((selected_source,) if selected_source is not None else ()))
+            for checkout in known_roots:
+                storage.external_path(Path(output).absolute().parent, checkout)
+            require(args.source_root is None or selected_source is None or args.source_root.absolute() == selected_source,
+                    "controller and child selected source roots differ")
+            runner.initialize(output, args.workspace, args.outer_host,
+                args.source_root or selected_source, paths[1] if paths else None)
         code = runner.run(command)
     except (Exception, KeyboardInterrupt) as error:
         code = 130 if isinstance(error, KeyboardInterrupt) else 2
         failure = str(error) if isinstance(error, InvalidPacket) else type(error).__name__
         print(json.dumps({"error": failure, "p1r_usable": False}), file=sys.stderr)
-    if args.summary_out is not None:
+    if args.summary_out is not None and summary_checked:
         try:
+            if not getattr(runner, "owns_attempt", False):
+                for checkout in known_roots:
+                    storage.external_path(storage.default_root() / ".summary-artifacts", checkout)
             store = (runner.storage if getattr(runner, "owns_attempt", False) and hasattr(runner, "storage") else
                 storage.Store(storage.default_root() / ".summary-artifacts", storage.context(uuid.uuid4().hex, ROOT)))
             # A rejected destination belongs to someone else. Export an absent

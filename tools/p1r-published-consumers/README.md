@@ -366,6 +366,20 @@ outcome, and one external complete-index reference. Full journals, generated
 reports, videos, traces, archives and screenshot trees are excluded from new Git
 admission; existing tracked historical packets remain inputs.
 
+For an existing owner-selected input document in the mounted workspace:
+
+```sh
+python3 tools/p1r-published-executor.py run \
+  --inputs ./owner-inputs.json --summary-out ./attempt-summary
+```
+
+The summary directory must be fresh and must not overlap either full packet.
+Both CLIs check this before capture starts and recheck it during exclusive export.
+Qualification `prepare` packets also require an external destination, including
+when importing receipts or using a synthetic verifier. They refuse destinations
+inside the tooling, source or Builds checkouts, or an enclosing checkout, before
+creating packet files.
+
 Every retained command stores its complete raw bytes once in a private content-addressed
 object directory. Repeated case/cleanup references reuse those bytes. Inventory
 payloads and final preservation files use the same store. Command metadata binds
@@ -380,7 +394,10 @@ indexes or output-dependent committed file count.
 Commands captured with `retain=False` remain hash-only: their output produces no
 payload or excerpt and cannot satisfy an output-dependent witness. Payloads and
 aggregate materialization I/O/decoded bytes are bounded at 256 MiB; manifests
-are bounded at 1 MiB. Exceeding a reader budget refuses the proof.
+are bounded at 1 MiB. Summary export keeps an immutable copy of packet members
+for its complete index; the combined packet-copy, manifest and complete-index bytes are
+bounded at 256 MiB per export. Identical packet members reuse one stored payload.
+Exceeding a capture or reader budget refuses the operation.
 
 For materialization, use `p1r_evidence_storage.command_text(row, enclosing)` for
 commands, `preserved_bytes(reference, enclosing)` for retained files, or
@@ -393,8 +410,14 @@ objects refuse the witness. Unknown versions and mixed inline/external forms
 are rejected. Historical inline packets retain their original hashes and exact
 membership checks. Source-binding validation remains authoritative.
 
-Local captures are diagnostic-only, retained for 30 days. A hold retains required
-bytes beyond expiry; this producer does not automatically delete objects. Moving
+Local captures are diagnostic-only, retained for 30 days. The storage owner can
+call `Store(external_artifact_root, enclosing).place_hold(reference)` for each
+required artifact, even after its diagnostic retention expires. This verifies
+the complete bytes and original identity, then writes a separate immutable hold
+record in the private `holds/` directory. It changes no manifest, receipt hash or
+approval. Readers consult that exact owner-written record to preserve required
+bytes beyond expiry. Keep holds with the object/manifest root; a hold for another
+artifact never extends retention. This producer does not automatically delete objects. Moving
 a summary does not move its proof: retain its entire object/manifest root and
 materialize using the recorded locators. Before treating any bytes as enduring
 acceptance evidence, a separately governed storage service must provide durable

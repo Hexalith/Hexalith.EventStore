@@ -65,6 +65,39 @@ def verifier_rows(raw):
 
 
 class SeparateRootExecutorTests(unittest.TestCase):
+    def testSelectedCheckoutDestinationsRefuseBeforeConstructorOrCliWrites(self):
+        import p1r_isolation as isolation
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            source,builds=root/'source',root/'builds'
+            source.mkdir();builds.mkdir()
+            planning=root/'planning.json';planning.write_text('{"candidate_proposed":{}}')
+            for checkout in (source,builds):
+                output=checkout/'attempt/packet'
+                with self.subTest(constructor=checkout),mock.patch.object(preparation,'source_binding') as binding:
+                    with self.assertRaisesRegex(preparation.InvalidPacket,'inside checkout'):
+                        executor.Executor(output,source_root=source,source_builds_root=builds)
+                    binding.assert_not_called()
+                    self.assertFalse(output.parent.exists())
+                for private in (False,True):
+                    for kind in ('run','observe'):
+                        with self.subTest(checkout=checkout,private=private,kind=kind):
+                            cli=self.cli()
+                            arguments=[kind,'--out',str(output),'--source-root',str(source),'--source-builds-root',str(builds)]
+                            arguments+=['--inputs',str(planning)] if kind=='run' else ['--planning-observations',str(planning),'--selection-reference','control']
+                            with mock.patch.object(cli,'validate_execution_inputs'),mock.patch.object(cli,'validate_observation_inputs'), \
+                                    mock.patch.object(qualification,'load_document',return_value=({'candidate':{}},b'{}','owner-selected')), \
+                                    mock.patch.object(isolation,'private_proof'),mock.patch.object(subprocess,'run') as docker, \
+                                    mock.patch.object(subprocess,'check_output') as context, \
+                                    mock.patch.dict(os.environ,{isolation.MARKER:'a'*32} if private else {},clear=True), \
+                                    contextlib.redirect_stderr(io.StringIO()):
+                                self.assertEqual(cli.main(arguments),2)
+                                with mock.patch.object(storage,'default_root',return_value=checkout/'diagnostics'):
+                                    self.assertEqual(cli.main(arguments+['--summary-out',str(root/'summary')]),2)
+                            docker.assert_not_called();context.assert_not_called()
+                            self.assertFalse(output.parent.exists())
+                            self.assertFalse((checkout/'diagnostics').exists())
+
     def testSuccessfulObservationEmitsToolingPinsAndAdmitsTheSelectedReleaseRoots(self):
         with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
             selected = separate_inputs(f)
@@ -1029,30 +1062,62 @@ class CurrentSourceReadinessSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
 class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
     candidate_version = '3.122.1'
 
+    def testExternalIsolationMarkersRefuseInlinePreservationAndCommandDowngrades(self):
+        for defect in ('wrapper','private','execution','commands','stdout'):
+            with self.subTest(defect=defect):
+                receipt,context=self.import_fixture(scope='operational')
+                self.assertEqual(qualification.receipt_outcome(receipt,context)[2]['execution'],'passed')
+                references=receipt['execution_evidence']['isolation']
+                enclosing=storage.receipt_context(receipt,context['source_binding'],context['inputs']['value'])
+                if defect in ('wrapper','private','execution'):
+                    record=references[defect]
+                    data=storage.preserved_bytes(record,enclosing)
+                    record.pop('content_ref');record['content']=data.decode()
+                else:
+                    record=references['wrapper']
+                    value=json.loads(storage.preserved_bytes(record,enclosing))
+                    if defect=='commands':
+                        value['commands']=storage.materialize(value['commands'],value['evidence_context'])
+                    else:
+                        value['command_stdout']=storage.command_text(value.pop('command_stdout_command'),value['evidence_context'])
+                    path=Path(record['path']);executor.write_json(path,value)
+                    store=storage.Store(path.parent.parent/'.p1r-artifacts',enclosing)
+                    record.clear();record.update(storage.preserve_file(store,path))
+                receipt['output_sha256']=executor.digest(executor.canonical(receipt['execution_evidence']))
+                with self.assertRaisesRegex(preparation.InvalidPacket,'mixed inline/external isolation'):
+                    qualification.receipt_outcome(receipt,context)
+
     @staticmethod
     def change_isolation(receipt,name,mutate):
         reference = receipt['execution_evidence']['isolation']
         record = reference[name]
-        value = json.loads(storage.preserved_bytes(record, storage.receipt_context(receipt, receipt["execution_evidence"]["executor_source"],
-            json.loads((Path(reference["execution"]["path"]).parent / "inputs.json").read_bytes()))))
+        enclosing = storage.receipt_context(receipt, receipt["execution_evidence"]["executor_source"],
+            json.loads((Path(reference["execution"]["path"]).parent / "inputs.json").read_bytes()))
+        value = json.loads(storage.preserved_bytes(record, enclosing))
+        original = copy.deepcopy(value)
         if name == 'wrapper':
             value = storage.materialize(value, value.get('evidence_context', {}))
         mutate(value)
+        if name == 'wrapper' and 'evidence_context' in original:
+            command_store = storage.Store(Path(original['external_root']) / '.p1r-artifacts', original['evidence_context'])
+            for command in value['commands']:
+                if isinstance(command.get('output'), str):
+                    command_store.command(command, command.pop('output').encode())
+            if 'command_stdout' in value:
+                command = copy.deepcopy(original['command_stdout_command'])
+                command_store.command(command, value.pop('command_stdout').encode())
+                value['command_stdout_command'] = command
         path = Path(record['path'])
         executor.write_json(path,value)
-        data = path.read_bytes()
-        record.pop('content_ref', None)
-        record.update(content=data.decode(),sha256=executor.digest(data))
+        preservation_store = storage.Store(Path(reference['execution']['path']).parent.parent / '.p1r-artifacts', enclosing)
+        record.clear();record.update(storage.preserve_file(preservation_store, path))
         if name == 'private':
             wrapper = reference['wrapper']
-            value = json.loads(storage.preserved_bytes(wrapper, storage.receipt_context(receipt, receipt["execution_evidence"]["executor_source"],
-                json.loads((Path(reference["execution"]["path"]).parent / "inputs.json").read_bytes()))))
+            value = json.loads(storage.preserved_bytes(wrapper, enclosing))
             value['private_execution']['sha256'] = record['sha256']
             path = Path(wrapper['path'])
             executor.write_json(path,value)
-            data = path.read_bytes()
-            wrapper.pop('content_ref', None)
-            wrapper.update(content=data.decode(),sha256=executor.digest(data))
+            wrapper.clear();wrapper.update(storage.preserve_file(preservation_store, path))
         receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
 
     def testOperationalImportRequiresMatchingSuccessfulFinalIsolationAndActualAbsenceCommands(self):
@@ -2969,8 +3034,7 @@ class PublishedPatchSourceTests(unittest.TestCase):
         self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.127.0','snapshot-tail','source-to-3.110.0'))
 
 
-if __name__ == "__main__":
-    unittest.main()
+
 
 
 class ReviewedExecutorFinalizationTests(unittest.TestCase):
@@ -3080,6 +3144,121 @@ class ReviewedExecutorSummaryTests(unittest.TestCase):
         cli = importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
         return cli
 
+    def testCliRelaysCompleteVerifiedExternalStdoutAndRefusesDeletedPayload(self):
+        import p1r_isolation as isolation
+        for missing in (False, True):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary);planning = root/'planning.json';planning.write_text('{}')
+                proof = storage.Store(root/'proof',storage.context('a'*32,preparation.ROOT))
+                payload = {'out':str(root/'packet'),'sentinel':uuid.uuid4().hex,'errors':[],'p1r_usable':False}
+                row = proof.command({'id':1,'argv':['docker','exec','sdk'],'cwd':str(root),
+                    'started_utc':'a','finished_utc':'b','exit_code':0},b' '*4096+json.dumps(payload).encode()+b'\n')
+                if missing:Path(row['output_ref']['artifact']['locator']).unlink()
+                class Runner:
+                    def __init__(self, output):
+                        self.output,self.storage = output,proof
+                        self.result = {'errors':[],'passed':True,'command_stdout_command':row}
+                    def run(self, command):return 0
+                cli = self.cli()
+                with mock.patch.object(isolation,'IsolatedRunner',Runner), \
+                        mock.patch.object(cli,'validate_observation_inputs'),mock.patch.dict(os.environ,{},clear=True), \
+                        contextlib.redirect_stdout(io.StringIO()) as output,contextlib.redirect_stderr(io.StringIO()):
+                    code = cli.main(['observe','--out',str(root/'packet'),'--planning-observations',str(planning),
+                        '--selection-reference','control'])
+                self.assertEqual(code,2 if missing else 0)
+                if not missing:
+                    response = json.loads(output.getvalue())
+                    self.assertEqual(response['sentinel'],payload['sentinel'])
+                    self.assertTrue(response['isolation_passed'])
+                else:self.assertNotIn(payload['sentinel'],output.getvalue())
+
+    def testDefaultExternalLayoutUsesFreshOwnedParentsWithAndWithoutRootOverride(self):
+        import p1r_isolation as isolation
+        original = isolation.IsolatedRunner
+        for override in (False, True):
+            with self.subTest(override=override),tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary);planning=root/'planning.json';planning.write_text('{}')
+                environment = {'HEXALITH_P1R_EVIDENCE_ROOT':str(root/'custom')} if override else {}
+                expected = root/'custom' if override else root/'home/.local/share/hexalith/p1r-evidence'
+                observed = []
+                test = self
+                class Runner(original):
+                    def run(self, command):
+                        test.addCleanup(lambda:shutil.rmtree(self.scratch,ignore_errors=True))
+                        packet = Path(command[command.index('--out')+1])
+                        packet.mkdir()
+                        observed.append((packet,self.output,self.owns_attempt))
+                        self.result.update(command_stdout=json.dumps({'out':str(packet),'errors':[]}),passed=True)
+                        return 0
+                cli=self.cli()
+                with mock.patch.dict(os.environ,environment,clear=True),mock.patch.object(Path,'home',return_value=root/'home'), \
+                        mock.patch.object(isolation,'IsolatedRunner',Runner),mock.patch.object(cli,'validate_observation_inputs'), \
+                        mock.patch.object(cli,'validate_execution_inputs'), \
+                        mock.patch.object(qualification,'load_document',return_value=({},b'{}','owner-selected')), \
+                        mock.patch.object(preparation,'git',return_value=b''), \
+                        mock.patch.object(isolation,'validate_workspace',return_value=preparation.ROOT), \
+                        mock.patch.object(subprocess,'check_output',return_value=b'unix:///outer.sock'), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    for kind in ('observe','run'):
+                        for _ in range(2):
+                            arguments = ['observe','--planning-observations',str(planning),'--selection-reference','control'] if kind=='observe' else ['run','--inputs',str(root/'inputs.json')]
+                            self.assertEqual(cli.main(arguments),0)
+                self.assertEqual(len({packet.parent for packet,_,_ in observed}),4)
+                for packet,outer,owned in observed:
+                    self.assertEqual(packet.name,'packet')
+                    self.assertRegex(packet.parent.name,r'^attempt-[0-9a-f]{32}$')
+                    self.assertEqual(packet.parent.parent,expected)
+                    self.assertEqual(outer,packet.with_name('packet-isolation'))
+                    self.assertTrue(packet.is_dir() and outer.is_dir() and owned)
+
+    def testInvalidSummaryDestinationsRefuseBeforeInputsOrProvisioning(self):
+        import p1r_isolation as isolation
+        for defect in ('existing','packet','isolation','ancestor','substituted'):
+            with self.subTest(defect=defect),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary);packet=root/'attempt/packet'
+                destination=root/'summary'
+                if defect=='existing':destination.mkdir()
+                elif defect=='packet':destination=packet/'summary'
+                elif defect=='isolation':destination=packet.with_name('packet-isolation')/'summary'
+                elif defect=='ancestor':destination=packet.parent
+                elif defect=='substituted':
+                    (root/'actual').mkdir();(root/'link').symlink_to(root/'actual',target_is_directory=True)
+                    destination=root/'link/summary'
+                cli=self.cli()
+                with mock.patch.object(isolation,'IsolatedRunner') as runner, \
+                        mock.patch.object(qualification,'regular') as read, \
+                        mock.patch.dict(os.environ,{},clear=True),contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(cli.main(['observe','--out',str(packet),'--planning-observations',str(root/'planning'),
+                        '--selection-reference','control','--summary-out',str(destination)]),2)
+                read.assert_not_called();runner.assert_not_called()
+                self.assertFalse(packet.parent.exists())
+
+    def testObserveHashesTheExactPlanningBytesItParsed(self):
+        import p1r_isolation as isolation
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);path=root/'planning.json'
+            original=b'{"candidate_proposed":{"version":"first"}}'
+            path.write_bytes(original)
+            actual=qualification.regular
+            reads=[]
+            def read(selected):
+                data=actual(selected)
+                if selected==path:
+                    reads.append(data);path.write_bytes(b'{"candidate_proposed":{"version":"changed"}}')
+                return data
+            worker=mock.Mock(errors=[])
+            cli=self.cli()
+            with mock.patch.object(qualification,'regular',side_effect=read), \
+                    mock.patch.object(cli,'Executor',return_value=worker) as constructor, \
+                    mock.patch.object(cli,'validate_observation_inputs'),mock.patch.object(isolation,'private_proof'), \
+                    mock.patch.dict(os.environ,{isolation.MARKER:'a'*32},clear=True), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main(['observe','--out',str(root/'packet'),'--planning-observations',str(path),
+                    '--selection-reference','control']),0)
+            self.assertEqual(reads,[original])
+            self.assertEqual(constructor.call_args.kwargs['observation'],json.loads(original))
+            self.assertEqual(constructor.call_args.kwargs['observation_sha256'],preparation.digest(original))
+
     def testRequestedSummarySurvivesAdmissionFailureBeforeChildCreation(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -3157,7 +3336,9 @@ class ReviewedExecutorSummaryTests(unittest.TestCase):
                 if existing:self.assertEqual(paths,set())
                 else:
                     self.assertIn('execution.json',paths)
-                    self.assertGreaterEqual(summary['outcome']['cleanup']['attempts'],4)
+                    self.assertEqual(summary['outcome']['cleanup']['attempts'],2)
+                    execution = json.loads((packet/'execution.json').read_bytes())
+                    self.assertEqual(execution['errors'],['initialization: owned initialization control'])
                 self.assertEqual(foreign.read_bytes(),data)
                 self.assertFalse(summary['isolation_proof'])
                 for path in root.rglob('*'):
@@ -3226,3 +3407,7 @@ class ReviewedExecutorSummaryTests(unittest.TestCase):
             self.assertEqual(summary['outcome']['status'],'failed')
             self.assertEqual(summary['outcome']['cleanup']['remaining'],1)
             self.assertIn('isolation.json',summary['isolation_proof'])
+
+
+if __name__ == "__main__":
+    unittest.main()

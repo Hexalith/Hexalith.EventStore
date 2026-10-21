@@ -27,6 +27,22 @@ from p1r_isolation_fixture import submitted_mounts
 
 
 class PrivateEndpointTests(unittest.TestCase):
+    def testStandaloneInvalidSummaryDestinationRefusesBeforeInitializationOrDocker(self):
+        for defect in ('existing','inside','ancestor'):
+            with self.subTest(defect=defect),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory);output=root/'attempt/isolation'
+                summary=root/'summary'
+                if defect=='existing':summary.mkdir()
+                elif defect=='inside':summary=output/'summary'
+                else:summary=output.parent
+                with mock.patch.object(isolation.IsolatedRunner,'initialize') as initialize, \
+                        mock.patch.object(subprocess,'run') as docker,contextlib.redirect_stdout(io.StringIO()), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(isolation.main(['--out',str(output),'--summary-out',str(summary),
+                        '--','python3','-c','pass']),2)
+                initialize.assert_not_called();docker.assert_not_called()
+                self.assertFalse(output.parent.exists())
+
     def testInterruptedInitializationRetainsIts130SummaryOutcome(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -100,6 +116,47 @@ class PrivateEndpointTests(unittest.TestCase):
 
 
 class SeparateSourceMountTests(unittest.TestCase):
+    def testConflictingStandaloneAndChildRootsRefuseBeforeAnyWritesIncludingSummaryFallback(self):
+        for summary in (False,True):
+            with self.subTest(summary=summary),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary)
+                outer,child=root/'outer-source',root/'child-source'
+                outer.mkdir();child.mkdir()
+                output=child/'attempt/isolation'
+                command=['python3',str(isolation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(output.with_name('packet')),
+                    '--inputs',str(root/'inputs.json'),'--source-root',str(child)]
+                args=['--out',str(output),'--source-root',str(outer)]
+                if summary:args+=['--summary-out',str(root/'summary')]
+                with mock.patch.object(storage,'default_root',return_value=child/'diagnostics'), \
+                        mock.patch.object(isolation.IsolatedRunner,'initialize') as initialized, \
+                        mock.patch.object(subprocess,'run') as docker,mock.patch.object(subprocess,'check_output') as context, \
+                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(isolation.main([*args,'--',*command]),2)
+                initialized.assert_not_called();docker.assert_not_called();context.assert_not_called()
+                self.assertEqual(list(child.iterdir()),[])
+                self.assertFalse((root/'summary').exists())
+
+    def testSelectedSourceAndBuildsDestinationsRefuseBeforeAttemptAdmission(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            source,builds=root/'source',root/'builds'
+            source.mkdir();builds.mkdir()
+            for checkout in (source,builds):
+                output=checkout/'attempt/isolation'
+                with self.subTest(checkout=checkout),mock.patch.object(subprocess,'run') as docker, \
+                        mock.patch.object(subprocess,'check_output') as context:
+                    with self.assertRaisesRegex(preparation.InvalidPacket,'inside checkout'):
+                        isolation.IsolatedRunner(output,source_root=source,source_builds_root=builds)
+                    command=['python3',str(isolation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(output.with_name('packet')),
+                        '--inputs',str(root/'inputs.json'),'--source-root',str(source),'--source-builds-root',str(builds)]
+                    with contextlib.redirect_stderr(io.StringIO()),contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(isolation.main(['--out',str(output),'--',*command]),2)
+                        with mock.patch.object(storage,'default_root',return_value=checkout/'diagnostics'):
+                            self.assertEqual(isolation.main(['--out',str(output),'--summary-out',str(root/'summary'),'--',*command]),2)
+                    docker.assert_not_called();context.assert_not_called()
+                    self.assertFalse(output.parent.exists())
+                    self.assertFalse((checkout/'diagnostics').exists())
+
     def testSingleSourceObserveRetainsItsSelectionReferenceAndExactSuffix(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -151,6 +208,16 @@ class SeparateSourceMountTests(unittest.TestCase):
 
 
 class ControllerTests(unittest.TestCase):
+    def testExecutorPacketPlacementRefusalsPrecedeEveryDockerCall(self):
+        existing = self.worker.external_root/'existing';existing.mkdir()
+        for packet in (self.worker.external_root.parent/'foreign-packet',self.worker.output,existing):
+            with self.subTest(packet=packet),mock.patch.object(self.worker,'docker') as docker:
+                command=['python3',str(self.worker.workspace/'tools/p1r-published-executor.py'),'run',
+                    '--out',str(packet),'--inputs',str(self.worker.workspace/'inputs.json')]
+                self.assertEqual(self.worker._run(command),2)
+                self.assertIn('executor packet is outside the owned attempt directory or already exists',self.worker.result['errors'])
+                docker.assert_not_called()
+
     def testObservePlanningIdentitySurvivesProvisioningAndRefusesChangedBytes(self):
         for changed in (False,True):
             with self.subTest(changed=changed):
@@ -921,7 +988,7 @@ class ExecutorOutputOwnershipTests(unittest.TestCase):
                                      [str(run),str(run/'receipts')])
 
     def testSubstitutedOwnershipCommandSourceReceiptOrExistingOutputCannotBeChowned(self):
-        for mutation in ('command','source','receipt','existing','root','input'):
+        for mutation in ('command','source','receipt','existing','root','inside-repository','foreign-parent','input'):
             with self.subTest(mutation=mutation),self.fixture() as (root,wrapper,run,binding,command):
                 absent=True
                 if mutation=='command':command+=['--unexpected']
@@ -931,9 +998,17 @@ class ExecutorOutputOwnershipTests(unittest.TestCase):
                     preparation.write_json(run/'execution.json',value)
                 elif mutation=='existing':absent=False
                 elif mutation=='root':command[4]=str(root.parent)
+                elif mutation in ('inside-repository','foreign-parent'):
+                    parent=Path(binding['repository']) if mutation=='inside-repository' else root/'unowned'
+                    parent.mkdir(exist_ok=True)
+                    moved=parent/'execution';run.rename(moved);command[4]=str(moved)
+                    value=json.loads((moved/'execution.json').read_bytes())
+                    value['receipts']=[str(moved/'receipts/receipt.json')]
+                    preparation.write_json(moved/'execution.json',value)
                 else:(root/'inputs.json').write_text('substituted input')
                 with mock.patch.object(isolation.os,'chown') as chown:
-                    with self.assertRaises(preparation.InvalidPacket):
+                    reason='executor ownership output escaped verifier' if mutation in ('root','inside-repository','foreign-parent') else ''
+                    with self.assertRaisesRegex(preparation.InvalidPacket,reason):
                         isolation.handoff_executor_output(command,wrapper,binding,root/'selected-source',absent)
                     chown.assert_not_called()
 

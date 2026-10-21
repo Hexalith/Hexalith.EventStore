@@ -76,6 +76,28 @@ MISSING = object()
 
 
 class SeparateRootPacketTests(unittest.TestCase):
+    def testQualificationPacketRefusesEveryCheckoutBeforeAnyCapture(self):
+        import p1r_evidence_storage as storage
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            umbrella = base / 'umbrella';umbrella.mkdir();(umbrella / '.git').mkdir()
+            repository = umbrella / 'nested';repository.mkdir()
+            source = base / 'source';source.mkdir()
+            builds = base / 'builds';builds.mkdir()
+            for output,reason in ((repository/'packet','inside checkout'),
+                    (umbrella/'packet','inside enclosing checkout'),(source/'packet','inside checkout'),
+                    (builds/'packet','inside checkout')):
+                with self.subTest(output=output), mock.patch.object(preparation,'source_binding') as capture, \
+                        mock.patch.object(q,'load_document') as load:
+                    with self.assertRaisesRegex(q.InvalidPacket,reason):
+                        q.create_packet(output,root=repository,source_root=source,source_builds_root=builds)
+                    capture.assert_not_called();load.assert_not_called()
+                    self.assertFalse(output.exists())
+            linked = base/'link';linked.symlink_to(source,target_is_directory=True)
+            with self.assertRaisesRegex(q.InvalidPacket,'substituted'):
+                q.create_packet(linked/'packet',root=repository)
+            self.assertFalse((source/'packet').exists())
+
     def testCheckoutConsumerRootComesFromValidatedExecutorOutput(self):
         with tempfile.TemporaryDirectory() as temporary, separate_source_fixture(temporary) as f:
             binding = preparation.source_binding(f.tooling,f.pins,f.source,f.source_builds)
@@ -731,6 +753,37 @@ class InventoryAndInputTests(PacketFixture):
 
 
 class PackageEvidenceTests(PacketFixture):
+    def testExternalLaneBoundarySurvivesImportAndIndependentPacketValidation(self):
+        import p1r_evidence_storage as storage
+        support = SupportBoundaryTests();support.setUp()
+        rule,case,proof = support.proof()
+        case['checks'] = [{'id':'admission-refused','passed':True}]
+        receipt = lane_receipt('metadata-write', cases=[case])
+        receipt['fixture']['id'] = 'p1r-' + 'a' * 32
+        receipt['instrumentation'] = 'p1r-executed-checks-v1'
+        binding = q.parse_json((self.full / 'source-binding.json').read_bytes())
+        enclosing = storage.receipt_context(receipt,binding,self.inputs_value)
+        store = storage.Store(self.root / 'external-boundary-artifacts',enclosing)
+        command = proof['commands'][0]
+        command.update(id=1,cwd=str(self.root),started_utc=at(1),finished_utc=at(2))
+        store.command(command,b' ' * 4096 + command.pop('output').encode())
+        proof['id'] = case['id']
+        receipt['execution_evidence'] = {'cases':[proof]}
+        receipt['output_sha256'] = sha(preparation.canonical(receipt['execution_evidence']))
+        path = self.root / 'external-boundary-receipt.json';write(path,receipt)
+        policy = {'schema':'hexalith.p1r.support-boundary.v1','lanes':{'metadata-write':{'cases':[rule]}}}
+        # Package/source qualification has its own integration fixtures. This control
+        # isolates both call sites while running the actual external reader and boundary.
+        with mock.patch.object(q,'bind_lane'), mock.patch.object(q,'load_support_table',return_value=policy):
+            packet = q.create_packet(self.root / 'external-boundary-packet',inputs=self.inputs,receipts=[path])
+            self.assertEqual(packet['errors'],[])
+            self.assertTrue(q.validate_packet(self.root / 'external-boundary-packet')['valid'])
+            Path(command['output_ref']['artifact']['locator']).unlink()
+            with self.assertRaisesRegex(q.InvalidPacket,'artifact unavailable'):
+                q.validate_packet(self.root / 'external-boundary-packet')
+            refused = q.create_packet(self.root / 'missing-boundary-packet',inputs=self.inputs,receipts=[path])
+            self.assertTrue(any('artifact unavailable' in error for error in refused['errors']))
+
     def testProductionDefaultVerifierExternalSignatureRoundTripAndDeletionRefusal(self):
         import p1r_evidence_storage as storage
         out = self.root / "default-verifier-external-control"
@@ -2063,11 +2116,46 @@ class SupportBoundaryTests(unittest.TestCase):
         self.assertFalse(blocked["technically_qualified"])
 
 
-if __name__ == "__main__":
-    unittest.main()
+
 
 
 class ReviewedBoundaryMeasurementTests(unittest.TestCase):
+    def testMeasureCliForwardsSourceAndToolingBindingsAndRejectsUnpinnedBuilds(self):
+        import importlib.util
+        import io
+        for mode in ('default','source','tooling','unbound-builds'):
+            with self.subTest(mode=mode),tempfile.TemporaryDirectory() as directory:
+                root=Path(directory)
+                selected=root/'inputs.json';selected.write_bytes(b'{}')
+                receipt=root/'receipt.json';receipt.write_bytes(b'{}')
+                source,builds=root/'source',root/'builds'
+                selection={'candidate':{'version':'3.125.1'}}
+                if mode=='tooling':selection['tooling']={'commit':'a'*40,'fixture':'argument transport only'}
+                binding={'repository':str(root/'checkout')}
+                spec=importlib.util.spec_from_file_location('review_measure_cli',q.ROOT/'tools/p1r-published-qualification.py')
+                cli=importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
+                arguments=['measure-boundary','--inputs',str(selected),'--receipt',str(receipt),'--out',str(root/'table.json')]
+                if mode!='default':arguments+=['--source-root',str(source)]
+                if mode in ('tooling','unbound-builds'):arguments+=['--source-builds-root',str(builds)]
+                table={'status':'measured','candidate':'3.125.1','lanes':{}}
+                with mock.patch.object(cli,'load_document',return_value=(selection,b'owner inputs','owner-selected')), \
+                        mock.patch.object(preparation,'source_binding',return_value=binding) as capture, \
+                        mock.patch.object(preparation,'validate_selected_source'),mock.patch.object(preparation,'check_current_source'), \
+                        mock.patch.object(q,'validate_candidate_source'), \
+                        mock.patch.object(cli,'measure_successor_support_table',return_value=table) as measure, \
+                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                    code=cli.main(arguments)
+                self.assertEqual(code,2 if mode=='unbound-builds' else 0)
+                if mode=='unbound-builds':
+                    capture.assert_not_called();measure.assert_not_called()
+                    self.assertFalse((root/'table.json').exists())
+                    continue
+                if mode=='default':capture.assert_called_once_with()
+                elif mode=='source':capture.assert_called_once_with(preparation.ROOT,source)
+                else:capture.assert_called_once_with(preparation.ROOT,selection['tooling'],source,builds)
+                measure.assert_called_once_with(selection,[{}],{'source_binding':binding,
+                    'inputs':{'value':selection,'sha256':sha(b'owner inputs')}})
+
     def fixture(self, root, external):
         import p1r_evidence_storage as storage
         selection = q.parse_json((q.SUPPORT_BASELINE/'inputs.json').read_bytes())
@@ -2145,3 +2233,7 @@ class ReviewedBoundaryMeasurementTests(unittest.TestCase):
             changed[0]['output_sha256'] = sha(preparation.canonical(changed[0]['execution_evidence']))
             with self.assertRaisesRegex(q.InvalidPacket,'source or input binding'):
                 q.measure_successor_support_table(selection,changed,expected)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -34,10 +34,14 @@ def main(arguments=None):
     inventory.add_argument("--backend", choices=("state.postgresql", "state.redis"), default="state.postgresql")
     args = parser.parse_args(arguments)
     worker, isolation, code, failure = None, None, 2, None
+    worker_ready, summary_checked = False, False
     def construct(factory, controller, *arguments, **keywords):
-        nonlocal worker, isolation
+        nonlocal worker, isolation, worker_ready
         if args.summary_out is None:
-            return factory(*arguments, **keywords)
+            instance = factory(*arguments, **keywords)
+            if not controller:
+                worker_ready = True
+            return instance
         # Retain the actual instance if initialization fails, as the standalone
         # runner does. Constructor ownership markers decide what may be exported.
         instance = factory.__new__(factory)
@@ -46,9 +50,11 @@ def main(arguments=None):
         else:
             worker = instance
         factory.__init__(instance, *arguments, **keywords)
+        if not controller:
+            worker_ready = True
         return instance
     def perform():
-        nonlocal worker, isolation, code, failure
+        nonlocal worker, isolation, code, failure, summary_checked
         try:
             if args.command == "inventory":
                 reader = postgres_inventory if args.backend == "state.postgresql" else redis_inventory
@@ -56,6 +62,10 @@ def main(arguments=None):
                 return 0
             # Resolve every path while still in the caller's original working directory.
             args.out = (args.out or storage.default_root() / ("attempt-" + uuid.uuid4().hex) / "packet").absolute()
+            if args.summary_out is not None:
+                storage.validate_summary_destination(args.out, args.summary_out,
+                    isolation=args.out.with_name(args.out.name + "-isolation"))
+                summary_checked = True
             args.source_root = args.source_root.absolute() if args.source_root is not None else None
             args.source_builds_root = args.source_builds_root.absolute() if args.source_builds_root is not None else None
             if args.command == "run":
@@ -65,13 +75,14 @@ def main(arguments=None):
                 validate_execution_inputs(inputs, args.source_root, args.source_builds_root)
             else:
                 args.planning_observations = args.planning_observations.absolute()
-                planning = qualification.parse_json(qualification.regular(args.planning_observations))
+                planning_data = qualification.regular(args.planning_observations)
+                planning = qualification.parse_json(planning_data)
                 validate_observation_inputs(planning, args.source_root, args.source_builds_root)
             if not os.environ.get("HEXALITH_P1R_ISOLATION"):
                 from p1r_isolation import IsolatedRunner
                 isolation = construct(IsolatedRunner, True, args.out.with_name(args.out.name + "-isolation"),
-                                           **({"source_root": args.source_root} if args.source_root is not None
-                                              and args.source_builds_root is None else {}))
+                                           **({"source_root": args.source_root} if args.source_root is not None else {}),
+                                           **({"source_builds_root": args.source_builds_root} if args.source_builds_root is not None else {}))
                 forwarded = [args.command, "--out", str(args.out)]
                 forwarded += (["--inputs", str(args.inputs)] if args.command == "run" else
                               ["--planning-observations", str(args.planning_observations), "--selection-reference", args.selection_reference])
@@ -100,7 +111,7 @@ def main(arguments=None):
             if args.command == "observe":
                 worker = construct(Executor, False, args.out, source_root=args.source_root, source_builds_root=args.source_builds_root,
                                   tooling=planning.get("tooling"), observation=planning,
-                                  observation_sha256=qualification.digest(qualification.regular(args.planning_observations)))
+                                  observation_sha256=qualification.digest(planning_data))
                 worker.observe_inputs(planning, args.selection_reference)
                 worker.cleanup()
             else:
@@ -113,8 +124,8 @@ def main(arguments=None):
             code = 2 if worker.errors else 0
             return code
         except (Exception, KeyboardInterrupt) as error:
-            code, failure = 2, str(error) if isinstance(error, InvalidPacket) else type(error).__name__
-            if worker is not None and isinstance(getattr(worker, "errors", None), list) and isinstance(getattr(worker, "result", None), dict):
+            code, failure = (130 if isinstance(error, KeyboardInterrupt) else 2), str(error) if isinstance(error, InvalidPacket) else type(error).__name__
+            if worker_ready and worker is not None and isinstance(getattr(worker, "errors", None), list) and isinstance(getattr(worker, "result", None), dict):
                 worker.errors.append(str(error) if isinstance(error, InvalidPacket) else type(error).__name__)
                 try:
                     worker.cleanup()
@@ -122,15 +133,19 @@ def main(arguments=None):
                     worker.errors.append("cleanup: " + str(cleanup_error))
                     worker.save()
             print(json.dumps({"error": str(error), "p1r_usable": False}), file=sys.stderr)
-            return 2
+            return code
 
     code = perform()
-    if args.command != "inventory" and args.summary_out is not None:
+    if args.command != "inventory" and args.summary_out is not None and summary_checked:
         try:
             # Executor assigns its invocation only after exclusively creating its
             # output. The controller explicitly owns a freshly created parent.
             owned_worker = worker is not None and isinstance(getattr(worker, "invocation", None), str)
             owned_controller = isolation is not None and getattr(isolation, "owns_attempt", False) is True
+            if not owned_worker and not owned_controller:
+                for checkout in (args.source_root, args.source_builds_root):
+                    if checkout is not None:
+                        storage.external_path(storage.default_root() / ".summary-artifacts", checkout)
             store = (worker.storage if owned_worker and hasattr(worker, "storage") else
                 isolation.storage if owned_controller and hasattr(isolation, "storage") else
                 storage.Store(storage.default_root() / ".summary-artifacts", storage.context(uuid.uuid4().hex, qualification.ROOT)))

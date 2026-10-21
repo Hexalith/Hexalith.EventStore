@@ -55,6 +55,8 @@ def main(arguments=None):
             selection, data, scope = load_document(args.inputs, validate_inputs)
             if scope != "owner-selected":
                 raise InvalidPacket("successor measurement lacks owner-selected inputs")
+            if args.source_builds_root is not None and "tooling" not in selection:
+                raise InvalidPacket("source builds path requires selected tooling pins")
             binding = (preparation.source_binding(preparation.ROOT, selection["tooling"], args.source_root, args.source_builds_root)
                        if "tooling" in selection else preparation.source_binding(preparation.ROOT, args.source_root)
                        if args.source_root is not None else preparation.source_binding())

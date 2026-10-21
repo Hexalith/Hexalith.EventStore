@@ -1,5 +1,5 @@
 # generated: 2026-07-05T20:01:46+02:00
-# last_updated: 2026-10-21
+# last_updated: 2026-10-22
 # project: eventstore
 # project_key: NOKEY
 # tracking_system: file-system
@@ -175,7 +175,7 @@ development_status:
   # durable-broker qualification for the AD-26 profile; a Story 3.19 issue-step prerequisite.
   3-21-production-dapr-runtime-pin-and-durable-broker-qualification: in-progress
   # Approved 2026-10-21: bounded evidence first, retirement after consumer migration.
-  3-22-bounded-qualification-evidence-production-and-admission: in-progress
+  3-22-bounded-qualification-evidence-production-and-admission: review
   3-23-retire-bulky-qualification-evidence: backlog
   epic-3-retrospective: done
 

@@ -501,6 +501,9 @@ class Executor:
         self._versions = value
 
     def __init__(self, output, inputs=None, source_root=None, source_builds_root=None, tooling=None, inputs_sha256=None, observation=None, observation_sha256=None):
+        for checkout in (ROOT, source_root, source_builds_root):
+            if checkout is not None:
+                storage.external_path(Path(output).absolute().parent, checkout)
         selected_tooling = inputs.get("tooling") if inputs is not None else tooling
         if selected_tooling is not None:
             initial_binding = preparation.source_binding(ROOT, selected_tooling, source_root, source_builds_root)

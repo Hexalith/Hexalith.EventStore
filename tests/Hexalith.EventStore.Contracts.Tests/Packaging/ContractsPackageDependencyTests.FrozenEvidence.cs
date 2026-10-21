@@ -614,6 +614,97 @@ public sealed partial class ContractsPackageDependencyTests
             declarations, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)).ToArray());
     }
 
+    /// <summary>Preserves executable contexts reproduced by the independent closing review.</summary>
+    /// <param name="route">The executable edge or provenance boundary being inspected.</param>
+    [Theory]
+    [InlineData("workingdirectory")]
+    [InlineData("comma-properties")]
+    [InlineData("task-property-output")]
+    [InlineData("boundary-comment-spoof")]
+    [InlineData("targettime-reference-configuration")]
+    [InlineData("import-fullpath")]
+    [InlineData("exec-environment")]
+    [InlineData("msbuild-dll")]
+    [InlineData("transform-semicolon-items")]
+    [InlineData("exec-directory")]
+    [InlineData("environment-command-precedence")]
+    public async Task FrozenMsBuildEvidence_ClosingExecutableContextsAsync(string route)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "frozen-closing-context-" + Guid.NewGuid().ToString("N"));
+        string archive = Path.Combine(root, FrozenMsBuildRoots[0], "fixture");
+        Directory.CreateDirectory(archive);
+        try
+        {
+            string frozen = Path.Combine(archive, "Captured.props");
+            File.WriteAllText(frozen, "<Project />");
+            string active = Path.Combine(root, "Active.csproj");
+            File.WriteAllText(active, "<Project />");
+            XElement project = new("Project");
+            XElement target = new("Target", new XAttribute("Name", "Build"));
+            string bridge = Path.Combine(root, "Bridge.csproj");
+            XElement import = new("Import", new XAttribute("Project", frozen));
+            XElement exec = new("Exec", new XAttribute("Command", "dotnet msbuild Bridge.csproj -t:Build -nologo"));
+            if (route is "comma-properties" or "exec-environment" or "environment-command-precedence")
+                import.SetAttributeValue("Condition", "'$(SelectFrozen)' == 'true'");
+            if (route is "workingdirectory" or "exec-directory")
+            {
+                Directory.CreateDirectory(Path.Combine(root, "bridge"));
+                bridge = Path.Combine(root, "bridge", "Bridge.csproj");
+                if (route == "workingdirectory") exec.SetAttributeValue("WorkingDirectory", Path.GetDirectoryName(bridge));
+                else exec.SetAttributeValue("Command", "dotnet build bridge --no-restore -nologo");
+            }
+            if (route == "comma-properties") exec.SetAttributeValue("Command", exec.Attribute("Command")!.Value + " -p:SelectFrozen=true,Other=false");
+            if (route is "exec-environment" or "environment-command-precedence") exec.SetAttributeValue("EnvironmentVariables", "SelectFrozen=true");
+            if (route == "environment-command-precedence") exec.SetAttributeValue("Command", exec.Attribute("Command")!.Value + " -p:SelectFrozen=false");
+            if (route is "boundary-comment-spoof" or "msbuild-dll")
+            {
+                string sdk = (await EvaluateFrozenBuildProjectAsync(active, new(StringComparer.OrdinalIgnoreCase), "-getProperty:MSBuildToolsPath").ConfigureAwait(true)).Trim();
+                if (route == "boundary-comment-spoof") project.Add(new XComment("\n======================\n" + Path.Combine(sdk, "Microsoft.Common.CurrentVersion.targets") + "\n======================\n"));
+                else exec.SetAttributeValue("Command", "dotnet exec \"" + Path.Combine(sdk, "MSBuild.dll") + "\" Bridge.csproj -t:Build -nologo");
+            }
+            if (route == "task-property-output")
+            {
+                target.Add(new XElement("CreateProperty", new XAttribute("Value", "Bridge.csproj"),
+                    new XElement("Output", new XAttribute("TaskParameter", "Value"), new XAttribute("PropertyName", "ChildProject"))),
+                    new XElement("MSBuild", new XAttribute("Projects", "$(ChildProject)"), new XAttribute("Targets", "Build")));
+            }
+            else if (route == "targettime-reference-configuration")
+            {
+                project.SetAttributeValue("Sdk", "Microsoft.NET.Sdk");
+                project.Add(new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0")));
+                import.SetAttributeValue("Condition", "'$(Configuration)' == 'Selected'");
+                target.SetAttributeValue("BeforeTargets", "AssignProjectConfiguration");
+                target.Add(new XElement("ItemGroup", new XElement("ProjectReference", new XAttribute("Include", "Bridge.csproj"),
+                    new XElement("SetConfiguration", "Configuration=Selected"), new XElement("SkipGetTargetFrameworkProperties", "true"))));
+            }
+            else if (route == "import-fullpath")
+            {
+                Directory.CreateDirectory(Path.Combine(root, "imported"));
+                string imported = Path.Combine(root, "imported", "Guard.targets");
+                new XDocument(new XElement("Project", new XElement("Target", new XAttribute("Name", "Build"),
+                    new XElement("MSBuild", new XAttribute("Projects", "$(MSBuildThisFileFullPath).csproj"), new XAttribute("Targets", "Build"))))).Save(imported);
+                bridge = imported + ".csproj";
+                project.Add(new XElement("Import", new XAttribute("Project", imported)));
+            }
+            else if (route == "transform-semicolon-items")
+            {
+                File.WriteAllText(Path.Combine(root, "Safe.csproj"), "<Project />");
+                project.Add(new XElement("ItemGroup", new XElement("Aliases", new XAttribute("Include", "dummy/Bridge.txt;dummy/Safe.txt"))));
+                target.Add(new XElement("MSBuild", new XAttribute("Projects", "@(Aliases->'%(Filename).csproj')"), new XAttribute("Targets", "Build")));
+            }
+            else target.Add(exec);
+            new XDocument(new XElement("Project", import)).Save(bridge);
+            if (route != "import-fullpath") project.Add(target);
+            new XDocument(project).Save(active);
+            if (route == "environment-command-precedence")
+                await VerifyFrozenEvidenceNotBuildInputAsync(root, active).ConfigureAwait(true);
+            else
+                (await Record.ExceptionAsync(() => VerifyFrozenEvidenceNotBuildInputAsync(root, active)).ConfigureAwait(true))
+                    .ShouldBeOfType<Shouldly.ShouldAssertException>();
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     private static void VerifyFrozenMsBuildInventory(string root, string[] paths, int count, string expectedHash)
     {
         paths.Length.ShouldBe(count, "The exact frozen MSBuild evidence membership changed.");
@@ -686,6 +777,7 @@ public sealed partial class ContractsPackageDependencyTests
             await EvaluateFrozenBuildProjectAsync(project, properties, "-preprocess:" + preprocessed).ConfigureAwait(true);
             XDocument document = XDocument.Load(preprocessed);
             var owners = new Dictionary<XElement, string>();
+            var sourceComments = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
             string owner = project;
             foreach (XNode node in document.DescendantNodes())
             {
@@ -697,6 +789,16 @@ public sealed partial class ContractsPackageDependencyTests
                 static bool Separator(string line) => line.Length >= 10 && line.All(character => character == '=');
                 if (lines.Length >= 3 && Separator(lines[0]) && Separator(lines[^1]) && Path.IsPathFullyQualified(lines[^2]))
                 {
+                    // A literal source comment is not a preprocessor-generated boundary,
+                    // even when it names a real file under the installed SDK.
+                    if (!sourceComments.TryGetValue(owner, out HashSet<string>? comments))
+                    {
+                        comments = XDocument.Load(owner).DescendantNodes().OfType<XComment>()
+                            .Select(value => value.Value.Replace("\r\n", "\n", StringComparison.Ordinal).Trim())
+                            .ToHashSet(StringComparer.Ordinal);
+                        sourceComments.Add(owner, comments);
+                    }
+                    if (comments.Contains(comment.Value.Replace("\r\n", "\n", StringComparison.Ordinal).Trim())) continue;
                     AssertNotFrozenBuildInput(root, project, lines[^2]);
                     owner = lines[^2];
                 }
@@ -736,6 +838,14 @@ public sealed partial class ContractsPackageDependencyTests
                 }
             }
             foreach ((string name, string value) in properties) declarations["$" + name] = [value];
+            foreach (XElement produced in document.Descendants().Where(element => element.Name.LocalName == "Output"
+                && element.Attribute("PropertyName") is not null && !IsFrozenSdkOwner(owners[element], declarations)))
+            {
+                // Evaluation cannot prove a value produced by a task that has not run.
+                // Preserve the expression instead of treating an evaluated empty value as absence.
+                string name = produced.Attribute("PropertyName")!.Value;
+                declarations["$" + name] = declarations["?$" + name] = ["$(" + name + ")"];
+            }
             // Query real evaluated references once; this executes no targets.
             string output = await EvaluateFrozenBuildProjectAsync(project, properties,
                 "-getItem:ProjectReference", "-getProperty:TargetFrameworks,TargetFramework").ConfigureAwait(true);
@@ -781,7 +891,7 @@ public sealed partial class ContractsPackageDependencyTests
                     string value = BindDefiningDirectory(metadata.Value, owners[metadata]);
                     declarations[name] = declarations.TryGetValue(name, out string[]? prior) ? [.. prior, value] : [value];
                 }
-                foreach (XAttribute original in item.Attributes().Where(attribute => new[] { "OriginalItemSpec", "Properties", "AdditionalProperties", "GlobalPropertiesToRemove", "UndefineProperties" }
+                foreach (XAttribute original in item.Attributes().Where(attribute => new[] { "OriginalItemSpec", "Properties", "AdditionalProperties", "GlobalPropertiesToRemove", "UndefineProperties", "SetConfiguration", "SetPlatform", "SetTargetFramework" }
                     .Contains(attribute.Name.LocalName, StringComparer.OrdinalIgnoreCase)))
                 {
                     string name = "%" + item.Name.LocalName + "." + original.Name.LocalName;
@@ -799,7 +909,12 @@ public sealed partial class ContractsPackageDependencyTests
                 commands.Length.ShouldBeLessThanOrEqualTo(256, "Executable command expansion exceeded its bounded inspection budget.");
                 foreach (string expanded in commands)
                 {
-                    if (FrozenDirectExecTask(expanded) is { } task) edges.Add((task, owners[exec]));
+                    if (FrozenDirectExecTask(expanded) is { } task)
+                    {
+                        foreach (string name in new[] { "WorkingDirectory", "EnvironmentVariables" })
+                            if (exec.Attribute(name) is { } control) task.SetAttributeValue(name, control.Value);
+                        edges.Add((task, owners[exec]));
+                    }
                     edges.Count.ShouldBeLessThanOrEqualTo(16384, "Executable project edge discovery exceeded its bounded inspection budget.");
                 }
             }
@@ -830,14 +945,36 @@ public sealed partial class ContractsPackageDependencyTests
                         }
                         foreach (string path in expression.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                         {
-                            foreach (string referenced in ExpandFrozenBuildPaths(path, Path.GetDirectoryName(project)!))
+                            string[] bases = element.Attribute("WorkingDirectory") is { } workingDirectory
+                                ? ExpandFrozenBuildExpressions(BindDefiningDirectory(workingDirectory.Value, definingFile), declarations,
+                                    new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Distinct().Take(257).ToArray()
+                                : [Path.GetDirectoryName(project)!];
+                            bases.Length.ShouldBeLessThanOrEqualTo(256, "Executable working-directory expansion exceeded its bounded inspection budget.");
+                            foreach (string candidateBase in bases)
                             {
-                                AssertNotFrozenBuildInput(root, project, referenced);
-                                if (File.Exists(referenced))
+                                (candidateBase.Contains("$(", StringComparison.Ordinal) || candidateBase.Contains("@(", StringComparison.Ordinal)
+                                    || candidateBase.Contains("%(", StringComparison.Ordinal)).ShouldBeFalse("Unproven executable working directory.");
+                                string directory = Path.GetFullPath(DecodeFrozenBuildValue(candidateBase.Length == 0 ? "." : candidateBase), Path.GetDirectoryName(project)!);
+                                Directory.Exists(directory).ShouldBeTrue("Unproven executable working directory.");
+                                foreach (string candidate in ExpandFrozenBuildPaths(path, directory))
                                 {
-                                    foreach (Dictionary<string, string> child in FrozenReferencedTaskProperties(element, definingFile, declarations, properties))
+                                    string referenced = candidate;
+                                    AssertNotFrozenBuildInput(root, project, referenced);
+                                    if (Directory.Exists(referenced))
                                     {
-                                        await InspectFrozenBuildGraphAsync(root, referenced, child, visited).ConfigureAwait(true);
+                                        string[] selected = Directory.EnumerateFiles(referenced).Where(value => new[] { ".csproj", ".vbproj", ".fsproj", ".proj", ".slnx", ".sln" }
+                                            .Contains(Path.GetExtension(value), StringComparer.OrdinalIgnoreCase)).Take(2).ToArray();
+                                        (selected.Length == 1 && !Path.GetExtension(selected[0]).StartsWith(".sln", StringComparison.OrdinalIgnoreCase))
+                                            .ShouldBeTrue("Unproven executable directory project selection.");
+                                        referenced = selected[0];
+                                        AssertNotFrozenBuildInput(root, project, referenced);
+                                    }
+                                    if (File.Exists(referenced))
+                                    {
+                                        foreach (Dictionary<string, string> child in FrozenReferencedTaskProperties(element, definingFile, declarations, properties))
+                                        {
+                                            await InspectFrozenBuildGraphAsync(root, referenced, child, visited).ConfigureAwait(true);
+                                        }
                                     }
                                 }
                             }
@@ -888,7 +1025,8 @@ public sealed partial class ContractsPackageDependencyTests
     }
 
     private static string BindDefiningDirectory(string value, string definingFile)
-        => value.Replace("$(MSBuildThisFileDirectory)", Path.GetDirectoryName(definingFile)! + Path.DirectorySeparatorChar,
+        => value.Replace("$(MSBuildThisFileFullPath)", definingFile, StringComparison.OrdinalIgnoreCase)
+            .Replace("$(MSBuildThisFileDirectory)", Path.GetDirectoryName(definingFile)! + Path.DirectorySeparatorChar,
             StringComparison.OrdinalIgnoreCase);
 
     private static bool IsFrozenSdkOwner(string definingFile, Dictionary<string, string[]> declarations)
@@ -925,8 +1063,13 @@ public sealed partial class ContractsPackageDependencyTests
         int first = 1;
         if (Path.GetFileNameWithoutExtension(arguments[0].Replace('\\', '/')).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
         {
-            if (arguments.Count < 2 || arguments[1] is not ("msbuild" or "build" or "restore" or "publish" or "pack" or "test" or "run")) return null;
-            first = 2;
+            if (arguments.Count >= 3 && arguments[1] == "exec"
+                && Path.GetFileName(arguments[2].Replace('\\', '/')).Equals("MSBuild.dll", StringComparison.OrdinalIgnoreCase)) first = 3;
+            else
+            {
+                if (arguments.Count < 2 || arguments[1] is not ("msbuild" or "build" or "restore" or "publish" or "pack" or "test" or "run")) return null;
+                first = 2;
+            }
         }
         string? project = null;
         var properties = new List<string>();
@@ -934,9 +1077,9 @@ public sealed partial class ContractsPackageDependencyTests
         {
             string argument = arguments[index];
             Match property = Regex.Match(argument, @"\A(?:--property:|[-/](?:p|property):)(?<value>.+)\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-            if (property.Success) properties.Add(property.Groups["value"].Value);
+            if (property.Success) properties.Add(property.Groups["value"].Value.Replace(',', ';'));
             else if (argument == "--project" && index + 1 < arguments.Count) project = arguments[++index];
-            else if (!argument.StartsWith('-') && (!argument.StartsWith('/') || Path.IsPathFullyQualified(argument) && File.Exists(argument)))
+            else if (!argument.StartsWith('-') && (!argument.StartsWith('/') || Path.IsPathFullyQualified(argument) && (File.Exists(argument) || Directory.Exists(argument))))
             {
                 (project is null).ShouldBeTrue("Unproven multiple direct executable destinations.");
                 project = argument;
@@ -994,10 +1137,12 @@ public sealed partial class ContractsPackageDependencyTests
         if (IsFrozenSdkOwner(definingFile, declarations))
             return [new(inherited, StringComparer.OrdinalIgnoreCase)];
         IEnumerable<Dictionary<string, string>> variants = [new(inherited, StringComparer.OrdinalIgnoreCase)];
-        foreach (string control in new[] { "RemoveProperties", "Properties", "AdditionalProperties", "GlobalPropertiesToRemove" })
+        foreach (string control in new[] { "EnvironmentVariables", "RemoveProperties", "GlobalPropertiesToRemove", "UndefineProperties", "Properties", "AdditionalProperties", "SetConfiguration", "SetPlatform", "SetTargetFramework" })
         {
             var controls = new List<string[]>();
             if (element.Attribute(control) is { } attribute) controls.Add([attribute.Value]);
+            if (element.Name.LocalName == "ProjectReference")
+                foreach (XElement metadataValue in element.Elements().Where(value => value.Name.LocalName == control)) controls.Add([metadataValue.Value]);
             // MSBuild carries effective item metadata into task invocations even
             // when no matching task attribute is present.
             string metadata = control == "RemoveProperties" ? "GlobalPropertiesToRemove" : control;
@@ -1024,7 +1169,7 @@ public sealed partial class ContractsPackageDependencyTests
                         var child = new Dictionary<string, string>(variant, StringComparer.OrdinalIgnoreCase);
                         foreach (string part in value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                         {
-                            if (control is "RemoveProperties" or "GlobalPropertiesToRemove") child.Remove(DecodeFrozenBuildValue(part));
+                            if (control is "RemoveProperties" or "GlobalPropertiesToRemove" or "UndefineProperties") child.Remove(DecodeFrozenBuildValue(part));
                             else
                             {
                                 int separator = part.IndexOf('=');
@@ -1166,19 +1311,22 @@ public sealed partial class ContractsPackageDependencyTests
             {
                 foreach (string expanded in ExpandFrozenBuildExpressions(item, declarations, new HashSet<string>(visiting, StringComparer.OrdinalIgnoreCase)))
                 {
-                    string value = Regex.Replace(transform.Groups["transform"].Value, @"%\((?<name>[A-Za-z_][A-Za-z0-9_.]*)\)", metadata =>
-                        metadata.Groups["name"].Value.ToUpperInvariant() switch
-                        {
-                            "FILENAME" => Path.GetFileNameWithoutExtension(expanded),
-                            "EXTENSION" => Path.GetExtension(expanded),
-                            "IDENTITY" or "FULLPATH" => expanded,
-                            "ORIGINALITEMSPEC" => declarations.TryGetValue("%" + transform.Groups["name"].Value + "." + metadata.Groups["name"].Value,
-                                out string[]? original) ? string.Join(';', original) : expanded,
-                            _ => declarations.TryGetValue("%" + transform.Groups["name"].Value + "." + metadata.Groups["name"].Value,
-                                out string[]? values) ? string.Join(';', values) : metadata.Value,
-                        }, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-                    value.Contains("%(", StringComparison.Ordinal).ShouldBeFalse("Unresolved executable item transform metadata: " + value);
-                    foreach (string result in ExpandFrozenBuildExpressions(expression.Replace(transform.Value, value, StringComparison.Ordinal), declarations, visiting)) yield return result;
+                    foreach (string identity in expanded.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        string value = Regex.Replace(transform.Groups["transform"].Value, @"%\((?<name>[A-Za-z_][A-Za-z0-9_.]*)\)", metadata =>
+                            metadata.Groups["name"].Value.ToUpperInvariant() switch
+                            {
+                                "FILENAME" => Path.GetFileNameWithoutExtension(identity),
+                                "EXTENSION" => Path.GetExtension(identity),
+                                "IDENTITY" or "FULLPATH" => identity,
+                                "ORIGINALITEMSPEC" => declarations.TryGetValue("%" + transform.Groups["name"].Value + "." + metadata.Groups["name"].Value,
+                                    out string[]? original) ? string.Join(';', original) : identity,
+                                _ => declarations.TryGetValue("%" + transform.Groups["name"].Value + "." + metadata.Groups["name"].Value,
+                                    out string[]? values) ? string.Join(';', values) : metadata.Value,
+                            }, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                        value.Contains("%(", StringComparison.Ordinal).ShouldBeFalse("Unresolved executable item transform metadata: " + value);
+                        foreach (string result in ExpandFrozenBuildExpressions(expression.Replace(transform.Value, value, StringComparison.Ordinal), declarations, visiting)) yield return result;
+                    }
                 }
             }
             yield break;

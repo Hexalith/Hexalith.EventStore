@@ -22,6 +22,7 @@ OUTPUT_SCHEMA = "hexalith.p1r.command-output.v1"
 JSON_SCHEMA = "hexalith.p1r.json-reference.v1"
 SUMMARY_SCHEMA = "hexalith.p1r.attempt-summary.v1"
 PRODUCER = "hexalith.p1r.evidence-storage.v1"
+HOLD_SCHEMA = "hexalith.p1r.artifact-hold.v1"
 EXCERPT_BYTES = 2048
 ATTEMPT_BYTES = 10 * 1024 * 1024
 READ_BYTES = 256 * 1024 * 1024
@@ -30,6 +31,7 @@ CHUNK = 64 * 1024
 INDEX_ENTRIES = 65536
 INDEX_DEPTH = 128
 INDEX_BYTES = READ_BYTES
+EXPORT_BYTES = READ_BYTES
 OUTPUT_MARKERS = {"output_schema", "output_ref", "output_excerpt"}
 CONTEXT_KEYS = {"attempt", "repository", "source", "candidate", "inputs"}
 REF_KEYS = {"schema", "producer", "representation", "bytes", "sha256", "decoded_sha256", "context", "identity",
@@ -84,8 +86,8 @@ def _open_directory(path, create=False):
         raise InvalidPacket("artifact directory unavailable or substituted") from error
 
 
-def safe_directory(path, checkout, create=False):
-    """Reject checkout writes and symlink substitutions before creating anything."""
+def external_path(path, checkout):
+    """Admit an external destination without creating any of its components."""
     path, checkout = Path(path).absolute(), Path(checkout).resolve()
     require(path == path.resolve() and path != Path(path.anchor), "artifact destination substituted")
     require(not path.is_relative_to(checkout), "artifact destination is inside checkout")
@@ -93,6 +95,12 @@ def safe_directory(path, checkout, create=False):
     for parent in checkout.parents:
         if (parent / ".git").exists():
             require(not path.is_relative_to(parent), "artifact destination is inside enclosing checkout")
+    return path
+
+
+def safe_directory(path, checkout, create=False):
+    """Reject checkout writes and symlink substitutions before creating anything."""
+    path = external_path(path, checkout)
     descriptor = _open_directory(path, create)
     os.close(descriptor)
     require(path.is_dir() and path == path.resolve(), "artifact root unavailable or substituted")
@@ -125,7 +133,7 @@ def decoded_digest(data):
 
 
 def default_root():
-    return Path(os.environ.get("HEXALITH_P1R_EVIDENCE_ROOT", str(Path.home() / ".local/share/hexalith/p1r-evidence"))).absolute()
+    return Path(os.environ.get("HEXALITH_P1R_EVIDENCE_ROOT") or Path.home() / ".local/share/hexalith/p1r-evidence").absolute()
 
 
 def bounded_file(path, size=None, limit=READ_BYTES):
@@ -257,8 +265,45 @@ class Store:
     def inventory(self, value):
         return {"schema": JSON_SCHEMA, "reference": self.retain(canonical(value), {"kind": "inventory"}, "canonical-json")}
 
+    def place_hold(self, reference):
+        """Preserve already captured bytes without changing their sealed reference."""
+        require(Path(reference.get("manifest", "")).parent.parent == self.root, "hold artifact belongs to another store")
+        _resolve(reference, self.context, reference.get("artifact", {}).get("identity"), _allow_expired=True)
+        path = self.root / "holds"
+        descriptor = _open_directory(path, create=True)
+        os.close(descriptor)
+        private_directory(path, repair=True, controller_uid=self.controller_uid)
+        return self._put("holds", canonical(_hold_record(reference)))
 
-def resolve(reference, enclosing, identity, *, now=None, limit=READ_BYTES, _budget=None):
+
+def _hold_record(reference):
+    return {"schema": HOLD_SCHEMA, "producer": PRODUCER, "context": reference["artifact"]["context"],
+        "manifest_sha256": reference["manifest_sha256"], "artifact_sha256": reference["artifact"]["sha256"],
+        "hold": True, "disposition": "preserve-required-bytes"}
+
+
+def _held(reference, root, controller_uid, budget):
+    """Only an owner-written, immutable record for these exact bytes extends retention."""
+    encoded = canonical(_hold_record(reference))
+    directory = root / "holds"
+    if not directory.exists() and not directory.is_symlink():
+        return False
+    private_directory(directory, controller_uid=controller_uid)
+    path = directory / digest(encoded)
+    if not path.exists() and not path.is_symlink():
+        return False
+    try:
+        info = path.stat(follow_symlinks=False)
+    except OSError as error:
+        raise InvalidPacket("artifact hold unavailable or substituted") from error
+    owners = {os.geteuid()} | ({controller_uid} if os.geteuid() == 0 else set())
+    require(info.st_uid in owners and info.st_mode & 0o222 == 0, "artifact hold is not owner-written immutable proof")
+    read = bounded_file if budget is None else budget.read
+    require(read(path, len(encoded), MANIFEST_BYTES) == encoded, "artifact hold record differs")
+    return True
+
+
+def _resolve(reference, enclosing, identity, *, now=None, limit=READ_BYTES, _budget=None, _allow_expired=False):
     """Verify the manifest, complete bytes, context and retention before returning bytes."""
     require(isinstance(reference, dict) and set(reference) == {"artifact", "manifest", "manifest_sha256"},
             "artifact reference members differ")
@@ -274,9 +319,9 @@ def resolve(reference, enclosing, identity, *, now=None, limit=READ_BYTES, _budg
     require(ref["retention"] == "diagnostic" and ref["disposition"] == "diagnostic-only", "unsupported artifact retention")
     try:
         until = dt.datetime.fromisoformat(ref["retained_until"])
-        require(until.tzinfo is not None and (ref["hold"] or (now or utc()) <= until), "artifact expired without hold")
     except (ValueError, TypeError) as error:
         raise InvalidPacket("invalid artifact retention date") from error
+    require(until.tzinfo is not None, "invalid artifact retention date")
     manifest, target = Path(reference["manifest"]), Path(ref["locator"])
     require(manifest.is_absolute() and target.is_absolute() and manifest.parent.name == "manifests"
             and target.parent.name == "objects" and manifest.parent.parent == target.parent.parent,
@@ -289,11 +334,19 @@ def resolve(reference, enclosing, identity, *, now=None, limit=READ_BYTES, _budg
     read = bounded_file if _budget is None else _budget.read
     require(reference["manifest_sha256"] == digest(encoded) == manifest.name
             and read(manifest, len(encoded), MANIFEST_BYTES) == encoded, "artifact manifest differs")
+    require(_allow_expired or ref["hold"] or (now or utc()) <= until
+            or _held(reference, target.parent.parent, Path(enclosing["repository"]).stat().st_uid, _budget),
+            "artifact expired without hold")
     data = read(target, ref["bytes"], limit)
     raw_hash, decoded_hash = (digest(data), decoded_digest(data)) if _budget is None else _budget.hashes(data)
     require(raw_hash == ref["sha256"] == target.name
             and decoded_hash == ref["decoded_sha256"], "artifact hash differs")
     return data
+
+
+def resolve(reference, enclosing, identity, *, now=None, limit=READ_BYTES, _budget=None):
+    """Return complete verified bytes only while retained or covered by an owner hold."""
+    return _resolve(reference, enclosing, identity, now=now, limit=limit, _budget=_budget)
 
 
 def command_text(row, enclosing=None, *, _budget=None):
@@ -404,9 +457,9 @@ class _Materialization:
         return self.parsed[key]
 
 
-def materialize(value, enclosing, *, io_limit=READ_BYTES, decoded_limit=READ_BYTES):
+def materialize(value, enclosing, *, io_limit=READ_BYTES, decoded_limit=READ_BYTES, _budget=None):
     """Verify once per physical payload and bound aggregate I/O and decoded bytes."""
-    budget = _Materialization(io_limit, decoded_limit)
+    budget = _budget if _budget is not None else _Materialization(io_limit, decoded_limit)
     completed, active = {}, set()
     remaining_nodes = 1_000_000
     def visit(item, depth=0):
@@ -494,6 +547,24 @@ def _write_summary(destination, encoded):
         os.close(parent)
 
 
+def validate_summary_destination(packet, destination, *, isolation=None):
+    """Preflight a fresh summary destination without creating or reserving it."""
+    destination = Path(destination).absolute()
+    require(destination == destination.resolve() and not destination.exists() and not destination.is_symlink(),
+            "summary destination exists or is substituted")
+    for root in (packet, isolation):
+        if root is not None:
+            root = Path(root).absolute()
+            require(not destination.is_relative_to(root) and not root.is_relative_to(destination),
+                    "summary destination overlaps attempt packet")
+    existing = destination.parent
+    while not existing.exists() and not existing.is_symlink():
+        existing = existing.parent
+    descriptor = _open_directory(existing)
+    os.close(descriptor)
+    return destination
+
+
 def _attempt_files(root, budget, depth=0):
     """Enumerate incrementally: directory width, depth and the whole walk are bounded."""
     require(depth <= INDEX_DEPTH, "attempt file enumeration exceeds depth budget")
@@ -513,9 +584,9 @@ def _attempt_files(root, budget, depth=0):
 def export_attempt(packet, destination, store, *, isolation=None, exit_code=None, error=None):
     """Export one bounded outcome, including failed initialization and outer cleanup."""
     packet, destination = Path(packet).absolute(), Path(destination).absolute()
-    require(packet == packet.resolve() and destination == destination.resolve()
-            and not destination.exists() and not destination.is_relative_to(packet), "summary destination substituted or inside packet")
-    files, total, command_totals, documents, proofs = [], 0, None, {}, {}
+    require(packet == packet.resolve(), "attempt packet substituted")
+    validate_summary_destination(packet, destination, isolation=isolation)
+    files, total, export_bytes, command_totals, documents, proofs = [], 0, 0, None, {}, {}
     receipts = {"total": 0, "passed": 0, "failed": 0, "assertions": {"attempted": 0, "passed": 0, "failed": 0}}
     cleanup = {"attempts": 0, "errors": 0, "remaining": 0}
     roots = [("", packet)] + ([("isolation/", Path(isolation).absolute())] if isolation is not None else [])
@@ -526,11 +597,14 @@ def export_attempt(packet, destination, store, *, isolation=None, exit_code=None
             continue
         require(root == root.resolve() and root.is_dir(), "attempt packet substituted")
         for path in _attempt_files(root, enumeration):
-            data = bounded_file(path)
+            require(path.stat(follow_symlinks=False).st_size <= EXPORT_BYTES - export_bytes, "attempt export exceeds byte budget")
+            data = bounded_file(path, limit=min(READ_BYTES, EXPORT_BYTES - export_bytes))
             total += len(data)
             name = prefix + path.relative_to(root).as_posix()
             identity = {"kind": "packet-file", "path": name}
-            reference, _ = store._reference(data, identity, "raw-bytes")
+            reference, manifest = store._reference(data, identity, "raw-bytes")
+            export_bytes += len(data) + len(manifest)
+            require(export_bytes <= EXPORT_BYTES, "attempt export exceeds byte budget")
             entry = {"path": name, "bytes": len(data), "sha256": digest(data), "reference": reference}
             index_bytes += len(canonical(entry)) + bool(files)
             require(index_bytes <= INDEX_BYTES, "attempt complete index exceeds capture budget")
@@ -566,6 +640,8 @@ def export_attempt(packet, destination, store, *, isolation=None, exit_code=None
     files.sort(key=lambda row: row["path"])
     index = canonical({"schema": "hexalith.p1r.complete-index.v1", "context": store.context, "files": files})
     require(len(index) <= INDEX_BYTES, "attempt complete index exceeds capture budget")
+    _, manifest = store._reference(index, {"kind": "complete-index"}, "canonical-json")
+    require(export_bytes + len(index) + len(manifest) <= EXPORT_BYTES, "attempt export exceeds byte budget")
     execution, outer = documents.get("execution.json", {}), documents.get("isolation.json", {})
     errors = int(error is not None) + sum(len(value.get("errors", [])) for value in documents.values())
     observed_exit = exit_code if exit_code is not None else outer.get("command_exit_code")

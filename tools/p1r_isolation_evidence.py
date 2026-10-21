@@ -28,7 +28,22 @@ def canonical_engine_directory(value):
     return isinstance(value, str) and isolation.supported_workspace_path(value)
 
 
-def validate(wrapper, private, context, run_root, wrapper_path, times):
+def materialize_wrapper(wrapper, enclosing, *, _budget=None):
+    """Keep external isolation markers from falling back to inline command proof."""
+    if {"evidence_context", "external_root"}.intersection(wrapper):
+        require({"evidence_context", "external_root"} <= wrapper.keys(), "incomplete external isolation markers")
+        require(wrapper["evidence_context"] == enclosing, "isolation artifact context differs")
+        commands = wrapper.get("commands")
+        require(isinstance(commands, list), "external isolation command journal missing")
+        for command in commands + ([wrapper["command_stdout_command"]] if "command_stdout_command" in wrapper else []):
+            require(isinstance(command, dict) and (storage.OUTPUT_MARKERS <= command.keys()
+                    or not storage.OUTPUT_MARKERS.intersection(command) and command.get("output", False) is None),
+                    "mixed inline/external isolation command output")
+        require("command_stdout" not in wrapper, "mixed inline/external isolation stdout")
+    return storage.materialize(wrapper, enclosing, _budget=_budget)
+
+
+def validate(wrapper, private, context, run_root, wrapper_path, times, *, _budget=None):
     """Check every literal command, measured identity and timed cleanup observation."""
     repository = Path(context['source_binding']['repository'])
     enclosing = {'attempt': wrapper.get('invocation'), 'repository': str(repository)}
@@ -36,7 +51,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
         enclosing.update(source=storage.source_identity(context['source_binding']), inputs=context['inputs']['sha256'],
             candidate=digest(preparation.canonical(context['inputs']['value']['candidate'])))
         require(wrapper['evidence_context'] == enclosing, 'isolation artifact context differs')
-    wrapper = storage.materialize(wrapper, enclosing)
+    wrapper = materialize_wrapper(wrapper, enclosing, _budget=_budget)
     scratch = Path(wrapper['owned_scratch'])
     require(scratch.is_absolute() and scratch == scratch.resolve(), 'isolation scratch path substituted')
     require(bool(re.fullmatch(r'unix:///[^\s?#]+', wrapper.get('outer_host', ''))),

@@ -85,6 +85,16 @@ class EvidenceStorageTests(unittest.TestCase):
         with self.assertRaises(InvalidPacket): storage.command_text(self.command())
         with self.assertRaises(InvalidPacket): storage.materialize({"schema": "hexalith.p1r.json-reference.v9"}, self.context)
 
+    def testExternalIsolationAllowsOnlyHashOnlyInlineCommandRows(self):
+        import p1r_isolation_evidence as isolation_evidence
+        wrapper = {"evidence_context": self.context, "external_root": str(self.store.root),
+            "commands": [{"output": None, "output_sha256": digest(b"suppressed")}]}
+        self.assertIsNone(isolation_evidence.materialize_wrapper(wrapper, self.context)["commands"][0]["output"])
+        for row in ({"output": ""}, {"output": "inline"}, {"output_sha256": digest(b"missing")},
+                    dict(self.command(), output="inline")):
+            with self.subTest(row=row), self.assertRaises(InvalidPacket):
+                isolation_evidence.materialize_wrapper(dict(wrapper, commands=[row]), self.context)
+
     def testSignatureReaderUsesCompleteVerifiedTextAndRejectsUnavailableProof(self):
         import p1r_published_qualification as qualification
         row = self.command(b" " * 4096 + qualification.REPOSITORY_SIGNATURE.encode())
@@ -227,13 +237,60 @@ class EvidenceStorageTests(unittest.TestCase):
         self.assertEqual(storage.resolve(held, self.context, {"kind": "hold"}, now=future), b"required")
         with self.assertRaises(InvalidPacket): storage.Store(self.root / "acceptance", self.context, retention="acceptance")
 
+    def testOwnerCanPlaceAHoldAfterCaptureOrExpiryWithoutChangingBoundReferences(self):
+        row = self.command(b"required sealed output")
+        inventory = self.store.inventory([row])
+        original = copy.deepcopy(inventory)
+        manifest_bytes = {path: path.read_bytes() for path in (self.store.root / "manifests").iterdir()}
+        future = storage.utc() + dt.timedelta(days=31)
+        for ref in (row["output_ref"], inventory["reference"]):
+            with self.assertRaisesRegex(InvalidPacket, "expired without hold"):
+                storage.resolve(ref, self.context, ref["artifact"]["identity"], now=future)
+            with mock.patch.object(storage, "utc", return_value=future):
+                hold = Path(self.store.place_hold(ref))
+            self.assertEqual(hold.stat().st_mode & 0o777, 0o444)
+            self.assertEqual(storage.resolve(ref, self.context, ref["artifact"]["identity"], now=future),
+                Path(ref["artifact"]["locator"]).read_bytes())
+        with mock.patch.object(storage, "utc", return_value=future):
+            self.assertEqual(storage.materialize(inventory, self.context)[0]["output"], "required sealed output")
+        self.assertEqual(inventory, original)
+        self.assertEqual(manifest_bytes, {path: path.read_bytes() for path in manifest_bytes})
+        # Neither an unrelated artifact nor changed hold bytes extend retention.
+        other = self.command(b"unheld", 2)["output_ref"]
+        with self.assertRaisesRegex(InvalidPacket, "expired without hold"):
+            storage.resolve(other, self.context, other["artifact"]["identity"], now=future)
+        hold.chmod(0o600);hold.write_bytes(b"substituted")
+        with self.assertRaises(InvalidPacket):
+            storage.resolve(inventory["reference"], self.context, {"kind": "inventory"}, now=future)
+
+    def testMalformedRetentionAndExpiredRetentionHaveDistinctRefusals(self):
+        ref = self.command()["output_ref"]
+        with self.assertRaisesRegex(InvalidPacket, "^artifact expired without hold$"):
+            storage.resolve(ref, self.context, ref["artifact"]["identity"], now=storage.utc() + dt.timedelta(days=31))
+        for date in (None, "invalid", "2026-10-21"):
+            changed = copy.deepcopy(ref);changed["artifact"]["retained_until"] = date
+            with self.subTest(date=date), self.assertRaisesRegex(InvalidPacket, "^invalid artifact retention date$"):
+                storage.resolve(changed, self.context, changed["artifact"]["identity"])
+
+    def testEmptyEvidenceRootUsesTheDocumentedDefault(self):
+        with mock.patch.dict(os.environ, {"HEXALITH_P1R_EVIDENCE_ROOT": ""}):
+            self.assertEqual(storage.default_root(), Path.home() / ".local/share/hexalith/p1r-evidence")
+
+    def testEnclosingCheckoutRefusesNestedRepositoryDestinationBeforeWriting(self):
+        umbrella = self.root / "umbrella";umbrella.mkdir();(umbrella / ".git").mkdir()
+        nested = umbrella / "nested";nested.mkdir();(nested / ".git").write_text("gitdir: ../.git/modules/nested")
+        target = umbrella / "generated/attempt"
+        with self.assertRaisesRegex(InvalidPacket, "inside enclosing checkout"):
+            storage.Store(target, storage.context("f" * 32, nested))
+        self.assertFalse(target.parent.exists())
+
     def testExternalMountRefusesCustomSocketAndAliasBeforeDocker(self):
         import socket
         import p1r_isolation as isolation
-        inside = self.store.root / "controller.sock"
+        inside = self.root / "fresh-attempt/controller.sock"
         with mock.patch.object(isolation, "ROOT", self.repository), mock.patch.object(subprocess, "run") as docker:
-            with self.assertRaises(InvalidPacket):
-                isolation.IsolatedRunner(self.store.root / "run", workspace=self.repository,
+            with self.assertRaisesRegex(InvalidPacket, "external evidence exposes outer Docker socket$"):
+                isolation.IsolatedRunner(inside.parent / "run", workspace=self.repository,
                     outer_host="unix://" + str(inside))
             docker.assert_not_called()
         endpoint = self.root / "outer.sock"
@@ -312,6 +369,54 @@ class EvidenceStorageTests(unittest.TestCase):
         Path(command["output_ref"]["artifact"]["locator"]).unlink()
         with self.assertRaises(InvalidPacket): qualification.receipt_outcome(receipt, admitted)
 
+    def testQualifiedSnapshotResolvesOnlyExternalRootInspectionWithEnclosingIdentity(self):
+        from test_p1r_published_executor import QualifiedSnapshotWitnessTests
+        for external in (False, True):
+            for by_name in (False, True):
+                with self.subTest(external=external, by_name=by_name):
+                    witness = QualifiedSnapshotWitnessTests();witness.setUp();self.addCleanup(witness.doCleanups)
+                    fixture = witness.fixture()
+                    run = Path(witness.temporary.name)
+                    enclosing = storage.context("b" * 32, fixture[2]["repository"], "c" * 64, "d" * 64, "e" * 64)
+                    store = storage.Store(self.root / ("root-journal-" + str(external) + str(by_name)), enclosing)
+                    command = json.loads((run / "commands.json").read_bytes())[0]
+                    if by_name:
+                        owned = json.loads((run / "execution.json").read_bytes())["owned_containers"][command['argv'][-1]]
+                        command['argv'][-1] = owned['name']
+                    command.update(id=1, cwd=str(run), started_utc="a", finished_utc="b")
+                    if external:store.command(command, b" " * 4096 + command.pop("output").encode())
+                    irrelevant = store.command({"id": 2, "argv": ["docker", "inspect", "unrelated"], "cwd": str(run),
+                        "started_utc": "a", "finished_utc": "b", "exit_code": 0}, b"not needed by this witness")
+                    Path(irrelevant["output_ref"]["artifact"]["locator"]).unlink()
+                    (run / "commands.json").write_bytes(canonical([command, irrelevant]))
+                    with mock.patch.object(storage, "resolve", wraps=storage.resolve) as resolved:
+                        executor.witnesses.validate_case(*fixture[:3], "post-upgrade-restore", fixture[3],
+                            candidate_version=witness.candidate_version, enclosing=enclosing)
+                    self.assertEqual(resolved.call_count, 1 if external else 0)
+                    if external:
+                        resolved.assert_called_once_with(command["output_ref"], enclosing,
+                            {key: command[key] for key in storage.COMMAND_FIELDS}, _budget=mock.ANY)
+                        Path(command["output_ref"]["artifact"]["locator"]).unlink()
+                        with self.assertRaises(InvalidPacket):
+                            executor.witnesses.validate_case(*fixture[:3], "post-upgrade-restore", fixture[3],
+                                candidate_version=witness.candidate_version, enclosing=enclosing)
+
+    def testFinalIsolationReusesVerifiedWrapperPayloadsUnderOneOperationBudget(self):
+        from collections import Counter
+        import p1r_published_qualification as qualification
+        from test_p1r_published_executor import ProposedQualifiedSnapshotWitnessTests
+        witness=ProposedQualifiedSnapshotWitnessTests();witness.setUp();self.addCleanup(witness.doCleanups)
+        receipt,admitted=witness.import_fixture(scope='operational')
+        record=receipt['execution_evidence']['isolation']['wrapper']
+        enclosing=storage.receipt_context(receipt,admitted['source_binding'],admitted['inputs']['value'])
+        wrapper=json.loads(storage.preserved_bytes(record,enclosing))
+        locators={Path(row['output_ref']['artifact']['locator']) for row in wrapper['commands']}
+        with mock.patch.object(storage,'bounded_file',wraps=storage.bounded_file) as read:
+            qualification.validate_final_isolation(receipt,admitted)
+        counts=Counter(Path(call.args[0]) for call in read.call_args_list)
+        self.assertTrue(locators)
+        self.assertTrue(all(counts[path]==1 for path in locators),counts)
+
     def testRealPythonSubprocessThroughExecutorRunUsesVerifiedExternalOutput(self):
         binding = {"repository": str(self.repository), "scope": "synthetic Python control"}
         with mock.patch.object(executor, "ROOT", self.repository), \
@@ -337,8 +442,9 @@ class EvidenceAdmissionTests(unittest.TestCase):
             subprocess.run(["git", "init", "-q", root], check=True)
             (root / ".gitignore").write_bytes((repository / ".gitignore").read_bytes())
             prefix = "_bmad-output/implementation-artifacts/evidence/story-3-22/attempt/"
-            ignored = ["run.log", "Logs/capture.log", "packages/fixture.nupkg", "report.json", "results.json", "result.trx", "capture.zip", "capture.tar.gz", "payload.part", "capture.webm", "trace.dat", "commands.json", "reports/result.json", "results/TestResults.xml", "screenshots/home.png", "playwright-report/index.html"]
-            allowed = ["summary.json", "verification.json", "source-baseline.json", "snapshot-baseline.cs", "snapshots/source.cs"]
+            ignored = ["run.log", "Logs/capture.log", "packages/fixture.nupkg", "report.json", "results.json", "result.trx", "capture.zip", "capture.tar.gz", "payload.part", "capture.webm", "trace.dat", "commands.json", "reports/result.json", "results/TestResults.xml", "screenshots/home.png", "playwright-report/index.html",
+                "capture.xz", "capture.bz2", "capture.zst", "capture.rar", "capture.001", "capture.z01", "capture.dmp", "capture.gcdump", "capture.etl", "capture.mkv", "trace/arbitrary-name"]
+            allowed = ["summary.json", "verification.json", "source-baseline.json", "snapshot-baseline.cs", "snapshots/source.cs", "baseline.png", "snapshots/source.jpg"]
             for name, expected in [(name, True) for name in ignored] + [(name, False) for name in allowed]:
                 result = subprocess.run(["git", "check-ignore", "--no-index", prefix + name], cwd=root, capture_output=True)
                 self.assertEqual(result.returncode, 0 if expected else 1, name)
@@ -348,6 +454,33 @@ class ReviewedStorageTests(unittest.TestCase):
     """Focused regressions for reviewed storage publication and reader boundaries."""
     setUp = EvidenceStorageTests.setUp
     command = EvidenceStorageTests.command
+
+    def testExportByteBudgetRefusesBeforeCopyingTheNextFileOrIndex(self):
+        packet = self.root / "packet";packet.mkdir()
+        (packet / "first").write_bytes(b"a" * 64)
+        (packet / "second").write_bytes(b"b" * 64)
+        first_bytes = 64 + len(self.store._reference(b'a' * 64, {"kind": "packet-file", "path": "first"}, "raw-bytes")[1])
+        second_bytes = 64 + len(self.store._reference(b'b' * 64, {"kind": "packet-file", "path": "second"}, "raw-bytes")[1])
+        with mock.patch.object(storage, "EXPORT_BYTES", first_bytes + 1), mock.patch.object(self.store, "retain", wraps=self.store.retain) as retain:
+            with self.assertRaisesRegex(InvalidPacket, "attempt export exceeds byte budget"):
+                storage.export_attempt(packet, self.repository / "summary", self.store)
+            self.assertEqual(retain.call_count, 1)
+        self.assertFalse((self.repository / "summary").exists())
+        # The complete index consumes this aggregate budget as well.
+        with mock.patch.object(storage, "EXPORT_BYTES", first_bytes + second_bytes + 1):
+            with self.assertRaisesRegex(InvalidPacket, "attempt export exceeds byte budget"):
+                storage.export_attempt(packet, self.repository / "summary", self.store)
+
+    def testCompletedAttemptSummaryKeepsZeroExitAndPassingReceipts(self):
+        packet = self.root / "completed";(packet / "receipts").mkdir(parents=True)
+        (packet / "execution.json").write_bytes(canonical({"finished_utc": "done", "errors": []}))
+        (packet / "receipts/pass.json").write_bytes(canonical({"execution": "passed",
+            "assertions": {"attempted": 2, "passed": 2, "failed": 0}}))
+        summary = storage.export_attempt(packet, self.repository / "completed-summary", self.store, exit_code=0)
+        self.assertEqual(summary["outcome"]["status"], "completed")
+        self.assertEqual(summary["outcome"]["exit_code"], 0)
+        self.assertEqual(summary["outcome"]["receipts"]["passed"], 1)
+        self.assertEqual(summary["outcome"]["receipts"]["assertions"], {"attempted": 2, "passed": 2, "failed": 0})
 
     def testAtomicConcurrentIdenticalPublication(self):
         import concurrent.futures

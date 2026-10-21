@@ -321,8 +321,12 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
     require(isinstance(owned,dict) and owned.get('image') == first_config.get('backend_image')
             and owned.get('name','').startswith('p1r-'+execution['invocation']+'-'),
             'qualified snapshot provider is not the invocation-owned database')
-    retained_commands = storage.materialize(json.loads(preparation.regular(run_root / 'commands.json')),
-        enclosing or {})
+    retained_commands = json.loads(preparation.regular(run_root / 'commands.json'))
+    require(isinstance(retained_commands, list) and all(isinstance(command, dict) for command in retained_commands),
+            'qualified snapshot command journal differs')
+    retained_commands = storage.materialize([command for command in retained_commands
+        if command.get('exit_code') == 0 and command.get('argv', [])[:2] == ['docker','inspect']
+        and any(identity in command['argv'][2:] for identity in (database, owned['name']))], enclosing or {})
     require(any(command.get('exit_code') == 0 and command['argv'][:2] == ['docker','inspect']
                 and any(value.get('Id') == database and value.get('Name') == '/'+owned['name']
                         and value.get('Config',{}).get('Labels',{}).get('hexalith.p1r.invocation') == execution['invocation']

@@ -135,6 +135,7 @@ class LifecycleTests(unittest.TestCase):
             self.assert_imports(retained,context)
             reference = retained['execution_evidence']['isolation']
             wrapper = json.loads(storage.preserved_bytes(reference['wrapper'], storage.receipt_context(retained, context["source_binding"], context["inputs"]["value"])))
+            raw_wrapper = copy.deepcopy(wrapper)
             wrapper = storage.materialize(wrapper, wrapper['evidence_context'])
             private = json.loads(storage.preserved_bytes(reference['private'], storage.receipt_context(retained, context["source_binding"], context["inputs"]["value"])))
             execution = json.loads(storage.preserved_bytes(reference['execution'], storage.receipt_context(retained, context["source_binding"], context["inputs"]["value"])))
@@ -149,6 +150,12 @@ class LifecycleTests(unittest.TestCase):
                         isolation_evidence.validate(changed,private,dict(submitted,execution=execution),Path(wrapper['inner_command'][4]),
                                                     reference['wrapper']['path'],qualification.validate_times)
                     changed['evidence_context']['source'] = storage.source_identity(submitted['source_binding'])
+                    command_store = storage.Store(Path(changed['external_root'])/'.p1r-artifacts',changed['evidence_context'])
+                    for command in changed['commands']:
+                        command_store.command(command,command.pop('output').encode())
+                    stdout = copy.deepcopy(raw_wrapper['command_stdout_command'])
+                    command_store.command(stdout,changed.pop('command_stdout').encode())
+                    changed['command_stdout_command'] = stdout
                     with self.subTest(role=role), self.assertRaisesRegex(preparation.InvalidPacket,'outside the isolated workspace'):
                         isolation_evidence.validate(changed,private,dict(submitted,execution=execution),Path(wrapper['inner_command'][4]),
                                                     reference['wrapper']['path'],qualification.validate_times)

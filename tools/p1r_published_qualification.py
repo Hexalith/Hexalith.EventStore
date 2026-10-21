@@ -1303,7 +1303,12 @@ def validate_final_isolation(receipt, context):
         enclosing.update(source=storage.source_identity(context["source_binding"]), inputs=context["inputs"]["sha256"],
             candidate=digest(preparation.canonical(context["inputs"]["value"]["candidate"])))
         require(wrapper["evidence_context"] == enclosing, "isolation artifact source or candidate context differs")
-    wrapper = storage.materialize(wrapper, enclosing)
+    from p1r_isolation_evidence import materialize_wrapper
+    if {"evidence_context", "external_root"}.intersection(wrapper):
+        require(all("content_ref" in record and "content" not in record for record in reference.values()),
+                "mixed inline/external isolation preservation")
+    wrapper_budget = storage._Materialization(storage.READ_BYTES, storage.READ_BYTES)
+    wrapper = materialize_wrapper(wrapper, enclosing, _budget=wrapper_budget)
     run_root = Path(reference["execution"]["path"]).parent
     require(Path(reference["execution"]["path"]).name == "execution.json"
             and Path(reference["wrapper"]["path"]).name == "isolation.json"
@@ -1453,8 +1458,8 @@ def validate_final_isolation(receipt, context):
     require(not Path(wrapper["owned_scratch"]).exists(), "final isolation scratch remains")
     import p1r_isolation_evidence
     try:
-        p1r_isolation_evidence.validate(wrapper, private, dict(context, execution=execution), run_root,
-                                        reference["wrapper"]["path"], validate_times)
+        p1r_isolation_evidence.validate(values["wrapper"], private, dict(context, execution=execution), run_root,
+                                        reference["wrapper"]["path"], validate_times, _budget=wrapper_budget)
     except (KeyError, TypeError, StopIteration, ValueError) as error:
         if isinstance(error, InvalidPacket):
             raise
@@ -1760,7 +1765,9 @@ def create_packet(directory, inputs=None, decisions=None, candidate_evidence=Non
     """Create a new sealed packet; refusals and interruptions are retained rather than defaulted."""
     directory = Path(directory).absolute()
     require(not directory.exists() and not directory.is_symlink(), "output path already exists")
-    require(directory == directory.resolve(), "output parent path is substituted")
+    for checkout in (root, source_root, source_builds_root):
+        if checkout is not None:
+            storage.external_path(directory, checkout)
     directory.mkdir(parents=True, exist_ok=False)
     (directory / "receipts").mkdir()
     lanes = initial_lanes(None)
