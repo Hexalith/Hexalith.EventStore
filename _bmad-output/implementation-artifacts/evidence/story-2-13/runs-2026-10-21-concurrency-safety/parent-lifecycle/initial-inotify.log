@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-21T12:08:50.008080+00:00",
+  "ceiling": 1048576,
+  "accessibleWatchLinesPerFd": 1048545,
+  "perProcessName": {
+    "codex": 2781,
+    "fluentui-mcp": 1045411,
+    "dbus-daemon": 5,
+    "MainThread": 13,
+    "claude": 41,
+    "agy": 16,
+    "Hexalith.Tenant": 192,
+    "Aspire.Dashboar": 1,
+    "daprd": 1,
+    "Hexalith.Memori": 84
+  },
+  "failedOrRacedReads": 1,
+  "overcountCaveat": "Inherited/shared instances may be counted multiple times. No unrelated process changed.",
+  "restoreTo": 1048576,
+  "restoreBlockedByObservedUse": false
+}

@@ -64,6 +64,53 @@ context:
 
 ## Implementation Notes
 
+### Active continuation: shared-channel concurrency safety
+
+Resume from `evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md`,
+`evidence/story-2-13/review-2026-10-21-runtime-recovery/README.md` and
+`evidence/story-2-13/closing-after-review-2026-10-21.json`. The existing working
+tree is expressly authorized; preserve all prior work. This continuation only
+qualifies shared-channel concurrency safety of the isolated Dapr correction.
+
+The retained runtime destroys an Unavailable pooled actor channel. In a new
+disposable source tree, use controlled overlapping calls against the retained
+candidate source to measure whether that action interrupts other active actor
+invocations, remote reminders or actor streams. Distinguish a transport failure
+from Unavailable returned by a healthy server. Preserve the original acquired
+source, candidate source/binaries, reports and evidence packets byte-for-byte.
+Record new evidence only under `evidence/story-2-13/runs-2026-10-21-concurrency-safety/`
+and a new qualification report; `start-preservation.json` and `spec-before.source`
+already record parent start state. Never stage, commit, push or create a branch.
+
+Only evaluate an isolated correction after pinned runtime/dependency sources and
+measured failures support it. Retain complete before-build source inventories,
+exact patch, unchanged dependency/toolchain identities and binary hashes. Preserve
+caller cancellation/deadline semantics and the discriminating cancelled-Unavailable
+control from the retained review supplement (the old controls alone missed that
+regression). Keep retry/cancellation budgets, actor persistence before broadcast,
+authorization, serialized metadata bounds and the 15-second signal wait unchanged.
+The installed runtime and production graphs must remain unchanged. Launch-identity
+hardening is explicitly deferred unless required to establish trustworthy evidence.
+
+After any supported correction run focused concurrency controls and the reused-
+endpoint case, then the entire distribution class without stopping on failure,
+then relevant Go runtime and existing application regressions. Bind failures and
+passes to exact source/runtime/binary identities; successful reruns alone establish
+no resolution. Fresh-endpoint replacement is comparison evidence only. Preserve
+existing .NET binary identities unless a necessary rebuild is supported and
+recorded separately. Keep the existing Contracts validator blocker separate; do
+not weaken or exempt it. Reassess inotify restoration to 1,048,576 by observing
+accessible watches without disturbing unrelated processes; retain blockers and
+every ceiling change. Use the permitted Aspire workflow for lifecycle operations
+and capture exact owned-process/resource identities and cleanup observations.
+
+The spec and sprint row remain in-progress, original story backlog, and
+`accepted_exceptions: []`. No completion/review advancement, production transition,
+runtime installation, owner approval or qualification/disposition gate is implied
+by local qualification. Whole-story gated tasks remain unchecked. This user scope
+overrides any generic workflow instruction to complete gated production work.
+
+
 ### Active continuation: isolated reused-endpoint runtime correction
 
 The user resumes from `evidence/story-2-13/qualification-2026-10-21-restart-trace.md`
