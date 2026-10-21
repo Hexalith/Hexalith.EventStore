@@ -1,0 +1,20 @@
+{
+  "observedUtc": "2026-10-21T10:29:42.507253+00:00",
+  "maxUserWatches": 1048576,
+  "observedWatchesPerFd": 1085294,
+  "watchesByProcessName": {
+    "fluentui-mcp": 1082099,
+    "dbus-daemon": 5,
+    "Hexalith.EventS": 330,
+    "Aspire.Dashboar": 1,
+    "MainThread": 13,
+    "daprd": 8,
+    "claude": 41,
+    "agy": 16,
+    "codex": 2781
+  },
+  "inotifyFdCount": 97,
+  "method": "count accessible per-fd inotify watch lines; possible inherited/shared instance overcount",
+  "originalMaxUserWatches": 1048576,
+  "restorePermittedByObservedUse": false
+}

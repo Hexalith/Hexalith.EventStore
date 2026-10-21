@@ -1,0 +1,17 @@
+=== RUN   TestLocalEvaluationReusedEndpointBackoff
+    local_recovery_test.go:46: seeded pooled channel in TRANSIENT_FAILURE with one-hour backoff at unchanged address 127.0.0.1:42419
+    local_recovery_test.go:57: independent TCP probe succeeds while retained channel remains TRANSIENT_FAILURE
+time="2026-10-21T12:12:57.912357261+02:00" level=warning msg="Error processing operation DaprBuiltInActorNotFoundRetries. Retrying in 1s…" instance=DESKTOP-VIOG240 scope=local-evaluation type=log ver=unknown
+time="2026-10-21T12:12:58.91411538+02:00" level=info msg="Recovered processing operation DaprBuiltInActorNotFoundRetries after 2 attempts" instance=DESKTOP-VIOG240 scope=local-evaluation type=log ver=unknown
+    local_recovery_test.go:66: bounded actor retry recovered on unchanged endpoint after eviction; elapsed 1.001993066s
+--- PASS: TestLocalEvaluationReusedEndpointBackoff (1.01s)
+=== RUN   TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel
+=== RUN   TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel/OK
+=== RUN   TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel/PermissionDenied
+=== RUN   TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel/Internal
+--- PASS: TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel (0.01s)
+    --- PASS: TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel/OK (0.00s)
+    --- PASS: TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel/PermissionDenied (0.00s)
+    --- PASS: TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel/Internal (0.00s)
+PASS
+ok  	github.com/dapr/dapr/pkg/actors/router	1.031s

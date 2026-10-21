@@ -11,6 +11,7 @@ story_key: '2-13-dapr-notification-distribution-qualification'
 context:
   - _bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md
   - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-restart-trace.md
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -63,6 +64,32 @@ context:
 
 ## Implementation Notes
 
+### Active continuation: isolated reused-endpoint runtime correction
+
+The user resumes from `evidence/story-2-13/qualification-2026-10-21-restart-trace.md`
+and authorizes local evaluation of an isolated Dapr runtime or configuration
+correction for the reused-endpoint remote-actor recovery failure. Use the retained
+failures, successful TCP probes and pinned runtime sources to establish the pooled
+gRPC reconnect/backoff mechanism before implementing a correction. Preserve the
+installed runtime, production graphs, dependencies, historical packets and frozen
+baseline. A candidate runtime may be built in a disposable local directory and
+selected explicitly for the test fixture only; retain exact source revision,
+patch, toolchain/dependency and executable hashes, command receipts, failures and
+passes in a new packet. A fresh internal endpoint remains comparison evidence and
+does not resolve reused-endpoint recovery. Do not infer resolution from passing
+reruns alone. Preserve authorization, serialized metadata bounds, cancellation
+budgets, actor-persistence-before-broadcast ordering and the 15-second signal
+deadline. Run the focused reused-endpoint case first, then the complete distribution
+class without `-stopOnFail`, then relevant regressions. Report the existing
+Contracts validator blocker separately. Reassess restoration of the temporary
+inotify ceiling to 1,048,576 without disturbing unrelated processes and retain any
+restoration blocker. Keep this spec and its sprint row in-progress, the original
+story backlog and `accepted_exceptions: []`. Production qualification, approval,
+rollback and disposition tasks remain gated; this continuation must stop short of
+whole-story completion and must not advance a completion/review status merely
+because its local evaluation finishes. Record supported corrections and unresolved
+gaps candidly, including any inability to build or qualify an isolated runtime.
+
 ### Active continuation: October 21 restart timeout investigation
 
 The user explicitly resumed the existing dirty working tree from
@@ -101,6 +128,21 @@ The local restart diagnostic phase adds failure-only evidence retention in the e
 
 ## Spec Change Log
 
+The [October 21 isolated runtime evaluation](evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md)
+retains a deterministic pooled-backoff red/green regression and a disposable,
+explicitly selected Dapr candidate. Three final-binary reused-endpoint traces
+observe eviction, the unchanged built-in retry, restored actor persistence and
+broadcast in about one second. The final distribution class passes all six
+cases; upstream router/manager controls, the Debug graph, 66 focused checks,
+real projection composition, Direct and retained Redis regressions pass on their
+recorded identities. An externally observed inotify ceiling drop and all startup
+failures remain retained; original-ceiling restoration remains blocked by
+unrelated watch use. The installed runtime, production graphs, historical packets,
+frozen baseline, original backlog story and accepted-exception register stay
+unchanged. Local evaluation advances no whole-story checkbox or completion/review
+status; production qualification, rollback and authorized disposition remain gated.
+
+
 The [October 21 restart routing continuation](evidence/story-2-13/qualification-2026-10-21-restart-trace.md)
 reproduces the surviving host's failed remote ETag invocation after restart.
 Both controlled reused-endpoint failures retain successful independent TCP
@@ -116,6 +158,28 @@ open; this continuation advances no whole-story checkbox or completion status.
 - 2026-10-20 — The user clarified: "production is on local 192.168.1.30 kubernetes server. Azure or AWS is not MVP." This narrows the target; it approves no issuer, broker, runtime upgrade, cluster mutation, or production transition. The frozen intent and required candidate comparison are unchanged.
 
 ## Review Triage Log
+
+Review scope is the authorized local reused-endpoint continuation from run-start
+`bbfd0fada14ce11e137365637238af4fec2f7f7f`; the frozen story baseline is preserved.
+The original runtime packet/report remain immutable. Review does not advance status
+or production authority. Follow-up evidence belongs in a separate review supplement.
+
+| Finding | Verdict | Evidence and route |
+| --- | --- | --- |
+| Blind 1: whitespace selector falls back | low | Whitespace/empty selection deliberately uses the installed default. The report's invalid-selection wording can be read more broadly; clarify this interface in the supplement, without changing tested fixture behavior. |
+| Blind 2: healthy-server Unavailable evicts | medium | The patch deliberately classifies by status, not connection state; a server-originated Unavailable also evicts. This wider behavior remains a runtime qualification gate. Reject a wider recovery redesign in this local experiment; no installed/production runtime is changed. |
+| Blind 3: shared-channel concurrent users | medium | Pool destruction closes the channel and can interrupt concurrent users. The original report explicitly retains this unqualified risk. Broader runtime/concurrency qualification and production selection remain gated by the user's intent; no production safety claim or exception is supplied. |
+| Blind 4: incomplete extracted-tree identity | medium | Build receipts bind the archive, router and manifests, rather than every extracted file. Add a complete read-only post-build tree comparison to the supplement; it cannot retroactively supply a pre-build observation. |
+| Blind 5: timeline correlation | false | Each of the three retained measured windows has exactly one first-controller actor invocation and one retry error naming the selected reused endpoint, followed by recovery and the matching request completion. No competing invocation is present in these captures. Wider concurrent profiles remain unqualified. |
+| Blind 6: handoff not checked by verifier | medium | The original verifier checks indexed packet bytes but does not compare external handoff documents. Add explicit successor handoff checks while preserving the original handoff and its spec snapshot. |
+| Blind 7: candidate provenance cross-checks | medium | Equal host hashes alone do not mechanically compare final scenario/build/patch/runtime records. Add those comparisons in the separate review verifier. |
+| Blind 8: optional final artifacts | medium | Removing the original index/timelines skips their guarded checks. Require final artifacts in the successor verifier and validate the final class independently. |
+| Blind 9: optimized Python removes assertions | medium | PYTHONOPTIMIZE can suppress original assertions. The successor verifier must explicitly reject optimized execution and run the original verifier with optimization disabled. |
+| Edge 1: closing active shared users | medium | Same demonstrated close semantics and gated limitation as Blind 3. Reject a pool-retirement redesign in this scoped local continuation; concurrent production behavior remains unqualified. |
+| Edge 2: executable hash/start race | maybe-false | No executable mutation occurred in retained before/after observations, but they do not exclude a change-and-restore race. A concurrent mutation experiment or atomic launch/image-identity mechanism would settle this unverified medium risk; defer that fixture hardening. |
+| Edge 3: recorder spawn error | low | OSError would bypass the receipt writer for an absent executable, but all 28 recorded commands actually spawned. Reject added generic recorder recovery complexity for this immutable one-off packet. |
+| Edge 4: recorder command hang | low | The recorder has no global watchdog, but no command hung; scenario and call budgets remain tested. Reject new generic process-tree timeout/cleanup machinery in this continuation. |
+| Verification 1: cancellation predicate survives mutation | medium | A temporary overlay proves existing controls pass with the ctx.Err guard removed. The new deterministic cancelled-Unavailable control passes the candidate and rejects that mutation. Retain its exact source, commands and logs in the separate supplement; no runtime or application code changes. |
 
 ## Verification
 

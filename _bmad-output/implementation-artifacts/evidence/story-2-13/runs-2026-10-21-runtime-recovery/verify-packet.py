@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Verify retained bytes and declared local evidence without granting production authority."""
+import hashlib
+import json
+from pathlib import Path
+
+packet = Path(__file__).resolve().parent
+repository = next(p for p in packet.parents if (p / 'Hexalith.EventStore.slnx').exists())
+def sha(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+commands = []
+for path in sorted(packet.glob('*.json')):
+    if path.name in ('index.json','verification.json'):
+        continue
+    receipt = json.loads(path.read_text())
+    if 'sourcesBefore' not in receipt:
+        continue
+    commands.append(receipt['label'])
+    assert sha(packet / (receipt['label'] + '.log')) == receipt['outputSha256'], path
+    assert receipt['sourcesBefore'] == receipt['sourcesAfter'], path
+    assert receipt.get('externalInputsBefore', {}) == receipt.get('externalInputsAfter', {}), path
+    assert receipt.get('fixtureRuntimeSha256Before') == receipt.get('fixtureRuntimeSha256After'), path
+    for original, expected in receipt['sourcesBefore'].items():
+        assert sha(packet / receipt['snapshot'] / receipt['retainedSourcePaths'][original]) == expected, (path, original)
+    for original, expected in receipt.get('externalInputsBefore', {}).items():
+        if Path(original).name != 'go':
+            assert sha(packet / receipt['snapshot'] / 'external' / (Path(original).name + '.source')) == expected
+    if any('IntegrationTests.dll' in arg for arg in receipt['command']):
+        assert receipt['binariesBefore'] == receipt['binariesAfter'], path
+scenarios = []
+for path in sorted(packet.glob('scenarios/*/manifest.json')):
+    manifest = json.loads(path.read_text())
+    scenarios.append((manifest['Scenario'], manifest['Result']))
+    for relative, expected in manifest['Artifacts'].items():
+        assert sha(path.parent / relative) == expected, (path, relative)
+    for original, expected in manifest['Sources'].items():
+        assert sha(path.parent / manifest['RetainedSourcePaths'][original]) == expected
+    assert manifest['FirstSidecarExecutableSha256'] == manifest['SecondSidecarExecutableSha256'], path
+for path in packet.rglob('*'):
+    assert not (path.is_file() and path.suffix in ('.csproj', '.props', '.targets', '.slnx')), path
+baseline = json.loads((packet / 'baseline-identities.json').read_text())
+for relative, expected in baseline['historical'].items():
+    assert sha(repository / relative) == expected, relative
+for relative, expected in baseline['preservedInputs'].items():
+    if not relative.endswith('/spec-2-13-dapr-notification-distribution-qualification.md'):
+        assert sha(repository / relative) == expected, relative
+assert sha(Path(baseline['installedRuntime']['path'])) == baseline['installedRuntime']['sha256']
+red = json.loads((packet / 'upstream-built-in-backoff-red.json').read_text())
+green = json.loads((packet / 'candidate-backoff-green.json').read_text())
+assert red['exitCode'] != 0 and green['exitCode'] == 0
+assert 'after 5 retries' in (packet / 'upstream-built-in-backoff-red.log').read_text()
+assert 'TRANSIENT_FAILURE' in (packet / 'upstream-built-in-backoff-red.log').read_text()
+red_test = next(v for k,v in red['externalInputsBefore'].items() if k.endswith('local_recovery_test.go'))
+green_test = next(v for k,v in green['externalInputsBefore'].items() if k.endswith('local_recovery_test.go'))
+assert red_test == green_test, 'controlled red/green use identical test bytes'
+if (packet / 'recovery-timelines.json').exists():
+    timelines=json.loads((packet/'recovery-timelines.json').read_text())['timelines']
+    assert any(item['observedEvictionAndRecoveryWithinMeasuredInvocation'] for item in timelines)
+    for item in timelines:
+        manifest=packet/item['manifest']
+        assert sha(manifest)==item['manifestSha256']
+        assert sha(manifest.parent/'first.log')==item['firstLogSha256']
+        assert sha(manifest.parent/'second.log')==item['secondLogSha256']
+        assert item['sameInternalPort'] and item['invocationElapsedMillisecondsFromCapturedUtc']<15000
+        assert item['restoredActorPostPersistenceUtc']
+    final=json.loads((packet/'final-class-with-restored-capacity.json').read_text())
+    assert final['exitCode']==0 and '-stopOnFail' not in final['command']
+    assert final['inotifyLimitBefore']==final['inotifyLimitAfter']=='2097152'
+if (packet / 'index.json').exists():
+    index = json.loads((packet / 'index.json').read_text())
+    actual = {p.relative_to(packet).as_posix() for p in packet.rglob('*') if p.is_file()}
+    assert actual - set(index['excludedFromIndex']) == set(index['files'])
+    for relative, expected in index['files'].items():
+        assert sha(packet / relative) == expected, relative
+print(json.dumps({'result':'retained-byte-integrity-only','commands':len(commands),'scenarioCount':len(scenarios),'historicalFilesPreserved':len(baseline['historical']),'scenarios':scenarios},indent=2))

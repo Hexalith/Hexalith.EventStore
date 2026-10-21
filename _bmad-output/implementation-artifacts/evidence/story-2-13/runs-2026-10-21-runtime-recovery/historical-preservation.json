@@ -1,0 +1,17 @@
+{
+  "observedUtc": "2026-10-21T10:48:30.229643+00:00",
+  "baselineIdentityFileSha256": "e37543639602291ac7fc5b4176d833cac3105f8337662b24185c700a47bedacd",
+  "preExistingEvidenceFileCount": 7564,
+  "changedHistoricalFiles": [],
+  "allHistoricalFilesPreserved": true,
+  "preservedProductionAndTrackingInputs": {
+    "_bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md": true,
+    "_bmad-output/implementation-artifacts/sprint-status.yaml": true,
+    "docs/architecture/dapr-infrastructure-exceptions.yaml": true,
+    "src/Hexalith.EventStore/Hexalith.EventStore.csproj": true,
+    "src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj": true,
+    "src/Hexalith.EventStore.AppHost/Program.cs": true,
+    "src/Hexalith.EventStore.AppHost/DaprComponents/pubsub.yaml": true,
+    "deploy/dapr/subscription-projection-changed.yaml": true
+  }
+}

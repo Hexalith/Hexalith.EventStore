@@ -1,0 +1,20 @@
+{
+  "observedUtc": "2026-10-21T10:51:14.466455+00:00",
+  "revision": "bbfd0fada14ce11e137365637238af4fec2f7f7f",
+  "reportSha256": "adaff7e965c6a024fc2ca4f940d23eda274f0e57138ed64d2a0a3fe2af07f9e3",
+  "specSha256": "a1910d4c3b9ad8c82b6759a46421fcae8e8131b28f162378917ac94b19eccb4a",
+  "frozenIntentSha256": "1521207b347329cd85da62816cde47bca06e760a92ce0b482e7d8a78c23b9399",
+  "frozenIntentPreserved": true,
+  "finalCandidateSha256": "42ae7bf369c7824f9ae72313d57a0e1590bfb4f7219e478333b3162ddf18601b",
+  "whitespaceCheck": {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "output": ""
+  },
+  "status": " M .gitattributes\n M _bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md\n M tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionFixture.cs\n M tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionNode.cs\n?? _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md\n?? _bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-runtime-recovery/\n?? _bmad-output/test-artifacts/post-epic-10-r10a2-redis-backplane-runtime-proof/evidence-2026-10-21-104745Z.md\n",
+  "authority": "local evaluation only; original story backlog, spec/sprint in-progress, no accepted exception or production authority"
+}

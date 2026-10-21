@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -20,6 +21,13 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     public SignalRDaprDistributionNode(string name)
     {
         Name = name;
+        string? selectedRuntime = Environment.GetEnvironmentVariable("HEXALITH_STORY_2_13_DAPRD_PATH");
+        SidecarExecutablePath = string.IsNullOrWhiteSpace(selectedRuntime)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", "daprd")
+            : Path.IsPathFullyQualified(selectedRuntime)
+                ? selectedRuntime
+                : throw new ArgumentException("The fixture-only Dapr runtime selection must be an absolute path.");
+        SidecarExecutableSha256 = HashSidecarExecutable();
         AppPort = ReservePort();
         DaprHttpPort = ReservePort();
         DaprGrpcPort = ReservePort();
@@ -31,6 +39,12 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
 
     /// <summary>Gets the fixture-local node label.</summary>
     public string Name { get; }
+
+    /// <summary>Gets the explicitly selected fixture runtime, or the installed runtime when no selection is supplied.</summary>
+    public string SidecarExecutablePath { get; }
+
+    /// <summary>Gets the selected runtime hash, which must remain unchanged across starts and restarts.</summary>
+    public string SidecarExecutableSha256 { get; }
 
     /// <summary>Gets the application HTTP port.</summary>
     public int AppPort { get; }
@@ -175,13 +189,12 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
             DaprInternalGrpcPort = replacementPort;
         }
 
-        string daprd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dapr", "bin", "daprd");
-        if (!File.Exists(daprd))
+        if (!string.Equals(HashSidecarExecutable(), SidecarExecutableSha256, StringComparison.Ordinal))
         {
-            throw new FileNotFoundException("Dapr 1.18 sidecar is required for the runtime proof.", daprd);
+            throw new InvalidOperationException("The selected fixture runtime changed after its identity was captured.");
         }
 
-        var sidecar = new ProcessStartInfo(daprd)
+        var sidecar = new ProcessStartInfo(SidecarExecutablePath)
         {
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -281,6 +294,17 @@ public sealed class SignalRDaprDistributionNode : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await StopAsync().ConfigureAwait(false);
+    }
+
+    private string HashSidecarExecutable()
+    {
+        if (!File.Exists(SidecarExecutablePath))
+        {
+            throw new FileNotFoundException("The selected Dapr runtime is required; fixture selection never falls back.", SidecarExecutablePath);
+        }
+
+        using FileStream executable = File.OpenRead(SidecarExecutablePath);
+        return Convert.ToHexStringLower(SHA256.HashData(executable));
     }
 
     private static int ReservePort()

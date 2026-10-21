@@ -1,0 +1,13 @@
+{
+  "observedUtc": "2026-10-21T10:51:37.581893+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-runtime-recovery/verify-packet.py"
+  ],
+  "firstExitCode": 1,
+  "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+  "cause": "shell redirection creates the still-empty verification.json before the verifier enumerates root JSON receipts",
+  "correction": "exclude index.json and verification.json from the command-receipt enumeration; output/index membership and content hashes remain enforced",
+  "scope": "verification harness only; no runtime, source-under-test, test assertion or prior receipt changes"
+}

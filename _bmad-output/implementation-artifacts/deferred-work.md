@@ -6061,3 +6061,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-ext-protection-1-oq-5-4-1.md`
   summary: Apply one verification budget to role pin reads, canonicalization, and unreferenced guard-receipt operation ids.
   evidence: Role.request starts a fresh budget, canonicalization precedes the deadline check, and operation-id uniqueness indexes referenced receipts. These paths predate the new original binders. Whether a committed dispatch receipt can exist without a separate authorization entry remains unverified.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
+  summary: Verify atomic fixture runtime launch identity against an executable replacement race (unverified medium risk).
+  evidence: Story 2.13 local runtime review found that before/after executable hashes do not exclude change-and-restore between hashing and process startup; no such mutation was observed. A controlled concurrent mutation experiment or atomic verified-image launch would settle the risk.

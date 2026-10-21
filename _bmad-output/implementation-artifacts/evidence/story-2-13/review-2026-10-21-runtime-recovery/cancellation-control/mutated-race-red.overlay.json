@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/local_cancellation_test.go": "/tmp/story-2-13-cancellation-review-supplement-rnx2_lts/local_cancellation_test.go",
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/router.go": "/tmp/story-2-13-cancellation-review-supplement-rnx2_lts/router-mutated.go"
+  }
+}

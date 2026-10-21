@@ -1,0 +1,94 @@
+{
+  "result": "review-supplement-integrity-and-identity-checks-passed",
+  "authority": "review supplement only; qualification and production gates remain open",
+  "originalVerifierCommand": [
+    "/usr/bin/python3",
+    "-E",
+    "-B",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-runtime-recovery/verify-packet.py"
+  ],
+  "originalVerifierResult": {
+    "result": "retained-byte-integrity-only",
+    "commands": 28,
+    "scenarioCount": 18,
+    "historicalFilesPreserved": 7564,
+    "scenarios": [
+      [
+        "provider-network-blackhole",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "provider-network-blackhole",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "provider-network-outage",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "provider-network-outage",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "real-projection-distribution",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-fresh-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-fresh-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-reused-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-reused-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-reused-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-reused-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "replica-restart-reused-internal-endpoint",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "synthetic-distribution",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "synthetic-distribution",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "topic-catalog-after-rollout",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "topic-catalog-after-rollout",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "topic-catalog-before-rollout",
+        "passed-scenario-assertions-only"
+      ],
+      [
+        "topic-catalog-before-rollout",
+        "passed-scenario-assertions-only"
+      ]
+    ]
+  },
+  "measuredTimelines": 3,
+  "originalPacketIndexSha256": "2b15c12cfaf9d85cdaf338090b8368bdc3d095d9460f1306fd88cd2255113d78",
+  "originalSpecSha256": "a1910d4c3b9ad8c82b6759a46421fcae8e8131b28f162378917ac94b19eccb4a",
+  "currentSpecSha256": "7fe74f0294b0b8af7da923c70d8283860278e5bf204991f7feb8d455fd44ffba"
+}

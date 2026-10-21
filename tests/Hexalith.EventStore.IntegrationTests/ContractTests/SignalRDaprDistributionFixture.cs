@@ -17,9 +17,9 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
     {
         RepositoryRoot = repositoryRoot;
         _componentsPath = Path.Combine(Path.GetTempPath(), $"eventstore-2-13-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_componentsPath);
         First = new SignalRDaprDistributionNode("first");
         Second = new SignalRDaprDistributionNode("second");
+        Directory.CreateDirectory(_componentsPath);
     }
 
     /// <summary>Gets the repository root containing the product host binary.</summary>
@@ -230,6 +230,10 @@ public sealed class SignalRDaprDistributionFixture : IAsyncDisposable
             Result = scenarioAssertionsPassed ? "passed-scenario-assertions-only" : "failed-scenario-diagnostics-only",
             Runtime = Environment.Version.ToString(),
             AppId = "eventstore",
+            FirstSidecarExecutablePath = First.SidecarExecutablePath,
+            FirstSidecarExecutableSha256 = First.SidecarExecutableSha256,
+            SecondSidecarExecutablePath = Second.SidecarExecutablePath,
+            SecondSidecarExecutableSha256 = Second.SidecarExecutableSha256,
             FirstHostProcessId = First.ApplicationProcessId,
             SecondHostProcessId = Second.ApplicationProcessId,
             FirstSidecarProcessId = First.SidecarProcessId,

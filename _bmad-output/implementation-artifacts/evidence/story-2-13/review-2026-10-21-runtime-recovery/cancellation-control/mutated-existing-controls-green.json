@@ -1,0 +1,39 @@
+{
+  "label": "mutated-existing-controls-green",
+  "command": [
+    "/tmp/eventstore-2-13-runtime-81posyys/go/bin/go",
+    "-C",
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895",
+    "test",
+    "-overlay",
+    "/tmp/story-2-13-cancellation-review-supplement-rnx2_lts/mutated-existing-controls-green.overlay.json",
+    "-mod=readonly",
+    "-p=4",
+    "./pkg/actors/router",
+    "-run",
+    "TestLocalEvaluation",
+    "-count=1",
+    "-timeout=1m",
+    "-v"
+  ],
+  "environmentPins": {
+    "GOTOOLCHAIN": "local",
+    "GOPATH": "/tmp/eventstore-2-13-runtime-81posyys/gopath",
+    "GOCACHE": "/tmp/eventstore-2-13-runtime-81posyys/gocache"
+  },
+  "startedUtc": "2026-10-21T10:57:43.402883+00:00",
+  "completedUtc": "2026-10-21T10:57:46.070473+00:00",
+  "exitCode": 0,
+  "expectedExitCode": 0,
+  "outputSha256": "25abfb33a923011aa53346eddcee371aadb9031b12dea20c7a89fa9c0db8c2ae",
+  "overlaySha256": "4ed4d7b481b1fa07eeccd7bacf66fa6105849ca6e0bae4ec54a461ef85bf622e",
+  "originalSourceHashesBefore": {
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/router.go": "c2ee69279c8eeedb469f5e708cbc64467ca8a9591243b2eff23966c8a8a78aa9",
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/local_cancellation_test.go": "cec3746159fa893cea9b1575361eac90e7c9e74563c65918702fcfe59f862ba1"
+  },
+  "originalSourceHashesAfter": {
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/router.go": "c2ee69279c8eeedb469f5e708cbc64467ca8a9591243b2eff23966c8a8a78aa9",
+    "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/local_cancellation_test.go": "cec3746159fa893cea9b1575361eac90e7c9e74563c65918702fcfe59f862ba1"
+  },
+  "qualification": "review-only deterministic mutation demonstration; separate from original packet"
+}

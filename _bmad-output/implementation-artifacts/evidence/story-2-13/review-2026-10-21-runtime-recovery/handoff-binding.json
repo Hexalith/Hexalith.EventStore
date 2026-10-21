@@ -1,0 +1,16 @@
+{
+  "observedUtc": "2026-10-21T11:03:08.765407+00:00",
+  "originalPacket": "runs-2026-10-21-runtime-recovery",
+  "originalIndexSha256": "2b15c12cfaf9d85cdaf338090b8368bdc3d095d9460f1306fd88cd2255113d78",
+  "originalVerificationSha256": "9bfe35693a3a96c9eea9c7d738ca069a3d6e4c0fa82f650130d4927fb6a9ee85",
+  "originalHandoffSha256": "e1ec34269ecc35dc86e41e49af241a7beaa5d76e244400429419ad12c0c70594",
+  "originalReport": "qualification-2026-10-21-runtime-recovery.md",
+  "originalReportSha256": "adaff7e965c6a024fc2ca4f940d23eda274f0e57138ed64d2a0a3fe2af07f9e3",
+  "originalSpecSha256": "a1910d4c3b9ad8c82b6759a46421fcae8e8131b28f162378917ac94b19eccb4a",
+  "currentSpecPath": "_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md",
+  "currentSpecSha256": "7fe74f0294b0b8af7da923c70d8283860278e5bf204991f7feb8d455fd44ffba",
+  "frozenIntentSha256": "1521207b347329cd85da62816cde47bca06e760a92ce0b482e7d8a78c23b9399",
+  "candidateSha256": "42ae7bf369c7824f9ae72313d57a0e1590bfb4f7219e478333b3162ddf18601b",
+  "originalSourceRevision": "bbfd0fada14ce11e137365637238af4fec2f7f7f",
+  "authority": "review supplement only; qualification and production gates remain open"
+}

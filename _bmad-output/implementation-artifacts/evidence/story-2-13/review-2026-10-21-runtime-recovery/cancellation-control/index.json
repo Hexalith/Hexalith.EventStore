@@ -1,0 +1,23 @@
+{
+  "createdUtc": "2026-10-21T10:57:48.876726+00:00",
+  "originalPacket": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-runtime-recovery",
+  "sourceDirectory": "/tmp/eventstore-2-13-runtime-81posyys/dapr-b32a815fa2260983e181b95272ea555fe17d3895",
+  "sourcePreserved": true,
+  "description": "Recreates the review overlay demonstration: existing controls survive removal of the cancellation guard; deterministic cancelled-Unavailable control passes unchanged candidate and fails mutation. No original packet or source files modified.",
+  "files": {
+    "local-cancellation-original.go.source": "cec3746159fa893cea9b1575361eac90e7c9e74563c65918702fcfe59f862ba1",
+    "local_cancellation_test.go": "c06957043a984787e32f0478897fb5a75cf4e427e6757c06a0c98cf72851bb7b",
+    "mutated-existing-controls-green.json": "fe4b98e09e868dbea68b2e7cba2bcb6ad8cc2190850935a3d945e7eee192de61",
+    "mutated-existing-controls-green.log": "25abfb33a923011aa53346eddcee371aadb9031b12dea20c7a89fa9c0db8c2ae",
+    "mutated-existing-controls-green.overlay.json": "4ed4d7b481b1fa07eeccd7bacf66fa6105849ca6e0bae4ec54a461ef85bf622e",
+    "mutated-race-red.json": "2a3e475452b3c942e1b8c5c449ce69f494a633f86f529b50e640992804350ae0",
+    "mutated-race-red.log": "5ae7f3b5e9ef28c6ca3c5809793e301441da17fa975abeba1af8f9b83efc3dea",
+    "mutated-race-red.overlay.json": "f7aaecee84598d70ad6b11d2e05b8145b56cff773881abbf195bece233827008",
+    "original-candidate-race-green.json": "5704052cb8f676e96c9943c9bf0b9bbdb68e7edacb8aa6e0992261eda3fc6405",
+    "original-candidate-race-green.log": "7b1c9d574e068a5ec9285aaf448a4e8802f99f89c9487cf0331634a6174c93bc",
+    "original-candidate-race-green.overlay.json": "17dd7cdd7bbc83817eaa363b78d345a2429f2bb650b8242d77e2dfadd121fed6",
+    "race-test-snippet.go.source": "1a0486ea2acea5211e8399b9a82812df7320e05a478ef59266f228377a275916",
+    "router-mutated.go": "2553f39256bfa2bf880a0129b418548e5c0590df8acf9602d1e9259a973de4d1",
+    "router-original.go.source": "c2ee69279c8eeedb469f5e708cbc64467ca8a9591243b2eff23966c8a8a78aa9"
+  }
+}
