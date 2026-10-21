@@ -19,6 +19,7 @@ import signal
 import subprocess
 from pathlib import Path
 
+import p1r_evidence_storage as storage
 import p1r_qualification as preparation
 from p1r_qualification import canonical, digest, members, require, validate_times
 
@@ -294,8 +295,9 @@ def inventories_command(receipt, name):
     return receipt["inventories"][name]["command"]
 
 
-def restore_outcome(receipt):
+def restore_outcome(receipt, enclosing=None):
     """Validate a fresh-database restore/append/restart receipt and return its derived outcome."""
+    receipt = storage.materialize(receipt, enclosing or {})
     require(receipt.get("schema") in (RESTORE_SCHEMA, RESTORE_SCHEMA_V2), "unsupported restore receipt schema")
     validate_header(receipt, RESTORE_KEYS, receipt["schema"], "restore receipt members differ")
     require(receipt["role"] in ROLES, "unknown restore role")

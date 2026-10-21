@@ -6065,3 +6065,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
   summary: Verify atomic fixture runtime launch identity against an executable replacement race (unverified medium risk).
   evidence: Story 2.13 local runtime review found that before/after executable hashes do not exclude change-and-restore between hashing and process startup; no such mutation was observed. A controlled concurrent mutation experiment or atomic verified-image launch would settle the risk.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-13-dapr-notification-distribution-qualification.md`
+  summary: Capture complete per-lane application fixture and configuration provenance before future projection qualification.
+  evidence: Shared-channel review B4 found old recorder snapshots omit AspireContractTestFixture/configuration inputs; current DLLs are hash-bound, both projection regressions fail, and retrospective observation cannot supply pre-run source capture.

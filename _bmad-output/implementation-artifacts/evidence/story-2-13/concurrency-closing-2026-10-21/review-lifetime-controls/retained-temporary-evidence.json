@@ -1,0 +1,45 @@
+{
+  "observedUtc": "2026-10-21T13:25:15.666045+00:00",
+  "originalDirectory": "/tmp/story-2-13-review-double-release-hyybumzj",
+  "retainedDirectory": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/retained-double-release",
+  "files": {
+    "caller_lease_test.go": {
+      "bytes": 1831,
+      "sha256": "75acb8ef33ee4a4edd87d2dc68fd3e3132c6b5327f1fea088e9da2a7f6ef8b29"
+    },
+    "candidate-probe.log": {
+      "bytes": 164,
+      "sha256": "7da9bf4e869175fbe610cc69cc0388eaf54a7c5c06f33af6fe2e6cc06b1b4019"
+    },
+    "candidate-probe.overlay.json": {
+      "bytes": 546,
+      "sha256": "e186f43b5a53554dc88daf86a6e0b5d0431b8b5c2dda37a343d770f60224f895"
+    },
+    "mutant-probe.log": {
+      "bytes": 620,
+      "sha256": "d62136f16cf208897deed81e29a17643fb9013a9b49849ffcfafe5b073f738fd"
+    },
+    "mutant-probe.overlay.json": {
+      "bytes": 724,
+      "sha256": "7f62f5322c6469b02774cc2cd676be193a5707bb356b5e279a3fc321d7c81399"
+    },
+    "overlay.json": {
+      "bytes": 517,
+      "sha256": "1f1b72ac01749b180c8d9420bf3011ddca06812945613a1de45cfe359ea789af"
+    },
+    "receipt.json": {
+      "bytes": 528,
+      "sha256": "a7cc5c8fc1998af2aefa07983a50bc6fe39c003ed1cc77a0242b272a4e02f4b3"
+    },
+    "result.log": {
+      "bytes": 8500,
+      "sha256": "90a40d2e69c882b1ba1c88701fda08b6bedb16042c9e919239ccb924e223ab37"
+    },
+    "router.go": {
+      "bytes": 13491,
+      "sha256": "961213204b4013cdbd3d68e15b07aaf7bc2928af8d96d47b031de70abe934942"
+    }
+  },
+  "copyVerifiedByteForByte": true,
+  "historicalReceiptLimitation": "Original temporary logs/receipt retain their original information; complete UTC/input observations are supplied only by the new reruns."
+}

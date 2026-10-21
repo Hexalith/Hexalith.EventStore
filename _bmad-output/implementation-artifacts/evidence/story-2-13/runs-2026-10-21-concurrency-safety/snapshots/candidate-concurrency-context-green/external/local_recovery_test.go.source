@@ -1,0 +1,122 @@
+// Local evaluation test for the pinned Dapr source; not shipped or installed.
+package router_test
+
+import (
+	"context"
+	"net"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	grpcbackoff "google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/status"
+
+	"github.com/dapr/dapr/pkg/actors/api"
+	placementfake "github.com/dapr/dapr/pkg/actors/internal/placement/fake"
+	"github.com/dapr/dapr/pkg/actors/router"
+	tablefake "github.com/dapr/dapr/pkg/actors/table/fake"
+	"github.com/dapr/dapr/pkg/api/grpc/manager"
+	"github.com/dapr/dapr/pkg/modes"
+	internalv1pb "github.com/dapr/dapr/pkg/proto/internals/v1"
+	"github.com/dapr/dapr/pkg/resiliency"
+	securityfake "github.com/dapr/dapr/pkg/security/fake"
+	"github.com/dapr/kit/logger"
+)
+
+func TestLocalEvaluationReusedEndpointBackoff(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	reserved, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	address := reserved.Addr().String()
+	require.NoError(t, reserved.Close())
+	mgr := manager.NewManager(securityfake.New(), modes.StandaloneMode, &manager.AppChannelConfig{})
+	conn, release, err := mgr.GetGRPCConnection(ctx, address, "target", "default", grpc.WithConnectParams(grpc.ConnectParams{
+		Backoff:           grpcbackoff.Config{BaseDelay: time.Hour, Multiplier: 1, MaxDelay: time.Hour},
+		MinConnectTimeout: time.Second,
+	}))
+	require.NoError(t, err)
+	defer conn.Close()
+	release(false)
+	conn.Connect()
+	require.Eventually(t, func() bool { return conn.GetState() == connectivity.TransientFailure }, 3*time.Second, time.Millisecond)
+	t.Log("seeded pooled channel in TRANSIENT_FAILURE with one-hour backoff at unchanged address", address)
+
+	restored, err := net.Listen("tcp", address)
+	require.NoError(t, err)
+	srv := grpc.NewServer()
+	internalv1pb.RegisterServiceInvocationServer(srv, &localRecoverySink{})
+	go srv.Serve(restored)
+	t.Cleanup(srv.Stop)
+	probe, err := net.DialTimeout("tcp", address, 250*time.Millisecond)
+	require.NoError(t, err)
+	require.NoError(t, probe.Close())
+	t.Log("independent TCP probe succeeds while retained channel remains", conn.GetState())
+
+	r := newLocalRecoveryRouter(mgr, address)
+	started := time.Now()
+	response, err := r.Call(ctx, &internalv1pb.InternalInvokeRequest{Actor: &internalv1pb.Actor{ActorType: "test-type", ActorId: "same-endpoint"}})
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	require.Equal(t, connectivity.Ready, conn.GetState(), "failed transport backoff wakes without closing the shared channel")
+	next, teardown, getErr := mgr.GetGRPCConnection(ctx, address, "target", "default")
+	require.NoError(t, getErr)
+	defer teardown(true)
+	require.Same(t, conn, next)
+	require.Less(t, time.Since(started), 5*time.Second)
+	t.Log("bounded actor retry recovered on unchanged endpoint after in-place backoff reset; elapsed", time.Since(started))
+}
+
+func TestLocalEvaluationHealthyAndApplicationErrorsRetainChannel(t *testing.T) {
+	for _, code := range []codes.Code{codes.OK, codes.PermissionDenied, codes.Internal} {
+		t.Run(code.String(), func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			require.NoError(t, err)
+			srv := grpc.NewServer()
+			internalv1pb.RegisterServiceInvocationServer(srv, &localRecoverySink{code: code})
+			go srv.Serve(listener)
+			t.Cleanup(srv.Stop)
+			mgr := manager.NewManager(securityfake.New(), modes.StandaloneMode, &manager.AppChannelConfig{})
+			conn, release, err := mgr.GetGRPCConnection(ctx, listener.Addr().String(), "target", "default")
+			require.NoError(t, err)
+			defer conn.Close()
+			release(false)
+			conn.Connect()
+			require.Eventually(t, func() bool { return conn.GetState() == connectivity.Ready }, time.Second, time.Millisecond)
+			_, err = newLocalRecoveryRouter(mgr, listener.Addr().String()).Call(ctx, &internalv1pb.InternalInvokeRequest{Actor: &internalv1pb.Actor{ActorType: "test-type", ActorId: "control"}})
+			if code == codes.OK {
+				require.NoError(t, err)
+			} else {
+				require.Equal(t, code, status.Code(err))
+			}
+			next, teardown, err := mgr.GetGRPCConnection(ctx, listener.Addr().String(), "target", "default")
+			require.NoError(t, err)
+			defer teardown(true)
+			require.Same(t, conn, next, "non-transport outcomes must retain the existing pooled channel")
+		})
+	}
+}
+
+func newLocalRecoveryRouter(mgr *manager.Manager, address string) router.Interface {
+	plc := placementfake.New().WithLookupActor(func(ctx context.Context, _ *api.LookupActorRequest) (*api.LookupActorResponse, context.Context, context.CancelCauseFunc, error) {
+		return &api.LookupActorResponse{Local: false, Address: address, AppID: "target"}, ctx, func(error) {}, nil
+	})
+	return router.New(router.Options{Namespace: "default", AppID: "target", Placement: plc, Table: tablefake.New(), Resiliency: resiliency.FromConfigurations(logger.NewLogger("local-evaluation")), GRPC: mgr, MaxRequestBodySize: 4 * 1024 * 1024})
+}
+
+type localRecoverySink struct {
+	internalv1pb.UnimplementedServiceInvocationServer
+	code codes.Code
+}
+
+func (s *localRecoverySink) CallActor(context.Context, *internalv1pb.InternalInvokeRequest) (*internalv1pb.InternalInvokeResponse, error) {
+	if s.code != codes.OK {
+		return nil, status.Error(s.code, "local-test-controlled-response")
+	}
+	return &internalv1pb.InternalInvokeResponse{}, nil
+}

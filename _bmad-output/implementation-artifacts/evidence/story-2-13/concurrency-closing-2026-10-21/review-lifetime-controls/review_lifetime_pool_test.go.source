@@ -1,0 +1,133 @@
+// Closing-review controls; loaded only through a Go overlay.
+package manager
+
+import (
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+)
+
+func TestClosingFirstRetirementRacesAcquisitionAndFinalRelease(t *testing.T) {
+	acquiredOld := 0
+	for range 500 {
+		pool := NewConnectionPool(time.Minute, 0)
+		old := &retirementConnection{}
+		fresh := &retirementConnection{}
+		pool.Register(old)
+		originalLease := pool.Share()
+		require.Same(t, old, originalLease)
+		start := make(chan struct{})
+		type acquisition struct {
+			conn grpc.ClientConnInterface
+			err  error
+		}
+		acquired := make(chan acquisition, 1)
+		var group sync.WaitGroup
+		// No retirement occurs before this common start. Acquisition and the
+		// final original release compete with the first retirement transition.
+		group.Go(func() { <-start; pool.Retire(old) })
+		group.Go(func() { <-start; pool.Release(originalLease) })
+		group.Go(func() {
+			<-start
+			next, err := pool.Get(func() (grpc.ClientConnInterface, error) { return fresh, nil })
+			acquired <- acquisition{next, err}
+		})
+		close(start)
+		group.Wait()
+		result := <-acquired
+		require.NoError(t, result.err)
+		if result.conn == old {
+			acquiredOld++
+			require.Zero(t, old.closes.Load(), "a lease acquired before first retirement must drain before Close")
+		} else {
+			require.Same(t, fresh, result.conn)
+			require.Equal(t, int32(1), old.closes.Load(), "first retirement and final release close the old channel exactly once")
+		}
+		next, err := pool.Get(func() (grpc.ClientConnInterface, error) { return fresh, nil })
+		require.NoError(t, err)
+		require.Same(t, fresh, next, "new leases after first retirement never use the old connection")
+		pool.Release(result.conn)
+		pool.Release(next)
+		require.Equal(t, int32(1), old.closes.Load())
+		require.Len(t, pool.connections, 1)
+		require.Equal(t, int32(0), pool.connections[0].referenceCount)
+		pool.DestroyAll()
+		require.Equal(t, int32(1), fresh.closes.Load())
+	}
+	t.Logf("500 first-retirement/acquisition/final-release races; acquisition linearized before retirement in %d rounds", acquiredOld)
+}
+
+func TestClosingBlockingCloseDoesNotHoldPoolLock(t *testing.T) {
+	for _, path := range []string{"idle-retirement", "final-release"} {
+		t.Run(path, func(t *testing.T) {
+			pool := NewConnectionPool(time.Minute, 0)
+			old := &closingBlockingConnection{entered: make(chan struct{}), unblock: make(chan struct{})}
+			var unblock sync.Once
+			releaseClose := func() { unblock.Do(func() { close(old.unblock) }) }
+			t.Cleanup(releaseClose)
+			pool.Register(old)
+			var lease grpc.ClientConnInterface
+			if path == "final-release" {
+				lease = pool.Share()
+				pool.Retire(old)
+				require.Zero(t, old.closes.Load())
+			}
+			finished := make(chan struct{})
+			go func() {
+				if path == "final-release" {
+					pool.Release(lease)
+				} else {
+					pool.Retire(old)
+				}
+				close(finished)
+			}()
+			select {
+			case <-old.entered:
+			case <-time.After(time.Second):
+				t.Fatal("Close never reached its blocking barrier")
+			}
+			fresh := &retirementConnection{}
+			usable := make(chan error, 1)
+			started := time.Now()
+			go func() {
+				conn, err := pool.Get(func() (grpc.ClientConnInterface, error) { return fresh, nil })
+				if err == nil {
+					pool.Release(conn)
+				}
+				usable <- err
+			}()
+			select {
+			case err := <-usable:
+				require.NoError(t, err)
+			case <-time.After(time.Second):
+				t.Fatal("Get/Release blocked behind another connection's Close; pool lock must be released first")
+			}
+			t.Logf("%s: fresh Get/Release completed in %s while old Close remained blocked", path, time.Since(started))
+			require.Equal(t, int32(1), old.closes.Load())
+			releaseClose()
+			select {
+			case <-finished:
+			case <-time.After(time.Second):
+				t.Fatal("Close did not finish after its barrier was released")
+			}
+			pool.DestroyAll()
+			require.Equal(t, int32(1), fresh.closes.Load())
+		})
+	}
+}
+
+type closingBlockingConnection struct {
+	retirementConnection
+	entered chan struct{}
+	unblock chan struct{}
+}
+
+func (c *closingBlockingConnection) Close() error {
+	c.closes.Add(1)
+	close(c.entered)
+	<-c.unblock
+	return nil
+}

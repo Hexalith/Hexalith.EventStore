@@ -1,0 +1,6 @@
+{
+  "observedUtc": "2026-10-21T13:23:48.386359+00:00",
+  "expectedProductAssembly": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
+  "matchingProcesses": [],
+  "method": "Read-only scan independent of completed manifests, including relative arguments resolved against process cwd. No process changed. Fixture launch hardening remains deferred."
+}

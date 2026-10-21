@@ -12,6 +12,9 @@ import json
 from pathlib import Path
 import sys
 
+import p1r_qualification as preparation
+import p1r_published_qualification as qualification
+
 from p1r_published_qualification import (InvalidPacket, create_packet, load_document, measure_successor_support_table,
                                          parse_json, regular, validate_inputs, validate_packet, write_json)
 
@@ -38,6 +41,8 @@ def main(arguments=None):
     commands.add_parser("validate", help="independently validate an existing packet").add_argument("directory", type=Path)
     measure = commands.add_parser("measure-boundary", help="draft a successor table from complete new receipts")
     measure.add_argument("--inputs", type=Path, required=True)
+    measure.add_argument("--source-root", type=Path)
+    measure.add_argument("--source-builds-root", type=Path)
     measure.add_argument("--receipt", type=Path, action="append", required=True)
     measure.add_argument("--out", type=Path, required=True, help="new table file (must not exist)")
     args = parser.parse_args(arguments)
@@ -47,8 +52,17 @@ def main(arguments=None):
         elif args.command == "measure-boundary":
             if args.out.exists() or args.out.is_symlink():
                 raise InvalidPacket("successor table output already exists")
-            selection, _, _ = load_document(args.inputs, validate_inputs)
-            table = measure_successor_support_table(selection, [parse_json(regular(path)) for path in args.receipt])
+            selection, data, scope = load_document(args.inputs, validate_inputs)
+            if scope != "owner-selected":
+                raise InvalidPacket("successor measurement lacks owner-selected inputs")
+            binding = (preparation.source_binding(preparation.ROOT, selection["tooling"], args.source_root, args.source_builds_root)
+                       if "tooling" in selection else preparation.source_binding(preparation.ROOT, args.source_root)
+                       if args.source_root is not None else preparation.source_binding())
+            preparation.validate_selected_source(selection, binding)
+            qualification.validate_candidate_source(binding, selection)
+            preparation.check_current_source(binding)
+            table = measure_successor_support_table(selection, [parse_json(regular(path)) for path in args.receipt],
+                {"source_binding": binding, "inputs": {"value": selection, "sha256": preparation.digest(data)}})
             write_json(args.out, table)
             result = {"out": str(args.out.absolute()), "status": table["status"], "candidate": table["candidate"],
                       "case_count": sum(len(entry["cases"]) for entry in table["lanes"].values()), "p1r_usable": False}

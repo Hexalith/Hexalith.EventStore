@@ -2039,3 +2039,83 @@ class SupportBoundaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReviewedBoundaryMeasurementTests(unittest.TestCase):
+    def fixture(self, root, external):
+        import p1r_evidence_storage as storage
+        selection = q.parse_json((q.SUPPORT_BASELINE/'inputs.json').read_bytes())
+        candidate = selection['candidate']
+        candidate.update(version='3.121.0',tag='v3.121.0',tag_commit='a'*40,tag_builds_commit='b'*40,
+            builds={'version':'4.31.0','commit':'c'*40})
+        for package in candidate['packages']:package['repository_commit'] = candidate['tag_commit']
+        selected = root/'inputs.json';write(selected,selection)
+        binding = {'repository':str(root/'checkout')}
+        (root/'checkout').mkdir(exist_ok=True)
+        expected = {'source_binding':binding,'inputs':{'value':selection,'sha256':sha(selected.read_bytes())}}
+        receipts = []
+        for lane,identifiers in q.executed_case_inventory(selection).items():
+            cases,proofs = [],[]
+            for identifier in identifiers:
+                case = lane_case(identifier,before='same',after='same')
+                proof = {'id':identifier,'observations':{},'commands':[]}
+                if lane == 'metadata-write' and identifier == '3.121.0-to-3.70.1':
+                    support = SupportBoundaryTests()
+                    support.policy = {'lanes':{lane:{'cases':[{'id':identifier}]}}}
+                    _,case,proof = support.proof(lane,identifier)
+                    case['checks'] = [{'id':'admission-refused','passed':True}]
+                    proof['id'] = identifier
+                    command = proof['commands'][0]
+                    command.update(id=1,cwd=str(root),started_utc=at(0),finished_utc=at(1),
+                        output_sha256=sha(command['output'].encode()))
+                cases.append(case);proofs.append(proof)
+            receipt = lane_receipt(lane,cases=cases,scope='published-package',compatibility='incompatible' if any(case['disposition']=='incompatible' for case in cases) else 'compatible')
+            receipt.update(fixture={'id':'p1r-'+'a'*32,'synthetic':False},inputs_sha256=expected['inputs']['sha256'])
+            evidence = {'executor_source':binding,'executor_source_sha256':sha(json.dumps(binding,indent=2,sort_keys=True).encode()+b'\n'),'cases':proofs}
+            receipt['execution_evidence'] = evidence
+            if external:
+                store = storage.Store(root/'proof',storage.receipt_context(receipt,binding,selection))
+                for proof in proofs:
+                    for command in proof['commands']:
+                        data = command.pop('output').encode()
+                        store.command(command,data)
+            receipt['output_sha256'] = sha(preparation.canonical(evidence))
+            receipts.append(receipt)
+        return selection,selected,binding,expected,receipts
+
+    def testActualMeasureCliClassifiesVerifiedExternalRefusalAndKeepsOriginalDigests(self):
+        import contextlib
+        import importlib.util
+        import io
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            selection,selected,binding,expected,receipts = self.fixture(root,True)
+            paths = []
+            for receipt in receipts:
+                path = root/(receipt['lane']+'.json');write(path,receipt);paths.append(path)
+            spec = importlib.util.spec_from_file_location('review_measure_cli',q.ROOT/'tools/p1r-published-qualification.py')
+            cli = importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
+            with mock.patch.object(preparation,'source_binding',return_value=binding),contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main(['measure-boundary','--inputs',str(selected),'--out',str(root/'table.json'),
+                    *[part for path in paths for part in ('--receipt',str(path))]]),0)
+            table = q.parse_json((root/'table.json').read_bytes())
+            rule = next(case for case in table['lanes']['metadata-write']['cases'] if case['id']=='3.121.0-to-3.70.1')
+            self.assertEqual(rule['treatment'],'refused')
+            for receipt in receipts:
+                self.assertEqual(table['lanes'][receipt['lane']]['receipt_sha256'],sha(preparation.canonical(receipt)))
+            inline = copy.deepcopy(receipts)
+            import p1r_evidence_storage as storage
+            for receipt in inline:
+                receipt['execution_evidence'] = storage.materialize(receipt['execution_evidence'],storage.receipt_context(receipt,binding,selection))
+                receipt['output_sha256'] = sha(preparation.canonical(receipt['execution_evidence']))
+            inline_table = q.measure_successor_support_table(selection,inline,expected)
+            self.assertEqual(table['lanes']['metadata-write']['cases'],inline_table['lanes']['metadata-write']['cases'])
+            changed = copy.deepcopy(expected);changed['source_binding']['repository'] = str(root/'different')
+            with self.assertRaises(q.InvalidPacket):q.measure_successor_support_table(selection,receipts,changed)
+            changed = copy.deepcopy(expected);changed['inputs']['value']['candidate']['tag_commit'] = 'e'*40
+            with self.assertRaisesRegex(q.InvalidPacket,'admitted selection'):
+                q.measure_successor_support_table(selection,receipts,changed)
+            changed = copy.deepcopy(receipts);changed[0]['execution_evidence']['executor_source_sha256'] = 'e'*64
+            changed[0]['output_sha256'] = sha(preparation.canonical(changed[0]['execution_evidence']))
+            with self.assertRaisesRegex(q.InvalidPacket,'source or input binding'):
+                q.measure_successor_support_table(selection,changed,expected)

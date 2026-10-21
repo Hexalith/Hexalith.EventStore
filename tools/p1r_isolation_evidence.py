@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 import re
 
+import p1r_evidence_storage as storage
 import p1r_isolation as isolation
 import p1r_qualification as preparation
 from p1r_qualification import require, digest, regular, validate_identity, validate_identity_list
@@ -30,6 +31,12 @@ def canonical_engine_directory(value):
 def validate(wrapper, private, context, run_root, wrapper_path, times):
     """Check every literal command, measured identity and timed cleanup observation."""
     repository = Path(context['source_binding']['repository'])
+    enclosing = {'attempt': wrapper.get('invocation'), 'repository': str(repository)}
+    if 'evidence_context' in wrapper:
+        enclosing.update(source=storage.source_identity(context['source_binding']), inputs=context['inputs']['sha256'],
+            candidate=digest(preparation.canonical(context['inputs']['value']['candidate'])))
+        require(wrapper['evidence_context'] == enclosing, 'isolation artifact context differs')
+    wrapper = storage.materialize(wrapper, enclosing)
     scratch = Path(wrapper['owned_scratch'])
     require(scratch.is_absolute() and scratch == scratch.resolve(), 'isolation scratch path substituted')
     require(bool(re.fullmatch(r'unix:///[^\s?#]+', wrapper.get('outer_host', ''))),
@@ -47,7 +54,8 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
     workspace = Path(next(row['Destination'] for row in mounts if row['Type'] == 'bind' and repository.is_relative_to(Path(row['Destination']))))
     source = context['source_binding'].get('candidate_source')
     source_root = Path(source['repository']) if source is not None else None
-    bind_roots = {workspace} | ({source_root} if source_root is not None and not source_root.is_relative_to(workspace) else set())
+    external_root = Path(wrapper['external_root']) if 'external_root' in wrapper else None
+    bind_roots = ({workspace} | ({external_root} if external_root is not None else set())) | ({source_root} if source_root is not None and not source_root.is_relative_to(workspace) else set())
     if source is not None:
         require(wrapper.get('source_root') == str(source_root)
                 and isolation.command_source_root(wrapper['inner_command']) == source_root,
@@ -58,11 +66,15 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
                     for key,value in binding.items() if key != 'python'}
         require(without_python(controller) == without_python(context['source_binding']),
                 'controller and private source closures differ')
+    if external_root is not None:
+        isolation.validate_external_root(external_root, repository, wrapper['outer_host'])
     outer_socket = Path(wrapper['outer_host'].removeprefix('unix://'))
     require(canonical_engine_directory(str(workspace)) and not outer_socket.is_relative_to(workspace)
             and not outer_socket.resolve().is_relative_to(workspace), 'isolation workspace exposes the outer Docker socket')
     require(workspace.is_absolute() and workspace == workspace.resolve() and repository.is_relative_to(workspace)
-            and Path(wrapper_path).is_relative_to(workspace) and run_root.is_relative_to(workspace),
+            and (Path(wrapper_path).is_relative_to(external_root) and run_root.is_relative_to(external_root)
+                 and not external_root.is_relative_to(workspace) if external_root is not None
+                 else Path(wrapper_path).is_relative_to(workspace) and run_root.is_relative_to(workspace)),
             'isolation workspace containment differs')
     command = wrapper['inner_command']
     selected = isolation.executor_input(command, repository)
@@ -249,7 +261,7 @@ def validate(wrapper, private, context, run_root, wrapper_path, times):
     take(['cp',python+':/usr/local',scratch/'python'])
     take(['cp',daemon+':/usr/local/bin/docker',scratch/'docker'])
     created('sdk',isolation.SDK_IMAGE,isolation.sdk_arguments(workspace,repository,invocation,daemon,volume,
-            paths or ((source_root,) if source_root is not None else ())),['infinity'])
+            paths or ((source_root,) if source_root is not None else ()), external_root),['infinity'])
     take(['cp',scratch/'python',sdk+':/opt/python'])
     take(['cp',scratch/'docker',sdk+':/usr/local/bin/docker'])
     take(['start',sdk])

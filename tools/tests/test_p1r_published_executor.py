@@ -19,6 +19,7 @@ import uuid
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import p1r_evidence_storage as storage
 import p1r_published_executor as executor
 import p1r_published_qualification as qualification
 import p1r_qualification as preparation
@@ -349,7 +350,7 @@ class QualifiedSnapshotWitnessTests(unittest.TestCase):
     candidate_version = '3.121.0'
 
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(dir=preparation.ROOT)
+        self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
 
     def testRequirementUsesSelectedCaseAndWriterRatherThanOptionalProof(self):
@@ -1032,19 +1033,25 @@ class ProposedQualifiedSnapshotWitnessTests(QualifiedSnapshotWitnessTests):
     def change_isolation(receipt,name,mutate):
         reference = receipt['execution_evidence']['isolation']
         record = reference[name]
-        value = json.loads(record['content'])
+        value = json.loads(storage.preserved_bytes(record, storage.receipt_context(receipt, receipt["execution_evidence"]["executor_source"],
+            json.loads((Path(reference["execution"]["path"]).parent / "inputs.json").read_bytes()))))
+        if name == 'wrapper':
+            value = storage.materialize(value, value.get('evidence_context', {}))
         mutate(value)
         path = Path(record['path'])
         executor.write_json(path,value)
         data = path.read_bytes()
+        record.pop('content_ref', None)
         record.update(content=data.decode(),sha256=executor.digest(data))
         if name == 'private':
             wrapper = reference['wrapper']
-            value = json.loads(wrapper['content'])
+            value = json.loads(storage.preserved_bytes(wrapper, storage.receipt_context(receipt, receipt["execution_evidence"]["executor_source"],
+                json.loads((Path(reference["execution"]["path"]).parent / "inputs.json").read_bytes()))))
             value['private_execution']['sha256'] = record['sha256']
             path = Path(wrapper['path'])
             executor.write_json(path,value)
             data = path.read_bytes()
+            wrapper.pop('content_ref', None)
             wrapper.update(content=data.decode(),sha256=executor.digest(data))
         receipt['output_sha256'] = executor.digest(executor.canonical(receipt['execution_evidence']))
 
@@ -2962,3 +2969,147 @@ class PublishedPatchSourceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReviewedExecutorFinalizationTests(unittest.TestCase):
+    def testRealStoreRestoreFinalizationKeepsExternalResponsesAndInventories(self):
+        from test_p1r_published_qualification import LaneReceiptTests, at
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            receipt = LaneReceiptTests.bound_restore()
+            receipt['schema'] = runtime.RESTORE_SCHEMA_V2
+            receipt['fixture'] = {'id':'p1r-'+'a'*32,'synthetic':False}
+            remap = {identifier: identifier if identifier < 9 else identifier + 1 if identifier < 14 else 16 for identifier in range(1,15)}
+            for command in receipt['commands']: command['id'] = remap[command['id']]
+            for inventory in receipt['inventories'].values(): inventory['command'] = remap[inventory['command']]
+            prototype = copy.deepcopy(receipt['commands'][8])
+            receipt['commands'].extend([dict(prototype,id=9,step='replay'),dict(prototype,id=15,step='replay')])
+            receipt['commands'].sort(key=lambda row:row['id'])
+            for command in receipt['commands']:
+                command['started_utc'] = command['finished_utc'] = at(command['id'])
+            binding = {'repository':str(root/'checkout')}
+            (root/'checkout').mkdir()
+            enclosing = storage.receipt_context(receipt,binding,{'candidate':{'version':'3.125.1'}})
+            store = storage.Store(root/'proof',enclosing)
+            responses = {}
+            for name,identity,tenant,sequence,events in (('primary',9,'tenant-a',12,0),('append',10,'tenant-a',13,1),
+                    ('replay',14,'tenant-a',13,0),('secondary',15,'tenant-b',3,0)):
+                command = receipt['commands'][identity-1]
+                command['step'] = 'append' if name == 'append' else 'replay'
+                command['argv'] = ['dotnet','/owned/Probe.dll','actor','http://127.0.0.1:1',tenant,'fixture',
+                    '12' if name == 'append' else str(sequence),'IncrementCounter' if name == 'append' else 'AssertCounter']
+                observation = {'accepted':True,'sequence':sequence,'event_count':events}
+                value = {'instrumentation':executor.MECHANISM,'observation':observation,
+                    'measurement':{'checks':[{'id':'executed','passed':True}], 'assertions':{'attempted':1,'passed':1,'failed':0}}}
+                data = executor.canonical(value)
+                command['output_sha256'] = executor.digest(data)
+                recorded = {key:command[key] for key in storage.COMMAND_FIELDS}
+                store.command(recorded,data)
+                responses[name] = {'command':identity,'output_command':recorded,'observation':observation}
+            receipt['observations'].update(responses=responses,restore_checks=[{'id':name,'passed':True} for name in runtime.ACTUAL_RESTORE_CHECKS])
+            receipt = storage.retain_inventories(receipt,store)
+            worker = executor.Executor.__new__(executor.Executor)
+            worker.inputs,worker.candidate,worker.versions = {'selected_additions':[]},'3.125.1',()
+            worker.output,worker.storage,worker.pending_restore,worker.receipts = root/'packet',store,receipt,[]
+            worker.output.mkdir()
+            worker.verify_selected_candidate_archives = worker.save = mock.Mock()
+            worker.topology = mock.Mock(side_effect=RuntimeError('fixture execution boundary'))
+            worker.cleanup = mock.Mock(return_value=receipt['cleanup'])
+            with mock.patch.object(executor,'validate_execution_inputs'), mock.patch.object(executor,'provisional_successor_execution_policy',return_value={}):
+                with self.assertRaisesRegex(RuntimeError,'fixture execution boundary'): worker.execute()
+            persisted = json.loads(Path(worker.receipts[0]).read_bytes())
+            self.assertIn('output_command',persisted['observations']['responses']['primary'])
+            self.assertEqual(persisted['inventories']['source']['rows']['schema'],storage.JSON_SCHEMA)
+            self.assertEqual(runtime.restore_outcome(persisted,enclosing)['execution'],'passed')
+
+    def testObservationCaptureIdentitySurvivesGeneratedInputsAndCleanup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repository = root/'checkout';repository.mkdir()
+            candidate = {'version':'3.121.0','tag':'v3.121.0','tag_commit':'a'*40,'tag_builds_commit':'b'*40,
+                'builds':{'version':'4.31.0','commit':'c'*40},'feed':'https://api.nuget.org/v3/index.json','packages':[]}
+            content_hash = base64.b64encode(b'x'*64).decode()
+            for identifier in executor.PACKAGE_IDS:
+                candidate['packages'].append({'id':identifier,'archive_sha256':executor.digest((identifier+':3.121.0').encode()),
+                    'content_hash':content_hash,'repository_commit':'a'*40})
+            planning, binding = {'candidate_proposed':candidate}, {'repository':str(repository)}
+            def shared(worker):
+                worker.record([sys.executable,'-c','pass'],worker.scratch,executor.stamp(),0,b'early observation')
+                return {}
+            def git(owner,*args):
+                if args[0]=='ls-tree':return ('160000 commit '+'b'*40+'\treferences/Hexalith.Builds\n').encode()
+                if args[0]=='describe':return b'v4.31.0'
+                return ('a'*40).encode()
+            with mock.patch.object(executor,'ROOT',repository), mock.patch.object(preparation,'source_binding',return_value=binding), \
+                    mock.patch.object(executor.Executor,'shared',shared), mock.patch.object(preparation,'git',side_effect=git):
+                worker = executor.Executor(root/'packet',observation=planning,observation_sha256=executor.digest(executor.canonical(planning)))
+                self.addCleanup(lambda:shutil.rmtree(worker.scratch,ignore_errors=True))
+                capture = dict(worker.storage.context)
+                def build(version):
+                    consumer = worker.output/'consumers'/version
+                    for identifier in executor.PACKAGE_IDS:
+                        package = consumer/'packages'/identifier.lower()/version
+                        package.mkdir(parents=True)
+                        (package/(identifier.lower()+'.'+version+'.nupkg')).write_bytes((identifier+':'+version).encode())
+                        preparation.write_json(package/'.nupkg.metadata',{'contentHash':content_hash})
+                    return consumer
+                def inspect(path,data):
+                    return ({'valid':True,'id':next(name for name in executor.PACKAGE_IDS if name.lower()==path.parent.parent.name),
+                        'version':path.parent.name,'repository_commit':'a'*40}, {'signature':True,'synthetic_marker':False},{})
+                def run(argv,**kwargs):
+                    data = qualification.REPOSITORY_SIGNATURE.encode() if argv[:3]==['dotnet','nuget','verify'] else b''
+                    worker.record(argv,repository,executor.stamp(),0,data)
+                    return data
+                worker.run = run
+                worker.check_sources = mock.Mock()
+                worker.build_consumers = build
+                with mock.patch.object(qualification,'inspect_archive',side_effect=inspect):
+                    worker.observe_inputs(planning,'bounded observation control')
+                worker.cleanup()
+                self.assertEqual(worker.storage.context,capture)
+                self.assertEqual(storage.command_text(worker.commands[0],capture),'early observation')
+                self.assertNotEqual(worker.result['generated_owner_inputs_sha256'],capture['inputs'])
+                self.assertEqual(worker.result['capture_context'],capture)
+
+
+class ReviewedExecutorSummaryTests(unittest.TestCase):
+    def cli(self):
+        spec = importlib.util.spec_from_file_location('review_executor_cli',preparation.ROOT/'tools/p1r-published-executor.py')
+        cli = importlib.util.module_from_spec(spec);spec.loader.exec_module(cli)
+        return cli
+
+    def testRequestedSummarySurvivesAdmissionFailureBeforeChildCreation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cli = self.cli()
+            with mock.patch.object(storage,'default_root',return_value=root/'diagnostics'), \
+                    contextlib.redirect_stderr(io.StringIO()),contextlib.redirect_stdout(io.StringIO()):
+                code = cli.main(['observe','--out',str(root/'absent-packet'),'--planning-observations',str(root/'missing.json'),
+                    '--selection-reference','control','--summary-out',str(root/'summary')])
+            self.assertEqual(code,2)
+            summary = json.loads((root/'summary/summary.json').read_bytes())
+            self.assertEqual(summary['outcome']['status'],'failed')
+            self.assertEqual(summary['outcome']['exit_code'],2)
+            self.assertEqual(summary['files'],0)
+
+    def testRequestedSummaryIncludesOuterCleanupFailureWithoutChildPacket(self):
+        import p1r_isolation as isolation
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            planning = root/'planning.json';planning.write_text('{}')
+            outer = root/'packet-isolation';outer.mkdir()
+            result = {'passed':False,'errors':[],'command_exit_code':0,
+                'cleanup':[{'errors':['owned cleanup failed'],'remaining':['owned']}], 'command_stdout':''}
+            preparation.write_json(outer/'isolation.json',result)
+            store = storage.Store(root/'proof',storage.context('a'*32,preparation.ROOT))
+            runner = mock.Mock(output=outer,storage=store,result=result)
+            runner.run.return_value = 2
+            with mock.patch.object(isolation,'IsolatedRunner',return_value=runner), \
+                    mock.patch.object(cli := self.cli(),'validate_observation_inputs'), \
+                    mock.patch.dict(os.environ,{},clear=True),contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main(['observe','--out',str(root/'packet'),'--planning-observations',str(planning),
+                    '--selection-reference','control','--summary-out',str(root/'summary')]),2)
+            summary = json.loads((root/'summary/summary.json').read_bytes())
+            self.assertEqual(summary['outcome']['status'],'failed')
+            self.assertEqual(summary['outcome']['cleanup']['remaining'],1)
+            self.assertIn('isolation.json',summary['isolation_proof'])

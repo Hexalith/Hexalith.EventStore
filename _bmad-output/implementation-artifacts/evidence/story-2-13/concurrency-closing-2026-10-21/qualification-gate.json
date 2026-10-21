@@ -1,0 +1,15 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "-B",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-2-13/concurrency-closing-2026-10-21/qualification-gate.py"
+  ],
+  "startedUtc": "2026-10-21T13:26:20.380994+00:00",
+  "completedUtc": "2026-10-21T13:26:20.396929+00:00",
+  "exitCode": 1,
+  "expectedExitCode": 1,
+  "scriptSha256Before": "f11eb090a104a0e2f1f1e926e1d1d1b0e9d9d29ec011bb9840592853c014dea6",
+  "scriptSha256After": "f11eb090a104a0e2f1f1e926e1d1d1b0e9d9d29ec011bb9840592853c014dea6",
+  "outputSha256": "485108aa1cdf21e5d39c37b2282adaa62a1b6786aaaec815d2f051b16f2a688f",
+  "meaning": "Qualification remains blocked by retained failed regressions; no waiver or approval."
+}

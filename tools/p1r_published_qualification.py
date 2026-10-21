@@ -29,6 +29,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 import zlib
 
+import p1r_evidence_storage as storage
 import p1r_check_witnesses as check_witnesses
 import p1r_qualification as preparation
 import p1r_qualification_runtime as runtime
@@ -585,11 +586,14 @@ def validate_successor_support_table(selection, policy):
     return policy
 
 
-def measure_successor_support_table(selection, receipts):
+def measure_successor_support_table(selection, receipts, enclosing=None):
     """Draft a fresh case table from actual executor receipts without granting owner disposition."""
     require(validate_inputs(selection) == "owner-selected", "successor measurement lacks owner-selected inputs")
     require(is_successor_selection(selection),
             "3.119.0 evidence or unrepaired 3.120.0 cannot become a successor measurement")
+    if enclosing is not None and "source_binding" in enclosing:
+        require(enclosing.get("inputs", {}).get("value") == selection,
+                "successor measurement differs from admitted selection")
     inventory = executed_case_inventory(selection)
     require(isinstance(receipts, list) and len(receipts) == len(inventory),
             "successor measurement lacks a complete new lane receipt set")
@@ -600,15 +604,25 @@ def measure_successor_support_table(selection, receipts):
         lane_outcome(receipt)
         require([case.get("id") for case in receipt["cases"]] == list(inventory[lane]),
                 "successor measurement omits or substitutes a case")
-        evidence = receipt.get("execution_evidence", {}).get("cases", [])
+        trusted = enclosing
+        if enclosing is not None and "source_binding" in enclosing:
+            binding = enclosing["source_binding"]
+            require(receipt.get("inputs_sha256") == enclosing["inputs"]["sha256"]
+                    and receipt.get("execution_evidence", {}).get("executor_source") == binding
+                    and receipt.get("execution_evidence", {}).get("executor_source_sha256") == digest(
+                        json.dumps(binding, indent=2, sort_keys=True, allow_nan=False).encode() + b"\n"),
+                    "successor measurement source or input binding differs")
+            trusted = storage.receipt_context(receipt, binding, selection)
+            storage.validate_context(trusted)
+        evidence = storage.materialize(receipt.get("execution_evidence", {}).get("cases", []), trusted or {})
         require(isinstance(evidence, list) and [row.get("id") for row in evidence] == list(inventory[lane]),
                 "successor measurement lacks per-case execution evidence")
-        by_lane[lane] = receipt
+        by_lane[lane] = receipt, evidence
     lanes = {}
     for lane in inventory:
-        receipt = by_lane[lane]
+        receipt, verified_cases = by_lane[lane]
         cases = []
-        for case, evidence in zip(receipt["cases"], receipt["execution_evidence"]["cases"]):
+        for case, evidence in zip(receipt["cases"], verified_cases):
             checks = case.get("checks")
             assertions = case.get("assertions")
             require(isinstance(checks, list) and isinstance(assertions, dict)
@@ -692,7 +706,7 @@ def supported_case(rule, case, evidence, lane):
             and measurement.get("assertions") == {"attempted": 1, "passed": 1, "failed": 0})
 
 
-def assess_lane(receipt, policy):
+def assess_lane(receipt, policy, enclosing=None):
     """Evaluate every required case without changing its original lane receipt."""
     lane = receipt["lane"]
     rules = policy["lanes"][lane]["cases"]
@@ -701,7 +715,7 @@ def assess_lane(receipt, policy):
                 "successor receipt differs from its measured support boundary")
     require([case["id"] for case in receipt["cases"]] == [rule["id"] for rule in rules],
             "support receipt omits or substitutes a case")
-    evidence = receipt.get("execution_evidence", {}).get("cases", [])
+    evidence = storage.materialize(receipt.get("execution_evidence", {}).get("cases", []), enclosing or {})
     require(len(evidence) == len(rules), "support receipt lacks per-case evidence")
     if policy["schema"] == "hexalith.p1r.successor-support-boundary.v1":
         for rule, case in zip(rules, receipt["cases"]):
@@ -827,7 +841,7 @@ def inspect_archive(path, data):
     return nuspec, entries, dlls
 
 
-def observe_archive(packages_root, package, version, retained, index, receipt_name, directory, verifier):
+def observe_archive(packages_root, package, version, retained, index, receipt_name, directory, verifier, store=None):
     lower = package["id"].lower()
     archive_name = f"{lower}/{version.lower()}/{lower}.{version.lower()}.nupkg"
     row = {"id": package["id"], "archive": archive_name, "state": "missing", "sha256": None, "bytes": None,
@@ -850,6 +864,11 @@ def observe_archive(packages_root, package, version, retained, index, receipt_na
     result = verifier(path, output, directory / "receipts")
     row["signature"] = {**result, "verifier": VERIFIER if verifier is default_verifier else "injected-verifier",
                         "output": {"path": f"{receipt_name}/signature-{index}.txt", "sha256": digest(regular(output))}}
+    if store is not None:
+        signature = {**result, "id": index + 1, "verifier": VERIFIER}
+        store.command(signature, regular(output))
+        row["signature"] = signature
+        output.unlink()  # This invocation's temporary capture is retained immutably above.
     return row
 
 
@@ -892,7 +911,7 @@ def observe_project(root, packages_root, project, retained, receipt_name):
     return row
 
 
-def observe_package_evidence(evidence, role, selection, directory, receipt_id, verifier):
+def observe_package_evidence(evidence, role, selection, directory, receipt_id, verifier, store=None):
     """Physically observe one package-evidence directory; retains graph/loaded copies for revalidation."""
     root = Path(evidence).absolute()
     require(root.is_dir() and root == root.resolve(), "package evidence path unavailable or substituted")
@@ -917,7 +936,7 @@ def observe_package_evidence(evidence, role, selection, directory, receipt_id, v
     retained = directory / receipt_name
     retained.mkdir()
     (retained / "evidence.json").write_bytes(manifest_data)
-    packages = [observe_archive(packages_root, package, selection["version"], retained, index, receipt_name, directory, verifier)
+    packages = [observe_archive(packages_root, package, selection["version"], retained, index, receipt_name, directory, verifier, store)
                 for index, package in enumerate(selection["packages"])]
     return {"evidence_root": str(root), "evidence": {"path": f"{receipt_name}/evidence.json", "sha256": digest(manifest_data)},
             "fixture": manifest["fixture"], "configuration": manifest["configuration"],
@@ -1040,16 +1059,18 @@ def loaded_checks(prefix, project, loaded, graph_ids, archives, packages_root):
     ]
 
 
-def signature_verified(directory, signature):
+def signature_verified(directory, signature, enclosing=None):
     if not isinstance(signature, dict) or signature.get("exit_code") != 0:
         return False
+    if "output_ref" in signature or "output_schema" in signature:
+        return REPOSITORY_SIGNATURE in storage.command_text(signature, enclosing)
     output = signature["output"]
     data = regular(directory / relative(output["path"]))
     require(digest(data) == output["sha256"], "signature verifier output hash mismatch")
     return REPOSITORY_SIGNATURE in data.decode("utf-8", "replace")
 
 
-def package_checks(directory, observation, selection):
+def package_checks(directory, observation, selection, enclosing=None):
     """Recompute every package check from bound observations and retained graph/loaded copies."""
     require([package["id"] for package in observation["packages"]] == [package["id"] for package in selection["packages"]],
             "package observations differ from the selection")
@@ -1067,7 +1088,7 @@ def package_checks(directory, observation, selection):
             ("repository-commit", nuspec.get("repository_commit") == selected["repository_commit"]),
             ("unique-archive-entries", entries.get("duplicates") is False),
             ("signature-entry", entries.get("signature") is True),
-            ("repository-signature-verified", signature_verified(directory, package["signature"])),
+            ("repository-signature-verified", signature_verified(directory, package["signature"], enclosing)),
             ("content-hash", metadata.get("contentHash") == selected["content_hash"]),
             ("restore-source", metadata.get("source") == selection["feed"]),
             ("assemblies-present", bool(package["dlls"])),
@@ -1107,8 +1128,15 @@ def package_scope(observation, inputs):
     return "tooling-synthetic" if synthetic else "published-package"
 
 
+def package_output_context(directory, invocation, selection, inputs):
+    return storage.context(invocation, ROOT, digest(regular(directory / "source-binding.json")),
+        digest(preparation.canonical(selection)), inputs["sha256"])
+
+
 def package_outcome(directory, receipt, selection, inputs):
-    checks = package_checks(directory, receipt["observation"], selection)
+    external = any(package.get("signature") and "output_ref" in package["signature"] for package in receipt["observation"]["packages"])
+    enclosing = package_output_context(directory, receipt["invocation"], selection, inputs) if external else None
+    checks = package_checks(directory, receipt["observation"], selection, enclosing)
     counter = checks_counter(checks)
     scope = package_scope(receipt["observation"], inputs)
     passed = counter["attempted"] > 0 and counter["failed"] == 0
@@ -1132,7 +1160,9 @@ def execute_package_lane(directory, invocation, role, evidence, inputs, verifier
     receipt = {"schema": PACKAGE_RECEIPT_SCHEMA, "id": receipt_id, "invocation": invocation, "role": role,
                "started_utc": stamp(), "finished_utc": None, "observation": None, "checks": [], "assertions": None,
                "execution": "failed", "compatibility": "unverified", "scope": None}
-    receipt["observation"] = observe_package_evidence(evidence, role, selection, directory, receipt_id, verifier)
+    store = (storage.Store(directory.parent / ".p1r-artifacts", package_output_context(directory, invocation, selection, inputs))
+             if verifier is default_verifier else None)
+    receipt["observation"] = observe_package_evidence(evidence, role, selection, directory, receipt_id, verifier, store)
     checks, outcome = package_outcome(directory, receipt, selection, inputs)
     receipt.update(finished_utc=stamp(), checks=checks, **outcome)
     write_json(directory / "receipts" / (receipt_id + ".json"), receipt)
@@ -1152,7 +1182,7 @@ def validate_package_receipt(directory, invocation, role, path, inputs, start, e
         retained = {bind_evidence_copy(directory, observation, role)}
         checks, outcome = package_outcome(directory, receipt, role_selection(inputs["value"], role), inputs)
         retained |= {project[key]["path"] for project in observation["projects"] for key in ("assets", "lock", "loaded")}
-        retained |= {package["signature"]["output"]["path"] for package in observation["packages"] if package["signature"]}
+        retained |= {package["signature"]["output"]["path"] for package in observation["packages"] if package["signature"] and "output_ref" not in package["signature"]}
         prefix = f"receipts/{receipt['id']}/"
         require(all(name.startswith(prefix) for name in retained), "retained package evidence escapes its receipt")
     except (TypeError, KeyError, AttributeError, IndexError) as error:
@@ -1262,14 +1292,18 @@ def validate_final_isolation(receipt, context):
             "proposed successor lacks final isolation evidence")
     values = {}
     for name, record in reference.items():
-        require(isinstance(record, dict) and set(record) == {"path", "sha256", "content"}
-                and isinstance(record["path"], str) and Path(record["path"]).is_absolute()
-                and isinstance(record["content"], str)
-                and digest(record["content"].encode()) == record["sha256"]
+        data = storage.preserved_bytes(record, storage.receipt_context(receipt, context["source_binding"], context["inputs"]["value"]))
+        require(isinstance(record["path"], str) and Path(record["path"]).is_absolute()
                 and digest(regular(Path(record["path"]))) == record["sha256"],
                 "final isolation content or physical reference substituted")
-        values[name] = parse_json(record["content"].encode())
+        values[name] = parse_json(data)
     wrapper, private, execution = (values[name] for name in ("wrapper", "private", "execution"))
+    enclosing = {"attempt": wrapper.get("invocation"), "repository": context["source_binding"]["repository"]}
+    if "evidence_context" in wrapper:
+        enclosing.update(source=storage.source_identity(context["source_binding"]), inputs=context["inputs"]["sha256"],
+            candidate=digest(preparation.canonical(context["inputs"]["value"]["candidate"])))
+        require(wrapper["evidence_context"] == enclosing, "isolation artifact source or candidate context differs")
+    wrapper = storage.materialize(wrapper, enclosing)
     run_root = Path(reference["execution"]["path"]).parent
     require(Path(reference["execution"]["path"]).name == "execution.json"
             and Path(reference["wrapper"]["path"]).name == "isolation.json"
@@ -1351,7 +1385,11 @@ def validate_final_isolation(receipt, context):
         validate_candidate_source(context["source_binding"], context["inputs"]["value"])
     verifier_mounts = [Path(item["Destination"]) for item in runner.get("Mounts", [])
                        if item.get("Type") == "bind" and Path(context["source_binding"]["repository"]).is_relative_to(Path(item["Destination"]))]
-    expected_mount_count = 2 + int(source_root is not None and not any(source_root.is_relative_to(path) for path in verifier_mounts))
+    external_root = Path(wrapper["external_root"]) if "external_root" in wrapper else None
+    if external_root is not None:
+        isolation.validate_external_root(external_root, Path(context["source_binding"]["repository"]), wrapper["outer_host"])
+        require(str(external_root) in destinations and run_root.is_relative_to(external_root), "external evidence mount differs")
+    expected_mount_count = 2 + int(external_root is not None) + int(source_root is not None and not any(source_root.is_relative_to(path) for path in verifier_mounts))
     require(owned.get(sdk, {}).get("role") == "sdk" and owned[sdk].get("image") == isolation.SDK_IMAGE
             and owned.get(daemon, {}).get("role") == "daemon" and owned[daemon].get("image") == isolation.DAEMON_IMAGE
             and runner.get("Id") == sdk and runner.get("Labels", {}).get(isolation.LABEL) == wrapper["invocation"]
@@ -1429,13 +1467,14 @@ def finalize_isolation_receipts(output, isolation_output, selection):
     if selection["candidate"]["version"] not in ("3.122.1", "3.125.0", "3.125.1", "3.126.0"):
         return
     output, isolation_output = Path(output), Path(isolation_output)
-    reference = {}
-    for name, path in (("wrapper",isolation_output/"isolation.json"),("private",isolation_output/"private-execution.json"),
-                       ("execution",output/"execution.json")):
-        data = regular(path)
-        reference[name] = {"path":str(path),"sha256":digest(data),"content":data.decode()}
     execution = parse_json(regular(output/"execution.json"))
-    private = parse_json(reference["private"]["content"].encode())
+    private = parse_json(regular(isolation_output/"private-execution.json"))
+    store = storage.Store(output.parent / ".p1r-artifacts", storage.context(execution["invocation"],
+        private["source_binding"]["repository"], execution.get("executor_source_sha256"),
+        digest(preparation.canonical(selection["candidate"])), execution.get("inputs_sha256")))
+    reference = {name: storage.preserve_file(store, path) for name, path in (
+        ("wrapper", isolation_output/"isolation.json"), ("private", isolation_output/"private-execution.json"),
+        ("execution", output/"execution.json"))}
     context = {"source_binding":private.get("source_binding"),
                "inputs":{"value":selection,"scope":"owner-selected","sha256":execution.get("inputs_sha256")}}
     if "candidate_source" in context["source_binding"]:
@@ -1553,7 +1592,8 @@ def bind_lane(receipt, outcome, context):
     require(instrumentation is not None and receipt["instrumentation"] == instrumentation["mechanism"],
             "lane assertions lack the accepted instrumentation")
     if instrumentation["mechanism"] == "p1r-executed-checks-v1":
-        evidence = receipt.get("execution_evidence")
+        evidence = storage.materialize(receipt.get("execution_evidence"),
+            storage.receipt_context(receipt, context["source_binding"], selection))
         require(isinstance(evidence, dict) and evidence.get("mechanism") == instrumentation["mechanism"]
                 and isinstance(evidence.get("cases"), list)
                 and [case.get("id") for case in evidence["cases"]] == [case["id"] for case in receipt["cases"]],
@@ -1602,7 +1642,8 @@ def bind_lane(receipt, outcome, context):
                             and digest(command["output"].encode()) == command["output_sha256"],
                             "retained executed command output differs")
             check_witnesses.validate_case(row, case, context["source_binding"], receipt["lane"], evidence.get("predicate_sources"),
-                                          candidate_version=selection["candidate"]["version"])
+                                          candidate_version=selection["candidate"]["version"],
+                                          enclosing=storage.receipt_context(receipt, context["source_binding"], selection))
         require([row["version"] for row in selection.get("comparisons", [])] == list(COMPARISON_VERSIONS),
                 "measured executor lacks the selected historical directions")
         require([case["id"] for case in receipt["cases"]] == list(executed_case_inventory(selection)[receipt["lane"]]),
@@ -1674,7 +1715,7 @@ def receipt_outcome(receipt, context):
                     "restore isolation reference differs from contributing cleanup")
         runtime_receipt = {key:value for key,value in receipt.items() if key != "execution_evidence"}
         runtime_receipt["cleanup"] = {key:value for key,value in receipt["cleanup"].items() if key != "execution_evidence"}
-        outcome = runtime.restore_outcome(runtime_receipt)
+        outcome = runtime.restore_outcome(runtime_receipt, storage.receipt_context(receipt, context.get("source_binding", {}), selection))
         lane = receipt["role"] + "-restore"
     elif schema == runtime.CLEANUP_SCHEMA:
         outcome = runtime.cleanup_outcome({key:value for key,value in receipt.items() if key != "execution_evidence"})
@@ -1690,7 +1731,8 @@ def import_receipt(path, directory, lanes, context, boundary=None):
     receipt = parse_json(data)
     group, lane, outcome = receipt_outcome(receipt, context)
     if boundary is not None and group in ("scenarios", "additions") and receipt.get("instrumentation") == "p1r-executed-checks-v1":
-        boundary[lane] = assess_lane(receipt, load_support_table(context["inputs"]["value"], context.get("support_boundary")))
+        boundary[lane] = assess_lane(receipt, load_support_table(context["inputs"]["value"], context.get("support_boundary")),
+            storage.receipt_context(receipt, context["source_binding"], context["inputs"]["value"]))
     name = f"receipts/{receipt['id']}.json"
     target = directory / name
     require(not target.exists(), "duplicate receipt identity")
@@ -1917,7 +1959,8 @@ def validate_packet(directory):
             receipt = parse_json(regular(directory / relative(name)))
             receipt_group, lane, outcome = receipt_outcome(receipt, context)
             if group in ("scenarios", "additions") and receipt.get("instrumentation") == "p1r-executed-checks-v1":
-                boundary[lane] = assess_lane(receipt, load_support_table(selection, support_value))
+                boundary[lane] = assess_lane(receipt, load_support_table(selection, support_value),
+                    storage.receipt_context(receipt, context["source_binding"], selection))
             require(receipt_group == group and lane == row["id"] and name == f"receipts/{receipt['id']}.json",
                     "lane receipt binding differs")
             require(row == executed_row(lane, outcome, name), "lane differs from its receipt")

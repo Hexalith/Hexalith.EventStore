@@ -23,6 +23,12 @@ jobs:
       - name: Initialize root-declared submodules
         run: git -c submodule.recurse=false submodule update --init
 
+      - name: Verify bounded external evidence storage and Git admission
+        run: python3 -m unittest discover -s tools/tests -p 'test_p1r_evidence_storage.py'
+
+      - name: Verify external evidence refusals under optimized Python
+        run: python3 -O -m unittest discover -s tools/tests -p 'test_p1r_evidence_storage.py'
+
       - name: Verify bounded P1R preparation and process controls
         run: python3 -m unittest discover -s tools/tests -p 'test_p1r_qualification.py'
 

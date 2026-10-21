@@ -66,6 +66,23 @@ context:
 
 ### Active continuation: shared-channel concurrency safety
 
+Measured continuation decision: the first concurrency packet demonstrates that
+retained eviction cancels held actor/reminder/stream RPC attempts. Its evaluated
+TransientFailure-only ResetConnectBackoff alternative passes fixed-loopback
+controls and all six distribution cases, but a pinned grpc-go resolver-churn race
+probe reports concurrent map access and a fatal error. Preserve that candidate
+and all measurements as limited/rejected wider-profile evidence. This supports
+evaluating a second runtime-only correction in a second disposable tree and
+`evidence/story-2-13/runs-2026-10-21-concurrency-retirement/`, without dependency
+updates or patches. The source-supported design may mark the failed pooled
+channel retired, exclude it from new leases, and close it only after the last
+active lease releases; the current caller must release exactly once. Qualify pool
+lifetime/concurrency and cancellation-guard discrimination, then the unchanged
+focused reused-endpoint case, complete distribution class without stopOnFail and
+relevant regressions. No ResetConnectBackoff call belongs in that candidate.
+The initial candidate's successes cannot erase either measured failure.
+
+
 Resume from `evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md`,
 `evidence/story-2-13/review-2026-10-21-runtime-recovery/README.md` and
 `evidence/story-2-13/closing-after-review-2026-10-21.json`. The existing working
@@ -175,6 +192,21 @@ The local restart diagnostic phase adds failure-only evidence retention in the e
 
 ## Spec Change Log
 
+The [shared-channel concurrency evaluation](evidence/story-2-13/qualification-2026-10-21-concurrency-retirement.md)
+reproduces eviction cancelling held actor/reminder/stream RPC attempts and rejects
+a reset alternative after a pinned grpc-go resolver-churn data race/fatal error.
+A second disposable runtime uses pool retirement and final-lease closure; focused
+race/context controls, reused-endpoint recovery, the complete six-case class,
+post-class Go/churn checks, 66 focused application checks and Redis pass. Initial
+watcher startup failures remain retained beside a measured external ceiling drop.
+Real projection composition and ordinary Direct projection fail and remain
+unresolved; this is not overall qualification. Historical packets, original
+runtime/source subjects, production graphs, frozen intent and accepted-exception
+register remain preserved. The active spec/sprint stay in-progress and original
+story backlog; launch-identity hardening and all production/disposition gates
+remain deferred/gated. No staging, commit or push was performed by this task.
+
+
 The [October 21 isolated runtime evaluation](evidence/story-2-13/qualification-2026-10-21-runtime-recovery.md)
 retains a deterministic pooled-backoff red/green regression and a disposable,
 explicitly selected Dapr candidate. Three final-binary reused-endpoint traces
@@ -227,6 +259,32 @@ or production authority. Follow-up evidence belongs in a separate review supplem
 | Edge 3: recorder spawn error | low | OSError would bypass the receipt writer for an absent executable, but all 28 recorded commands actually spawned. Reject added generic recorder recovery complexity for this immutable one-off packet. |
 | Edge 4: recorder command hang | low | The recorder has no global watchdog, but no command hung; scenario and call budgets remain tested. Reject new generic process-tree timeout/cleanup machinery in this continuation. |
 | Verification 1: cancellation predicate survives mutation | medium | A temporary overlay proves existing controls pass with the ctx.Err guard removed. The new deterministic cancelled-Unavailable control passes the candidate and rejects that mutation. Retain its exact source, commands and logs in the separate supplement; no runtime or application code changes. |
+
+
+### Shared-channel continuation review — 2026-10-21
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| B1 | medium | patch | Draft verifier requests missing receipt names. Preserve the draft; canonical integrity checks and a separate qualification gate will use actual filenames. Failed regressions must still fail qualification. |
+| B2 | medium | patch | Final closing bindings were pending during review; finish inventory, spec snapshot and preservation checks before closure. |
+| B3 | medium | patch | Old recorders omit effective Go overlays before/after execution. Preserve old receipts and rerun final Go checks using complete overlay capture on unchanged product source. |
+| B4 | medium | defer | Some regression source snapshots omit application fixtures/configuration. Application binaries are hash-bound, but that is not full source provenance. Retain a retrospective observation and require fuller future qualification inputs; do not claim pre-run capture. |
+| B5 | medium | patch | Retained recorders use assertions for immutability. Actual runs used ordinary Python and no overwrite is observed. Preserve old tools and use unconditional exclusive creation for new records. |
+| B6 | medium | patch | Existing concurrency barrier starts after retirement. Add an initially-active retirement/acquisition/final-release race control via overlay. |
+| B7 | medium | patch | Post-retirement cancellation/deadline cases were absent. Add live caller controls and verify replacement-channel users stay healthy. |
+| B8 | medium | patch | Counter-only Close cannot prove pool lock availability. Add a blocking Close control and simultaneous acquisition. |
+| B9 | medium | patch | Manifest-only PID discovery misses failed starts. Supplement with an independent workspace product-path scan; retain launch-identity deferral. |
+| B10 | medium | patch | Timeline helper permits empty persistence lists. Actual four lists are nonempty; canonical checks must reparse actor-correlated events and require persistence before broadcast. |
+| E1 | medium | patch | Duplicate B1: missing filenames are real. The two projection failures must remain failures and qualification incomplete. |
+| E2 | low | patch | Abandoned first-candidate finalizer targets an uncreated report. Preserve and explicitly retire it; use the closing directory instead. |
+| G1 | medium | patch | Pre-verified gap: extra-release router mutant passes old controls. Retain/rerun the second-lease control and mutant with complete identities. |
+| G2 | medium | patch | Duplicate B1/E1: planned checker cannot read actual receipt names. Its all-pass qualification gate remains unsatisfied; no waiver. |
+
+
+Review follow-up retains passing additional lifetime controls and a full Go race replay with complete overlay identities in `evidence/story-2-13/concurrency-closing-2026-10-21/review-lifetime-controls/`. The caller-lease mutant is rejected, persistence is checked against raw actor-correlated logs, and retired tooling is documented separately. B4 remains deferred: retrospective application fixture snapshots cannot provide pre-run provenance. The canonical qualification gate remains failed for both projection regressions; no status or authority advances.
+
+
+Closing audit: the Redis test body passes, but its receipt records nine assembly/deps before/after differences, so stable-binary compatibility remains unqualified. Later workspace output drift is separately retained; its writer is unattributed and current user outputs are preserved. The final qualification gate fails for the two projection regressions and this identity ambiguity. Complete raw-log, overlay and historical preservation checks do not grant qualification or approval.
 
 ## Verification
 

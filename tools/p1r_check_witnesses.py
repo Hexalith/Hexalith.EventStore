@@ -161,9 +161,10 @@ def snapshot_profile_limits(evidence, binding):
     return limits
 
 
-def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, writer_version):
+def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, writer_version, enclosing=None):
     """Bind genuine snapshot creation to physical consumers, owned launches and persisted stream."""
     import json
+    import p1r_evidence_storage as storage
     import p1r_qualification as preparation
     import p1r_qualification_runtime as runtime
     from p1r_published_executor import DOCKER_FORMAT
@@ -320,7 +321,8 @@ def validate_qualified_snapshot(observed, prefix, checks, evidence, binding, wri
     require(isinstance(owned,dict) and owned.get('image') == first_config.get('backend_image')
             and owned.get('name','').startswith('p1r-'+execution['invocation']+'-'),
             'qualified snapshot provider is not the invocation-owned database')
-    retained_commands = json.loads(preparation.regular(run_root / 'commands.json'))
+    retained_commands = storage.materialize(json.loads(preparation.regular(run_root / 'commands.json')),
+        enclosing or {})
     require(any(command.get('exit_code') == 0 and command['argv'][:2] == ['docker','inspect']
                 and any(value.get('Id') == database and value.get('Name') == '/'+owned['name']
                         and value.get('Config',{}).get('Labels',{}).get('hexalith.p1r.invocation') == execution['invocation']
@@ -628,9 +630,10 @@ def validate_persisted_preconditions(record, inventories, commands, reader_comma
             'seed semantic normalization or dynamic exclusions substituted')
 
 
-def validate_case(row, evidence, binding, lane, retained_sources, candidate_version='3.119.0'):
+def validate_case(row, evidence, binding, lane, retained_sources, candidate_version='3.119.0', enclosing=None):
     """Recompute check, probe, inventory and rendered-runtime consistency."""
     import json
+    import p1r_evidence_storage as storage
     import p1r_qualification as preparation
     import p1r_qualification_runtime as runtime
     records = evidence.get('check_witnesses')
@@ -823,7 +826,7 @@ def validate_case(row, evidence, binding, lane, retained_sources, candidate_vers
                                  if not incomplete and lane == 'checkout' and row['id'] != 'current-build' else row['id'])
         if not incomplete and row['operation'] != 'unsupported' and requires_qualified_snapshot(candidate_version, coordinate_lane, coordinate_identifier):
             validate_qualified_snapshot(observed, prefix, checks, evidence, binding,
-                candidate_version if coordinate_lane == 'post-upgrade-restore' else coordinate_identifier.split('-to-',1)[0])
+                candidate_version if coordinate_lane == 'post-upgrade-restore' else coordinate_identifier.split('-to-',1)[0], enclosing=enclosing)
         if not incomplete and row['operation'] != 'unsupported' and coordinate_lane in ('legacy-metadata','metadata-read'):
             expected_floor = coordinate_identifier.rsplit('-',1)[1]
             expected_floor = 1 if expected_floor == 'None' else int(expected_floor)

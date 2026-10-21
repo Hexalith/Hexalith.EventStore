@@ -22,6 +22,7 @@ import tempfile
 import time
 import uuid
 
+import p1r_evidence_storage as storage
 import p1r_qualification as preparation
 from p1r_qualification import InvalidPacket, digest, regular, require, stamp
 
@@ -130,7 +131,7 @@ def handoff_executor_output(command, wrapper_output, binding, source_root, outpu
     require(command_source_root(command) == source_root and output_was_absent,
             "executor ownership handoff lacks an invocation-owned output")
     run = Path(command[4])
-    require(run != ROOT and run.is_relative_to(ROOT) and run == run.resolve() and run.is_dir(),
+    require(run != ROOT and not run.is_relative_to(ROOT) and run == run.resolve() and run.is_dir(),
             "executor ownership output escaped verifier")
     require(binding.get("repository") == str(ROOT), "executor ownership source root substituted")
     source_path, execution_path = run / "executor-source.json", run / "execution.json"
@@ -385,7 +386,32 @@ def validate_workspace(workspace, repository, outer_host):
     return workspace
 
 
-def sdk_arguments(workspace, repository, invocation, daemon, volume, source_paths=()):
+def validate_external_root(root, repository, outer_host):
+    """Admit only an external regular tree that cannot expose the outer socket."""
+    root = storage.safe_directory(root, repository)
+    require(supported_workspace_path(root), "unsupported external evidence mount")
+    socket = Path(outer_host.removeprefix("unix://"))
+    require(not socket.is_relative_to(root) and not socket.resolve().is_relative_to(root),
+            "external evidence exposes outer Docker socket")
+    for line in Path('/proc/self/mountinfo').read_text().splitlines():
+        mounted = Path(re.sub(r'\\([0-7]{3})', lambda match: chr(int(match[1], 8)), line.split()[4]))
+        require(mounted == root or not mounted.is_relative_to(root), "unsupported nested evidence mount")
+    if socket.exists():
+        selected = socket.stat()
+        def traversal_error(error):
+            raise InvalidPacket("external evidence unavailable for socket isolation") from error
+        for directory, _, files in os.walk(root, onerror=traversal_error):
+            for name in files:
+                candidate = Path(directory) / name
+                if candidate.is_symlink():
+                    continue
+                observed = candidate.stat()
+                require((observed.st_dev, observed.st_ino) != (selected.st_dev, selected.st_ino),
+                        "external evidence exposes outer Docker socket alias")
+    return root
+
+
+def sdk_arguments(workspace, repository, invocation, daemon, volume, source_paths=(), external_root=None):
     """Construct the single permitted SDK container profile."""
     if source_paths is None:
         source_paths = ()
@@ -411,6 +437,7 @@ def sdk_arguments(workspace, repository, invocation, daemon, volume, source_path
             "--mount", "type=volume,src="+volume+",dst=/var/lib/docker",
             "--mount", "type=bind,src="+str(workspace)+",dst="+str(workspace),
             *source_mount,
+            *(["--mount", "type=bind,src=" + str(external_root) + ",dst=" + str(external_root)] if external_root is not None else []),
             "--workdir", str(repository), "--env", MARKER+"="+invocation,
             "--env", "DOCKER_HOST="+SOCKET, "--env", "DOCKER_CONFIG="+CLIENT_CONFIG, *git_options,
             "--env", "PATH=/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -428,7 +455,9 @@ class IsolatedRunner:
         self.output = Path(output).absolute()
         self.source_root = Path(source_root).absolute() if source_root is not None else None
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
+        self.external_root = storage.safe_directory(self.output.parent, ROOT, create=True)
         self.invocation = uuid.uuid4().hex
+        self.storage = storage.Store(self.external_root / ".p1r-artifacts", storage.context(self.invocation, ROOT))
         self.scratch = None
         self.environment = {key: value for key, value in os.environ.items()
                             if not key.startswith("DOCKER_") and key not in ("CONTAINER_HOST", "CONTAINER_CONNECTION")}
@@ -456,7 +485,8 @@ class IsolatedRunner:
                 self.result["source_root"] = str(self.source_root)
                 self.controller_binding = preparation.source_binding(ROOT, self.source_root)
                 self.result["controller_source_binding"] = self.controller_binding
-            require(self.output.is_relative_to(self.workspace), "isolation output is outside the mounted workspace; private evidence would be lost")
+            validate_external_root(self.external_root, ROOT, self.outer_host)
+            self.result["external_root"] = str(self.external_root)
             self.result["outer_host"] = self.outer_host
             self.save()
         except (Exception, KeyboardInterrupt) as error:
@@ -486,13 +516,13 @@ class IsolatedRunner:
         except KeyboardInterrupt as error:
             code, data, interrupted = 130, b"outer command interrupted", error
         row = {"id": len(self.result["commands"])+1, "argv": argv, "started_utc": started, "finished_utc": stamp(),
-               "exit_code": code, "output": data.decode("utf-8", "replace")}
-        row["output_sha256"] = digest(row["output"].encode())
+               "exit_code": code, "cwd": str(ROOT)}
+        self.storage.command(row, data)
         try:
             data.decode("utf-8")
         except UnicodeDecodeError:
             self.result["errors"].append("outer Docker output is not UTF-8")
-            row.update(raw_output_base64=base64.b64encode(data).decode(), raw_output_sha256=digest(data))
+            row["raw_output_sha256"] = digest(data)
         self.result["commands"].append(row)
         self.save()
         if interrupted is not None:
@@ -556,6 +586,13 @@ class IsolatedRunner:
                     controller_binding = command_source_binding(command)
                 require(self.result["selected_input"] == executor_input(command, ROOT),
                         "selected input changed during admission")
+            if published and command[2] in ("run", "observe"):
+                capture_binding = controller_binding or preparation.source_binding()
+                candidate = selected.get("candidate", selected.get("candidate_proposed"))
+                self.storage.context.update(source=storage.source_identity(capture_binding),
+                    candidate=digest(preparation.canonical(candidate)) if candidate is not None else None,
+                    inputs=self.result["selected_input"]["sha256"])
+            self.result["evidence_context"] = dict(self.storage.context)
             if controller_binding is not None:
                 preparation.check_current_source(controller_binding)
             _, data = self.docker(["info", "--format", "{{.ID}}"])
@@ -601,7 +638,7 @@ class IsolatedRunner:
             self.docker(["cp", python + ":/usr/local", self.scratch / "python"])
             self.docker(["cp", daemon + ":/usr/local/bin/docker", self.scratch / "docker"])
             runner = self.create("sdk", SDK_IMAGE,
-                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume, source_paths), ["infinity"])
+                sdk_arguments(self.workspace, ROOT, self.invocation, daemon, self.volume, source_paths, self.external_root), ["infinity"])
             self.docker(["cp", self.scratch / "python", runner + ":/opt/python"])
             self.docker(["cp", self.scratch / "docker", runner + ":/usr/local/bin/docker"])
             self.docker(["start", runner])
@@ -609,7 +646,7 @@ class IsolatedRunner:
             require(observed["NetworkMode"] == "container:" + daemon and observed["PidMode"] == "container:" + daemon
                     and not observed["Ports"] and not observed["Privileged"]
                     and {row["Destination"] for row in observed["Mounts"]} == ({"/var/lib/docker", str(self.workspace)}
-                        | {str(path) for path in source_paths if not path.is_relative_to(self.workspace)}),
+                        | {str(path) for path in source_paths if not path.is_relative_to(self.workspace)} | {str(self.external_root)}),
                     "runner namespace or mounts substituted")
             self.result["runner_proof"] = observed
             _, measured = self.docker(["exec", runner, "python3", ROOT / "tools/p1r-isolated-runner.py", "_proof", "--outer-id", outer_id])
@@ -626,7 +663,7 @@ class IsolatedRunner:
                                    "--out", self.output, "--outer-id", outer_id,
                                    *(["--source-root", str(self.source_root)] if self.source_root is not None else []),
                                    "--", *command], check=False, timeout=86400)
-            self.result["command_stdout"] = stdout.decode("utf-8", "replace")
+            self.result["command_stdout_command"] = self.result["commands"][-1]
             require((self.output / "private-execution.json").is_file(), "private execution result missing")
             private = json.loads(regular(self.output / "private-execution.json"))
             require(private.get("passed") is True, "private execution verification failed")
@@ -814,7 +851,8 @@ def main(arguments=None):
         return interrupt_supervisor(args.out, args.invocation)
     internal = arguments[:1] == ["_inner"]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--summary-out", type=Path)
     parser.add_argument("--source-root", type=Path)
     if internal:
         parser.add_argument("--outer-id", required=True)
@@ -828,7 +866,10 @@ def main(arguments=None):
     require(command, "explicit verification command required")
     if internal:
         return inner(args.out, args.outer_id, command, args.source_root)
-    runner = IsolatedRunner(args.out, args.workspace, args.outer_host, args.source_root)
+    output = args.out or storage.default_root() / ("isolation-" + uuid.uuid4().hex)
+    runner = IsolatedRunner(output, args.workspace, args.outer_host, args.source_root)
     code = runner.run(command)
+    if args.summary_out is not None:
+        storage.export_attempt(runner.output, args.summary_out, runner.storage)
     print(json.dumps({"out": str(runner.output), "passed": runner.result["passed"], "p1r_usable": False}), flush=True)
     return code
