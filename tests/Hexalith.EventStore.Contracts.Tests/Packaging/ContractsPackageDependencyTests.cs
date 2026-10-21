@@ -210,11 +210,26 @@ public sealed partial class ContractsPackageDependencyTests
         string wrapperPath = Path.Combine(root, "Directory.Packages.props");
         XDocument wrapper = XDocument.Load(wrapperPath);
         string catalogPath = ResolveSharedPackageVersionsPath(root, wrapper);
+        string[] excludedPaths =
+        [
+            .. _standaloneEvidenceProbeProjects,
+            .. GetSealedP1r119ProbeExclusions(root),
+            .. GetSealedP1r31210ProbeExclusions(root),
+            .. GetFrozenMsBuildEvidenceExclusions(root),
+        ];
+        var inspected = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string project in GetTrackedMsBuildFiles(root)
+            .Except(excludedPaths, StringComparer.Ordinal)
+            .Where(path => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)))
+        {
+            await VerifyFrozenEvidenceNotBuildInputAsync(root, project, inspected).ConfigureAwait(true);
+        }
+
         (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(
             root,
             root,
             catalogPath,
-            [.. GetSealedP1r119ProbeExclusions(root), .. GetSealedP1r31210ProbeExclusions(root)],
+            excludedPaths,
             useApprovedException: true).ConfigureAwait(true);
         exitCode.ShouldBe(
             0,
@@ -338,6 +353,10 @@ public sealed partial class ContractsPackageDependencyTests
     [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", true)]
     [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", false)]
     [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/preflight/package-observation", "Adjacent.props", true)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run", "Adjacent.props", false)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run", "Adjacent.props", true)]
+    [InlineData("Version", "_bmad-output/implementation-artifacts/evidence/story-2-13", "Executable.csproj", false)]
+    [InlineData("VersionOverride", "_bmad-output/implementation-artifacts/evidence/story-2-13", "Executable.csproj", true)]
     public async Task SharedConsumerAuthorityValidatorRejectsNonExemptExecutableOverrideAsync(string metadata, string directory, string fileName, bool tracked)
     {
         string root = FindRepositoryRoot();
@@ -512,36 +531,47 @@ public sealed partial class ContractsPackageDependencyTests
             },
         };
         PackagingRepositoryPaths.RemoveRepositorySelectors(process.StartInfo);
+        string argumentFile = Path.Combine(Path.GetTempPath(), "consumer-authority-arguments-" + Guid.NewGuid().ToString("N") + ".json");
+        File.WriteAllText(argumentFile, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            RepositoryRoot = root,
+            CatalogPath = catalogPath,
+            ExcludedPath = _standaloneEvidenceProbeProjects.Concat(additionalExcludedPaths ?? []).Distinct(StringComparer.Ordinal).ToArray(),
+        }));
+        string invocation = "$parameters = Get-Content -LiteralPath '" + argumentFile.Replace("'", "''", StringComparison.Ordinal)
+            + "' -Raw | ConvertFrom-Json -AsHashtable\n& '" + validatorPath.Replace("'", "''", StringComparison.Ordinal)
+            + "' @parameters\nexit $LASTEXITCODE";
         process.StartInfo.ArgumentList.Add("-NoProfile");
-        process.StartInfo.ArgumentList.Add("-File");
-        process.StartInfo.ArgumentList.Add(validatorPath);
-        process.StartInfo.ArgumentList.Add("-RepositoryRoot");
-        process.StartInfo.ArgumentList.Add(root);
-        process.StartInfo.ArgumentList.Add("-CatalogPath");
-        process.StartInfo.ArgumentList.Add(catalogPath);
-        process.StartInfo.ArgumentList.Add("-ExcludedPath");
-        process.StartInfo.ArgumentList.Add(string.Join(';', _standaloneEvidenceProbeProjects.Concat(additionalExcludedPaths ?? [])));
-
-        process.Start().ShouldBeTrue("Could not start the shared consumer package authority validator.");
-        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
-        Task<string> errorTask = process.StandardError.ReadToEndAsync();
-        using var timeout = new CancellationTokenSource(_consumerAuthorityValidationTimeout);
+        process.StartInfo.ArgumentList.Add("-EncodedCommand");
+        process.StartInfo.ArgumentList.Add(Convert.ToBase64String(Encoding.Unicode.GetBytes(invocation)));
 
         try
         {
-            await process.WaitForExitAsync(timeout.Token).ConfigureAwait(true);
-        }
-        catch (OperationCanceledException exception)
-        {
-            process.Kill(entireProcessTree: true);
-            throw new TimeoutException(
-                $"Consumer package authority validation timed out after {_consumerAuthorityValidationTimeout}.",
-                exception);
-        }
+            process.Start().ShouldBeTrue("Could not start the shared consumer package authority validator.");
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+            Task<string> errorTask = process.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(_consumerAuthorityValidationTimeout);
 
-        string output = await outputTask.ConfigureAwait(true);
-        string error = await errorTask.ConfigureAwait(true);
-        return (process.ExitCode, output, error);
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException exception)
+            {
+                process.Kill(entireProcessTree: true);
+                throw new TimeoutException(
+                    $"Consumer package authority validation timed out after {_consumerAuthorityValidationTimeout}.",
+                    exception);
+            }
+
+            string output = await outputTask.ConfigureAwait(true);
+            string error = await errorTask.ConfigureAwait(true);
+            return (process.ExitCode, output, error);
+        }
+        finally
+        {
+            File.Delete(argumentFile);
+        }
     }
 
     private static void VerifySealedPackageObservation(byte[] bytes, string sha256)

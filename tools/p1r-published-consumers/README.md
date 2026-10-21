@@ -405,3 +405,27 @@ aliases and nested mounts. Cleanup continues to target only registered owned
 resources; evidence roots are preserved. Historical retirement belongs to Story
 3.23. Shared `/pushall` rollout and admission enforcement belong to
 Hexalith.AI.Tools P5 and are not delivered by this repository change.
+
+
+The repository secret gate scans the complete tracked inventory with at most four
+workers and stable path/line reporting. It does not skip retained journals or
+source captures to meet its time budget. Credential assignment discovery retains
+the original value grammar, including overlapping assignments and colon
+backtracking; structural exemptions and their original seals still apply.
+
+The Contracts package-authority gate distinguishes frozen MSBuild captures from
+active inputs. A new exact inventory binds all 984 retained historical MSBuild
+paths and their original raw bytes at revision
+`f4d29263bd9d22dd432a6a464ee145e57eff3acd`; previous evidence seals remain unchanged.
+Any added, removed, renamed, edited or link-substituted member fails that check.
+This is an exact inventory, not an evidence-directory policy exemption. New
+adjacent MSBuild files retain package-authority enforcement.
+
+Active projects must not consume archived MSBuild inputs. Read-only evaluations
+cover Debug/source and Release/package modes, every declared inner framework,
+and transitive project references with their property metadata. Import boundary
+records, executable MSBuild task/project-reference expressions, and both lexical
+and physical paths are checked. All local verification builds remain Debug with
+local project references. Historical captures remain evidence inputs for their
+original readers; classifying them as frozen grants no execution, acceptance,
+qualification or publication authority.
