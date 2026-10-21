@@ -23,6 +23,7 @@ jobs:
       contents: read
     with:
       languages: csharp
-      # The complete tracked-source scan exceeded the former 30-minute job cap.
-      # Retain its scope and analysis settings with a bounded longer allowance.
-      timeout-minutes: 60
+      # Complete tracked-source extraction exhausted the previous sixty-minute cap.
+      # Retain all source inputs, build mode and analysis settings with a bounded
+      # allowance for the enlarged input set and the following query phase.
+      timeout-minutes: 120
