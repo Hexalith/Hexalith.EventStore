@@ -5,6 +5,7 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 inputDocuments:
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-10-21.md
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/planning-artifacts/ux-designs/ux-eventstore-2026-07-05/DESIGN.md
@@ -337,7 +338,8 @@ Developers can expose typed external REST APIs and build interactive clients thr
 Maintainers can build, test, package, publish, and verify EventStore independently of local checkout state, reject invalid candidates without granting authority, and prove exact package and deployed-runtime lineage for a conforming release.
 **Primary users:** Release maintainers, platform maintainers, deployment operators, and consuming-module owners
 **FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity (FR36-C2) and the FR36-C3 to FR36-C5 publication and consumer-removal authority slices
-**Story set:** 3.1–3.21; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`). Backlog 3.21 qualifies the DAPR runtime pin and durable-broker candidates for the AD-26 profile (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
+**Story set:** 3.1–3.23; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`). Backlog 3.21 qualifies the DAPR runtime pin and durable-broker candidates for the AD-26 profile (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
+**Evidence-storage correction (2026-10-21):** Backlog 3.22 bounds qualification output and Git admission; 3.23 retires selected bulky evidence after consumer migration and verified durable retrieval. Hexalith.AI.Tools owns the shared `/pushall` prerequisite; these stories do not reopen completed runtime stories.
 **Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17; supporting NFR12 for 3.17 boundary compatibility
 **Implementation notes:** Repository and release reliability delivers value independently of later runtime work. `v3.94.1` remains immutable rejected evidence; only the separately authorized corrective release plus independent Story 3.15 verification may establish positive deployed-runtime parity. Planning, implementation, approval of this epic, and story completion never authorize an external publication; each external release mutation requires its separately bound durable authority record.
 
@@ -3284,6 +3286,52 @@ So that the AD-26 owner decision and canonical production profile bind exactly w
 **And** completion never waits for already-issued Story 3.19 records, which consume these upstream inputs; their issuance and all production actions retain their separate gates.
 
 **Current reconciliation (2026-10-20):** In progress. The retained report has four rejected/unresolved broker checks and a failed latest Docker preservation capture; the current read-only verifier stops earlier on pre-existing unlisted bytecode. No broker is selected. The user approved the [shared-host course correction](sprint-change-proposal-2026-10-20.md) and [ES-DIAG intent](../implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md); current-subject corrective authorization remains a build preflight. Builds/CI development pins remain runtime `1.18.2` / CLI `1.18.0`; no protected inputs were changed.
+
+### Story 3.22: Bounded Qualification Evidence Production And Admission
+
+As a maintainer,
+I want qualification runs to retain bounded summaries and verified external output,
+So that repeatable proof does not make every source checkout grow with raw run volume.
+
+**Requirements coverage:** Repository/release reliability under PRD §6.3 and the approved §8.1 storage constraint; supporting NFR10, NFR11 and NFR16 evidence integrity. No new runtime capability or primary functional requirement.
+
+**Architecture constraints:** AD-11 and AD-12; existing sealed subjects and approvals keep their original identities. The 2026-10-21 storage amendment is recorded in the spine without refreshing the older `inputDocumentDigests`; Story 9.3 owns substantive planning-baseline reconciliation.
+
+**Dependencies and ownership:** Approved [2026-10-21 Sprint Change Proposal](sprint-change-proposal-2026-10-21.md); applicable current corrective-work authorization under Story 9.1; coordinated Hexalith.AI.Tools `/pushall` rollout described in proposal P5. EventStore owns its producer/readers, tests, ignores and bounded guidance. Hexalith.AI.Tools owns the distributable skill selection change; do not edit or execute a skill under `references/`.
+
+**Acceptance Criteria:**
+
+1. A versioned producer/reader contract retains command identity, status, timing, output length/hash, representation, bounded excerpt, and artifact reference. Full output is external and written once per artifact identity. Large history inventories are external; committed preservation records use bounded inventories/digests, not repeated full captures.
+2. All content-dependent witness/import/cleanup checks resolve and verify complete output through a common bounded reader before parsing. Legacy packet readers remain available for original sealed inputs. Missing, corrupt, truncated, wrong-size, wrong-attempt, substituted, or unavailable output cannot pass. Tests use small fixtures and exercise those cases.
+3. New-run `.gitignore` exclusions follow the existing log/package negations so the final matching rule wins. They cover `_bmad-output/**/evidence/` archive types (`*.zip`, `*.gz`, `*.part*`), videos (`*.webm`), `trace/` and `traces/`, `commands.json`, and generated report/result trees. Run screenshots are excluded by generated-output directory; source-owned snapshot baselines remain tracked. Do not broadly ignore all JSON or all evidence.
+4. A representative 5,116-command synthetic run proves the committed metadata budget and excerpt cap without live Docker/.NET probes; output volume does not create additional retained copies. Independently exercise at least one real producer/reader round trip with external output.
+5. Security recognition and secret-scan regressions preserve their rejection behavior. A schema change cannot bypass source seals or adjacent-credential scanning.
+6. The final result records exact verification commands and bounded outcomes. No new P1R usability, package/runtime qualification, or story-completion authority is inferred.
+
+**Current reconciliation (2026-10-21):** Backlog. Administrator approved the complete proposal with “approve” in the course-correction conversation. Approval establishes this storage work package and its budgets; it is not a runtime qualification, evidence seal, readiness verdict or external publication authority. Story 3.23 follows consumer migration and verified artifact availability.
+
+### Story 3.23: Retire Bulky Qualification Evidence
+
+As a maintainer,
+I want bulky retained qualification output removed from the current source tree after its consumers are migrated,
+So that updated checkouts shrink while historical proof and regression behavior remain verifiable.
+
+**Requirements coverage:** PRD §8.1 evidence-storage lifecycle; supporting NFR10, NFR11 and NFR16. This is storage retirement, not consumer-runtime infrastructure removal or a change to FR36 authority.
+
+**Architecture constraints:** AD-11 and AD-12; preserve original receipt/subject identities, secret-scan rejection behavior and OQ8 closure contracts.
+
+**Dependencies and ownership:** Story 3.22; approved [2026-10-21 Sprint Change Proposal](sprint-change-proposal-2026-10-21.md); exact-path retirement manifest and applicable dated amendments to frozen preservation obligations. EventStore owns P1R and any selected Story 6.4 output. OQ8 `story-4-14`, `story-4-15` and successor packets are excluded from the initial set unless their migration is separately proven safe. `SecretsProtectionTests.cs`, its recognition partial, and the P1R witness/import/runtime/isolation readers are explicit consumer-inventory inputs.
+
+**Acceptance Criteria:**
+
+1. Create a bounded retirement manifest listing the exact paths, sizes, original hashes and commit identities, consuming readers, retained small fixtures, external artifact identities, and reason. Group repeated paths by shared artifact identity while preserving logical attempt identities and original outcomes. Keep a compact one-to-one path mapping for removed paths; externalize an oversized detailed inventory behind its own verified reference.
+2. Amend preservation/frozen storage obligations through the dated owner process. Preserve original receipts and subjects; append a migration record. Do not regenerate or repin historical evidence to make it appear unchanged.
+3. Upload or identify durable acceptance-relevant bytes and verify retrieval from a clean environment. Historical Git objects may be the explicitly selected source for legacy checks only when availability and verification are demonstrated; a shallow/default checkout cannot silently assume those objects exist.
+4. Move content needed for ordinary unit tests into bounded offline fixtures with the same positive and hostile cases. Exact-historical-byte tests use explicit verified materialization. OQ8 directories remain outside the initial removal set unless this work proves their migration safe.
+5. Remove the enumerated tracked output using `git rm` in its owning repository after dependent checks pass. Preserve any needed local diagnostic copy outside the checkout first. Do not run a blanket evidence deletion, history rewrite, object-store cleanup, or nested submodule update.
+6. Re-run the affected tests and evidence validators on the post-removal candidate in a clean checkout using the approved external retrieval path. Report pre/post tracked bytes, remaining oversized files, removed duplicate checkout bytes, and unresolved consumers. Update owner-approved root-declared submodule pointers in a later owning-repository change; never sweep other workspaces recursively.
+
+**Current reconciliation (2026-10-21):** Backlog. Approved as the second EventStore storage work package. No file deletion, fixture migration or artifact upload is claimed by this planning update. Git history remains intact; report measured current-tree savings only after the enumerated removals pass their dependent checks.
 
 ## Epic 4: Operators Can Trust Command and Event Integrity
 
