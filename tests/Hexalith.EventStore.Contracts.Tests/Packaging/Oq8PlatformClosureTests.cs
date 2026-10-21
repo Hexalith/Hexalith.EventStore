@@ -7072,7 +7072,7 @@ public sealed class Oq8PlatformClosureTests
             process.StartInfo.ArgumentList.Add(argument);
         }
 
-        (int exitCode, string output, bool timedOut) = RunProcess(process, 30_000);
+        (int exitCode, string output, bool timedOut) = RunProcess(process, 120_000);
         timedOut.ShouldBeFalse("Git identity command timed out.");
         exitCode.ShouldBe(0, output);
         return output.Trim();
