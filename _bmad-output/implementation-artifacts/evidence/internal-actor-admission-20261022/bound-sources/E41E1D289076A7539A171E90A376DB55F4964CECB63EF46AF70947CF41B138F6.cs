@@ -1,0 +1,345 @@
+
+using Dapr.Client;
+using Dapr.Actors.Client;
+
+using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Client.Registration;
+using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Queries;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Hexalith.EventStore.Server.Configuration;
+/// <summary>
+/// DI registration extension methods for the EventStore Server components.
+/// </summary>
+public static class EventStoreServerServiceCollectionExtensions {
+    /// <summary>
+    /// Gets EventStore's workload identity (its Dapr application id), written as the caller of its workload assertions.
+    /// </summary>
+    public const string EventStoreWorkloadIdentity = "eventstore";
+
+    /// <summary>Explicitly enrolls finite publication scopes using independent installation and private operation authorities.</summary>
+    /// <param name="services">The actor host service collection.</param>
+    /// <param name="scopes">The exact finite scopes whose writers must register before persistence.</param>
+    /// <param name="authority">The independent current legacy or virgin inventory and all-writer coverage authority.</param>
+    /// <param name="operations">The independent current private namespace and index operation authority.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>This opt-in registers the executable seams only. It neither installs a roster nor certifies production coverage.
+    /// All deployment writer paths and cold actor activation recovery still require separate qualification.</remarks>
+    public static IServiceCollection AddEventStoreSourcePublication(
+        this IServiceCollection services,
+        IReadOnlyList<Hexalith.EventStore.Contracts.Streams.SourcePublicationScope> scopes,
+        Hexalith.EventStore.Server.Streams.ISourcePublicationNamespaceAuthority authority,
+        Hexalith.EventStore.Server.Streams.ISourcePublicationOperationAuthority operations)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(scopes);
+        ArgumentNullException.ThrowIfNull(authority);
+        ArgumentNullException.ThrowIfNull(operations);
+        if (scopes.Count is < 1 or > 1000 || scopes.Any(scope => scope is null)
+            || scopes.Distinct().Count() != scopes.Count
+            || services.Any(descriptor => descriptor.ServiceType == typeof(Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration)))
+        {
+            throw new ArgumentException("Explicit unique bounded publication scopes and a single writer enrollment are required.", nameof(scopes));
+        }
+        var ownedScopes = Array.AsReadOnly(scopes.ToArray());
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton(authority);
+        services.AddSingleton(operations);
+        services.AddSingleton<Hexalith.EventStore.Client.Streams.ISourcePublicationWriterRegistration>(provider =>
+            new Hexalith.EventStore.Server.Streams.DaprSourcePublicationWriterRegistration(ownedScopes,
+                provider.GetRequiredService<IActorProxyFactory>(), authority, provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<Hexalith.EventStore.Client.Streams.ISourcePublicationNamespaceSource,
+            Hexalith.EventStore.Server.Streams.DaprSourcePublicationNamespaceSource>();
+        services.AddSingleton<Hexalith.EventStore.Client.Streams.ISourcePublicationIndexStore,
+            Hexalith.EventStore.Server.Streams.DaprSourcePublicationIndexStore>();
+        services.AddActors(options =>
+        {
+            options.Actors.RegisterActor<Hexalith.EventStore.Server.Streams.SourcePublicationNamespaceActor>(
+                Hexalith.EventStore.Server.Streams.SourcePublicationNamespaceActor.ActorTypeName);
+            options.Actors.RegisterActor<Hexalith.EventStore.Server.Streams.SourcePublicationIndexActor>(
+                Hexalith.EventStore.Server.Streams.SourcePublicationIndexActor.ActorTypeName);
+        });
+        return services;
+    }
+
+    /// <summary>
+    /// Registers EventStore Server services including command routing and DAPR actor infrastructure.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The service collection for fluent chaining.</returns>
+    public static IServiceCollection AddEventStoreServer(this IServiceCollection services, IConfiguration configuration) {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        _ = services.AddEventStoreReadModelStore();
+        services.TryAddSingleton<ICommandRouter, CommandRouter>();
+        services.TryAddSingleton<IIdempotencyDigestKeyProvider>(static serviceProvider =>
+        {
+            IOptions<IdempotencyAdmissionOptions> options = serviceProvider
+                .GetRequiredService<IOptions<IdempotencyAdmissionOptions>>();
+            return options.Value.DigestKeySource == IdempotencyDigestKeySource.DaprSecret
+                ? ActivatorUtilities.CreateInstance<DaprSecretIdempotencyDigestKeyProvider>(serviceProvider)
+                : new ConfigurationIdempotencyDigestKeyProvider(options);
+        });
+        services.TryAddSingleton<IdempotencyKeyProtector>();
+        services.TryAddSingleton<IdempotencyExecutionContextProtector>();
+        services.TryAddSingleton<SourceProofBootstrapAuthority>();
+        services.TryAddSingleton<CanonicalIdempotencyIntentEncoder>();
+        services.TryAddSingleton<IIdempotencyIntentAdapterRegistry, IdempotencyIntentAdapterRegistry>();
+        services.TryAddSingleton<ITrustedEffectAdmissionPolicy, TrustedEffectAdmissionPolicy>();
+        services.TryAddSingleton<ITrustedEffectRouter, TrustedEffectRouter>();
+        services.TryAddSingleton<ITrustedEffectGatewayProof, TrustedEffectGatewayProof>();
+        _ = services.AddOptions<TrustedEffectAuthorityOptions>()
+            .BindConfiguration("EventStore:TrustedEffects:Authority");
+        services.TryAddSingleton<ITrustedEffectCommandAuthority, ConfiguredTrustedEffectCommandAuthority>();
+        _ = services.AddSingleton<IHostedService>(serviceProvider =>
+        {
+            _ = serviceProvider.GetRequiredService<IIdempotencyIntentAdapterRegistry>();
+            return NoOpHostedService.Instance;
+        });
+        services.TryAddSingleton<IIdempotencyAdmissionCoordinator, IdempotencyAdmissionCoordinator>();
+        services.TryAddSingleton<IdempotencyTenantLifecyclePurger>();
+        services.TryAddScoped<IProjectionActorInvoker, DefaultProjectionActorInvoker>();
+        services.TryAddScoped<QueryRouter>(provider => new QueryRouter(
+            provider.GetRequiredService<IProjectionActorInvoker>(),
+            provider.GetRequiredService<ILogger<QueryRouter>>(), provider.GetRequiredService<IProjectionLifecycleGateway>(),
+            provider.GetRequiredService<IProjectionSourceGuardDelivery>()));
+        services.TryAddScoped<IQueryRouter>(provider => provider.GetRequiredService<QueryRouter>());
+        services.TryAddScoped<IETagService, DaprETagService>();
+        services.TryAddSingleton<IDomainServiceResolver, DomainServiceResolver>();
+        services.TryAddTransient<IDomainServiceInvoker, DaprDomainServiceInvoker>();
+        services.TryAddTransient<IAggregateStateReconstructor, DaprAggregateStateReconstructor>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, DomainServiceHttpClientBuilderFilter>());
+
+        // FR28: every domain-service invocation proves EventStore's workload identity with a short-lived
+        // assertion from the trusted JWT issuer; the platform handler owns the header (AD-18).
+        _ = services.AddEventStoreWorkloadAssertionIssuer(configuration, static options => {
+            if (string.IsNullOrWhiteSpace(options.Workload)) {
+                options.Workload = EventStoreWorkloadIdentity;
+            }
+        });
+
+        // EventStore must prove itself on every domain-service call: in authority mode a missing client registration
+        // fails startup instead of starting healthy and having every invocation denied at runtime.
+        _ = services.RequireEventStoreWorkloadIssuerClientCredentials();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, DomainServiceWorkloadAssertionHttpClientBuilderFilter>());
+        _ = services.AddHttpClient();
+        _ = services.AddHttpClient(
+            DaprDomainServiceInvoker.HttpClientName,
+            static client => client.Timeout = Timeout.InfiniteTimeSpan);
+        services.TryAddSingleton<IEventPayloadProtectionService, NoOpEventPayloadProtectionService>();
+        services.TryAddSingleton<IGlobalPositionAllocator, DaprGlobalPositionAllocator>();
+        services.TryAddSingleton<ISnapshotManager, SnapshotManager>();
+        _ = services.AddHostedService<FoldedSnapshotQualificationHostedService>();
+        services.TryAddSingleton<ITopicNameValidator, TopicNameValidator>();
+        services.TryAddTransient<IProjectionUpdateOrchestrator, ProjectionUpdateOrchestrator>();
+        services.TryAddTransient<IProjectionPollerDeliveryGateway, ProjectionUpdateOrchestrator>();
+        services.TryAddTransient<IProjectionRebuildOrchestrator, ProjectionUpdateOrchestrator>();
+        services.TryAddTransient<INamedProjectionDispatchCoordinator, NamedProjectionDispatchCoordinator>();
+        services.TryAddSingleton<DaprProjectionDeliveryRetryScheduler>();
+        services.TryAddSingleton<IProjectionDeliveryRetryScheduler>(static sp =>
+            sp.GetRequiredService<DaprProjectionDeliveryRetryScheduler>());
+        services.TryAddSingleton<IProjectionActivationOutbox, DaprProjectionActivationOutbox>();
+        services.TryAddSingleton<NamedProjectionRouteCatalog>();
+        services.TryAddSingleton<INamedProjectionRouteCatalog>(static sp => sp.GetRequiredService<NamedProjectionRouteCatalog>());
+        services.TryAddTransient<IEventPublisher, EventPublisher>();
+        services.TryAddTransient<IDeadLetterPublisher, DeadLetterPublisher>();
+        services.TryAddSingleton<IProjectionChangeNotifier, DaprProjectionChangeNotifier>();
+        services.TryAddSingleton<IProjectionChangedBroadcaster, NoOpProjectionChangedBroadcaster>();
+        services.TryAddSingleton<IProjectionCheckpointTracker, ProjectionCheckpointTracker>();
+        services.TryAddSingleton<IProjectionCheckpointEraser>(static sp =>
+            (IProjectionCheckpointEraser)sp.GetRequiredService<IProjectionCheckpointTracker>());
+        services.TryAddSingleton<IProjectionDeliveryCheckpointStore>(static sp =>
+            (IProjectionDeliveryCheckpointStore)sp.GetRequiredService<IProjectionCheckpointTracker>());
+        services.TryAddSingleton<IProjectionDeliveryStateStore, DaprProjectionDeliveryStateStore>();
+        services.TryAddSingleton<IProjectionDeliveryIdempotencyCoordinator, ProjectionDeliveryIdempotencyCoordinator>();
+        services.TryAddSingleton<IProjectionDeliveryHistoryReader, EventStoreProjectionDeliveryHistoryReader>();
+        services.TryAddSingleton<IProjectionSelectedOwnerProofGateway, DaprProjectionSelectedOwnerProofGateway>();
+        services.TryAddSingleton<IProjectionSourceGuardDelivery, ProjectionSourceGuardDelivery>();
+        services.TryAddSingleton<ProjectionSourceGuardHistoryReader>();
+        services.TryAddSingleton<ProjectionSourceGuardFinalizer>();
+        services.TryAddSingleton<ProjectionSourceGuardTailDelivery>();
+        services.TryAddSingleton<ProjectionSourceGuardQualification>();
+        services.TryAddSingleton<IProjectionSourceGuardTransport, DaprProjectionSourceGuardTransport>();
+        services.TryAddSingleton<IProjectionDeliveryReconciler, ProjectionDeliveryReconciler>();
+        services.TryAddSingleton<IProjectionDeliveryCutover, ProjectionDeliveryCutover>();
+        services.TryAddSingleton<IProjectionLifecycleGateway, DaprProjectionLifecycleGateway>();
+        services.TryAddSingleton<IProjectionRebuildWriteGateway, DaprProjectionRebuildWriteGateway>();
+        _ = services.AddOptions<SharedProjectionSourceCaptureOptions>()
+            .Bind(configuration.GetSection("EventStore:SharedProjectionSourceCapture"))
+            .ValidateOnStart();
+        services.TryAddSingleton<ISharedProjectionSourceWriteFence, DaprSharedProjectionSourceWriteFence>();
+        services.TryAddSingleton<ISharedProjectionRebuildGateway, DaprSharedProjectionRebuildGateway>();
+        services.TryAddTransient<ISharedProjectionSourceRebuildOperator, SharedProjectionSourceBeginProducer>();
+        services.TryAddSingleton<IProjectionSlotRegistry>(ProjectionSlotServiceCollectionExtensions.BuildSlotRegistry);
+        services.TryAddSingleton<IProjectionReadModelAddressFactory, ProjectionReadModelAddressFactory>();
+        services.TryAddSingleton<IProjectionRebuildCheckpointStore, ProjectionRebuildCheckpointStore>();
+        services.TryAddSingleton<IProjectionRebuildCheckpointEraser>(static sp =>
+            (IProjectionRebuildCheckpointEraser)sp.GetRequiredService<IProjectionRebuildCheckpointStore>());
+        services.TryAddSingleton<IProjectionEraseCoordinator, ProjectionEraseCoordinator>();
+        services.TryAddSingleton<IProjectionPollerTickSource, PeriodicProjectionPollerTickSource>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IValidateOptions<IdempotencyRetentionOptions>, ValidateIdempotencyRetentionOptions>();
+        _ = services.AddOptions<IdempotencyRetentionOptions>()
+            .Bind(configuration.GetSection("EventStore:Idempotency"))
+            .ValidateOnStart();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<IdempotencyAdmissionOptions>, ValidateIdempotencyAdmissionOptions>());
+        _ = services.AddOptions<IdempotencyAdmissionOptions>()
+            .Bind(configuration.GetSection("EventStore:IdempotencyAdmission"))
+            .ValidateOnStart();
+        services.TryAddSingleton<IValidateOptions<ProjectionChangeNotifierOptions>, ValidateProjectionChangeNotifierOptions>();
+        _ = services.AddOptions<DomainServiceOptions>()
+            .Bind(configuration.GetSection("EventStore:DomainServices"))
+            .Validate(
+                static options => options.InvocationTimeoutSeconds > 0
+                    && options.InvocationTimeoutSeconds <= DomainServiceOptions.MaximumInvocationTimeoutSeconds,
+                $"{nameof(DomainServiceOptions.InvocationTimeoutSeconds)} must be between 1 and "
+                    + $"{DomainServiceOptions.MaximumInvocationTimeoutSeconds} seconds.")
+            .ValidateOnStart();
+        _ = services.AddOptions<ProjectionChangeNotifierOptions>()
+            .Bind(configuration.GetSection("EventStore:ProjectionChanges"))
+            .ValidateOnStart();
+        _ = services.AddOptions<EventPublisherOptions>()
+            .Bind(configuration.GetSection("EventStore:Publisher"));
+        _ = services.AddOptions<EventDrainOptions>()
+            .Bind(configuration.GetSection("EventStore:Drain"));
+        services.TryAddSingleton<IValidateOptions<BackpressureOptions>, ValidateBackpressureOptions>();
+        _ = services.AddOptions<BackpressureOptions>()
+            .Bind(configuration.GetSection("EventStore:Backpressure"))
+            .ValidateOnStart();
+        services.TryAddSingleton<IValidateOptions<CommandConcurrencyOptions>, ValidateCommandConcurrencyOptions>();
+        _ = services.AddOptions<CommandConcurrencyOptions>()
+            .Bind(configuration.GetSection("EventStore:CommandConcurrency"))
+            .ValidateOnStart();
+        _ = services.AddOptions<EventStoreActorOptions>()
+            .Bind(configuration.GetSection("EventStore:Actors"))
+            .Validate(o => !string.IsNullOrWhiteSpace(o.AggregateActorTypeName), "Aggregate actor type name must be configured.")
+            .ValidateOnStart();
+        _ = services.AddOptions<SnapshotOptions>()
+            .Bind(configuration.GetSection("EventStore:Snapshots"))
+            .Validate(o => { o.Validate(); return true; }, "Snapshot configuration is invalid. All intervals must be >= 10.")
+            .ValidateOnStart();
+        _ = services.AddOptions<ProjectionOptions>()
+            .Bind(configuration.GetSection("EventStore:Projections"))
+            .Validate(o => { o.Validate(); return true; }, "Projection configuration is invalid. All intervals must be >= 0 and domain keys must be non-empty.")
+            .ValidateOnStart();
+        _ = services.AddOptions<ProjectionDispatchOptions>()
+            .Bind(configuration.GetSection("EventStore:ProjectionDispatch"))
+            .Validate(o => { o.Validate(); return true; }, "Projection dispatch configuration is invalid.")
+            .ValidateOnStart();
+        _ = services.AddOptions<ProjectionDeliveryIdempotencyOptions>()
+            .Bind(configuration.GetSection("EventStore:ProjectionDeliveryIdempotency"))
+            .Validate(o => { o.Validate(); return true; }, "Projection delivery idempotency configuration is invalid.")
+            .ValidateOnStart();
+        _ = services.AddHealthChecks().AddCheck<ProjectionDeliveryWriterProtocolHealthCheck>(
+            "projection-delivery-writer-protocol",
+            failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+            tags: ["ready"]);
+        _ = services.AddHealthChecks().AddCheck<ProjectionDeliveryUnresolvedHealthCheck>(
+            "projection-delivery-unresolved-conflict",
+            failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+            tags: ["ready"]);
+        _ = services.AddHostedService<ProjectionDiscoveryHostedService>();
+        // Recovery can suppress the four background projection effects without changing
+        // discovery or request-path projection behavior. Omission preserves the default.
+        if (configuration.GetValue("EventStore:Projections:WorkersEnabled", true)) {
+            _ = services.AddSingleton<IHostedService>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null
+                    ? NoOpHostedService.Instance
+                    : ActivatorUtilities.CreateInstance<ProjectionDeliveryRetryWorker>(serviceProvider));
+            _ = services.AddSingleton<IHostedService>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null
+                    ? NoOpHostedService.Instance
+                    : ActivatorUtilities.CreateInstance<ProjectionActivationWorker>(serviceProvider));
+            // P-DEC1-8P/P4-9P: register cleanup only when DaprClient is available. Non-DAPR test
+            // hosts use the same no-op pattern as the projection poller so they do not emit recurring
+            // sweep failures from DAPR-backed stores.
+            _ = services.AddSingleton<IHostedService>(serviceProvider =>
+                serviceProvider.GetService<DaprClient>() is null
+                    ? NoOpHostedService.Instance
+                    : ActivatorUtilities.CreateInstance<ActiveRebuildIndexCleanupService>(serviceProvider));
+            _ = services.AddSingleton<IHostedService>(serviceProvider => {
+                if (serviceProvider.GetService<DaprClient>() is null) {
+                    // R2P9 — emit the disable warning via a source-generated LoggerMessage so the Stage tag
+                    // surfaces as a structured log property (consistent with the other ProjectionPolling* logs).
+                    // R2P10 — resolve the factory via GetService rather than the typed logger, then fall back
+                    // to Console.Error so a misconfigured logging stack cannot silence this operator alert
+                    // (the whole point of this branch is to surface that polling is silently disabled).
+                    ILoggerFactory? loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+                    if (loggerFactory is not null) {
+                        ILogger<ProjectionPollerService> logger = loggerFactory.CreateLogger<ProjectionPollerService>();
+                        ProjectionPollerDisabledLog.PollerDisabled(logger);
+                    }
+                    else {
+                        Console.Error.WriteLine(
+                            "[Stage=ProjectionPollerDisabled] DaprClient is not registered; projection polling is disabled. "
+                            + "Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container.");
+                    }
+
+                    return NoOpHostedService.Instance;
+                }
+
+                return ActivatorUtilities.CreateInstance<ProjectionPollerService>(serviceProvider);
+            });
+        }
+        services.AddActors(options => {
+            string? daprHttpPort = configuration["DAPR_HTTP_PORT"];
+            if (!string.IsNullOrEmpty(daprHttpPort)) {
+                options.HttpEndpoint = $"http://127.0.0.1:{daprHttpPort}";
+            }
+
+            string? aggregateActorTypeName = configuration["EventStore:Actors:AggregateActorTypeName"];
+            options.Actors.RegisterActor<AggregateActor>(
+                string.IsNullOrWhiteSpace(aggregateActorTypeName)
+                    ? nameof(AggregateActor)
+                    : aggregateActorTypeName);
+            options.Actors.RegisterActor<CoordinatedCommandActor>(CoordinatedCommandActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyAdmissionActor>(IdempotencyAdmissionActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyAdmissionDirectoryActor>(IdempotencyAdmissionDirectoryActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyTenantLifecycleActor>(IdempotencyTenantLifecycleActor.ActorTypeName);
+            options.Actors.RegisterActor<IdempotencyLegacyInventoryActor>(IdempotencyLegacyInventoryActor.ActorTypeName);
+            options.Actors.RegisterActor<IdentityActorRegistryActor>(IdentityActorRegistryActor.ActorTypeName);
+            options.Actors.RegisterActor<ETagActor>();
+            options.Actors.RegisterActor<GlobalPositionActor>(GlobalPositionActor.ActorTypeName);
+            options.Actors.RegisterActor<EventReplayProjectionActor>(QueryRouter.ProjectionActorTypeName);
+            options.Actors.RegisterActor<ProjectionLifecycleActor>(ProjectionLifecycleActor.ActorTypeName);
+            options.Actors.RegisterActor<SharedProjectionSourceRosterActor>(SharedProjectionSourceRosterActor.ActorTypeName);
+        });
+
+        return services;
+    }
+}
+
+internal sealed class NoOpHostedService : IHostedService {
+    public static NoOpHostedService Instance { get; } = new();
+
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+internal static partial class ProjectionPollerDisabledLog {
+    [LoggerMessage(
+        EventId = 1140,
+        Level = LogLevel.Warning,
+        Message = "DaprClient is not registered; projection polling is disabled. Configured polling-mode domains will not deliver projections automatically until DaprClient is added to the container. Stage=ProjectionPollerDisabled")]
+    public static partial void PollerDisabled(ILogger logger);
+}

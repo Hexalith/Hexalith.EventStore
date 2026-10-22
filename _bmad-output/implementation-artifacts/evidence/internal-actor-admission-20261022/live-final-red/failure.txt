@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/administrator/projects/hexalith/eventstore/tools/qualify-internal-actor-admission.py", line 559, in main
+    run.qualify()
+    ~~~~~~~~~~~^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/qualify-internal-actor-admission.py", line 339, in qualify
+    self.check("other_actor_admission_survives_saturation", status == 200, status=status, body=body)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/administrator/projects/hexalith/eventstore/tools/qualify-internal-actor-admission.py", line 78, in check
+    raise AssertionError(name + ": " + json.dumps(observed))
+AssertionError: other_actor_admission_survives_saturation: {"status": 500, "body": "{\"errorCode\":\"ERR_ACTOR_INVOKE_METHOD\",\"message\":\"error invoke actor method: error from actor service: (429) {\\\"type\\\":\\\"https://hexalith.io/problems/rate-limit-exceeded\\\",\\\"title\\\":\\\"Too Many Requests\\\",\\\"status\\\":429,\\\"detail\\\":\\\"Rate limit exceeded. Please retry after the specified interval.\\\",\\\"instance\\\":\\\"/actors/IdempotencyAdmissionActor/tenant-admission:local1:recovery/method/AdmitAsync\\\",\\\"correlationId\\\":\\\"01M5HKZ97ZZFP1GFTQANW6MHDN\\\",\\\"tenantId\\\":\\\"sidecar:verified\\\",\\\"consumerId\\\":\\\"sidecar:verified\\\"}\"}"}

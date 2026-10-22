@@ -1,0 +1,94 @@
+[
+  {
+    "pid": 26645,
+    "argv": [
+      "dotnet",
+      "exec",
+      "--additional-deps",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+      "--additionalprobingpath",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+      "--additionalprobingpath",
+      "/home/administrator/.nuget/packages",
+      "/tmp/eventstore-actor-admission-nh4jiok9/sample/Hexalith.EventStore.Sample.dll"
+    ]
+  },
+  {
+    "pid": 26646,
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--app-id",
+      "sample",
+      "--app-port",
+      "53627",
+      "--app-protocol",
+      "http",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "42741",
+      "--dapr-grpc-port",
+      "35087",
+      "--dapr-internal-grpc-port",
+      "41529",
+      "--metrics-port",
+      "53375",
+      "--resources-path",
+      "/tmp/eventstore-actor-admission-nh4jiok9/components",
+      "--config",
+      "/tmp/eventstore-actor-admission-nh4jiok9/discovery.yaml",
+      "--log-level",
+      "warn",
+      "--placement-host-address",
+      "127.0.0.1:63278",
+      "--scheduler-host-address",
+      "127.0.0.1:57627"
+    ]
+  },
+  {
+    "pid": 27500,
+    "argv": [
+      "dotnet",
+      "exec",
+      "--additional-deps",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+      "--additionalprobingpath",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+      "--additionalprobingpath",
+      "/home/administrator/.nuget/packages",
+      "/tmp/eventstore-actor-admission-nh4jiok9/eventstore/Hexalith.EventStore.dll"
+    ]
+  },
+  {
+    "pid": 27502,
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--app-id",
+      "eventstore",
+      "--app-port",
+      "44647",
+      "--app-protocol",
+      "http",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "33597",
+      "--dapr-grpc-port",
+      "59797",
+      "--dapr-internal-grpc-port",
+      "36113",
+      "--metrics-port",
+      "44319",
+      "--resources-path",
+      "/tmp/eventstore-actor-admission-nh4jiok9/components",
+      "--config",
+      "/tmp/eventstore-actor-admission-nh4jiok9/discovery.yaml",
+      "--log-level",
+      "warn",
+      "--placement-host-address",
+      "127.0.0.1:63278",
+      "--scheduler-host-address",
+      "127.0.0.1:57627"
+    ]
+  }
+]

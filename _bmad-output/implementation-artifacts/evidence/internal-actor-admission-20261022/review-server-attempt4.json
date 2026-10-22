@@ -1,0 +1,16 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "*EventStoreWorkloadRateLimitTests",
+    "-class",
+    "*ActorCallbackRateLimit*",
+    "-class",
+    "*CustomHostActorCallbackRateLimitTests",
+    "-showLiveOutput",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-server-attempt4.xml"
+  ],
+  "exit_code": 0
+}

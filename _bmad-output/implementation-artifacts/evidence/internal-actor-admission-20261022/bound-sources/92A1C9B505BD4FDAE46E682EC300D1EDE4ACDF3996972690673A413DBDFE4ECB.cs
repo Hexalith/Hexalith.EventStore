@@ -1,0 +1,29 @@
+
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Pipeline.Commands;
+
+namespace Hexalith.EventStore.Server.Commands;
+/// <summary>
+/// Routes commands to the correct aggregate actor based on canonical identity.
+/// </summary>
+public interface ICommandRouter {
+    /// <summary>
+    /// Routes a submit command to the appropriate aggregate actor.
+    /// </summary>
+    /// <param name="command">The command to route.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result from the actor.</returns>
+    Task<CommandProcessingResult> RouteCommandAsync(SubmitCommand command, CancellationToken cancellationToken = default);
+
+    /// <summary>Routes an admitted command through the internal signed-fence actor boundary.</summary>
+    Task<CommandProcessingResult> RouteFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Routes a read-only authoritative outcome reconciliation through the fenced actor boundary.</summary>
+    Task<IdempotencyCheckResult> ReconcileFencedCommandAsync(
+        SubmitCommand command,
+        IdempotencyExecutionContext executionContext,
+        CancellationToken cancellationToken = default);
+}

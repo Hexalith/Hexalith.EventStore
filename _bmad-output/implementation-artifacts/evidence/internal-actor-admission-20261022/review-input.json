@@ -1,0 +1,22 @@
+{
+  "diff": "/tmp/actor-admission-review-rfhd24wo.diff",
+  "included": [
+    "src/Hexalith.EventStore.AppHost/Program.cs",
+    "src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs",
+    "src/Hexalith.EventStore/Extensions/EventStoreRateLimitPartition.cs",
+    "src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+    "src/Hexalith.EventStore/Program.cs",
+    "tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs",
+    "_bmad-output/implementation-artifacts/spec-internal-actor-admission-isolation.md",
+    "src/Hexalith.EventStore/Extensions/EventStoreActorCallbackEndpointMetadata.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Authentication/ActorCallbackRateLimitPartitionTests.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs",
+    "tools/qualify-internal-actor-admission.py"
+  ],
+  "excluded_preexisting_changes": [
+    "_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md",
+    "_bmad-output/implementation-artifacts/sprint-status.yaml",
+    "_bmad-output/implementation-artifacts/spec-5-4-ext-protection-1-owner-delivery.md"
+  ],
+  "generated_evidence": "Raw generated command output, binary payloads and historical hash inventory retained in packet; reviewers may inspect evidence there."
+}

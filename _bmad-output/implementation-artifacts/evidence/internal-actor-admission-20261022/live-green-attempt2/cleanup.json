@@ -1,0 +1,43 @@
+{
+  "runtime_removed": "/tmp/eventstore-actor-admission-b9tictn_",
+  "processes": [
+    {
+      "pid": 56034,
+      "exit_code": 0
+    },
+    {
+      "pid": 56035,
+      "exit_code": 0
+    },
+    {
+      "pid": 56162,
+      "exit_code": -9
+    },
+    {
+      "pid": 56163,
+      "exit_code": -9
+    },
+    {
+      "pid": 58604,
+      "exit_code": 0
+    },
+    {
+      "pid": 58605,
+      "exit_code": 0
+    }
+  ],
+  "removed_containers": [
+    [
+      "admission-f26e9ce61a5e-redis",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d"
+    ],
+    [
+      "admission-f26e9ce61a5e-placement",
+      "016430ccf3293892e5dcab5d6a005d3b27d9d45732d7a9c602b1f30c31bd9dc7"
+    ],
+    [
+      "admission-f26e9ce61a5e-scheduler",
+      "cb4089092072cc978d877f5e7b2d57fdada10e35d3c33b2f220479e7d914e21c"
+    ]
+  ]
+}

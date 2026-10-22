@@ -1,0 +1,14 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.AppHost.Tests/bin/Debug/net10.0/Hexalith.EventStore.AppHost.Tests.dll",
+    "-class",
+    "*DomainModuleAspireExtensionTests",
+    "-class",
+    "*AppHostTrustBoundaryModelTests",
+    "-showLiveOutput",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/token-green.xml"
+  ],
+  "exit_code": 0
+}

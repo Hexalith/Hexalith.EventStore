@@ -21,6 +21,59 @@ namespace Hexalith.EventStore.Server.Tests.Configuration;
 
 public sealed class EventStoreWorkloadRateLimitTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PublicClaimsCopiedFromActorKeyCannotExhaustActorPartition(bool tenantLimit)
+    {
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [DaprAppChannelToken.ConfigurationKey] = "copied-subject-channel-token",
+            ["EventStore:RateLimiting:PermitLimit"] = "10",
+            ["EventStore:RateLimiting:ConsumerPermitLimit"] = "10",
+            ["EventStore:RateLimiting:WindowSeconds"] = "60",
+            ["EventStore:RateLimiting:ConsumerWindowSeconds"] = "60",
+            ["EventStore:RateLimiting:SegmentsPerWindow"] = "1",
+            ["EventStore:RateLimiting:ConsumerSegmentsPerWindow"] = "1",
+        }).Build();
+        var services = new ServiceCollection();
+        services.AddSingleton(configuration);
+        services.AddLogging();
+        services.AddEventStore();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        DefaultHttpContext callback = Context(provider, null);
+        callback.Request.Headers[DaprAppChannelToken.HeaderName] = "copied-subject-channel-token";
+        callback.Request.RouteValues["actorTypeName"] = "IdempotencyAdmissionActor";
+        callback.Request.RouteValues["actorId"] = "copied-subject-actor";
+        callback.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(EventStoreActorCallbackEndpointMetadata.Instance), "mapped-actor"));
+        string actorKey = EventStoreRateLimitPartition.TrustedActorKey(callback).ShouldNotBeNull();
+
+        // The raw override lookup must still apply to both identities, independently of their cache keys.
+        RateLimitingOptions options = provider.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>().CurrentValue;
+        if (tenantLimit) options.TenantPermitLimits[actorKey] = 2;
+        else options.ConsumerPermitLimits[actorKey] = 2;
+        ClaimsPrincipal human = new(new ClaimsIdentity(
+        [
+            new Claim("sub", tenantLimit ? "ordinary-human" : actorKey),
+            new Claim("eventstore:tenant", tenantLimit ? actorKey : "ordinary-tenant"),
+        ], "Bearer"));
+        DefaultHttpContext publicRequest = Context(provider, human);
+        PartitionedRateLimiter<HttpContext> limiter = provider.GetRequiredService<IOptions<RateLimiterOptions>>().Value.GlobalLimiter.ShouldNotBeNull();
+        using RateLimitLease publicFirst = limiter.AttemptAcquire(publicRequest);
+        using RateLimitLease publicSecond = limiter.AttemptAcquire(publicRequest);
+        using RateLimitLease publicExhausted = limiter.AttemptAcquire(publicRequest);
+        publicFirst.IsAcquired.ShouldBeTrue();
+        publicSecond.IsAcquired.ShouldBeTrue();
+        publicExhausted.IsAcquired.ShouldBeFalse();
+
+        using RateLimitLease actorFirst = limiter.AttemptAcquire(callback);
+        using RateLimitLease actorSecond = limiter.AttemptAcquire(callback);
+        using RateLimitLease actorExhausted = limiter.AttemptAcquire(callback);
+        actorFirst.IsAcquired.ShouldBeTrue();
+        actorSecond.IsAcquired.ShouldBeTrue();
+        actorExhausted.IsAcquired.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task AssignedConfigurationStoreUpdatesTheEffectiveTenantLimitAsync()
     {

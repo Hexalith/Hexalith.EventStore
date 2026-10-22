@@ -1,0 +1,6 @@
+{
+  "packet": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-strict-continuation-20261022T100829Z",
+  "readme_sha256": "a517f2761fe21ec643528b9fd6b63a8d1dd81bdf000379a0901e3000f91899a0",
+  "observations": "Externally produced continuation recorded two startup failures before consumer commands/acceptance. SIGHUP sender unclassified. Actual Tenants launcher is src/Hexalith.Tenants; its Server directory is a library, not the launcher. Selector includes both. No external evidence was altered.",
+  "scope": "Not a new admission failure/repair observation; original retained429 remains separate. Strict acceptance stays open."
+}

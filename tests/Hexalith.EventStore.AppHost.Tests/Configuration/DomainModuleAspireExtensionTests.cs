@@ -9,6 +9,34 @@ using Hexalith.EventStore.Aspire;
 
 public class DomainModuleAspireExtensionTests {
     [Fact]
+    public async Task EventStoreTopologyOwnsTokenSharedOnlyWithItsSidecarAsync()
+    {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        IResourceBuilder<ProjectResource> gateway = builder.AddProject<EventStoreProjectMetadata>("eventstore");
+        IResourceBuilder<ProjectResource> admin = builder.AddProject<EventStoreProjectMetadata>("admin");
+        builder.AddHexalithEventStore(gateway, admin);
+        ParameterResource token = builder.Resources.OfType<ParameterResource>()
+            .Single(resource => resource.Name == "eventstore-app-api-token");
+        token.Secret.ShouldBeTrue();
+
+        Dictionary<string, object> appEnvironment = [];
+        foreach (EnvironmentCallbackAnnotation callback in gateway.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, gateway.Resource, appEnvironment, TestContext.Current.CancellationToken));
+        appEnvironment[HexalithEventStoreAppChannelExtensions.AppChannelTokenVariable].ShouldBeSameAs(token);
+
+        IDaprSidecarResource sidecar = GetSidecar(gateway);
+        Dictionary<string, object> sidecarEnvironment = [];
+        foreach (EnvironmentCallbackAnnotation callback in sidecar.Annotations.OfType<EnvironmentCallbackAnnotation>())
+            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, sidecar, sidecarEnvironment, TestContext.Current.CancellationToken));
+        sidecarEnvironment[HexalithEventStoreAppChannelExtensions.AppChannelTokenVariable].ShouldBeSameAs(token);
+
+        Dictionary<string, object> adminEnvironment = [];
+        foreach (EnvironmentCallbackAnnotation callback in admin.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
+            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, admin.Resource, adminEnvironment, TestContext.Current.CancellationToken));
+        adminEnvironment.ShouldNotContainKey(HexalithEventStoreAppChannelExtensions.AppChannelTokenVariable);
+    }
+
+    [Fact]
     public async Task AssignedGatewayComponentNamesReachResourcesOwnerOptionsAndSidecarAsync()
     {
         IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();

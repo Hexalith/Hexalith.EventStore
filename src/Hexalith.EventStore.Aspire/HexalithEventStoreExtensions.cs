@@ -268,6 +268,13 @@ public static class HexalithEventStoreExtensions {
                 .WithReference(stateStore)
                 .WithReference(pubSub));
 
+        // The owning topology wires callbacks through an authenticated application channel. Deployment
+        // targets supply their token from their own secret store, as for the other application resources.
+        if (builder.ExecutionContext.IsRunMode)
+        {
+            _ = eventStore.WithGeneratedEventStoreAppChannelToken();
+        }
+
         // Admin server / admin UI are optional (gateway-only composition passes null). All admin wiring is
         // gated here so a null adminServer simply yields a command-gateway-only topology with no
         // eventstore-admin / eventstore-admin-ui resources.

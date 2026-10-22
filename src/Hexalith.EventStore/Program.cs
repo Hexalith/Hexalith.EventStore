@@ -57,7 +57,9 @@ if (!declarativeSubscriptions)
 {
     app.MapSubscribeHandler();
 }
-app.MapActorsHandlers();
+app.MapActorsHandlers()
+    .WithMetadata(EventStoreActorCallbackEndpointMetadata.Instance)
+    .RequireAuthorization(EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy);
 if (workloadAuthorityEnabled)
 {
     app.MapEventStoreWorkloadBindingAuthority();

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-p:UseNuGetDeps=false",
+    "-m:1",
+    "-nr:false"
+  ],
+  "exit_code": 0
+}

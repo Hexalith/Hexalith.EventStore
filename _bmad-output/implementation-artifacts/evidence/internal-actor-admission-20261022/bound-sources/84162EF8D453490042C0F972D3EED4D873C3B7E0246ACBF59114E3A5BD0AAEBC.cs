@@ -1,0 +1,24 @@
+using Aspire.Hosting.ApplicationModel;
+
+using CommunityToolkit.Aspire.Hosting.Dapr;
+
+namespace Hexalith.EventStore.Aspire;
+
+/// <summary>
+/// Contains the resource builders created by the EventStore Aspire topology extension
+/// for further customization by the consumer.
+/// </summary>
+/// <param name="StateStore">The DAPR state store component resource builder.</param>
+/// <param name="PubSub">The DAPR pub/sub component resource builder.</param>
+/// <param name="EventStore">The EventStore project resource builder.</param>
+/// <param name="AdminServer">
+/// The Admin.Server.Host project resource builder, or <see langword="null"/> for a gateway-only composition
+/// (e.g. a consumer that adds the EventStore command gateway without the admin surface).
+/// </param>
+/// <param name="AdminUI">The optional Admin.UI Blazor Server project resource builder.</param>
+public record HexalithEventStoreResources(
+    IResourceBuilder<IDaprComponentResource> StateStore,
+    IResourceBuilder<IDaprComponentResource> PubSub,
+    IResourceBuilder<ProjectResource> EventStore,
+    IResourceBuilder<ProjectResource>? AdminServer,
+    IResourceBuilder<ProjectResource>? AdminUI = null);

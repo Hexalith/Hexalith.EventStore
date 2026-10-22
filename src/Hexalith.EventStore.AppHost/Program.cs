@@ -419,7 +419,6 @@ _ = adminUI.WithEnvironment(
 // app-channel token, shared only with its own sidecar. Publish targets supply APP_API_TOKEN from their own
 // secret store (Stories 5.6-5.8 own deployment topology parity).
 if (builder.ExecutionContext.IsRunMode) {
-    _ = eventStore.WithGeneratedEventStoreAppChannelToken();
     _ = sample.WithGeneratedEventStoreAppChannelToken();
     if (tenants is not null) {
         _ = tenants.WithGeneratedEventStoreAppChannelToken();

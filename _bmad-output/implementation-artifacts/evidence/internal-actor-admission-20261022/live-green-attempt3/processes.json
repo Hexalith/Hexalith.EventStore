@@ -1,0 +1,140 @@
+[
+  {
+    "pid": 66297,
+    "argv": [
+      "dotnet",
+      "exec",
+      "--additional-deps",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+      "--additionalprobingpath",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+      "--additionalprobingpath",
+      "/home/administrator/.nuget/packages",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/sample/Hexalith.EventStore.Sample.dll"
+    ]
+  },
+  {
+    "pid": 66298,
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--app-id",
+      "sample",
+      "--app-port",
+      "60837",
+      "--app-protocol",
+      "http",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "50003",
+      "--dapr-grpc-port",
+      "55963",
+      "--dapr-internal-grpc-port",
+      "55391",
+      "--metrics-port",
+      "60399",
+      "--resources-path",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/components",
+      "--config",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/discovery.yaml",
+      "--log-level",
+      "warn",
+      "--placement-host-address",
+      "127.0.0.1:51709",
+      "--scheduler-host-address",
+      "127.0.0.1:53855"
+    ]
+  },
+  {
+    "pid": 66647,
+    "argv": [
+      "dotnet",
+      "exec",
+      "--additional-deps",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+      "--additionalprobingpath",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+      "--additionalprobingpath",
+      "/home/administrator/.nuget/packages",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/eventstore/Hexalith.EventStore.dll"
+    ]
+  },
+  {
+    "pid": 66648,
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--app-id",
+      "eventstore",
+      "--app-port",
+      "47297",
+      "--app-protocol",
+      "http",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "60709",
+      "--dapr-grpc-port",
+      "47061",
+      "--dapr-internal-grpc-port",
+      "40505",
+      "--metrics-port",
+      "35105",
+      "--resources-path",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/components",
+      "--config",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/discovery.yaml",
+      "--log-level",
+      "warn",
+      "--placement-host-address",
+      "127.0.0.1:51709",
+      "--scheduler-host-address",
+      "127.0.0.1:53855"
+    ]
+  },
+  {
+    "pid": 68971,
+    "argv": [
+      "dotnet",
+      "exec",
+      "--additional-deps",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+      "--additionalprobingpath",
+      "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+      "--additionalprobingpath",
+      "/home/administrator/.nuget/packages",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/eventstore/Hexalith.EventStore.dll"
+    ]
+  },
+  {
+    "pid": 68972,
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--app-id",
+      "eventstore",
+      "--app-port",
+      "47297",
+      "--app-protocol",
+      "http",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "60709",
+      "--dapr-grpc-port",
+      "47061",
+      "--dapr-internal-grpc-port",
+      "40505",
+      "--metrics-port",
+      "35105",
+      "--resources-path",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/components",
+      "--config",
+      "/tmp/eventstore-actor-admission-r7qcg8ht/discovery.yaml",
+      "--log-level",
+      "warn",
+      "--placement-host-address",
+      "127.0.0.1:51709",
+      "--scheduler-host-address",
+      "127.0.0.1:53855"
+    ]
+  }
+]
