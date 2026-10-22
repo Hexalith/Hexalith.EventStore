@@ -19,8 +19,8 @@
 
 | Method | Route | Controller | Auth | Notes |
 |--------|-------|------------|------|-------|
-| `POST` | `/api/v1/commands` | `CommandsController.Submit` | JWT | Submit command. Body `SubmitCommandRequest`. **202** + `Location: api/v1/commands/status/{correlationId}`. Result payload capped 64 KB. |
-| `GET` | `/api/v1/commands/status/{correlationId}` | `CommandStatusController.GetStatus` | JWT | Poll status. In-flight states (`Received/Processing/EventsStored/EventsPublished`) return `Retry-After`; terminal states (`Completed/Rejected/PublishFailed/TimedOut`) do not. Searches all authorized tenants. |
+| `POST` | `/api/v1/commands` | `CommandsController.Submit` | JWT | Submit command. Body `SubmitCommandRequest`. **202** + `Location: api/v1/commands/status/{messageId}`. Result payload capped 64 KB. |
+| `GET` | `/api/v1/commands/status/{messageId}` | `CommandStatusController.GetStatus` | JWT | Poll status. In-flight states (`Received/Processing/EventsStored/EventsPublished`) return `Retry-After`; terminal states (`Completed/Rejected/PublishFailed/TimedOut`) do not. Searches only authorized tenants, message-first; bounded correlation compatibility can return **409** for ambiguous identifiers. See [lookup rules](../reference/command-api.md#status-lookup-identity). |
 | `POST` | `/api/v1/commands/replay/{correlationId}` | `ReplayController.Replay` | JWT | Replay an archived failed command. Only `Rejected/PublishFailed/TimedOut` replayable (else **409**). **202** + new ULID correlation id. |
 | `POST` | `/api/v1/commands/validate` | `CommandValidationController.Validate` | JWT | Preflight (dry-run) tenant+RBAC auth. **200** + `PreflightValidationResult` (`IsAuthorized=false` on denial, not 403). |
 

@@ -274,7 +274,7 @@ After `AddStock(10)` and `RemoveStock(3)`, the aggregate's state has 7 units. Se
 }
 ```
 
-This command still returns `202 Accepted`. The API accepted and processed your command — the rejection is the _result_ of that processing, not a failure to process. The rejection is visible in the command status endpoint (`/api/v1/commands/status/{correlationId}`) and in the Aspire dashboard traces.
+This command still returns `202 Accepted`. The API accepted and processed your command — the rejection is the _result_ of that processing, not a failure to process. Retain the submitted `messageId`: the rejection is visible in the command status endpoint (`/api/v1/commands/status/{messageId}`) and in the Aspire dashboard traces.
 
 > **Tips:**
 >

@@ -294,6 +294,8 @@ Stable authorization reason codes are documented in [Forbidden](./problems/forbi
 
 ## GET /api/v1/commands/status/{messageId}
 
+### Status Lookup Identity
+
 Query the processing status of a previously submitted command. Retain the submitted `messageId` and use it for status lookup. Within each authorized tenant, the server checks for an exact `messageId` match before bounded correlation-index lookup. Direct and indexed matches across all authorized tenants count together. An identifier that matches a `messageId` in one tenant and an indexed correlation ID in another returns `409 Conflict`, as does an ambiguous correlation index, so a message ID does not resolve every cross-tenant ambiguity. Unindexed legacy status records support older callers that have only a correlation ID, but are used only when no authorized tenant has a direct or indexed match. Exactly one legacy match succeeds; two or more return `409 Conflict`.
 
 ### Path Parameter
@@ -319,11 +321,16 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000A1" \
 | timestamp          | string   | ISO 8601 timestamp of last status update.                                                                  |
 | aggregateId        | string?  | Populated when processing begins.                                                                          |
 | domain             | string?  | Aggregate domain on actor-written processing and terminal status records, including rejections. Null on the initial `Received` status, on drain `PublishFailed` and exhaustion advisories, on legacy records, and on concurrency-conflict rejections written by the API or the submit handler. |
-| eventCount         | integer? | Number of events produced (Completed status only).                                                         |
+| eventCount         | integer? | Number of events produced, including positive counts on eventful `Rejected` outcomes and publication recovery. Null when not recorded; a positive count alone does not prove success.                                                         |
 | committedEventSequence | integer? | Last aggregate event sequence durably committed by this command when an exact eventful range is verified. Null when proof is unavailable. |
 | rejectionEventType | string?  | Rejection event type name (Rejected status only).                                                          |
-| failureReason      | string?  | Error description (PublishFailed status only).                                                             |
+| failureReason      | string?  | Failure detail when recorded, including publication failures and `Rejected` concurrency conflicts (`ConcurrencyConflict`). Ordinary domain rejections may leave this null; inspect `rejectionEventType` separately.                                                             |
 | timeoutDuration    | string?  | ISO 8601 duration format, e.g., `"PT30S"` (TimedOut status only). Produced by `XmlConvert.ToString(TimeSpan)`. |
+| retryable          | boolean? | Advisory publication recovery disposition: `true` means an automatic drain retry is armed; `false` means no further automatic attempt is armed; null means unrecorded or unknown, including legacy records. Null does not establish permanent failure. |
+| recoveryReasonCode | string?  | Bounded recovery reason, such as `drain_publish_failed` or `drain_attempts_exhausted`; null when not recorded. See [Drain Failure Reason Codes](../operations/drain-failure-reason-codes.md). |
+| drainAttemptCount  | integer? | Recorded drain attempts for the persisted range; may be zero before the first retry, or null when not recorded. |
+
+`retryable`, `recoveryReasonCode` and `drainAttemptCount` are optional advisory fields. They describe recovery of the existing command, not permission to submit a new mutation. A `PublishFailed` response with `retryable: true` can later recover; continue observing that command under a bounded client polling policy. The server currently classifies every `PublishFailed` as terminal and omits its `Retry-After` header, even when recovery is armed. A null recovery field is unknown, not a permanent-failure signal; ordinary new records can also leave these fields null.
 
 `committedEventSequence` and `domain` are optional fields. The sequence is null for a no-op, a rejection, a legacy status, or a recovery whose command-specific range cannot be verified. Publication recovery reports the sequence when the persisted envelopes match the drain record's command causation, including a stale-checkpoint handoff that carries that causation on the drain record. A drain record written before that field existed can still report the sequence when its recoverable idempotency record supplies the same verified causation. Actor-written processing and terminal records retain the command domain even when they reject or cannot provide sequence proof. The first `Received` status and drain publication-failure or exhaustion advisories omit `domain`, as do legacy records and concurrency-conflict rejections written by the API or the submit handler. A consumer must verify the command identity and aggregate scope before using the sequence as projection evidence; an aggregate's current head is not command-specific proof.
 
@@ -373,7 +380,7 @@ Before command resume, stale-checkpoint handoff or reminder publication, EventSt
 
 ### Status Lifecycle
 
-Poll `/api/v1/commands/status/{messageId}` at the interval indicated by the `Retry-After` response header (typically 1 second) until a terminal status is returned.
+Poll `/api/v1/commands/status/{messageId}` at the interval indicated by the `Retry-After` response header (typically 1 second) while in flight. The terminal classifications below describe the status enum; for `PublishFailed`, also inspect the optional recovery fields and polling caveat above.
 
 1. **Received** (0) — Command accepted by API, queued for processing
 2. **Processing** (1) — Actor activated, domain service invocation started
@@ -405,12 +412,12 @@ Replay a previously failed command. Only commands in terminal failure states (Re
 
 ### Path Parameter
 
-`correlationId` — identifier string of a previously failed command. Accepts both GUID and ULID formats (validator regex `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`).
+`correlationId` — the route parameter retains its historical name, but supply the original command's `messageId` when available. Resolution uses the same tenant-scoped, message-first, bounded correlation compatibility and legacy fallback rules as [status lookup](#status-lookup-identity). Multiple direct/indexed matches across authorized tenants, an ambiguous correlation index, or multiple legacy matches with no direct/indexed match return `409 Conflict`. Accepted identifiers are 1–128 characters matching `^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$` (including GUID and ULID shapes).
 
 ### Example
 
 ```bash
-$ curl -X POST https://localhost:5001/api/v1/commands/replay/a1b2c3d4-e5f6-7890-abcd-ef1234567890 \
+$ curl -X POST https://localhost:5001/api/v1/commands/replay/01HKQXYZ0000000000000000A1 \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
 ```
@@ -428,7 +435,7 @@ The response includes a `Location` header pointing to the status endpoint for th
 | originalMessageId      | string? | Original command identity when retained in the archive.                                                                    |
 | isReplay               | boolean | Always `true`.                                                                                                             |
 | previousStatus         | string  | Status before replay (Rejected, PublishFailed, or TimedOut). Always populated on a `202` response.                         |
-| originalCorrelationId  | string  | The correlation ID of the failed command that was replayed (matches the path parameter). Use to reconstruct the chain.     |
+| originalCorrelationId  | string  | Retained tracing correlation of the original command; may differ from the requested message ID. Falls back to the requested identifier when the archive lacks a correlation ID.     |
 
 **Example response:**
 
@@ -447,11 +454,11 @@ The response includes a `Location` header pointing to the status endpoint for th
 
 | Status                     | Condition                                                                         | Body                                              |
 | -------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 400 Bad Request            | Correlation ID is empty or whitespace                                             | RFC 7807 ProblemDetails                           |
+| 400 Bad Request            | Message or correlation identifier has invalid syntax                                             | RFC 7807 ProblemDetails                           |
 | 401 Unauthorized           | Missing or invalid JWT token                                                      | —                                                 |
 | 403 Forbidden              | No `eventstore:tenant` claims or tenant mismatch                                  | RFC 7807 ProblemDetails                           |
 | 404 Not Found              | Command not found or archive expired                                              | RFC 7807 ProblemDetails                           |
-| 409 Conflict               | Command not in a replayable state (Completed, still in-flight, or status expired) | RFC 7807 ProblemDetails                           |
+| 409 Conflict               | Identifier is ambiguous across commands or authorized tenants, or command is not replayable (Completed, still in-flight, or status expired) | RFC 7807 ProblemDetails                           |
 | 413 Payload Too Large      | Request body exceeds 1 MB limit                                                   | —                                                 |
 | 415 Unsupported Media Type | Missing or incorrect `Content-Type` header (must be `application/json`)           | —                                                 |
 | 429 Too Many Requests      | Per-tenant rate limit exceeded                                                    | RFC 7807 ProblemDetails with `Retry-After` header |
@@ -478,7 +485,7 @@ All commands progress through 8 possible states:
 
 **Replayable states:** Rejected, PublishFailed, TimedOut (all terminal failures).
 
-Poll the status endpoint at the interval indicated by the `Retry-After` response header (typically 1 second) until a terminal status is returned: Completed, Rejected, PublishFailed, or TimedOut.
+Poll the status endpoint at the interval indicated by the `Retry-After` response header (typically 1 second) while in flight. For `PublishFailed`, the enum classification does not establish permanent failure: consult the optional recovery fields and [polling caveat](#response--200-ok-1) before stopping observation or considering replay.
 
 For the full processing pipeline explanation, see [Command Lifecycle](../concepts/command-lifecycle.md).
 

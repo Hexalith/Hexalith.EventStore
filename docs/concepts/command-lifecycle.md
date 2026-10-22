@@ -211,7 +211,7 @@ Persisted ranges are verified before any resume or drain publication, including 
 
 Mutation results remain replayable for exactly 86,400 seconds and commit-class results use a seven-year calendar boundary. At the inclusive expiry instant, the live intent and result are atomically replaced with a metadata-only consumed-key tombstone. Equivalent and different intents then receive the same non-retryable `idempotency_key_expired` response; the key is not deleted or made executable again. Tenant deletion starts a separate 400-day governed retention interval, which legal hold can pause, before final purge is eligible.
 
-You can poll the command's progress at `GET /api/v1/commands/status/{correlationId}`, which returns the current pipeline stage: Received -> EventsStored -> EventsPublished -> Completed/Rejected. Status records have a 24-hour TTL. The full endpoint documentation will be available in the [Command API Reference](../reference/command-api.md).
+Retain the submitted `messageId` to poll the command's progress at `GET /api/v1/commands/status/{messageId}`, which returns the current pipeline stage: Received -> EventsStored -> EventsPublished -> Completed/Rejected. Status records have a 24-hour TTL. The [Command API Reference](../reference/command-api.md#status-lookup-identity) explains message-first lookup, bounded correlation compatibility and ambiguous-identifier `409` responses.
 
 The command lifecycle is now complete — from HTTP request to persisted event to published message.
 

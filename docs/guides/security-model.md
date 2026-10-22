@@ -206,7 +206,7 @@ ASP.NET Core authorization middleware protects all command endpoints. The behavi
 | Endpoint                                       | Authentication | Required Claims                                                    |
 | ---------------------------------------------- | -------------- | ------------------------------------------------------------------ |
 | `POST /api/v1/commands`                        | Required       | Valid JWT (any authenticated user)                                 |
-| `GET /api/v1/commands/status/{correlationId}`  | Required       | Valid JWT + tenant claims (results filtered by authorized tenants) |
+| `GET /api/v1/commands/status/{messageId}`  | Required       | Valid JWT + tenant claims (results filtered by authorized tenants) |
 | `POST /api/v1/commands/replay/{correlationId}` | Required       | Valid JWT + tenant claims (tenant-scoped lookup before replay)     |
 | `GET /health`                                  | Not required   | None (excluded from auth)                                          |
 | `GET /ready`                                   | Not required   | None (excluded from auth)                                          |
@@ -277,7 +277,7 @@ When a command reaches the `AggregateActor`, the actor verifies that the command
 
 Why this matters: DAPR actors can be rebalanced across nodes during scaling events. If tenant validation happened after state loading, a rebalanced actor could theoretically load state for the wrong tenant before discovering the mismatch. By validating first, the actor rejects the command immediately without touching the state store.
 
-Additionally, command status queries (SEC-3) are tenant-scoped: the status key pattern `{tenant}:{correlationId}:status` ensures that tenant `acme` cannot query the status of a command submitted by tenant `globex`, even if they know the correlation ID.
+Additionally, command status queries (SEC-3) search only the caller's authorized tenants. Current records use the message-primary key `{tenant}:{messageId}:status`; the controller checks that the retained message identity matches before accepting a direct match. Bounded correlation-index compatibility and legacy fallback remain tenant-scoped; ambiguous matches return `409 Conflict`. Knowing another tenant's message or correlation ID grants no access. See the [command status lookup rules](../reference/command-api.md#status-lookup-identity).
 
 ## Layer 6: DAPR Access Control Policies
 
