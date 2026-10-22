@@ -3,10 +3,10 @@ using System.Xml.Linq;
 
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
-/// <summary>Rejects changes outside the owner's exact five-pin servicing exception.</summary>
+/// <summary>Rejects consumer-local versions after migration to the shared servicing pins.</summary>
 public sealed partial class ContractsPackageDependencyTests
 {
-    /// <summary>Runs the original raw and effective checks after the exact exception overlay.</summary>
+    /// <summary>Runs the original raw and effective checks against the version-free consumer wrapper.</summary>
     /// <param name="mutation">The nonexception authority violation.</param>
     [Theory]
     [InlineData("none")]
@@ -45,12 +45,9 @@ public sealed partial class ContractsPackageDependencyTests
                         .ConfigureAwait(true);
                 }
             }
-            XElement pins = new(XDocument.Load(Path.Combine(root, "Directory.Packages.props"))
-                .Root!.Elements("ItemGroup").Single());
             new XDocument(new XElement("Project",
                 new XElement("PropertyGroup", new XElement("ManagePackageVersionsCentrally", "true")),
-                new XElement("Import", new XAttribute("Project", catalog)),
-                pins)).Save(Path.Combine(fixture, "Directory.Packages.props"));
+                new XElement("Import", new XAttribute("Project", catalog)))).Save(Path.Combine(fixture, "Directory.Packages.props"));
             XElement project = new("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                 new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0")),
                 new XElement("ItemGroup",
@@ -134,9 +131,10 @@ public sealed partial class ContractsPackageDependencyTests
         }
     }
 
-    /// <summary>Requires every authorized tuple and refuses extra or conditional forms.</summary>
+    /// <summary>Refuses reintroduction of former local pins, including changed and conditional forms.</summary>
     /// <param name="mutation">The unapproved root declaration change.</param>
     [Theory]
+    [InlineData("restored")]
     [InlineData("missing")]
     [InlineData("duplicate")]
     [InlineData("extra")]
@@ -153,9 +151,17 @@ public sealed partial class ContractsPackageDependencyTests
     {
         string root = FindRepositoryRoot();
         XDocument wrapper = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+        wrapper.Root!.Add(new XElement("ItemGroup",
+            new XElement("PackageVersion", new XAttribute("Update", "Microsoft.AspNetCore.SignalR.Common"), new XAttribute("Version", "10.0.13")),
+            new XElement("PackageVersion", new XAttribute("Include", "System.Security.Cryptography.Pkcs"), new XAttribute("Version", "10.0.13")),
+            new XElement("PackageVersion", new XAttribute("Include", "System.Security.Cryptography.Xml"), new XAttribute("Version", "10.0.13")),
+            new XElement("PackageVersion", new XAttribute("Update", "Microsoft.Extensions.DependencyInjection.Abstractions"), new XAttribute("Version", "10.0.13")),
+            new XElement("PackageVersion", new XAttribute("Update", "Microsoft.Extensions.Options"), new XAttribute("Version", "10.0.13"))));
         XElement first = wrapper.Descendants("PackageVersion").First();
         switch (mutation)
         {
+            case "restored":
+                break;
             case "missing":
                 first.Remove();
                 break;
