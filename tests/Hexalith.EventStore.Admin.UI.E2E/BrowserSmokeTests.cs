@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Hexalith.EventStore.Admin.UI.E2E;
 
 /// <summary>
@@ -24,8 +26,11 @@ public class BrowserSmokeTests
             // Wait for Blazor Server to hydrate the shell
             await page.WaitForSelectorAsync("main[role='main']");
 
-            string title = await page.TitleAsync();
-            title.ShouldContain("Hexalith EventStore Admin");
+            // The shell can appear before Blazor applies its asynchronous PageTitle.
+            // Wait for the same title condition rather than sampling an empty head.
+            await Assertions.Expect(page).ToHaveTitleAsync(
+                new Regex("Hexalith EventStore Admin", RegexOptions.IgnoreCase),
+                new PageAssertionsToHaveTitleOptions { Timeout = 5000 });
         }
     }
 

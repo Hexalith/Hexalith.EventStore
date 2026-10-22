@@ -6,6 +6,7 @@ using Dapr.Actors.Client;
 using Dapr.Client;
 using Hexalith.Commons.UniqueIds;
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Client.Streams;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Projections;
@@ -155,6 +156,8 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
         persistedWork.HeadMessageId.ShouldBe(head.MessageId);
         persistedWork.DispatchId.ShouldBe(head.MessageId);
         persistedWork.PendingRoutes.ShouldBe(["counter-index"]);
+        NativeSourceProofCodec.IsValid(
+            persistedWork.NativeSourceProof.ShouldNotBeNull(), identity, head.SequenceNumber, 1).ShouldBeTrue();
         var unresolvedHealthCheck = new ProjectionDeliveryUnresolvedHealthCheck(recreatedScheduler);
         (await unresolvedHealthCheck.CheckHealthAsync(new HealthCheckContext()).ConfigureAwait(true))
             .Status.ShouldBe(HealthStatus.Healthy);
@@ -771,7 +774,7 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
         }
     }
 
-    private static ProjectionDeliveryRetryWorkItem CreateUnrelatedSameShardWorkItem(
+    internal static ProjectionDeliveryRetryWorkItem CreateUnrelatedSameShardWorkItem(
         ProjectionDeliveryRetryWorkItem persistedWork) {
         int targetShard = SHA256.HashData(Encoding.UTF8.GetBytes(persistedWork.WorkId))[0] % RetryLedgerShardCount;
         string workId;
@@ -781,20 +784,23 @@ public sealed partial class NamedProjectionDispatchLiveSidecarTests(DaprTestCont
         while (SHA256.HashData(Encoding.UTF8.GetBytes(workId))[0] % RetryLedgerShardCount != targetShard);
 
         string messageId = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
-        return persistedWork with {
-            WorkId = workId,
-            AggregateId = $"unrelated-{Guid.NewGuid():N}",
-            HeadMessageId = messageId,
-            PendingRoutes = [],
-            TerminalRoutes = ["counter-detail"],
-            DispatchId = messageId,
-            Attempt = 1,
-            NextDueUtc = DateTimeOffset.UtcNow,
-            LastReasonCode = ProjectionDispatchReasonCodes.HandlerFailure,
-            Revision = 0,
-            LeaseOwner = null,
-            LeaseExpiresUtc = null,
-            ReservationFencingTokens = new Dictionary<string, long>(StringComparer.Ordinal),
-        };
+        // This synthetic terminal item has no source history. Do not borrow the
+        // original stream's frozen native proof, recovery bindings or lease.
+        return new ProjectionDeliveryRetryWorkItem(
+            workId,
+            persistedWork.TenantId,
+            persistedWork.Domain,
+            $"unrelated-{Guid.NewGuid():N}",
+            persistedWork.AppId,
+            persistedWork.ServiceVersion,
+            persistedWork.HeadSequence,
+            messageId,
+            [],
+            ["counter-detail"],
+            messageId,
+            persistedWork.CatalogFingerprint,
+            1,
+            DateTimeOffset.UtcNow,
+            ProjectionDispatchReasonCodes.HandlerFailure);
     }
 }
