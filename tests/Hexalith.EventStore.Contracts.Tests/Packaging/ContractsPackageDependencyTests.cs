@@ -218,12 +218,18 @@ public sealed partial class ContractsPackageDependencyTests
             .. GetFrozenMsBuildEvidenceExclusions(root),
         ];
         var inspected = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string project in GetTrackedMsBuildFiles(root)
+        string[] projects = GetTrackedMsBuildFiles(root)
             .Except(excludedPaths, StringComparer.Ordinal)
-            .Where(path => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)))
-        {
-            await VerifyFrozenEvidenceNotBuildInputAsync(root, project, inspected).ConfigureAwait(true);
-        }
+            .Where(path => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        // Each root's MSBuild evaluations are independent child processes. Bounded parallelism
+        // keeps the CI lane inside its timeout; the shared visited set still inspects the same
+        // (project, global-property) contexts exactly once, and every assertion stays fail-closed.
+        await Parallel.ForEachAsync(
+            projects,
+            new ParallelOptions { MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 4) },
+            async (project, _) => await VerifyFrozenEvidenceNotBuildInputAsync(root, project, inspected).ConfigureAwait(true))
+            .ConfigureAwait(true);
 
         (int exitCode, string output, string error) = await RunConsumerAuthorityValidatorAsync(
             root,

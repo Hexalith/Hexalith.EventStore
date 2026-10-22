@@ -89,6 +89,8 @@ public sealed partial class ContractsPackageDependencyTests
     [InlineData("framework")]
     [InlineData("transitive")]
     [InlineData("reference-properties")]
+    [InlineData("reference-remove-properties")]
+    [InlineData("reference-properties-spaced")]
     [InlineData("task")]
     [InlineData("task-property")]
     [InlineData("task-composed")]
@@ -97,7 +99,9 @@ public sealed partial class ContractsPackageDependencyTests
     [InlineData("task-alias")]
     [InlineData("task-properties")]
     [InlineData("task-remove-properties")]
+    [InlineData("task-properties-spaced")]
     [InlineData("task-wildcard")]
+    [InlineData("task-recursive-wildcard")]
     [InlineData("task-transform")]
     [InlineData("task-transform-lowercase")]
     [InlineData("task-transform-unsupported")]
@@ -136,7 +140,7 @@ public sealed partial class ContractsPackageDependencyTests
                 File.Delete(frozen);
                 File.CreateSymbolicLink(frozen, external);
             }
-            if (activation is "transitive" or "reference-properties" or "cycle")
+            if (activation is "transitive" or "reference-properties" or "reference-remove-properties" or "reference-properties-spaced" or "cycle")
             {
                 string bridge = Path.Combine(root, "external", "Bridge.csproj");
                 Directory.CreateDirectory(Path.GetDirectoryName(bridge)!);
@@ -149,13 +153,24 @@ public sealed partial class ContractsPackageDependencyTests
                 else
                 {
                     XElement import = new("Import", new XAttribute("Project", frozen));
-                    if (activation == "reference-properties") import.SetAttributeValue("Condition", "'$(SelectFrozen)' == 'true'");
+                    if (activation is "reference-properties" or "reference-properties-spaced") import.SetAttributeValue("Condition", "'$(SelectFrozen)' == 'true'");
+                    // MSBuild trims removal entries, so the bridge evaluates without this global property.
+                    if (activation == "reference-remove-properties") import.SetAttributeValue("Condition", "'$(UseHexalithProjectReferences)' == ''");
                     child.Add(import);
                 }
                 new XDocument(child).Save(bridge);
                 XElement reference = new("ProjectReference", new XAttribute("Include", bridge));
                 if (activation == "reference-properties") reference.SetAttributeValue("AdditionalProperties", "SelectFrozen=true");
                 project.Add(new XElement("ItemGroup", reference));
+                if (activation is "reference-remove-properties" or "reference-properties-spaced")
+                {
+                    // Only the evaluated reference carries this definition metadata. MSBuild trims
+                    // each entry and the name and value around '=', so spacing changes nothing.
+                    project.Add(new XElement("ItemDefinitionGroup", new XElement("ProjectReference",
+                        activation == "reference-remove-properties"
+                            ? new XElement("GlobalPropertiesToRemove", "Unrelated; UseHexalithProjectReferences")
+                            : new XElement("AdditionalProperties", "SelectFrozen = true"))));
+                }
             }
             else if (activation.StartsWith("task", StringComparison.Ordinal) || activation == "target-reference")
             {
@@ -173,6 +188,12 @@ public sealed partial class ContractsPackageDependencyTests
                         new XElement("CapturedProject", "$(EvidenceBase)/evidence/fixture/Captured.csproj"));
                     expression = "$(CapturedProject)";
                 }
+                if (activation == "task-recursive-wildcard")
+                {
+                    // The archived project sits four directory levels below the active project.
+                    project.Add(new XElement("ItemGroup", new XElement("CapturedProjects", new XAttribute("Include", "**/Captured.csproj"))));
+                    expression = "@(CapturedProjects)";
+                }
                 if (activation == "task-item")
                 {
                     project.Add(new XElement("ItemGroup", new XElement("CapturedProjects", new XAttribute("Include", targetProject))));
@@ -189,11 +210,11 @@ public sealed partial class ContractsPackageDependencyTests
                     expression = Path.Combine(root, "task-alias.csproj");
                     File.CreateSymbolicLink(expression, targetProject);
                 }
-                if (activation is "task-properties" or "task-remove-properties" or "task-wildcard" or "task-transform" or "task-transform-lowercase" or "task-transform-unsupported")
+                if (activation is "task-properties" or "task-remove-properties" or "task-properties-spaced" or "task-wildcard" or "task-transform" or "task-transform-lowercase" or "task-transform-unsupported")
                 {
                     string bridge = Path.Combine(root, "Bridge.csproj");
                     XElement import = new("Import", new XAttribute("Project", frozen));
-                    if (activation is "task-properties" or "task-remove-properties")
+                    if (activation is "task-properties" or "task-remove-properties" or "task-properties-spaced")
                     {
                         import.SetAttributeValue("Condition", "'$(SelectFrozen)' == 'true'"
                             + (activation == "task-remove-properties" ? " and '$(UseHexalithProjectReferences)' == ''" : string.Empty));
@@ -215,6 +236,8 @@ public sealed partial class ContractsPackageDependencyTests
                     ? new XElement("ItemGroup", new XElement("ProjectReference", new XAttribute("Include", expression)))
                     : new XElement("MSBuild", new XAttribute("Projects", expression), new XAttribute("Targets", "Build"));
                 if (activation is "task-properties" or "task-remove-properties") action.SetAttributeValue("Properties", "SelectFrozen=true");
+                // MSBuild trims the task property name and value around '='.
+                if (activation == "task-properties-spaced") action.SetAttributeValue("Properties", "SelectFrozen = true");
                 if (activation == "task-remove-properties") action.SetAttributeValue("RemoveProperties", "UseHexalithProjectReferences");
                 XElement target = new("Target", new XAttribute("Name", "AddFrozen"),
                     new XAttribute("BeforeTargets", "PrepareProjectReferences"), action);
@@ -421,7 +444,13 @@ public sealed partial class ContractsPackageDependencyTests
     [InlineData("exec")]
     [InlineData("exec-bridge")]
     [InlineData("exec-overflow")]
+    [InlineData("exec-clean")]
+    [InlineData("exec-msbuild-path")]
+    [InlineData("exec-working-directory")]
+    [InlineData("exec-lookalike")]
+    [InlineData("exec-escaped")]
     [InlineData("benign")]
+    [InlineData("exec-benign")]
     public async Task FrozenMsBuildEvidence_CustomExecutableEdgesRemainFailClosedAsync(string route)
     {
         string root = Path.Combine(Path.GetTempPath(), "frozen-msbuild-custom-edge-" + Guid.NewGuid().ToString("N"));
@@ -464,9 +493,31 @@ public sealed partial class ContractsPackageDependencyTests
                 project.Add(group);
                 task = new XElement("Exec", new XAttribute("Command", "$(BuildCommand)"));
             }
+            // Commands outside the direct-invocation grammar still reach the archived project.
+            string archived = Path.Combine(archive, "Captured.csproj");
+            File.WriteAllText(archived, "<Project />");
+            if (route == "exec-clean") task = new XElement("Exec", new XAttribute("Command", "dotnet clean \"" + archived + "\" -nologo"));
+            if (route == "exec-msbuild-path")
+                task = new XElement("Exec", new XAttribute("Command", "dotnet \"$(MSBuildToolsPath)/MSBuild.dll\" \"" + archived + "\" -t:Build -nologo"));
+            if (route == "exec-working-directory")
+            {
+                task = new XElement("Exec", new XAttribute("Command", "dotnet clean Captured.csproj -nologo"),
+                    new XAttribute("WorkingDirectory", "_bmad-output/implementation-artifacts/evidence/fixture"));
+            }
+            // A lookalike directory name first cannot hide a later, quote-terminated evidence path.
+            if (route == "exec-lookalike")
+            {
+                task = new XElement("Exec", new XAttribute("Command", "echo _bmad-output/implementation-artifacts/evidence-index"
+                    + " && cd \"_bmad-output/implementation-artifacts/evidence\" && dotnet clean fixture/Captured.csproj"));
+            }
+            // Exec unescapes %XX, so an escaped path still names the archived project.
+            if (route == "exec-escaped")
+                task = new XElement("Exec", new XAttribute("Command", "dotnet clean _bmad-output%2Fimplementation-artifacts%2Fevidence%2Ffixture%2FCaptured.csproj -nologo"));
+            // Unmodelled but unrelated multi-line commands with literal '%' remain admitted.
+            if (route == "exec-benign") task = new XElement("Exec", new XAttribute("Command", "dotnet clean nested/Bridge.csproj -nologo\necho 100%"));
             project.Add(new XElement("Target", new XAttribute("Name", "Build"), task));
             new XDocument(project).Save(Path.Combine(root, "Active.csproj"));
-            if (route == "benign") await VerifyFrozenEvidenceNotBuildInputAsync(root, "Active.csproj").ConfigureAwait(true);
+            if (route is "benign" or "exec-benign") await VerifyFrozenEvidenceNotBuildInputAsync(root, "Active.csproj").ConfigureAwait(true);
             else
             {
                 Exception? error = await Record.ExceptionAsync(() => VerifyFrozenEvidenceNotBuildInputAsync(root, "Active.csproj")).ConfigureAwait(true);
@@ -475,6 +526,8 @@ public sealed partial class ContractsPackageDependencyTests
                     "function" => "Unresolved executable project destination",
                     "unsupported-escape" => "Unsupported executable MSBuild escaping",
                     "exec-overflow" => "Executable command expansion exceeded",
+                    "exec-clean" or "exec-msbuild-path" or "exec-working-directory" or "exec-lookalike" or "exec-escaped"
+                        => "consumes frozen evidence as a build input",
                     _ => frozen,
                 };
                 error.ShouldBeOfType<Shouldly.ShouldAssertException>().Message.ShouldContain(expected);
@@ -779,7 +832,10 @@ public sealed partial class ContractsPackageDependencyTests
         AssertNotFrozenBuildInput(root, project, project);
         string key = ResolvePhysicalBuildPath(project) + "|" + string.Join(";",
             properties.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).Select(pair => pair.Key + "=" + pair.Value));
-        if (!visited.Add(key)) return;
+        // Independent roots may be inspected concurrently; each context is still evaluated once.
+        bool added;
+        lock (visited) added = visited.Add(key);
+        if (!added) return;
         string preprocessed = Path.Combine(Path.GetTempPath(), "eventstore-msbuild-inputs-" + Guid.NewGuid().ToString("N") + ".xml");
         try
         {
@@ -834,17 +890,22 @@ public sealed partial class ContractsPackageDependencyTests
                 .Concat(declarations.Keys.Where(name => name.StartsWith('$')).Select(name => name[1..]))
                 .Append("MSBuildToolsPath")
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            if (unresolvedProperties.Length > 0)
+            unresolvedProperties.Length.ShouldBeLessThanOrEqualTo(4096, "Executable property discovery exceeded its bounded inspection budget.");
+            var requested = new HashSet<string>(unresolvedProperties.Append("MSBuildProjectFullPath"), StringComparer.OrdinalIgnoreCase);
+            // One evaluation answers the property, framework and evaluated-reference queries
+            // for this exact global-property context; it executes no targets.
+            string output = await EvaluateFrozenBuildProjectAsync(project, properties,
+                "-getProperty:" + string.Join(',', requested.Concat(["TargetFrameworks", "TargetFramework"]).Distinct(StringComparer.OrdinalIgnoreCase)),
+                "-getItem:ProjectReference").ConfigureAwait(true);
+            using JsonDocument evaluation = JsonDocument.Parse(output);
+            string frameworks = string.Empty;
+            foreach (JsonProperty property in evaluation.RootElement.GetProperty("Properties").EnumerateObject())
             {
-                unresolvedProperties.Length.ShouldBeLessThanOrEqualTo(4096, "Executable property discovery exceeded its bounded inspection budget.");
-                string result = await EvaluateFrozenBuildProjectAsync(project, properties,
-                    "-getProperty:" + string.Join(',', unresolvedProperties.Append("MSBuildProjectFullPath"))).ConfigureAwait(true);
-                using JsonDocument evaluated = JsonDocument.Parse(result);
-                foreach (JsonProperty property in evaluated.RootElement.GetProperty("Properties").EnumerateObject())
-                {
-                    declarations["?$" + property.Name] = [property.Value.GetString()!];
-                    declarations.TryAdd("$" + property.Name, [property.Value.GetString()!]);
-                }
+                if (property.Name.Equals("TargetFrameworks", StringComparison.OrdinalIgnoreCase)) frameworks = property.Value.GetString()!;
+                // Only the originally requested names become declarations, as before the queries were merged.
+                if (!requested.Contains(property.Name)) continue;
+                declarations["?$" + property.Name] = [property.Value.GetString()!];
+                declarations.TryAdd("$" + property.Name, [property.Value.GetString()!]);
             }
             foreach ((string name, string value) in properties) declarations["$" + name] = [value];
             foreach (XElement produced in document.Descendants().Where(element => element.Name.LocalName == "Output"
@@ -855,10 +916,6 @@ public sealed partial class ContractsPackageDependencyTests
                 string name = produced.Attribute("PropertyName")!.Value;
                 declarations["$" + name] = declarations["?$" + name] = ["$(" + name + ")"];
             }
-            // Query real evaluated references once; this executes no targets.
-            string output = await EvaluateFrozenBuildProjectAsync(project, properties,
-                "-getItem:ProjectReference", "-getProperty:TargetFrameworks,TargetFramework").ConfigureAwait(true);
-            using JsonDocument evaluation = JsonDocument.Parse(output);
             JsonElement evaluatedReferences = evaluation.RootElement.GetProperty("Items").GetProperty("ProjectReference");
             evaluatedReferences.GetArrayLength().ShouldBeLessThanOrEqualTo(4096, "Evaluated reference inventory exceeded its bounded inspection budget.");
             // SDK targets synthesize ProjectReference aliases from task outputs.
@@ -916,8 +973,20 @@ public sealed partial class ContractsPackageDependencyTests
                 string[] commands = ExpandFrozenBuildExpressions(BindDefiningDirectory(command.Value, owners[exec]),
                     declarations, new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Distinct().Take(257).ToArray();
                 commands.Length.ShouldBeLessThanOrEqualTo(256, "Executable command expansion exceeded its bounded inspection budget.");
+                // Backstop for commands the direct-invocation parser does not model (other verbs,
+                // host options, MSBuild.dll without exec, multi-line commands): the expanded
+                // command text and working directory, after %XX decoding, must not name the frozen
+                // evidence tree. Only that literal text is checked; response-file contents are not read.
+                if (exec.Attribute("WorkingDirectory") is { } execDirectory)
+                {
+                    string[] directories = ExpandFrozenBuildExpressions(BindDefiningDirectory(execDirectory.Value, owners[exec]),
+                        declarations, new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Distinct().Take(257).ToArray();
+                    directories.Length.ShouldBeLessThanOrEqualTo(256, "Executable working-directory expansion exceeded its bounded inspection budget.");
+                    foreach (string directory in directories) AssertNoFrozenEvidenceMarker(project, DecodeFrozenExecEscapes(directory));
+                }
                 foreach (string expanded in commands)
                 {
+                    AssertNoFrozenEvidenceMarker(project, DecodeFrozenExecEscapes(expanded));
                     if (FrozenDirectExecTask(expanded) is { } task)
                     {
                         foreach (string name in new[] { "WorkingDirectory", "EnvironmentVariables" })
@@ -937,11 +1006,7 @@ public sealed partial class ContractsPackageDependencyTests
                     foreach (string raw in expressions)
                     {
                         string expression = DecodeFrozenBuildValue(raw);
-                        string normalized = expression.Replace('\\', '/');
-                        const string marker = "_bmad-output/implementation-artifacts/evidence";
-                        int index = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-                        bool archived = index >= 0 && (index + marker.Length == normalized.Length || normalized[index + marker.Length] == '/');
-                        archived.ShouldBeFalse($"Active project {project} consumes frozen evidence as a build input: {expression}");
+                        AssertNoFrozenEvidenceMarker(project, expression);
                         if (expression.Contains("->", StringComparison.Ordinal))
                             false.ShouldBeTrue("Active project " + project + " potentially consumes frozen evidence as a build input: unresolved executable item transform " + expression);
                         if (expression.Contains("$(", StringComparison.Ordinal) || expression.Contains("@(", StringComparison.Ordinal)
@@ -992,7 +1057,6 @@ public sealed partial class ContractsPackageDependencyTests
                 }
             }
 
-            string frameworks = evaluation.RootElement.GetProperty("Properties").GetProperty("TargetFrameworks").GetString()!;
             if (!properties.ContainsKey("TargetFramework"))
             {
                 foreach (string framework in frameworks.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -1011,17 +1075,18 @@ public sealed partial class ContractsPackageDependencyTests
                 {
                     if (reference.TryGetProperty(metadata, out JsonElement removed))
                     {
-                        foreach (string name in removed.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries)) child.Remove(name);
+                        // MSBuild trims each list entry; whitespace after ';' cannot change the inspected context.
+                        foreach (string name in removed.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) child.Remove(name);
                     }
                 }
                 foreach (string metadata in new[] { "Properties", "AdditionalProperties", "SetConfiguration", "SetPlatform", "SetTargetFramework" })
                 {
                     if (!reference.TryGetProperty(metadata, out JsonElement extra)) continue;
-                    foreach (string assignment in extra.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                    foreach (string assignment in extra.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                     {
                         int separator = assignment.IndexOf('=');
                         (separator > 0).ShouldBeTrue("Unrecognized ProjectReference global-property metadata.");
-                        child[assignment[..separator]] = assignment[(separator + 1)..];
+                        child[assignment[..separator].Trim()] = assignment[(separator + 1)..].Trim();
                     }
                 }
                 await InspectFrozenBuildGraphAsync(root, referenced, child, visited).ConfigureAwait(true);
@@ -1052,6 +1117,29 @@ public sealed partial class ContractsPackageDependencyTests
         decoded.Any(char.IsControl).ShouldBeFalse("Unsupported executable MSBuild control character.");
         return decoded;
     }
+
+    private static void AssertNoFrozenEvidenceMarker(string project, string expression)
+    {
+        // Every occurrence is checked; the marker ends at the text end or any character
+        // that cannot continue a directory name (separator, quote, whitespace, ';', ...).
+        const string marker = "_bmad-output/implementation-artifacts/evidence";
+        string normalized = expression.Replace('\\', '/');
+        for (int index = normalized.IndexOf(marker, StringComparison.OrdinalIgnoreCase); index >= 0;
+            index = normalized.IndexOf(marker, index + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            int end = index + marker.Length;
+            bool archived = end == normalized.Length
+                || !(char.IsLetterOrDigit(normalized[end]) || normalized[end] is '_' or '-' or '.');
+            archived.ShouldBeFalse($"Active project {project} consumes frozen evidence as a build input: {expression}");
+        }
+    }
+
+    // Exec unescapes %XX before running. Unlike project destinations, arbitrary command
+    // text may legitimately contain other '%' characters and line breaks, so only the
+    // valid escapes are decoded here and nothing else is refused.
+    private static string DecodeFrozenExecEscapes(string value)
+        => Regex.Replace(value, @"%(?<hex>[0-9a-fA-F]{2})", match =>
+            ((char)Convert.ToInt32(match.Groups["hex"].Value, 16)).ToString(), RegexOptions.CultureInvariant);
 
     private static XElement? FrozenDirectExecTask(string command)
     {
@@ -1183,7 +1271,7 @@ public sealed partial class ContractsPackageDependencyTests
                             {
                                 int separator = part.IndexOf('=');
                                 (separator > 0).ShouldBeTrue("Unrecognized executable task global-property metadata: " + part);
-                                child[DecodeFrozenBuildValue(part[..separator])] = DecodeFrozenBuildValue(part[(separator + 1)..]);
+                                child[DecodeFrozenBuildValue(part[..separator].Trim())] = DecodeFrozenBuildValue(part[(separator + 1)..].Trim());
                             }
                         }
                         next.Add(child);
@@ -1204,22 +1292,44 @@ public sealed partial class ContractsPackageDependencyTests
         string[] parts = path[anchor.Length..].Split(Path.DirectorySeparatorChar);
         IEnumerable<string> paths = [anchor];
         int inspected = 0;
+        const string budget = "Executable project wildcard expansion exceeded its bounded inspection budget.";
         foreach (string part in parts)
         {
             var next = new List<string>();
             foreach (string parent in paths)
             {
+                if (part == "**")
+                {
+                    // MSBuild's recursive segment matches zero or more directories: the parent
+                    // itself plus every descendant. Each discovered directory is budgeted.
+                    if (!Directory.Exists(parent)) continue;
+                    var pending = new Queue<string>([parent]);
+                    (++inspected <= 4096).ShouldBeTrue(budget);
+                    while (pending.TryDequeue(out string? current))
+                    {
+                        next.Add(current);
+                        foreach (string child in Directory.EnumerateDirectories(current))
+                        {
+                            (++inspected <= 4096).ShouldBeTrue(budget);
+                            pending.Enqueue(child);
+                        }
+                    }
+                    continue;
+                }
                 IEnumerable<string> matches = part.IndexOfAny(['*', '?']) < 0 ? [Path.Combine(parent, part)]
                     : Directory.Exists(parent) ? Directory.EnumerateFileSystemEntries(parent, part) : [];
                 foreach (string match in matches)
                 {
-                    (++inspected <= 4096).ShouldBeTrue("Executable project wildcard expansion exceeded its bounded inspection budget.");
+                    (++inspected <= 4096).ShouldBeTrue(budget);
                     next.Add(match);
                 }
             }
             paths = next;
         }
-        foreach (string result in paths) yield return result;
+        // A wildcard selects existing entries only; literal segments after a recursive
+        // match must not turn every visited directory into a hypothetical input.
+        foreach (string result in paths)
+            if (File.Exists(result) || Directory.Exists(result)) yield return result;
     }
 
     private static string[]? FrozenBuildMetadata(string item, string metadata,

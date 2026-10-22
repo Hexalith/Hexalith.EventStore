@@ -189,6 +189,7 @@ public sealed partial class SecretsProtectionTests
     [InlineData("unknown")]
     [InlineData("forged")]
     [InlineData("mixed")]
+    [InlineData("header")]
     public void SourceContexts_DiffLanguageNeverConcealsLiteralCredentials(string framing)
     {
         string injectedAssignment = Assignment("pass" + "word", RandomSecret());
@@ -198,6 +199,20 @@ public sealed partial class SecretsProtectionTests
         if (framing == "unknown") header = header.Replace(".sh", ".unknown", StringComparison.Ordinal);
         if (framing == "forged") header = string.Empty;
         if (framing == "mixed") header = "diff --git a/control.py b/control.py\n--- a/control.py\n+++ b/control.py\n@@ -1 +1 @@\n+value = source\n" + header;
+        if (framing == "header")
+        {
+            // Git function context after the second @@ is scanned, not dropped with the fence marker.
+            header = header.Replace(".sh", ".py", StringComparison.Ordinal);
+            body = "@@ -30,3 +30,3 @@ DB_" + Assignment("PASS" + "WORD", JsonSerializer.Serialize(RandomSecret()))
+                + "\n     value = source\n-    old = None\n+    new = None\n";
+            string benign = JsonSerializer.Serialize(new
+            {
+                chunk_id = "control",
+                exit_code = 0,
+                output = header + "@@ -30,3 +30,3 @@ def run(self):\n     value = source\n-    old = None\n+    new = None\n",
+            });
+            FindViolations("evidence/tool.json", JsonSerializer.Serialize(new { text = benign })).ShouldBeEmpty();
+        }
         string output = JsonSerializer.Serialize(new { chunk_id = "control", exit_code = 0, output = header + body });
         FindViolations("evidence/tool.json", JsonSerializer.Serialize(new { text = output })).ShouldNotBeEmpty();
     }

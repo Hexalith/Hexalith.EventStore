@@ -991,7 +991,9 @@ public sealed partial class SecretsProtectionTests
         FindViolations("capture.json", adjacentField).ShouldBe(["capture.json:1"]);
         string unicodePrefix = content.Insert(1, "\"label\":\"é😀\",");
         FindViolations("capture.json", unicodePrefix).ShouldBeEmpty();
-        string invalidVersions = content.Replace("8.14.0", RandomSecret(), StringComparison.Ordinal);
+        // Base64 can accidentally be a valid NuGet version (for example a digit plus
+        // build metadata). This rejection control must generate an invalid version.
+        string invalidVersions = content.Replace("8.14.0", "credential-" + RandomSecret(), StringComparison.Ordinal);
         FindViolations("capture.json", invalidVersions).ShouldNotBeEmpty();
         string lookalike = "{\"libraries\":{},\"targets\":{\"tenant\":{\"foo/bar\":{\"dependencies\":{\"database."
             + "password\":\"1.2.3\"}}}}}";
@@ -1029,7 +1031,9 @@ public sealed partial class SecretsProtectionTests
             + "\"resolved\":\"1.0.0\",\"contentHash\":\"" + digest + "\",\"dependencies\":{\""
             + packageName + "\":\"" + version + "\"}}}}}";
         FindViolations("packages.lock.json", content).ShouldBeEmpty();
-        FindViolations("packages.lock.json", content.Replace(version, RandomSecret(), StringComparison.Ordinal))
+        // Base64 can accidentally be a valid NuGet version (for example a digit plus
+        // build metadata). This rejection control must generate an invalid version.
+        FindViolations("packages.lock.json", content.Replace(version, "credential-" + RandomSecret(), StringComparison.Ordinal))
             .ShouldNotBeEmpty();
     }
 

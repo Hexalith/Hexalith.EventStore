@@ -186,6 +186,9 @@ public sealed partial class SecretsProtectionTests
             if (Regex.IsMatch(line, @"\A@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@", RegexOptions.CultureInvariant))
             {
                 if (hunk) result.AppendLine("```");
+                // The header's function-context text is ordinary scanned Markdown in both
+                // views; opening a fence must never drop it from the scan.
+                result.AppendLine(line);
                 result.AppendLine("```" + (language.Length > 0 ? language : pythonFragment ? "p1r-python-fragment" : "text"));
                 hunk = true;
             }
