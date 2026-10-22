@@ -24,6 +24,6 @@ The command-status poll endpoint carries the same disposition additively, alongs
 
 | Field | Meaning |
 | --- | --- |
-| `retryable` | `true` — a drain is armed and will retry automatically. `false` — terminal, no further automatic attempt (attempts exhausted, dead-lettered, or no reminder armed). `null` — a record written before this field existed; **never** read `null` as "permanently failed". |
-| `recoveryReasonCode` | The reason code from the table above that explains the current disposition. |
-| `drainAttemptCount` | Drain attempts made so far for this range. |
+| `retryable` | `true` — automatic publication recovery is armed or durably tracked for reminder re-arm on a later activation. It does not prove that a reminder is currently registered or promise a retry deadline. `false` — no further automatic publication retry is reported, for example after drain exhaustion. `null` — recovery disposition is unrecorded or unknown, including legacy and ordinary new records; **never** read `null` as "permanently failed". |
+| `recoveryReasonCode` | The reason code from the table above that explains the current disposition; null when unrecorded. |
+| `drainAttemptCount` | Recorded drain attempts for this range, including zero before the first retry; null when unrecorded. |

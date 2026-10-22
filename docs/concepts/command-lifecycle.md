@@ -71,7 +71,7 @@ sequenceDiagram
     Handler->>Admission: Complete exact result under current fence
     Handler-->>MediatR: Result
     MediatR-->>API: Result
-    API-->>Client: 202 Accepted + correlationId
+    API-->>Client: 202 Accepted + messageId + Location
 ```
 
 <details>
@@ -81,7 +81,7 @@ The sequence begins when an HTTP Client submits IncrementCounter. The MediatR pi
 
 Inside the AggregateActor pipeline, the actor first validates the signed fence and exact stable `MessageId` checkpoint, then validates tenant identity, rehydrates state, invokes the domain service, and persists and publishes the result. The exact logical outcome is returned to the handler and finalized by the admission actor under the same fence.
 
-The result propagates back through the CommandRouter, SubmitCommandHandler, MediatR Pipeline, and Command API, which responds to the client with HTTP 202 Accepted and a correlationId for status tracking.
+The result propagates back through the CommandRouter, SubmitCommandHandler, MediatR Pipeline, and Command API, which responds to the client with HTTP 202 Accepted, a `messageId` and a `Location` header for status tracking. The response also carries `correlationId` for tracing.
 
 </details>
 
@@ -95,6 +95,7 @@ $ curl -X POST https://localhost:8080/api/v1/commands \
   -H "Content-Type: application/json" \
   -d '{
     "messageId": "01J00000000000000000000000",
+    "correlationId": "550e8400-e29b-41d4-a716-446655440000",
     "tenant": "demo",
     "domain": "counter",
     "aggregateId": "counter-1",
@@ -104,15 +105,18 @@ $ curl -X POST https://localhost:8080/api/v1/commands \
   }'
 ```
 
-The Command API responds immediately with `202 Accepted` and a correlation ID:
+The Command API responds with `202 Accepted`, the message identity for status tracking and the command correlation ID for tracing:
 
 ```json
 {
-  "correlationId": "550e8400-e29b-41d4-a716-446655440000"
+  "correlationId": "550e8400-e29b-41d4-a716-446655440000",
+  "messageId": "01J00000000000000000000000"
 }
 ```
 
-Before the command reaches the pipeline, three things happen at the entry point: a unique correlation ID is generated for end-to-end tracing, the JWT is checked with a 3-layer tenant authorization (the token must carry `eventstore:tenant`, `eventstore:domain`, and `eventstore:permission` claims), and the user ID is extracted from the JWT `sub` claim. Rate limiting and [OpenAPI/Swagger UI](https://swagger.io/tools/swagger-ui/) are also available at this layer — the quickstart Swagger UI you used lives here.
+The `Location` response header points to `/api/v1/commands/status/01J00000000000000000000000`.
+
+Before the command reaches the pipeline, three things happen at the entry point: an HTTP request correlation ID is established for tracing, the JWT is checked with a 3-layer tenant authorization (the token must carry `eventstore:tenant`, `eventstore:domain`, and `eventstore:permission` claims), and the user ID is extracted from the JWT `sub` claim. Rate limiting and [OpenAPI/Swagger UI](https://swagger.io/tools/swagger-ui/) are also available at this layer — the quickstart Swagger UI you used lives here.
 
 With your command accepted, it enters the MediatR pipeline.
 
