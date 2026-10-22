@@ -1,0 +1,760 @@
+
+using System.Text.Json;
+
+using Dapr.Actors.Runtime;
+
+using Hexalith.EventStore.Contracts.Identity;
+using EventIdentityValidationException = Hexalith.EventStore.Contracts.Events.EventIdentityValidationException;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Testing.Fakes;
+
+using Microsoft.Extensions.Logging;
+
+using NSubstitute;
+
+using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Events;
+
+public class EventStreamReaderTests {
+    private static readonly AggregateIdentity TestIdentity = new("test-tenant", "test-domain", "agg-001");
+
+    private static EventEnvelope CreateTestEvent(int seq) => new(
+        MessageId: $"01J{seq:D23}",
+        AggregateId: "agg-001",
+        AggregateType: "test-aggregate",
+        TenantId: "test-tenant",
+        Domain: "test-domain",
+        SequenceNumber: seq,
+        GlobalPosition: 0,
+        Timestamp: DateTimeOffset.UtcNow,
+        CorrelationId: $"corr-{seq}",
+        CausationId: $"cause-{seq}",
+        UserId: "user-1",
+        DomainServiceVersion: "1.0.0",
+        EventTypeName: "OrderCreated",
+        MetadataVersion: 1,
+        SerializationFormat: "json",
+        Payload: [1, 2, 3],
+        Extensions: null);
+
+    private static SnapshotRecord CreateTestSnapshot(long sequenceNumber, object? state = null) {
+        object foldedState = state ?? new { Name = "test-state" };
+        return new SnapshotRecord(
+            SequenceNumber: sequenceNumber,
+            State: JsonSerializer.SerializeToElement(foldedState, foldedState.GetType(), JsonSerializerOptions.Web),
+            CreatedAt: DateTimeOffset.UtcNow,
+            Domain: "test-domain",
+            AggregateId: "agg-001",
+            TenantId: "test-tenant") { SnapshotEnvelopeVersion = 1 };
+    }
+
+    private static (EventStreamReader Reader, IActorStateManager StateManager) CreateReader() {
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<EventStreamReader> logger = Substitute.For<ILogger<EventStreamReader>>();
+        return (new EventStreamReader(stateManager, logger), stateManager);
+    }
+
+    private static void ConfigureNoMetadata(IActorStateManager stateManager, AggregateIdentity identity) => stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
+
+    private static void ConfigureMetadata(IActorStateManager stateManager, AggregateIdentity identity, long currentSequence) {
+        var metadata = new AggregateMetadata(currentSequence, DateTimeOffset.UtcNow, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(identity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+    }
+
+    private static void ConfigureEvents(IActorStateManager stateManager, AggregateIdentity identity, int fromSeq, int toSeq) {
+        string keyPrefix = identity.EventStreamKeyPrefix;
+        for (int i = fromSeq; i <= toSeq; i++) {
+            int seq = i;
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq)));
+        }
+    }
+
+    private static void ConfigureEvents(IActorStateManager stateManager, AggregateIdentity identity, int count)
+        => ConfigureEvents(stateManager, identity, 1, count);
+
+    [Fact]
+    public async Task RehydrateAsync_MalformedStoredIdentityFailsBeforeReturningHistory() {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        ConfigureMetadata(state, TestIdentity, 2);
+        _ = state.TryGetStateAsync<EventEnvelope>($"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true,
+                CreateTestEvent(1) with { CorrelationId = "bad_id" }));
+
+        EventIdentityValidationException failure = await Should.ThrowAsync<EventIdentityValidationException>(() =>
+            reader.RehydrateAsync(TestIdentity));
+
+        failure.ComponentName.ShouldBe("CorrelationId");
+        _ = state.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{TestIdentity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Malformed floor evidence is rejected before an event can be read or any state staged.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(14)]
+    public async Task RehydrateAsync_InvalidRetainedFloorRefusesBeforeEventReads(long floor)
+    {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "original", floor)));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => reader.RehydrateAsync(TestIdentity));
+
+        state.ReceivedCalls().Count().ShouldBe(1);
+    }
+
+    /// <summary>A covering snapshot permits the valid retained tail without discarding its floor.</summary>
+    [Fact]
+    public async Task RehydrateAsync_RetainedFloorFiveHeadTwelveSnapshotNineReadsOnlyTail()
+    {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        _ = state.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(12, DateTimeOffset.UnixEpoch, "original", 5)));
+        ConfigureEvents(state, TestIdentity, 10, 12);
+
+        RehydrationResult result = (await reader.RehydrateAsync(TestIdentity, CreateTestSnapshot(9)))!;
+
+        result.CurrentSequence.ShouldBe(12);
+        result.LastSnapshotSequence.ShouldBe(9);
+        result.Events.Select(e => e.SequenceNumber).ShouldBe([10, 11, 12]);
+        _ = state.DidNotReceive().SetStateAsync(Arg.Any<string>(), Arg.Any<AggregateMetadata>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>An unknown envelope version cannot be handed to domain replay.</summary>
+    [Fact]
+    public async Task RehydrateAsync_MetadataVersion987RefusesCompleteResult()
+    {
+        (EventStreamReader reader, IActorStateManager state) = CreateReader();
+        ConfigureMetadata(state, TestIdentity, 2);
+        ConfigureEvents(state, TestIdentity, 1);
+        _ = state.TryGetStateAsync<EventEnvelope>($"{TestIdentity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(2) with { MetadataVersion = 987 }));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => reader.RehydrateAsync(TestIdentity));
+
+        _ = state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    // === Existing tests updated for RehydrationResult return type ===
+
+    [Fact]
+    public async Task RehydrateAsync_NewAggregate_ReturnsNull() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureNoMetadata(stateManager, TestIdentity);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert
+        result.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(2, 1, "etag")]
+    [InlineData(1, 2, "etag")]
+    [InlineData(1, 1, "changed")]
+    public async Task RehydrateAsync_ChangedHeadFloorOrETagRefusesCompleteResult(
+        long observedHead, long observedFloor, string observedETag) {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        AggregateMetadata before = new(1, DateTimeOffset.UnixEpoch, "etag");
+        AggregateMetadata after = new(observedHead, DateTimeOffset.UnixEpoch, observedETag, observedFloor);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, before),
+                new ConditionalValue<AggregateMetadata>(true, after));
+        EventEnvelope stored = CreateTestEvent(1);
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, stored));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("SourceHeadChanged");
+        stored.Payload.ShouldBe([1, 2, 3]);
+        _ = stateManager.DidNotReceiveWithAnyArgs().SetStateAsync(default!, default(EventEnvelope)!, default);
+        _ = stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_UnavailablePrefixRefusesBeforeEventRead() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true,
+                new AggregateMetadata(5, DateTimeOffset.UnixEpoch, null, 3)));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity)).ConfigureAwait(true);
+
+        error.Message.ShouldContain("ReplayRestartRequired");
+        _ = stateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<EventEnvelope>(default!, default);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_CurrentSnapshotChecksHeadWithoutReadingEvents() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(5, DateTimeOffset.UnixEpoch, null)),
+                new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(6, DateTimeOffset.UnixEpoch, null)));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity, CreateTestSnapshot(5))).ConfigureAwait(true);
+
+        error.Message.ShouldContain("SourceHeadChanged");
+        _ = stateManager.DidNotReceiveWithAnyArgs().TryGetStateAsync<EventEnvelope>(default!, default);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_PreCanceledRequestDoesNotReadMetadata() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: cancellation.Token));
+
+        _ = stateManager.DidNotReceive().TryGetStateAsync<AggregateMetadata>(
+            TestIdentity.MetadataKey, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_OversizedLegacyArrayRefusesBeforeEventReads() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 32_769);
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: CancellationToken.None));
+
+        error.Message.ShouldContain("LegacyArrayLimit");
+        _ = stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_RejectsEventWhoseAddressDiffersFromItsKey() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 1);
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true,
+                CreateTestEvent(1) with { TenantId = "other-tenant" }));
+
+        InvalidOperationException error = await Should.ThrowAsync<InvalidOperationException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: CancellationToken.None));
+
+        error.Message.ShouldContain("AddressMismatch");
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_CompatibilityInterfaceRejectsPreCanceledCall() {
+        var fake = new FakeEventStreamReader();
+        IEventStreamReader reader = fake;
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: cancellation.Token));
+
+        fake.RehydrateCalls.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_ForwardsTokenAndStopsBetweenEventReads() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 2);
+        using var cancellation = new CancellationTokenSource();
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", cancellation.Token)
+            .Returns(_ => {
+                cancellation.Cancel();
+                return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(1));
+            });
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            reader.RehydrateAsync(TestIdentity, snapshot: null, cancellationToken: cancellation.Token));
+
+        _ = stateManager.Received(1).TryGetStateAsync<AggregateMetadata>(
+            TestIdentity.MetadataKey, cancellation.Token);
+        _ = stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{TestIdentity.EventStreamKeyPrefix}2", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_ExistingAggregate_ReadsEventsFromSequence1() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 3);
+        ConfigureEvents(stateManager, TestIdentity, 3);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(3);
+        result.Events[0].SequenceNumber.ShouldBe(1);
+        result.Events[1].SequenceNumber.ShouldBe(2);
+        result.Events[2].SequenceNumber.ShouldBe(3);
+        result.SnapshotState.ShouldBeNull();
+        result.LastSnapshotSequence.ShouldBe(0);
+        result.CurrentSequence.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_ExistingAggregate_UsesCorrectKeyPattern() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 2);
+        ConfigureEvents(stateManager, TestIdentity, 2);
+
+        // Act
+        _ = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert -- verify composite key pattern {tenant}:{domain}:{aggId}:events:{seq}
+        _ = await stateManager.Received().TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:1", Arg.Any<CancellationToken>());
+        _ = await stateManager.Received().TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:2", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_ThousandEvents_CompletesWithin100ms() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 1000);
+
+        // Configure all 1000 events to return immediately (mock -- no real I/O)
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                string key = callInfo.Arg<string>();
+                if (key.StartsWith(keyPrefix, StringComparison.Ordinal)) {
+                    int seq = int.Parse(key[keyPrefix.Length..]);
+                    return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq));
+                }
+
+                return new ConditionalValue<EventEnvelope>(false, default!);
+            });
+
+        // Act
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+        sw.Stop();
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(1000);
+        sw.ElapsedMilliseconds.ShouldBeLessThan(100);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_MissingEvent_ThrowsMissingEventException() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 3);
+
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        // Event 1 exists, event 2 missing, event 3 exists
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(1)));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(false, default!));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}3", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(3)));
+
+        // Act & Assert
+        MissingEventException ex = await Should.ThrowAsync<MissingEventException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.SequenceNumber.ShouldBe(2);
+        ex.TenantId.ShouldBe("test-tenant");
+        ex.Domain.ShouldBe("test-domain");
+        ex.AggregateId.ShouldBe("agg-001");
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_VersionedEvent_RefusesTypedLegacyReader() {
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 1);
+        EventEnvelope versioned = CreateTestEvent(1) with {
+            EventTypeName = "order-created",
+            MetadataVersion = 2,
+            EventContractType = "order-created",
+            PayloadVersion = 2,
+        };
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"{TestIdentity.EventStreamKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, versioned));
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => reader.RehydrateAsync(TestIdentity));
+
+        exception.Message.ShouldContain("RollbackReaderCapabilityHold");
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_InvalidMetadata_NegativeSequence_ThrowsException() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        var metadata = new AggregateMetadata(-1, DateTimeOffset.UtcNow, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+
+        // Act & Assert
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.Message.ShouldContain("CurrentSequence=-1");
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_InvalidMetadata_ZeroSequence_ThrowsException() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        var metadata = new AggregateMetadata(0, DateTimeOffset.UtcNow, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+
+        // Act & Assert
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.Message.ShouldContain("CurrentSequence=0");
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_NullIdentity_ThrowsArgumentNullException() {
+        // Arrange
+        (EventStreamReader reader, _) = CreateReader();
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<ArgumentNullException>(() => reader.RehydrateAsync(null!));
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_EventsLoadedInOrder_VerifySequence() {
+        // Arrange
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 5);
+        ConfigureEvents(stateManager, TestIdentity, 5);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        for (int i = 0; i < result.Events.Count; i++) {
+            result.Events[i].SequenceNumber.ShouldBe(i + 1);
+        }
+    }
+
+    // === Story 3.10: Snapshot-aware rehydration tests (Task 6) ===
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_ReadsOnlyTailEvents() {
+        // Arrange -- AC #1: snapshot at 500, events 501-520
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 520);
+        ConfigureEvents(stateManager, TestIdentity, 501, 520);
+        SnapshotRecord snapshot = CreateTestSnapshot(500);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(20);
+        result.Events[0].SequenceNumber.ShouldBe(501);
+        result.Events[19].SequenceNumber.ShouldBe(520);
+        _ = result.SnapshotState.ShouldNotBeNull();
+        result.LastSnapshotSequence.ShouldBe(500);
+        result.CurrentSequence.ShouldBe(520);
+        result.UsedSnapshot.ShouldBeTrue();
+
+        // Verify events 1-500 were NOT read
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{keyPrefix}1", Arg.Any<CancellationToken>());
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{keyPrefix}500", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_NoTailEvents_ReturnsSnapshotState() {
+        // Arrange -- AC #8: snapshot at current sequence
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 500);
+        SnapshotRecord snapshot = CreateTestSnapshot(500);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.ShouldBeEmpty();
+        _ = result.SnapshotState.ShouldNotBeNull();
+        result.LastSnapshotSequence.ShouldBe(500);
+        result.CurrentSequence.ShouldBe(500);
+        result.TailEventCount.ShouldBe(0);
+        result.UsedSnapshot.ShouldBeTrue();
+
+        // No event reads should have occurred
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = await stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            Arg.Is<string>(s => s.StartsWith(keyPrefix)), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithoutSnapshot_FullReplay() {
+        // Arrange -- AC #3: no snapshot, full replay
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 5);
+        ConfigureEvents(stateManager, TestIdentity, 5);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(5);
+        result.SnapshotState.ShouldBeNull();
+        result.LastSnapshotSequence.ShouldBe(0);
+        result.CurrentSequence.ShouldBe(5);
+        result.UsedSnapshot.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_TailEventsInOrder() {
+        // Arrange -- AC #9: strict sequence ordering
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 10);
+        ConfigureEvents(stateManager, TestIdentity, 6, 10);
+        SnapshotRecord snapshot = CreateTestSnapshot(5);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(5);
+        for (int i = 0; i < result.Events.Count; i++) {
+            result.Events[i].SequenceNumber.ShouldBe(6 + i);
+        }
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_ParallelReads() {
+        // Arrange -- AC #5: parallel reads maintained for tail events
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 105);
+        ConfigureEvents(stateManager, TestIdentity, 101, 105);
+        SnapshotRecord snapshot = CreateTestSnapshot(100);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
+
+        // Assert -- all 5 tail events loaded (proves parallel reads work)
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_CorrectKeyPattern() {
+        // Arrange -- AC #4: reads {tenant}:{domain}:{aggId}:events:{seq} for tail events
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 502);
+        ConfigureEvents(stateManager, TestIdentity, 501, 502);
+        SnapshotRecord snapshot = CreateTestSnapshot(500);
+
+        // Act
+        _ = await reader.RehydrateAsync(TestIdentity, snapshot);
+
+        // Assert
+        _ = await stateManager.Received().TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:501", Arg.Any<CancellationToken>());
+        _ = await stateManager.Received().TryGetStateAsync<EventEnvelope>(
+            "test-tenant:test-domain:agg-001:events:502", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_ReturnsCorrectRehydrationResult() {
+        // Arrange -- all fields populated correctly
+        var snapshotState = new { ProjectedState = "test" };
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 103);
+        ConfigureEvents(stateManager, TestIdentity, 101, 103);
+        SnapshotRecord snapshot = CreateTestSnapshot(100, snapshotState);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        JsonElement.DeepEquals(result.SnapshotState.ShouldBeOfType<JsonElement>(),
+            JsonSerializer.SerializeToElement(snapshotState, JsonSerializerOptions.Web)).ShouldBeTrue();
+        result.Events.Count.ShouldBe(3);
+        result.LastSnapshotSequence.ShouldBe(100);
+        result.CurrentSequence.ShouldBe(103);
+        result.TailEventCount.ShouldBe(3);
+        result.UsedSnapshot.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_NewAggregate_NoSnapshotNoEvents_ReturnsNull() {
+        // Arrange -- unchanged behavior for new aggregates
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureNoMetadata(stateManager, TestIdentity);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_WithSnapshot_MissingTailEvent_ThrowsMissingEventException() {
+        // Arrange -- gap detection in tail events
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 503);
+        SnapshotRecord snapshot = CreateTestSnapshot(500);
+
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}501", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(501)));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}502", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(false, default!)); // Missing!
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}503", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(503)));
+
+        // Act & Assert
+        MissingEventException ex = await Should.ThrowAsync<MissingEventException>(() => reader.RehydrateAsync(TestIdentity, snapshot));
+        ex.SequenceNumber.ShouldBe(502);
+    }
+
+    // === Story 3.10: Performance tests (Task 7) ===
+
+    [Fact]
+    public async Task RehydrateAsync_SnapshotPlusTailEvents_CompletesWithin50ms() {
+        // Arrange -- NFR4: p99 <50ms
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 10020);
+
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                string key = callInfo.Arg<string>();
+                if (key.StartsWith(keyPrefix, StringComparison.Ordinal)) {
+                    int seq = int.Parse(key[keyPrefix.Length..]);
+                    return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq));
+                }
+
+                return new ConditionalValue<EventEnvelope>(false, default!);
+            });
+
+        SnapshotRecord snapshot = CreateTestSnapshot(10000);
+
+        // Act
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity, snapshot);
+        sw.Stop();
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(20);
+        sw.ElapsedMilliseconds.ShouldBeLessThan(50);
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_SnapshotWithManyTailEvents_FasterThanFullReplay() {
+        // Arrange -- comparative performance
+        IActorStateManager stateManager = Substitute.For<IActorStateManager>();
+        ILogger<EventStreamReader> logger = Substitute.For<ILogger<EventStreamReader>>();
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+
+        ConfigureMetadata(stateManager, TestIdentity, 10020);
+        _ = stateManager.TryGetStateAsync<EventEnvelope>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => {
+                string key = callInfo.Arg<string>();
+                if (key.StartsWith(keyPrefix, StringComparison.Ordinal)) {
+                    int seq = int.Parse(key[keyPrefix.Length..]);
+                    return new ConditionalValue<EventEnvelope>(true, CreateTestEvent(seq));
+                }
+
+                return new ConditionalValue<EventEnvelope>(false, default!);
+            });
+
+        // Full replay
+        var readerFull = new EventStreamReader(stateManager, logger);
+        var swFull = System.Diagnostics.Stopwatch.StartNew();
+        _ = await readerFull.RehydrateAsync(TestIdentity);
+        swFull.Stop();
+
+        // Snapshot + 20 tail events
+        SnapshotRecord snapshot = CreateTestSnapshot(10000);
+        var readerSnapshot = new EventStreamReader(stateManager, logger);
+        var swSnapshot = System.Diagnostics.Stopwatch.StartNew();
+        RehydrationResult? snapshotResult = await readerSnapshot.RehydrateAsync(TestIdentity, snapshot);
+        swSnapshot.Stop();
+
+        // Assert -- snapshot path should be significantly faster
+        _ = snapshotResult.ShouldNotBeNull();
+        snapshotResult.Events.Count.ShouldBe(20);
+        swSnapshot.ElapsedMilliseconds.ShouldBeLessThan(swFull.ElapsedMilliseconds + 1); // At least not slower
+    }
+
+    // === EventDeserializationException coverage (Story 2.2 Task 4.5) ===
+
+    [Fact]
+    public async Task RehydrateAsync_StateManagerThrowsDuringEventRead_ThrowsEventDeserializationException() {
+        // Arrange -- simulate corrupt/incompatible data causing deserialization failure
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 2);
+
+        string keyPrefix = TestIdentity.EventStreamKeyPrefix;
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, CreateTestEvent(1)));
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}2", Arg.Any<CancellationToken>())
+            .Returns<ConditionalValue<EventEnvelope>>(_ => throw new InvalidCastException("Simulated deserialization failure"));
+
+        // Act & Assert
+        EventDeserializationException ex = await Should.ThrowAsync<EventDeserializationException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.SequenceNumber.ShouldBe(2);
+        ex.ActorId.ShouldBe(TestIdentity.ActorId);
+        _ = ex.InnerException.ShouldBeOfType<InvalidCastException>();
+    }
+
+    [Fact]
+    public async Task RehydrateAsync_StateManagerThrowsDuringMetadataRead_ThrowsEventDeserializationException() {
+        // Arrange -- simulate metadata deserialization failure
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(TestIdentity.MetadataKey, Arg.Any<CancellationToken>())
+            .Returns<ConditionalValue<AggregateMetadata>>(_ => throw new InvalidCastException("Simulated metadata corruption"));
+
+        // Act & Assert
+        EventDeserializationException ex = await Should.ThrowAsync<EventDeserializationException>(() => reader.RehydrateAsync(TestIdentity));
+        ex.SequenceNumber.ShouldBe(-1);
+        _ = ex.InnerException.ShouldBeOfType<InvalidCastException>();
+    }
+
+    // === Full replay backward compatibility (Task 9) ===
+
+    [Fact]
+    public async Task RehydrateAsync_FullReplay_ReturnsRehydrationResultWithAllEvents() {
+        // Arrange -- backward compatible: no snapshot yields full event list
+        (EventStreamReader reader, IActorStateManager stateManager) = CreateReader();
+        ConfigureMetadata(stateManager, TestIdentity, 3);
+        ConfigureEvents(stateManager, TestIdentity, 3);
+
+        // Act
+        RehydrationResult? result = await reader.RehydrateAsync(TestIdentity);
+
+        // Assert
+        _ = result.ShouldNotBeNull();
+        result.Events.Count.ShouldBe(3);
+        result.SnapshotState.ShouldBeNull();
+        result.UsedSnapshot.ShouldBeFalse();
+        result.LastSnapshotSequence.ShouldBe(0);
+        result.CurrentSequence.ShouldBe(3);
+    }
+}

@@ -1,0 +1,52 @@
+namespace Hexalith.EventStore.Client.Gateway;
+
+/// <summary>
+/// Options for the HTTP EventStore gateway client.
+/// </summary>
+public sealed class EventStoreGatewayClientOptions {
+    /// <summary>
+    /// Gets or sets whether ordinary command submission and stream reads use the supported workload-only
+    /// transport. A host must also register an independently configured workload assertion source.
+    /// </summary>
+    public bool UseWorkloadTransport { get; set; }
+
+    /// <summary>
+    /// Gets or sets the EventStore gateway base address.
+    /// </summary>
+    public Uri? BaseAddress { get; set; }
+
+    /// <summary>
+    /// Gets or sets the relative command submission endpoint path.
+    /// </summary>
+    public string CommandPath { get; set; } = "api/v1/commands";
+
+    /// <summary>Gets or sets the workload-only command submission path.</summary>
+    public string WorkloadCommandPath { get; set; } = "api/v1/commands/workload";
+
+    /// <summary>
+    /// Gets or sets the relative query endpoint path.
+    /// </summary>
+    public string QueryPath { get; set; } = "api/v1/queries";
+
+    /// <summary>
+    /// Gets or sets the relative path of the command status endpoint. The message identifier is appended as a
+    /// trailing segment.
+    /// </summary>
+    public string CommandStatusPath { get; set; } = "api/v1/commands/status";
+
+    /// <summary>Gets or sets the workload-only status path, followed by tenant and message ID.</summary>
+    public string WorkloadCommandStatusPath { get; set; } = "api/v1/commands/status/workload";
+
+    /// <summary>
+    /// Gets or sets the relative public stream read endpoint path.
+    /// </summary>
+    public string StreamReadPath { get; set; } = "api/v1/streams/read";
+
+    /// <summary>Gets or sets the workload-only stream read path.</summary>
+    public string WorkloadStreamReadPath { get; set; } = "api/v1/streams/read/workload";
+
+    /// <summary>
+    /// Gets or sets the maximum buffered stream-read response size in bytes.
+    /// </summary>
+    public long MaxStreamReadResponseBytes { get; set; } = 16 * 1024 * 1024;
+}

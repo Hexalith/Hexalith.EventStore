@@ -1,0 +1,460 @@
+@page "/commands"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Commands
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@using Hexalith.EventStore.Contracts.Commands
+
+@implements IAsyncDisposable
+
+@inject AdminStreamApiClient ApiClient
+@inject AdminTenantOptionsProvider TenantOptionsProvider
+@inject NavigationManager NavigationManager
+@inject DashboardRefreshService RefreshService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Commands - Hexalith EventStore Admin</PageTitle>
+
+<h1>Commands</h1>
+
+@if (_isLoading)
+{
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px;">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+    </div>
+}
+else if (_isForbidden)
+{
+    <EmptyState Title="Access Denied"
+                Description="You do not have permission to view commands." />
+}
+else if (_errorMessage is not null)
+{
+    <EmptyState Title="Unable to load commands"
+                Description="@_errorMessage" />
+}
+else
+{
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+        <StatCard Label="Total Commands" Value="@_allItems.Count.ToString()" />
+        <StatCard Label="Success Rate" Value="@ComputeSuccessRate()" Severity="success" />
+        <StatCard Label="Failed" Value="@ComputeFailedCount().ToString()" Severity="@(ComputeFailedCount() > 0 ? "error" : "neutral")" />
+        <StatCard Label="In-Flight" Value="@ComputeInFlightCount().ToString()" Severity="@(ComputeInFlightCount() > 0 ? "warning" : "neutral")" />
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+        <FluentSelect TOption="string" TValue="string" @bind-Value="_statusFilter" @bind-Value:after="OnStatusFilterChanged"
+                      Label="Status" Style="min-width: 140px;">
+            <FluentOption Value="@("All")">All</FluentOption>
+            <FluentOption Value="@("Completed")">Completed</FluentOption>
+            <FluentOption Value="@("Processing")">Processing</FluentOption>
+            <FluentOption Value="@("Rejected")">Rejected</FluentOption>
+            <FluentOption Value="@("Failed")">Failed</FluentOption>
+        </FluentSelect>
+
+        <FluentSelect TOption="string" TValue="string" @bind-Value="_tenantFilter" @bind-Value:after="OnTenantFilterChanged"
+                      Label="Tenant" Style="min-width: 140px;">
+            <FluentOption Value="@string.Empty">Authorized scope (all tenants for Admin)</FluentOption>
+            @foreach (TenantOption tenant in _tenantOptions)
+            {
+                <FluentOption Value="@tenant.TenantId">@tenant.DisplayName</FluentOption>
+            }
+        </FluentSelect>
+
+        @if (!string.IsNullOrEmpty(_tenantsDiagnostic))
+        {
+            <span role="status" aria-live="polite" data-testid="tenant-options-diagnostic"
+                  style="font-size: 12px; color: var(--colorNeutralForeground3);">
+                @_tenantsDiagnostic
+            </span>
+        }
+
+        <FluentTextInput @bind-Value="_commandTypeFilter" @bind-Value:after="OnCommandTypeFilterChanged"
+                         Label="Command Type" Placeholder="Filter by type..."
+                         Style="min-width: 180px;" />
+    </div>
+
+    @if (_filteredItems.Count > 0)
+    {
+        <div class="streams-grid-container">
+            <FluentDataGrid Items="@GetCurrentPage()" TGridItem="CommandSummary"
+                            Style="width: 100%;"
+                            OnRowClick="@(row => OnRowClick(row.Item))"
+                            GridTemplateColumns="1fr 1fr 1fr 1fr 1fr 1fr 1fr">
+                <TemplateColumn Title="Status" Class="streams-col-status">
+                    <StatusBadge DisplayConfig="@(StatusBadge.StatusDisplayConfig.FromCommandStatus(context.Status))"
+                                 AriaLabelPrefix="Command status" />
+                </TemplateColumn>
+                <TemplateColumn Title="Command Type">
+                    <span class="monospace grid-cell-truncate" title="@context.CommandType">@context.CommandType</span>
+                </TemplateColumn>
+                <PropertyColumn Property="@(c => c.TenantId)" Title="Tenant" Class="monospace" />
+                <PropertyColumn Property="@(c => c.Domain)" Title="Domain" Class="monospace" />
+                <TemplateColumn Title="Aggregate ID" Class="streams-col-aggid">
+                    <span class="monospace grid-cell-truncate" title="@context.AggregateId">@context.AggregateId</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Correlation ID">
+                    <span class="monospace grid-cell-truncate" title="@context.CorrelationId">@context.CorrelationId</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Timestamp" Class="monospace"
+                                SortBy="@(GridSort<CommandSummary>.ByDescending(c => c.Timestamp))"
+                                IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending">
+                    <span class="monospace grid-cell-truncate" style="font-size: 12px;" title="@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")">@context.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                </TemplateColumn>
+            </FluentDataGrid>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;"
+                 aria-live="polite">
+                <span style="font-size: 13px; color: var(--colorNeutralForeground3);">
+                    Page @_currentPage of @_totalPages (@_filteredItems.Count total)
+                </span>
+                <div style="display: flex; gap: 8px;">
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                  Disabled="@(_currentPage <= 1)"
+                                  OnClick="PreviousPage">Previous</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                                  Disabled="@(_currentPage >= _totalPages)"
+                                  OnClick="NextPage">Next</FluentButton>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <EmptyState Title="@(HasActiveFilters ? "No commands found" : "No commands processed yet")"
+                    Description="@(HasActiveFilters ? "No commands match the current filters." : "Commands will appear here once they are submitted to the EventStore.")" />
+    }
+}
+
+@code {
+    private const int PageSize = 25;
+
+    private bool _isLoading = true;
+    private bool _isForbidden;
+    private string? _errorMessage;
+    private int _currentPage = 1;
+    private string _statusFilter = "All";
+    private string _tenantFilter = string.Empty;
+    private string _commandTypeFilter = string.Empty;
+    private IReadOnlyList<CommandSummary> _allItems = [];
+    private IReadOnlyList<CommandSummary> _filteredItems = [];
+    private IReadOnlyList<TenantOption> _tenantOptions = [];
+    private string? _tenantsDiagnostic;
+    private double? _pendingScrollTop;
+    private bool _hasRendered;
+    private bool _disposed;
+
+    private int _totalPages => _filteredItems.Count == 0
+        ? 1
+        : (int)Math.Ceiling((double)_filteredItems.Count / PageSize);
+
+    private bool HasActiveFilters => _statusFilter != "All"
+        || !string.IsNullOrEmpty(_tenantFilter)
+        || !string.IsNullOrWhiteSpace(_commandTypeFilter);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        await LoadTenantsAsync();
+        await LoadCommandsAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _hasRendered = true;
+            RefreshService.OnDataChanged += OnRefreshSignal;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void OnRefreshSignal(DashboardData data)
+    {
+        if (_disposed || !_hasRendered)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (_disposed || !_hasRendered)
+            {
+                return;
+            }
+
+            try
+            {
+                double scrollTop = await CaptureScrollTopAsync();
+                await LoadCommandsAsync();
+
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _pendingScrollTop = scrollTop;
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException) { }
+            catch (TaskCanceledException) { }
+            catch (InvalidOperationException) { }
+            catch (JSDisconnectedException) { }
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        RefreshService.OnDataChanged -= OnRefreshSignal;
+        await Task.CompletedTask;
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query =
+            System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        string? page = query["page"];
+        if (int.TryParse(page, out int p) && p > 0)
+        {
+            _currentPage = p;
+        }
+
+        string? status = query["status"];
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            _statusFilter = status.Trim().ToLowerInvariant() switch
+            {
+                "completed" => "Completed",
+                "processing" => "Processing",
+                "rejected" => "Rejected",
+                "failed" => "Failed",
+                _ => "All",
+            };
+        }
+
+        _tenantFilter = query["tenant"] ?? string.Empty;
+        _commandTypeFilter = query["commandType"] ?? string.Empty;
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        TenantOptionsResult result = await TenantOptionsProvider.GetTenantOptionsAsync().ConfigureAwait(false);
+        _tenantOptions = result.Options;
+        _tenantsDiagnostic = result.Diagnostic;
+    }
+
+    private async Task LoadCommandsAsync()
+    {
+        _isLoading = true;
+        _isForbidden = false;
+        _errorMessage = null;
+
+        try
+        {
+            string? tenantId = string.IsNullOrEmpty(_tenantFilter) ? null : _tenantFilter;
+            string? status = _statusFilter == "All" ? null : _statusFilter;
+            string? commandType = string.IsNullOrWhiteSpace(_commandTypeFilter) ? null : _commandTypeFilter;
+            PagedResult<CommandSummary> result = await ApiClient
+                .GetRecentCommandsAsync(tenantId, status, commandType, 1000);
+            _allItems = result.Items;
+            ApplyClientFilters();
+        }
+        catch (ForbiddenAccessException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _isForbidden = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Authentication required. Please sign in again.";
+        }
+        catch (ServiceUnavailableException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Unable to load commands. The admin backend may be unavailable.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = $"Unable to load commands ({(int?)ex.StatusCode ?? 0}).";
+        }
+        catch (Exception)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Unable to load commands.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyClientFilters()
+    {
+        if (_allItems.Count == 0)
+        {
+            _filteredItems = [];
+            return;
+        }
+
+        _filteredItems = _allItems.ToList();
+
+        if (_currentPage > _totalPages)
+        {
+            _currentPage = _totalPages;
+        }
+    }
+
+    private IQueryable<CommandSummary> GetCurrentPage()
+    {
+        if (_filteredItems.Count == 0)
+        {
+            return Array.Empty<CommandSummary>().AsQueryable();
+        }
+
+        return _filteredItems
+            .OrderByDescending(c => c.Timestamp)
+            .Skip((_currentPage - 1) * PageSize)
+            .Take(PageSize)
+            .AsQueryable();
+    }
+
+    private void OnRowClick(CommandSummary? command)
+    {
+        if (command is not null)
+        {
+            NavigationManager.NavigateTo(
+                $"/streams/{Uri.EscapeDataString(command.TenantId)}/{Uri.EscapeDataString(command.Domain)}/{Uri.EscapeDataString(command.AggregateId)}?correlation={Uri.EscapeDataString(command.CorrelationId)}");
+        }
+    }
+
+    private async Task OnStatusFilterChanged()
+    {
+        _currentPage = 1;
+        await LoadCommandsAsync();
+        UpdateUrl();
+    }
+
+    private async Task OnTenantFilterChanged()
+    {
+        _currentPage = 1;
+        await LoadCommandsAsync();
+        UpdateUrl();
+    }
+
+    private async Task OnCommandTypeFilterChanged()
+    {
+        _currentPage = 1;
+        await LoadCommandsAsync();
+        UpdateUrl();
+    }
+
+    private void PreviousPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            UpdateUrl();
+        }
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages)
+        {
+            _currentPage++;
+            UpdateUrl();
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParts = [];
+        if (_currentPage > 1)
+        {
+            queryParts.Add($"page={_currentPage}");
+        }
+
+        if (_statusFilter != "All")
+        {
+            queryParts.Add($"status={_statusFilter.ToLowerInvariant()}");
+        }
+
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParts.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_commandTypeFilter))
+        {
+            queryParts.Add($"commandType={Uri.EscapeDataString(_commandTypeFilter)}");
+        }
+
+        string url = queryParts.Count > 0
+            ? $"/commands?{string.Join('&', queryParts)}"
+            : "/commands";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private string ComputeSuccessRate()
+    {
+        if (_allItems.Count == 0)
+        {
+            return "N/A";
+        }
+
+        int completed = _allItems.Count(c => c.Status == CommandStatus.Completed);
+        double rate = (double)completed / _allItems.Count * 100;
+        return $"{rate:F0}%";
+    }
+
+    private int ComputeFailedCount()
+        => _allItems.Count(c => c.Status is CommandStatus.Rejected or CommandStatus.PublishFailed or CommandStatus.TimedOut);
+
+    private int ComputeInFlightCount()
+        => _allItems.Count(c => c.Status is CommandStatus.Received or CommandStatus.Processing
+            or CommandStatus.EventsStored or CommandStatus.EventsPublished);
+
+    private async Task<double> CaptureScrollTopAsync()
+    {
+        if (_disposed || !_hasRendered)
+        {
+            return 0;
+        }
+
+        try
+        {
+            return await JSRuntime.InvokeAsync<double>("hexalithAdmin.getScrollTop");
+        }
+        catch (JSException)
+        {
+            return 0;
+        }
+        catch (TaskCanceledException)
+        {
+            return 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            return 0;
+        }
+    }
+}

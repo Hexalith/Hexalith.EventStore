@@ -291,7 +291,16 @@ public sealed partial class ContractsPackageDependencyTests
         string[] paths = GetTrackedMsBuildFiles(root)
             .Where(path => FrozenMsBuildRoots.Any(prefix => path.StartsWith(prefix, StringComparison.Ordinal)))
             .Order(StringComparer.Ordinal).ToArray();
-        VerifyFrozenMsBuildInventory(root, paths, 984, FrozenMsBuildInventorySha256);
+        VerifyFrozenMsBuildInventory(
+            root,
+            paths.Except(InheritedOwnerMsBuildPaths, StringComparer.Ordinal).ToArray(),
+            984,
+            FrozenMsBuildInventorySha256);
+        VerifyFrozenMsBuildInventory(
+            root,
+            paths.Intersect(InheritedOwnerMsBuildPaths, StringComparer.Ordinal).ToArray(),
+            2,
+            InheritedOwnerMsBuildInventorySha256);
         return paths;
     }
 

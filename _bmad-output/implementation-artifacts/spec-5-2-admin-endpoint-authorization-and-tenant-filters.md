@@ -2,7 +2,7 @@
 title: 'Story 5.2: Admin Endpoint Authorization And Tenant Filters'
 type: 'feature'
 created: '2026-09-06'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 3
 followup_review_recommended: false
 baseline_revision: 'acf5c4e403699d4f9290fd6636e4d6b1872a3bd6'
@@ -90,11 +90,11 @@ deferred: []
 
 2026-10-08 authorization, tenant-filter, and request-limit chunk. Controllers, Admin UI, OpenAPI documents, and the inventory script remain for later chunks.
 
-- [ ] [Review][Patch] Chunked overflow leaves an unbounded keep-alive drain [src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs:82]
-- [ ] [Review][Patch] Request-body pool buffer is returned uncleared [src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs:99]
-- [ ] [Review][Patch] Named unknown-length boundary test still sends Content-Length [tests/Hexalith.EventStore.Admin.Server.Host.Tests/AdminRequestBodySizeTests.cs:205]
-- [ ] [Review][Patch] Admin omitted-tenant bypass is untested [tests/Hexalith.EventStore.Admin.Server.Tests/Authorization/AdminTenantAuthorizationFilterTests.cs:124]
-- [ ] [Review][Patch] Blank tenant values are untested [src/Hexalith.EventStore.Admin.Server/Authorization/AdminTenantAuthorizationFilter.cs:63]
+- [x] [Review][Patch] Chunked overflow leaves an unbounded keep-alive drain [src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs:82] **Fixed 2026-10-22: an unknown-length overflow now completes the 413 with `Connection: close` (HTTP/1.x), discards at most one further limit of entity bytes within 5 seconds (Kestrel's own drain timeout does not cover a drain inside the application), then aborts the connection; the Kestrel cap stays off. A raw-socket Kestrel test streams an endless chunked body and requires the server to stop consuming below 32 MiB. A stalled-client unit test requires the abort after the timeout. Removing the abort or the timeout fails the matching test.**
+- [x] [Review][Patch] Request-body pool buffer is returned uncleared [src/Hexalith.EventStore.Admin.Server.Host/Middleware/AdminRequestBodySizeMiddleware.cs:99] **Fixed 2026-10-22: the read buffer returns with `clearArray: true`; a same-thread re-rent test failed on the old code.**
+- [x] [Review][Patch] Named unknown-length boundary test still sends Content-Length [tests/Hexalith.EventStore.Admin.Server.Host.Tests/AdminRequestBodySizeTests.cs:205] **Fixed 2026-10-22: the test client's redirect handler re-wrapped the body in a seekable stream, so a length was computed. The request now sets `Transfer-Encoding: chunked`, and a `RequestBodyFramingRecorder` startup filter asserts that the host received no `Content-Length`.**
+- [x] [Review][Patch] Admin omitted-tenant bypass is untested [tests/Hexalith.EventStore.Admin.Server.Tests/Authorization/AdminTenantAuthorizationFilterTests.cs:124] **Fixed 2026-10-22: Admin with an omitted tenant argument, with and without a tenant claim, reaches `next` with `tenantId` still null.**
+- [x] [Review][Patch] Blank tenant values are untested [src/Hexalith.EventStore.Admin.Server/Authorization/AdminTenantAuthorizationFilter.cs:63] **Fixed 2026-10-22: tests cover a blank route, empty and whitespace query, and blank action values. Each narrows to the authorized claim. Blank claims are skipped when narrowing, and claims that are all blank deny. A blank route or query cannot mask an unauthorized explicit action tenant.**
 
 - [x] [Review][Defer] Repeated tenantId query values are joined and fail closed [src/Hexalith.EventStore.Admin.Server/Authorization/AdminTenantAuthorizationFilter.cs:69] — deferred: pre-existing; the baseline filter already compared `queryValue.ToString()`, which joins repeated keys with commas.
 
@@ -119,6 +119,51 @@ deferred: []
 - 2026-09-06 -- The second derivation checked consistency body scope against only the first tenant claim, used non-exhaustive role/tenant inventories, allowed unsafe challenge headers and cross-host handler side effects, left exact/current UI-role behavior and initiating-action focus underspecified, and published incomplete policy/N/A documentation. Expanded the Code Map, Tasks, Design Notes, and evidence requirements to match any authorized tenant claim, use explicit exhaustive maps, scope denial normalization, allowlist safe headers, react to role transitions, align exact role casing, make omitted scope truthful, exercise backup/opaque allow-deny paths, and record the full endpoint/body-shape/owner/reason matrix. Known-bad states avoided: false cross-tenant denials, silent ReadOnly defaults for future mutations, missing tenant filters, stale protected UI data, controls that the server always rejects, focus stranded in denied dialogs, and misleading public policy/scope text. KEEP: authenticated exact server policies; effective handler replacement and captured scheme bodies; bounded redacted Problem Details; fail-closed route/query/action tenant filtering and Admin bypass; correlation-only logs; recent-command default/clamp; 1 MiB ordinary and 10 MiB import limits; exact/+1 and unknown-length no-work tests; generated OpenAPI coverage; Admin-only opaque lookups with typed forbidden clients; health probes; and the untouched `sprint-status.yaml`.
 
 ## Review Triage Log
+
+### 2026-10-22 — Review pass (unreviewed 10-08 UI/script chunk plus the five review patches)
+- scope: `d8c351769^..HEAD` for the seven never-reviewed 10-08 files (Consistency page, `AdminUserContext`, their tests, actor/consistency client tests, inventory script) plus today's uncommitted delta; the literal `baseline_commit` diff spans 695 commits of unrelated stories.
+- verdicts: 40 findings — high 0, medium 6, low 25, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Blind hunter: no not-authorized state -- `_isLoading` starts true and the new `!_canRead` early return never clears it, so a principal without ReadOnly (the token provider returns an anonymous user on token failure, and the page has no route guard) sees skeleton cards forever; sign-out shows an empty "No consistency checks yet" state instead of the canonical denial.
+  - `[medium]` `[patch]` Edge hunter: skeleton never clears for a principal lacking ReadOnly -- same defect; grouped with the not-authorized state.
+  - `[medium]` `[patch]` Verification gap other finding: page hangs on loading for a user with no readable role -- same defect; grouped.
+  - `[low]` `[patch]` Blind hunter: filters cleared on authentication change stay in the URL -- `InvalidateProtectedState` nulls the filters without `UpdateUrl()`, so the address bar keeps the previous tenant and a reload re-applies it; clearing scope on promotion is the specified reload-current-scope behavior.
+  - `[low]` `[patch]` Edge hunter: auth change never calls `UpdateUrl` -- same defect; grouped with the URL finding.
+  - `[low]` `[patch]` Verification gap other finding: URL keeps old filters after a sign-in change -- same defect; grouped.
+  - `[medium]` `[patch]` Verification gap: superseded list and detail loads within one authorization generation are untested -- every stale-response test changes authorization first, so deleting the per-load or per-selection generation check fails no test.
+  - `[low]` `[patch]` Verification gap: the handled failure path of the overflow drain is untested -- no test faults a read inside the discard loop; the filed `defer` is overridden because the covering test is a one-line variant of the stalled-drain test.
+  - `[low]` `[patch]` Blind hunter: inventory docstring promises a tenant-filter check against the docs table -- `api-contracts.md` has no tenant-filter column and `compare()` checks the filter only between controllers and the test map; narrow the docstring.
+  - `[medium]` `[defer]` Blind hunter: failures escape the new async paths -- carried: `OnRowClick` still catches only forbidden and token-driven cancellation, as the 2026-09-06 pre-existing row-lookup defer describes. The auth-change half is false: `TokenAuthenticationStateProvider` catches every exception and `AdminUserContext` only reads claims, so neither faults.
+  - `[medium]` `[defer]` Edge hunter: detail lookup 401/422/503/timeout escapes the row-click handler -- carried: same location and claim as the 2026-09-06 pre-existing consistency row-lookup defer.
+  - `[low]` `[defer]` Edge hunter: a new row selection keeps the previous `_expandedCheckResult` until the new fetch returns -- pre-existing (the baseline assigned `_expandedCheck` before awaiting the new result); the card shows the earlier check's own ID.
+  - `[low]` `[reject]` Blind hunter: trigger and cancel lack generation guards -- needs an authorization change (only the role switcher raises one) during an in-flight mutation; the accepted-request toast is truthful and `LoadDataAsync` reloads only the current scope; the fix adds guards after every await.
+  - `[low]` `[reject]` Edge hunter: old trigger/cancel completion hides a reopened dialog -- same rare role-switch race; grouped rejection.
+  - `[low]` `[reject]` Blind hunter: keyboard focus is lost when an authorization change removes a dialog -- rare role-switch path, the initiating row or button may no longer exist, and choosing a target is more than a direct correction.
+  - `[low]` `[reject]` Blind hunter: `GetRoleAsync` reports ReadOnly for denied principals -- the ReadOnly fallback predates this story, nav links still lead to server-enforced denials, and the fix changes a public method contract.
+  - `[low]` `[reject]` Edge hunter: NavMenu shows ReadOnly navigation to denied users -- same pre-existing fallback; grouped rejection. MainLayout does refresh `_userRole` from the role-switch callback, the only change source.
+  - `[low]` `[reject]` Blind hunter: UI role mapping copies the server's without a shared contract -- drift appears only when the server transformation is edited, and a shared contract or parity harness is more than a direct correction.
+  - `[low]` `[reject]` Blind hunter: declared-length overflow drain is weaker than the chunked bound -- bounded by Kestrel's server-wide limit and its 5 s drain timeout like every endpoint; `Connection: close` is not shown to change that drain.
+  - `[low]` `[reject]` Blind hunter: rejections are not logged and the drain timeout is hard-coded -- no logging requirement exists; injecting a `TimeProvider` only saves 5 s of test time.
+  - `[low]` `[reject]` Blind hunter: the Kestrel drain test bound (32 MiB) is too loose -- a tighter bound would flake on kernel socket buffering, and the unit test pins the timeout.
+  - `[low]` `[reject]` Blind hunter: the pooled-buffer test lacks a positive control -- it asserts synchronous completion and failed on the uncleared code; adding a control is more than a direct correction.
+  - `[low]` `[reject]` Edge hunter: an off-dispatcher `LoadDataAsync` can dispose `_loadCts` while the auth handler cancels it -- needs a role switch inside a few-instruction window, and reordering does not remove the underlying off-dispatcher call.
+  - `[low]` `[reject]` Edge hunter: the `LoadDataAsync` prologue runs off-dispatcher with non-atomic generations -- the off-dispatcher callers predate this story, and any list fetched in the race uses the current token, so the server scopes it to the current principal.
+  - `[low]` `[reject]` Edge hunter: manual refresh does not invalidate an in-flight detail lookup -- the late result lands while `_expandedCheck` is null, and the card renders only when both are set.
+  - `[low]` `[reject]` Edge hunter: the drain discards up to one 64 KiB read beyond the allowance -- not observable; the only direct correction is rewording this spec's note.
+  - `[low]` `[reject]` Blind hunter: duplicate policy-table or map rows are collapsed -- a rare editing mistake, and a duplicate guard adds branches.
+  - `[low]` `[reject]` Edge hunter: duplicate policy rows are silently overwritten -- same finding; grouped rejection.
+  - `[low]` `[reject]` Edge hunter: body-shape comparison uses substring and ignores nullable mismatches -- docs-only drift, and token-level parsing is more than a direct correction.
+  - `[low]` `[reject]` Blind hunter: the inventory script is not run in CI -- the C# exhaustive maps guard code drift in CI; wiring the docs check would edit the sealed `ci.yml`.
+  - `[low]` `[reject]` Verification gap other finding: the inventory script runs only by hand -- same finding; grouped rejection.
+  - `[false]` `[reject]` Blind hunter: the script silently skips non-`Task<IActionResult>` actions -- `AdminActionSecurityMetadataTests` fails CI on any unclassified action, and a mapped action the parser misses is reported as "expected map has … with no controller action". `StopIteration` is a loud failure.
+  - `[false]` `[reject]` Edge hunter: other action signatures are skipped while the script reports agreement -- same refutation.
+  - `[false]` `[reject]` Blind hunter: no semantic tenant-isolation check -- every action's filter classification is explicit in the CI-enforced map; `TriggerCheck`'s body tenant is authorized by `TryResolveTenantScopeForBody`, as the 2026-10-08 rejection recorded.
+  - `[false]` `[reject]` Blind hunter: the default-count test cannot detect a default above 1000 -- such a default still yields the specified 1000; the sibling counts are outside the story's recent-commands clause.
+  - `[false]` `[reject]` Blind hunter: controller fallbacks accept blank tenant claims -- the filter narrows every omitted nullable `tenantId` to the first non-blank claim before the controller runs; the `FindFirst` fallback dates from 2026-03-21 and is unreachable on filtered actions.
+  - `[false]` `[reject]` Edge hunter: auth-change handler faults are hidden -- the provider catches every exception and returns an anonymous user, and the role checks only read claims.
+  - `[false]` `[reject]` Edge hunter: an unknown limit name raises `KeyError` in `compare` -- the script still exits non-zero, which is a loud failure.
+  - `[false]` `[reject]` Edge hunter: an unclosed route parameter raises `IndexError` -- also a loud non-zero failure.
+  - `[false]` `[reject]` Edge hunter: UI and server resolve explicit roles differently across identities or claim-type casing -- both hosts build one identity per JWT, and the server's `RequireClaim` matches claim types case-insensitively, so the effective roles agree.
 
 ### 2026-10-08 — Resumed independent review
 - verdicts: 20 findings — high 5, medium 15, low 0, false 0, maybe-false 0

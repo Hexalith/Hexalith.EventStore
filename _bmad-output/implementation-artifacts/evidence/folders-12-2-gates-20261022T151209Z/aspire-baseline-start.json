@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "aspire",
+    "start",
+    "--non-interactive",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--format",
+    "Json"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:13:21.495647+00:00",
+  "environment_overrides": {
+    "UseHexalithProjectReferences": "true",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "UseNuGetDeps": "false"
+  },
+  "runner_pid": 61466,
+  "pid": 61470,
+  "exit_code": 0,
+  "elapsed_seconds": 40.91179337799258,
+  "utc_end": "2026-10-22T15:14:02.404235+00:00"
+}

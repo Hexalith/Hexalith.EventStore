@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -65,7 +66,41 @@ internal static class ProjectionBoundedIdentityRuntimeProof
                 ["pdbSha256"] = Convert.ToHexString(SHA256.HashData(stream)), ["loadedMvid"] = assembly.ManifestModule.ModuleVersionId.ToString(),
                 ["peMvid"] = peMvid.ToString(), ["loadedMvidMatchesPe"] = true, ["documents"] = documents });
         }
+        ObserveExternalMappings(result);
         return result;
+    }
+
+    /// <summary>Keeps the loaded worker alive while a separate process authenticates its actual OS mappings.</summary>
+    private static void ObserveExternalMappings(JsonArray runtime)
+    {
+        string? observer = Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_MAP_OBSERVER");
+        string? directory = Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_MAP_DIR");
+        if (observer is null && directory is null) return;
+        if (!OperatingSystem.IsLinux() || observer is null || directory is null
+            || !Path.IsPathFullyQualified(observer) || !Path.IsPathFullyQualified(directory) || !File.Exists(observer))
+            throw new InvalidOperationException("The external module observer requires Linux and absolute observer/evidence paths.");
+        string stat = File.ReadAllText($"/proc/{Environment.ProcessId}/stat");
+        string startTicks = stat[(stat.LastIndexOf(')') + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
+        var modules = new JsonArray();
+        foreach (var module in runtime)
+        {
+            var item = new JsonObject();
+            foreach (string key in new[] { "name", "pe", "pdb", "peSha256", "pdbSha256", "loadedMvid" })
+                item[key] = module![key]!.DeepClone();
+            modules.Add(item);
+        }
+        var request = new JsonObject { ["pid"] = Environment.ProcessId, ["start_ticks"] = startTicks, ["modules"] = modules };
+        var start = new ProcessStartInfo("python3") { UseShellExecute = false, RedirectStandardInput = true };
+        start.ArgumentList.Add(observer);
+        start.ArgumentList.Add("--output");
+        start.ArgumentList.Add(directory);
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("The external module observer did not start.");
+        process.StandardInput.Write(request.ToJsonString());
+        process.StandardInput.Close();
+        // The existing parent phase watchdog owns the deadline and process-tree cancellation.
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException("The external module observer rejected the worker mappings; retained receipt: " + directory);
     }
 
     private static byte[] ReadDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)

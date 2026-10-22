@@ -1,0 +1,14 @@
+{
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tools/tests",
+    "-p",
+    "test_qualify_internal_actor_admission.py",
+    "-v"
+  ],
+  "exit_code": 0
+}

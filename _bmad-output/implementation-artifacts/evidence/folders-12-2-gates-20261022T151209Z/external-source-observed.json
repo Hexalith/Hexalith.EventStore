@@ -1,0 +1,23 @@
+[
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+    "sha256": "c4e7e851172fb9387e31a84973f39e5649f70eccbd9dfbd1abd0bede8f227c5a",
+    "observed_utc": "2026-10-22T15:16:31.967512+00:00",
+    "archive": "external-source-observed/SecretsProtectionTests.cs",
+    "attribution": "external concurrent edit; neither parent nor investigation subagent modified it"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.cs",
+    "sha256": "02b458fa6fbca4683a6606af5a4ef08e5e936e5d1d1e91b727499effcee0f0dd",
+    "observed_utc": "2026-10-22T15:16:31.967732+00:00",
+    "archive": "external-source-observed/SecretsProtectionTests.SourceContexts.cs",
+    "attribution": "external concurrent edit; neither parent nor investigation subagent modified it"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.Tests.cs",
+    "sha256": "e2a8ae68cd211c88b6b5bfa4cca7cb7faedb3fc38d18d6400d1a35739de5277b",
+    "observed_utc": "2026-10-22T15:16:31.967872+00:00",
+    "archive": "external-source-observed/SecretsProtectionTests.SourceContexts.Tests.cs",
+    "attribution": "external concurrent edit; neither parent nor investigation subagent modified it"
+  }
+]

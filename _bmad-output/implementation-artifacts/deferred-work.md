@@ -6093,3 +6093,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md`
   summary: Scan literal strings nested under credential-named JSON arrays or objects (pre-existing scanner gap).
   evidence: `{"password": ["<literal>"]}` and the ARM-parameter shape `{"adminPassword": {"value": "<literal>"}}` produce no violation either way (same probe). The walker (`SecretsProtectionTests.SourceContexts.cs:74`) checks scalar values only. A fix could carry the credential name down to descendant strings.
+
+## Deferred from: code review of spec-5-2-admin-endpoint-authorization-and-tenant-filters.md (2026-10-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-2-admin-endpoint-authorization-and-tenant-filters.md`
+  summary: Clear the previous consistency check detail when an Admin selects a different row, so the detail card does not show the earlier check while the new lookup is pending (pre-existing).
+  evidence: `OnRowClick` in `src/Hexalith.EventStore.Admin.UI/Pages/Consistency.razor` sets `_expandedCheck = check` but leaves `_expandedCheckResult` holding the earlier check's result until the new `GetCheckResultAsync` returns. The card renders whenever both fields are set, so it briefly shows check A's ID, tenant and anomalies under row B. The baseline code before Story 5.2 behaved the same way. A one-line fix is `_expandedCheckResult = null;` next to the `_expandedCheck` assignment.

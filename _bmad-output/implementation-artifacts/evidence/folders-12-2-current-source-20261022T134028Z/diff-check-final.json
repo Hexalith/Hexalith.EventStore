@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--check"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T14:48:30.653216+00:00",
+  "environment_overrides": {},
+  "runner_pid": 4416,
+  "pid": 4433,
+  "exit_code": 0,
+  "elapsed_seconds": 0.09161206999851856,
+  "utc_end": "2026-10-22T14:48:30.744952+00:00"
+}

@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Check the Story 5.2 Admin action inventory against its three sources.
 
-Controller attributes, the exhaustive map in AdminActionSecurityMetadataTests,
-and the public table in docs/brownfield/api-contracts.md must name the same
-action, policy, tenant filter, and encoded-body limit. The script only reads
-those files.
+The controller attributes are compared with two sources:
+
+- The exhaustive map in AdminActionSecurityMetadataTests, matched by controller
+  and action name, must give the same policy, tenant filter, and encoded-body
+  limit.
+- The public table in docs/brownfield/api-contracts.md, matched by HTTP method
+  and path, must give the same policy, body shape, and encoded-body limit. The
+  table has no tenant-filter column, so the tenant filter is not checked there.
+
+Every controller action must appear in both sources, and neither may list an
+action the controllers lack. A few hand-read actions also check the parser.
+The script only reads those files.
 """
 
 from __future__ import annotations

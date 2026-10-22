@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--no-index",
+    "--check",
+    "--",
+    "/dev/null",
+    "tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.InheritedOwnerEvidence.cs"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T14:48:30.816419+00:00",
+  "environment_overrides": {},
+  "runner_pid": 4563,
+  "pid": 4564,
+  "exit_code": 1,
+  "elapsed_seconds": 0.0016725099994800985,
+  "utc_end": "2026-10-22T14:48:30.818208+00:00"
+}

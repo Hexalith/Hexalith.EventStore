@@ -1,0 +1,606 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@implements IAsyncDisposable
+@inject AdminStreamApiClient ApiClient
+
+<div class="bisect-tool" role="region" aria-label="Bisect tool">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 12px;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0;">Bisect Tool</h3>
+        </div>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close bisect tool">
+            Close
+        </FluentButton>
+    </FluentStack>
+
+    @if (_phase == BisectPhase.Setup)
+    {
+        @* Setup phase *@
+        <div style="max-width: 600px;">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+                <NumericInput TValue="long" @bind-Value="_goodSequence"
+                              Label="Known Good Sequence"
+                              Min="0"
+                              Placeholder="e.g. 0"
+                              Style="width: 100%;"
+                              aria-label="Known good sequence" />
+                <NumericInput TValue="long" @bind-Value="_badSequence"
+                              Label="Known Bad Sequence"
+                              Min="1"
+                              Placeholder="e.g. 100"
+                              Style="width: 100%;"
+                              aria-label="Known bad sequence" />
+
+                @if (_validationError is not null)
+                {
+                    <IssueBanner Visible="true" Description="@_validationError" />
+                }
+
+                @* Field selection *@
+                @if (_fieldSelectionLoading)
+                {
+                    <SkeletonCard />
+                }
+                else if (_availableFields is not null)
+                {
+                    <div>
+                        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center" Style="margin-bottom: 8px;">
+                            <span style="font-weight: 600;">
+                                @if (_selectedFieldPaths.Count > 0)
+                                {
+                                    @($"Comparing {_selectedFieldPaths.Count} fields")
+                                }
+                                else
+                                {
+                                    @($"Comparing all {_availableFields.Count} fields")
+                                }
+                            </span>
+                        </FluentStack>
+
+                        <FluentTextInput @bind-Value="_fieldSearchTerm"
+                                      @bind-Value:after="OnFieldSearchChanged"
+                                      Placeholder="Filter fields..."
+                                      Style="margin-bottom: 8px; max-width: 400px;"
+                                      aria-label="Search fields"
+                                      TextInputType="TextInputType.Text">
+                            <StartTemplate>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                            </StartTemplate>
+                            <EndTemplate>
+                                <FluentButton Appearance="ButtonAppearance.Transparent"
+                                              Disabled="@(string.IsNullOrEmpty(_fieldSearchTerm))"
+                                              OnClick="@(() => { _fieldSearchTerm = string.Empty; OnFieldSearchChanged(); })"
+                                              aria-label="Clear search"
+                                              Title="Clear search">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                                </FluentButton>
+                            </EndTemplate>
+                        </FluentTextInput>
+
+                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--colorNeutralStroke1); border-radius: 4px; padding: 8px;">
+                            @foreach (string field in _filteredAvailableFields)
+                            {
+                                <FluentCheckbox Value="@_selectedFieldPaths.Contains(field)"
+                                                ValueChanged="@((bool v) => ToggleFieldSelection(field, v))"
+                                                Label="@field"
+                                                Style="display: block; margin-bottom: 4px;" />
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <FluentButton Appearance="ButtonAppearance.Outline"
+                                  OnClick="LoadFieldsAsync"
+                                  Disabled="@(!IsSetupValid)"
+                                  aria-label="Select fields">
+                        Select Fields
+                    </FluentButton>
+                }
+
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="StartBisectAsync"
+                              Disabled="@(!IsSetupValid)"
+                              aria-label="Start bisect">
+                    Start Bisect
+                </FluentButton>
+            </FluentStack>
+        </div>
+    }
+    else if (_phase == BisectPhase.Loading)
+    {
+        @* Loading phase *@
+        <SkeletonCard />
+        <FluentSpinner Style="margin-top: 8px;" />
+        <p style="color: var(--colorNeutralForeground3); margin-top: 8px;">
+            Running bisect — testing up to @_estimatedMaxSteps midpoints...
+        </p>
+    }
+    else if (_phase == BisectPhase.Error)
+    {
+        @if (_streamTooSmallCount.HasValue)
+        {
+            <EmptyState Title="Stream too small"
+                        Description="@($"Stream needs at least 2 events for bisect — only {_streamTooSmallCount.Value} event(s) found.")" />
+        }
+        else if (_error is not null)
+        {
+            <IssueBanner Visible="true" Description="@_error" />
+        }
+    }
+    else if (_phase == BisectPhase.Result && _result is not null)
+    {
+        @* Result phase *@
+
+        @if (_result.DivergentFieldChanges.Count == 0)
+        {
+            @* No divergence detected *@
+            <EmptyState Title="No divergence detected"
+                        Description="@($"State at sequence {_result.GoodSequence} and {_result.DivergentSequence} is identical for the watched fields. Verify your good/bad sequence selection.")" />
+        }
+        else
+        {
+            @* Divergent event summary *@
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" Style="margin-bottom: 12px;">
+                <StatCard Label="Divergent Event" Value="@($"#{_result.DivergentSequence}")" />
+                <StatCard Label="Event Type" Value="@_result.DivergentEventType" />
+                <StatCard Label="Steps" Value="@_result.TotalSteps.ToString()" />
+            </FluentStack>
+
+            @* Divergent event detail *@
+            <div style="margin-bottom: 12px; padding: 12px; border: 1px solid var(--colorNeutralStroke1); border-radius: 4px;">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <span>
+                        <strong>Event Type:</strong>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      OnClick="@(() => HandleNavigateToEvent(_result.DivergentSequence))"
+                                      title="@($"Navigate to event at sequence {_result.DivergentSequence}")"
+                                      Style="padding: 0; min-width: auto;">
+                            @_result.DivergentEventType
+                        </FluentButton>
+                    </span>
+                    <span><strong>Timestamp:</strong> @FormatTimestamp(_result.DivergentTimestamp)</span>
+                    @if (!string.IsNullOrEmpty(_result.DivergentCorrelationId))
+                    {
+                        <span><strong>Correlation ID:</strong> <span class="monospace">@_result.DivergentCorrelationId</span></span>
+                    }
+                    @if (!string.IsNullOrEmpty(_result.DivergentUserId))
+                    {
+                        <span><strong>User:</strong> @_result.DivergentUserId</span>
+                    }
+                </FluentStack>
+            </div>
+
+            @* Field changes table *@
+            <FluentDataGrid Items="@_result.DivergentFieldChanges.AsQueryable()"
+                            TGridItem="FieldChange"
+                            GridTemplateColumns="2fr 1.5fr 1.5fr"
+                            Style="margin-bottom: 12px;"
+                            aria-label="Divergent field changes">
+                <PropertyColumn Property="@(f => f.FieldPath)" Title="Field Path" Class="monospace" Sortable="true" />
+                <TemplateColumn Title="Old Value" Sortable="false">
+                    @FieldValueContent(context.OldValue, context.OldContent)
+                </TemplateColumn>
+                <TemplateColumn Title="New Value" Sortable="false">
+                    @FieldValueContent(context.NewValue, context.NewContent)
+                </TemplateColumn>
+            </FluentDataGrid>
+        }
+
+        @* Truncation warning *@
+        @if (_result.IsTruncated)
+        {
+            <IssueBanner Visible="true" Description="@($"Bisect reached maximum step limit — result may not be the exact divergent event. Narrowed range: {_result.GoodSequence}..{_result.DivergentSequence}.")" />
+        }
+
+        @* Bisect history *@
+        <FluentAccordion>
+            <FluentAccordionItem Heading="@($"Bisect Steps ({_result.TotalSteps} steps)")">
+                <div style="max-height: 300px; overflow-y: auto;">
+                    @foreach (BisectStep step in _result.Steps)
+                    {
+                        <div style="padding: 4px 0; border-bottom: 1px solid var(--colorNeutralStroke1);">
+                            <span class="monospace">Step @step.StepNumber:</span>
+                            seq <span class="monospace">@step.TestedSequence</span> =
+                            @if (step.Verdict == "good")
+                            {
+                                <span style="color: var(--hexalith-status-success);" title="State matches expected values">&#x2714; good</span>
+                            }
+                            else
+                            {
+                                <span style="color: var(--hexalith-status-error);" title="@($"{step.DivergentFieldCount} field(s) diverged")">&#x2718; bad (@step.DivergentFieldCount divergent)</span>
+                            }
+                        </div>
+                    }
+                    <div style="padding: 8px 0; font-weight: 600;">
+                        Narrowed to sequences @_result.GoodSequence..@_result.DivergentSequence.
+                    </div>
+                </div>
+            </FluentAccordionItem>
+        </FluentAccordion>
+
+        @* Action buttons *@
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Style="margin-top: 12px;">
+            @if (_result.DivergentFieldChanges.Count > 0)
+            {
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="@(() => HandleNavigateToEvent(_result.DivergentSequence))"
+                              aria-label="Navigate to divergent event">
+                    Navigate to Event
+                </FluentButton>
+
+                @if (OnNavigateToBlame.HasDelegate)
+
+                {
+                    <FluentButton Appearance="ButtonAppearance.Outline"
+                                  OnClick="@(() => HandleNavigateToBlame(_result.DivergentSequence))"
+                                  aria-label="Run blame at divergent event">
+                        Run Blame at This Event
+                    </FluentButton>
+                }
+            }
+
+            <FluentButton Appearance="ButtonAppearance.Outline"
+                          OnClick="HandleNewBisect"
+                          aria-label="Start new bisect">
+                New Bisect
+            </FluentButton>
+        </FluentStack>
+    }
+</div>
+
+@code {
+    private enum BisectPhase { Setup, Loading, Result, Error }
+
+    private BisectPhase _phase = BisectPhase.Setup;
+    private long? _goodSequence;
+    private long? _badSequence;
+    private string? _validationError;
+    private string? _error;
+    private int? _streamTooSmallCount;
+    private int _estimatedMaxSteps;
+    private BisectResult? _result;
+    private CancellationTokenSource? _cts;
+
+    // Field selection state
+    private bool _fieldSelectionLoading;
+    private List<string>? _availableFields;
+    private List<string> _filteredAvailableFields = [];
+    private HashSet<string> _selectedFieldPaths = [];
+    private string _fieldSearchTerm = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter]
+    public long? InitialGoodSequence { get; set; }
+
+    [Parameter]
+    public long? InitialBadSequence { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToEvent { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToBlame { get; set; }
+
+    private bool IsSetupValid =>
+        _goodSequence.HasValue && _badSequence.HasValue
+        && _goodSequence.Value >= 0 && _badSequence.Value > 0
+        && _goodSequence.Value < _badSequence.Value;
+
+    protected override void OnInitialized()
+    {
+        if (InitialGoodSequence.HasValue)
+        {
+            _goodSequence = InitialGoodSequence.Value;
+        }
+
+        if (InitialBadSequence.HasValue)
+        {
+            _badSequence = InitialBadSequence.Value;
+        }
+    }
+
+    private async Task LoadFieldsAsync()
+    {
+        if (!IsSetupValid)
+        {
+            return;
+        }
+
+        _fieldSelectionLoading = true;
+        _availableFields = null;
+        StateHasChanged();
+
+        try
+        {
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+            AggregateStateSnapshot? state = await ApiClient.GetAggregateStateAtPositionAsync(
+                TenantId, Domain, AggregateId, _goodSequence!.Value, _cts.Token);
+
+            if (state is not null && state.State is null && !string.IsNullOrWhiteSpace(state.StateJson))
+            {
+                _availableFields = ExtractLeafFieldPaths(state.StateJson);
+                _filteredAvailableFields = _availableFields;
+            }
+            else
+            {
+                _availableFields = [];
+                _filteredAvailableFields = [];
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _validationError = "Field loading timed out.";
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _validationError = SafeProblemMessage(ex);
+        }
+        catch
+        {
+            _validationError = "Unable to load state fields — check server connectivity.";
+        }
+        finally
+        {
+            _fieldSelectionLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task StartBisectAsync()
+    {
+        _validationError = null;
+
+        if (!IsSetupValid)
+        {
+            _validationError = _goodSequence.HasValue && _badSequence.HasValue && _goodSequence >= _badSequence
+                ? "Known Good must be less than Known Bad."
+                : "Please enter valid sequence numbers.";
+            StateHasChanged();
+            return;
+        }
+
+        long good = _goodSequence!.Value;
+        long bad = _badSequence!.Value;
+        _estimatedMaxSteps = (int)Math.Ceiling(Math.Log2(bad - good));
+        _phase = BisectPhase.Loading;
+        _result = null;
+        _error = null;
+        _streamTooSmallCount = null;
+        StateHasChanged();
+
+        try
+        {
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+
+            // Pre-check: stream needs at least 2 events for bisect
+            PagedResult<TimelineEntry> timeline =
+                await ApiClient.GetStreamTimelineAsync(TenantId, Domain, AggregateId, count: 2, ct: _cts.Token);
+            if (timeline.TotalCount < 2)
+            {
+                _streamTooSmallCount = (int)timeline.TotalCount;
+                _phase = BisectPhase.Error;
+                return;
+            }
+
+            IReadOnlyList<string>? fieldPaths = _selectedFieldPaths.Count > 0
+                ? _selectedFieldPaths.ToList()
+                : null;
+
+            _result = await ApiClient.BisectAsync(
+                TenantId, Domain, AggregateId, good, bad, fieldPaths, _cts.Token);
+
+            if (_result is not null)
+            {
+                _phase = BisectPhase.Result;
+            }
+            else
+            {
+                _error = "Unable to run bisect — check server connectivity.";
+                _phase = BisectPhase.Error;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _error = "Bisect timed out — try narrowing the range or specifying fewer fields.";
+            _phase = BisectPhase.Error;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            _error = ex.Message;
+            _phase = BisectPhase.Error;
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _error = SafeProblemMessage(ex);
+            _phase = BisectPhase.Error;
+        }
+        catch
+        {
+            _error = "Unable to run bisect — check server connectivity.";
+            _phase = BisectPhase.Error;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void HandleNewBisect()
+    {
+        // Pre-fill from previous result for iterative narrowing
+        if (_result is not null)
+        {
+            _goodSequence = _result.GoodSequence;
+            _badSequence = _result.DivergentSequence;
+        }
+
+        _phase = BisectPhase.Setup;
+        _result = null;
+        _error = null;
+        _streamTooSmallCount = null;
+        _availableFields = null;
+        _filteredAvailableFields = [];
+        _selectedFieldPaths = [];
+        _fieldSearchTerm = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleNavigateToEvent(long sequenceNumber)
+    {
+        await OnNavigateToEvent.InvokeAsync(sequenceNumber);
+    }
+
+    private async Task HandleNavigateToBlame(long sequenceNumber)
+    {
+        if (OnNavigateToBlame.HasDelegate)
+        {
+            await OnNavigateToBlame.InvokeAsync(sequenceNumber);
+        }
+    }
+
+    private void ToggleFieldSelection(string field, bool selected)
+    {
+        if (selected)
+        {
+            _selectedFieldPaths.Add(field);
+        }
+        else
+        {
+            _selectedFieldPaths.Remove(field);
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnFieldSearchChanged()
+    {
+        if (_availableFields is null)
+        {
+            _filteredAvailableFields = [];
+            return;
+        }
+
+        _filteredAvailableFields = string.IsNullOrWhiteSpace(_fieldSearchTerm)
+            ? _availableFields
+            : _availableFields
+                .Where(f => f.Contains(_fieldSearchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        StateHasChanged();
+    }
+
+    private static string SafeProblemMessage(AdminApiProblemException exception)
+        => exception.Detail ?? exception.Message;
+
+    private static List<string> ExtractLeafFieldPaths(string stateJson)
+    {
+        try
+        {
+            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(stateJson);
+            var paths = new List<string>();
+            ExtractPaths(doc.RootElement, string.Empty, paths);
+            paths.Sort(StringComparer.Ordinal);
+            return paths;
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static void ExtractPaths(System.Text.Json.JsonElement element, string prefix, List<string> paths)
+    {
+        switch (element.ValueKind)
+        {
+            case System.Text.Json.JsonValueKind.Object:
+                foreach (System.Text.Json.JsonProperty prop in element.EnumerateObject())
+                {
+                    string path = string.IsNullOrEmpty(prefix) ? prop.Name : $"{prefix}.{prop.Name}";
+                    ExtractPaths(prop.Value, path, paths);
+                }
+
+                break;
+
+            default:
+                paths.Add(prefix);
+                break;
+        }
+    }
+
+    private static string TruncateValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Length > 60 ? string.Concat(value.AsSpan(0, 57), "...") : value;
+    }
+
+    private static string FormatTimestamp(DateTimeOffset timestamp)
+    {
+        if (timestamp == DateTimeOffset.MinValue)
+        {
+            return string.Empty;
+        }
+
+        return timestamp.Date == DateTimeOffset.UtcNow.Date
+            ? timestamp.ToString("HH:mm:ss")
+            : timestamp.ToString("MMM dd HH:mm");
+    }
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "title", safeValue);
+        builder.AddContent(6, TruncateValue(safeValue));
+        builder.CloseElement();
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_cts is not null)
+        {
+            await _cts.CancelAsync();
+            _cts.Dispose();
+            _cts = null;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+}

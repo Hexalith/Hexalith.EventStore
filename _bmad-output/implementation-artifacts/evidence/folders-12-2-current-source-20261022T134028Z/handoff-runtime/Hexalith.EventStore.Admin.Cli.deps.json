@@ -1,0 +1,146 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "Hexalith.EventStore.Admin.Cli/3.126.1": {
+        "dependencies": {
+          "Hexalith.EventStore.Admin.Abstractions": "3.126.1",
+          "System.CommandLine": "2.0.13"
+        },
+        "runtime": {
+          "Hexalith.EventStore.Admin.Cli.dll": {}
+        }
+      },
+      "ByteAether.Ulid/1.4.2": {
+        "runtime": {
+          "lib/net10.0/ByteAether.Ulid.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "System.CommandLine/2.0.13": {
+        "runtime": {
+          "lib/net8.0/System.CommandLine.dll": {
+            "assemblyVersion": "2.0.13.0",
+            "fileVersion": "2.0.1326.50504"
+          }
+        },
+        "resources": {
+          "lib/net8.0/cs/System.CommandLine.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net8.0/de/System.CommandLine.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net8.0/es/System.CommandLine.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net8.0/fr/System.CommandLine.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net8.0/it/System.CommandLine.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net8.0/ja/System.CommandLine.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net8.0/ko/System.CommandLine.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net8.0/pl/System.CommandLine.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net8.0/pt-BR/System.CommandLine.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net8.0/ru/System.CommandLine.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net8.0/tr/System.CommandLine.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net8.0/zh-Hans/System.CommandLine.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net8.0/zh-Hant/System.CommandLine.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "Hexalith.Commons.UniqueIds/1.0.0": {
+        "dependencies": {
+          "ByteAether.Ulid": "1.4.2"
+        },
+        "runtime": {
+          "Hexalith.Commons.UniqueIds.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Hexalith.EventStore.Admin.Abstractions/3.126.1": {
+        "dependencies": {
+          "Hexalith.EventStore.Contracts": "3.126.1"
+        },
+        "runtime": {
+          "Hexalith.EventStore.Admin.Abstractions.dll": {
+            "assemblyVersion": "3.126.1.0",
+            "fileVersion": "3.126.1.0"
+          }
+        }
+      },
+      "Hexalith.EventStore.Contracts/3.126.1": {
+        "dependencies": {
+          "Hexalith.Commons.UniqueIds": "1.0.0"
+        },
+        "runtime": {
+          "Hexalith.EventStore.Contracts.dll": {
+            "assemblyVersion": "3.126.1.0",
+            "fileVersion": "3.126.1.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Hexalith.EventStore.Admin.Cli/3.126.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "ByteAether.Ulid/1.4.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LCOjm7QFSdM2X779Db2K+i3pPei4f8PJEcY1wGehkdgYNmpQaP5uF7U8aZMMBWeYe+zV2Ues9j/nFpW4Pw10wQ==",
+      "path": "byteaether.ulid/1.4.2",
+      "hashPath": "byteaether.ulid.1.4.2.nupkg.sha512"
+    },
+    "System.CommandLine/2.0.13": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-TIO2lMV+sSP7WW7pD/oCRHD9ENWY+jqwXmYzgks3R46cEdDzwjQOAhsiBn+M3EegfGjgTpa2h+eIrcU+AM2k6A==",
+      "path": "system.commandline/2.0.13",
+      "hashPath": "system.commandline.2.0.13.nupkg.sha512"
+    },
+    "Hexalith.Commons.UniqueIds/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Hexalith.EventStore.Admin.Abstractions/3.126.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Hexalith.EventStore.Contracts/3.126.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

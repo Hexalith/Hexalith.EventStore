@@ -1,0 +1,9 @@
+{
+  "command": "dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -showLiveOutput -result-xml _bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/server-full.xml",
+  "reason": "Stopped exact pre-review test PID55900 with SIGINT then SIGTERM before rebuilding outputs for required review corrections; no complete full-suite success claimed. Final focused verification and process qualification must run after patches.",
+  "signals": [
+    "SIGINT",
+    "SIGTERM"
+  ],
+  "log": "server-full.log"
+}

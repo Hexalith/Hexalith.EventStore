@@ -216,17 +216,19 @@ public static class EventStoreServiceCollectionExtensions {
 
             // Per-tenant limiter; verified internal callers have separate bounded partitions because they carry
             // no human tenant claim. Unverified traffic remains in the anonymous partition.
-            var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+            var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, (bool Actor, string Identity)>(context => {
                 // Health endpoints must never be rate limited (H2)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
                     path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
                     path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
-                    return RateLimitPartition.GetNoLimiter<string>("__health");
+                    return RateLimitPartition.GetNoLimiter((Actor: false, Identity: "__health"));
                 }
 
                 // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1), then verified internal identity.
-                string tenantId = context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
+                string? actorKey = EventStoreRateLimitPartition.TrustedActorKey(context);
+                string tenantId = actorKey
+                    ?? context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
                     ?? context.User?.FindFirst("eventstore:tenant")?.Value
                     ?? EventStoreRateLimitPartition.TrustedTenantKey(context.User)
                     ?? EventStoreRateLimitPartition.TrustedInternalKey(context.User)
@@ -244,7 +246,8 @@ public static class EventStoreServiceCollectionExtensions {
                     ? tenantLimit
                     : rateLimitOptions.PermitLimit;
 
-                return RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ =>
+                // Keep raw configuration lookup identities, but never let public claims alias an actor's cache key.
+                return RateLimitPartition.GetSlidingWindowLimiter((Actor: actorKey is not null, Identity: tenantId), _ =>
                     new SlidingWindowRateLimiterOptions {
                         PermitLimit = permitLimit,
                         Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
@@ -255,19 +258,21 @@ public static class EventStoreServiceCollectionExtensions {
             });
 
             // Per-consumer limiter keyed by human JWT subject or verified workload identity.
-            var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
+            var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, (bool Actor, string Identity)>(context => {
                 // Health endpoints must never be rate limited (same exemption as per-tenant)
                 string path = context.Request.Path.Value ?? string.Empty;
                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
                     path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
                     path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
-                    return RateLimitPartition.GetNoLimiter<string>("__health");
+                    return RateLimitPartition.GetNoLimiter((Actor: false, Identity: "__health"));
                 }
 
                 // Human consumer identity comes from JWT "sub"; verified internal identities have their own
                 // bounded buckets. All other traffic shares one anonymous consumer bucket.
                 string? rawConsumerId = context.User?.FindFirst("sub")?.Value;
-                string consumerId = context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
+                string? actorKey = EventStoreRateLimitPartition.TrustedActorKey(context);
+                string consumerId = actorKey
+                    ?? context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
                     ?? (!string.IsNullOrWhiteSpace(rawConsumerId)
                         ? rawConsumerId
                         : EventStoreRateLimitPartition.TrustedInternalKey(context.User) ?? "anonymous");
@@ -280,7 +285,7 @@ public static class EventStoreServiceCollectionExtensions {
                     ? consumerLimit
                     : rateLimitOptions.ConsumerPermitLimit;
 
-                return RateLimitPartition.GetSlidingWindowLimiter(consumerId, _ =>
+                return RateLimitPartition.GetSlidingWindowLimiter((Actor: actorKey is not null, Identity: consumerId), _ =>
                     new SlidingWindowRateLimiterOptions {
                         PermitLimit = permitLimit,
                         Window = TimeSpan.FromSeconds(rateLimitOptions.ConsumerWindowSeconds),
@@ -304,15 +309,17 @@ public static class EventStoreServiceCollectionExtensions {
                     ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
 
                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
-                    string tenantId = context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
+                    string? actorKey = EventStoreRateLimitPartition.TrustedActorKey(context.HttpContext);
+                    string tenantId = actorKey
+                        ?? context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
                         ?? EventStoreRateLimitPartition.TrustedTenantKey(context.HttpContext.User)
                         ?? context.HttpContext.Items["RequestTenantId"]?.ToString()
                         ?? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User)
                         ?? "unknown";
                     string? rawConsumerId = context.HttpContext.User?.FindFirst("sub")?.Value;
-                    string consumerId = string.IsNullOrWhiteSpace(rawConsumerId)
+                    string consumerId = actorKey ?? (string.IsNullOrWhiteSpace(rawConsumerId)
                         ? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User) ?? "anonymous"
-                        : rawConsumerId;
+                        : rawConsumerId);
                     string? sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
 
                     // H11: Use RetryAfter metadata if available, fall back to WindowSeconds

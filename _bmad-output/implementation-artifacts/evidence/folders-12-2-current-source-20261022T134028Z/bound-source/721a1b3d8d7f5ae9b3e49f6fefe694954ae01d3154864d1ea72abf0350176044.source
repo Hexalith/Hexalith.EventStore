@@ -1,0 +1,705 @@
+
+using System.Net;
+using System.Text;
+using System.Text.Json;
+
+using Dapr.Client;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Dapr;
+using Hexalith.EventStore.Admin.Server.Configuration;
+using Hexalith.EventStore.Admin.Server.Services;
+using Hexalith.EventStore.Admin.Server.Tests.Helpers;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
+namespace Hexalith.EventStore.Admin.Server.Tests.Services;
+
+public class DaprActorQueryServiceTests {
+    private const string StateStoreName = "statestore";
+    private const string EventStoreAppId = "eventstore";
+
+    private static DaprInfrastructureQueryService CreateService(
+        DaprClient? daprClient = null,
+        AdminServerOptions? serverOptions = null,
+        IHttpClientFactory? httpClientFactory = null,
+        ILogger<DaprInfrastructureQueryService>? logger = null) {
+        daprClient ??= Substitute.For<DaprClient>();
+        serverOptions ??= new AdminServerOptions {
+            StateStoreName = StateStoreName,
+            EventStoreAppId = EventStoreAppId,
+        };
+        httpClientFactory ??= Substitute.For<IHttpClientFactory>();
+        IOptions<AdminServerOptions> options = Options.Create(serverOptions);
+
+        return new DaprInfrastructureQueryService(
+            daprClient,
+            httpClientFactory,
+            options,
+            logger ?? NullLogger<DaprInfrastructureQueryService>.Instance);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_ReturnsActorTypes_WhenLocalMetadataHasActors() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata metadata = new(
+            id: "test-app",
+            actors: [new DaprActorMetadata("AggregateActor", 10), new DaprActorMetadata("ETagActor", 5)],
+            extended: new Dictionary<string, string>(),
+            components: []);
+
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        result.ActorTypes.Count.ShouldBe(3);
+        result.TotalActiveActors.ShouldBe(15);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        result.ActorTypes[0].TypeName.ShouldBe("AggregateActor");
+        result.ActorTypes[0].Description.ShouldContain("commands");
+        result.ActorTypes.ShouldContain(a => a.TypeName == "ETagActor");
+        result.IsInventoryComplete.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_ReturnsDefaultConfig() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata metadata = new(
+            id: "test-app",
+            actors: [new DaprActorMetadata("ETagActor", 1)],
+            extended: new Dictionary<string, string>(),
+            components: []);
+
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        result.Configuration.IdleTimeout.ShouldBe(TimeSpan.FromMinutes(60));
+        result.Configuration.ScanInterval.ShouldBe(TimeSpan.FromSeconds(30));
+        result.Configuration.DrainOngoingCallTimeout.ShouldBe(TimeSpan.FromSeconds(60));
+        result.Configuration.DrainRebalancedActors.ShouldBeTrue();
+        result.Configuration.ReentrancyEnabled.ShouldBeFalse();
+        result.Configuration.ReentrancyMaxStackDepth.ShouldBe(32);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_ReturnsEmpty_WhenSidecarUnavailable() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Sidecar down"));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        result.ActorTypes.Count.ShouldBe(3);
+        result.ActorTypes.ShouldAllBe(a => a.CountStatus == DaprActorCountStatus.Unavailable);
+        result.TotalActiveActors.ShouldBe(0);
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_ExcludesUnknownCountFromTotal() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata metadata = new(
+            id: "test-app",
+            actors: [new DaprActorMetadata("AggregateActor", 10), new DaprActorMetadata("ETagActor", -1)],
+            extended: new Dictionary<string, string>(),
+            components: []);
+
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(metadata);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        result.TotalActiveActors.ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenRemoteOmitsKnownTypes_KeepsKnownTypesVisibleAndMarksInventoryPartial() {
+        const string endpoint = "http://localhost:3501";
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "eventstore-admin",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        string remoteJson = """{"components":[],"subscriptions":[],"actors":[{"type":"ETagActor","count":1}]}""";
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        DaprInfrastructureQueryService service = CreateService(
+            daprClient,
+            new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = endpoint,
+            },
+            httpClientFactory);
+
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        result.IsInventoryComplete.ShouldBeFalse();
+        result.TotalKnownTypes.ShouldBe(3);
+        result.TotalActiveActors.ShouldBe(1);
+        result.InventorySource.ShouldBe("RemoteEventStoreSidecarMetadata");
+        _ = result.InventoryMessage.ShouldNotBeNull();
+        result.InventoryMessage!.ShouldContain("partial", Case.Insensitive);
+        result.ActorTypes.Select(a => a.TypeName).ShouldContain("AggregateActor");
+        result.ActorTypes.Select(a => a.TypeName).ShouldContain("ProjectionActor");
+        result.ActorTypes.Select(a => a.TypeName).ShouldContain("ETagActor");
+        result.ActorTypes.Single(a => a.TypeName == "ETagActor").CountStatus.ShouldBe(DaprActorCountStatus.Exact);
+        result.ActorTypes.Single(a => a.TypeName == "AggregateActor").CountStatus.ShouldBe(DaprActorCountStatus.Unavailable);
+        result.ActorTypes.Single(a => a.TypeName == "ProjectionActor").ActiveCount.ShouldBe(-1);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_PropagatesCancellation() {
+        using CancellationTokenSource cts = new();
+        await cts.CancelAsync();
+
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>())
+            .Returns<DaprMetadata>(_ => throw new OperationCanceledException());
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => service.GetActorRuntimeInfoAsync(cts.Token));
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenEndpointNotConfigured_ReturnsNotConfiguredStatus() {
+        // Arrange — endpoint is null (default options)
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "test-app",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        // Act
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.NotConfigured);
+        result.RemoteEndpoint.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenRemoteCallThrows_ReturnsUnreachableStatus() {
+        // Arrange — endpoint configured, but HTTP call throws
+        const string endpoint = "http://localhost:3501";
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "test-app",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.InternalServerError, "error"));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        AdminServerOptions options = new() {
+            StateStoreName = StateStoreName,
+            EventStoreAppId = EventStoreAppId,
+            EventStoreDaprHttpEndpoint = endpoint,
+        };
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Unreachable);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+    }
+
+    [Fact]
+    public async Task GetActorRuntimeInfoAsync_WhenRemoteCallSucceeds_ReturnsAvailableStatus() {
+        // Arrange — endpoint configured, HTTP call returns actor metadata
+        const string endpoint = "http://localhost:3501";
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        DaprMetadata emptyMetadata = new(
+            id: "test-app",
+            actors: [],
+            extended: new Dictionary<string, string>(),
+            components: []);
+        _ = daprClient.GetMetadataAsync(Arg.Any<CancellationToken>()).Returns(emptyMetadata);
+
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        string remoteJson = """{"components":[],"subscriptions":[],"actors":[{"type":"AggregateActor","count":3}]}""";
+        HttpClient httpClient = new(new FakeHandler(HttpStatusCode.OK, remoteJson));
+        _ = httpClientFactory.CreateClient("DaprSidecar").Returns(httpClient);
+
+        AdminServerOptions options = new() {
+            StateStoreName = StateStoreName,
+            EventStoreAppId = EventStoreAppId,
+            EventStoreDaprHttpEndpoint = endpoint,
+        };
+        DaprInfrastructureQueryService service = CreateService(daprClient, options, httpClientFactory);
+
+        // Act
+        DaprActorRuntimeInfo result = await service.GetActorRuntimeInfoAsync();
+
+        // Assert
+        result.RemoteMetadataStatus.ShouldBe(RemoteMetadataStatus.Available);
+        result.RemoteEndpoint.ShouldBe(endpoint);
+        result.ActorTypes.Count.ShouldBe(3);
+        result.ActorTypes[0].TypeName.ShouldBe("AggregateActor");
+        result.IsInventoryComplete.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ReturnsNull_WhenActorTypeUnknown() {
+        DaprInfrastructureQueryService service = CreateService();
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("UnknownActor", "some-id");
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ReadsStateKeys_ForETagActor() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        string composedKey = $"{EventStoreAppId}||ETagActor||Proj:Tenant1||etag";
+
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            StateStoreName,
+            composedKey,
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => JsonState("{\"value\":\"abc123\"}"));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("ETagActor", "Proj:Tenant1");
+
+        _ = result.ShouldNotBeNull();
+        result.ActorType.ShouldBe("ETagActor");
+        result.ActorId.ShouldBe("Proj:Tenant1");
+        result.StateEntries.Count.ShouldBe(1);
+        result.StateEntries[0].Key.ShouldBe("etag");
+        result.StateEntries[0].Found.ShouldBeTrue();
+        result.StateEntries[0].JsonValue.ShouldBe("{\"value\":\"abc123\"}");
+        result.StateEntries[0].EstimatedSizeBytes.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_UsesOwnerSidecarActorStateApi_WhenEndpointConfigured() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        var handler = new CaptureHandler(HttpStatusCode.OK, "{\"value\":\"abc123\"}");
+        IHttpClientFactory httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _ = httpClientFactory.CreateClient(Arg.Any<string>())
+            .Returns(_ => new HttpClient(handler));
+
+        DaprInfrastructureQueryService service = CreateService(
+            daprClient,
+            new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            },
+            httpClientFactory);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("ETagActor", "Proj:Tenant1");
+
+        _ = result.ShouldNotBeNull();
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.Available);
+        result.LookupSource.ShouldBe("RemoteOwnerSidecarActorStateApi");
+        result.StateEntries[0].Found.ShouldBeTrue();
+        result.StateEntries[0].JsonValue.ShouldBe("{\"value\":\"abc123\"}");
+        _ = handler.RequestUri.ShouldNotBeNull();
+        handler.RequestUri!.AbsoluteUri.ShouldBe("http://owner-sidecar/v1.0/actors/ETagActor/Proj%3ATenant1/state/etag");
+        _ = await daprClient.DidNotReceive().GetStateAsync<JsonElement?>(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_HandlesNotFoundStateKeys() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+
+        // Returns null for all state reads (not found)
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => (JsonElement?)null);
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("ETagActor", "Proj:Tenant1");
+
+        _ = result.ShouldNotBeNull();
+        result.StateEntries.ShouldAllBe(e => !e.Found);
+        result.TotalSizeBytes.ShouldBe(0);
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.NotFound);
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ComputesTotalSize() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        string composedKey = $"{EventStoreAppId}||ETagActor||Proj:T1||etag";
+
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            StateStoreName,
+            composedKey,
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => JsonState("\"test\""));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("ETagActor", "Proj:T1");
+
+        _ = result.ShouldNotBeNull();
+        result.TotalSizeBytes.ShouldBe(4); // "test" = 4 UTF-8 bytes
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_HandlesExceptionOnStateRead() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            cancellationToken: Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("State store error"));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("ETagActor", "Proj:T1");
+
+        _ = result.ShouldNotBeNull();
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.LookupUnavailable);
+        result.StateEntries[0].Found.ShouldBeFalse();
+        result.StateEntries[0].JsonValue.ShouldBeNull();
+        _ = result.Message.ShouldNotBeNull();
+        result.Message!.ShouldContain("unavailable", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ActorIdWithColons_RoundTrips() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        string actorId = "tenant1:mydomain:aggregate-123";
+        string composedKey = $"{EventStoreAppId}||AggregateActor||{actorId}||pending_command_count";
+
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            StateStoreName,
+            composedKey,
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => JsonState("5"));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("AggregateActor", actorId);
+
+        _ = result.ShouldNotBeNull();
+        result.ActorId.ShouldBe(actorId);
+
+        // Verify the pending_command_count key was read
+        DaprActorStateEntry? pendingEntry = result.StateEntries
+            .FirstOrDefault(e => e.Key == "pending_command_count");
+        _ = pendingEntry.ShouldNotBeNull();
+        pendingEntry!.Found.ShouldBeTrue();
+        pendingEntry.JsonValue.ShouldBe("5");
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_ResolvesActorIdInStateKeys() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        string actorId = "t1:domain:agg1";
+
+        // The metadata key should be resolved to "t1:domain:agg1:metadata"
+        string metadataKey = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:metadata";
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            StateStoreName,
+            metadataKey,
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => JsonState("{\"seq\":42}"));
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("AggregateActor", actorId);
+
+        _ = result.ShouldNotBeNull();
+
+        DaprActorStateEntry? metadataEntry = result.StateEntries
+            .FirstOrDefault(e => e.Key == "{actorId}:metadata");
+        _ = metadataEntry.ShouldNotBeNull();
+        metadataEntry!.Found.ShouldBeTrue();
+        metadataEntry.JsonValue.ShouldBe("{\"seq\":42}");
+        result.OwnerAppId.ShouldBe(EventStoreAppId);
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.Available);
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_LocalSnapshotKeyReturnsOnlySafeEvidence() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        const string actorId = "tenant:domain:aggregate";
+        string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+        const string raw = """{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{"secret":"private"},"protectionMetadata":{"state":0,"metadataVersion":1,"keyAlias":"sensitive-key"}}""";
+        _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+            cancellationToken: Arg.Any<CancellationToken>()).Returns(_ => JsonState(raw));
+
+        DaprActorInstanceState result = (await CreateService(daprClient)
+            .GetActorInstanceStateAsync("AggregateActor", actorId)).ShouldNotBeNull();
+        DaprActorStateEntry snapshot = result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot");
+        snapshot.Found.ShouldBeTrue();
+        snapshot.EstimatedSizeBytes.ShouldBe(0);
+        using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue.ShouldNotBeNull());
+        evidence.RootElement.EnumerateObject().Select(property => property.Name).ShouldBe([
+            "coveredSequence", "canonicalSizeBytes", "snapshotEnvelopeVersion", "protectionReadabilityClass"]);
+        evidence.RootElement.GetProperty("coveredSequence").GetInt64().ShouldBe(7);
+        evidence.RootElement.GetProperty("canonicalSizeBytes").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(1);
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe("Unprotected");
+        snapshot.JsonValue.ShouldNotContain("private");
+        snapshot.JsonValue.ShouldNotContain("sensitive-key");
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_OwnerSidecarSnapshotKeyRedactsStateAndUnknownVersion() {
+        const string actorId = "tenant:domain:aggregate";
+        const string raw = """{"snapshotEnvelopeVersion":9,"sequenceNumber":7,"state":{"secret":"private"},"protectionMetadata":{"keyAlias":"sensitive-key"}}""";
+        IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+        _ = factory.CreateClient(Arg.Any<string>())
+            .Returns(_ => new HttpClient(new FakeHandler(HttpStatusCode.OK, raw)));
+        DaprInfrastructureQueryService service = CreateService(
+            serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory);
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+        DaprActorStateEntry snapshot = result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot");
+        snapshot.JsonValue.ShouldNotBeNull().ShouldNotContain("private");
+        snapshot.JsonValue.ShouldNotContain("sensitive-key");
+        using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue);
+        evidence.RootElement.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(9);
+        evidence.RootElement.GetProperty("coveredSequence").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("canonicalSizeBytes").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe("UnknownVersion");
+    }
+
+    [Theory]
+    [InlineData(false, 1, "ProtectedUnreadableUnknown")]
+    [InlineData(true, 1, "ProtectedUnreadableUnknown")]
+    [InlineData(false, 2, "ProviderOpaque")]
+    [InlineData(true, 2, "ProviderOpaque")]
+    public async Task GetActorInstanceStateAsync_SnapshotProtectionClassIsRedactedOnBothRoutes(
+        bool ownerSidecar, int protectionState, string expectedClass)
+    {
+        const string actorId = "tenant:domain:aggregate";
+        string raw = JsonSerializer.Serialize(new
+        {
+            snapshotEnvelopeVersion = 1,
+            sequenceNumber = 7,
+            state = new { payload = "private" },
+            protectionMetadata = new { state = protectionState, keyAlias = "sensitive-key" },
+        });
+        DaprInfrastructureQueryService service;
+        if (ownerSidecar)
+        {
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            _ = factory.CreateClient(Arg.Any<string>())
+                .Returns(_ => new HttpClient(new FakeHandler(HttpStatusCode.OK, raw)));
+            service = CreateService(serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory);
+        }
+        else
+        {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+            _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+                cancellationToken: Arg.Any<CancellationToken>()).Returns(_ => JsonState(raw));
+            service = CreateService(daprClient);
+        }
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+        DaprActorStateEntry snapshot = result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot");
+        using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue.ShouldNotBeNull());
+        evidence.RootElement.EnumerateObject().Select(property => property.Name).ShouldBe([
+            "coveredSequence", "canonicalSizeBytes", "snapshotEnvelopeVersion", "protectionReadabilityClass"]);
+        evidence.RootElement.GetProperty("coveredSequence").GetInt64().ShouldBe(7);
+        evidence.RootElement.GetProperty("canonicalSizeBytes").ValueKind.ShouldBe(JsonValueKind.Null);
+        evidence.RootElement.GetProperty("snapshotEnvelopeVersion").GetInt32().ShouldBe(1);
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe(expectedClass);
+        snapshot.JsonValue.ShouldNotContain("private");
+        snapshot.JsonValue.ShouldNotContain("sensitive-key");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetActorInstanceStateAsync_AmbiguousProtectionMetadataIsUnknown(bool ownerSidecar) {
+        const string actorId = "tenant:domain:aggregate";
+        const string raw = """{"snapshotEnvelopeVersion":1,"sequenceNumber":7,"state":{"secret":"private"},"protectionMetadata":null,"ProtectionMetadata":{"state":0}}""";
+        DaprInfrastructureQueryService service;
+        if (ownerSidecar) {
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            _ = factory.CreateClient(Arg.Any<string>())
+                .Returns(_ => new HttpClient(new FakeHandler(HttpStatusCode.OK, raw)));
+            service = CreateService(serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory);
+        }
+        else {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+            _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+                cancellationToken: Arg.Any<CancellationToken>()).Returns(_ => JsonState(raw));
+            service = CreateService(daprClient);
+        }
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+        DaprActorStateEntry snapshot = result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot");
+        using JsonDocument evidence = JsonDocument.Parse(snapshot.JsonValue.ShouldNotBeNull());
+        evidence.RootElement.GetProperty("protectionReadabilityClass").GetString().ShouldBe("Unknown");
+        snapshot.JsonValue.ShouldNotContain("private");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetActorInstanceStateAsync_SnapshotReadFailureLogsOnlySafeFailureClass(bool ownerSidecar) {
+        const string actorId = "tenant:domain:aggregate";
+        const string sentinel = "provider-detail-sentinel";
+        var logger = new RecordingLogger<DaprInfrastructureQueryService>();
+        DaprInfrastructureQueryService service;
+        if (ownerSidecar) {
+            IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
+            _ = factory.CreateClient(Arg.Any<string>())
+                .Returns(_ => new HttpClient(new SnapshotReadFailureHandler(sentinel)));
+            service = CreateService(serverOptions: new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = EventStoreAppId,
+                EventStoreDaprHttpEndpoint = "http://owner-sidecar",
+            }, httpClientFactory: factory, logger: logger);
+        }
+        else {
+            DaprClient daprClient = Substitute.For<DaprClient>();
+            string key = $"{EventStoreAppId}||AggregateActor||{actorId}||{actorId}:snapshot";
+            _ = daprClient.GetStateAsync<JsonElement?>(StateStoreName, key,
+                cancellationToken: Arg.Any<CancellationToken>()).ThrowsAsync(new InvalidOperationException(sentinel));
+            service = CreateService(daprClient, logger: logger);
+        }
+
+        DaprActorInstanceState result = (await service.GetActorInstanceStateAsync("AggregateActor", actorId))
+            .ShouldNotBeNull();
+
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.LookupUnavailable);
+        result.StateEntries.Single(entry => entry.Key == "{actorId}:snapshot").Found.ShouldBeFalse();
+        result.Message.ShouldNotBeNull().ShouldNotContain(sentinel);
+        logger.Records.Where(record => record.Level == LogLevel.Warning).ShouldHaveSingleItem()
+            .Message.ShouldContain("FailureClass=SnapshotReadUnavailable");
+        foreach (RecordingLogger<DaprInfrastructureQueryService>.LogRecord record in logger.Records) {
+            record.Exception.ShouldBeNull();
+            record.Message.ShouldNotContain(sentinel);
+            record.Message.ShouldNotContain(actorId);
+        }
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_UsesConfiguredOwnerAppId_ForAggregateMetadataLookup() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+        const string ownerAppId = "eventstore-owner";
+        string actorId = "tenant-a:counter:counter-1";
+        string metadataKey = $"{ownerAppId}||AggregateActor||{actorId}||{actorId}:metadata";
+
+        _ = daprClient.GetStateAsync<JsonElement?>(
+            StateStoreName,
+            metadataKey,
+            cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(_ => JsonState("{\"sequence\":18}"));
+
+        DaprInfrastructureQueryService service = CreateService(
+            daprClient,
+            new AdminServerOptions {
+                StateStoreName = StateStoreName,
+                EventStoreAppId = ownerAppId,
+            });
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("AggregateActor", actorId);
+
+        _ = result.ShouldNotBeNull();
+        result.LookupStatus.ShouldBe(DaprActorLookupStatus.Available);
+        result.OwnerAppId.ShouldBe(ownerAppId);
+        _ = await daprClient.DidNotReceive().GetStateAsync<JsonElement?>(
+            StateStoreName,
+            Arg.Is<string>(key => key.StartsWith("eventstore-admin||", StringComparison.Ordinal)),
+            cancellationToken: Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetActorInstanceStateAsync_DynamicFamilies_ReturnedAsNotFound() {
+        DaprClient daprClient = Substitute.For<DaprClient>();
+
+        DaprInfrastructureQueryService service = CreateService(daprClient);
+
+        DaprActorInstanceState? result = await service.GetActorInstanceStateAsync("AggregateActor", "t:d:a");
+
+        _ = result.ShouldNotBeNull();
+
+        // Dynamic families should appear but with Found = false
+        DaprActorStateEntry? dynamicEntry = result.StateEntries
+            .FirstOrDefault(e => e.Key.Contains("{causationId}"));
+        _ = dynamicEntry.ShouldNotBeNull();
+        dynamicEntry!.Found.ShouldBeFalse();
+    }
+
+    private sealed class FakeHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(new HttpResponseMessage(statusCode) {
+            Content = new StringContent(content, Encoding.UTF8, "application/json"),
+        });
+    }
+
+    private sealed class CaptureHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler {
+        public Uri? RequestUri { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            RequestUri = request.RequestUri;
+            return Task.FromResult(new HttpResponseMessage(statusCode) {
+                Content = new StringContent(content, Encoding.UTF8, "application/json"),
+            });
+        }
+    }
+
+    private sealed class SnapshotReadFailureHandler(string detail) : HttpMessageHandler {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => request.RequestUri!.OriginalString.EndsWith("snapshot", StringComparison.Ordinal)
+                ? throw new HttpRequestException(detail)
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+    }
+
+    private static JsonElement? JsonState(string json) {
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
+}

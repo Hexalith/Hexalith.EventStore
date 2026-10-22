@@ -1,0 +1,42 @@
+{
+  "compared": 3751,
+  "changes": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.AppHost/Program.cs",
+      "before": "fa62caa6198a12c944197b17afa39126d324d2b638f628c0c0741375726a2579",
+      "after": "3af3e607b5180b8239ea2297c0a9acd69471ab6dff435de69274758ef369cee1"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs",
+      "before": "454cd8854ec5c3ad7f785500acf5228cdef03ef3231c1f57f1ad9a57d2658b9f",
+      "after": "9c91b6596658bfc09544b62f325ce9ffee5a5ad09fd369e2b6576137f216a53f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Extensions/EventStoreRateLimitPartition.cs",
+      "before": "61f912145ca27c112e2651ca8e07abe216eb37401e9b1b4861b61a2654575928",
+      "after": "2f28644fc94fd13063b39de3c0a3f7460d1e347b5ae2738efb70927bbac21cee"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs",
+      "before": "48cfec334d1e31fa68ba4eb4f1a260d031ba2743a4c424260f525fa5b2d4f542",
+      "after": "2a821b3e9be9e82cd37cdf4e7d9c12e91b934e0ac3595754bfed9528cb8ef1e5"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/Program.cs",
+      "before": "01a749a9928db93f1053c86979d29fc4e07e6764009cd5c036e9387c3a217605",
+      "after": "062b3467a2877dbb23cc9324b50b63608da879c2652e11274cc24446a0d4570e"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs",
+      "before": "f847c8a4d71dad821da7bcadad318093a2dc251db83250fa13e885147b46227f",
+      "after": "497c09313e6b1f846a73c82e9c7b323ae9bbddd63c738c9007cb6747a9a9f6fb"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs",
+      "before": "65c58c9a02852ee5efdbb3eefa1afba55fcd8cc47d96b0c4578fc880d38362d2",
+      "after": "46cf664d37f90d2f8a3af9342e16a80b69c134cd6f146820a88a8c48456015b9"
+    }
+  ],
+  "unchanged_corrected_coordinator_sha256": "23f82c1898318e7d9a1fc0e6892586d210a5d48debab58087f2c9c2176b1cbe9",
+  "configuration_unchanged": true
+}

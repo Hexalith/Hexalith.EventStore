@@ -1,0 +1,129 @@
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.UI.Services
+@inject TopologyCacheService TopologyCache
+@inject DashboardRefreshService RefreshService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<FluentNav Width="@Width" Padding="@Padding.All2" Style="height: 100%;" aria-label="Main navigation">
+    <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())">Home</FluentNavItem>
+    <FluentNavItem Href="/commands" IconRest="@(new Icons.Regular.Size20.List())">Commands</FluentNavItem>
+    <FluentNavItem Href="/events" IconRest="@(new Icons.Regular.Size20.Timeline())">Events</FluentNavItem>
+    <FluentNavItem Href="/streams" IconRest="@(new Icons.Regular.Size20.DataLine())">Streams</FluentNavItem>
+    <FluentNavItem Href="/health" IconRest="@(new Icons.Regular.Size20.HeartPulse())">Health</FluentNavItem>
+    <FluentNavItem Href="/health/dead-letters" IconRest="@(new Icons.Regular.Size20.DocumentDismiss())">Dead Letters</FluentNavItem>
+    <FluentNavItem Href="/dapr" IconRest="@(new Icons.Regular.Size20.PlugDisconnected())">DAPR</FluentNavItem>
+    <FluentNavItem Href="/projections" IconRest="@(new Icons.Regular.Size20.LayerDiagonal())">Projections</FluentNavItem>
+    <FluentNavItem Href="/types" IconRest="@(new Icons.Regular.Size20.Library())">Types</FluentNavItem>
+    <FluentNavItem Href="/services" IconRest="@(new Icons.Regular.Size20.Server())">Services</FluentNavItem>
+    <FluentNavItem Href="/tenants" IconRest="@(new Icons.Regular.Size20.People())">Tenants</FluentNavItem>
+    <FluentNavItem Href="/storage" IconRest="@(new Icons.Regular.Size20.Database())">Storage</FluentNavItem>
+    <FluentNavItem Href="/snapshots" IconRest="@(new Icons.Regular.Size20.Camera())">Snapshots</FluentNavItem>
+    <FluentNavItem Href="/compaction" IconRest="@(new Icons.Regular.Size20.ArrowMinimize())">Compaction</FluentNavItem>
+    <FluentNavItem Href="/backups" IconRest="@(new Icons.Regular.Size20.ArrowDownload())">Backups</FluentNavItem>
+    <FluentNavItem Href="/consistency" IconRest="@(new Icons.Regular.Size20.Checkmark())">Consistency</FluentNavItem>
+    @if (UserRole >= AdminRole.Admin)
+    {
+        <FluentNavItem Href="/settings" IconRest="@(new Icons.Regular.Size20.Settings())">Settings</FluentNavItem>
+    }
+    <FluentNavCategory Title="Topology" IconRest="@(new Icons.Regular.Size20.BranchFork())" Expanded="false">
+        @if (!TopologyCache.IsLoaded)
+        {
+            <FluentNavItem Disabled="true">Loading...</FluentNavItem>
+        }
+        else if (TopologyCache.Tenants.Count == 0)
+        {
+            <FluentNavItem Disabled="true">No tenants</FluentNavItem>
+        }
+        else if (TopologyCache.Domains.Count == 0)
+        {
+            <FluentNavItem Disabled="true">No domains</FluentNavItem>
+        }
+        else
+        {
+            @foreach (var tenant in TopologyCache.Tenants)
+            {
+                <FluentNavSectionHeader>@tenant.TenantId</FluentNavSectionHeader>
+
+                @foreach (string domain in TopologyCache.Domains)
+                {
+                    <FluentNavItem OnClick="@(() => NavigateToStreams(tenant.TenantId, domain))">
+                        @domain
+                    </FluentNavItem>
+                }
+            }
+        }
+    </FluentNavCategory>
+</FluentNav>
+
+@code {
+    [Parameter]
+    public string Width { get; set; } = "220px";
+
+    [Parameter]
+    public AdminRole UserRole { get; set; } = AdminRole.ReadOnly;
+
+    private bool _disposed;
+
+    protected override Task OnInitializedAsync()
+    {
+        RefreshService.OnDataChanged += OnDataChanged;
+        _ = LoadTopologyAsync();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadTopologyAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await TopologyCache.EnsureLoadedAsync().ConfigureAwait(false);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component disposed during async callback
+        }
+        catch (Exception)
+        {
+            // Topology load failed — keep loading/empty state, don't block page startup
+        }
+    }
+
+    private async void OnDataChanged(DashboardData data)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await TopologyCache.RefreshAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component disposed during async callback
+        }
+        catch (Exception)
+        {
+            // Topology refresh failed — keep stale cache, don't crash
+        }
+    }
+
+    private void NavigateToStreams(string tenantId, string domain)
+    {
+        Navigation.NavigateTo($"/streams?tenant={Uri.EscapeDataString(tenantId)}&domain={Uri.EscapeDataString(domain)}");
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        RefreshService.OnDataChanged -= OnDataChanged;
+    }
+}

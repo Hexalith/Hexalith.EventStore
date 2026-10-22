@@ -1,0 +1,96 @@
+@using System.Text.Json
+@using Hexalith.Commons.UniqueIds
+@using Hexalith.EventStore.Client.Gateway
+@using Hexalith.EventStore.Contracts.Commands
+@using Hexalith.EventStore.Sample.Counter.Commands
+@inject IEventStoreGatewayClient Gateway
+
+<FluentCard Style="padding: 24px; margin-top: 16px;">
+    <h3>Send Commands</h3>
+    <p style="color: var(--neutral-foreground-hint); font-size: 14px;">
+        This component does NOT subscribe to projection changes — it only submits commands.
+    </p>
+
+    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 8px; margin-top: 16px;">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => SendCommandAsync(new IncrementCounter()))"
+                      Disabled="@_isSending">
+            Increment
+        </FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="@(() => SendCommandAsync(new DecrementCounter()))"
+                      Disabled="@_isSending">
+            Decrement
+        </FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => SendCommandAsync(new ResetCounter()))"
+                      Disabled="@_isSending">
+            Reset
+        </FluentButton>
+    </FluentStack>
+
+    @if (_lastCommand is not null)
+    {
+        <p style="color: var(--colorStatusSuccessForeground1); margin-top: 12px; font-size: 12px;">
+            Last command: @_lastCommand at @_lastCommandTime?.ToString("HH:mm:ss")
+        </p>
+    }
+    @if (_error is not null)
+    {
+        <Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar Title="Command Failed" Intent="MessageBarIntent.Error" Style="margin-top: 8px;">
+            @_error
+        </Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar>
+    }
+</FluentCard>
+
+@code {
+    [Parameter] public string TenantId { get; set; } = "tenant-a";
+
+    // Mirrors the Web JSON defaults used by the generated REST command controller so the serialized
+    // command body is identical whether submitted through the external API host or this UI host.
+    private static readonly JsonSerializerOptions CommandJsonOptions = new(JsonSerializerDefaults.Web);
+
+    private bool _isSending;
+    private string? _lastCommand;
+    private DateTime? _lastCommandTime;
+    private string? _error;
+
+    // The interactive UI submits typed command contracts through the platform gateway client, exactly
+    // as it reads projections. The command discriminator and domain come from ICommandContract static
+    // metadata (kebab-case), the message id is a ULID, and the aggregate id comes from the typed command.
+    // No generic command-gateway envelope, GUID message id, or stringly-typed command constant is built here.
+    private async Task SendCommandAsync<TCommand>(TCommand command)
+        where TCommand : ICommandContract
+    {
+        if (_isSending)
+        {
+            return;
+        }
+
+        _isSending = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var request = new SubmitCommandRequest(
+                MessageId: UniqueIdHelper.GenerateSortableUniqueStringId(),
+                Tenant: TenantId,
+                Domain: TCommand.Domain,
+                AggregateId: command.AggregateId,
+                CommandType: TCommand.CommandType,
+                Payload: JsonSerializer.SerializeToElement(command, CommandJsonOptions));
+
+            _ = await Gateway.SubmitCommandAsync(request);
+
+            _lastCommand = TCommand.CommandType;
+            _lastCommandTime = DateTime.Now;
+        }
+        catch (Exception ex)
+        {
+            _error = $"{TCommand.CommandType} failed: {ex.Message}";
+        }
+        finally
+        {
+            _isSending = false;
+            StateHasChanged();
+        }
+    }
+}

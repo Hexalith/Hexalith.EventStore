@@ -1,0 +1,452 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models
+@using System.Text.Json
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@inject AdminStreamApiClient ApiClient
+@implements IAsyncDisposable
+
+<div class="command-sandbox" role="region" aria-label="Command sandbox">
+    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                 Style="margin-bottom: 12px;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0;">Command Sandbox</h3>
+        </div>
+        <FluentButton Appearance="ButtonAppearance.Outline" OnClick="HandleClose" aria-label="Close sandbox">
+            Close
+        </FluentButton>
+    </FluentStack>
+
+    @* Info banner *@
+    <IssueBanner Visible="true"
+                 Title="Dry Run"
+                 Description="Commands are executed as a dry run — no events are persisted. The domain service Handle method is invoked with reconstructed state to show what would happen." />
+
+    @* Input form *@
+    <div style="margin-top: 16px;">
+        <FluentTextInput @bind-Value="_commandType"
+                         Label="Command Type (fully qualified)"
+                         Placeholder="e.g., Hexalith.EventStore.Sample.Counter.Commands.IncrementCounter"
+                         Required="true"
+                         Style="width: 100%; margin-bottom: 12px;"
+                         aria-label="Command type" />
+
+        <FluentTextArea @bind-Value="_payloadJson"
+                        Label="Command Payload (JSON)"
+                        Placeholder="{ }"
+                        Rows="6"
+                        Style="width: 100%; margin-bottom: 4px; font-family: var(--monospace-font, 'Cascadia Code', 'Consolas', monospace);"
+                        aria-label="Command payload JSON" />
+        @if (_jsonValidationError is not null)
+        {
+            <span style="color: var(--hexalith-status-error); font-size: 12px;">@_jsonValidationError</span>
+        }
+
+        <div style="margin-top: 12px; margin-bottom: 12px;">
+            <NumericInput TValue="long" @bind-Value="_atSequence"
+                          Label="Test Against State at Sequence"
+                          Placeholder="Latest"
+                          Min="0"
+                          Style="max-width: 250px;"
+                          aria-label="Target sequence number" />
+            <span style="font-size: 12px; color: var(--colorNeutralForeground3); display: block; margin-top: 4px;">
+                Leave empty for latest state, 0 for empty initial state.
+            </span>
+        </div>
+
+        <FluentButton Appearance="ButtonAppearance.Primary"
+                      OnClick="RunSandboxAsync"
+                      Disabled="@(!CanRun)"
+                      IconStart="@(new Icons.Regular.Size20.Play())"
+                      aria-label="Run command in sandbox">
+            Run in Sandbox
+        </FluentButton>
+    </div>
+
+    @* Loading state *@
+    @if (_loading)
+    {
+        <div style="margin-top: 16px;">
+            <SkeletonCard />
+        </div>
+    }
+
+    @* Error state *@
+    @if (_apiError is not null)
+    {
+        <div style="margin-top: 16px;">
+            <IssueBanner Visible="true" Description="@_apiError" />
+        </div>
+    }
+
+    @* Result display *@
+    @if (_result is not null && !_loading)
+    {
+        <div style="margin-top: 16px;">
+            @* Outcome banner *@
+            @if (_result.Outcome == "accepted" && _result.ProducedEvents.Count > 0)
+            {
+                <div role="alert" style="padding: 12px 24px; background: var(--hexalith-status-ok, #107c10); color: white; margin-bottom: 12px;">
+                    Command accepted — @_result.ProducedEvents.Count event(s) would be produced.
+                </div>
+            }
+            else if (_result.Outcome == "accepted" && _result.ProducedEvents.Count == 0)
+            {
+                <div role="alert" style="padding: 12px 24px; background: var(--hexalith-status-info, #0078d4); color: white; margin-bottom: 12px;">
+                    Command accepted (no-op) — no events would be produced. The aggregate state remains unchanged.
+                </div>
+            }
+            else if (_result.Outcome == "rejected")
+            {
+                <div role="alert" style="padding: 12px 24px; background: var(--hexalith-status-warning, #ff8c00); color: white; margin-bottom: 12px;">
+                    Command rejected@(_result.ProducedEvents.Count > 0 ? $" — {_result.ProducedEvents[0].EventTypeName}" : "").
+                </div>
+            }
+            else if (_result.Outcome == "error")
+            {
+                @if (_result.Error is not null)
+                {
+                    <ProtectedContentPanel Content="_result.Error" />
+                }
+                else
+                {
+                    <IssueBanner Visible="true"
+                                 Title="Sandbox Error"
+                                 Description="@(_result.ErrorMessage ?? "Unknown error")" />
+                }
+            }
+
+            @* Produced Events *@
+            @if (_result.ProducedEvents.Count > 0)
+            {
+                <h4 style="margin-top: 16px;">Produced Events (@_result.ProducedEvents.Count)</h4>
+                <FluentDataGrid Items="@_result.ProducedEvents.AsQueryable()"
+                                TGridItem="SandboxEvent"
+                                GridTemplateColumns="60px 2fr 100px 120px"
+                                aria-label="Produced events table">
+                    <PropertyColumn Property="@(e => e.Index)" Title="#" />
+                    <TemplateColumn Title="Event Type">
+                        <strong>@context.EventTypeName</strong>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Rejection">
+                        @if (context.IsRejection)
+                        {
+                            <FluentBadge Appearance="BadgeAppearance.Filled" Color="BadgeColor.Danger" Content="Rejection" />
+                        }
+                    </TemplateColumn>
+                    <TemplateColumn Title="Payload">
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      OnClick="@(() => ShowEventPayloadAsync(context))"
+                                      aria-label="@($"View safe payload summary for event {context.Index}")">
+                            View Payload
+                        </FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+
+            @* State Changes *@
+            @if (_result.Outcome == "accepted" && _result.StateChanges.Count > 0)
+            {
+                <h4 style="margin-top: 16px;">State Changes (@_result.StateChanges.Count fields changed)</h4>
+
+                <FluentTextInput @bind-Value="_stateChangeSearch"
+                              @bind-Value:after="OnStateChangeSearchChanged"
+                              Placeholder="Filter by field path..."
+                              Style="margin-bottom: 8px; max-width: 400px;"
+                              aria-label="Search state changes"
+                              TextInputType="TextInputType.Text">
+                    <StartTemplate>
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Search())" />
+                    </StartTemplate>
+                    <EndTemplate>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      Disabled="@(string.IsNullOrEmpty(_stateChangeSearch))"
+                                      OnClick="ClearStateChangeSearch"
+                                      aria-label="Clear search"
+                                      Title="Clear search">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                        </FluentButton>
+                    </EndTemplate>
+                </FluentTextInput>
+
+                <FluentDataGrid Items="@_filteredStateChanges.AsQueryable()"
+                                TGridItem="FieldChange"
+                                GridTemplateColumns="2fr 1fr 1fr"
+                                aria-label="State changes table">
+                    <PropertyColumn Property="@(fc => fc.FieldPath)" Title="Field Path" Class="monospace" />
+                    <TemplateColumn Title="Old Value">
+                        @FieldValueContent(context.OldValue, context.OldContent)
+                    </TemplateColumn>
+                    <TemplateColumn Title="New Value">
+                        @FieldValueContent(context.NewValue, context.NewContent)
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+
+            @* Resulting State *@
+            @if (_result.Outcome == "accepted" && _result.ProducedEvents.Count > 0)
+            {
+                <h4 style="margin-top: 16px;">Resulting State (after applying @_result.ProducedEvents.Count events)</h4>
+                <JsonViewer Json="@_result.ResultingStateJson"
+                            RedactedContent="@_result.ResultingState"
+                            AriaLabel="Resulting aggregate state" />
+            }
+
+            @* Execution metadata *@
+            <div style="margin-top: 12px; font-size: 12px; color: var(--colorNeutralForeground3);">
+                Executed in @(_result.ExecutionTimeMs)ms against state at sequence @_result.AtSequence.
+            </div>
+        </div>
+    }
+
+    @* Event payload dialog *@
+    <FluentDialog @ref="_payloadDialog" Modal="true" aria-label="Event payload">
+        <FluentDialogBody>
+            <TitleTemplate>
+                <FluentText As="@TextTag.H2" Size="TextSize.Size500" Weight="TextWeight.Semibold">
+                    Event Payload — @_selectedEventTypeName
+                </FluentText>
+            </TitleTemplate>
+            <ChildContent>
+                <JsonViewer Json="@_selectedEventPayload"
+                            RedactedContent="@_selectedEventRedacted"
+                            AriaLabel="Event payload"
+                            MaxHeight="500" />
+            </ChildContent>
+            <ActionTemplate>
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="ClosePayloadDialogAsync">Close</FluentButton>
+            </ActionTemplate>
+        </FluentDialogBody>
+    </FluentDialog>
+</div>
+
+@code {
+    private string _commandType = string.Empty;
+    private string _payloadJson = string.Empty;
+    private long? _atSequence;
+    private bool _loading;
+    private string? _apiError;
+    private string? _jsonValidationError;
+    private SandboxResult? _result;
+    private string _stateChangeSearch = string.Empty;
+    private List<FieldChange> _filteredStateChanges = [];
+    private FluentDialog? _payloadDialog;
+    private string _selectedEventPayload = string.Empty;
+    private AdminRedactedContent? _selectedEventRedacted;
+    private string _selectedEventTypeName = string.Empty;
+    private CancellationTokenSource? _cts;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter]
+    public long? InitialSequence { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnNavigateToEvent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (InitialSequence.HasValue)
+        {
+            _atSequence = InitialSequence.Value;
+        }
+    }
+
+    private bool CanRun
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_commandType) || _loading)
+            {
+                return false;
+            }
+
+            // Validate JSON if provided
+            if (!string.IsNullOrWhiteSpace(_payloadJson))
+            {
+                try
+                {
+                    using JsonDocument doc = JsonDocument.Parse(_payloadJson);
+                }
+                catch (JsonException)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    private async Task RunSandboxAsync()
+    {
+        _apiError = null;
+        _result = null;
+        _jsonValidationError = null;
+
+        // Validate JSON
+        string payload = string.IsNullOrWhiteSpace(_payloadJson) ? "{}" : _payloadJson;
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(payload);
+        }
+        catch (JsonException)
+        {
+            _jsonValidationError = "Invalid JSON";
+            return;
+        }
+
+        _loading = true;
+        StateHasChanged();
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+
+        try
+        {
+            SandboxCommandRequest request = new(
+                CommandType: _commandType,
+                PayloadJson: payload,
+                AtSequence: _atSequence,
+                CorrelationId: null,
+                UserId: null);
+
+            _result = await ApiClient.SandboxCommandAsync(
+                TenantId, Domain, AggregateId, request, _cts.Token);
+
+            if (_result is null)
+            {
+                _apiError = "No result returned — the stream may not exist, or the server may be unavailable. Verify tenant, domain, and aggregate ID.";
+            }
+            else
+            {
+                ApplyStateChangeFilter();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _apiError = "Sandbox timed out — state reconstruction may be too slow for this aggregate (large stream without nearby snapshots). Try specifying a sequence closer to a known snapshot position, or use a smaller aggregate for testing.";
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _apiError = SafeProblemMessage(ex);
+        }
+        catch
+        {
+            _apiError = "Unable to run sandbox — check server connectivity.";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyStateChangeFilter()
+    {
+        if (_result is null)
+        {
+            _filteredStateChanges = [];
+            return;
+        }
+
+        _filteredStateChanges = string.IsNullOrWhiteSpace(_stateChangeSearch)
+            ? _result.StateChanges.ToList()
+            : _result.StateChanges
+                .Where(fc => fc.FieldPath.Contains(_stateChangeSearch, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+    }
+
+    private void OnStateChangeSearchChanged()
+    {
+        ApplyStateChangeFilter();
+        StateHasChanged();
+    }
+
+    private void ClearStateChangeSearch()
+    {
+        _stateChangeSearch = string.Empty;
+        OnStateChangeSearchChanged();
+    }
+
+    private async Task ShowEventPayloadAsync(SandboxEvent evt)
+    {
+        _selectedEventTypeName = evt.EventTypeName;
+        _selectedEventPayload = evt.PayloadJson;
+        _selectedEventRedacted = evt.Payload;
+        if (_payloadDialog is not null)
+        {
+            await _payloadDialog.ShowAsync().ConfigureAwait(false);
+        }
+    }
+
+    private static RenderFragment FieldValueContent(string? value, AdminRedactedContent? content) => builder =>
+    {
+        if (content is not null)
+        {
+            builder.OpenComponent<ProtectedContentPanel>(0);
+            builder.AddAttribute(1, nameof(ProtectedContentPanel.Content), content);
+            builder.AddAttribute(2, nameof(ProtectedContentPanel.Compact), true);
+            builder.CloseComponent();
+            return;
+        }
+
+        string safeValue = value ?? string.Empty;
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "class", "monospace");
+        builder.AddAttribute(5, "title", safeValue);
+        builder.AddContent(6, TruncateValue(safeValue));
+        builder.CloseElement();
+    };
+
+    private async Task ClosePayloadDialogAsync()
+    {
+        if (_payloadDialog is not null)
+        {
+            await _payloadDialog.HideAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private static string TruncateValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Length > 60 ? string.Concat(value.AsSpan(0, 57), "...") : value;
+    }
+
+    private static string SafeProblemMessage(AdminApiProblemException exception)
+        => exception.Detail ?? exception.Message;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_cts is not null)
+        {
+            await _cts.CancelAsync().ConfigureAwait(false);
+            _cts.Dispose();
+            _cts = null;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+}

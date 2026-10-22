@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-p:UseNuGetDeps=false",
+    "-p:BuildProjectReferences=false",
+    "-m:1",
+    "-nr:false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T14:00:52.857873+00:00",
+  "environment_overrides": {},
+  "runner_pid": 55783,
+  "pid": 55804,
+  "exit_code": 0,
+  "elapsed_seconds": 1.805139093004982,
+  "utc_end": "2026-10-22T14:00:54.663154+00:00"
+}

@@ -1,0 +1,350 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@inject AdminStreamApiClient ApiClient
+@inject ILogger<EventDetailPanel> Logger
+
+<div class="event-detail-panel" role="complementary" aria-label="Event detail">
+    @if (_loading)
+    {
+        <SkeletonCard />
+        <SkeletonCard />
+    }
+    else if (_error is not null)
+    {
+        <EmptyState Title="Failed to load event detail"
+                    Description="@_error"
+                    ActionLabel="Retry"
+                    ActionHref="#" />
+    }
+    else if (_eventDetail is not null)
+    {
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="16">
+            <h3 style="margin: 0;">@_eventDetail.EventTypeName</h3>
+
+            <div class="event-metadata">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="8">
+                    <div><strong>Sequence:</strong> <span class="monospace">@_eventDetail.SequenceNumber</span></div>
+                    <div><strong>Timestamp:</strong> <span class="monospace">@_eventDetail.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff")</span></div>
+                    <div>
+                        <strong>Correlation ID:</strong>
+                        <span class="monospace" title="@_eventDetail.CorrelationId">@_eventDetail.CorrelationId</span>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      Title="Copy correlation ID"
+                                      OnClick="() => OnCopyCorrelation.InvokeAsync(_eventDetail.CorrelationId)"
+                                      aria-label="Copy correlation ID">
+                            &#x1F4CB;
+                        </FluentButton>
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      Title="Open trace map"
+                                      OnClick="() => OnOpenTraceMap.InvokeAsync(_eventDetail.CorrelationId)"
+                                      aria-label="Open trace map">
+                            &#x1F50D; Trace
+                        </FluentButton>
+                    </div>
+                    @if (_eventDetail.CausationId is not null)
+                    {
+                        <div>
+                            <strong>Causation ID:</strong>
+                            <span class="monospace" title="@_eventDetail.CausationId">@_eventDetail.CausationId</span>
+                        </div>
+                    }
+                    @if (_eventDetail.UserId is not null)
+                    {
+                        <div><strong>User:</strong> @_eventDetail.UserId</div>
+                    }
+                </FluentStack>
+            </div>
+
+            <h4 style="margin: 8px 0 0 0;">Event Payload</h4>
+            <JsonViewer Json="@_eventDetail.PayloadJson"
+                        RedactedContent="@_eventDetail.Payload"
+                        AriaLabel="Event payload JSON" />
+
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center"
+                         Style="margin: 8px 0 0 0;">
+                <h4 style="margin: 0;">State After This Event</h4>
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              OnClick="OpenInspector"
+                              Title="Inspect state at any position"
+                              aria-label="Inspect state">
+                    &#x1F50D; Inspect State
+                </FluentButton>
+            </FluentStack>
+            @if (_stateLoading)
+            {
+                <SkeletonCard />
+            }
+            else if (_stateSnapshot is not null)
+            {
+                <JsonViewer Json="@_stateSnapshot.StateJson"
+                            RedactedContent="@_stateSnapshot.State"
+                            AriaLabel="@($"Aggregate state at sequence {_eventDetail.SequenceNumber}")" />
+            }
+            else if (_stateError is not null)
+            {
+                <div class="state-error" role="alert"
+                     style="color: var(--hexalith-status-error); padding: 8px;">
+                    @_stateError
+                    @if (_stateErrorRetryable)
+                    {
+                        <FluentButton Appearance="ButtonAppearance.Transparent"
+                                      OnClick="LoadStateAsync"
+                                      Style="margin-left: 8px;">
+                            Retry
+                        </FluentButton>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="state-unavailable" style="color: var(--colorNeutralForeground3); padding: 8px;">
+                    State reconstruction not available at this position.
+                </div>
+            }
+
+            @if (SequenceNumber >= 1)
+            {
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="DiffWithPrevious"
+                              aria-label="Show what changed due to this event">
+                    Diff with Previous
+                </FluentButton>
+            }
+
+            <FluentButton Appearance="ButtonAppearance.Outline"
+                          OnClick="TraceCausation"
+                          Disabled="@_causationLoading">
+                @(_causationLoading ? "Loading..." : "Trace Causation")
+            </FluentButton>
+
+            @if (_causationChain is not null)
+            {
+                <CausationChainView Chain="@_causationChain"
+                                    OnCorrelationClick="OnCopyCorrelation"
+                                    OnOpenTraceMap="OnOpenTraceMap" />
+            }
+            @if (_causationError is not null)
+            {
+                <div class="causation-error" role="alert" style="color: var(--hexalith-status-error);">
+                    @_causationError
+                    <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="TraceCausation">Retry</FluentButton>
+                </div>
+            }
+        </FluentStack>
+    }
+</div>
+
+@code {
+    private EventDetail? _eventDetail;
+    private AggregateStateSnapshot? _stateSnapshot;
+    private CausationChain? _causationChain;
+    private bool _loading = true;
+    private bool _stateLoading;
+    private bool _causationLoading;
+    private string? _error;
+    private string? _stateError;
+    private bool _stateErrorRetryable;
+    private string? _causationError;
+    private long _previousSequenceNumber = -1;
+    private string _previousAggregateId = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string TenantId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Domain { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string AggregateId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public long SequenceNumber { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnCopyCorrelation { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnOpenTraceMap { get; set; }
+
+    [Parameter]
+    public EventCallback<long> OnInspectState { get; set; }
+
+    [Parameter]
+    public EventCallback<(long From, long To)> OnDiffRequested { get; set; }
+
+    [Parameter]
+    public bool AutoTraceCausation { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SequenceNumber == _previousSequenceNumber && AggregateId == _previousAggregateId)
+        {
+            return;
+        }
+
+        _previousSequenceNumber = SequenceNumber;
+        _previousAggregateId = AggregateId;
+        _loading = true;
+        _causationChain = null;
+        _causationError = null;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            _eventDetail = await ApiClient.GetEventDetailAsync(
+                TenantId, Domain, AggregateId, SequenceNumber);
+
+            if (_eventDetail is null)
+            {
+                _error = "Event not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_eventDetail is not null)
+        {
+            await LoadStateAsync();
+
+            if (AutoTraceCausation && _causationChain is null)
+            {
+                await TraceCausation();
+            }
+        }
+    }
+
+    private async Task LoadStateAsync()
+    {
+        if (_stateLoading)
+        {
+            return;
+        }
+
+        _stateLoading = true;
+        _stateSnapshot = null;
+        _stateError = null;
+        _stateErrorRetryable = false;
+        StateHasChanged();
+
+        long requestedSequence = SequenceNumber;
+        string requestedAggregateId = AggregateId;
+
+        try
+        {
+            AggregateStateSnapshot? snapshot = await ApiClient.GetAggregateStateAtPositionAsync(
+                TenantId, Domain, AggregateId, requestedSequence);
+
+            // Drop the result if the user moved to a different event while this load was in flight.
+            if (requestedSequence != SequenceNumber || requestedAggregateId != AggregateId)
+            {
+                return;
+            }
+
+            _stateSnapshot = snapshot;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _stateError = "Sign in required to inspect state at this position.";
+            _stateErrorRetryable = false;
+        }
+        catch (ForbiddenAccessException)
+        {
+            _stateError = "Access denied. You do not have permission to inspect state for this stream.";
+            _stateErrorRetryable = false;
+        }
+        catch (ServiceUnavailableException)
+        {
+            _stateError = "Backend unavailable. State inspection is temporarily offline.";
+            _stateErrorRetryable = true;
+        }
+        catch (AdminApiProblemException ex)
+        {
+            _stateError = ex.Detail ?? ex.Message;
+            _stateErrorRetryable = ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _stateError = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Invalid request for this position. Check the sequence value."
+                : ex.Message;
+            _stateErrorRetryable = false;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            _stateError = "State inspection request failed. Try again, or check the backend health.";
+            _stateErrorRetryable = true;
+            Logger.LogWarning(
+                ex,
+                "State inspection HTTP failure for {TenantId}/{Domain}/{AggregateId} at sequence {SequenceNumber}.",
+                TenantId,
+                Domain,
+                AggregateId,
+                requestedSequence);
+        }
+        catch (Exception ex)
+        {
+            _stateError = "Unexpected error while inspecting state. Try again or report this if it persists.";
+            _stateErrorRetryable = true;
+            Logger.LogError(
+                ex,
+                "Unexpected state inspection failure for {TenantId}/{Domain}/{AggregateId} at sequence {SequenceNumber}.",
+                TenantId,
+                Domain,
+                AggregateId,
+                requestedSequence);
+        }
+        finally
+        {
+            _stateLoading = false;
+        }
+    }
+
+    private async Task OpenInspector()
+    {
+        await OnInspectState.InvokeAsync(SequenceNumber);
+    }
+
+    private async Task DiffWithPrevious()
+    {
+        await OnDiffRequested.InvokeAsync((SequenceNumber - 1, SequenceNumber));
+    }
+
+    private async Task TraceCausation()
+    {
+        _causationLoading = true;
+        _causationError = null;
+        _causationChain = null;
+        StateHasChanged();
+
+        try
+        {
+            _causationChain = await ApiClient.TraceCausationChainAsync(
+                TenantId, Domain, AggregateId, SequenceNumber);
+            if (_causationChain is null)
+            {
+                _causationError = "Causation chain not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _causationError = $"Failed to load causation chain: {ex.Message}";
+        }
+        finally
+        {
+            _causationLoading = false;
+        }
+    }
+}

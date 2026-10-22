@@ -1,0 +1,9 @@
+[
+  "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-admission-auth-rate.xml",
+  "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch",
+  "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-source.patch",
+  "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md",
+  "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs",
+  "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs",
+  "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs"
+]

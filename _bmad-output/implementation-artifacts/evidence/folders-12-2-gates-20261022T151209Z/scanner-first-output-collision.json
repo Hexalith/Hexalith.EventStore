@@ -1,0 +1,5 @@
+{
+  "receipt": "current-original-findings.json",
+  "log": "current-original-findings.log",
+  "issue": "Diagnostic output path collided with the receipt basename; final command receipt replaced the intermediate findings document. Original stdout summary is retained. A fresh command uses a separate findings filename. No failed acceptance was removed."
+}

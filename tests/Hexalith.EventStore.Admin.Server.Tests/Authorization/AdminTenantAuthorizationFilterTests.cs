@@ -138,6 +138,112 @@ public class AdminTenantAuthorizationFilterTests {
         context.Result.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OnActionExecutionAsync_AdminWithOmittedTenantArgument_StaysUnscoped(bool withTenantClaim) {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: null,
+            tenantClaims: withTenantClaim ? ["tenant-a"] : [],
+            includeTenantArgument: true,
+            admin: true);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeTrue();
+        context.Result.ShouldBeNull();
+        context.ActionArguments["tenantId"].ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(" ", null, null)]
+    [InlineData(null, "", null)]
+    [InlineData(null, "%20%20", null)]
+    [InlineData(null, null, "")]
+    [InlineData(null, null, "  ")]
+    public async Task OnActionExecutionAsync_BlankRequestedTenant_IsNarrowedToAuthorizedClaim(
+        string? routeTenantId,
+        string? queryTenantId,
+        string? actionTenantId) {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: routeTenantId,
+            tenantClaims: ["tenant-a"],
+            queryTenantId: queryTenantId,
+            includeTenantArgument: true,
+            actionTenantId: actionTenantId);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeTrue();
+        context.Result.ShouldBeNull();
+        context.ActionArguments["tenantId"].ShouldBe("tenant-a");
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_BlankTenantClaims_AreSkippedWhenNarrowing() {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: null,
+            tenantClaims: [" ", "", "tenant-b"],
+            includeTenantArgument: true);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeTrue();
+        context.ActionArguments["tenantId"].ShouldBe("tenant-b");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("tenant-a")]
+    public async Task OnActionExecutionAsync_OnlyBlankTenantClaims_DenyBeforeNext(string? routeTenantId) {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: routeTenantId,
+            tenantClaims: [" ", ""],
+            includeTenantArgument: true);
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        context.ActionArguments["tenantId"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task OnActionExecutionAsync_BlankRouteAndQuery_DoNotMaskUnauthorizedActionTenant() {
+        ActionExecutingContext context = CreateContext(
+            routeTenantId: " ",
+            tenantClaims: ["tenant-a"],
+            queryTenantId: "%20",
+            includeTenantArgument: true,
+            actionTenantId: "tenant-c");
+        bool nextCalled = false;
+
+        await _sut.OnActionExecutionAsync(context, () => {
+            nextCalled = true;
+            return Task.FromResult<ActionExecutedContext>(null!);
+        });
+
+        nextCalled.ShouldBeFalse();
+        context.Result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status403Forbidden);
+        context.ActionArguments["tenantId"].ShouldBe("tenant-c");
+    }
+
     [Fact]
     public async Task OnActionExecutionAsync_DenialLogAndProblemAreIdentifierFree() {
         var logger = new RecordingLogger<AdminTenantAuthorizationFilter>();
@@ -166,7 +272,8 @@ public class AdminTenantAuthorizationFilterTests {
         string[] tenantClaims,
         string? queryTenantId = null,
         bool includeTenantArgument = false,
-        bool admin = false) {
+        bool admin = false,
+        string? actionTenantId = null) {
         var claims = new List<Claim>();
         foreach (string tenant in tenantClaims) {
             claims.Add(new Claim(AdminClaimTypes.Tenant, tenant));
@@ -192,7 +299,7 @@ public class AdminTenantAuthorizationFilterTests {
 
         var actionContext = new ActionContext(httpContext, routeData, new ActionDescriptor());
         Dictionary<string, object?> arguments = includeTenantArgument
-            ? new Dictionary<string, object?> { ["tenantId"] = null }
+            ? new Dictionary<string, object?> { ["tenantId"] = actionTenantId }
             : new Dictionary<string, object?>();
         return new ActionExecutingContext(
             actionContext,

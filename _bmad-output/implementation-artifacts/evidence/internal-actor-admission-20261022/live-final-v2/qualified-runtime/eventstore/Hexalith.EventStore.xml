@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Hexalith.EventStore</name>
+    </assembly>
+    <members>
+        <member name="T:Program">
+            <summary>
+            Entry point class, made partial for WebApplicationFactory test access.
+            </summary>
+        </member>
+    </members>
+</doc>

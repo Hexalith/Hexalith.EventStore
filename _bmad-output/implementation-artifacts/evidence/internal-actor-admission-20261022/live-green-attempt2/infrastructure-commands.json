@@ -1,0 +1,2115 @@
+[
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-f26e9ce61a5e-redis",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-b9tictn_/redis.cid",
+      "-p",
+      "127.0.0.1::6379",
+      "redis:7-alpine"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.30699630500748754,
+    "stdout": "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "6379"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.02517691299726721,
+    "stdout": "127.0.0.1:55961\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "redis:7-alpine"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06454125500749797,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065\",\n        \"RepoTags\": [\n            \"redis:7-alpine\"\n        ],\n        \"RepoDigests\": [\n            \"redis@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-02-23T17:35:24.435278745Z\",\n        \"Config\": {\n            \"ExposedPorts\": {\n                \"6379/tcp\": {}\n            },\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"GOSU_VERSION=1.17\",\n                \"REDIS_VERSION=7.4.8\",\n                \"REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-7.4.8.tar.gz\",\n                \"REDIS_DOWNLOAD_SHA=f6773cb7d63be236c59c2917a82f1f08e47b77d89b2f0c9f53becb22b8ea4172\"\n            ],\n            \"Entrypoint\": [\n                \"docker-entrypoint.sh\"\n            ],\n            \"Cmd\": [\n                \"redis-server\"\n            ],\n            \"Volumes\": {\n                \"/data\": {}\n            },\n            \"WorkingDir\": \"/data\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 60665158,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:23e75c9dd3ec742dcf0b41994dd6e581b011fb29044efa7b1921f92f59e3e11e\",\n                \"sha256:31507fdd2290278228f05ba493c147725f7c7d15356dd58432fc87b09767ebe0\",\n                \"sha256:600081b7a4023fcd90916665161c4cb13dccb74a8863c410716efaa02622afa5\",\n                \"sha256:0bd88c6f3bb2d1b012ebc1f807d5f968422e0b0dca705607d132afb4417dd469\",\n                \"sha256:eb2e1daa6eab7feb9285d002e79e24f1280e9b458c97b97348da1be623b04b54\",\n                \"sha256:63edc2d331e26801ef3a391d7659b0f9138fbf2134ba89f84d94fd32c205b273\",\n                \"sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef\",\n                \"sha256:ce3b1596d89b0d767a288c0697ac40da8b8318d74dad7c7a750d0ffdafcb340a\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-03-02T07:25:31.409455846Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065\",\n            \"size\": 10245\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/library/redis\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-f26e9ce61a5e-placement",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-b9tictn_/placement.cid",
+      "-p",
+      "127.0.0.1::50005",
+      "--entrypoint",
+      "./placement",
+      "daprio/dapr:1.18.7",
+      "--port",
+      "50005"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.28259796000202186,
+    "stdout": "016430ccf3293892e5dcab5d6a005d3b27d9d45732d7a9c602b1f30c31bd9dc7\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "016430ccf3293892e5dcab5d6a005d3b27d9d45732d7a9c602b1f30c31bd9dc7",
+      "50005"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.02656898699933663,
+    "stdout": "127.0.0.1:55963\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "daprio/dapr:1.18.7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.05230113801371772,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"RepoTags\": [\n            \"daprio/dapr:1.18.7\"\n        ],\n        \"RepoDigests\": [\n            \"daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-09T20:12:36.054822184Z\",\n        \"Config\": {\n            \"User\": \"65532:65532\",\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"WorkingDir\": \"/\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 650052110,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:9486261b5a13f63ca6904b36721527ac8f19df53d300560138d69ae9b4c203de\",\n                \"sha256:621c35e751a51a9a9dc3e80aa0b7fe8be2a93402ea6ccd307d30852cd7776cda\",\n                \"sha256:763a77745f27b86cf26b97887b6842d83720e63b1c48848c0ba9ee54e351d63a\",\n                \"sha256:f0d0eff4c2312a7bd6e21797bdfea5eb35f60e76b555ce2b22794424af2cad36\",\n                \"sha256:275a30dd8ce958b21daa9ad962c6fbc09f98306ee2f486b65c9075dc257b1412\",\n                \"sha256:4d049f83d9cf21d1f5cc0e11deaf36df02790d0e60c1a3829538fb4b61685368\",\n                \"sha256:af5aa97ebe6ce1604747ec1e21af7136ded391bcabe4acef882e718a87c86bcc\",\n                \"sha256:6f1cdceb6a3146f0ccb986521156bef8a422cdbb0863396f7f751f575ba308f4\",\n                \"sha256:bd3cdfae1d3fdd83a2231d608969b38b82349777c2fff9a7c12d54f8ac5c9b38\",\n                \"sha256:4cde6b0bb6f50a5f255eef7b2a42162c661cf776b803225dcac9a659e396bb6b\",\n                \"sha256:ad51d0769d16ba578106a177987dfe3d2e02c1668c852b795b2f6b024068242a\",\n                \"sha256:187cfc6d1e3e8a40a5e64653bcd3239c140807dcf1c09e48021178705a5a6139\",\n                \"sha256:f2392a9484bf6b18f06beaf705b994e31dbb2716c99cf7d03c9c495cd107f364\",\n                \"sha256:641f90239595925670eccf07a875d85732d545db212af4a996b5232d156fb677\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-13T14:15:25.43547467Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n            \"digest\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n            \"size\": 1771\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/daprio/dapr\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-f26e9ce61a5e-scheduler",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-b9tictn_/scheduler.cid",
+      "-p",
+      "127.0.0.1:48053:50006",
+      "--entrypoint",
+      "./scheduler",
+      "daprio/dapr:1.18.7",
+      "--etcd-data-dir=/tmp/admission-etcd",
+      "--override-broadcast-host-port=127.0.0.1:48053",
+      "--etcd-client-listen-address=0.0.0.0"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.32584919800865464,
+    "stdout": "cb4089092072cc978d877f5e7b2d57fdada10e35d3c33b2f220479e7d914e21c\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "cb4089092072cc978d877f5e7b2d57fdada10e35d3c33b2f220479e7d914e21c",
+      "50006"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.028902145990286954,
+    "stdout": "127.0.0.1:48053\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "daprio/dapr:1.18.7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06036684999708086,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"RepoTags\": [\n            \"daprio/dapr:1.18.7\"\n        ],\n        \"RepoDigests\": [\n            \"daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-09T20:12:36.054822184Z\",\n        \"Config\": {\n            \"User\": \"65532:65532\",\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"WorkingDir\": \"/\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 650052110,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:9486261b5a13f63ca6904b36721527ac8f19df53d300560138d69ae9b4c203de\",\n                \"sha256:621c35e751a51a9a9dc3e80aa0b7fe8be2a93402ea6ccd307d30852cd7776cda\",\n                \"sha256:763a77745f27b86cf26b97887b6842d83720e63b1c48848c0ba9ee54e351d63a\",\n                \"sha256:f0d0eff4c2312a7bd6e21797bdfea5eb35f60e76b555ce2b22794424af2cad36\",\n                \"sha256:275a30dd8ce958b21daa9ad962c6fbc09f98306ee2f486b65c9075dc257b1412\",\n                \"sha256:4d049f83d9cf21d1f5cc0e11deaf36df02790d0e60c1a3829538fb4b61685368\",\n                \"sha256:af5aa97ebe6ce1604747ec1e21af7136ded391bcabe4acef882e718a87c86bcc\",\n                \"sha256:6f1cdceb6a3146f0ccb986521156bef8a422cdbb0863396f7f751f575ba308f4\",\n                \"sha256:bd3cdfae1d3fdd83a2231d608969b38b82349777c2fff9a7c12d54f8ac5c9b38\",\n                \"sha256:4cde6b0bb6f50a5f255eef7b2a42162c661cf776b803225dcac9a659e396bb6b\",\n                \"sha256:ad51d0769d16ba578106a177987dfe3d2e02c1668c852b795b2f6b024068242a\",\n                \"sha256:187cfc6d1e3e8a40a5e64653bcd3239c140807dcf1c09e48021178705a5a6139\",\n                \"sha256:f2392a9484bf6b18f06beaf705b994e31dbb2716c99cf7d03c9c495cd107f364\",\n                \"sha256:641f90239595925670eccf07a875d85732d545db212af4a996b5232d156fb677\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-13T14:15:25.43547467Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n            \"digest\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n            \"size\": 1771\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/daprio/dapr\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--scan"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06875106600637082,
+    "stdout": "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission\n*.*.projection-changed\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06514727500325534,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06493958699866198,
+    "stdout": "{\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"executionMessageId\":\"01J00000000000000000000000\",\"executionCorrelationId\":\"recovery-correlation\",\"tenantPartition\":\"tenant-admission\",\"digestKeyVersion\":\"local1\",\"verificationTag\":\"fixture-verification\",\"retentionTier\":1,\"replayExpiresAt\":null,\"state\":4,\"fencingToken\":1,\"keyDigest\":\"recovery\",\"firstConsumedAt\":\"2026-10-22T10:38:46+00:00\",\"replayResult\":null,\"schemaVersion\":2,\"intentDigest\":\"fixture-intent\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "*.*.projection-changed"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06466107598680537,
+    "stdout": "stream\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--scan"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0708753799990518,
+    "stdout": "admin:storage-overview:all\nadmin:storage-stream-count:tenant-admission\neventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state\neventstore||ETagActor||counter:tenant-admission||etag\neventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count\nadmin:storage-stream-count:all\nadmin:stream-activity:all\nprojection-activation:outbox:v1:08\nprojection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter\nadmin:storage-hot-streams:all\neventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index\neventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission\ntenant-admission.counter.events\neventstore||GlobalPositionActor||global||current-global-position\ntenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command-index\neventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index\neventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission\neventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01XVWQ660FNBE5J2EAPWM54FX4\nadmin:storage-hot-streams:tenant-admission\n*.*.projection-changed\ntenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command\nadmin:storage-overview:tenant-admission\ntenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status\neventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1\neventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch\neventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion\nadmin:storage-stream-info:tenant-admission:counter:admission-counter\nprojection-checkpoints:tenant-admission:counter:admission-counter:counter\nadmin:command-activity:all\neventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle\neventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\neventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-overview:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06769308599177748,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-overview:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06494617499993183,
+    "stdout": "{\"totalEventCount\":1,\"totalSizeBytes\":null,\"indexStatus\":3,\"tenantBreakdown\":[{\"eventCount\":1,\"sizeBytes\":null,\"tenantId\":\"tenant-admission\",\"growthRatePerDay\":null}],\"totalStreamCount\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-stream-count:tenant-admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06573505900450982,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-stream-count:tenant-admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06668665799952578,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06771905699861236,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06548257899703458,
+    "stdout": "{\"projectionType\":\"counter\",\"tenantId\":\"tenant-admission\",\"stateBytes\":\"eyJjb3VudCI6MX0=\",\"notificationGroupScope\":\"counter-status\",\"notificationMetadata\":{\"change-kind\":\"counter-projection-updated\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ETagActor||counter:tenant-admission||etag"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06566928199026734,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ETagActor||counter:tenant-admission||etag",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06494973100780044,
+    "stdout": "\"Y291bnRlcg.9hG2GdlOmkGVqwSWMr_p3A\"\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.065908541000681,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0642804790113587,
+    "stdout": "0\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-stream-count:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0643561399920145,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-stream-count:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06465261099219788,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:stream-activity:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06333686898869928,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:stream-activity:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06393472000490874,
+    "stdout": "[{\"lastEventSequence\":1,\"lastActivityUtc\":\"2026-10-22T10:38:46+00:00\",\"eventCount\":1,\"hasSnapshot\":false,\"streamStatus\":0,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "projection-activation:outbox:v1:08"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06466574200021569,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "projection-activation:outbox:v1:08",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06463545700535178,
+    "stdout": "{\"items\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "projection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06642121500044595,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "projection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07100864799576811,
+    "stdout": "{\"migrated\":true}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-hot-streams:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06599831600033212,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-hot-streams:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06617487099720165,
+    "stdout": "[{\"eventCount\":1,\"sizeBytes\":null,\"hasSnapshot\":false,\"snapshotAge\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"aggregateType\":\"CounterAggregate\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06658498199249152,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07032704300945625,
+    "stdout": "{\"entries\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07775498399860226,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.09097098698839545,
+    "stdout": "{\"state\":5,\"verificationTag\":\"TixwqFtFy72_fO6GiDQOEfhKdlSqRXafjv_flCnaewM\",\"intentDigest\":\"CbPPY9x1dXGGRjgKHii2RuvF37LJoc5xpU4xLZ6Qo5I\",\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"fencingToken\":1,\"replayResult\":{\"errorMessage\":null,\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"backpressureExceeded\":false,\"backpressureThreshold\":null,\"accepted\":true,\"eventCount\":1,\"resultPayload\":null,\"backpressurePendingCount\":null,\"rejectionEventType\":null,\"failureReason\":null,\"resultPayloadWithheld\":false},\"tenantPartition\":\"tenant-admission\",\"digestKeyVersion\":\"local1\",\"keyDigest\":\"Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"replayExpiresAt\":\"2026-10-23T10:38:46+00:00\",\"schemaVersion\":2,\"executionMessageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"executionCorrelationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"retentionTier\":1,\"firstConsumedAt\":\"2026-10-22T10:38:46+00:00\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission.counter.events"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06739138999546412,
+    "stdout": "stream\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||GlobalPositionActor||global||current-global-position"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06683087399869692,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||GlobalPositionActor||global||current-global-position",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06424649299879093,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command-index"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06554583199613262,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command-index",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06516328599536791,
+    "stdout": "{\"entries\":[{\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"expiresAt\":\"2026-10-23T10:38:46+00:00\"}],\"overflowed\":false,\"overflowExpiresAt\":null}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06570501599344425,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06470336399797816,
+    "stdout": "{\"entries\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0662805610045325,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06773346399131697,
+    "stdout": "{\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"executionMessageId\":\"01J00000000000000000000000\",\"executionCorrelationId\":\"recovery-correlation\",\"tenantPartition\":\"tenant-admission\",\"digestKeyVersion\":\"local1\",\"verificationTag\":\"fixture-verification\",\"retentionTier\":1,\"replayExpiresAt\":null,\"state\":4,\"fencingToken\":1,\"keyDigest\":\"recovery\",\"firstConsumedAt\":\"2026-10-22T10:38:46+00:00\",\"replayResult\":null,\"schemaVersion\":2,\"intentDigest\":\"fixture-intent\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01XVWQ660FNBE5J2EAPWM54FX4"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07035248199827038,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01XVWQ660FNBE5J2EAPWM54FX4",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0676371309964452,
+    "stdout": "{\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"accepted\":true,\"errorMessage\":null,\"resultPayload\":null,\"backpressureThreshold\":null,\"commandType\":\"IncrementCounter\",\"expiresAt\":\"2026-10-23T10:38:46+00:00\",\"disposition\":1,\"processedAt\":\"2026-10-22T10:38:46+00:00\",\"eventCount\":1,\"failureReason\":null,\"resultPayloadWithheld\":false,\"causationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"backpressurePendingCount\":null,\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"backpressureExceeded\":false,\"rejectionEventType\":null}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-hot-streams:tenant-admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06701342199812643,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-hot-streams:tenant-admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07352723699295893,
+    "stdout": "[{\"eventCount\":1,\"sizeBytes\":null,\"hasSnapshot\":false,\"snapshotAge\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"aggregateType\":\"CounterAggregate\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "*.*.projection-changed"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06853555899579078,
+    "stdout": "stream\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06869829099741764,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06895559700205922,
+    "stdout": "{\"tenant\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"commandType\":\"IncrementCounter\",\"payload\":\"eyJjb3VudGVySWQiOiJhZG1pc3Npb24tY291bnRlciJ9\",\"extensions\":null,\"originalTimestamp\":\"2026-10-22T10:38:49.2441164+00:00\",\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-overview:tenant-admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06995145400287583,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-overview:tenant-admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06773569600773044,
+    "stdout": "{\"totalEventCount\":1,\"totalSizeBytes\":null,\"indexStatus\":3,\"tenantBreakdown\":[{\"eventCount\":1,\"sizeBytes\":null,\"tenantId\":\"tenant-admission\",\"growthRatePerDay\":null}],\"totalStreamCount\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06789658599882387,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06962512900645379,
+    "stdout": "{\"status\":4,\"timestamp\":\"2026-10-22T10:38:46+00:00\",\"aggregateId\":\"admission-counter\",\"eventCount\":1,\"rejectionEventType\":null,\"failureReason\":null,\"timeoutDuration\":null,\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"retryable\":null,\"recoveryReasonCode\":null,\"drainAttemptCount\":null,\"committedEventSequence\":1,\"domain\":\"counter\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06958679799572565,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06500604499888141,
+    "stdout": "{\"sequenceNumber\":1,\"eventTypeName\":\"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\"extensions\":{\"eventstore.protection\":\"{\\\"state\\\":\\\"Unprotected\\\",\\\"metadataVersion\\\":1}\"},\"globalPosition\":1,\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"domainServiceVersion\":\"v1\",\"serializationFormat\":\"json\",\"payload\":\"e30=\",\"aggregateId\":\"admission-counter\",\"causationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"userId\":\"qualification-runner\",\"metadataVersion\":1,\"identity\":{\"snapshotKey\":\"tenant-admission:counter:admission-counter:snapshot\",\"pipelineKeyPrefix\":\"tenant-admission:counter:admission-counter:pipeline:\",\"domain\":\"counter\",\"metadataKey\":\"tenant-admission:counter:admission-counter:metadata\",\"pubSubTopic\":\"tenant-admission.counter.events\",\"queueSession\":\"tenant-admission:counter:admission-counter\",\"tenantId\":\"tenant-admission\",\"aggregateId\":\"admission-counter\",\"actorId\":\"tenant-admission:counter:admission-counter\",\"eventStreamKeyPrefix\":\"tenant-admission:counter:admission-counter:events:\"},\"messageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\",\"aggregateType\":\"counter\",\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"timestamp\":\"2026-10-22T10:38:49.1517273+00:00\",\"applicationPayloadDigest\":\"bbb5fc549a585518e71f34425567ee78cf92c22be03e2e42a07789e44cbad73d\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0639031569880899,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06976315499923658,
+    "stdout": "2\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06768113900034223,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06637660600244999,
+    "stdout": "{\"priorReplayFence\":null,\"previousState\":null,\"promotedState\":null,\"publicationBinding\":{\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"headSequence\":1,\"sourceFingerprint\":\"bc61b61077b49a91ab63953ddfb1e7ae107bd681773ede59bc4a33dd4a56a8ba\",\"candidateFingerprint\":\"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661\",\"aggregateId\":\"admission-counter\",\"projectionName\":\"counter\",\"headMessageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\"},\"selectedStateFingerprint\":\"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"completed\":true,\"publicationFloor\":{\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"sourceFingerprint\":\"bc61b61077b49a91ab63953ddfb1e7ae107bd681773ede59bc4a33dd4a56a8ba\",\"aggregateId\":\"admission-counter\",\"projectionName\":\"counter\",\"headSequence\":1,\"headMessageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\",\"candidateFingerprint\":\"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661\"},\"selectedReplayFence\":{\"sourceActorId\":\"tenant-admission:counter:admission-counter\",\"projectionName\":\"counter\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"headSequence\":1}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-stream-info:tenant-admission:counter:admission-counter"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06619437799963634,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-stream-info:tenant-admission:counter:admission-counter",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06552260101307184,
+    "stdout": "{\"eventCount\":1,\"sizeBytes\":null,\"hasSnapshot\":false,\"snapshotAge\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"aggregateType\":\"CounterAggregate\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "projection-checkpoints:tenant-admission:counter:admission-counter:counter"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06799573999887798,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "projection-checkpoints:tenant-admission:counter:admission-counter:counter",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07135237200418487,
+    "stdout": "{\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"lastDeliveredSequence\":1,\"updatedAt\":\"2026-10-22T10:38:49.5005435+00:00\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:command-activity:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06821571099862922,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:command-activity:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06881518299633171,
+    "stdout": "[{\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"commandType\":\"IncrementCounter\",\"status\":4,\"timestamp\":\"2026-10-22T10:38:46+00:00\",\"eventCount\":1,\"failureReason\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07280653499765322,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07397150200267788,
+    "stdout": "{\"schemaVersion\":1,\"tenant\":\"tenant-admission\",\"deletionApprovedAt\":null,\"deleteAfter\":null,\"legalHoldStartedAt\":null,\"references\":[{\"keyDigest\":\"Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"actorId\":\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"digestKeyVersion\":\"local1\"}],\"hasTrustedEffectEvidence\":false,\"pendingTrustedEffectIds\":[],\"state\":0,\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"remainingRetention\":null,\"trustedEffectEvidenceErased\":false,\"trustedEffects\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06687807300477289,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06845269500627182,
+    "stdout": "{\"schemaVersion\":1,\"canonicalActorId\":\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"activeActorId\":\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"aliases\":[\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\"],\"promotionPhase\":0,\"promotionSourceActorId\":null,\"promotionTargetActorId\":null}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07797847400070168,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06859555699338671,
+    "stdout": "{\"lastModified\":\"2026-10-22T10:38:49.1517273+00:00\",\"eTag\":null,\"retainedFloor\":1,\"sourceProof\":{\"retainedFloor\":1,\"tenantId\":\"tenant-admission\",\"sourceIncarnation\":\"01M5HK2ASW9AHYESZYV1CVXT3Q\",\"erased\":false,\"codecVersion\":1,\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"headSequence\":1,\"headMessageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\",\"cumulativeDigest\":\"f9a93879db13ca715dba87389971a00590b15aacf43db29cddd0d7ac89da6065\"},\"currentSequence\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--scan"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0661019330000272,
+    "stdout": "admin:storage-overview:all\nadmin:storage-stream-count:tenant-admission\neventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state\neventstore||ETagActor||counter:tenant-admission||etag\neventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count\nadmin:storage-stream-count:all\nadmin:stream-activity:all\nprojection-activation:outbox:v1:08\nprojection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter\nadmin:storage-hot-streams:all\neventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index\neventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission\ntenant-admission.counter.events\neventstore||GlobalPositionActor||global||current-global-position\ntenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command-index\neventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index\neventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission\neventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01XVWQ660FNBE5J2EAPWM54FX4\nadmin:storage-hot-streams:tenant-admission\n*.*.projection-changed\ntenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command\nadmin:storage-overview:tenant-admission\ntenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status\neventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1\neventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch\neventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion\nadmin:storage-stream-info:tenant-admission:counter:admission-counter\nprojection-checkpoints:tenant-admission:counter:admission-counter:counter\nadmin:command-activity:all\neventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle\neventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\neventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-overview:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0656800069991732,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-overview:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07053199599613436,
+    "stdout": "{\"totalEventCount\":1,\"totalSizeBytes\":null,\"indexStatus\":3,\"tenantBreakdown\":[{\"eventCount\":1,\"sizeBytes\":null,\"tenantId\":\"tenant-admission\",\"growthRatePerDay\":null}],\"totalStreamCount\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-stream-count:tenant-admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06691328599117696,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-stream-count:tenant-admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06770011600747239,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0657226999901468,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06820675899507478,
+    "stdout": "{\"projectionType\":\"counter\",\"tenantId\":\"tenant-admission\",\"stateBytes\":\"eyJjb3VudCI6MX0=\",\"notificationGroupScope\":\"counter-status\",\"notificationMetadata\":{\"change-kind\":\"counter-projection-updated\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ETagActor||counter:tenant-admission||etag"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0670931539934827,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ETagActor||counter:tenant-admission||etag",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07014805100334343,
+    "stdout": "\"Y291bnRlcg.9hG2GdlOmkGVqwSWMr_p3A\"\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06610780500341207,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06821004599623848,
+    "stdout": "0\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-stream-count:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06732023999211378,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-stream-count:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06997223600046709,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:stream-activity:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07409472099971026,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:stream-activity:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06961268800660037,
+    "stdout": "[{\"lastEventSequence\":1,\"lastActivityUtc\":\"2026-10-22T10:38:46+00:00\",\"eventCount\":1,\"hasSnapshot\":false,\"streamStatus\":0,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "projection-activation:outbox:v1:08"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0680030179937603,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "projection-activation:outbox:v1:08",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06729500700021163,
+    "stdout": "{\"items\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "projection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06877333599550184,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "projection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07346652900741901,
+    "stdout": "{\"migrated\":true}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-hot-streams:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06856670700653922,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-hot-streams:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0663012259901734,
+    "stdout": "[{\"eventCount\":1,\"sizeBytes\":null,\"hasSnapshot\":false,\"snapshotAge\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"aggregateType\":\"CounterAggregate\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06726658999104984,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07064070100022946,
+    "stdout": "{\"entries\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07044195300841238,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0710836840007687,
+    "stdout": "{\"state\":5,\"verificationTag\":\"TixwqFtFy72_fO6GiDQOEfhKdlSqRXafjv_flCnaewM\",\"intentDigest\":\"CbPPY9x1dXGGRjgKHii2RuvF37LJoc5xpU4xLZ6Qo5I\",\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"fencingToken\":1,\"replayResult\":{\"errorMessage\":null,\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"backpressureExceeded\":false,\"backpressureThreshold\":null,\"accepted\":true,\"eventCount\":1,\"resultPayload\":null,\"backpressurePendingCount\":null,\"rejectionEventType\":null,\"failureReason\":null,\"resultPayloadWithheld\":false},\"tenantPartition\":\"tenant-admission\",\"digestKeyVersion\":\"local1\",\"keyDigest\":\"Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"replayExpiresAt\":\"2026-10-23T10:38:46+00:00\",\"schemaVersion\":2,\"executionMessageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"executionCorrelationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"retentionTier\":1,\"firstConsumedAt\":\"2026-10-22T10:38:46+00:00\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission.counter.events"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07193149799422827,
+    "stdout": "stream\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||GlobalPositionActor||global||current-global-position"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07127241700072773,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||GlobalPositionActor||global||current-global-position",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06841835299564991,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command-index"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06839984399266541,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command-index",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.070308431997546,
+    "stdout": "{\"entries\":[{\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"expiresAt\":\"2026-10-23T10:38:46+00:00\"}],\"overflowed\":false,\"overflowExpiresAt\":null}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07185038698662538,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07126921400777064,
+    "stdout": "{\"entries\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07264676399063319,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07186903699766845,
+    "stdout": "{\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"executionMessageId\":\"01J00000000000000000000000\",\"executionCorrelationId\":\"recovery-correlation\",\"tenantPartition\":\"tenant-admission\",\"digestKeyVersion\":\"local1\",\"verificationTag\":\"fixture-verification\",\"retentionTier\":1,\"replayExpiresAt\":null,\"state\":4,\"fencingToken\":1,\"keyDigest\":\"recovery\",\"firstConsumedAt\":\"2026-10-22T10:38:46+00:00\",\"replayResult\":null,\"schemaVersion\":2,\"intentDigest\":\"fixture-intent\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01XVWQ660FNBE5J2EAPWM54FX4"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07158109900774434,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01XVWQ660FNBE5J2EAPWM54FX4",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06971390401304234,
+    "stdout": "{\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"accepted\":true,\"errorMessage\":null,\"resultPayload\":null,\"backpressureThreshold\":null,\"commandType\":\"IncrementCounter\",\"expiresAt\":\"2026-10-23T10:38:46+00:00\",\"disposition\":1,\"processedAt\":\"2026-10-22T10:38:46+00:00\",\"eventCount\":1,\"failureReason\":null,\"resultPayloadWithheld\":false,\"causationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"backpressurePendingCount\":null,\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"backpressureExceeded\":false,\"rejectionEventType\":null}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-hot-streams:tenant-admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07227087501087226,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-hot-streams:tenant-admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07068923598853871,
+    "stdout": "[{\"eventCount\":1,\"sizeBytes\":null,\"hasSnapshot\":false,\"snapshotAge\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"aggregateType\":\"CounterAggregate\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "*.*.projection-changed"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0741160080069676,
+    "stdout": "stream\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07163228299759794,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:command",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06974497500050347,
+    "stdout": "{\"tenant\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"commandType\":\"IncrementCounter\",\"payload\":\"eyJjb3VudGVySWQiOiJhZG1pc3Npb24tY291bnRlciJ9\",\"extensions\":null,\"originalTimestamp\":\"2026-10-22T10:38:49.2441164+00:00\",\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-overview:tenant-admission"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07016949300304987,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-overview:tenant-admission",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07221624998783227,
+    "stdout": "{\"totalEventCount\":1,\"totalSizeBytes\":null,\"indexStatus\":3,\"tenantBreakdown\":[{\"eventCount\":1,\"sizeBytes\":null,\"tenantId\":\"tenant-admission\",\"growthRatePerDay\":null}],\"totalStreamCount\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07298999901104253,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06944451198796742,
+    "stdout": "{\"status\":4,\"timestamp\":\"2026-10-22T10:38:46+00:00\",\"aggregateId\":\"admission-counter\",\"eventCount\":1,\"rejectionEventType\":null,\"failureReason\":null,\"timeoutDuration\":null,\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"retryable\":null,\"recoveryReasonCode\":null,\"drainAttemptCount\":null,\"committedEventSequence\":1,\"domain\":\"counter\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07170005100488197,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06769118900410831,
+    "stdout": "{\"sequenceNumber\":1,\"eventTypeName\":\"Hexalith.EventStore.Sample.Counter.Events.CounterIncremented\",\"extensions\":{\"eventstore.protection\":\"{\\\"state\\\":\\\"Unprotected\\\",\\\"metadataVersion\\\":1}\"},\"globalPosition\":1,\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"domainServiceVersion\":\"v1\",\"serializationFormat\":\"json\",\"payload\":\"e30=\",\"aggregateId\":\"admission-counter\",\"causationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"userId\":\"qualification-runner\",\"metadataVersion\":1,\"identity\":{\"snapshotKey\":\"tenant-admission:counter:admission-counter:snapshot\",\"pipelineKeyPrefix\":\"tenant-admission:counter:admission-counter:pipeline:\",\"domain\":\"counter\",\"metadataKey\":\"tenant-admission:counter:admission-counter:metadata\",\"pubSubTopic\":\"tenant-admission.counter.events\",\"queueSession\":\"tenant-admission:counter:admission-counter\",\"tenantId\":\"tenant-admission\",\"aggregateId\":\"admission-counter\",\"actorId\":\"tenant-admission:counter:admission-counter\",\"eventStreamKeyPrefix\":\"tenant-admission:counter:admission-counter:events:\"},\"messageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\",\"aggregateType\":\"counter\",\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"timestamp\":\"2026-10-22T10:38:49.1517273+00:00\",\"applicationPayloadDigest\":\"bbb5fc549a585518e71f34425567ee78cf92c22be03e2e42a07789e44cbad73d\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06972442400001455,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07094648599741049,
+    "stdout": "2\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06836107200069819,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06780604101368226,
+    "stdout": "{\"priorReplayFence\":null,\"previousState\":null,\"promotedState\":null,\"publicationBinding\":{\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"headSequence\":1,\"sourceFingerprint\":\"bc61b61077b49a91ab63953ddfb1e7ae107bd681773ede59bc4a33dd4a56a8ba\",\"candidateFingerprint\":\"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661\",\"aggregateId\":\"admission-counter\",\"projectionName\":\"counter\",\"headMessageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\"},\"selectedStateFingerprint\":\"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"completed\":true,\"publicationFloor\":{\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"sourceFingerprint\":\"bc61b61077b49a91ab63953ddfb1e7ae107bd681773ede59bc4a33dd4a56a8ba\",\"aggregateId\":\"admission-counter\",\"projectionName\":\"counter\",\"headSequence\":1,\"headMessageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\",\"candidateFingerprint\":\"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661\"},\"selectedReplayFence\":{\"sourceActorId\":\"tenant-admission:counter:admission-counter\",\"projectionName\":\"counter\",\"operationId\":\"01M5HK2AZDR4DT8VWHMAZ7XJD2\",\"headSequence\":1}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:storage-stream-info:tenant-admission:counter:admission-counter"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06745795799361076,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:storage-stream-info:tenant-admission:counter:admission-counter",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06885642699489836,
+    "stdout": "{\"eventCount\":1,\"sizeBytes\":null,\"hasSnapshot\":false,\"snapshotAge\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"aggregateType\":\"CounterAggregate\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "projection-checkpoints:tenant-admission:counter:admission-counter:counter"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06632117899425793,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "projection-checkpoints:tenant-admission:counter:admission-counter:counter",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06773270999838132,
+    "stdout": "{\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"lastDeliveredSequence\":1,\"updatedAt\":\"2026-10-22T10:38:49.5005435+00:00\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "admin:command-activity:all"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07152277600835077,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "admin:command-activity:all",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06855542499397416,
+    "stdout": "[{\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"commandType\":\"IncrementCounter\",\"status\":4,\"timestamp\":\"2026-10-22T10:38:46+00:00\",\"eventCount\":1,\"failureReason\":null,\"tenantId\":\"tenant-admission\",\"domain\":\"counter\",\"aggregateId\":\"admission-counter\"}]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06720260198926553,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0687752109952271,
+    "stdout": "{\"schemaVersion\":1,\"tenant\":\"tenant-admission\",\"deletionApprovedAt\":null,\"deleteAfter\":null,\"legalHoldStartedAt\":null,\"references\":[{\"keyDigest\":\"Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"actorId\":\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"digestKeyVersion\":\"local1\"}],\"hasTrustedEffectEvidence\":false,\"pendingTrustedEffectIds\":[],\"state\":0,\"lastObservedAt\":\"2026-10-22T10:38:46+00:00\",\"remainingRetention\":null,\"trustedEffectEvidenceErased\":false,\"trustedEffects\":[]}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06595069500326645,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.0699514899897622,
+    "stdout": "{\"schemaVersion\":1,\"canonicalActorId\":\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"activeActorId\":\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\",\"aliases\":[\"tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY\"],\"promotionPhase\":0,\"promotionSourceActorId\":null,\"promotionTargetActorId\":null}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "TYPE",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07014634300139733,
+    "stdout": "hash\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "exec",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d",
+      "redis-cli",
+      "--raw",
+      "HGET",
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata",
+      "data"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06791050000174437,
+    "stdout": "{\"lastModified\":\"2026-10-22T10:38:49.1517273+00:00\",\"eTag\":null,\"retainedFloor\":1,\"sourceProof\":{\"retainedFloor\":1,\"tenantId\":\"tenant-admission\",\"sourceIncarnation\":\"01M5HK2ASW9AHYESZYV1CVXT3Q\",\"erased\":false,\"codecVersion\":1,\"domain\":\"counter\",\"aggregateId\":\"admission-counter\",\"headSequence\":1,\"headMessageId\":\"01M5HK2ASYANHC7J0C5JMFCMR9\",\"cumulativeDigest\":\"f9a93879db13ca715dba87389971a00590b15aacf43db29cddd0d7ac89da6065\"},\"currentSequence\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "cb4089092072cc978d877f5e7b2d57fdada10e35d3c33b2f220479e7d914e21c"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.3701173299923539,
+    "stdout": "cb4089092072cc978d877f5e7b2d57fdada10e35d3c33b2f220479e7d914e21c\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "016430ccf3293892e5dcab5d6a005d3b27d9d45732d7a9c602b1f30c31bd9dc7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.342707846997655,
+    "stdout": "016430ccf3293892e5dcab5d6a005d3b27d9d45732d7a9c602b1f30c31bd9dc7\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.3823167380032828,
+    "stdout": "4578542111b44821ac842b38e390d187eb07f978414136fdd28289c9f756942d\n",
+    "stderr": ""
+  }
+]

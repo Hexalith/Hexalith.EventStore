@@ -1,0 +1,19 @@
+{
+  "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission": {
+    "executionCorrelationId": "recovery-correlation",
+    "fencingToken": 1,
+    "executionMessageId": "01J00000000000000000000000",
+    "tenantPartition": "tenant-admission",
+    "retentionTier": 1,
+    "schemaVersion": 2,
+    "state": 4,
+    "lastObservedAt": "2026-10-22T10:57:45+00:00",
+    "replayResult": null,
+    "digestKeyVersion": "local1",
+    "keyDigest": "recovery",
+    "verificationTag": "fixture-verification",
+    "intentDigest": "fixture-intent",
+    "firstConsumedAt": "2026-10-22T10:57:45+00:00",
+    "replayExpiresAt": null
+  }
+}

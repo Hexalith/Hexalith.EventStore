@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/freeze.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:17:28.806769+00:00",
+  "environment_overrides": {},
+  "runner_pid": 38830,
+  "pid": 38864,
+  "exit_code": 0,
+  "elapsed_seconds": 0.4079679710121127,
+  "utc_end": "2026-10-22T15:17:29.214933+00:00"
+}

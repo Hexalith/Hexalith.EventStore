@@ -1,0 +1,340 @@
+[
+  {
+    "name": "same_actor_still_throttles",
+    "passed": true,
+    "callback_statuses": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      500
+    ],
+    "rejection": "{\"errorCode\":\"ERR_ACTOR_INVOKE_METHOD\",\"message\":\"error invoke actor method: error from actor service: (429) {\\\"type\\\":\\\"https://hexalith.io/problems/rate-limit-exceeded\\\",\\\"title\\\":\\\"Too Many Requests\\\",\\\"status\\\":429,\\\"detail\\\":\\\"Rate limit exceeded. Please retry after the specified interval.\\\",\\\"instance\\\":\\\"/actors/IdempotencyAdmissionActor/tenant-admission:local1:saturated/method/InspectAsync\\\",\\\"correlationId\\\":\\\"01M5HK2A3N2ZKBFG7EXXV479N3\\\",\\\"tenantId\\\":\\\"sidecar:actor:8996e868c0dd1486a6f3b609933cc87e6d43ef6c36dfa3a3e90549ffeff49df6\\\",\\\"consumerId\\\":\\\"sidecar:actor:8996e868c0dd1486a6f3b609933cc87e6d43ef6c36dfa3a3e90549ffeff49df6\\\"}\"}",
+    "headers": {
+      "Content-Type": "application/json",
+      "Traceparent": "00-00000000000000000000000000000000-0000000000000000-00",
+      "Date": "Thu, 22 Oct 2026 10:38:48 GMT",
+      "Content-Length": "648",
+      "Connection": "close"
+    }
+  },
+  {
+    "name": "other_actor_admission_survives_saturation",
+    "passed": true,
+    "status": 200,
+    "body": "{\"decision\":1,\"fencingToken\":1,\"replayResult\":null,\"redirectActorId\":null,\"executionMessageId\":\"01J00000000000000000000000\",\"executionCorrelationId\":\"recovery-correlation\"}"
+  },
+  {
+    "name": "begin_persisted",
+    "passed": true,
+    "status": 200,
+    "body": ""
+  },
+  {
+    "name": "unknown_outcome_persisted",
+    "passed": true,
+    "status": 200,
+    "body": ""
+  },
+  {
+    "name": "redis_proves_unknown_outcome",
+    "passed": true,
+    "state": {
+      "lastObservedAt": "2026-10-22T10:38:46+00:00",
+      "executionMessageId": "01J00000000000000000000000",
+      "executionCorrelationId": "recovery-correlation",
+      "tenantPartition": "tenant-admission",
+      "digestKeyVersion": "local1",
+      "verificationTag": "fixture-verification",
+      "retentionTier": 1,
+      "replayExpiresAt": null,
+      "state": 4,
+      "fencingToken": 1,
+      "keyDigest": "recovery",
+      "firstConsumedAt": "2026-10-22T10:38:46+00:00",
+      "replayResult": null,
+      "schemaVersion": 2,
+      "intentDigest": "fixture-intent"
+    }
+  },
+  {
+    "name": "production_command_completed_under_other_actor_saturation",
+    "passed": true,
+    "status": 202,
+    "body": "{\"correlationId\":\"01XVWQ660FNBE5J2EAPWM54FX4\",\"messageId\":\"01XVWQ660FNBE5J2EAPWM54FX4\"}"
+  },
+  {
+    "name": "persisted_single_event_terminal_admission",
+    "passed": true,
+    "events": {
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1": {
+        "sequenceNumber": 1,
+        "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
+        "extensions": {
+          "eventstore.protection": "{\"state\":\"Unprotected\",\"metadataVersion\":1}"
+        },
+        "globalPosition": 1,
+        "correlationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "domainServiceVersion": "v1",
+        "serializationFormat": "json",
+        "payload": "e30=",
+        "aggregateId": "admission-counter",
+        "causationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "userId": "qualification-runner",
+        "metadataVersion": 1,
+        "identity": {
+          "snapshotKey": "tenant-admission:counter:admission-counter:snapshot",
+          "pipelineKeyPrefix": "tenant-admission:counter:admission-counter:pipeline:",
+          "domain": "counter",
+          "metadataKey": "tenant-admission:counter:admission-counter:metadata",
+          "pubSubTopic": "tenant-admission.counter.events",
+          "queueSession": "tenant-admission:counter:admission-counter",
+          "tenantId": "tenant-admission",
+          "aggregateId": "admission-counter",
+          "actorId": "tenant-admission:counter:admission-counter",
+          "eventStreamKeyPrefix": "tenant-admission:counter:admission-counter:events:"
+        },
+        "messageId": "01M5HK2ASYANHC7J0C5JMFCMR9",
+        "aggregateType": "counter",
+        "tenantId": "tenant-admission",
+        "domain": "counter",
+        "timestamp": "2026-10-22T10:38:49.1517273+00:00",
+        "applicationPayloadDigest": "bbb5fc549a585518e71f34425567ee78cf92c22be03e2e42a07789e44cbad73d"
+      }
+    },
+    "admissions": {
+      "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY||admission": {
+        "state": 5,
+        "verificationTag": "TixwqFtFy72_fO6GiDQOEfhKdlSqRXafjv_flCnaewM",
+        "intentDigest": "CbPPY9x1dXGGRjgKHii2RuvF37LJoc5xpU4xLZ6Qo5I",
+        "lastObservedAt": "2026-10-22T10:38:46+00:00",
+        "fencingToken": 1,
+        "replayResult": {
+          "errorMessage": null,
+          "correlationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+          "backpressureExceeded": false,
+          "backpressureThreshold": null,
+          "accepted": true,
+          "eventCount": 1,
+          "resultPayload": null,
+          "backpressurePendingCount": null,
+          "rejectionEventType": null,
+          "failureReason": null,
+          "resultPayloadWithheld": false
+        },
+        "tenantPartition": "tenant-admission",
+        "digestKeyVersion": "local1",
+        "keyDigest": "Ni7S3XJLNJKLTm1QSbK4jEzI1LRzhmN5cMfKDrF0BEY",
+        "replayExpiresAt": "2026-10-23T10:38:46+00:00",
+        "schemaVersion": 2,
+        "executionMessageId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "executionCorrelationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "retentionTier": 1,
+        "firstConsumedAt": "2026-10-22T10:38:46+00:00"
+      }
+    },
+    "command_status": {
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status": {
+        "status": 4,
+        "timestamp": "2026-10-22T10:38:46+00:00",
+        "aggregateId": "admission-counter",
+        "eventCount": 1,
+        "rejectionEventType": null,
+        "failureReason": null,
+        "timeoutDuration": null,
+        "messageId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "correlationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "retryable": null,
+        "recoveryReasonCode": null,
+        "drainAttemptCount": null,
+        "committedEventSequence": 1,
+        "domain": "counter"
+      }
+    }
+  },
+  {
+    "name": "persisted_command_completed_and_sequence_one",
+    "passed": true,
+    "command_status": {
+      "tenant-admission:01XVWQ660FNBE5J2EAPWM54FX4:status": {
+        "status": 4,
+        "timestamp": "2026-10-22T10:38:46+00:00",
+        "aggregateId": "admission-counter",
+        "eventCount": 1,
+        "rejectionEventType": null,
+        "failureReason": null,
+        "timeoutDuration": null,
+        "messageId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "correlationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+        "retryable": null,
+        "recoveryReasonCode": null,
+        "drainAttemptCount": null,
+        "committedEventSequence": 1,
+        "domain": "counter"
+      }
+    },
+    "aggregate_metadata": {
+      "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata": {
+        "lastModified": "2026-10-22T10:38:49.1517273+00:00",
+        "eTag": null,
+        "retainedFloor": 1,
+        "sourceProof": {
+          "retainedFloor": 1,
+          "tenantId": "tenant-admission",
+          "sourceIncarnation": "01M5HK2ASW9AHYESZYV1CVXT3Q",
+          "erased": false,
+          "codecVersion": 1,
+          "domain": "counter",
+          "aggregateId": "admission-counter",
+          "headSequence": 1,
+          "headMessageId": "01M5HK2ASYANHC7J0C5JMFCMR9",
+          "cumulativeDigest": "f9a93879db13ca715dba87389971a00590b15aacf43db29cddd0d7ac89da6065"
+        },
+        "currentSequence": 1
+      }
+    }
+  },
+  {
+    "name": "os_processes_replaced",
+    "passed": true,
+    "before": [
+      56162,
+      56163
+    ],
+    "after": [
+      58604,
+      58605
+    ]
+  },
+  {
+    "name": "unknown_outcome_survives_process_replacement",
+    "passed": true
+  },
+  {
+    "name": "unknown_outcome_refuses_reexecution",
+    "passed": true,
+    "status": 500,
+    "body": "{\"errorCode\":\"ERR_ACTOR_INVOKE_METHOD\",\"message\":\"error invoke actor method: error from actor service: (500) {\\\"type\\\":\\\"https://hexalith.io/problems/internal-server-error\\\",\\\"title\\\":\\\"Internal Server Error\\\",\\\"status\\\":500,\\\"detail\\\":\\\"An unexpected error occurred while processing your request.\\\",\\\"instance\\\":\\\"/actors/IdempotencyAdmissionActor/tenant-admission:local1:recovery/method/BeginAsync\\\",\\\"correlationId\\\":\\\"01M5HK2MTNFMXCZNH0BHPQQEDR\\\"}\"}"
+  },
+  {
+    "name": "stale_fence_refuses_completion",
+    "passed": true,
+    "status": 500,
+    "body": "{\"errorCode\":\"ERR_ACTOR_INVOKE_METHOD\",\"message\":\"error invoke actor method: error from actor service: (500) {\\\"type\\\":\\\"https://hexalith.io/problems/internal-server-error\\\",\\\"title\\\":\\\"Internal Server Error\\\",\\\"status\\\":500,\\\"detail\\\":\\\"An unexpected error occurred while processing your request.\\\",\\\"instance\\\":\\\"/actors/IdempotencyAdmissionActor/tenant-admission:local1:recovery/method/CompleteAsync\\\",\\\"correlationId\\\":\\\"01M5HK2MWX0EE8AE2HER9G97EN\\\"}\"}"
+  },
+  {
+    "name": "reconciled_completion_after_recovery",
+    "passed": true,
+    "status": 200,
+    "body": ""
+  },
+  {
+    "name": "public_command_replays_exact_identity_result",
+    "passed": false,
+    "status": 202,
+    "first": {
+      "correlationId": "01XVWQ660FNBE5J2EAPWM54FX4",
+      "messageId": "01XVWQ660FNBE5J2EAPWM54FX4"
+    },
+    "replay": {
+      "correlationId": "017ZHNZ3WQVRT099BT60CY4BT7",
+      "messageId": "01XVWQ660FNBE5J2EAPWM54FX4"
+    }
+  }
+]

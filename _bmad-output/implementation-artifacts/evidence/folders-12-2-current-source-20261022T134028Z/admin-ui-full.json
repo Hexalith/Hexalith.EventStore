@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Admin.UI.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.Tests.dll",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-ui-full.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T13:49:58.771196+00:00",
+  "environment_overrides": {
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1"
+  },
+  "runner_pid": 73606,
+  "pid": 73607,
+  "exit_code": 0,
+  "elapsed_seconds": 13.591684532002546,
+  "utc_end": "2026-10-22T13:50:12.361441+00:00"
+}

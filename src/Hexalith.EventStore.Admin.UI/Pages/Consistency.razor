@@ -498,6 +498,7 @@
         _ = InvokeAsync(async () =>
         {
             int generation = InvalidateProtectedState();
+            UpdateUrl();
             StateHasChanged();
             await authenticationStateTask.ConfigureAwait(false);
             if (!IsCurrentAuthorization(generation)) { return; }
@@ -591,7 +592,13 @@
     {
         if (!_canRead || _disposed)
         {
-            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+            await InvokeAsync(() =>
+            {
+                _isLoading = false;
+                _apiUnavailable = true;
+                _apiErrorMessage = "Access denied. Insufficient permissions to view consistency checks.";
+                StateHasChanged();
+            }).ConfigureAwait(false);
             return;
         }
 

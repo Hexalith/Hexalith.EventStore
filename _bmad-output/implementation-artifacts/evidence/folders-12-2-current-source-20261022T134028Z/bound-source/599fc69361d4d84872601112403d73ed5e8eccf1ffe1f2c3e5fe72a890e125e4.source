@@ -1,0 +1,399 @@
+@page "/"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Health
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Models
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminStreamApiClient ApiClient
+@inject NavigationManager NavigationManager
+@inject DashboardRefreshService RefreshService
+@inject EventStoreSignalRClient SignalRClient
+
+<PageTitle>Hexalith EventStore Admin</PageTitle>
+
+<IssueBanner Visible="_apiUnavailable"
+             Title="Admin API Unavailable"
+             Description="Cannot reach eventstore-admin. Check Aspire topology."
+             ActionLabel="Retry"
+             OnAction="LoadDataAsync" />
+
+<div class="stat-card-grid" aria-live="polite" style="@(_isStale ? "opacity: 0.5;" : "")">
+    <div class="stat-card-link" role="button" tabindex="0" data-activate-button
+         aria-label="View active streams"
+         @onclick='() => NavigateTo("/streams?status=active")'
+         @onkeydown='e => HandleStatCardKeydown(e, "/streams?status=active")'>
+        <StatCard Label="@(_isStale ? "Active Streams (stale)" : "Active Streams")"
+                  Value="@(_isLoading ? "\u2014" : FormatActiveStreams())"
+                  Severity="@(_isStale ? "neutral" : "success")"
+                  IsLoading="_isLoading" />
+    </div>
+    <StatCard Label="@(_isStale ? "Total Events (stale)" : "Total Events")"
+              Value="@(_isLoading ? "\u2014" : FormatTotalEvents())"
+              Severity="@(_isStale ? "neutral" : "success")"
+              IsLoading="_isLoading" />
+    <StatCard Label="@(_isStale ? "Events/sec (stale)" : "Events/sec")"
+              Value="@(_isLoading ? "\u2014" : FormatEventsPerSecond())"
+              Severity="@(_isStale ? "neutral" : "success")"
+              IsLoading="_isLoading" />
+    <div class="stat-card-link" role="button" tabindex="0" data-activate-button
+         aria-label="View health and error rate details"
+         @onclick='() => NavigateTo("/health")'
+         @onkeydown='e => HandleStatCardKeydown(e, "/health")'>
+        <StatCard Label="@(_isStale ? "Error Rate (stale)" : "Error Rate")"
+                  Value="@(_isLoading ? "\u2014" : FormatErrorRate())"
+                  Severity="@(_isStale ? "neutral" : GetErrorRateSeverity())"
+                  IsLoading="_isLoading" />
+    </div>
+</div>
+
+@if (!_isLoading && !_apiUnavailable)
+{
+    @* Activity chart gates on real stream data, not the previously hardcoded TotalEventCount. *@
+    @if (_streams is not null && _streams.Items.Count > 0)
+    {
+        <ActivityChart Buckets="_activityBuckets" IsLoading="false" />
+
+        <div style="margin-top: 24px;">
+            <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Recent Streams</h3>
+            <FluentDataGrid Items="@(_streams.Items.Take(10).AsQueryable())" TGridItem="StreamSummary"
+                            Style="width: 100%;" GridTemplateColumns="100px 100px 1fr 80px 80px">
+                <PropertyColumn Property="@(s => s.StreamStatus)" Title="Status" />
+                <PropertyColumn Property="@(s => s.TenantId)" Title="Tenant" Class="monospace" />
+                <TemplateColumn Title="Aggregate ID">
+                    <span class="monospace" title="@context.AggregateId">@(context.AggregateId.Length > 8 ? context.AggregateId[..8] + "\u2026" : context.AggregateId)</span>
+                </TemplateColumn>
+                <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End" />
+                <TemplateColumn Title="Last Activity">
+                    <span class="monospace">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
+                </TemplateColumn>
+            </FluentDataGrid>
+            <div style="margin-top: 8px;">
+                <FluentLink Href="/streams" Appearance="LinkAppearance.Default">View all streams &rarr;</FluentLink>
+            </div>
+        </div>
+    }
+    else if (_streamsUnavailable)
+    {
+        <div style="margin-top: 32px;">
+            <EmptyState Title="Stream data temporarily unavailable"
+                        Description="Health data loaded but stream data could not be fetched. Retrying automatically." />
+        </div>
+    }
+    else if (_streams is not null && _streams.Items.Count == 0)
+    {
+        <div style="margin-top: 32px;">
+            <EmptyState Title="EventStore Admin is running."
+                        Description="No active streams yet. Send your first command via the Admin API." />
+        </div>
+    }
+}
+
+@if (_isStale && !_isLoading && !_apiUnavailable)
+{
+    <div style="margin-top: 8px; font-size: 12px; color: var(--colorNeutralForeground3);">
+        Last successful refresh: @_lastRefreshUtc?.ToString("HH:mm:ss")
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _apiUnavailable;
+    private bool _isStale;
+    private bool _streamsUnavailable;
+    private SystemHealthReport? _healthReport;
+    private PagedResult<StreamSummary>? _streams;
+    private IReadOnlyList<ActivityBucket>? _activityBuckets;
+    private DateTimeOffset? _lastRefreshUtc;
+
+    // Cached last-good values for stale display
+    private SystemHealthReport? _cachedHealthReport;
+    private PagedResult<StreamSummary>? _cachedStreams;
+
+    private HashSet<string> _previousStreamKeys = [];
+    private HashSet<string> _newStreamKeys = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+
+        // Start polling refresh
+        RefreshService.OnDataChanged += OnRefreshDataChanged;
+        RefreshService.OnError += OnRefreshError;
+        RefreshService.Start();
+
+        // Subscribe to SignalR for immediate refresh signals
+        try
+        {
+            await SignalRClient.SubscribeAsync("stream-activity", "all", OnSignalRChanged).ConfigureAwait(false);
+            await SignalRClient.SubscribeAsync("system-health", "all", OnSignalRChanged).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // SignalR subscription failed — polling handles it
+        }
+    }
+
+    private void OnRefreshDataChanged(DashboardData data)
+    {
+        _ = InvokeAsync(() =>
+        {
+            try
+            {
+                if (data.Health is not null)
+                {
+                    _healthReport = data.Health;
+                    _cachedHealthReport = data.Health;
+                    _isStale = false;
+                    _apiUnavailable = false;
+                }
+
+                if (data.Streams is not null)
+                {
+                    // Track new rows for highlight
+                    HashSet<string> currentKeys = data.Streams.Items
+                        .Select(s => $"{s.TenantId}/{s.Domain}/{s.AggregateId}")
+                        .ToHashSet();
+                    _newStreamKeys = currentKeys.Except(_previousStreamKeys).ToHashSet();
+                    _previousStreamKeys = currentKeys;
+
+                    _streams = data.Streams;
+                    _cachedStreams = data.Streams;
+                    _activityBuckets = BuildActivityBuckets(data.Streams.Items);
+                }
+
+                _lastRefreshUtc = DateTimeOffset.UtcNow;
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
+        });
+    }
+
+    private void OnRefreshError(Exception ex)
+    {
+        _ = InvokeAsync(() =>
+        {
+            try
+            {
+                if (_cachedHealthReport is not null)
+                {
+                    _isStale = true;
+                }
+                else
+                {
+                    _apiUnavailable = true;
+                }
+
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
+        });
+    }
+
+    private void OnSignalRChanged()
+    {
+        _ = RefreshService.TriggerImmediateRefreshAsync().ContinueWith(
+            static t => { /* SignalR-triggered refresh failed — polling continues */ },
+            TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        RefreshService.OnDataChanged -= OnRefreshDataChanged;
+        RefreshService.OnError -= OnRefreshError;
+
+        try
+        {
+            await SignalRClient.UnsubscribeAsync("stream-activity", "all").ConfigureAwait(false);
+            await SignalRClient.UnsubscribeAsync("system-health", "all").ConfigureAwait(false);
+        }
+        catch
+        {
+            // Ignore unsubscribe errors during teardown
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _apiUnavailable = false;
+        _streamsUnavailable = false;
+        _isLoading = true;
+
+        try
+        {
+            _healthReport = await ApiClient.GetSystemHealthAsync();
+            if (_healthReport is null)
+            {
+                // API returned null — use cached or show unavailable
+                if (_cachedHealthReport is not null)
+                {
+                    _healthReport = _cachedHealthReport;
+                    _isStale = true;
+                }
+                else
+                {
+                    _apiUnavailable = true;
+                }
+
+                _isLoading = false;
+                return;
+            }
+
+            _cachedHealthReport = _healthReport;
+            _isStale = false;
+
+            // Fetch streams unconditionally — the previous gate on TotalEventCount > 0 was
+            // a no-op while TotalEventCount was hardcoded to zero, and is now redundant
+            // because the activity chart gates on _streams.Items.Count directly (ADR-3).
+            try
+            {
+                _streams = await ApiClient
+                    .GetRecentlyActiveStreamsAsync(null, null, 100);
+                _cachedStreams = _streams;
+                _activityBuckets = BuildActivityBuckets(_streams.Items);
+            }
+            catch
+            {
+                _streamsUnavailable = true;
+                _streams = _cachedStreams;
+                if (_streams is not null)
+                {
+                    _activityBuckets = BuildActivityBuckets(_streams.Items);
+                }
+            }
+
+            _lastRefreshUtc = DateTimeOffset.UtcNow;
+        }
+        catch (ServiceUnavailableException)
+        {
+            HandleApiFailure();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _apiUnavailable = true;
+        }
+        catch (ForbiddenAccessException)
+        {
+            _apiUnavailable = true;
+        }
+        catch (HttpRequestException)
+        {
+            HandleApiFailure();
+        }
+        catch (TaskCanceledException)
+        {
+            HandleApiFailure();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleApiFailure()
+    {
+        if (_cachedHealthReport is not null)
+        {
+            _healthReport = _cachedHealthReport;
+            _streams = _cachedStreams;
+            if (_streams is not null)
+            {
+                _activityBuckets = BuildActivityBuckets(_streams.Items);
+            }
+
+            _isStale = true;
+        }
+        else
+        {
+            _apiUnavailable = true;
+        }
+    }
+
+    private void NavigateTo(string url) => NavigationManager.NavigateTo(url);
+
+    // Keyboard activation parity for the role="button" StatCard navigation wrappers: Enter and Space
+    // activate the navigation, matching native button semantics for keyboard and screen-reader users.
+    // The Space page-scroll default is suppressed by the [data-activate-button] keydown listener
+    // registered in interop.js.
+    private void HandleStatCardKeydown(KeyboardEventArgs e, string url)
+    {
+        if (e.IsActivationKey())
+        {
+            NavigateTo(url);
+        }
+    }
+
+    private static IReadOnlyList<ActivityBucket> BuildActivityBuckets(IReadOnlyList<StreamSummary> streams)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateTimeOffset start = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Offset)
+            .AddHours(-23);
+        List<ActivityBucket> buckets = new(24);
+        for (int i = 0; i < 24; i++)
+        {
+            DateTimeOffset bucketStart = start.AddHours(i);
+            DateTimeOffset bucketEnd = bucketStart.AddHours(1);
+            int count = streams.Count(s =>
+                s.LastActivityUtc >= bucketStart && s.LastActivityUtc < bucketEnd);
+            buckets.Add(new ActivityBucket(bucketStart, bucketEnd, count));
+        }
+
+        return buckets;
+    }
+
+    private string FormatActiveStreams() =>
+        _streams is not null ? _streams.TotalCount.ToString("N0") :
+        _healthReport?.TotalEventCount > 0 ? "\u2014" : "0";
+
+    // ADR-3 Truthful Metrics:
+    //   - Available    -> render the real measurement (zero is honest if measured zero)
+    //   - Unavailable  -> render an explicit indicator instead of a misleading numeric value
+    //   - Stale        -> render the cached value with a stale suffix (page-level _isStale handles this)
+
+    private string FormatTotalEvents() =>
+        _healthReport is null
+            ? "—"
+            : _healthReport.TotalEventCountStatus == SystemHealthMetricStatus.Unavailable
+                ? "unavailable"
+                : _healthReport.TotalEventCount.ToString("N0");
+
+    private string FormatEventsPerSecond() =>
+        _healthReport is null
+            ? "—"
+            : _healthReport.EventsPerSecondStatus == SystemHealthMetricStatus.Unavailable
+                ? "unavailable"
+                : $"{_healthReport.EventsPerSecond:F1}/s";
+
+    private string FormatErrorRate() =>
+        _healthReport is null
+            ? "—"
+            : _healthReport.ErrorPercentageStatus == SystemHealthMetricStatus.Unavailable
+                ? "unavailable"
+                : $"{_healthReport.ErrorPercentage:F2}%";
+
+    private string GetErrorRateSeverity()
+    {
+        if (_healthReport is null
+            || _healthReport.ErrorPercentageStatus == SystemHealthMetricStatus.Unavailable)
+        {
+            return "neutral";
+        }
+
+        return _healthReport.ErrorPercentage switch
+        {
+            > 1.0 => "error",
+            > 0.1 => "warning",
+            _ => "success",
+        };
+    }
+}

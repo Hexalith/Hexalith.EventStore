@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "parsed": [
+    "report-v1.py",
+    "bounded-live.py",
+    "archive-sources.py",
+    "report.py",
+    "audit-v1.py",
+    "verify.py",
+    "regressions.py",
+    "freeze.py",
+    "bounded-live-v1-executed.py",
+    "run.py",
+    "audit.py"
+  ],
+  "scope": "Syntax only. Current bounded execution uses the archived v1 launcher; v2 cancellation changes are not represented as executed acceptance."
+}

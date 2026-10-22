@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "aspire",
+    "describe",
+    "--non-interactive",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--format",
+    "Json"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:14:25.089273+00:00",
+  "environment_overrides": {},
+  "runner_pid": 494,
+  "pid": 547,
+  "exit_code": 0,
+  "elapsed_seconds": 1.0818422739976086,
+  "utc_end": "2026-10-22T15:14:26.171301+00:00"
+}

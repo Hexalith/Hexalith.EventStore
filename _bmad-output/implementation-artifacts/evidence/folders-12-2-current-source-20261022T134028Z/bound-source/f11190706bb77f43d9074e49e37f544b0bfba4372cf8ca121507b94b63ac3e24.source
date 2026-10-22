@@ -1,0 +1,872 @@
+using System.Net;
+using System.Text.Json;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Commands;
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Health;
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
+using Hexalith.EventStore.Admin.Abstractions.Models.TypeCatalog;
+using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+
+namespace Hexalith.EventStore.Admin.UI.Services;
+
+/// <summary>
+/// HTTP client for Admin.Server REST API endpoints.
+/// Wraps the "AdminApi" named HttpClient for streams, health, and tenants.
+/// </summary>
+public class AdminStreamApiClient(
+    IHttpClientFactory httpClientFactory,
+    ILogger<AdminStreamApiClient> logger) {
+    private static readonly PagedResult<CommandSummary> _emptyCommandsResult = new([], 0, null);
+    private static readonly PagedResult<StreamSummary> _emptyStreamsResult = new([], 0, null);
+    private static readonly ISet<string> ProtectedProblemTypes = new HashSet<string>(StringComparer.Ordinal) {
+        "https://hexalith.io/problems/unreadable-protected-data",
+        "https://hexalith.io/problems/crypto-shredding-workflow-conflict",
+        "https://hexalith.io/problems/restored-backup-admission-conflict",
+    };
+
+    private static readonly ISet<string> SafeProblemExtensions = new HashSet<string>(StringComparer.Ordinal) {
+        "correlationId",
+        "reasonCode",
+        "reasonCategory",
+        "stage",
+        "tenantId",
+        "domain",
+        "aggregateId",
+        "sequenceNumber",
+        "checkpointId",
+        "metadataVersion",
+        "retryable",
+        "permanent",
+        "workflowId",
+        "workflowState",
+        "nextAction",
+        "fromSequence",
+        "toSequence",
+        "auditId",
+        "irreversibleDecisionRecorded",
+        "admissionId",
+        "admissionState",
+        "backupManifestId",
+        "watermarkConflict",
+    };
+
+    /// <summary>
+    /// Gets recent commands across all streams, optionally filtered by tenant, status, and command type.
+    /// </summary>
+    /// <param name="tenantId">Optional tenant filter.</param>
+    /// <param name="status">Optional status filter.</param>
+    /// <param name="commandType">Optional command type filter.</param>
+    /// <param name="count">Maximum number of commands to return.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A paged result of command summaries.</returns>
+    public virtual async Task<PagedResult<CommandSummary>> GetRecentCommandsAsync(
+        string? tenantId,
+        string? status,
+        string? commandType,
+        int count = 1000,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = BuildCommandsUrl(tenantId, status, commandType, count);
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            PagedResult<CommandSummary>? result = await response.Content
+                .ReadFromJsonAsync<PagedResult<CommandSummary>>(ct)
+                .ConfigureAwait(false);
+            return result ?? _emptyCommandsResult;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch commands from {Url}", url);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets recently active streams, optionally filtered by tenant and domain.
+    /// </summary>
+    /// <param name="tenantId">Optional tenant filter.</param>
+    /// <param name="domain">Optional domain filter.</param>
+    /// <param name="count">Maximum number of streams to return.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A paged result of stream summaries.</returns>
+    public virtual async Task<PagedResult<StreamSummary>> GetRecentlyActiveStreamsAsync(
+        string? tenantId,
+        string? domain,
+        int count = 1000,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = BuildStreamsUrl(tenantId, domain, count);
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            PagedResult<StreamSummary>? result = await response.Content
+                .ReadFromJsonAsync<PagedResult<StreamSummary>>(ct)
+                .ConfigureAwait(false);
+            return result ?? _emptyStreamsResult;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch streams from {Url}", url);
+            throw new ServiceUnavailableException("Unable to load streams.");
+        }
+    }
+
+    /// <summary>
+    /// Gets the overall system health report.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The system health report.</returns>
+    public virtual async Task<SystemHealthReport?> GetSystemHealthAsync(CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        try {
+            using HttpResponseMessage response = await client
+                .GetAsync("api/v1/admin/health", ct)
+                .ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<SystemHealthReport>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch system health");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the list of tenants for filter dropdowns.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of tenant summaries.</returns>
+    public virtual async Task<IReadOnlyList<TenantSummary>> GetTenantsAsync(CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        try {
+            using HttpResponseMessage response = await client
+                .GetAsync("api/v1/admin/tenants", ct)
+                .ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            IReadOnlyList<TenantSummary>? result = await response.Content
+                .ReadFromJsonAsync<IReadOnlyList<TenantSummary>>(ct)
+                .ConfigureAwait(false);
+            return result ?? [];
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch tenants");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Gets the timeline for a specific stream.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="fromSequence">Optional start sequence number.</param>
+    /// <param name="toSequence">Optional end sequence number.</param>
+    /// <param name="count">Maximum number of entries to return.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A paged result of timeline entries.</returns>
+    public virtual async Task<PagedResult<TimelineEntry>> GetStreamTimelineAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long? fromSequence = null,
+        long? toSequence = null,
+        int count = 50,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = BuildTimelineUrl(tenantId, domain, aggregateId, fromSequence, toSequence, count);
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            PagedResult<TimelineEntry>? result = await response.Content
+                .ReadFromJsonAsync<PagedResult<TimelineEntry>>(ct)
+                .ConfigureAwait(false);
+            return result ?? new PagedResult<TimelineEntry>([], 0, null);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch timeline from {Url}", url);
+            return new PagedResult<TimelineEntry>([], 0, null);
+        }
+    }
+
+    /// <summary>
+    /// Gets detailed information about a single event.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="sequenceNumber">Event sequence number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The event detail, or null if not found.</returns>
+    public virtual async Task<EventDetail?> GetEventDetailAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/events/{sequenceNumber}";
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<EventDetail>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch event detail from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the aggregate state at a specific sequence position.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="sequenceNumber">Sequence number at which to get the state.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The state snapshot, or null if not available at this position.</returns>
+    public virtual async Task<AggregateStateSnapshot?> GetAggregateStateAtPositionAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/state?sequenceNumber={sequenceNumber}";
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<AggregateStateSnapshot>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch aggregate state from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the diff between aggregate state at two sequence positions.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="fromSequence">Starting sequence number.</param>
+    /// <param name="toSequence">Ending sequence number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The state diff, or null if not available at either position.</returns>
+    public virtual async Task<AggregateStateDiff?> GetAggregateStateDiffAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long fromSequence,
+        long toSequence,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/diff?fromSequence={fromSequence}&toSequence={toSequence}";
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<AggregateStateDiff>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch aggregate state diff from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets per-field blame (provenance) for an aggregate's state at a given sequence position.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="atSequence">Sequence position to compute blame at. Null means latest.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The aggregate blame view, or null if not available.</returns>
+    public virtual async Task<AggregateBlameView?> GetAggregateBlameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long? atSequence,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/blame";
+        if (atSequence.HasValue) {
+            url += $"?at={atSequence.Value}";
+        }
+
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<AggregateBlameView>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch aggregate blame from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Performs a binary search through event history to find the exact event where aggregate state diverged.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="goodSequence">Known-good sequence (state was correct here).</param>
+    /// <param name="badSequence">Known-bad sequence (state diverged by this point).</param>
+    /// <param name="fieldPaths">Optional field paths to watch. When null or empty, all leaf fields are compared.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The bisect result, or null if not available.</returns>
+    public virtual async Task<BisectResult?> BisectAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long goodSequence,
+        long badSequence,
+        IReadOnlyList<string>? fieldPaths,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/bisect?good={goodSequence}&bad={badSequence}";
+        if (fieldPaths is { Count: > 0 }) {
+            url += $"&fields={Uri.EscapeDataString(string.Join(",", fieldPaths))}";
+        }
+
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<BisectResult>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest) {
+            throw;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogWarning(ex, "Failed to fetch bisect result from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets a single step-through debugging frame combining event metadata, aggregate state,
+    /// and field changes at the specified sequence position.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="sequenceNumber">The sequence number (1-based) to retrieve.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The event step frame, or null if not available.</returns>
+    public virtual async Task<EventStepFrame?> GetEventStepFrameAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/step?at={sequenceNumber}";
+
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<EventStepFrame>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest) {
+            throw;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogWarning(ex, "Failed to fetch event step frame from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Executes a command in sandbox (dry-run) mode against reconstructed aggregate state.
+    /// No events are persisted.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="request">The sandbox command request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The sandbox result, or null if not available.</returns>
+    public virtual async Task<SandboxResult?> SandboxCommandAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        SandboxCommandRequest request,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/sandbox";
+
+        try {
+            using HttpResponseMessage response = await client.PostAsJsonAsync(url, request, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<SandboxResult>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.BadRequest) {
+            throw;
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogWarning(ex, "Failed to execute sandbox command from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the aggregate state at the nearest event at or before a given timestamp.
+    /// Uses client-side resolution: fetches timeline pages to find the nearest entry,
+    /// then calls GetAggregateStateAtPositionAsync. Caps at 3 timeline API calls.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="timestamp">The target timestamp.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A tuple of (snapshot, capExceeded). Snapshot is null if not found; capExceeded is true when the 3-call pagination cap was hit.</returns>
+    public virtual async Task<(AggregateStateSnapshot? Snapshot, bool CapExceeded)> GetAggregateStateAtTimestampAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        DateTimeOffset timestamp,
+        CancellationToken ct = default) {
+        const int pageSize = 200;
+        const int maxCalls = 3;
+        long? toSequence = null;
+
+        for (int call = 0; call < maxCalls; call++) {
+            PagedResult<TimelineEntry> page = await GetStreamTimelineAsync(
+                tenantId, domain, aggregateId, null, toSequence, pageSize, ct)
+                .ConfigureAwait(false);
+
+            if (page.Items.Count == 0) {
+                return (null, false);
+            }
+
+            // Items are returned most-recent-first; find last entry at or before timestamp
+            TimelineEntry? nearest = null;
+            foreach (TimelineEntry entry in page.Items) {
+                if (entry.Timestamp <= timestamp) {
+                    if (nearest is null || entry.SequenceNumber > nearest.SequenceNumber) {
+                        nearest = entry;
+                    }
+                }
+            }
+
+            if (nearest is not null) {
+                AggregateStateSnapshot? snapshot = await GetAggregateStateAtPositionAsync(
+                    tenantId, domain, aggregateId, nearest.SequenceNumber, ct)
+                    .ConfigureAwait(false);
+                return (snapshot, false);
+            }
+
+            // All entries on this page are after the timestamp — try older page
+            long minSeq = page.Items.Min(e => e.SequenceNumber);
+            if (minSeq <= 1) {
+                return (null, false); // No more older entries
+            }
+
+            toSequence = minSeq - 1;
+        }
+
+        // Cap exceeded
+        return (null, true);
+    }
+
+    /// <summary>
+    /// Traces the causation chain from a specific event.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="domain">Domain name.</param>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="sequenceNumber">Sequence number of the event to trace from.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The causation chain, or null if not found.</returns>
+    public virtual async Task<CausationChain?> TraceCausationChainAsync(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long sequenceNumber,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/causation?sequenceNumber={sequenceNumber}";
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<CausationChain>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch causation chain from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the correlation trace map for a given correlation ID.
+    /// </summary>
+    /// <param name="tenantId">Tenant identifier.</param>
+    /// <param name="correlationId">The correlation ID to trace.</param>
+    /// <param name="domain">Optional domain hint for events-first scanning.</param>
+    /// <param name="aggregateId">Optional aggregate ID hint for events-first scanning.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The correlation trace map, or null if not available.</returns>
+    public virtual async Task<CorrelationTraceMap?> GetCorrelationTraceMapAsync(
+        string tenantId,
+        string correlationId,
+        string? domain,
+        string? aggregateId,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = $"api/v1/admin/traces/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(correlationId)}";
+        var queryParams = new List<string>();
+        if (!string.IsNullOrEmpty(domain)) {
+            queryParams.Add($"domain={Uri.EscapeDataString(domain)}");
+        }
+
+        if (!string.IsNullOrEmpty(aggregateId)) {
+            queryParams.Add($"aggregateId={Uri.EscapeDataString(aggregateId)}");
+        }
+
+        if (queryParams.Count > 0) {
+            url += "?" + string.Join("&", queryParams);
+        }
+
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) {
+                return null;
+            }
+
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            return await response.Content
+                .ReadFromJsonAsync<CorrelationTraceMap>(ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogWarning(ex, "Failed to fetch correlation trace map from {Url}", url);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the registered aggregate types, optionally filtered by domain.
+    /// </summary>
+    /// <param name="domain">Optional domain filter.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of aggregate type information.</returns>
+    public virtual async Task<IReadOnlyList<AggregateTypeInfo>> GetAggregateTypesAsync(
+        string? domain = null,
+        CancellationToken ct = default) {
+        HttpClient client = httpClientFactory.CreateClient("AdminApi");
+        string url = string.IsNullOrEmpty(domain)
+            ? "api/v1/admin/types/aggregates"
+            : $"api/v1/admin/types/aggregates?domain={Uri.EscapeDataString(domain)}";
+        try {
+            using HttpResponseMessage response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            await HandleErrorStatusAsync(response).ConfigureAwait(false);
+            IReadOnlyList<AggregateTypeInfo>? result = await response.Content
+                .ReadFromJsonAsync<IReadOnlyList<AggregateTypeInfo>>(ct)
+                .ConfigureAwait(false);
+            return result ?? [];
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException
+            and not ForbiddenAccessException
+            and not InvalidOperationException
+            and not AdminApiProblemException
+            and not ServiceUnavailableException
+            and not OperationCanceledException) {
+            logger.LogError(ex, "Failed to fetch aggregate types from {Url}", url);
+            return [];
+        }
+    }
+
+    private static string BuildTimelineUrl(
+        string tenantId,
+        string domain,
+        string aggregateId,
+        long? fromSequence,
+        long? toSequence,
+        int count) {
+        List<string> queryParams = [$"count={count}"];
+        if (fromSequence.HasValue) {
+            queryParams.Add($"fromSequence={fromSequence.Value}");
+        }
+
+        if (toSequence.HasValue) {
+            queryParams.Add($"toSequence={toSequence.Value}");
+        }
+
+        return $"api/v1/admin/streams/{Uri.EscapeDataString(tenantId)}/{Uri.EscapeDataString(domain)}/{Uri.EscapeDataString(aggregateId)}/timeline?{string.Join('&', queryParams)}";
+    }
+
+    private static string BuildCommandsUrl(string? tenantId, string? status, string? commandType, int count) {
+        List<string> queryParams = [$"count={count}"];
+        if (!string.IsNullOrEmpty(tenantId)) {
+            queryParams.Add($"tenantId={Uri.EscapeDataString(tenantId)}");
+        }
+
+        if (!string.IsNullOrEmpty(status)) {
+            queryParams.Add($"status={Uri.EscapeDataString(status)}");
+        }
+
+        if (!string.IsNullOrEmpty(commandType)) {
+            queryParams.Add($"commandType={Uri.EscapeDataString(commandType)}");
+        }
+
+        return $"api/v1/admin/streams/commands?{string.Join('&', queryParams)}";
+    }
+
+    private static string BuildStreamsUrl(string? tenantId, string? domain, int count) {
+        List<string> queryParams = [$"count={count}"];
+        if (!string.IsNullOrEmpty(tenantId)) {
+            queryParams.Add($"tenantId={Uri.EscapeDataString(tenantId)}");
+        }
+
+        if (!string.IsNullOrEmpty(domain)) {
+            queryParams.Add($"domain={Uri.EscapeDataString(domain)}");
+        }
+
+        return $"api/v1/admin/streams?{string.Join('&', queryParams)}";
+    }
+
+    private static async Task HandleErrorStatusAsync(HttpResponseMessage response) {
+        if (response.IsSuccessStatusCode) {
+            return;
+        }
+
+        // Extract details before throwing — using statement will dispose the response
+        HttpStatusCode statusCode = response.StatusCode;
+        string? reasonPhrase = response.ReasonPhrase;
+        AdminClientProblem problem = await ReadProblemAsync(response).ConfigureAwait(false);
+        if (problem.Type is not null && ProtectedProblemTypes.Contains(problem.Type)) {
+            string message = problem.Detail
+                ?? problem.Title
+                ?? "Protected data status returned by the admin API.";
+            throw new AdminApiProblemException(
+                message,
+                statusCode,
+                problem.Title,
+                problem.Detail,
+                problem.Extensions.TryGetValue("reasonCode", out object? reasonCode) ? reasonCode?.ToString() : null,
+                problem.Extensions.TryGetValue("correlationId", out object? correlationId) ? correlationId?.ToString() : null,
+                null,
+                problem.Type,
+                problem.Extensions);
+        }
+
+        if (statusCode is HttpStatusCode.UnprocessableEntity or HttpStatusCode.BadRequest) {
+            string? errorDetail = null;
+            try {
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("detail", out JsonElement detail)) {
+                    errorDetail = detail.GetString();
+                }
+            }
+            catch {
+                // Ignore parse failures — fall through to default message
+            }
+
+            throw new InvalidOperationException(
+                errorDetail ?? reasonPhrase ?? "The operation was rejected by the server.");
+        }
+
+        throw statusCode switch {
+            HttpStatusCode.Unauthorized => new UnauthorizedAccessException(
+                "Authentication required. Please sign in again."),
+            HttpStatusCode.Forbidden => new ForbiddenAccessException(
+                "Access denied. Insufficient permissions to access this resource."),
+            HttpStatusCode.ServiceUnavailable => new ServiceUnavailableException(
+                "The admin backend service is temporarily unavailable."),
+            _ => new HttpRequestException(
+                $"Admin API returned {(int)statusCode}: {reasonPhrase}",
+                null,
+                statusCode),
+        };
+    }
+
+    private static async Task<AdminClientProblem> ReadProblemAsync(HttpResponseMessage response) {
+        try {
+            string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(body)) {
+                return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
+            }
+
+            using var document = JsonDocument.Parse(body);
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) {
+                return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
+            }
+
+            var extensions = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (JsonProperty property in root.EnumerateObject()) {
+                if (property.Name is "type" or "title" or "status" or "detail" or "instance"
+                    || !SafeProblemExtensions.Contains(property.Name)) {
+                    continue;
+                }
+
+                if (TryConvertSafeJsonValue(property.Value, out object? safeValue)) {
+                    extensions[property.Name] = safeValue;
+                }
+            }
+
+            return new AdminClientProblem(
+                TryGetString(root, "type"),
+                TryGetString(root, "title"),
+                TryGetString(root, "detail"),
+                extensions);
+        }
+        catch (JsonException) {
+            return new AdminClientProblem(null, null, null, new Dictionary<string, object?>());
+        }
+    }
+
+    private static string? TryGetString(JsonElement root, string propertyName)
+        => root.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static bool TryConvertSafeJsonValue(JsonElement value, out object? safeValue) {
+        safeValue = value.ValueKind switch {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number when value.TryGetInt64(out long longValue) => longValue,
+            JsonValueKind.Number when value.TryGetDouble(out double doubleValue) => doubleValue,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => null,
+        };
+
+        return value.ValueKind is JsonValueKind.String
+            or JsonValueKind.Number
+            or JsonValueKind.True
+            or JsonValueKind.False
+            or JsonValueKind.Null;
+    }
+
+    private sealed record AdminClientProblem(
+        string? Type,
+        string? Title,
+        string? Detail,
+        IReadOnlyDictionary<string, object?> Extensions);
+}

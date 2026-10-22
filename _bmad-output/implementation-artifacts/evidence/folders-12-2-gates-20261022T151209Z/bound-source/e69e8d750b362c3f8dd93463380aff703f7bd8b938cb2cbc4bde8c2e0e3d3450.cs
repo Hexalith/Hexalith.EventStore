@@ -1,0 +1,581 @@
+@page "/dapr/actors"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Dapr
+@using Hexalith.EventStore.Admin.Abstractions.Models.Common
+@using Hexalith.EventStore.Admin.UI.Components.Shared
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+@using Microsoft.AspNetCore.Components.Authorization
+
+@implements IAsyncDisposable
+
+@inject AdminActorApiClient ApiClient
+@inject NavigationManager NavigationManager
+@inject ILogger<DaprActors> Logger
+@inject IJSRuntime JSRuntime
+@inject AdminUserContext UserContext
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>DAPR Actor Inspector - Hexalith EventStore</PageTitle>
+
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <FluentLink Href="/dapr" Appearance="LinkAppearance.Default" aria-label="Back to DAPR Infrastructure">
+        &larr; DAPR Infrastructure
+    </FluentLink>
+</div>
+
+<h1 style="margin: 0 0 16px;">DAPR Actor Inspector</h1>
+
+@* Error state: API unavailable *@
+<IssueBanner Visible="@(_error is not null && _runtimeInfo is null)"
+             Title="Unable to load actor information"
+             Description="@(_error ?? "The admin backend service may be unavailable.")"
+             ActionLabel="Retry"
+             OnAction="LoadRuntimeInfoAsync" />
+
+@* Summary stat cards *@
+<FluentGrid Spacing="3" style="margin-bottom: 16px;">
+    @if (_isLoading)
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <SkeletonCard />
+        </FluentGridItem>
+    }
+    else if (_runtimeInfo is not null)
+    {
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Registered Types"
+                      Value="@_runtimeInfo.ActorTypes.Count.ToString()"
+                      Severity="@(_runtimeInfo.ActorTypes.Count > 0 ? "success" : "neutral")"
+                      Title="Number of registered DAPR actor types" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="@GetActorInventoryLabel()"
+                      Value="@GetActorInventoryValue()"
+                      Severity="neutral"
+                      Title="@GetActorInventoryTitle()" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Inspected Actor State Size"
+                      Value="@(_inspectedState is not null ? TimeFormatHelper.FormatBytes(_inspectedState.TotalSizeBytes) : "—")"
+                      Severity="neutral"
+                      Title="@(_inspectedState is not null ? "Total state size of the currently inspected actor" : "Select an actor instance below to inspect its state size")" />
+        </FluentGridItem>
+    }
+</FluentGrid>
+
+@* Empty states (AC7) *@
+@if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count == 0)
+{
+    @switch (_runtimeInfo.RemoteMetadataStatus)
+    {
+        case RemoteMetadataStatus.NotConfigured:
+            <EmptyState Title="No actor types found"
+                        Description="Remote EventStore sidecar metadata is disabled. Set 'AdminServer:EventStoreDaprHttpEndpoint' in appsettings (under Aspire, this is wired automatically)." />
+            break;
+        case RemoteMetadataStatus.Unreachable:
+            <EmptyState Title="EventStore sidecar unreachable"
+                        Description="@($"Attempted to query {_runtimeInfo.RemoteEndpoint}/v1.0/metadata but the call failed. Verify the EventStore DAPR sidecar is running on that port (port conflicts on 3501 cause silent fallback). Check Admin server logs for the exception details.")" />
+            break;
+        case RemoteMetadataStatus.InvalidPayload:
+            <EmptyState Title="EventStore sidecar metadata invalid"
+                        Description="@($"The remote sidecar at {_runtimeInfo.RemoteEndpoint} responded but the metadata payload could not be parsed. Actor information is unavailable until the sidecar returns a well-formed response. Check Admin server logs for the parse error.")" />
+            break;
+        case RemoteMetadataStatus.Available:
+            <EmptyState Title="No actor types registered"
+                        Description="The EventStore sidecar is reachable but reports no actor types." />
+            break;
+        default:
+            // Future RemoteMetadataStatus members fall here. Log a warning so the missing UI
+            // translation is observable rather than silently bucketing under generic copy.
+            Logger.LogWarning("Unrecognised RemoteMetadataStatus '{Status}' in DaprActors empty state.", _runtimeInfo.RemoteMetadataStatus);
+            <EmptyState Title="Actor metadata unavailable"
+                        Description="@($"The remote sidecar metadata source returned an unrecognised status ({_runtimeInfo.RemoteMetadataStatus}). Refresh; if the issue persists, check Admin server logs.")" />
+            break;
+    }
+}
+
+<IssueBanner Visible="@(_runtimeInfo is not null && !_runtimeInfo.IsInventoryComplete)"
+             Title="@GetActorInventoryBannerTitle()"
+             Description="@(_runtimeInfo?.InventoryMessage ?? "Some actor counts are unavailable.")" />
+
+@* Actor type grid (AC1) *@
+@if (!_isLoading && _runtimeInfo is not null && _runtimeInfo.ActorTypes.Count > 0)
+{
+    <h2 style="margin: 0 0 12px;">Actor Types</h2>
+    <FluentDataGrid Items="@ActorTypeItems" TGridItem="DaprActorTypeInfo"
+                    Style="width: 100%; margin-bottom: 24px;"
+                    aria-label="Registered DAPR actor types"
+                    OnRowClick="@OnActorTypeRowClick">
+        <PropertyColumn Property="@(a => a.TypeName)" Title="Type Name" Sortable="true"
+                        IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Ascending" />
+        <TemplateColumn Title="Active Instances" Sortable="true"
+                        SortBy="@(GridSort<DaprActorTypeInfo>.ByAscending(a => a.ActiveCount))">
+            @FormatActiveCount(context)
+        </TemplateColumn>
+        <TemplateColumn Title="Count Status" Sortable="true"
+                        SortBy="@(GridSort<DaprActorTypeInfo>.ByAscending(a => a.CountStatus))">
+            @FormatCountStatus(context.CountStatus)
+        </TemplateColumn>
+        <TemplateColumn Title="Source" Sortable="true"
+                        SortBy="@(GridSort<DaprActorTypeInfo>.ByAscending(a => a.InventorySource))">
+            @FormatInventorySource(context.InventorySource)
+        </TemplateColumn>
+        <PropertyColumn Property="@(a => a.Description)" Title="Description" Sortable="false" />
+    </FluentDataGrid>
+
+    @* Configuration card (AC2) *@
+    <h2 style="margin: 0 0 12px;">Runtime Configuration</h2>
+    <FluentCard style="margin-bottom: 24px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <strong>Actor Runtime</strong>
+            @if (IsCustomConfig(_runtimeInfo.Configuration))
+            {
+                <StatusBadge Status="Configured" Severity="success" AriaLabelPrefix="Configuration status" />
+            }
+            else
+            {
+                <StatusBadge Status="Defaults" Severity="inflight" AriaLabelPrefix="Configuration status" />
+            }
+        </div>
+        <dl style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0;">
+            <dt style="font-weight: 600;">Idle Timeout</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.IdleTimeout</dd>
+            <dt style="font-weight: 600;">Scan Interval</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.ScanInterval</dd>
+            <dt style="font-weight: 600;">Drain Ongoing Call Timeout</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.DrainOngoingCallTimeout</dd>
+            <dt style="font-weight: 600;">Drain Rebalanced Actors</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.DrainRebalancedActors</dd>
+            <dt style="font-weight: 600;">Reentrancy Enabled</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.ReentrancyEnabled</dd>
+            <dt style="font-weight: 600;">Reentrancy Max Stack Depth</dt>
+            <dd style="margin: 0;">@_runtimeInfo.Configuration.ReentrancyMaxStackDepth</dd>
+        </dl>
+        <div style="margin-top: 12px; color: var(--colorNeutralForeground3); font-size: 0.85em;">
+            Placement: DAPR consistent-hashing (not queryable via API)
+        </div>
+    </FluentCard>
+
+    @if (_canInspectActors)
+    {
+        @* Instance lookup (AC3) *@
+        <h2 style="margin: 0 0 12px;">Instance Lookup</h2>
+        <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;">
+        <FluentSelect TOption="string" TValue="string"
+                      Value="@_selectedActorType"
+                      ValueChanged="OnActorTypeSelected"
+                      Label="Actor Type"
+                      style="min-width: 200px;"
+                      aria-label="Select actor type">
+            <FluentOption Value="@string.Empty">Select actor type...</FluentOption>
+            @foreach (DaprActorTypeInfo actorType in _runtimeInfo.ActorTypes)
+            {
+                <FluentOption Value="@actorType.TypeName">@actorType.TypeName</FluentOption>
+            }
+        </FluentSelect>
+        <FluentTextInput Value="@_actorId"
+                         ValueChanged="OnActorIdChanged"
+                         Label="Actor ID"
+                         Placeholder="@GetActorIdPlaceholder()"
+                         style="min-width: 300px;"
+                         aria-label="Enter actor instance ID" />
+        <FluentButton Appearance="ButtonAppearance.Primary"
+                      id="inspect-actor-button"
+                      Disabled="@(string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))"
+                      Loading="@_isInspecting"
+                      OnClick="InspectActorAsync"
+                      aria-label="Inspect actor instance">
+            Inspect
+        </FluentButton>
+        </div>
+    }
+}
+
+@* Not-found banner (AC8) *@
+<IssueBanner Visible="@_actorNotFound"
+             Title="Actor instance not found"
+             Description="@(_actorLookupMessage ?? "The actor may be inactive or the ID may be incorrect.")" />
+
+<IssueBanner Visible="@_actorLookupUnavailable"
+             Title="Actor lookup unavailable"
+             Description="@(_actorLookupMessage ?? "The state lookup source is unavailable, so the actor cannot be classified as inactive.")" />
+
+<IssueBanner Visible="@_actorAccessDenied"
+             Title="Access denied"
+             Description="Administrator permission is required to inspect actor instance state." />
+
+@* State viewer (AC4, AC5) *@
+@if (_canInspectActors && _inspectedState is not null)
+{
+    <h2 style="margin: 0 0 12px;">Actor State</h2>
+    <div style="margin-bottom: 8px; color: var(--colorNeutralForeground3); font-size: 0.85em;">
+        State shown reflects last persisted values. If the actor is currently processing a command, displayed state may be stale.
+    </div>
+    <FluentGrid Spacing="3" style="margin-bottom: 16px;">
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Total State Size"
+                      Value="@TimeFormatHelper.FormatBytes(_inspectedState.TotalSizeBytes)"
+                      Severity="neutral"
+                      Title="Total size across all state entries" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <StatCard Label="Inspected At"
+                      Value="@_inspectedState.InspectedAtUtc.ToString("HH:mm:ss UTC")"
+                      Severity="neutral"
+                      Title="Time of inspection" />
+        </FluentGridItem>
+        <FluentGridItem xs="6" sm="6" md="4">
+            <div style="display: flex; align-items: center; height: 100%;">
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              Loading="@_isInspecting"
+                              OnClick="InspectActorAsync"
+                              aria-label="Refresh actor state">
+                    Refresh
+                </FluentButton>
+            </div>
+        </FluentGridItem>
+    </FluentGrid>
+
+    @foreach (DaprActorStateEntry entry in _inspectedState.StateEntries)
+    {
+        <FluentCard style="margin-bottom: 12px; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong style="font-family: monospace;">@entry.Key</strong>
+                <span style="color: var(--colorNeutralForeground3); font-size: 0.85em;">
+                    @TimeFormatHelper.FormatBytes(entry.EstimatedSizeBytes)
+                </span>
+            </div>
+            @if (entry.Found && entry.JsonValue is not null)
+            {
+                <JsonViewer Json="@entry.JsonValue" Collapsed="false" MaxHeight="400" />
+            }
+            else if (entry.Key.Contains('{'))
+            {
+                <div style="color: var(--colorNeutralForeground3); font-style: italic;">
+                    Dynamic key family &mdash; specific entries depend on actor state.
+                </div>
+            }
+            else
+            {
+                <div style="color: var(--colorNeutralForeground3); font-style: italic;">
+                    No data
+                </div>
+            }
+        </FluentCard>
+    }
+}
+
+@code {
+    private readonly CancellationTokenSource _cts = new();
+    private DaprActorRuntimeInfo? _runtimeInfo;
+    private DaprActorInstanceState? _inspectedState;
+    private string? _selectedActorType;
+    private string? _actorId;
+    private bool _isLoading = true;
+    private bool _isInspecting;
+    private bool _actorNotFound;
+    private bool _actorLookupUnavailable;
+    private bool _actorAccessDenied;
+    private bool _canInspectActors;
+    private long _inspectRequestVersion;
+    private string? _error;
+    private string? _actorLookupMessage;
+
+    /// <summary>
+    /// Gets or sets the actor type from query string for deep linking (AC10).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// Gets or sets the actor ID from query string for deep linking (AC10).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "id")]
+    public string? Id { get; set; }
+
+    private IQueryable<DaprActorTypeInfo> ActorTypeItems =>
+        (_runtimeInfo?.ActorTypes ?? [])
+            .OrderBy(a => a.TypeName)
+            .AsQueryable();
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await RefreshCapabilitiesAsync().ConfigureAwait(false);
+        await LoadRuntimeInfoAsync().ConfigureAwait(false);
+
+        // AC10: Deep linking support
+        if (Type is not null)
+        {
+            _selectedActorType = Type;
+        }
+
+        if (_canInspectActors && Type is not null && Id is not null)
+        {
+            _actorId = Id;
+            await InspectActorAsync().ConfigureAwait(false);
+        }
+
+        _ = PollAsync(); // fire-and-forget
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> authenticationStateTask)
+    {
+        _ = authenticationStateTask;
+        _ = InvokeAsync(async () =>
+        {
+            await RefreshCapabilitiesAsync().ConfigureAwait(false);
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshCapabilitiesAsync()
+    {
+        _canInspectActors = await UserContext.HasMinimumRoleAsync(AdminRole.Admin).ConfigureAwait(false);
+        if (!_canInspectActors)
+        {
+            Interlocked.Increment(ref _inspectRequestVersion);
+            _isInspecting = false;
+            _actorAccessDenied = false;
+            ClearInspectResult();
+        }
+    }
+
+    private async Task PollAsync()
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(30));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token))
+            {
+                await InvokeAsync(async () =>
+                {
+                    try { await LoadRuntimeInfoAsync(); StateHasChanged(); }
+                    catch (ObjectDisposedException) { }
+                    catch (Exception) { /* Prevent unobserved exception from killing the poll loop */ }
+                });
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task LoadRuntimeInfoAsync()
+    {
+        try
+        {
+            _runtimeInfo = await ApiClient.GetActorRuntimeInfoAsync(_cts.Token);
+            _error = _runtimeInfo is null ? "Failed to load actor runtime information." : null;
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposal or navigation cancellation
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task InspectActorAsync()
+    {
+        if (!_canInspectActors)
+        {
+            _actorAccessDenied = true;
+            await FocusInspectButtonAsync().ConfigureAwait(false);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedActorType) || string.IsNullOrWhiteSpace(_actorId))
+        {
+            return;
+        }
+
+        long requestVersion = Interlocked.Increment(ref _inspectRequestVersion);
+        string requestedActorType = _selectedActorType;
+        string requestedActorId = _actorId;
+        _isInspecting = true;
+        _actorNotFound = false;
+        _actorLookupUnavailable = false;
+        _actorAccessDenied = false;
+        _actorLookupMessage = null;
+        _inspectedState = null;
+
+        try
+        {
+            DaprActorInstanceState? state = await ApiClient.GetActorInstanceStateAsync(
+                requestedActorType, requestedActorId, _cts.Token);
+
+            if (!IsCurrentInspectRequest(requestVersion, requestedActorType, requestedActorId))
+            {
+                return;
+            }
+
+            _inspectedState = state?.LookupStatus == DaprActorLookupStatus.Available ? state : null;
+            _actorLookupMessage = state?.Message;
+            _actorNotFound = state is null || state.LookupStatus == DaprActorLookupStatus.NotFound;
+            _actorLookupUnavailable = state?.LookupStatus == DaprActorLookupStatus.LookupUnavailable;
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposal or navigation cancellation
+        }
+        catch (ForbiddenAccessException)
+        {
+            if (IsCurrentInspectRequest(requestVersion, requestedActorType, requestedActorId))
+            {
+                _actorAccessDenied = true;
+                ClearInspectResult();
+                await FocusInspectButtonAsync().ConfigureAwait(false);
+            }
+        }
+        catch (Exception)
+        {
+            if (IsCurrentInspectRequest(requestVersion, requestedActorType, requestedActorId))
+            {
+                _actorLookupUnavailable = true;
+                _actorLookupMessage = "Actor lookup unavailable. The admin UI could not verify the state-store lookup path.";
+            }
+        }
+        finally
+        {
+            if (requestVersion == _inspectRequestVersion)
+            {
+                _isInspecting = false;
+            }
+        }
+    }
+
+    private void OnActorTypeSelected(string value)
+    {
+        _selectedActorType = value;
+        ClearInspectResult();
+    }
+
+    private void OnActorTypeRowClick(FluentDataGridRow<DaprActorTypeInfo> row)
+    {
+        if (row.Item is not null)
+        {
+            _selectedActorType = row.Item.TypeName;
+            ClearInspectResult();
+        }
+    }
+
+    private void OnActorIdChanged(string? value)
+    {
+        _actorId = value;
+        ClearInspectResult();
+    }
+
+    private string GetActorIdPlaceholder()
+    {
+        if (_runtimeInfo is null || string.IsNullOrEmpty(_selectedActorType))
+        {
+            return "actor-id";
+        }
+
+        DaprActorTypeInfo? actorType = _runtimeInfo.ActorTypes
+            .FirstOrDefault(a => a.TypeName == _selectedActorType);
+        return actorType?.ActorIdFormat ?? "actor-id";
+    }
+
+    private static bool IsCustomConfig(DaprActorRuntimeConfig config)
+        => config.IdleTimeout != TimeSpan.FromMinutes(60)
+            || config.ScanInterval != TimeSpan.FromSeconds(30)
+            || config.DrainOngoingCallTimeout != TimeSpan.FromSeconds(60)
+            || !config.DrainRebalancedActors
+            || config.ReentrancyEnabled
+            || config.ReentrancyMaxStackDepth != 32;
+
+    private bool HasReportedActorCount()
+        => _runtimeInfo?.ActorTypes.Any(a => a.CountStatus != DaprActorCountStatus.Unavailable && a.ActiveCount >= 0) == true;
+
+    // Round 10 P10: when every reported count is SourceLimited (local fallback only), the label
+    // must signal the degraded source so an operator does not read the value as authoritative.
+    // Operator truth contract: a number sourced from local fallback is not the same evidence
+    // class as a number sourced from the EventStore actor owner sidecar.
+    private bool HasOnlySourceLimitedCounts()
+        => _runtimeInfo is not null
+            && HasReportedActorCount()
+            && _runtimeInfo.ActorTypes
+                .Where(a => a.CountStatus != DaprActorCountStatus.Unavailable && a.ActiveCount >= 0)
+                .All(a => a.CountStatus == DaprActorCountStatus.SourceLimited);
+
+    private string GetActorInventoryLabel()
+        => _runtimeInfo?.IsInventoryComplete == true
+            ? "Total Active Actors"
+            : HasReportedActorCount()
+                ? HasOnlySourceLimitedCounts()
+                    ? "Known Active Actors (source-limited)"
+                    : "Known Active Actors"
+                : "Active actor data unavailable";
+
+    private string GetActorInventoryValue()
+        => HasReportedActorCount() ? _runtimeInfo!.TotalActiveActors.ToString() : "unavailable";
+
+    private string GetActorInventoryTitle()
+        => _runtimeInfo?.IsInventoryComplete == true
+            ? "Active actor instances reported for every known EventStore actor type"
+            : _runtimeInfo?.InventoryMessage ?? "Actor inventory completeness is unavailable";
+
+    private string GetActorInventoryBannerTitle()
+        => HasReportedActorCount()
+            ? "Actor inventory is partial"
+            : "Active actor data unavailable";
+
+    private static string FormatActiveCount(DaprActorTypeInfo actor)
+        => actor.CountStatus != DaprActorCountStatus.Unavailable && actor.ActiveCount >= 0
+            ? actor.ActiveCount.ToString()
+            : "unavailable";
+
+    private static string FormatCountStatus(DaprActorCountStatus status)
+        => status switch
+        {
+            DaprActorCountStatus.Exact => "exact",
+            DaprActorCountStatus.SourceLimited => "source-limited",
+            _ => "unavailable",
+        };
+
+    private static string FormatInventorySource(string source)
+        => source switch
+        {
+            "RemoteEventStoreSidecarMetadata" => "EventStore sidecar metadata",
+            "LocalAdminMetadataFallback" => "Admin sidecar fallback",
+            "NotConfigured" => "not configured",
+            "Unavailable" => "unavailable",
+            _ => source,
+        };
+
+    private bool IsCurrentInspectRequest(long requestVersion, string actorType, string actorId)
+        => requestVersion == _inspectRequestVersion
+            && string.Equals(_selectedActorType, actorType, StringComparison.Ordinal)
+            && string.Equals(_actorId, actorId, StringComparison.Ordinal);
+
+    private void ClearInspectResult()
+    {
+        _actorNotFound = false;
+        _actorLookupUnavailable = false;
+        _actorLookupMessage = null;
+        _inspectedState = null;
+    }
+
+    private async Task FocusInspectButtonAsync()
+        => await JSRuntime.InvokeVoidAsync("hexalithAdmin.focusElementById", "inspect-actor-button").ConfigureAwait(false);
+
+    public async ValueTask DisposeAsync()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+}

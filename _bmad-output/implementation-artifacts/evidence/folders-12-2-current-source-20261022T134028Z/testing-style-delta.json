@@ -1,0 +1,15 @@
+{
+  "reason": "Apply mandated Allman braces to newly authored test blocks; no assertion or test input changed.",
+  "changes": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Testing.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Tests.dll",
+      "before": "3f0c5d248735f7a23377e953c6ae5533150409a4a8fd1bf13a4672e5f63337bd",
+      "after": "868ffd8b1cad55cc2a6c4645249e8d9c30279b7f8ce02c68e0c4275d362f7534"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Testing.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.Tests.pdb",
+      "before": "5cc9306fdbb277289762910b4feedfcb1cf44f01fd40e27c2a79bce0a565cc5c",
+      "after": "1ff630ba22ca0136e8e49b7f3616dc5762b1ce50202541e829027b801ab2dcf0"
+    }
+  ]
+}

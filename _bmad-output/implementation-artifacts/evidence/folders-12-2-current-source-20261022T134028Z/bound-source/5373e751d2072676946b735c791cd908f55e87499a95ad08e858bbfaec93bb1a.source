@@ -1,0 +1,92 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.EventStore.Client.Gateway
+@using Hexalith.EventStore.Sample.Counter.Queries
+@using Hexalith.EventStore.Sample.BlazorUI.Services
+@inject EventStoreSignalRClient SignalRClient
+@inject EventStoreProjectionQueryClient QueryClient
+@implements IAsyncDisposable
+
+<FluentCard Style="padding: 24px;">
+    <h3>Current Count</h3>
+    @if (_error is not null)
+    {
+        <Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar Title="Error" Intent="MessageBarIntent.Error" Style="margin-bottom: 12px;">
+            @_error
+        </Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar>
+    }
+    @if (_isLoading)
+    {
+        <Microsoft.FluentUI.AspNetCore.Components.FluentProgressBar />
+    }
+    else if (_result is not null)
+    {
+        <p style="font-size: 48px; font-weight: bold; margin: 16px 0;">@_result.Count</p>
+        <p style="color: var(--neutral-foreground-hint); font-size: 12px;">
+            Last refreshed: @_lastRefreshed?.ToString("HH:mm:ss")
+        </p>
+    }
+</FluentCard>
+
+@code {
+    [Parameter] public string TenantId { get; set; } = "tenant-a";
+    [Parameter] public string ProjectionType { get; set; } = "counter";
+
+    private CounterStatusResult? _result;
+    private DateTime? _lastRefreshed;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SignalRClient.SubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
+        await LoadDataAsync();
+        _isLoading = false;
+    }
+
+    private void OnProjectionChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            await LoadDataAsync();
+
+            _isLoading = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            EventStoreQueryResult queryResult = await QueryClient.GetAsync(
+                TenantId,
+                GetCounterStatusQuery.Domain,
+                "counter-1",
+                GetCounterStatusQuery.QueryType,
+                GetCounterStatusQuery.ProjectionType,
+                "counter-1",
+                _result?.ETag);
+            _result = CounterStatusResult.FromQueryResult(queryResult, _result);
+            _lastRefreshed = DateTime.Now;
+            _error = null;
+        }
+        catch (EventStoreGatewayException ex) when (ex.StatusCode == 404)
+        {
+            _result = CounterStatusResult.Empty;
+            _lastRefreshed = DateTime.Now;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to load: {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SignalRClient.UnsubscribeAsync(ProjectionType, TenantId, OnProjectionChanged);
+    }
+}

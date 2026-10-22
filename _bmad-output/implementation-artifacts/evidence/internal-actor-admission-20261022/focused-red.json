@@ -1,0 +1,12 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-class",
+    "*ActorCallbackRateLimitPipelineTests",
+    "-showLiveOutput",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/focused-red.xml"
+  ],
+  "exit_code": 1
+}

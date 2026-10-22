@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "dotnet",
+    "msbuild",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Hexalith.EventStore.Server.LiveSidecar.Tests.csproj",
+    "-p:Configuration=Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-p:UseNuGetDeps=false",
+    "-getProperty:Configuration,TargetFramework,UseHexalithProjectReferences,UseNuGetDeps,HexalithCommonsFromSource,HexalithTenantsFromSource",
+    "-getItem:ProjectReference,PackageReference"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:20:04.348738+00:00",
+  "environment_overrides": {},
+  "runner_pid": 17476,
+  "pid": 17547,
+  "exit_code": 0,
+  "elapsed_seconds": 0.9541342650045408,
+  "utc_end": "2026-10-22T15:20:05.303021+00:00"
+}

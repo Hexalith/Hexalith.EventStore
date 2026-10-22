@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/test-launcher-cleanup.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:33:33.247090+00:00",
+  "environment_overrides": {},
+  "runner_pid": 86027,
+  "pid": 86033,
+  "exit_code": 0,
+  "elapsed_seconds": 11.107956588995876,
+  "utc_end": "2026-10-22T15:33:44.355190+00:00"
+}

@@ -1,0 +1,1551 @@
+diff --git a/src/Hexalith.EventStore.AppHost/Program.cs b/src/Hexalith.EventStore.AppHost/Program.cs
+index 8d600fb5c..400226dc9 100644
+--- a/src/Hexalith.EventStore.AppHost/Program.cs
++++ b/src/Hexalith.EventStore.AppHost/Program.cs
+@@ -419,7 +419,6 @@ _ = adminUI.WithEnvironment(
+ // app-channel token, shared only with its own sidecar. Publish targets supply APP_API_TOKEN from their own
+ // secret store (Stories 5.6-5.8 own deployment topology parity).
+ if (builder.ExecutionContext.IsRunMode) {
+-    _ = eventStore.WithGeneratedEventStoreAppChannelToken();
+     _ = sample.WithGeneratedEventStoreAppChannelToken();
+     if (tenants is not null) {
+         _ = tenants.WithGeneratedEventStoreAppChannelToken();
+diff --git a/src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs b/src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs
+index 694baac20..6e8ecbc6f 100644
+--- a/src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs
++++ b/src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs
+@@ -268,6 +268,13 @@ public static class HexalithEventStoreExtensions {
+                 .WithReference(stateStore)
+                 .WithReference(pubSub));
+ 
++        // The owning topology wires callbacks through an authenticated application channel. Deployment
++        // targets supply their token from their own secret store, as for the other application resources.
++        if (builder.ExecutionContext.IsRunMode)
++        {
++            _ = eventStore.WithGeneratedEventStoreAppChannelToken();
++        }
++
+         // Admin server / admin UI are optional (gateway-only composition passes null). All admin wiring is
+         // gated here so a null adminServer simply yields a command-gateway-only topology with no
+         // eventstore-admin / eventstore-admin-ui resources.
+diff --git a/src/Hexalith.EventStore/Extensions/EventStoreRateLimitPartition.cs b/src/Hexalith.EventStore/Extensions/EventStoreRateLimitPartition.cs
+index 570fa112c..4dc282f71 100644
+--- a/src/Hexalith.EventStore/Extensions/EventStoreRateLimitPartition.cs
++++ b/src/Hexalith.EventStore/Extensions/EventStoreRateLimitPartition.cs
+@@ -1,12 +1,72 @@
+ using System.Security.Claims;
++using System.Security.Cryptography;
++using System.Text;
+ 
+ using Hexalith.EventStore.Authentication;
+ using Hexalith.EventStore.ServiceDefaults.Authentication;
+ 
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Routing;
++
+ namespace Hexalith.EventStore.Extensions;
+ 
+ /// <summary>Separates verified internal traffic from unauthenticated traffic without relaxing either quota.</summary>
+ internal static class EventStoreRateLimitPartition {
++    /// <summary>Gets a bounded callback quota key only for a mapped actor and a configured, verified channel token.</summary>
++    /// <param name="context">The routed request, before authorization middleware runs.</param>
++    /// <returns>A non-reversible actor identity key, or <see langword="null"/> for ordinary traffic.</returns>
++    internal static string? TrustedActorKey(HttpContext context)
++    {
++        if (!IsActorEndpoint(context.GetEndpoint())
++            || context.Request.RouteValues["actorTypeName"] is not string actorType
++            || string.IsNullOrWhiteSpace(actorType)
++            || context.Request.RouteValues["actorId"] is not string actorId
++            || string.IsNullOrWhiteSpace(actorId))
++        {
++            return null;
++        }
++
++        // Rate limiting precedes endpoint authorization, so verify the configured secret directly rather
++        // than trusting the current principal or waiting for the endpoint's channel policy to authenticate.
++        // NotRequired (Development without a token) must never mint an actor partition.
++        IConfiguration configuration = context.RequestServices.GetRequiredService<IConfiguration>();
++        if (DaprAppChannelToken.Verify(context.Request, configuration[DaprAppChannelToken.ConfigurationKey], isDevelopment: false)
++            != DaprAppChannelTokenStatus.Valid)
++        {
++            return null;
++        }
++
++        // A length prefix keeps type/id pairs unambiguous. Hashing avoids exposing raw actor IDs in quota logs.
++        byte[] identity = Encoding.UTF8.GetBytes(FormattableString.Invariant($"{actorType.Length}:{actorType}{actorId}"));
++        return "sidecar:actor:" + Convert.ToHexStringLower(SHA256.HashData(identity));
++    }
++
++    private static bool IsActorEndpoint(Endpoint? endpoint)
++    {
++        if (endpoint?.Metadata.GetMetadata<EventStoreActorCallbackEndpointMetadata>() is not null)
++            return true;
++
++        // Custom Gateway hosts may call Dapr's mapping directly. Require its actual mapped delegate,
++        // exact route and verb; a matching public path or caller-supplied route values are insufficient.
++        Type daprMapper = typeof(ActorsEndpointRouteBuilderExtensions);
++        Type? declaringType = endpoint?.RequestDelegate?.Method.DeclaringType;
++        if (endpoint is not RouteEndpoint route
++            || declaringType?.Assembly != daprMapper.Assembly
++            || declaringType.DeclaringType != daprMapper)
++            return false;
++
++        string? verb = route.RoutePattern.RawText?.TrimStart('/') switch
++        {
++            "actors/{actorTypeName}/{actorId}" => "DELETE",
++            "actors/{actorTypeName}/{actorId}/method/{methodName}" => "PUT",
++            "actors/{actorTypeName}/{actorId}/method/remind/{reminderName}" => "PUT",
++            "actors/{actorTypeName}/{actorId}/method/timer/{timerName}" => "PUT",
++            _ => null,
++        };
++        IReadOnlyList<string>? methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods;
++        return verb is not null && methods is { Count: 1 } && string.Equals(methods[0], verb, StringComparison.Ordinal);
++    }
++
+     public static string? TrustedInternalKey(ClaimsPrincipal? principal) {
+         if (principal is null) {
+             return null;
+diff --git a/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs
+index 30795810f..90826da67 100644
+--- a/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.EventStore/Extensions/ServiceCollectionExtensions.cs
+@@ -216,17 +216,19 @@ public static class EventStoreServiceCollectionExtensions {
+ 
+             // Per-tenant limiter; verified internal callers have separate bounded partitions because they carry
+             // no human tenant claim. Unverified traffic remains in the anonymous partition.
+-            var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
++            var tenantLimiter = PartitionedRateLimiter.Create<HttpContext, (bool Actor, string Identity)>(context => {
+                 // Health endpoints must never be rate limited (H2)
+                 string path = context.Request.Path.Value ?? string.Empty;
+                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
+                     path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
+                     path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
+-                    return RateLimitPartition.GetNoLimiter<string>("__health");
++                    return RateLimitPartition.GetNoLimiter((Actor: false, Identity: "__health"));
+                 }
+ 
+                 // Use eventstore:tenant claim set by EventStoreClaimsTransformation (H1), then verified internal identity.
+-                string tenantId = context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
++                string? actorKey = EventStoreRateLimitPartition.TrustedActorKey(context);
++                string tenantId = actorKey
++                    ?? context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
+                     ?? context.User?.FindFirst("eventstore:tenant")?.Value
+                     ?? EventStoreRateLimitPartition.TrustedTenantKey(context.User)
+                     ?? EventStoreRateLimitPartition.TrustedInternalKey(context.User)
+@@ -244,7 +246,8 @@ public static class EventStoreServiceCollectionExtensions {
+                     ? tenantLimit
+                     : rateLimitOptions.PermitLimit;
+ 
+-                return RateLimitPartition.GetSlidingWindowLimiter(tenantId, _ =>
++                // Keep raw configuration lookup identities, but never let public claims alias an actor's cache key.
++                return RateLimitPartition.GetSlidingWindowLimiter((Actor: actorKey is not null, Identity: tenantId), _ =>
+                     new SlidingWindowRateLimiterOptions {
+                         PermitLimit = permitLimit,
+                         Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
+@@ -255,19 +258,21 @@ public static class EventStoreServiceCollectionExtensions {
+             });
+ 
+             // Per-consumer limiter keyed by human JWT subject or verified workload identity.
+-            var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => {
++            var consumerLimiter = PartitionedRateLimiter.Create<HttpContext, (bool Actor, string Identity)>(context => {
+                 // Health endpoints must never be rate limited (same exemption as per-tenant)
+                 string path = context.Request.Path.Value ?? string.Empty;
+                 if (path.Equals("/health", StringComparison.OrdinalIgnoreCase) ||
+                     path.Equals("/alive", StringComparison.OrdinalIgnoreCase) ||
+                     path.Equals("/ready", StringComparison.OrdinalIgnoreCase)) {
+-                    return RateLimitPartition.GetNoLimiter<string>("__health");
++                    return RateLimitPartition.GetNoLimiter((Actor: false, Identity: "__health"));
+                 }
+ 
+                 // Human consumer identity comes from JWT "sub"; verified internal identities have their own
+                 // bounded buckets. All other traffic shares one anonymous consumer bucket.
+                 string? rawConsumerId = context.User?.FindFirst("sub")?.Value;
+-                string consumerId = context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
++                string? actorKey = EventStoreRateLimitPartition.TrustedActorKey(context);
++                string consumerId = actorKey
++                    ?? context.GetEndpoint()?.Metadata.GetMetadata<WorkloadAuthorityEndpointMetadata>()?.Partition
+                     ?? (!string.IsNullOrWhiteSpace(rawConsumerId)
+                         ? rawConsumerId
+                         : EventStoreRateLimitPartition.TrustedInternalKey(context.User) ?? "anonymous");
+@@ -280,7 +285,7 @@ public static class EventStoreServiceCollectionExtensions {
+                     ? consumerLimit
+                     : rateLimitOptions.ConsumerPermitLimit;
+ 
+-                return RateLimitPartition.GetSlidingWindowLimiter(consumerId, _ =>
++                return RateLimitPartition.GetSlidingWindowLimiter((Actor: actorKey is not null, Identity: consumerId), _ =>
+                     new SlidingWindowRateLimiterOptions {
+                         PermitLimit = permitLimit,
+                         Window = TimeSpan.FromSeconds(rateLimitOptions.ConsumerWindowSeconds),
+@@ -304,15 +309,17 @@ public static class EventStoreServiceCollectionExtensions {
+                     ILogger logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Hexalith.EventStore.RateLimiting");
+ 
+                     string correlationId = context.HttpContext.Items[CorrelationIdMiddleware.HttpContextKey]?.ToString() ?? string.Empty;
+-                    string tenantId = context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
++                    string? actorKey = EventStoreRateLimitPartition.TrustedActorKey(context.HttpContext);
++                    string tenantId = actorKey
++                        ?? context.HttpContext.User?.FindFirst("eventstore:tenant")?.Value
+                         ?? EventStoreRateLimitPartition.TrustedTenantKey(context.HttpContext.User)
+                         ?? context.HttpContext.Items["RequestTenantId"]?.ToString()
+                         ?? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User)
+                         ?? "unknown";
+                     string? rawConsumerId = context.HttpContext.User?.FindFirst("sub")?.Value;
+-                    string consumerId = string.IsNullOrWhiteSpace(rawConsumerId)
++                    string consumerId = actorKey ?? (string.IsNullOrWhiteSpace(rawConsumerId)
+                         ? EventStoreRateLimitPartition.TrustedInternalKey(context.HttpContext.User) ?? "anonymous"
+-                        : rawConsumerId;
++                        : rawConsumerId);
+                     string? sourceIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
+ 
+                     // H11: Use RetryAfter metadata if available, fall back to WindowSeconds
+diff --git a/src/Hexalith.EventStore/Program.cs b/src/Hexalith.EventStore/Program.cs
+index 6c4fc024e..d5bf058f4 100644
+--- a/src/Hexalith.EventStore/Program.cs
++++ b/src/Hexalith.EventStore/Program.cs
+@@ -57,7 +57,9 @@ if (!declarativeSubscriptions)
+ {
+     app.MapSubscribeHandler();
+ }
+-app.MapActorsHandlers();
++app.MapActorsHandlers()
++    .WithMetadata(EventStoreActorCallbackEndpointMetadata.Instance)
++    .RequireAuthorization(EventStoreWorkloadAuthenticationDefaults.SidecarChannelPolicy);
+ if (workloadAuthorityEnabled)
+ {
+     app.MapEventStoreWorkloadBindingAuthority();
+diff --git a/tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs b/tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs
+index a21d875a3..a04fe22ab 100644
+--- a/tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs
++++ b/tests/Hexalith.EventStore.AppHost.Tests/Configuration/DomainModuleAspireExtensionTests.cs
+@@ -8,6 +8,34 @@ using CommunityToolkit.Aspire.Hosting.Dapr;
+ using Hexalith.EventStore.Aspire;
+ 
+ public class DomainModuleAspireExtensionTests {
++    [Fact]
++    public async Task EventStoreTopologyOwnsTokenSharedOnlyWithItsSidecarAsync()
++    {
++        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
++        IResourceBuilder<ProjectResource> gateway = builder.AddProject<EventStoreProjectMetadata>("eventstore");
++        IResourceBuilder<ProjectResource> admin = builder.AddProject<EventStoreProjectMetadata>("admin");
++        builder.AddHexalithEventStore(gateway, admin);
++        ParameterResource token = builder.Resources.OfType<ParameterResource>()
++            .Single(resource => resource.Name == "eventstore-app-api-token");
++        token.Secret.ShouldBeTrue();
++
++        Dictionary<string, object> appEnvironment = [];
++        foreach (EnvironmentCallbackAnnotation callback in gateway.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
++            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, gateway.Resource, appEnvironment, TestContext.Current.CancellationToken));
++        appEnvironment[HexalithEventStoreAppChannelExtensions.AppChannelTokenVariable].ShouldBeSameAs(token);
++
++        IDaprSidecarResource sidecar = GetSidecar(gateway);
++        Dictionary<string, object> sidecarEnvironment = [];
++        foreach (EnvironmentCallbackAnnotation callback in sidecar.Annotations.OfType<EnvironmentCallbackAnnotation>())
++            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, sidecar, sidecarEnvironment, TestContext.Current.CancellationToken));
++        sidecarEnvironment[HexalithEventStoreAppChannelExtensions.AppChannelTokenVariable].ShouldBeSameAs(token);
++
++        Dictionary<string, object> adminEnvironment = [];
++        foreach (EnvironmentCallbackAnnotation callback in admin.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
++            await callback.Callback(new EnvironmentCallbackContext(builder.ExecutionContext, admin.Resource, adminEnvironment, TestContext.Current.CancellationToken));
++        adminEnvironment.ShouldNotContainKey(HexalithEventStoreAppChannelExtensions.AppChannelTokenVariable);
++    }
++
+     [Fact]
+     public async Task AssignedGatewayComponentNamesReachResourcesOwnerOptionsAndSidecarAsync()
+     {
+diff --git a/_bmad-output/implementation-artifacts/spec-internal-actor-admission-isolation.md b/_bmad-output/implementation-artifacts/spec-internal-actor-admission-isolation.md
+new file mode 100644
+index 000000000..a692fd416
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-internal-actor-admission-isolation.md
+@@ -0,0 +1,92 @@
++---
++title: 'Isolate authenticated actor callback admission quotas'
++type: bugfix
++created: '2026-10-22'
++status: done
++route: dispatch
++baseline_commit: c66a0a3345ad97b137959179a0583faf81d59e4b
++review_loop_iteration: 0
++context:
++  - AGENTS.md
++  - references/Hexalith.AI.Tools/hexalith-llm-instructions.md
++---
++
++<frozen-after-approval reason="explicit user implementation and qualification authorization">
++
++## Intent
++
++Folders Story 12.2 Task 36 strict acceptance fails waiting for BranchRefPolicyConfigured. The retained log first rejects IdempotencyAdmissionActor.ValidateAuthorityAsync and then MarkRecoveryAsync with HTTP429; recovery cannot persist unknown outcome and retries fail closed. Global tenant/consumer HTTP quotas collapse runtime callbacks into anonymous public traffic. The owning Aspire helper supplies no EventStore app-channel token; one shared verified-sidecar bucket would still couple unrelated actors.
++
++Correct the EventStore-owned authenticated callback partition and qualify production HTTP admission against real Dapr Redis persistence with process recovery. No further product intent or irreversible action is needed.
++
++## Boundaries & Constraints
++
++Always preserve existing public/workload quota numbers, windows, queues, authentication, admission authority/fence validation, unknown-outcome fail-closed semantics, durable completion, and conflict refusal. Actor callbacks remain rate limited with the same configured ceilings, separated by actual actor identity after configured-token verification and matched endpoint recognition. Require app-channel authorization on mapped actor handlers; a channel proves no workload/human authority. Never trust path/header/caller-name claims alone or Development-unverified identity for partition isolation.
++
++Never disable limiters, increase budgets, change dependency pins, publish, stage, commit, push, branch, touch unrelated AppHosts, change Folders production persistence, acknowledge conflicts, or alter historical evidence. Preserve all existing work (initial dirty spec/sprint files are recorded). Preserve inherited replay implementation and identity/continuity/CAS/epoch/batch guarantees; coordinator source hash is 23f82c1898318e7d9a1fc0e6892586d210a5d48debab58087f2c9c2176b1cbe9. Task36, package/PD10, SM4 and whole-story gates remain separate.
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input | Expected behavior | Failure handling |
++|---|---|---|---|
++| Cross-actor saturation | Real actor A exhausts unchanged configured quota; B admission continues | B can validate/recover/complete through own bounded partition | A retains HTTP429 |
++| Same actor saturation | Repeated valid calls to one actor | Existing quota produces HTTP429 and Retry-After | No bypass |
++| Forgery | Missing/wrong/duplicate token, public lookalike path, human copied claims | No isolated callback partition; mapped actors reject untrusted channel | 401/403 or existing 429 |
++| Workload boundary | Channel token without valid workload operation assertion | Public/workload operations stay denied | Existing authentication policies |
++| Recovery | Terminal command then real EventStore/sidecar process replacement | Same identity/result replay, one retained event and terminal admission/status | Ambiguous outcomes never authorize repeat effect |
++| Conflicting intent | Existing key with changed payload/target | Conflict refusal; durable state unchanged | No acknowledgement |
++| Public traffic | Tenant and consumer quotas reached | Existing public HTTP429/Retry-After | No budget change |
++
++</frozen-after-approval>
++
++## Code Map
++
++- `src/Hexalith.EventStore/Extensions/{ServiceCollectionExtensions,EventStoreRateLimitPartition}.cs`: chained global tenant/consumer limiters; already supports verified sidecar key but currently one bucket. Compiled in Gateway via linked source, inspect csproj.
++- `src/Hexalith.EventStore/Program.cs`: production HTTP middleware order and actor mapping. Mark actual mapped routes with trusted endpoint metadata and sidecar policy; inspect Dapr 1.18.10 route values rather than guess.
++- `src/Hexalith.EventStore.Aspire/HexalithEventStoreExtensions.cs`: AddHexalithEventStore owns token wiring immediately after WithDaprSidecar. Reuse HexalithEventStoreAppChannelExtensions.
++- `src/Hexalith.EventStore.ServiceDefaults/Authentication/`: existing constant-time configured-token verifier, SidecarChannel scheme/policy; reuse without weakening workload proof.
++- `tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs`: bounded partition and forged principal controls.
++- `tests/Hexalith.EventStore.IntegrationTests/EventStore/*RateLimitingTests.cs`: existing production pipeline public throttling controls.
++- `tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs`: exact production EventStore/Sample OS-process shadow launch, JWT/token wiring, persisted checks and restart pattern. Do not change its unrelated qualification matrix. Redis component/read seams in DaprTestContainerFixture; that in-process fixture alone omits HTTP limiter and cannot qualify this fix.
++- Folders evidence packet `/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-inherited-owner-requalification-20261022T084922Z/`: handoff, strict-admission-failure, strict-live log/XML, qualification and external Git observation are required causal inputs; do not modify.
++
++## Tasks & Acceptance
++
++- [x] Add focused production-pipeline regression tests for the matrix. Run before production changes and retain expected red failure.
++- [x] Correct token wiring, authenticated callback endpoint recognition and actor-scoped bounded keys; no numeric quota edits.
++- [x] Add a focused process fixture/test using production HTTP host, actual Sample/domain processing, real Dapr Redis state, authentic channel callbacks and process replacement. Assert retained command status, aggregate metadata/event count, admission terminal/replay contents, conflict refusal, public throttling and callback authentication. Keep fixture-owned resources isolated and clean up exactly those resources.
++- [x] Run focused green controls and relevant existing admission/auth/rate-limit regressions; retain exact commands/logs/XML and blockers in `_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/`.
++- [x] Record causal evidence, source/binary identities and cleanup for Folders handoff; keep remaining gates explicit.
++
++Given the production host and real Dapr persistence, when unrelated callback traffic saturates its own unchanged quota, then authenticated admission operations still complete durably. Given process replacement, when the original command is retried, then identity/result replay is exact and no second event is appended. Given ordinary public calls, when tenant/consumer budgets are exhausted, then HTTP429 remains enforced.
++
++## Implementation Notes
++
++Consumer-path audit: Folders references Gateway/DomainService and supplies its own Program. The correction must cover its existing raw MapActorsHandlers route through verified Dapr delegate provenance, beyond the standalone marker. Review preserves public quota override lookup while structurally separating internal actor partitions from raw public subject strings.
++
++Dispatch uses the user's explicit instruction to implement and qualify; no new permission checkpoint is needed. Do not load skills from references. Test builds use Debug/project references, individual test assemblies, no dependency updates. Reuse existing infrastructure read-only if needed, but prefer owned dynamic-port Redis/control plane and namespace. An unrelated Tenants AppHost is active; never stop or rebuild it.
++
++## Spec Change Log
++
++## Review Triage Log
++
++| parent-custom-host | medium | Folders owns a distinct Program with raw MapActorsHandlers; private standalone marker does not reach consumed path. Patch recognition of actual matched Dapr delegate provenance and exact route metadata with configured-token verification, plus a raw-host regression. No consumer persistence/host changes. | patch |
++
++| blind-1 | medium | Actor callback keys and raw human subjects share a string namespace; verified from global consumer limiter. Patch structured actor/public partition keys while preserving override lookup. | patch |
++| blind-2 | medium | Generic failure status alone is a weak guard oracle. Patch authenticated inspection/decision readback and unchanged state checks after each refusal; production diagnostics deliberately redact exception messages. | patch |
++| blind-3 | medium | Public throttle oracle permits anonymous/authentication failure false positives. Patch exact 100 authenticated 404 responses then 429, partition identity and Retry-After. | patch |
++| blind-4 | medium | Saturation can expire before command. Patch throttled actor checks immediately before and after compared operations. | patch |
++| blind-5 | medium | Recovery terminal oracle only compares payload. Patch full replay result and original identity through AdmitAsync and persisted rows. | patch |
++| blind-6 | medium | First failed docker rm short-circuits cleanup. Patch independent idempotent cleanup with absence verification. | patch |
++| blind-7 | medium | Overall passed flag can ignore cleanup failure. Patch separate qualification/cleanup outcomes and require both. | patch |
++| blind-8 | medium | Standalone process test is not discovered by normal live test project. Patch a discoverable live qualification test invoking the same owned runner. | patch |
++| edge-1 | medium | Same cleanup short-circuit and success-flag defect as blind-6/7; grouped patch. | patch |
++| edge-2 | medium | Same saturation expiration oracle as blind-4; grouped patch. | patch |
++| edge-3 | medium | Same generic refusal oracle as blind-2; grouped patch. | patch |
++| verification-1 | medium | Normal tests only exercise DELETE/synthetic values while process script covers PUT. Discoverable live test will invoke exact persisted-state/process scenario. | patch |
++
++## Verification
++
++Build individually with `dotnet build <test-project> -c Debug -p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -m:1 -nr:false`; invoke built xUnit v3 assemblies using `-class` / `-method`, `-showLiveOutput`, `-result-xml <packet-file>`. Preserve failed attempts, exact command receipts, persisted snapshots and cleanup. Existing repository instruction calls for Aspire baseline; exact-target describe reported no EventStore AppHost running, and fixed 8080/3501 endpoints are already owned by unrelated Tenants topology. Use isolated fixture processes for red baseline/qualification, with no unrelated topology mutation.
++
++Verified outcome: final-admission-auth-rate.xml passes547; topology passes18; cleanup controls pass4; live-final-v2.xml passes1 discoverable test with47 assertions, no skips. Final-script frozen baseline reproduces actor B429. All review patches are implemented, including raw custom-host provenance. The failed health matrix and interrupted broader suite remain separate, with no Task36/package/PD10/SM4/story closure. User instruction prohibits commits and overrides the workflow commit step.
+diff --git a/src/Hexalith.EventStore/Extensions/EventStoreActorCallbackEndpointMetadata.cs b/src/Hexalith.EventStore/Extensions/EventStoreActorCallbackEndpointMetadata.cs
+new file mode 100644
+index 000000000..1329a3fed
+--- /dev/null
++++ b/src/Hexalith.EventStore/Extensions/EventStoreActorCallbackEndpointMetadata.cs
+@@ -0,0 +1,12 @@
++namespace Hexalith.EventStore.Extensions;
++
++/// <summary>Marks endpoints mapped by the EventStore's Dapr actor runtime.</summary>
++internal sealed class EventStoreActorCallbackEndpointMetadata
++{
++    private EventStoreActorCallbackEndpointMetadata()
++    {
++    }
++
++    /// <summary>Gets the marker shared by the actual actor runtime endpoint mappings.</summary>
++    internal static EventStoreActorCallbackEndpointMetadata Instance { get; } = new();
++}
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Authentication/ActorCallbackRateLimitPartitionTests.cs b/tests/Hexalith.EventStore.Server.Tests/Authentication/ActorCallbackRateLimitPartitionTests.cs
+new file mode 100644
+index 000000000..30e144285
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.Tests/Authentication/ActorCallbackRateLimitPartitionTests.cs
+@@ -0,0 +1,80 @@
++using System.Security.Claims;
++
++using Hexalith.EventStore.Extensions;
++using Hexalith.EventStore.ServiceDefaults.Authentication;
++
++using Microsoft.AspNetCore.Http;
++using Microsoft.Extensions.Configuration;
++using Microsoft.Extensions.DependencyInjection;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Server.Tests.Authentication;
++
++/// <summary>Checks that callback isolation depends on routed actor identity and configured token verification.</summary>
++public sealed class ActorCallbackRateLimitPartitionTests
++{
++    private const string ChannelToken = "partition-fixture-channel-token";
++
++    [Theory]
++    [InlineData("missing")]
++    [InlineData("wrong")]
++    [InlineData("duplicate")]
++    [InlineData("unconfigured")]
++    [InlineData("unmatched")]
++    [InlineData("missing-type")]
++    [InlineData("missing-id")]
++    public void UnverifiedOrUnmatchedRequestsCannotMintActorKeys(string scenario)
++    {
++        using ServiceProvider provider = Services(scenario == "unconfigured" ? null : ChannelToken);
++        DefaultHttpContext context = Context(provider, "Type", "actor");
++        context.User = new ClaimsPrincipal(new ClaimsIdentity(
++            [new Claim(EventStoreWorkloadAuthenticationDefaults.ChannelClaimType, DaprSidecarChannelAuthenticationHandler.VerifiedChannel)],
++            EventStoreWorkloadAuthenticationDefaults.SidecarChannelScheme));
++        if (scenario != "missing")
++            context.Request.Headers.Append(DaprAppChannelToken.HeaderName, scenario == "wrong" ? "wrong-token" : ChannelToken);
++        if (scenario == "duplicate") context.Request.Headers.Append(DaprAppChannelToken.HeaderName, ChannelToken);
++        if (scenario == "unmatched") context.SetEndpoint(null);
++        if (scenario == "missing-type") context.Request.RouteValues.Remove("actorTypeName");
++        if (scenario == "missing-id") context.Request.RouteValues.Remove("actorId");
++
++        EventStoreRateLimitPartition.TrustedActorKey(context).ShouldBeNull();
++    }
++
++    [Fact]
++    public void ActorKeysSeparateTypesAndIdsWithoutDependingOnMethodOrHumanClaims()
++    {
++        using ServiceProvider provider = Services(ChannelToken);
++        DefaultHttpContext first = Context(provider, "ab", "c");
++        first.Request.Headers.Append(DaprAppChannelToken.HeaderName, ChannelToken);
++        string firstKey = EventStoreRateLimitPartition.TrustedActorKey(first).ShouldNotBeNull();
++        firstKey.ShouldStartWith("sidecar:actor:");
++        firstKey.Length.ShouldBe("sidecar:actor:".Length + 64);
++
++        first.Request.RouteValues["methodName"] = "MarkRecoveryAsync";
++        first.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "human"), new Claim("eventstore:tenant", "tenant")], "Bearer"));
++        EventStoreRateLimitPartition.TrustedActorKey(first).ShouldBe(firstKey);
++
++        foreach ((string type, string id) in new[] { ("a", "bc"), ("ab", "other"), ("OtherType", "c") })
++        {
++            DefaultHttpContext other = Context(provider, type, id);
++            other.Request.Headers.Append(DaprAppChannelToken.HeaderName, ChannelToken);
++            EventStoreRateLimitPartition.TrustedActorKey(other).ShouldNotBe(firstKey);
++        }
++    }
++
++    private static ServiceProvider Services(string? token)
++        => new ServiceCollection().AddSingleton<IConfiguration>(new ConfigurationBuilder()
++            .AddInMemoryCollection(new Dictionary<string, string?> { [DaprAppChannelToken.ConfigurationKey] = token }).Build())
++            .BuildServiceProvider();
++
++    private static DefaultHttpContext Context(IServiceProvider provider, string actorType, string actorId)
++    {
++        var context = new DefaultHttpContext { RequestServices = provider };
++        context.Request.Path = $"/actors/{actorType}/{actorId}/method/ValidateAuthorityAsync";
++        context.Request.RouteValues["actorTypeName"] = actorType;
++        context.Request.RouteValues["actorId"] = actorId;
++        context.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(EventStoreActorCallbackEndpointMetadata.Instance), "mapped-actor"));
++        return context;
++    }
++}
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs b/tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs
+new file mode 100644
+index 000000000..8b0b84d74
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs
+@@ -0,0 +1,128 @@
++extern alias eventstore;
++
++using System.Net;
++using System.Net.Http.Json;
++
++using Hexalith.EventStore.Server.Tests.TestUtilities;
++using Hexalith.EventStore.ServiceDefaults.Authentication;
++
++using Microsoft.AspNetCore.Hosting;
++using Microsoft.AspNetCore.Mvc.Testing;
++using Microsoft.AspNetCore.TestHost;
++using Microsoft.Extensions.Configuration;
++using Microsoft.Extensions.Hosting;
++using Microsoft.IdentityModel.Tokens;
++
++using Shouldly;
++
++using EventStoreProgram = eventstore::Program;
++
++namespace Hexalith.EventStore.Server.Tests.Configuration;
++
++/// <summary>Exercises actor channel authorization and both global quotas in the production HTTP pipeline.</summary>
++public sealed class ActorCallbackRateLimitPipelineTests
++{
++    private const string ChannelToken = "actor-callback-fixture-token-with-sufficient-entropy";
++    private const string ActorType = "IdempotencyAdmissionActor";
++
++    [Theory]
++    [InlineData(true)]
++    [InlineData(false)]
++    public async Task SaturatingOneActorKeepsOtherActorBoundedAndIndependentAsync(bool tenantLimit)
++    {
++        await using WebApplicationFactory<EventStoreProgram> factory = CreateFactory(tenantLimit);
++        using HttpClient client = factory.CreateClient();
++        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, ChannelToken);
++
++        using HttpResponseMessage first = await client.DeleteAsync($"/actors/{ActorType}/actor-a");
++        using HttpResponseMessage second = await client.DeleteAsync($"/actors/{ActorType}/actor-a");
++        using HttpResponseMessage saturated = await client.DeleteAsync($"/actors/{ActorType}/actor-a");
++        first.StatusCode.ShouldBe(HttpStatusCode.OK);
++        second.StatusCode.ShouldBe(HttpStatusCode.OK);
++        saturated.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
++        saturated.Headers.RetryAfter.ShouldNotBeNull();
++
++        using HttpResponseMessage otherFirst = await client.DeleteAsync($"/actors/{ActorType}/actor-b");
++        using HttpResponseMessage otherSecond = await client.DeleteAsync($"/actors/{ActorType}/actor-b");
++        using HttpResponseMessage otherSaturated = await client.DeleteAsync($"/actors/{ActorType}/actor-b");
++        otherFirst.StatusCode.ShouldBe(HttpStatusCode.OK);
++        otherSecond.StatusCode.ShouldBe(HttpStatusCode.OK);
++        otherSaturated.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
++        otherSaturated.Headers.RetryAfter.ShouldNotBeNull();
++    }
++
++    [Theory]
++    [InlineData("missing")]
++    [InlineData("wrong")]
++    [InlineData("duplicate")]
++    public async Task MappedActorCallbacksRejectUntrustedChannelAsync(string tokenMode)
++    {
++        await using WebApplicationFactory<EventStoreProgram> factory = CreateFactory(true);
++        using HttpClient client = factory.CreateClient();
++        if (tokenMode == "wrong")
++        {
++            client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, "wrong-token");
++        }
++        else if (tokenMode == "duplicate")
++        {
++            client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, [ChannelToken, ChannelToken]);
++        }
++
++        using HttpResponseMessage response = await client.DeleteAsync($"/actors/{ActorType}/untrusted-actor");
++        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
++    }
++
++    [Fact]
++    public async Task UnmatchedActorLookalikesCannotMintCallbackPartitionsAsync()
++    {
++        await using WebApplicationFactory<EventStoreProgram> factory = CreateFactory(true);
++        using HttpClient client = factory.CreateClient();
++        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, ChannelToken);
++        using HttpResponseMessage first = await client.GetAsync($"/actors/{ActorType}/lookalike-a/unmapped");
++        using HttpResponseMessage second = await client.GetAsync($"/actors/{ActorType}/lookalike-b/unmapped");
++        using HttpResponseMessage saturated = await client.GetAsync($"/actors/{ActorType}/lookalike-c/unmapped");
++        first.StatusCode.ShouldBe(HttpStatusCode.NotFound);
++        second.StatusCode.ShouldBe(HttpStatusCode.NotFound);
++        saturated.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
++        saturated.Headers.RetryAfter.ShouldNotBeNull();
++
++        using HttpResponseMessage actor = await client.DeleteAsync($"/actors/{ActorType}/real-matched-actor");
++        actor.StatusCode.ShouldBe(HttpStatusCode.OK);
++    }
++
++    [Fact]
++    public async Task ChannelTokenDoesNotAuthorizeWorkloadOperationAsync()
++    {
++        await using WebApplicationFactory<EventStoreProgram> factory = CreateFactory(true);
++        using HttpClient client = factory.CreateClient();
++        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, ChannelToken);
++        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/v1/trusted-effects", new { });
++        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
++    }
++
++    private static WebApplicationFactory<EventStoreProgram> CreateFactory(bool tenantLimit)
++        => new WebApplicationFactory<EventStoreProgram>().WithWebHostBuilder(builder =>
++        {
++            builder.UseEnvironment(Environments.Production);
++            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
++            {
++                ["Authentication:JwtBearer:Authority"] = "https://identity.example.test/realms/hexalith",
++                ["Authentication:JwtBearer:Issuer"] = "https://identity.example.test/realms/hexalith",
++                ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
++                ["Authentication:JwtBearer:AllowedAlgorithms:0"] = SecurityAlgorithms.RsaSha256,
++                ["Authentication:JwtBearer:SigningKey"] = null,
++                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
++                ["Authentication:WorkloadIssuer:ClientId"] = "eventstore",
++                ["Authentication:WorkloadIssuer:ClientSecret"] = "fixture-workload-client-secret",
++                [DaprAppChannelToken.ConfigurationKey] = ChannelToken,
++                ["EventStore:RateLimiting:PermitLimit"] = tenantLimit ? "2" : "100",
++                ["EventStore:RateLimiting:ConsumerPermitLimit"] = tenantLimit ? "100" : "2",
++                ["EventStore:RateLimiting:WindowSeconds"] = "60",
++                ["EventStore:RateLimiting:ConsumerWindowSeconds"] = "60",
++                ["EventStore:RateLimiting:SegmentsPerWindow"] = "1",
++                ["EventStore:RateLimiting:ConsumerSegmentsPerWindow"] = "1",
++                ["EventStore:RateLimiting:QueueLimit"] = "0",
++            }));
++            builder.ConfigureTestServices(WebApplicationFactoryServiceOverrides.RemoveAdminOperationalIndexHostedService);
++        });
++}
+diff --git a/tools/qualify-internal-actor-admission.py b/tools/qualify-internal-actor-admission.py
+new file mode 100644
+index 000000000..f264bf2c6
+--- /dev/null
++++ b/tools/qualify-internal-actor-admission.py
+@@ -0,0 +1,589 @@
++#!/usr/bin/env python3
++"""Production HTTP/Dapr/Redis regression; owns every process/container it removes.
++
++Build LiveSidecar.Tests in Debug first. No application persistence is replaced.
++The existing OQ8 hosting startup adds only the Counter intent adapter, clock and
++boundary counter. Redis reads below are diagnostics, never application writes.
++"""
++import argparse
++import base64
++import datetime
++import hashlib
++import hmac
++import json
++import os
++from pathlib import Path
++import secrets
++import signal
++import shutil
++import socket
++import subprocess
++import tempfile
++import threading
++import time
++import traceback
++import urllib.error
++import urllib.parse
++import urllib.request
++
++
++def encode(value):
++    return base64.urlsafe_b64encode(value).decode().rstrip("=")
++
++
++def sha(path):
++    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
++
++
++_allocated_ports = set()
++
++
++def port():
++    while True:
++        with socket.socket() as sock:
++            sock.bind(("127.0.0.1", 0))
++            value = sock.getsockname()[1]
++        if value not in _allocated_ports:
++            _allocated_ports.add(value)
++            return value
++
++
++class Qualification:
++    def __init__(self, args):
++        self.args = args
++        self.root = Path(__file__).resolve().parents[1]
++        self.out = Path(args.evidence).resolve()
++        self.out.mkdir(parents=True, exist_ok=False)
++        self.runtime = Path(tempfile.mkdtemp(prefix="eventstore-actor-admission-"))
++        self.run_id = "admission-" + secrets.token_hex(6)
++        self.containers = []
++        self.processes = []
++        self.logs = []
++        self.nodes = {}
++        self.checks = []
++        self.receipts = []
++        self.signing_key = encode(secrets.token_bytes(48))
++        self.digest_key = secrets.token_bytes(32)
++        self.tenant = "tenant-admission"
++        self.started = datetime.datetime.now(datetime.timezone.utc).isoformat()
++        self.test_output = self.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0"
++
++    def save(self, name, value):
++        (self.out / name).write_text(json.dumps(value, indent=2) + "\n")
++
++    def check(self, name, condition, **observed):
++        self.checks.append({"name": name, "passed": bool(condition), **observed})
++        self.save("checks.json", self.checks)
++        if not condition:
++            raise AssertionError(name + ": " + json.dumps(observed))
++
++    def run(self, *argv, check=True, timeout=60):
++        start = time.monotonic()
++        result = subprocess.run(argv, text=True, capture_output=True, timeout=timeout)
++        self.receipts.append({"argv": argv, "exit_code": result.returncode,
++                              "elapsed_seconds": time.monotonic() - start,
++                              "stdout": result.stdout, "stderr": result.stderr})
++        self.save("infrastructure-commands.json", self.receipts)
++        if check:
++            result.check_returncode()
++            return result.stdout.strip()
++        return result
++
++    def request(self, url, data=None, headers=None, method=None):
++        content = None if data is None else json.dumps(data).encode()
++        fields = {"Content-Type": "application/json", **(headers or {})}
++        req = urllib.request.Request(url, content, fields, method=method)
++        try:
++            response = urllib.request.urlopen(req, timeout=20)
++        except urllib.error.HTTPError as error:
++            response = error
++        with response:
++            body = response.read().decode()
++            return response.code, dict(response.headers), body
++
++    def wait(self, url, predicate=lambda status, body: status == 200):
++        deadline = time.monotonic() + 60
++        last = None
++        while time.monotonic() < deadline:
++            for process in self.processes:
++                if process.poll() is not None and not getattr(process, "owned_stopped", False):
++                    raise RuntimeError("Owned child process exited; inspect retained logs")
++            try:
++                status, _, body = self.request(url)
++                last = status, body
++                if predicate(status, body):
++                    return
++            except (OSError, TimeoutError):
++                pass
++            time.sleep(0.2)
++        raise TimeoutError(str((url, last)))
++
++    def launch_container(self, kind, image, internal_port, *command, host_port=None):
++        name = self.run_id + "-" + kind
++        cidfile = self.runtime / (kind + ".cid")
++        argv = ["docker", "run", "--rm", "-d", "--name", name, "--cidfile", str(cidfile),
++                "--label", "hexalith.qualification.run-id=" + self.run_id,
++                "-p", "127.0.0.1:" + (str(host_port) if host_port else "") + ":" + str(internal_port)]
++        if kind in ("placement", "scheduler"):
++            argv += ["--entrypoint", "./" + kind]
++        index = len(self.containers)
++        self.containers.append((name, None))
++        try:
++            self.run(*argv, image, *command)
++        finally:
++            if cidfile.exists():
++                self.containers[index] = (name, cidfile.read_text().strip())
++        identity = self.containers[index][1]
++        published = self.run("docker", "port", identity, str(internal_port)).split(":")[-1]
++        self.save(kind + "-image.json", json.loads(self.run("docker", "image", "inspect", image)))
++        return identity, int(published)
++
++    def launch(self, label, argv, env, cwd):
++        out = open(self.out / (label + ".stdout.log"), "w")
++        err = open(self.out / (label + ".stderr.log"), "w")
++        self.logs += [out, err]
++        process = subprocess.Popen(argv, env=env, cwd=cwd, stdout=out, stderr=err)
++        self.processes.append(process)
++        self.save("processes.json", [{"pid": p.pid, "argv": p.args} for p in self.processes])
++        return process
++
++    def setup(self):
++        self.redis_id, redis_port = self.launch_container("redis", "redis:7-alpine", 6379)
++        _, placement_port = self.launch_container("placement", "daprio/dapr:1.18.7", 50005, "--port", "50005")
++        scheduler_port = port()
++        self.launch_container("scheduler", "daprio/dapr:1.18.7", 50006,
++                              "--etcd-data-dir=/tmp/admission-etcd",
++                              "--override-broadcast-host-port=127.0.0.1:" + str(scheduler_port),
++                              "--etcd-client-listen-address=0.0.0.0", host_port=scheduler_port)
++        components = self.runtime / "components"
++        components.mkdir()
++        for name, kind, extra in [("statestore", "state.redis", "    - name: actorStateStore\n      value: 'true'\n    - name: keyPrefix\n      value: none\n"), ("pubsub", "pubsub.redis", "")]:
++            (components / (name + ".yaml")).write_text(
++                "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: " + name +
++                "\nspec:\n  type: " + kind + "\n  version: v1\n  metadata:\n    - name: redisHost\n      value: '127.0.0.1:" + str(redis_port) + "'\n    - name: redisPassword\n      value: ''\n" + extra)
++        config = self.runtime / "discovery.yaml"
++        config.write_text("apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: isolated-admission\nspec:\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: " + json.dumps(str(self.runtime / "discovery.sqlite")) + "\n")
++        self.clock = self.runtime / "clock.txt"
++        # .NET UTC ticks, fixed only for admission retention; rate limiters use real time.
++        self.clock.write_text(str(621355968000000000 + int(time.time()) * 10000000))
++        self.save("infrastructure.json", {"runtime": str(self.runtime), "namespace": self.run_id,
++                  "redis_port": redis_port, "placement_port": placement_port, "scheduler_port": scheduler_port,
++                  "daprd": str(Path.home() / ".dapr/bin/daprd"),
++                  "daprd_sha256": sha(Path.home() / ".dapr/bin/daprd"),
++                  "components": {p.name: p.read_text() for p in components.iterdir()}, "discovery": config.read_text()})
++        for label, source, dll in [
++            ("sample", Path(self.args.runtime) / "sample" if self.args.runtime else self.root / "samples/Hexalith.EventStore.Sample/bin/Debug/net10.0", "Hexalith.EventStore.Sample.dll"),
++            ("eventstore", Path(self.args.runtime) / "eventstore" if self.args.runtime else self.root / "src/Hexalith.EventStore/bin/Debug/net10.0", "Hexalith.EventStore.dll")]:
++            dest = self.runtime / label
++            shutil.copytree(source, dest)
++            if label == "sample":
++                # Separate source-reference build graphs can leave stale SDK images
++                # in Sample output. Qualify one exact graph across both processes.
++                selected = (Path(self.args.runtime) / "eventstore" if self.args.runtime else
++                            self.root / "src/Hexalith.EventStore/bin/Debug/net10.0")
++                for image in selected.glob("Hexalith.EventStore.*"):
++                    if image.suffix in (".dll", ".pdb") and (dest / image.name).exists():
++                        shutil.copy2(image, dest / image.name)
++            for file in self.test_output.glob("*.dll"):
++                if not (dest / file.name).exists():
++                    shutil.copy2(file, dest / file.name)
++                    if file.with_suffix(".pdb").exists():
++                        shutil.copy2(file.with_suffix(".pdb"), dest / file.with_suffix(".pdb").name)
++            app_port, http_port, grpc_port, internal_port, metrics_port = [port() for _ in range(5)]
++            env = os.environ.copy()
++            env.update({"DOTNET_ENVIRONMENT": "Testing", "ASPNETCORE_ENVIRONMENT": "Testing",
++                        "ASPNETCORE_URLS": "http://127.0.0.1:" + str(app_port),
++                        "DAPR_APP_ID": label, "DAPR_HTTP_PORT": str(http_port), "DAPR_GRPC_PORT": str(grpc_port),
++                        "DAPR_HTTP_ENDPOINT": "http://127.0.0.1:" + str(http_port),
++                        "DAPR_GRPC_ENDPOINT": "http://127.0.0.1:" + str(grpc_port),
++                        "APP_API_TOKEN": secrets.token_hex(32),
++                        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Hexalith.EventStore.Server.LiveSidecar.Tests",
++                        "HEXALITH_OQ8_CLOCK_FILE": str(self.clock),
++                        "HEXALITH_OQ8_BOUNDARY_COUNTER_FILE": str(self.runtime / (label + "-count.txt")),
++                        "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
++                        "Authentication__JwtBearer__Issuer": "admission-qualification",
++                        "Authentication__JwtBearer__Audience": "hexalith-eventstore",
++                        "Authentication__JwtBearer__SigningKey": self.signing_key,
++                        "Authentication__JwtBearer__RequireHttpsMetadata": "false",
++                        "Authentication__JwtBearer__AllowInsecureSymmetricKey": "true",
++                        "Logging__LogLevel__Default": "Warning"})
++            if label == "sample":
++                env["EventStore__DomainService__AppId"] = "sample"
++            else:
++                env.update({"EventStore__IdempotencyAdmission__Enabled": "true",
++                            "EventStore__IdempotencyAdmission__ActiveDigestKeyVersion": "local1",
++                            "EventStore__IdempotencyAdmission__DigestKeySource": "Configuration",
++                            "EventStore__IdempotencyAdmission__DigestKeys__local1": base64.b64encode(self.digest_key).decode(),
++                            "EventStore__OpenApi__Enabled": "false", "EventStore__SignalR__Enabled": "false",
++                            "EventStore__ProjectionDispatch__RetryWorkerInterval": "00:10:00",
++                            "EventStore__RateLimiting__PermitLimit": "100",
++                            "EventStore__RateLimiting__WindowSeconds": "60",
++                            "EventStore__RateLimiting__SegmentsPerWindow": "1",
++                            "EventStore__RateLimiting__ConsumerPermitLimit": "100",
++                            "EventStore__RateLimiting__ConsumerWindowSeconds": "60",
++                            "EventStore__RateLimiting__ConsumerSegmentsPerWindow": "1",
++                            "EventStore__RateLimiting__QueueLimit": "0"})
++                for field, value in {"AppId": "sample", "MethodName": "process", "TenantId": "*", "Domain": "counter", "Version": "v1"}.items():
++                    env["EventStore__DomainServices__Registrations__*|counter|v1__" + field] = value
++                for domain in ["tenants", "global-administrators"]:
++                    env["EventStore__DomainServices__Registrations__system|" + domain + "|v1__AppId"] = "sample"
++            app_argv = ["dotnet", "exec", "--additional-deps", str(self.test_output / "Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json"),
++                        "--additionalprobingpath", str(self.test_output), "--additionalprobingpath", str(Path.home() / ".nuget/packages"), str(dest / dll)]
++            sidecar_argv = [str(Path.home() / ".dapr/bin/daprd"), "--app-id", label, "--app-port", str(app_port),
++                            "--app-protocol", "http", "--app-channel-address", "127.0.0.1",
++                            "--dapr-http-port", str(http_port), "--dapr-grpc-port", str(grpc_port),
++                            "--dapr-internal-grpc-port", str(internal_port), "--metrics-port", str(metrics_port),
++                            "--resources-path", str(components), "--config", str(config), "--log-level", "warn",
++                            "--placement-host-address", "127.0.0.1:" + str(placement_port),
++                            "--scheduler-host-address", "127.0.0.1:" + str(scheduler_port)]
++            self.nodes[label] = {"app_argv": app_argv, "sidecar_argv": sidecar_argv, "env": env, "cwd": dest,
++                                 "app_url": env["ASPNETCORE_URLS"], "sidecar_url": env["DAPR_HTTP_ENDPOINT"], "generation": 0}
++            self.start_node(label)
++        self.save("runtime-inputs.json", {label: {"directory": str(n["cwd"]), "files": {p.name: sha(p) for p in n["cwd"].glob("*") if p.is_file()},
++                    "rate_configuration": {k: v for k, v in n["env"].items() if k.startswith("EventStore__RateLimiting__")}} for label, n in self.nodes.items()})
++
++    def start_node(self, label):
++        n = self.nodes[label]
++        n["generation"] += 1
++        suffix = label + "-" + str(n["generation"])
++        n["app"] = self.launch(suffix + "-app", n["app_argv"], n["env"], n["cwd"])
++        n["sidecar"] = self.launch(suffix + "-sidecar", n["sidecar_argv"], {**os.environ, "APP_API_TOKEN": n["env"]["APP_API_TOKEN"], "NAMESPACE": self.run_id}, n["cwd"])
++        self.wait(n["app_url"] + "/alive")
++        self.wait(n["sidecar_url"] + "/v1.0/healthz/outbound", lambda s, b: s in (200, 204))
++        if label == "eventstore":
++            self.wait(n["sidecar_url"] + "/v1.0/metadata", lambda s, b: s == 200 and json.loads(b).get("actorRuntime", {}).get("runtimeStatus") == "RUNNING")
++        mapped = {}
++        for line in Path("/proc/" + str(n["app"].pid) + "/maps").read_text().splitlines():
++            fields = line.split(maxsplit=5)
++            if len(fields) == 6 and fields[5].endswith(".dll"):
++                path = fields[5]
++                mapped[path] = {"dll_sha256": sha(path), "pdb_sha256": sha(Path(path).with_suffix(".pdb")) if Path(path).with_suffix(".pdb").exists() else None}
++        self.save(suffix + "-mapped-images.json", {"pid": n["app"].pid, "images": mapped})
++
++    def actor(self, identity, method, data=None):
++        url = self.nodes["eventstore"]["sidecar_url"] + "/v1.0/actors/IdempotencyAdmissionActor/" + urllib.parse.quote(identity, safe="") + "/method/" + method
++        return self.request(url, data, method="PUT")
++
++    def token(self, tenant=None, subject="qualification-runner"):
++        header = encode(b'{"alg":"HS256","typ":"JWT"}')
++        body = encode(json.dumps({"sub": subject, "iss": "admission-qualification", "aud": "hexalith-eventstore",
++                                 "exp": int(time.time()) + 3600, "tenants": [tenant or self.tenant],
++                                 "tenant_id": tenant or self.tenant, "domains": ["counter"], "permissions": ["commands:*"]}).encode())
++        unsigned = header + "." + body
++        return unsigned + "." + encode(hmac.digest(self.signing_key.encode(), unsigned.encode(), "sha256"))
++
++    def submit(self, key, payload=None):
++        # Valid ULID-shaped identities; idempotency preserves the first accepted identity.
++        alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
++        identity = "01" + "".join(secrets.choice(alphabet) for _ in range(24))
++        data = {"messageId": identity, "tenant": self.tenant, "domain": "counter", "aggregateId": "admission-counter",
++                "commandType": "IncrementCounter", "payload": payload or {"counterId": "admission-counter"},
++                "correlationId": identity, "idempotencyKey": key}
++        return self.request(self.nodes["eventstore"]["app_url"] + "/api/v1/commands", data,
++                            {"Authorization": "Bearer " + self.token()})
++
++    def snapshot(self, phase):
++        keys = self.run("docker", "exec", self.redis_id, "redis-cli", "--scan").splitlines()
++        values = {}
++        for key in keys:
++            if self.run("docker", "exec", self.redis_id, "redis-cli", "TYPE", key) == "hash":
++                raw = self.run("docker", "exec", self.redis_id, "redis-cli", "--raw", "HGET", key, "data")
++                if raw:
++                    try:
++                        values[key] = json.loads(raw)
++                    except json.JSONDecodeError:
++                        values[key] = raw
++        self.save(phase + "-persisted.json", values)
++        return values
++
++    @staticmethod
++    def admission(values, identity):
++        return values["eventstore||IdempotencyAdmissionActor||" + identity + "||admission"]
++
++    def assert_admission(self, identity, expected, phase):
++        # Snapshot first: each refusal must leave the entire durable record unchanged immediately.
++        actual = self.admission(self.snapshot(phase), identity)
++        self.check(phase + "_persisted_admission_unchanged", actual == expected, admission=actual)
++        status, _, body = self.actor(identity, "InspectAsync")
++        inspected = json.loads(body)
++        self.check(phase + "_authenticated_inspection", status == 200 and inspected.get("exists") is True
++                   and inspected.get("record") == expected, status=status, inspection=inspected)
++
++    def assert_saturated(self, identity, phase):
++        node = self.nodes["eventstore"]
++        path = "/actors/IdempotencyAdmissionActor/" + urllib.parse.quote(identity, safe="") + "/method/InspectAsync"
++        status, headers, body = self.request(node["app_url"] + path, method="PUT",
++                                             headers={"dapr-api-token": node["env"]["APP_API_TOKEN"]})
++        retry = next((value for key, value in headers.items() if key.lower() == "retry-after"), "")
++        self.check(phase + "_actor_a_remains_throttled", status == 429 and retry.isdigit() and int(retry) > 0,
++                   status=status, headers=headers, rejection=body)
++
++    def saturate_actor(self, identity, phase):
++        statuses = []
++        for _ in range(105):
++            status, _, body = self.actor(identity, "InspectAsync")
++            statuses.append(status)
++            if status != 200:
++                break
++        self.check(phase + "_actual_dapr_actor_saturated", statuses[-1] == 500
++                   and json.loads(body).get("errorCode") == "ERR_ACTOR_INVOKE_METHOD" and "(429)" in body,
++                   callback_statuses=statuses, rejection=body)
++        self.assert_saturated(identity, phase)
++
++    def authority(self, identity, request, expected, phase):
++        status, _, body = self.actor(identity, "EvaluateAuthorityAsync", request)
++        self.check(phase + "_authority_decision", status == 200 and json.loads(body) == expected,
++                   status=status, decision=body, expected=expected)
++
++    def qualify(self):
++        a = self.tenant + ":local1:saturated"
++        self.saturate_actor(a, "initial")
++        b = self.tenant + ":local1:recovery"
++        request = {"schemaVersion": 2, "tenantPartition": self.tenant, "digestKeyVersion": "local1", "keyDigest": "recovery",
++                   "verificationTag": "fixture-verification", "intentDigest": "fixture-intent", "retentionTier": 1,
++                   "executionMessageId": "01J00000000000000000000000", "executionCorrelationId": "recovery-correlation"}
++        self.assert_saturated(a, "before_admission_and_recovery")
++        status, _, body = self.actor(b, "AdmitAsync", request)
++        self.check("other_actor_admission_survives_saturation", status == 200, status=status, body=body)
++        admitted = json.loads(body)
++        fence = admitted.get("fencingToken", admitted.get("FencingToken"))
++        status, _, body = self.actor(b, "BeginAsync", {"fencingToken": fence})
++        self.check("begin_persisted", status == 200, status=status, body=body)
++        status, _, body = self.actor(b, "MarkRecoveryAsync", {"fencingToken": fence, "state": 4})
++        self.check("unknown_outcome_persisted", status == 200, status=status, body=body)
++        self.assert_saturated(a, "after_admission_and_recovery")
++        before = self.snapshot("before-replacement")
++        row = self.admission(before, b)
++        self.check("redis_proves_unknown_outcome", row["state"] == 4, state=row)
++        key = "private-fixture-command-key"
++        self.assert_saturated(a, "before_production_command")
++        status, _, body = self.submit(key)
++        self.check("production_command_completed_under_other_actor_saturation", status == 202, status=status, body=body)
++        self.assert_saturated(a, "after_production_command")
++        first = json.loads(body)
++        completed = self.snapshot("completed-before-replacement")
++        event_rows = {k: v for k, v in completed.items() if ":events:" in k}
++        terminal = {k: v for k, v in completed.items() if k.endswith("||admission") and "recovery" not in k and v.get("state") == 5}
++        statuses = {k: v for k, v in completed.items() if k.endswith(":status")}
++        metadata = {k: v for k, v in completed.items() if k.endswith(":metadata")}
++        self.check("persisted_single_event_terminal_admission", len(event_rows) == 1 and len(terminal) == 1,
++                   events=event_rows, admissions=terminal, command_status=statuses)
++        self.check("persisted_command_completed_and_sequence_one", len(statuses) == 1 and next(iter(statuses.values()))["status"] == 4
++                   and len(metadata) == 1 and next(iter(metadata.values()))["currentSequence"] == 1,
++                   command_status=statuses, aggregate_metadata=metadata)
++        n = self.nodes["eventstore"]
++        old_pids = [n["app"].pid, n["sidecar"].pid]
++        for process in [n["app"], n["sidecar"]]:
++            process.owned_stopped = True
++            process.kill()
++            process.wait(timeout=10)
++        self.start_node("eventstore")
++        new_pids = [n["app"].pid, n["sidecar"].pid]
++        self.check("os_processes_replaced", set(old_pids).isdisjoint(new_pids), before=old_pids, after=new_pids)
++        recovered = self.snapshot("after-replacement")
++        self.check("unknown_outcome_survives_process_replacement", self.admission(recovered, b) == row)
++        self.saturate_actor(a, "replacement")
++        self.assert_admission(b, row, "before_unknown_refusal")
++        status, _, body = self.actor(b, "AdmitAsync", request)
++        unknown = json.loads(body)
++        self.check("unknown_outcome_readback_is_exact", status == 200 and unknown.get("decision") == 4
++                   and unknown.get("fencingToken") == fence
++                   and unknown.get("executionMessageId") == request["executionMessageId"]
++                   and unknown.get("executionCorrelationId") == request["executionCorrelationId"],
++                   status=status, decision=unknown)
++        authority = {"fencingToken": fence, "digestKeyVersion": "local1",
++                     "executionMessageId": request["executionMessageId"],
++                     "executionCorrelationId": request["executionCorrelationId"], "purpose": 1}
++        self.authority(b, authority, 2, "unknown_execution")
++        self.authority(b, {**authority, "purpose": 2}, 1, "unknown_reconciliation")
++        self.assert_saturated(a, "before_unknown_refusal")
++        status, _, body = self.actor(b, "BeginAsync", {"fencingToken": fence})
++        self.check("unknown_outcome_refuses_reexecution", status == 500
++                   and json.loads(body).get("errorCode") == "ERR_ACTOR_INVOKE_METHOD", status=status, body=body)
++        self.assert_admission(b, row, "after_unknown_refusal")
++        self.assert_saturated(a, "after_unknown_refusal")
++        self.authority(b, {**authority, "purpose": 2, "fencingToken": fence + 1}, 2, "stale_reconciliation")
++        self.assert_saturated(a, "before_stale_refusal")
++        status, _, body = self.actor(b, "CompleteAsync", {"fencingToken": fence + 1, "result": {"accepted": True, "correlationId": "stale", "eventCount": 0}})
++        self.check("stale_fence_refuses_completion", status == 500
++                   and json.loads(body).get("errorCode") == "ERR_ACTOR_INVOKE_METHOD", status=status, body=body)
++        self.assert_admission(b, row, "after_stale_refusal")
++        self.assert_saturated(a, "after_stale_refusal")
++        result = {"accepted": True, "errorMessage": None, "correlationId": "recovery-correlation", "eventCount": 0,
++                  "resultPayload": "{\"reconciled\":true}", "backpressureExceeded": False,
++                  "backpressurePendingCount": None, "backpressureThreshold": None, "rejectionEventType": None,
++                  "failureReason": None, "resultPayloadWithheld": False}
++        self.assert_saturated(a, "before_reconciled_completion")
++        status, _, body = self.actor(b, "CompleteAsync", {"fencingToken": fence, "result": result})
++        self.check("reconciled_completion_after_recovery", status == 200, status=status, body=body)
++        self.assert_saturated(a, "after_reconciled_completion")
++        status, _, body = self.actor(b, "AdmitAsync", {**request,
++            "executionMessageId": "01J11111111111111111111111", "executionCorrelationId": "retry-correlation"})
++        recovered_replay = json.loads(body)
++        self.check("recovered_admission_readback_is_exact_replay", status == 200 and recovered_replay.get("decision") == 5
++                   and recovered_replay.get("fencingToken") == fence and recovered_replay.get("replayResult") == result
++                   and recovered_replay.get("executionMessageId") == row["executionMessageId"]
++                   and recovered_replay.get("executionCorrelationId") == row["executionCorrelationId"],
++                   status=status, replay=recovered_replay)
++        status, _, body = self.submit(key)
++        replay = json.loads(body)
++        # HTTP correlation describes this attempt. The returned messageId and the
++        # persisted admission execution identity/result describe the original work.
++        self.check("public_command_replays_execution_identity", status == 202 and first["messageId"] == replay["messageId"],
++                   status=status, first=first, replay=replay)
++        status, _, body = self.submit(key, {"counterId": "changed-intent"})
++        self.check("conflicting_intent_refused", status == 409, status=status, body=body)
++        final = self.snapshot("final")
++        self.check("no_second_event_or_terminal_mutation", {k: v for k, v in final.items() if ":events:" in k} == event_rows and all(final[k] == v for k, v in terminal.items()))
++        recovery_terminal = self.admission(final, b)
++        self.check("recovered_admission_has_durable_terminal_result", recovery_terminal["state"] == 5
++                   and recovery_terminal["fencingToken"] == fence and recovery_terminal["replayResult"] == result
++                   and recovery_terminal["executionMessageId"] == row["executionMessageId"]
++                   and recovery_terminal["executionCorrelationId"] == row["executionCorrelationId"],
++                   admission=recovery_terminal)
++        path = "/actors/IdempotencyAdmissionActor/" + b + "/method/InspectAsync"
++        for label, headers in [("missing", {}), ("wrong", {"dapr-api-token": "wrong"})]:
++            status, _, body = self.request(n["app_url"] + path, headers=headers, method="PUT")
++            self.check("actor_channel_" + label + "_denied", status in (401, 403), status=status, body=body)
++        status, _, body = self.request(n["app_url"] + "/api/v1/trusted-effects", {}, {"dapr-api-token": n["env"]["APP_API_TOKEN"]})
++        self.check("channel_alone_cannot_submit_workload_effect", status in (401, 403), status=status, body=body)
++        for lane in ["tenant", "consumer"]:
++            statuses = []
++            for i in range(101):
++                tenant = "quota-tenant" if lane == "tenant" else "quota-" + str(i)
++                subject = "quota-subject" if lane == "consumer" else "quota-subject-" + str(i)
++                status, headers, body = self.request(n["app_url"] + "/api/v1/commands/status/01J00000000000000000000000",
++                                                    headers={"Authorization": "Bearer " + self.token(tenant, subject)})
++                statuses.append(status)
++                if status != 404:
++                    break
++            rejection = json.loads(body)
++            retry = next((value for key, value in headers.items() if key.lower() == "retry-after"), "")
++            self.check("public_" + lane + "_throttling_preserved", statuses == [404] * 100 + [429]
++                       and rejection.get("tenantId") == tenant and rejection.get("consumerId") == subject
++                       and retry.isdigit() and int(retry) > 0,
++                       statuses=statuses, rejection=body, headers=headers)
++        count_path = self.runtime / "sample-count.txt"
++        self.check("actual_domain_process_called_once", count_path.read_text() == "1", calls=count_path.read_text())
++        for label, node in self.nodes.items():
++            shutil.copytree(node["cwd"], self.out / "qualified-runtime" / label)
++
++    def cleanup(self):
++        outcomes = {"processes": [], "containers": [], "logs": []}
++        for process in reversed(self.processes):
++            outcome = {"pid": process.pid}
++            try:
++                if process.poll() is None:
++                    process.owned_stopped = True
++                    process.terminate()
++                    try:
++                        process.wait(timeout=5)
++                    except subprocess.TimeoutExpired:
++                        process.kill()
++                        process.wait(timeout=5)
++                outcome["exit_code"] = process.poll()
++            except Exception as error:
++                outcome["error"] = repr(error)
++            outcome["absent"] = process.poll() is not None
++            outcomes["processes"].append(outcome)
++        for name, identity in reversed(self.containers):
++            outcome = {"name": name, "id": identity}
++            try:
++                if not name.startswith(self.run_id + "-"):
++                    raise RuntimeError("Refusing cleanup of an unowned container name")
++                inspected = self.run("docker", "container", "inspect", name, check=False, timeout=10)
++                if inspected.returncode == 0:
++                    container = json.loads(inspected.stdout)[0]
++                    if ((identity is not None and container["Id"] != identity)
++                            or container["Config"].get("Labels", {}).get("hexalith.qualification.run-id") != self.run_id):
++                        raise RuntimeError("Refusing cleanup of a container with a different ownership identity")
++                    removed = self.run("docker", "rm", "-f", container["Id"], check=False, timeout=10)
++                    outcome["remove_exit_code"] = removed.returncode
++                # --rm may have removed it already. A successful independent inventory proves absence;
++                # neither a failed inspect nor a failed rm by itself is accepted as evidence of absence.
++                inventory = self.run("docker", "container", "ls", "--all", "--no-trunc",
++                                     "--filter", "name=^/" + name + "$", "--format", "{{.ID}}", check=False, timeout=10)
++                outcome["absent"] = inventory.returncode == 0 and not inventory.stdout.strip()
++                outcome["remaining_ids"] = inventory.stdout.strip()
++            except Exception as error:
++                outcome["error"] = repr(error)
++                outcome["absent"] = False
++            outcomes["containers"].append(outcome)
++        for log in self.logs:
++            outcome = {"path": log.name}
++            try:
++                log.close()
++            except Exception as error:
++                outcome["error"] = repr(error)
++            outcome["closed"] = log.closed
++            outcomes["logs"].append(outcome)
++        try:
++            shutil.rmtree(self.runtime)
++        except FileNotFoundError:
++            pass
++        except Exception as error:
++            outcomes["runtime_error"] = repr(error)
++        outcomes["runtime"] = str(self.runtime)
++        outcomes["runtime_absent"] = not self.runtime.exists()
++        outcomes["passed"] = (all(item["absent"] for item in outcomes["processes"] + outcomes["containers"])
++                              and all(item["closed"] for item in outcomes["logs"]) and outcomes["runtime_absent"])
++        self.save("cleanup.json", outcomes)
++        return outcomes["passed"]
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--evidence", required=True)
++    parser.add_argument("--runtime", help="Frozen baseline runtime root containing eventstore/ and sample/")
++    parser.add_argument("--owner-pid", type=int, help="Test runner PID; loss of this owner triggers graceful cleanup")
++    args = parser.parse_args()
++    run = Qualification(args)
++    qualification_passed = False
++    cleanup_passed = False
++    stop_monitor = threading.Event()
++    terminating = False
++
++    def terminate(signum, frame):
++        nonlocal terminating
++        if not terminating:
++            terminating = True
++            raise InterruptedError("Qualification interrupted; cleaning up owned resources")
++
++    signal.signal(signal.SIGTERM, terminate)
++    signal.signal(signal.SIGINT, terminate)
++
++    def monitor_owner():
++        while not stop_monitor.wait(0.5):
++            if args.owner_pid:
++                try:
++                    os.kill(args.owner_pid, 0)
++                except ProcessLookupError:
++                    os.kill(os.getpid(), signal.SIGTERM)
++                    return
++
++    threading.Thread(target=monitor_owner, daemon=True).start()
++    try:
++        run.setup()
++        run.qualify()
++        qualification_passed = True
++    except BaseException:
++        (run.out / "failure.txt").write_text(traceback.format_exc())
++    finally:
++        # Once shutdown starts, repeated cancellation must not interrupt cleanup halfway through.
++        terminating = True
++        stop_monitor.set()
++        try:
++            cleanup_passed = run.cleanup()
++        except BaseException:
++            (run.out / "cleanup-failure.txt").write_text(traceback.format_exc())
++        finally:
++            run.save("result.json", {"passed": qualification_passed and cleanup_passed,
++                                    "qualification_passed": qualification_passed, "cleanup_passed": cleanup_passed,
++                                    "started_utc": run.started,
++                                    "finished_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
++                                    "argv": os.sys.argv, "cwd": os.getcwd(), "script_sha256": sha(__file__)})
++    return 0 if qualification_passed and cleanup_passed else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorCallbackAdmissionProcessTests.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorCallbackAdmissionProcessTests.cs
+new file mode 100644
+index 000000000..c238564b4
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Actors/ActorCallbackAdmissionProcessTests.cs
+@@ -0,0 +1,68 @@
++using System.Diagnostics;
++using System.Globalization;
++using System.Text.Json;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Actors;
++
++/// <summary>Runs production HTTP actor admission against owned Redis/Dapr processes, including process replacement.</summary>
++[Trait("Category", "LiveSidecar")]
++public sealed class ActorCallbackAdmissionProcessTests
++{
++    /// <summary>Gets the optional destination for retaining the complete owned qualification evidence.</summary>
++    public const string EvidenceDirectoryVariable = "HEXALITH_ACTOR_ADMISSION_EVIDENCE_DIRECTORY";
++
++    [Fact]
++    public async Task ProductionCallbacksRemainIsolatedAndReplayExactlyAfterProcessReplacementAsync()
++    {
++        DirectoryInfo? root = new(AppContext.BaseDirectory);
++        while (root is not null && !File.Exists(Path.Combine(root.FullName, "tools", "qualify-internal-actor-admission.py")))
++            root = root.Parent;
++        string repository = root?.FullName ?? throw new DirectoryNotFoundException("Cannot locate the owned actor admission runner.");
++        string evidence = Environment.GetEnvironmentVariable(EvidenceDirectoryVariable)
++            ?? Path.Combine(Path.GetTempPath(), "actor-admission-evidence-" + Guid.NewGuid().ToString("N"));
++        var start = new ProcessStartInfo("python3")
++        {
++            WorkingDirectory = repository,
++            RedirectStandardOutput = true,
++            RedirectStandardError = true,
++            UseShellExecute = false,
++        };
++        start.ArgumentList.Add(Path.Combine(repository, "tools", "qualify-internal-actor-admission.py"));
++        start.ArgumentList.Add("--evidence");
++        start.ArgumentList.Add(evidence);
++        start.ArgumentList.Add("--owner-pid");
++        start.ArgumentList.Add(Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
++        using Process process = Process.Start(start) ?? throw new InvalidOperationException("Cannot launch the owned process qualification.");
++        Task<string> output = process.StandardOutput.ReadToEndAsync();
++        Task<string> error = process.StandardError.ReadToEndAsync();
++        using CancellationTokenSource bound = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
++        bound.CancelAfter(TimeSpan.FromMinutes(10));
++        try
++        {
++            await process.WaitForExitAsync(bound.Token);
++        }
++        finally
++        {
++            if (!process.HasExited)
++            {
++                // SIGTERM lets the Python runner finish independent, bounded resource cleanup. Killing
++                // the process tree would bypass container cleanup. Its owner monitor also covers test-host exit.
++                var stop = new ProcessStartInfo("kill") { UseShellExecute = false };
++                stop.ArgumentList.Add("-TERM");
++                stop.ArgumentList.Add(process.Id.ToString(CultureInfo.InvariantCulture));
++                using Process signal = Process.Start(stop) ?? throw new InvalidOperationException("Cannot signal qualification cleanup.");
++                await signal.WaitForExitAsync(CancellationToken.None);
++                await process.WaitForExitAsync(CancellationToken.None);
++            }
++        }
++
++        string diagnostics = $"Evidence: {evidence}{Environment.NewLine}{await output}{Environment.NewLine}{await error}";
++        process.ExitCode.ShouldBe(0, diagnostics);
++        using JsonDocument result = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(evidence, "result.json"), CancellationToken.None));
++        result.RootElement.GetProperty("qualification_passed").GetBoolean().ShouldBeTrue(diagnostics);
++        result.RootElement.GetProperty("cleanup_passed").GetBoolean().ShouldBeTrue(diagnostics);
++        result.RootElement.GetProperty("passed").GetBoolean().ShouldBeTrue(diagnostics);
++    }
++}
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs b/tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs
+new file mode 100644
+index 000000000..d074f5b30
+--- /dev/null
++++ b/tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs
+@@ -0,0 +1,86 @@
++using Hexalith.EventStore.Extensions;
++using Hexalith.EventStore.Server.Actors;
++using Hexalith.EventStore.ServiceDefaults.Authentication;
++
++using Microsoft.AspNetCore.Builder;
++using Microsoft.AspNetCore.Hosting;
++using Microsoft.AspNetCore.Http;
++using Microsoft.AspNetCore.Routing;
++using Microsoft.AspNetCore.Routing.Patterns;
++using Microsoft.AspNetCore.TestHost;
++using Microsoft.Extensions.Configuration;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.DependencyInjection.Extensions;
++using Microsoft.Extensions.Hosting;
++
++using Shouldly;
++
++namespace Hexalith.EventStore.Server.Tests.Configuration;
++
++/// <summary>Proves custom SDK hosts using Dapr's original mapper receive actor isolation without private metadata.</summary>
++public sealed class CustomHostActorCallbackRateLimitTests
++{
++    [Fact]
++    public async Task RawDaprMappingUsesTrustedDelegateProvenanceForIndependentBoundedQuotasAsync()
++    {
++        const string ChannelToken = "custom-host-channel-token";
++        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
++        builder.WebHost.UseTestServer();
++        // Unused controller/command services are outside this minimal mapping-only host.
++        builder.Host.UseDefaultServiceProvider(options => options.ValidateOnBuild = false);
++        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
++        {
++            [DaprAppChannelToken.ConfigurationKey] = ChannelToken,
++            ["Authentication:JwtBearer:Issuer"] = "custom-host-fixture",
++            ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
++            ["Authentication:JwtBearer:SigningKey"] = "custom-host-test-signing-key-at-least-32-bytes",
++            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
++            ["EventStore:RateLimiting:PermitLimit"] = "2",
++            ["EventStore:RateLimiting:ConsumerPermitLimit"] = "2",
++            ["EventStore:RateLimiting:SegmentsPerWindow"] = "1",
++            ["EventStore:RateLimiting:ConsumerSegmentsPerWindow"] = "1",
++            ["EventStore:RateLimiting:ConsumerWindowSeconds"] = "60",
++        });
++        builder.Services.AddEventStore();
++        builder.Services.AddActors(options => options.Actors.RegisterActor<IdempotencyAdmissionActor>());
++        // This custom host exercises HTTP mapping and middleware only; it owns no application background workers.
++        builder.Services.RemoveAll<IHostedService>();
++        await using WebApplication app = builder.Build();
++        app.UseAuthentication();
++        app.UseRateLimiter();
++        app.UseAuthorization();
++        app.MapActorsHandlers();
++        await app.StartAsync(TestContext.Current.CancellationToken);
++        using HttpClient client = app.GetTestClient();
++        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, ChannelToken);
++        using HttpResponseMessage first = await client.DeleteAsync("/actors/IdempotencyAdmissionActor/custom-a");
++        using HttpResponseMessage second = await client.DeleteAsync("/actors/IdempotencyAdmissionActor/custom-a");
++        using HttpResponseMessage saturated = await client.DeleteAsync("/actors/IdempotencyAdmissionActor/custom-a");
++        using HttpResponseMessage other = await client.DeleteAsync("/actors/IdempotencyAdmissionActor/custom-b");
++        first.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
++        second.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
++        saturated.StatusCode.ShouldBe(System.Net.HttpStatusCode.TooManyRequests);
++        other.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
++
++        RouteEndpoint[] genuine = ((IEndpointRouteBuilder)app).DataSources.SelectMany(source => source.Endpoints)
++            .OfType<RouteEndpoint>().Where(endpoint => endpoint.RoutePattern.Parameters.Any(parameter => parameter.Name == "actorId")).ToArray();
++        genuine.Length.ShouldBe(4);
++        var context = new DefaultHttpContext { RequestServices = app.Services };
++        context.Request.RouteValues["actorTypeName"] = "IdempotencyAdmissionActor";
++        context.Request.RouteValues["actorId"] = "custom-c";
++        foreach (RouteEndpoint endpoint in genuine)
++        {
++            endpoint.Metadata.GetMetadata<EventStoreActorCallbackEndpointMetadata>().ShouldBeNull();
++            context.Request.Method = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods.Single();
++            context.Request.Headers[DaprAppChannelToken.HeaderName] = ChannelToken;
++            context.SetEndpoint(endpoint);
++            EventStoreRateLimitPartition.TrustedActorKey(context).ShouldNotBeNull();
++            context.Request.Headers.Remove(DaprAppChannelToken.HeaderName);
++            EventStoreRateLimitPartition.TrustedActorKey(context).ShouldBeNull();
++            context.Request.Headers[DaprAppChannelToken.HeaderName] = ChannelToken;
++            context.SetEndpoint(new RouteEndpoint(_ => Task.CompletedTask,
++                RoutePatternFactory.Parse(endpoint.RoutePattern.RawText!), endpoint.Order, endpoint.Metadata, endpoint.DisplayName));
++            EventStoreRateLimitPartition.TrustedActorKey(context).ShouldBeNull();
++        }
++    }
++}
+diff --git a/tools/tests/test_qualify_internal_actor_admission.py b/tools/tests/test_qualify_internal_actor_admission.py
+new file mode 100644
+index 000000000..0748372c3
+--- /dev/null
++++ b/tools/tests/test_qualify_internal_actor_admission.py
+@@ -0,0 +1,131 @@
++"""Focused failure-injection controls for the owned process qualifier; no shared infrastructure is used."""
++import argparse
++import importlib.util
++import json
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import sys
++import tempfile
++import time
++import unittest
++from unittest.mock import patch
++
++SCRIPT = Path(__file__).resolve().parents[1] / "qualify-internal-actor-admission.py"
++SPEC = importlib.util.spec_from_file_location("admission_runner", SCRIPT)
++RUNNER = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(RUNNER)
++
++
++class ActorAdmissionRunnerTests(unittest.TestCase):
++    def setUp(self):
++        self.directory = tempfile.TemporaryDirectory()
++        self.root = Path(self.directory.name)
++        self.run = RUNNER.Qualification(argparse.Namespace(evidence=str(self.root / "evidence"), runtime=None))
++
++    def tearDown(self):
++        shutil.rmtree(self.run.runtime, ignore_errors=True)
++        self.directory.cleanup()
++
++    def fake_docker(self, *, absent=None, failed_remove=None):
++        calls = []
++        ids = {name: identity for name, identity in self.run.containers}
++
++        def invoke(*argv, **kwargs):
++            calls.append(argv)
++            if argv[1:3] == ("container", "inspect"):
++                name = argv[3]
++                if name == absent:
++                    return subprocess.CompletedProcess(argv, 1, "", "No such object")
++                value = [{"Id": ids[name], "Config": {"Labels": {"hexalith.qualification.run-id": self.run.run_id}}}]
++                return subprocess.CompletedProcess(argv, 0, json.dumps(value), "")
++            if argv[1] == "rm":
++                return subprocess.CompletedProcess(argv, int(argv[-1] == failed_remove), "", "")
++            if argv[1:3] == ("container", "ls"):
++                name = argv[6].removeprefix("name=^/").removesuffix("$")
++                return subprocess.CompletedProcess(argv, 0, ids[name] if ids[name] == failed_remove else "", "")
++            raise AssertionError(argv)
++
++        self.run.run = invoke
++        return calls
++
++    def test_verified_already_absent_container_does_not_skip_other_cleanup(self):
++        first, second = self.run.run_id + "-first", self.run.run_id + "-second"
++        self.run.containers = [(first, "a" * 64), (second, "b" * 64)]
++        calls = self.fake_docker(absent=second)
++        self.assertTrue(self.run.cleanup())
++        self.assertIn(("docker", "rm", "-f", "a" * 64), calls)
++        receipt = json.loads((self.run.out / "cleanup.json").read_text())
++        self.assertEqual(2, len(receipt["containers"]))
++        self.assertTrue(all(value["absent"] for value in receipt["containers"]))
++
++    def test_failed_removal_does_not_skip_other_resources_or_pass_cleanup(self):
++        first, second = self.run.run_id + "-first", self.run.run_id + "-second"
++        self.run.containers = [(first, "a" * 64), (second, "b" * 64)]
++        calls = self.fake_docker(failed_remove="b" * 64)
++        self.assertFalse(self.run.cleanup())
++        self.assertIn(("docker", "rm", "-f", "a" * 64), calls)
++        self.assertIn(("docker", "rm", "-f", "b" * 64), calls)
++        receipt = json.loads((self.run.out / "cleanup.json").read_text())
++        self.assertFalse(receipt["passed"])
++        self.assertTrue(receipt["runtime_absent"])
++
++    def test_qualification_cannot_report_success_when_cleanup_fails(self):
++        self.run.setup = lambda: None
++        self.run.qualify = lambda: None
++        self.run.cleanup = lambda: False
++        with patch.object(RUNNER, "Qualification", return_value=self.run), \
++                patch.object(sys, "argv", [str(SCRIPT), "--evidence", "unused"]), \
++                patch.object(RUNNER.signal, "signal"), patch.object(RUNNER.threading, "Thread"):
++            self.assertEqual(1, RUNNER.main())
++        result = json.loads((self.run.out / "result.json").read_text())
++        self.assertTrue(result["qualification_passed"])
++        self.assertFalse(result["cleanup_passed"])
++        self.assertFalse(result["passed"])
++
++    def test_sigterm_and_owner_loss_cleanup_owned_child_processes(self):
++        # Exercise real signals/processes without launching Redis/Dapr: the unchanged cleanup path
++        # must reap an independently launched child on both cancellation and test-runner loss.
++        harness = self.root / "harness.py"
++        harness.write_text(
++            "import importlib.util,os,sys,time\n"
++            f"s=importlib.util.spec_from_file_location('runner',{str(SCRIPT)!r})\n"
++            "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
++            "def setup(self):\n"
++            " self.launch('owned-child',[sys.executable,'-c','import time;time.sleep(60)'],os.environ.copy(),self.runtime)\n"
++            "m.Qualification.setup=setup\n"
++            "m.Qualification.qualify=lambda self:time.sleep(60)\n"
++            "raise SystemExit(m.main())\n")
++        for mode in ["signal", "owner-loss"]:
++            owner = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(60)"])
++            evidence = self.root / mode
++            process = subprocess.Popen([sys.executable, str(harness), "--evidence", str(evidence), "--owner-pid", str(owner.pid)])
++            try:
++                deadline = time.monotonic() + 10
++                while not (evidence / "processes.json").exists() and time.monotonic() < deadline:
++                    time.sleep(0.05)
++                child = json.loads((evidence / "processes.json").read_text())[0]["pid"]
++                if mode == "signal":
++                    process.terminate()
++                else:
++                    owner.terminate()
++                    owner.wait(timeout=5)
++                self.assertEqual(1, process.wait(timeout=20))
++                result = json.loads((evidence / "result.json").read_text())
++                self.assertFalse(result["qualification_passed"])
++                self.assertTrue(result["cleanup_passed"])
++                self.assertFalse(result["passed"])
++                with self.assertRaises(ProcessLookupError):
++                    os.kill(child, 0)
++            finally:
++                if process.poll() is None:
++                    process.terminate()
++                    process.wait(timeout=20)
++                if owner.poll() is None:
++                    owner.terminate()
++                owner.wait(timeout=5)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs b/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs
+index 38decc369..6bcc8bd1b 100644
+--- a/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs
++++ b/tests/Hexalith.EventStore.Server.Tests/Configuration/EventStoreWorkloadRateLimitTests.cs
+@@ -21,6 +21,59 @@ namespace Hexalith.EventStore.Server.Tests.Configuration;
+ 
+ public sealed class EventStoreWorkloadRateLimitTests
+ {
++    [Theory]
++    [InlineData(true)]
++    [InlineData(false)]
++    public void PublicClaimsCopiedFromActorKeyCannotExhaustActorPartition(bool tenantLimit)
++    {
++        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
++        {
++            [DaprAppChannelToken.ConfigurationKey] = "copied-subject-channel-token",
++            ["EventStore:RateLimiting:PermitLimit"] = "10",
++            ["EventStore:RateLimiting:ConsumerPermitLimit"] = "10",
++            ["EventStore:RateLimiting:WindowSeconds"] = "60",
++            ["EventStore:RateLimiting:ConsumerWindowSeconds"] = "60",
++            ["EventStore:RateLimiting:SegmentsPerWindow"] = "1",
++            ["EventStore:RateLimiting:ConsumerSegmentsPerWindow"] = "1",
++        }).Build();
++        var services = new ServiceCollection();
++        services.AddSingleton(configuration);
++        services.AddLogging();
++        services.AddEventStore();
++        using ServiceProvider provider = services.BuildServiceProvider();
++        DefaultHttpContext callback = Context(provider, null);
++        callback.Request.Headers[DaprAppChannelToken.HeaderName] = "copied-subject-channel-token";
++        callback.Request.RouteValues["actorTypeName"] = "IdempotencyAdmissionActor";
++        callback.Request.RouteValues["actorId"] = "copied-subject-actor";
++        callback.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(EventStoreActorCallbackEndpointMetadata.Instance), "mapped-actor"));
++        string actorKey = EventStoreRateLimitPartition.TrustedActorKey(callback).ShouldNotBeNull();
++
++        // The raw override lookup must still apply to both identities, independently of their cache keys.
++        RateLimitingOptions options = provider.GetRequiredService<IOptionsMonitor<RateLimitingOptions>>().CurrentValue;
++        if (tenantLimit) options.TenantPermitLimits[actorKey] = 2;
++        else options.ConsumerPermitLimits[actorKey] = 2;
++        ClaimsPrincipal human = new(new ClaimsIdentity(
++        [
++            new Claim("sub", tenantLimit ? "ordinary-human" : actorKey),
++            new Claim("eventstore:tenant", tenantLimit ? actorKey : "ordinary-tenant"),
++        ], "Bearer"));
++        DefaultHttpContext publicRequest = Context(provider, human);
++        PartitionedRateLimiter<HttpContext> limiter = provider.GetRequiredService<IOptions<RateLimiterOptions>>().Value.GlobalLimiter.ShouldNotBeNull();
++        using RateLimitLease publicFirst = limiter.AttemptAcquire(publicRequest);
++        using RateLimitLease publicSecond = limiter.AttemptAcquire(publicRequest);
++        using RateLimitLease publicExhausted = limiter.AttemptAcquire(publicRequest);
++        publicFirst.IsAcquired.ShouldBeTrue();
++        publicSecond.IsAcquired.ShouldBeTrue();
++        publicExhausted.IsAcquired.ShouldBeFalse();
++
++        using RateLimitLease actorFirst = limiter.AttemptAcquire(callback);
++        using RateLimitLease actorSecond = limiter.AttemptAcquire(callback);
++        using RateLimitLease actorExhausted = limiter.AttemptAcquire(callback);
++        actorFirst.IsAcquired.ShouldBeTrue();
++        actorSecond.IsAcquired.ShouldBeTrue();
++        actorExhausted.IsAcquired.ShouldBeFalse();
++    }
++
+     [Fact]
+     public async Task AssignedConfigurationStoreUpdatesTheEffectiveTenantLimitAsync()
+     {
