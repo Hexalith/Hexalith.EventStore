@@ -20,6 +20,11 @@ internal sealed record ReadModelBatchParticipantProof(ReadModelBatchScope Scope,
         => ReadModelBatchTerminalFence.Key(scope.ComputeScopeHash(), fingerprint) + ":participant:" + ordinal;
 
     /// <summary>Seals exact original proof before the awaited installation, retaining it across receipt reclamation.</summary>
+    /// <remarks>
+    /// Resume, compaction, abort and cleanup re-seal proof that an earlier step already wrote. The existing proof
+    /// is read first, so an identical re-seal never issues a create-only write that the store must reject: a sidecar
+    /// resiliency policy can retry such a rejection and count it toward its state store circuit breaker.
+    /// </remarks>
     internal static async Task<bool> SealAsync(IReadModelBatchStateAccessor accessor, ReadModelBatchScope scope,
         string fingerprint, ReadModelBatchRecoveryAnchor anchor, ReadModelBatchConcurrency concurrency, CancellationToken token)
     {
@@ -28,9 +33,7 @@ internal sealed record ReadModelBatchParticipantProof(ReadModelBatchScope Scope,
         ReadOnlyMemory<byte> bytes = ReadModelBatchCanonicalJson.Serialize(proof);
         if (bytes.Length > MaxEncodedBytes) return false;
         string key = Key(scope, fingerprint, anchor.Ordinal);
-        if (await accessor.TryWriteAsync(key, bytes, string.Empty, token).ConfigureAwait(false)) return true;
-        RawStateEntry existing = await accessor.ReadAsync(key, token).ConfigureAwait(false);
-        return existing.Exists && existing.Value.Span.SequenceEqual(bytes.Span);
+        return await ReadModelBatchImmutableRecord.SealAsync(accessor, key, bytes, token).ConfigureAwait(false);
     }
 
     /// <summary>Validates a receipt's original anchor before any auxiliary recovery mutation.</summary>

@@ -67,21 +67,33 @@ internal sealed record ReadModelBatchTerminalFence(ReadModelBatchScope Scope, st
     }
 
     /// <summary>Seals the same immutable decision before discarding any original recovery evidence.</summary>
+    /// <remarks>
+    /// Cleanup can re-seal a fence an earlier step already retired. The existing fence and index are read first, so an
+    /// identical re-seal issues no create-only write the store must reject; see <see cref="ReadModelBatchImmutableRecord"/>.
+    /// </remarks>
     internal async Task<bool> SealAsync(IReadModelBatchStateAccessor accessor, CancellationToken token)
     {
         ReadOnlyMemory<byte> bytes = ReadModelBatchCanonicalJson.Serialize(this);
         if (bytes.Length > (Version == 1 ? MaxLegacyEncodedBytes : ReadModelBatchParticipantProof.MaxEncodedBytes)) return false;
-        bool sealedFence = await accessor.TryWriteAsync(Key(Scope.ComputeScopeHash(), Fingerprint), bytes, string.Empty, token).ConfigureAwait(false);
-        if (!sealedFence)
+        // ReadAsync refuses malformed, oversized or non-canonical existing evidence before any write, as the
+        // create-then-read order did when the create was rejected.
+        ReadModelBatchTerminalFence? existing = await ReadAsync(accessor, Scope, Fingerprint, token).ConfigureAwait(false);
+        if (existing is null)
         {
-            ReadModelBatchTerminalFence? existing = await ReadAsync(accessor, Scope, Fingerprint, token).ConfigureAwait(false);
-            if (existing is null || !ReadModelBatchCanonicalJson.Serialize(existing).Span.SequenceEqual(bytes.Span)) return false;
+            bool sealedFence = await accessor.TryWriteAsync(Key(Scope.ComputeScopeHash(), Fingerprint), bytes, string.Empty, token).ConfigureAwait(false);
+            if (!sealedFence)
+            {
+                ReadModelBatchTerminalFence? raced = await ReadAsync(accessor, Scope, Fingerprint, token).ConfigureAwait(false);
+                if (raced is null || !ReadModelBatchCanonicalJson.Serialize(raced).Span.SequenceEqual(bytes.Span)) return false;
+            }
         }
+        else if (!ReadModelBatchCanonicalJson.Serialize(existing).Span.SequenceEqual(bytes.Span))
+        {
+            return false;
+        }
+
         if (Version == 1) return true;
-        string indexKey = Scope.ComputeMarkerKey() + ":retired";
-        if (await accessor.TryWriteAsync(indexKey, bytes, string.Empty, token).ConfigureAwait(false)) return true;
-        RawStateEntry index = await accessor.ReadAsync(indexKey, token).ConfigureAwait(false);
-        return index.Exists && index.Value.Span.SequenceEqual(bytes.Span);
+        return await ReadModelBatchImmutableRecord.SealAsync(accessor, Scope.ComputeMarkerKey() + ":retired", bytes, token).ConfigureAwait(false);
     }
 
     /// <summary>Restores only a fully proved original orphan; newer rows and foreign evidence remain untouched.</summary>
