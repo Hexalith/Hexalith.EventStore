@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "dotnet",
+    "msbuild",
+    "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z/tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+    "-p:Configuration=Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-p:UseNuGetDeps=false",
+    "-getProperty:UseHexalithProjectReferences,UseNuGetDeps,Configuration,TargetFramework",
+    "-getItem:ProjectReference,PackageReference"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+  "utc_start": "2026-10-22T17:55:36.981387+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z"
+  },
+  "runner_pid": 1774938,
+  "pid": 1774947,
+  "exit_code": 0,
+  "elapsed_seconds": 0.7308968409925001,
+  "utc_end": "2026-10-22T17:55:37.712435+00:00"
+}

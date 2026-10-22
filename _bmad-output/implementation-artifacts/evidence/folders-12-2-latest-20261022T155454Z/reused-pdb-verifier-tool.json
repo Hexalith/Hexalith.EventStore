@@ -1,0 +1,27 @@
+{
+  "reused_tool_only": true,
+  "fresh_result": "pdb-source-binding-command.json",
+  "source_packet_seal": "eeff5272baa8ab53fb1fef872aca9db1f7fd0fb1a094d6e71a12c263778df1ec",
+  "files": [
+    {
+      "path": "pdb-verifier-runtime/Verifier",
+      "sha256": "bc941b7ca15e8b3fd967432d1236cc4e1dd9a82c994e67daf57132823983d3e7"
+    },
+    {
+      "path": "pdb-verifier-runtime/Verifier.deps.json",
+      "sha256": "a7e131c77ed8f4a81907b3bc450248c4c3dc6a308548cefd6edf29956dd163d2"
+    },
+    {
+      "path": "pdb-verifier-runtime/Verifier.dll",
+      "sha256": "69359644f3a19399ddf0e963ddf1c88ac9b8e7f5ae73f1fc228c8e688aa06a53"
+    },
+    {
+      "path": "pdb-verifier-runtime/Verifier.pdb",
+      "sha256": "0bacba370345c404d76d611ea106a989e7524f30eb5d27490ef4c7b51e5b6879"
+    },
+    {
+      "path": "pdb-verifier-runtime/Verifier.runtimeconfig.json",
+      "sha256": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a"
+    }
+  ]
+}

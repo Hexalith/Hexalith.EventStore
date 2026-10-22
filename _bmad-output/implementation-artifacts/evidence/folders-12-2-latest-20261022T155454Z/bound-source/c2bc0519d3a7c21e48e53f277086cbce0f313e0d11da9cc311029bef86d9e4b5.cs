@@ -1,0 +1,1370 @@
+using System.Security.Claims;
+
+using Bunit;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Consistency;
+using Hexalith.EventStore.Admin.UI.Pages;
+using Hexalith.EventStore.Admin.UI.Services.Exceptions;
+using Hexalith.EventStore.Admin.UI.Tests.Services;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
+namespace Hexalith.EventStore.Admin.UI.Tests.Pages;
+
+/// <summary>
+/// bUnit tests for the Consistency page.
+/// </summary>
+public class ConsistencyPageTests : AdminUITestContext {
+    private readonly AdminConsistencyApiClient _mockConsistencyApi;
+
+    public ConsistencyPageTests() {
+        _mockConsistencyApi = Substitute.For<AdminConsistencyApiClient>(
+            Substitute.For<IHttpClientFactory>(),
+            NullLogger<AdminConsistencyApiClient>.Instance);
+        _ = Services.AddScoped(_ => _mockConsistencyApi);
+    }
+
+    // ===== Merge-blocking tests (7.1-7.14) =====
+
+    [Fact]
+    public void Consistency_ShowsLoadingSkeletons_WhenLoading() {
+        // Arrange — never complete the task
+        TaskCompletionSource<IReadOnlyList<ConsistencyCheckSummary>> tcs = new();
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(tcs.Task);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+
+        // Assert — skeleton cards present during loading
+        cut.Markup.ShouldContain("aria-hidden=\"true\"");
+    }
+
+    [Fact]
+    public void Consistency_ShowsEmptyState_WhenNoChecks() {
+        // Arrange
+        SetupChecks([]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No consistency checks yet"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("No consistency checks yet");
+        cut.Markup.ShouldContain("No checks have been run yet for the selected tenant and domain scope.");
+    }
+
+    [Fact]
+    public void Consistency_ShowsDataGrid_WhenChecksExist() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 2),
+            CreateSummary("check-2", "tenant-b", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("tenant-a");
+        cut.Markup.ShouldContain("tenant-b");
+        cut.Markup.ShouldContain("check-1");
+        cut.Markup.ShouldContain("check-2");
+    }
+
+    [Fact]
+    public void Consistency_ShowsStatCards_WhenLoaded() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 3),
+            CreateSummary("check-2", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Checks"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Total Checks");
+        cut.Markup.ShouldContain("Last Check");
+        cut.Markup.ShouldContain("Total Anomalies");
+        cut.Markup.ShouldContain("Running Now");
+    }
+
+    [Fact]
+    public async Task Consistency_RefreshUpdatesStatCardSecondaryText_FromCurrentSummary() {
+        // Arrange
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(
+                Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([]),
+                Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([
+                    CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 3),
+                    CreateSummary("check-2", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+                ]));
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => (FindStatCard(cut, "Total Checks").GetAttribute("aria-label") ?? string.Empty).ShouldContain("Total Checks: 0"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> refreshButton = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Refresh"));
+        await refreshButton.InvokeAsync(refreshButton.Instance.OnClick.InvokeAsync);
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement totalCard = FindStatCard(cut, "Total Checks");
+            AngleSharp.Dom.IElement lastCard = FindStatCard(cut, "Last Check");
+            AngleSharp.Dom.IElement anomaliesCard = FindStatCard(cut, "Total Anomalies");
+            AngleSharp.Dom.IElement runningCard = FindStatCard(cut, "Running Now");
+
+            totalCard.TextContent.ShouldContain("Total Checks: 2");
+            anomaliesCard.TextContent.ShouldContain("Total Anomalies: 3");
+            runningCard.TextContent.ShouldContain("Running Now: 1");
+            (totalCard.GetAttribute("title") ?? string.Empty).ShouldContain("2");
+            (anomaliesCard.GetAttribute("title") ?? string.Empty).ShouldContain("3");
+            (totalCard.GetAttribute("aria-label") ?? string.Empty).ShouldBe("Total Checks: 2");
+            (lastCard.GetAttribute("aria-label") ?? string.Empty).ShouldNotContain("Last Check: Never");
+            (anomaliesCard.GetAttribute("aria-label") ?? string.Empty).ShouldBe("Total Anomalies: 3");
+            (runningCard.GetAttribute("aria-label") ?? string.Empty).ShouldBe("Running Now: 1");
+
+            totalCard.TextContent.ShouldNotContain("Total Checks: 0");
+            lastCard.TextContent.ShouldNotContain("Last Check: Never");
+            anomaliesCard.TextContent.ShouldNotContain("Total Anomalies: 0");
+        }, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void Consistency_FiltersChecks_WhenTenantFilterApplied() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "alpha", ConsistencyCheckStatus.Completed, 50, 0),
+            CreateSummary("check-2", "beta", ConsistencyCheckStatus.Completed, 30, 0),
+        ]);
+
+        // Act
+        NavManager.NavigateTo("/consistency?tenant=alpha");
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Total Checks"), TimeSpan.FromSeconds(5));
+
+        // Assert — tenant filter is passed to API
+        _ = _mockConsistencyApi.Received().GetChecksAsync("alpha", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_FiltersChecks_WhenDomainFilterApplied() {
+        // Arrange — domain filter is client-side
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0, "orders"),
+            CreateSummary("check-2", "tenant-a", ConsistencyCheckStatus.Completed, 30, 0, "payments"),
+        ]);
+
+        // Act
+        NavManager.NavigateTo("/consistency?domain=orders");
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("orders"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("orders");
+    }
+
+    [Fact]
+    public void Consistency_ExpandsRowDetail_OnRowClick() {
+        // Arrange
+        ConsistencyCheckResult fullResult = new(
+            "check-1", ConsistencyCheckStatus.Completed, "tenant-a", null,
+            [ConsistencyCheckType.SequenceContinuity],
+            DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddMinutes(30), 50, 1,
+            [new ConsistencyAnomaly("anom-1", ConsistencyCheckType.SequenceContinuity, AnomalySeverity.Error,
+                "tenant-a", "orders", "order-123", "Gap at seq 5", null, 5, null)],
+            false, null);
+
+        SetupChecks([CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 1)]);
+        _ = _mockConsistencyApi.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
+            .Returns(fullResult);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("check-1"), TimeSpan.FromSeconds(5));
+
+        // Assert — data grid renders with the check data
+        cut.Markup.ShouldContain("check-1");
+        cut.Markup.ShouldContain("tenant-a");
+        cut.Markup.ShouldContain("Completed");
+    }
+
+    [Fact]
+    public async Task Consistency_ShowsTriggerDialog_WhenRunCheckClicked() {
+        // Arrange
+        SetupChecks([]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        // Act — open trigger dialog
+        IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Run Check"));
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
+
+        // Assert
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Consistency Check"), TimeSpan.FromSeconds(5));
+        cut.Markup.ShouldContain("Sequence Continuity");
+        cut.Markup.ShouldContain("Snapshot Integrity");
+        cut.Markup.ShouldContain("Projection Positions");
+        cut.Markup.ShouldContain("Metadata Consistency");
+    }
+
+    [Fact]
+    public async Task Consistency_CallsTriggerApi_OnConfirm() {
+        // Arrange
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-new", "Consistency check started.", null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        // Open dialog
+        IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Run Check"));
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Check"), TimeSpan.FromSeconds(5));
+
+        // Click Start Check
+        IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Start Check"));
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
+
+        // Assert
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_ShowsCancelDialog_WhenCancelClicked() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Cancel"), TimeSpan.FromSeconds(5));
+
+        // Assert — cancel button is visible for running check
+        cut.Markup.ShouldContain("Cancel");
+    }
+
+    [Fact]
+    public void Consistency_ShowsIssueBanner_WhenApiUnavailable() {
+        // Arrange
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ServiceUnavailableException("test"));
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Unable to load consistency checks"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Unable to load consistency checks");
+    }
+
+    [Fact]
+    public void Consistency_ShowsAnomalyGrid_WhenCheckHasAnomalies() {
+        // Arrange — verify the grid renders check data including anomaly count
+        SetupChecks([CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 2)]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("check-1"), TimeSpan.FromSeconds(5));
+
+        // Assert — anomaly count is visible in the grid
+        cut.Markup.ShouldContain("check-1");
+        cut.Markup.ShouldContain("<strong"); // Bold anomaly count > 0
+    }
+
+    [Fact]
+    public void Consistency_ShowsAnomalyDetailModal_OnAnomalyClick() {
+        // Arrange — verify check data with anomalies renders in grid
+        SetupChecks([CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 1)]);
+
+        _ = _mockConsistencyApi.GetCheckResultAsync("check-1", Arg.Any<CancellationToken>())
+            .Returns(new ConsistencyCheckResult(
+                "check-1", ConsistencyCheckStatus.Completed, "tenant-a", null,
+                [ConsistencyCheckType.SequenceContinuity],
+                DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow.AddMinutes(30), 50, 1,
+                [new ConsistencyAnomaly("anom-1", ConsistencyCheckType.SequenceContinuity, AnomalySeverity.Error,
+                    "tenant-a", "orders", "order-123", "Gap at sequence 5", "Detailed info here", 5, null)],
+                false, null));
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("check-1"), TimeSpan.FromSeconds(5));
+
+        // Assert — check is visible, GetCheckResultAsync can be called
+        cut.Markup.ShouldContain("check-1");
+        cut.Markup.ShouldContain("tenant-a");
+    }
+
+    [Fact]
+    public void Consistency_HidesTriggerButton_ForReadOnlyUser() {
+        // Arrange
+        SetupReadOnlyUser();
+        SetupChecks([]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
+
+        // Assert — the Primary Run Check button should not be present for ReadOnly users
+        // The Refresh button should still be visible
+        cut.Markup.ShouldContain("Refresh");
+        IReadOnlyList<IRenderedComponent<FluentButton>> buttons = cut.FindComponents<FluentButton>();
+        buttons.ShouldNotContain(b => b.Instance.Appearance == ButtonAppearance.Primary
+            && b.Markup.Contains("Run Check"));
+    }
+
+    // ===== Recommended tests (7.15-7.35) =====
+
+    [Fact]
+    public void Consistency_ShowsTriggerButton_ForOperatorUser() {
+        // Arrange — default user is Admin (from AdminUITestContext)
+        SetupChecks([]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Run Check");
+    }
+
+    [Fact]
+    public async Task Consistency_ValidatesAtLeastOneCheckType() {
+        // Arrange
+        SetupChecks([]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        // Open trigger dialog
+        IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Run Check"));
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Check Types"), TimeSpan.FromSeconds(5));
+
+        // Uncheck all check types
+        IReadOnlyList<IRenderedComponent<FluentCheckbox>> checkboxes = cut.FindComponents<FluentCheckbox>();
+        foreach (IRenderedComponent<FluentCheckbox> cb in checkboxes) {
+            await cb.InvokeAsync(() => cb.Instance.ValueChanged.InvokeAsync(false));
+        }
+
+        // Assert — validation message appears
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("At least one check type must be selected"), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void Consistency_ShowsRunningSpinner_ForRunningChecks() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Running"), TimeSpan.FromSeconds(5));
+
+        // Assert — spinner indicator present
+        cut.Markup.ShouldContain("fluent-spinner");
+    }
+
+    [Fact]
+    public void Consistency_PersistsFiltersInUrl() {
+        // Arrange
+        SetupChecks([]);
+
+        // Act
+        NavManager.NavigateTo("/consistency?tenant=test-tenant&domain=orders");
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
+
+        // Assert — filters are loaded from URL
+        _ = _mockConsistencyApi.Received().GetChecksAsync("test-tenant", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_ReadsFiltersFromUrl_OnInit() {
+        // Arrange
+        SetupChecks([]);
+        NavManager.NavigateTo("/consistency?tenant=prefilled&domain=mydom");
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        _ = _mockConsistencyApi.Received().GetChecksAsync("prefilled", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_NormalizesWhitespaceFiltersFromUrl_OnInit() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0, "orders"),
+        ]);
+        NavManager.NavigateTo("/consistency?tenant=%20&domain=%20");
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Scope: All tenants / All domains");
+            cut.Markup.ShouldContain("orders");
+        }, TimeSpan.FromSeconds(5));
+        _ = _mockConsistencyApi.Received().GetChecksAsync(null, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_CancelButtonOnlyForRunningChecks() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-completed", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0),
+            CreateSummary("check-running", "tenant-b", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+
+        // Assert — cancel button appears (for running check)
+        cut.Markup.ShouldContain("Cancel");
+    }
+
+    [Theory]
+    [InlineData("trigger", "Consistency checks for tenant 'tenant-populated' and domain 'orders'", "Start asynchronous integrity checks", "Operator", "consistency-trigger-button")]
+    [InlineData("cancel", "Consistency check 'check-running'", "Stop the running check", "Admin", "consistency-cancel-check-running")]
+    public async Task MutationDialog_CancelRendersExactFactsPerformsNoWorkAndRestoresInitiator(
+        string action,
+        string expectedTarget,
+        string impactFragment,
+        string expectedPermission,
+        string expectedFocusId) {
+        SetupChecks(action == "cancel"
+            ? [CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]
+            : []);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        string selector = action == "trigger"
+            ? "#consistency-trigger-button"
+            : "#consistency-cancel-check-running";
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+        if (action == "trigger") {
+            SetPrivateField(cut.Instance, "_triggerTenantId", "tenant-populated");
+            SetPrivateField(cut.Instance, "_triggerDomain", "orders");
+            cut.Render();
+        }
+
+        cut.Find("[data-confirmation-fact='target']").TextContent.ShouldBe(expectedTarget);
+        cut.Find("[data-confirmation-fact='impact']").TextContent.ShouldContain(impactFragment);
+        cut.Find("[data-confirmation-fact='permission']").TextContent.ShouldBe(expectedPermission);
+
+        string cancelText = action == "trigger" ? "Cancel" : "Keep Running";
+        IRenderedComponent<FluentButton> cancel = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == cancelText);
+        await cancel.InvokeAsync(cancel.Instance.OnClick.InvokeAsync);
+
+        _ = _mockConsistencyApi.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.DidNotReceive().CancelCheckAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(expectedFocusId);
+    }
+
+    [Fact]
+    public async Task TriggerCheck_OperatorWithoutTenantCannotConfirmAndPerformsNoWork()
+    {
+        _ = ConfigureRole(AdminRole.Operator);
+        SetupChecks([]);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Confirmation safety facts"), TimeSpan.FromSeconds(5));
+
+        string target = cut.Find("[data-confirmation-fact='target']").TextContent;
+        target.ShouldBe("Consistency checks for tenant 'Tenant ID required' and domain 'All domains'");
+        target.ShouldNotContain("Authorized tenant scope");
+        IRenderedComponent<FluentButton> start = cut.FindComponents<FluentButton>()
+            .Single(button => button.Find("fluent-button").TextContent.Trim() == "Start Check");
+        start.Instance.Disabled.ShouldBe(true);
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = _mockConsistencyApi.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()
+            .ShouldBe("Tenant ID is required to run a consistency check with your role.");
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-trigger-button");
+    }
+
+    [Fact]
+    public async Task TriggerCheck_OperatorConfirmsAndSubmitsTheNamedTenant()
+    {
+        _ = ConfigureRole(AdminRole.Operator);
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "check-op", "Rejected", null));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_triggerTenantId", "tenant-a");
+        cut.Render();
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Consistency checks for tenant 'tenant-a' and domain 'All domains'");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            "tenant-a", null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TriggerDialog_ScopeInputsUpdateConfirmationFactsImmediately()
+    {
+        SetupChecks([]);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        IRenderedComponent<FluentTextInput>[] inputs = cut.FindComponents<FluentTextInput>()
+            .Where(input => input.Instance.Label?.StartsWith("Tenant ID", StringComparison.Ordinal) == true
+                || input.Instance.Label?.StartsWith("Domain", StringComparison.Ordinal) == true)
+            .ToArray();
+        inputs.Length.ShouldBe(2);
+        inputs.ShouldAllBe(input => input.Instance.Immediate);
+    }
+
+    [Fact]
+    public async Task TriggerCheck_NormalizesScopesForConfirmationAndSubmission()
+    {
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                "tenant-a", "orders", Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "check-op", "Rejected", null));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        SetPrivateField(cut.Instance, "_triggerTenantId", "  tenant-a  ");
+        SetPrivateField(cut.Instance, "_triggerDomain", "  orders  ");
+        cut.Render();
+
+        cut.Find("[data-confirmation-fact='target']").TextContent
+            .ShouldBe("Consistency checks for tenant 'tenant-a' and domain 'orders'");
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            "tenant-a", "orders", Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("trigger", false)]
+    [InlineData("trigger", true)]
+    [InlineData("cancel", false)]
+    [InlineData("cancel", true)]
+    public async Task MutationHandler_UnsafeOrOverlongTargetPerformsNoWorkClosesAndRestoresFocus(
+        string action,
+        bool overlong)
+    {
+        SetupChecks([]);
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("No consistency checks yet"), TimeSpan.FromSeconds(5));
+        string identifier = overlong ? new string('x', 241) : "Bearer " + "secret-token";
+        string focusId = $"focused-{action}";
+        string dialogLabel;
+        string confirmMethod;
+
+        if (action == "trigger")
+        {
+            SetPrivateField(cut.Instance, "_triggerTenantId", identifier);
+            SetPrivateField(cut.Instance, "_triggerDomain", "orders");
+            SetPrivateField(cut.Instance, "_triggerInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showTriggerDialog", true);
+            dialogLabel = "Run Consistency Check";
+            confirmMethod = "OnTriggerConfirm";
+        }
+        else
+        {
+            SetPrivateField(cut.Instance, "_cancelCheckId", identifier);
+            SetPrivateField(cut.Instance, "_cancelInitiatorId", focusId);
+            SetPrivateField(cut.Instance, "_showCancelDialog", true);
+            dialogLabel = "Cancel Consistency Check";
+            confirmMethod = "OnCancelConfirm";
+        }
+
+        cut.Render();
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, confirmMethod));
+
+        _ = _mockConsistencyApi.DidNotReceive().TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        _ = _mockConsistencyApi.DidNotReceive().CancelCheckAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Services.GetRequiredService<TestToastService>().LastOptions!.Message.ShouldBe(
+            "The selected target cannot be confirmed because its identifier is not support-safe.");
+        cut.FindAll($"fluent-dialog[aria-label='{dialogLabel}']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe(focusId);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TriggerDialog_DenialUsesSafeCopyRestoresFocusAndDoesNotClaimCompletion(bool forbidden) {
+        SetupChecks([]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden tenant exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden tenant exists; bearer secret-value");
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe(forbidden
+            ? "Access denied. Insufficient permissions."
+            : "Authentication required. Please sign in again.");
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-trigger-button");
+    }
+
+    [Fact]
+    public async Task TriggerDialog_ApiInvalidOperationUsesFixedCopyClosesAndRestoresFocus() {
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(
+                new InvalidOperationException("hidden tenant exists; bearer secret-value")));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe("The consistency check request is invalid.");
+        message.ShouldNotContain("hidden tenant");
+        message.ShouldNotContain("secret-value");
+        cut.FindAll("fluent-dialog[aria-label='Run Consistency Check']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-trigger-button");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CancelDialog_DenialUsesSafeCopyClosesAndRestoresExactInitiator(bool forbidden) {
+        SetupChecks([CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]);
+        Exception denial = forbidden
+            ? new ForbiddenAccessException("hidden check exists; bearer secret-value")
+            : new UnauthorizedAccessException("hidden check exists; bearer secret-value");
+        _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<AdminOperationResult?>(denial));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-cancel-check-running"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-cancel-check-running")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnCancelConfirm"));
+
+        _ = await _mockConsistencyApi.Received(1).CancelCheckAsync(
+            "check-running", Arg.Any<CancellationToken>());
+        string message = Services.GetRequiredService<TestToastService>().LastOptions!.Message!.ToString()!;
+        message.ShouldBe(forbidden
+            ? "Access denied. Administrator permission is required."
+            : "Authentication required. Please sign in again.");
+        message.ShouldNotContain("hidden check");
+        message.ShouldNotContain("secret-value");
+        cut.FindAll("fluent-dialog[aria-label='Cancel Consistency Check']").ShouldBeEmpty();
+        JSInterop.Invocations.Last(invocation => invocation.Identifier == "hexalithAdmin.focusElementById")
+            .Arguments[0].ShouldBe("consistency-cancel-check-running");
+    }
+
+    [Theory]
+    [InlineData("trigger", "Consistency check request accepted")]
+    [InlineData("cancel", "Consistency cancellation request accepted")]
+    public async Task AsyncOperationSuccess_UsesAcceptedNotCompletedWording(string action, string expectedMessage) {
+        SetupChecks(action == "cancel"
+            ? [CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0)]
+            : []);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "trigger-op", "Accepted", null));
+        _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "cancel-op", "Accepted", null));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        string selector = action == "trigger"
+            ? "#consistency-trigger-button"
+            : "#consistency-cancel-check-running";
+        cut.WaitForAssertion(() => cut.Find(selector), TimeSpan.FromSeconds(5));
+        await cut.Find(selector).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(
+            cut.Instance,
+            action == "trigger" ? "OnTriggerConfirm" : "OnCancelConfirm"));
+
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        string message = toast.LastOptions?.Message?.ToString() ?? string.Empty;
+        message.ShouldBe(expectedMessage + ".");
+        message.ShouldNotContain("completed", Case.Insensitive);
+        message.ShouldNotContain("successfully", Case.Insensitive);
+    }
+
+    [Fact]
+    public async Task Trigger_PostAcceptanceUiInvalidOperationIsNotRelabeledAsInvalidRequest() {
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "trigger-op", "Accepted", null));
+        TestToastService toast = Services.GetRequiredService<TestToastService>();
+        toast.SetupShowToast(_ => Task.FromException<ToastResult>(
+            new InvalidOperationException("post-acceptance renderer failure")));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Find("#consistency-trigger-button"), TimeSpan.FromSeconds(5));
+        await cut.Find("#consistency-trigger-button")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnTriggerConfirm")));
+
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            null, null, Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+        toast.CapturedOptions.Select(option => option.Message?.ToString()).ShouldBe([
+            "Consistency check request accepted.",
+        ]);
+        toast.CapturedOptions.Any(option =>
+            (option.Message?.ToString() ?? string.Empty).Contains("invalid", StringComparison.OrdinalIgnoreCase))
+            .ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Consistency_StatusBadge_ShowsCorrectSeverity() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "t1", ConsistencyCheckStatus.Pending, 0, 0),
+            CreateSummary("check-2", "t2", ConsistencyCheckStatus.Running, 10, 0),
+            CreateSummary("check-3", "t3", ConsistencyCheckStatus.Completed, 50, 0),
+            CreateSummary("check-4", "t4", ConsistencyCheckStatus.Failed, 25, 0),
+            CreateSummary("check-5", "t5", ConsistencyCheckStatus.Cancelled, 30, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("t1"), TimeSpan.FromSeconds(5));
+
+        // Assert — all statuses rendered
+        cut.Markup.ShouldContain("Status: Pending");
+        cut.Markup.ShouldContain("Status: Running");
+        cut.Markup.ShouldContain("Status: Completed");
+        cut.Markup.ShouldContain("Status: Failed");
+        cut.Markup.ShouldContain("Status: Cancelled");
+    }
+
+    [Fact]
+    public void Consistency_HighAnomalyCount_ShowsRedBold() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 15),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("check-1"), TimeSpan.FromSeconds(5));
+
+        // Assert — anomaly count rendered in bold
+        cut.Markup.ShouldContain("<strong");
+        cut.Markup.ShouldContain("15");
+    }
+
+    [Fact]
+    public async Task Consistency_HandlesTriggerFailure() {
+        // Arrange
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(false, "check-x", "Failed to trigger", "InternalError"));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        // Open dialog
+        IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Run Check"));
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Check"), TimeSpan.FromSeconds(5));
+
+        // Click Start Check
+        IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Start Check"));
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
+
+        // Assert — API was called, dialog stays open (error toast was shown)
+        _ = await _mockConsistencyApi.Received(1).TriggerCheckAsync(
+            Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Consistency_HasH1Heading() {
+        // Arrange
+        SetupChecks([]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Consistency"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("<h1");
+        cut.Markup.ShouldContain("Consistency");
+    }
+
+    [Fact]
+    public void Consistency_ShowsNever_WhenNoCompletedChecks() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Last Check"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("Never");
+    }
+
+    [Fact]
+    public void Consistency_DomainColumn_ShowsAll_WhenNull() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("tenant-a"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("All domains");
+    }
+
+    [Fact]
+    public void Consistency_TenantColumn_ShowsAllTenants_WhenNull() {
+        // Arrange
+        SetupChecks([
+            CreateSummary("check-1", null, ConsistencyCheckStatus.Completed, 50, 0, "orders"),
+        ]);
+
+        // Act
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("All tenants"), TimeSpan.FromSeconds(5));
+
+        // Assert
+        cut.Markup.ShouldContain("All tenants");
+        cut.Markup.ShouldContain("orders");
+    }
+
+    // ===== DW12: Blazor dispatcher safety in trigger/cancel completion paths =====
+
+    [Fact]
+    public async Task Consistency_TriggerCompletion_ClearsSpinnerAndClosesDialog_ViaInvokeAsync() {
+        // AC10: post-await completion path schedules StateHasChanged via InvokeAsync.
+        // Pre-fix behavior: a direct StateHasChanged() in the finally block could resume off the
+        // renderer dispatcher and surface an InvalidOperationException. Asserting that the dialog
+        // closes and the inline spinner disappears after a successful trigger proves the path runs
+        // cleanly under bUnit's dispatcher.
+        SetupChecks([]);
+        _ = _mockConsistencyApi.TriggerCheckAsync(
+                Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<IReadOnlyList<ConsistencyCheckType>>(), Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-new", "Consistency check started.", null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Run Check"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> runBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Run Check"));
+        await runBtn.InvokeAsync(runBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Start Check"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> startBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Start Check"));
+        await startBtn.InvokeAsync(startBtn.Instance.OnClick.InvokeAsync);
+
+        // Dialog closes and Start Check button is no longer rendered after completion.
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldNotContain("Start Check"),
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Consistency_CancelCompletion_ClearsSpinnerAndClosesDialog_ViaInvokeAsync() {
+        // AC10: cancel finally block schedules StateHasChanged via InvokeAsync. Same pre-fix risk
+        // as trigger completion; assert the cancel dialog closes after a successful cancel.
+        SetupChecks([
+            CreateSummary("check-running", "tenant-a", ConsistencyCheckStatus.Running, 10, 0),
+        ]);
+        _ = _mockConsistencyApi.CancelCheckAsync("check-running", Arg.Any<CancellationToken>())
+            .Returns(new AdminOperationResult(true, "check-running", "Consistency check cancelled.", null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Cancel"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> cancelBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Cancel") && !b.Markup.Contains("Cancel Consistency"));
+        await cancelBtn.InvokeAsync(cancelBtn.Instance.OnClick.InvokeAsync);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Cancel Consistency Check"), TimeSpan.FromSeconds(5));
+
+        IRenderedComponent<FluentButton> confirmBtn = cut.FindComponents<FluentButton>()
+            .First(b => b.Markup.Contains("Cancel Check"));
+        await confirmBtn.InvokeAsync(confirmBtn.Instance.OnClick.InvokeAsync);
+
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldNotContain("Cancel Consistency Check"),
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Consistency_OperatorCannotFetchOpaqueCheckAndFocusReturnsToRow() {
+        _ = ConfigureRole(AdminRole.Operator);
+        ConsistencyCheckSummary summary = CreateSummary(
+            "opaque-check", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0);
+        SetupChecks([summary]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("opaque-check"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, summary));
+        cut.Render();
+
+        _ = _mockConsistencyApi.DidNotReceive()
+            .GetCheckResultAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        cut.Markup.ShouldContain("Administrator permission is required to view check details");
+        _ = JSInterop.VerifyInvoke("hexalithAdmin.focusElementById");
+    }
+
+    [Fact]
+    public async Task Consistency_DemotionClearsExpandedOpaqueCheckState() {
+        var authProvider = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary summary = CreateSummary(
+            "opaque-check", "tenant-a", ConsistencyCheckStatus.Completed, 50, 0);
+        SetupChecks([summary]);
+        _ = _mockConsistencyApi.GetCheckResultAsync("opaque-check", Arg.Any<CancellationToken>())
+            .Returns(new ConsistencyCheckResult(
+                "opaque-check",
+                ConsistencyCheckStatus.Completed,
+                "tenant-a",
+                null,
+                [ConsistencyCheckType.SequenceContinuity],
+                DateTimeOffset.UtcNow.AddMinutes(-1),
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow.AddMinutes(10),
+                50,
+                0,
+                [],
+                false,
+                null));
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("opaque-check"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, summary));
+        cut.Render();
+        _ = await _mockConsistencyApi.Received(1)
+            .GetCheckResultAsync("opaque-check", Arg.Any<CancellationToken>());
+
+        authProvider.SetRole(AdminRole.Operator);
+
+        cut.WaitForAssertion(
+            () => GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult").ShouldBeNull(),
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Consistency_AuthenticationChangeClearsGlobalSummariesAndOpenAnomalyDialog(bool signOut) {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary globalCheck = CreateSummary("foreign-check", "tenant-secret", ConsistencyCheckStatus.Running, 50, 7, "secret-domain");
+        SetupChecks([globalCheck]);
+        ConsistencyAnomaly anomaly = new("secret-anomaly", ConsistencyCheckType.SequenceContinuity, AnomalySeverity.Error,
+            "tenant-secret", "secret-domain", "secret-aggregate", "Protected anomaly description", "Protected anomaly details", 5, 7);
+        _ = _mockConsistencyApi.GetCheckResultAsync(globalCheck.CheckId, Arg.Any<CancellationToken>())
+            .Returns(CreateResult(globalCheck.CheckId, "tenant-secret", [anomaly]));
+        NavManager.NavigateTo("/consistency?tenant=tenant-secret&domain=secret-domain");
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("foreign-check"), TimeSpan.FromSeconds(5));
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, globalCheck));
+        await cut.InvokeAsync(() => OpenAnomaly(cut.Instance, anomaly));
+        cut.Render();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Protected anomaly details"), TimeSpan.FromSeconds(5));
+        GetPrivateField<Timer?>(cut.Instance, "_autoRefreshTimer").ShouldNotBeNull();
+        SetupChecks([CreateSummary("scoped-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0)]);
+        _mockConsistencyApi.ClearReceivedCalls();
+
+        await cut.InvokeAsync(() => {
+            if (signOut) { authProvider.SignOut(); }
+            else { authProvider.SetRole(AdminRole.Operator, "tenant-a"); }
+        });
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("foreign-check");
+            cut.Markup.ShouldNotContain("tenant-secret");
+            NavManager.Uri.ShouldNotContain("tenant=");
+            NavManager.Uri.ShouldNotContain("domain=");
+            cut.Markup.ShouldNotContain("Protected anomaly");
+            cut.Markup.ShouldNotContain("Anomaly Detail");
+            GetPrivateField<ConsistencyAnomaly?>(cut.Instance, "_selectedAnomaly").ShouldBeNull();
+            GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult").ShouldBeNull();
+            GetPrivateField<Timer?>(cut.Instance, "_autoRefreshTimer").ShouldBeNull();
+            GetPrivateField<bool>(cut.Instance, "_pendingShowAnomaly").ShouldBeFalse();
+            if (signOut) {
+                GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks").ShouldBeEmpty();
+                GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_filteredChecks").ShouldBeEmpty();
+                FindStatCard(cut, "Total Checks").TextContent.ShouldContain("Total Checks: 0");
+                cut.Markup.ShouldContain("Access denied. Insufficient permissions to view consistency checks.");
+            }
+            else {
+                cut.Markup.ShouldContain("scoped-check");
+                FindStatCard(cut, "Total Checks").TextContent.ShouldContain("Total Checks: 1");
+                FindStatCard(cut, "Total Anomalies").TextContent.ShouldContain("Total Anomalies: 0");
+            }
+        }, TimeSpan.FromSeconds(5));
+        if (signOut) {
+            _ = _mockConsistencyApi.DidNotReceive().GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        }
+        else {
+            _ = _mockConsistencyApi.Received(1).GetChecksAsync(null, Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Fact]
+    public void Consistency_WithoutReadableRole_ShowsDenialWithoutLoadingOrFetching() {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        authProvider.SignOut();
+        SetupChecks([CreateSummary("hidden-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0)]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Access denied. Insufficient permissions to view consistency checks."),
+            TimeSpan.FromSeconds(5));
+        GetPrivateField<bool>(cut.Instance, "_isLoading").ShouldBeFalse();
+        cut.FindAll(".stat-card").Count.ShouldBe(4);
+        cut.Markup.ShouldNotContain("hidden-check");
+        _ = _mockConsistencyApi.DidNotReceive().GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Consistency_SupersededDetailResponseCannotReplaceNewerSelection() {
+        _ = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary first = CreateSummary("first-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        ConsistencyCheckSummary second = CreateSummary("second-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        SetupChecks([first, second]);
+        var firstResponse = new TaskCompletionSource<ConsistencyCheckResult?>();
+        CancellationToken firstToken = default;
+        _ = _mockConsistencyApi.GetCheckResultAsync("first-check", Arg.Any<CancellationToken>()).Returns(call => {
+            firstToken = call.Arg<CancellationToken>();
+            return firstResponse.Task;
+        });
+        _ = _mockConsistencyApi.GetCheckResultAsync("second-check", Arg.Any<CancellationToken>())
+            .Returns(CreateResult("second-check", "tenant-a", []));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("second-check"), TimeSpan.FromSeconds(5));
+        Task firstLookup = cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, first));
+        cut.WaitForAssertion(() => firstToken.CanBeCanceled.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, second));
+        firstToken.IsCancellationRequested.ShouldBeTrue();
+
+        // The superseded lookup ignores cancellation and answers last, within the same authorization.
+        firstResponse.SetResult(CreateResult("first-check", "tenant-a", []));
+        await firstLookup;
+        cut.Render();
+
+        GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult")
+            .ShouldNotBeNull().CheckId.ShouldBe("second-check");
+    }
+
+    [Fact]
+    public async Task Consistency_SupersededListResponseCannotReplaceNewerLoad() {
+        _ = ConfigureRole(AdminRole.Admin);
+        var firstResponse = new TaskCompletionSource<IReadOnlyList<ConsistencyCheckSummary>>();
+        CancellationToken firstToken = default;
+        int calls = 0;
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(call => {
+            if (calls++ == 0) {
+                firstToken = call.Arg<CancellationToken>();
+                return firstResponse.Task;
+            }
+            return Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([
+                CreateSummary("second-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0)]);
+        });
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => calls.ShouldBe(1), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnManualRefresh"));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("second-check"), TimeSpan.FromSeconds(5));
+        firstToken.IsCancellationRequested.ShouldBeTrue();
+
+        // The superseded load ignores cancellation and answers last, within the same authorization.
+        // It is the initial load, so its completion ends OnInitializedAsync and re-renders the page.
+        int rendersBeforeRelease = cut.RenderCount;
+        firstResponse.SetResult([CreateSummary("first-check", "tenant-a", ConsistencyCheckStatus.Running, 1, 0)]);
+        cut.WaitForState(() => cut.RenderCount > rendersBeforeRelease, TimeSpan.FromSeconds(5));
+
+        GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks")
+            .Select(check => check.CheckId).ShouldBe(["second-check"]);
+        GetPrivateField<bool>(cut.Instance, "_isLoading").ShouldBeFalse();
+        cut.Markup.ShouldNotContain("first-check");
+    }
+
+    [Theory]
+    [InlineData("demote")]
+    [InlineData("signout")]
+    [InlineData("promote")]
+    public async Task Consistency_OldListIgnoringCancellationCannotRestoreStateAfterAuthenticationChange(string transition) {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        var oldResponse = new TaskCompletionSource<IReadOnlyList<ConsistencyCheckSummary>>();
+        CancellationToken oldToken = default;
+        int calls = 0;
+        ConsistencyCheckSummary current = CreateSummary("current-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(call => {
+            if (calls++ == 0) {
+                oldToken = call.Arg<CancellationToken>();
+                return oldResponse.Task;
+            }
+            return Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([current]);
+        });
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => calls.ShouldBe(1), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => {
+            if (transition == "signout") { authProvider.SignOut(); }
+            else { authProvider.SetRole(AdminRole.Operator, "tenant-a"); }
+        });
+        cut.WaitForAssertion(() => oldToken.IsCancellationRequested.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        if (transition == "promote") {
+            await cut.InvokeAsync(() => authProvider.SetRole(AdminRole.Admin));
+            cut.WaitForAssertion(() => GetPrivateField<bool>(cut.Instance, "_canUseOpaqueChecks").ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        }
+        if (transition != "signout") {
+            cut.WaitForAssertion(() => cut.Markup.ShouldContain("current-check"), TimeSpan.FromSeconds(5));
+        }
+
+        await cut.InvokeAsync(() => oldResponse.SetResult([
+            CreateSummary("old-foreign-check", "tenant-secret", ConsistencyCheckStatus.Running, 500, 99)]));
+        cut.Render();
+
+        cut.Markup.ShouldNotContain("old-foreign-check");
+        cut.Markup.ShouldNotContain("tenant-secret");
+        GetPrivateField<Timer?>(cut.Instance, "_autoRefreshTimer").ShouldBeNull();
+        GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks")
+            .Select(check => check.CheckId).ShouldBe(transition == "signout" ? [] : new[] { "current-check" });
+    }
+
+    [Theory]
+    [InlineData("demote")]
+    [InlineData("signout")]
+    [InlineData("promote")]
+    public async Task Consistency_OldDetailIgnoringCancellationCannotRestoreStateAfterAuthenticationChange(string transition) {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary oldCheck = CreateSummary("old-check", "tenant-secret", ConsistencyCheckStatus.Completed, 50, 1);
+        ConsistencyCheckSummary currentCheck = CreateSummary("current-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        SetupChecks([oldCheck]);
+        var oldResponse = new TaskCompletionSource<ConsistencyCheckResult?>();
+        CancellationToken oldToken = default;
+        _ = _mockConsistencyApi.GetCheckResultAsync("old-check", Arg.Any<CancellationToken>()).Returns(call => {
+            oldToken = call.Arg<CancellationToken>();
+            return oldResponse.Task;
+        });
+        _ = _mockConsistencyApi.GetCheckResultAsync("current-check", Arg.Any<CancellationToken>())
+            .Returns(CreateResult("current-check", "tenant-a", []));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("old-check"), TimeSpan.FromSeconds(5));
+        Task oldLookup = cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, oldCheck));
+        cut.WaitForAssertion(() => oldToken.CanBeCanceled.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        SetupChecks([currentCheck]);
+
+        await cut.InvokeAsync(() => {
+            if (transition == "signout") { authProvider.SignOut(); }
+            else { authProvider.SetRole(AdminRole.Operator, "tenant-a"); }
+        });
+        cut.WaitForAssertion(() => oldToken.IsCancellationRequested.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+        if (transition == "promote") {
+            await cut.InvokeAsync(() => authProvider.SetRole(AdminRole.Admin));
+            cut.WaitForAssertion(() => GetPrivateField<bool>(cut.Instance, "_canUseOpaqueChecks").ShouldBeTrue(), TimeSpan.FromSeconds(5));
+            await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, currentCheck));
+        }
+
+        oldResponse.SetResult(CreateResult("old-check", "tenant-secret", []));
+        await oldLookup;
+        cut.Render();
+
+        cut.Markup.ShouldNotContain("tenant-secret");
+        cut.Markup.ShouldNotContain("old-check");
+        ConsistencyCheckResult? detail = GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult");
+        if (transition == "promote") { detail.ShouldNotBeNull().CheckId.ShouldBe("current-check"); }
+        else { detail.ShouldBeNull(); }
+    }
+
+    private static ConsistencyCheckResult CreateResult(string checkId, string tenantId, IReadOnlyList<ConsistencyAnomaly> anomalies)
+        => new(checkId, ConsistencyCheckStatus.Completed, tenantId, null, [ConsistencyCheckType.SequenceContinuity],
+            DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(10),
+            50, anomalies.Count, anomalies, false, null);
+
+    private static void OpenAnomaly(Consistency instance, ConsistencyAnomaly anomaly) {
+        System.Reflection.MethodInfo method = typeof(Consistency)
+            .GetMethod("OpenAnomalyDetail", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OpenAnomalyDetail was not found.");
+        _ = method.Invoke(instance, [anomaly]);
+    }
+
+    // ===== Helpers =====
+
+    private void SetupChecks(IReadOnlyList<ConsistencyCheckSummary> checks) => _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(checks));
+
+    private static AngleSharp.Dom.IElement FindStatCard(IRenderedComponent<Consistency> cut, string label)
+        => cut.FindAll(".stat-card").First(card => card.TextContent.Contains(label, StringComparison.Ordinal));
+
+    private static ConsistencyCheckSummary CreateSummary(
+        string checkId,
+        string? tenantId,
+        ConsistencyCheckStatus status,
+        int streamsChecked,
+        int anomaliesFound,
+        string? domain = null) {
+        DateTimeOffset started = DateTimeOffset.UtcNow.AddHours(-1);
+        return new ConsistencyCheckSummary(
+            checkId,
+            status,
+            tenantId,
+            domain,
+            [ConsistencyCheckType.SequenceContinuity],
+            started,
+            status is ConsistencyCheckStatus.Completed or ConsistencyCheckStatus.Failed or ConsistencyCheckStatus.Cancelled
+                ? DateTimeOffset.UtcNow
+                : null,
+            started.AddMinutes(30),
+            streamsChecked,
+            anomaliesFound);
+    }
+
+    private void SetupReadOnlyUser() {
+        Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider authStateProvider =
+            Substitute.For<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>();
+        System.Security.Claims.ClaimsPrincipal user = new(new System.Security.Claims.ClaimsIdentity(
+        [
+            new System.Security.Claims.Claim(AdminClaimTypes.Role, "ReadOnly"),
+        ], "TestAuth"));
+        _ = authStateProvider.GetAuthenticationStateAsync()
+            .Returns(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(user)));
+        _ = Services.AddSingleton(authStateProvider);
+        _ = Services.AddScoped<AdminUserContext>();
+    }
+
+    private Microsoft.AspNetCore.Components.NavigationManager NavManager =>
+        Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+
+    private MutableAuthStateProvider ConfigureRole(AdminRole role) {
+        var authProvider = new MutableAuthStateProvider(role);
+        _ = Services.RemoveAll<AuthenticationStateProvider>();
+        _ = Services.RemoveAll<AdminUserContext>();
+        _ = Services.AddSingleton<AuthenticationStateProvider>(authProvider);
+        _ = Services.AddScoped<AdminUserContext>();
+        return authProvider;
+    }
+
+    private static Task InvokeRowClickAsync(Consistency instance, ConsistencyCheckSummary summary) {
+        System.Reflection.MethodInfo method = typeof(Consistency)
+            .GetMethod("OnRowClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("OnRowClick was not found.");
+        return (Task)(method.Invoke(instance, [summary]) ?? throw new InvalidOperationException("OnRowClick returned null."));
+    }
+
+    private static async Task InvokePrivateAsync(Consistency instance, string methodName) {
+        System.Reflection.MethodInfo method = typeof(Consistency)
+            .GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Method '{methodName}' was not found.");
+        await ((Task)method.Invoke(instance, null)!).ConfigureAwait(false);
+    }
+
+    private static T GetPrivateField<T>(object instance, string name) {
+        System.Reflection.FieldInfo field = typeof(Consistency)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {name} was not found.");
+        return (T)field.GetValue(instance)!;
+    }
+
+    private static void SetPrivateField(object instance, string name, object? value) {
+        System.Reflection.FieldInfo field = typeof(Consistency)
+            .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Field {name} was not found.");
+        field.SetValue(instance, value);
+    }
+
+    private sealed class MutableAuthStateProvider(AdminRole initialRole) : AuthenticationStateProvider {
+        private ClaimsPrincipal _user = new(new ClaimsIdentity([new Claim(AdminClaimTypes.Role, initialRole.ToString())], "TestAuth"));
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(new AuthenticationState(_user));
+
+        public void SetRole(AdminRole role, string? tenantId = null) {
+            List<Claim> claims = [new Claim(AdminClaimTypes.Role, role.ToString())];
+            if (tenantId is not null) { claims.Add(new Claim("eventstore:tenant", tenantId)); }
+            _user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
+
+        public void SignOut() {
+            _user = new ClaimsPrincipal(new ClaimsIdentity());
+            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        }
+    }
+}

@@ -14,7 +14,6 @@ namespace Hexalith.EventStore.Server.Security;
 public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsumptionAuthority
 {
     private const string KeyFamily = "DeletionBatchCapabilitySigningKey";
-    private const string AdmissionBlockedOutcome = "AdmissionBlocked";
     private const string CurveOid = "1.2.840.10045.3.1.7";
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly PublishedDeletionCapabilityTrust[] _publishedTrust;
@@ -23,7 +22,7 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     private readonly IPublishedTrustRevocationEvidence? _revocations;
 
     /// <summary>Creates the authority from injected published trust and a guard that is reread on every check.</summary>
-    /// <param name="publishedTrust">Published trust entries. Exactly one unrevoked match may verify a capability.</param>
+    /// <param name="publishedTrust">Published trust entries. Dispatch requires one unrevoked match; exact independently authenticated successor reconciliation may use its retained verifier.</param>
     /// <param name="guard">Fresh guard reader. Each dispatch check reads it twice and keeps neither result.</param>
     /// <param name="journal">Independent transition journal. Null denies operation, state, revision, and the four transition methods. This authority does not mint anchors.</param>
     /// <param name="revocations">Injected revocation evidence. Null denies revocation and activation.</param>
@@ -238,44 +237,50 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     /// <inheritdoc />
     public async Task<bool> VerifyActivationAsync(DeletionReattestationActivation activation, CancellationToken cancellationToken = default)
     {
-        if (_journal is null || _revocations is null || activation?.Replacement?.Capability is null || activation.ExpectedKeyBlockSetRevision < 0
-            || !Text(activation.OperationId) || !Text(activation.CompromiseBlockReceiptId) || !Text(activation.GuardReplacementReceiptId)
-            || !_revocations.MatchesActivation(activation) || _revocations.PendingActivation(activation))
-        {
-            return false;
-        }
-
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            DeletionBatchCapabilityV1 capability = activation.Replacement.Capability;
-            if (!SoleTrust(capability))
+            if (_journal is null || _revocations is null || activation is null)
             {
                 return false;
             }
 
-            TenantGovernanceGuardState? state = await _guard.ReadAsync(capability.TenantId, cancellationToken).ConfigureAwait(false);
-            GovernanceBatchState? batch = state is null || state.TenantId != capability.TenantId ? null : SingleBatch(state, capability.BatchId);
-            string dispatchReceiptId = activation.Replacement.DispatchReceiptId;
-            long nextAttestation = batch is null ? 0 : checked(batch.AttestationOrdinal + 1);
-            if (state is null || batch is null || state.Revision < 1 || batch.ProtectionOutcome == AdmissionBlockedOutcome
-                || batch.ManifestDigest != capability.ManifestDigest || capability.TenantId != state.TenantId
-                || capability.CapabilityKeyVersion != batch.CapabilityKeyVersion
-                || activation.ExpectedKeyBlockSetRevision != batch.BlockSetRevision
-                || dispatchReceiptId != batch.DispatchReceiptId
-                || state.Revision < activation.Replacement.DispatchGuardRevision
-                || capability.AttestationOrdinal != batch.AttestationOrdinal && capability.AttestationOrdinal != nextAttestation
-                || activation.CompromiseBlockReceiptId == activation.GuardReplacementReceiptId
-                || activation.CompromiseBlockReceiptId == dispatchReceiptId
-                || activation.GuardReplacementReceiptId == dispatchReceiptId
-                || !HasCommittedReceipt(state, activation.CompromiseBlockReceiptId, capability.BatchId)
-                || !HasCommittedReceipt(state, activation.GuardReplacementReceiptId, capability.BatchId)
-                || !HasCommittedReceipt(state, dispatchReceiptId, capability.BatchId))
+            var captured = activation with { Replacement = DeletionConsumptionIdentity.Capture(activation.Replacement) };
+            if (DeletionConsumptionIdentity.Digest(captured) != DeletionConsumptionIdentity.Digest(activation)
+                || captured.ExpectedKeyBlockSetRevision < 0 || !Text(captured.OperationId)
+                || !Text(captured.CompromiseBlockReceiptId) || !Text(captured.GuardReplacementReceiptId)
+                || !_revocations.MatchesActivation(captured) || _revocations.PendingActivation(captured)
+                || !SignatureMatches(captured.Replacement, retainedVerifier: true))
             {
                 return false;
             }
 
-            return await _journal.VerifyTransitionAsync(Proof("activation", capability.TenantId, capability.BatchId, state.Revision, activation.OperationId), cancellationToken).ConfigureAwait(false);
+            DeletionBatchConsumptionRequest replacement = captured.Replacement;
+            DeletionBatchCapabilityV1 capability = replacement.Capability;
+            TenantGovernanceGuardState? state = await ReadSnapshotAsync(capability.TenantId, cancellationToken).ConfigureAwait(false);
+            GovernanceBatchState? batch = state is null ? null : SingleBatch(state, capability.BatchId);
+            if (state is null || batch is null
+                || !IssuedReplacement(state, batch, capability, replacement.DetachedJws,
+                    DeletionBatchCapabilityIdentity.SigningRequestId(capability), replacement.CommittedIssuedGuardRevision, replacement.Targets)
+                || batch.ProtectionReceiptId != captured.CompromiseBlockReceiptId
+                || batch.IssueReceiptId != captured.GuardReplacementReceiptId
+                || captured.CompromiseBlockReceiptId == captured.GuardReplacementReceiptId
+                || captured.CompromiseBlockReceiptId == replacement.DispatchReceiptId
+                || batch.DispatchReceiptId != replacement.DispatchReceiptId
+                || batch.DispatchGuardRevision != replacement.DispatchGuardRevision
+                || batch.DispatchGuardRevision <= batch.IssuedGuardRevision || batch.DispatchGuardRevision > state.Revision
+                || batch.IssueReceiptId == batch.DispatchReceiptId
+                || !Committed(state, batch.DispatchReceiptId, batch.DispatchGuardRevision, capability, batch.SigningRequestId, batch.AttestationDigest)
+                || !DistinctOperations(state, batch.IssueReceiptId, batch.DispatchReceiptId)
+                || EarlierHoldRestricts(state, state.Deletions.Single(deletion => deletion.Batches.Contains(batch)), batch))
+            {
+                return false;
+            }
+
+            // This authenticates the retained successor. Only the protection owner's atomic
+            // key-block comparison may choose activated versus replacement-key-blocked.
+            return await _journal.VerifyTransitionAsync(Proof("activation", capability.TenantId, capability.BatchId,
+                state.Revision, DeletionConsumptionIdentity.Digest(captured)), cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -285,6 +290,89 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         {
             return false;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> VerifyBlockedReplacementAsync(DeletionBlockedReplacementReconciliation request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (_journal is null || _revocations is null || request is null)
+            {
+                return false;
+            }
+
+            DeletionBlockedReplacementReconciliation captured = DeletionConsumptionIdentity.Capture(request);
+            if (DeletionConsumptionIdentity.Digest(captured) != DeletionConsumptionIdentity.Digest(request)
+                || !_revocations.MatchesBlockedReplacement(captured) || _revocations.PendingBlockedReplacement(captured)
+                || !_revocations.Matches(captured.RevocationReceipt.Envelope) || _revocations.Pending(captured.RevocationReceipt.Envelope)
+                || !SignatureMatches(captured.Capability, captured.DetachedJws, captured.Targets, retainedVerifier: true))
+            {
+                return false;
+            }
+
+            DeletionBatchCapabilityV1 capability = captured.Capability;
+            TenantGovernanceGuardState? state = await ReadSnapshotAsync(capability.TenantId, cancellationToken).ConfigureAwait(false);
+            GovernanceBatchState? batch = state is null ? null : SingleBatch(state, capability.BatchId);
+            if (state is null || batch is null
+                || !IssuedReplacement(state, batch, capability, captured.DetachedJws, captured.SigningRequestId,
+                    captured.CommittedIssuedGuardRevision, captured.Targets)
+                || batch.ProtectionReceiptId != captured.CompromiseBlockReceiptId
+                || batch.IssueReceiptId != captured.GuardReplacementReceiptId
+                || captured.CompromiseBlockReceiptId == captured.GuardReplacementReceiptId
+                || state.CompromisedKeyVersions is null || !state.CompromisedKeyVersions.Contains(capability.CapabilityKeyVersion, StringComparer.Ordinal)
+                || state.Revocations is null
+                || state.Revocations.Count(receipt => receipt is not null
+                    && (receipt.Envelope.EventIdentity == captured.RevocationReceipt.Envelope.EventIdentity
+                        || receipt.Envelope.KeyVersion == capability.CapabilityKeyVersion
+                            && receipt.Envelope.RevocationRevision == captured.RevocationReceipt.Envelope.RevocationRevision)) != 1
+                || !state.Revocations.Any(receipt => DeletionConsumptionIdentity.Digest(receipt) == DeletionConsumptionIdentity.Digest(captured.RevocationReceipt))
+                || !await _revocations.VerifyCurrentBlockedReplacementAsync(captured, state.Revision,
+                    DeletionConsumptionIdentity.Digest(state), cancellationToken).ConfigureAwait(false))
+            {
+                return false;
+            }
+
+            // Exact issue correlation deliberately requires no dispatch. No destructive grant follows.
+            return await _journal.VerifyTransitionAsync(Proof("blocked-replacement", capability.TenantId, capability.BatchId,
+                state.Revision, DeletionConsumptionIdentity.Digest(captured)), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private async Task<TenantGovernanceGuardState?> ReadSnapshotAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        TenantGovernanceGuardState? state = await _guard.ReadAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        // Detach nested collections before any predicate or external evidence callback.
+        return state is null ? null : JsonSerializer.Deserialize<TenantGovernanceGuardState>(JsonSerializer.SerializeToUtf8Bytes(state));
+    }
+
+    private static bool IssuedReplacement(TenantGovernanceGuardState state, GovernanceBatchState batch,
+        DeletionBatchCapabilityV1 capability, string detachedJws, string signingId, long issuedRevision, IReadOnlyList<ProtectionTarget> targets)
+    {
+        GovernanceDeletionState? owner = state.Deletions.SingleOrDefault(deletion => deletion?.Batches?.Contains(batch) == true);
+        string jwsDigest = Convert.ToHexString(SHA256.HashData(StrictUtf8.GetBytes(detachedJws)));
+        return state.TenantId == capability.TenantId && state.Revision >= issuedRevision && issuedRevision > 0
+            && state.Holds is not null && state.Holds.All(hold => ValidHold(hold, state.TenantId))
+            && state.Holds.Select(hold => hold.HoldId).Distinct(StringComparer.Ordinal).Count() == state.Holds.Count
+            && owner is not null && ValidScope(owner.Scope, state.TenantId) && !owner.IntegrityCompromised && !owner.Completed
+            && owner.RequestId == capability.DeletionRequestId && owner.SealId == capability.DestructionSealId
+            && batch.ProtectionOutcome == "ReplacementAwaitingActivation" && Text(batch.ProtectionReceiptId)
+            && batch.Capability == capability && batch.DetachedJws == detachedJws && batch.SigningRequestId == signingId
+            && batch.Kind == capability.BatchKind && batch.Ordinal == capability.BatchOrdinal && batch.ManifestDigest == capability.ManifestDigest
+            && batch.AttestationOrdinal == capability.AttestationOrdinal && capability.AttestationOrdinal > 1
+            && batch.CapabilityKeyVersion == capability.CapabilityKeyVersion && batch.AttestationDigest == jwsDigest
+            && batch.IssuedGuardRevision == issuedRevision && issuedRevision == checked(capability.IntendedIssuedGuardRevision + 1)
+            && batch.TargetReceiptIds is { Count: 0 } && SameTargets(batch.Targets, targets)
+            && Committed(state, batch.IssueReceiptId, issuedRevision, capability, signingId, jwsDigest);
     }
 
     /// <inheritdoc />
@@ -402,16 +490,18 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     private static bool Hex(string? value)
         => value is { Length: 64 } && value.All(static character => character is >= '0' and <= '9' or >= 'A' and <= 'F' or >= 'a' and <= 'f');
 
-    private bool SignatureMatches(DeletionBatchConsumptionRequest request)
+    private bool SignatureMatches(DeletionBatchConsumptionRequest request, bool retainedVerifier = false)
+        => SignatureMatches(request.Capability, request.DetachedJws, request.Targets, retainedVerifier);
+
+    private bool SignatureMatches(DeletionBatchCapabilityV1 capability, string detachedJws, IReadOnlyList<ProtectionTarget> targets, bool retainedVerifier)
     {
-        DeletionBatchCapabilityV1 capability = request.Capability;
         if (capability is null)
         {
             return false;
         }
 
         PublishedDeletionCapabilityTrust[] matches = _publishedTrust.Where(entry => entry is not null
-            && !entry.IsRevoked
+            && (retainedVerifier || !entry.IsRevoked)
             && entry.TrustProfileRevision > 0
             && entry.KeyFamily == KeyFamily
             && entry.Issuer == capability.Issuer
@@ -426,14 +516,33 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
             return false;
         }
 
+        if (targets is null || targets.Count is < 1 or > 1000)
+        {
+            return false;
+        }
+
+        ProtectionTarget? previous = null;
+        foreach (ProtectionTarget target in targets)
+        {
+            if (target is null || target.TenantId != capability.TenantId
+                || previous is not null && (StringComparer.Ordinal.Compare(previous.AgentInteractionId, target.AgentInteractionId) > 0
+                    || previous.AgentInteractionId == target.AgentInteractionId
+                        && StringComparer.Ordinal.Compare(previous.TargetProtectionKeyAlias, target.TargetProtectionKeyAlias) >= 0))
+            {
+                return false;
+            }
+
+            previous = target;
+        }
+
         byte[] payload = DeletionBatchCapabilityIdentity.CanonicalPayload(capability);
-        string digest = DeletionBatchCapabilityIdentity.TargetManifestDigest(request.Targets);
+        string digest = DeletionBatchCapabilityIdentity.TargetManifestDigest(targets);
         if (!string.Equals(digest, capability.ManifestDigest, StringComparison.Ordinal))
         {
             return false;
         }
 
-        return Verify(Header(matches[0]), payload, request.DetachedJws, matches[0].SubjectPublicKeyInfo);
+        return Verify(Header(matches[0]), payload, detachedJws, matches[0].SubjectPublicKeyInfo);
     }
 
     private static bool Admitted(TenantGovernanceGuardState state, DeletionBatchConsumptionRequest request)
@@ -542,7 +651,8 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         }
 
         GovernanceProtocolReceipt receipt = receipts[0];
-        return receipt.Status == "Committed" && receipt.GuardHighWater == revision && receipt.ReferenceId == capability.BatchId
+        return Text(receipt.OperationId) && Text(receipt.ReceiptId) && Hex(receipt.IntentDigest)
+            && receipt.Status == "Committed" && receipt.GuardHighWater == revision && receipt.ReferenceId == capability.BatchId
             && receipt.Capability == capability && receipt.SigningRequestId == signingId
             && string.Equals(receipt.DetachedJwsDigest, jwsDigest, StringComparison.Ordinal);
     }

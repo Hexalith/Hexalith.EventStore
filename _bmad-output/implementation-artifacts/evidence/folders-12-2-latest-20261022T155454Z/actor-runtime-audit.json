@@ -1,0 +1,1031 @@
+{
+  "passed": true,
+  "audit_utc": "2026-10-22T16:20:44.206322+00:00",
+  "audit_command": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-runtime-audit.py"
+  ],
+  "execution_kind": "Fresh artifact audit of fresh actor execution; actor behavior was not rerun by this audit.",
+  "mvid_attribution": "MVIDs below come from source-binding-final PE metadata authenticated by exact mapped PE/PDB hashes. OS maps do not self-report MVIDs; no CLR loaded-MVID claim is made.",
+  "process_identity_limit": "Actor process receipts retain PID/argv and mapped hashes, without PID start ticks. Their original cleanup checks report all six owned processes absent.",
+  "first_party_observation_count": 26,
+  "authenticated_observation_count": 26,
+  "map_receipts": [
+    {
+      "receipt": "actor-live/eventstore-1-mapped-images.json",
+      "pid": 55943,
+      "first_party_modules": 10,
+      "total_mapped_modules": 198,
+      "argv": [
+        "dotnet",
+        "exec",
+        "--additional-deps",
+        "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+        "--additionalprobingpath",
+        "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+        "--additionalprobingpath",
+        "/home/administrator/.nuget/packages",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.dll"
+      ]
+    },
+    {
+      "receipt": "actor-live/eventstore-2-mapped-images.json",
+      "pid": 64588,
+      "first_party_modules": 10,
+      "total_mapped_modules": 198,
+      "argv": [
+        "dotnet",
+        "exec",
+        "--additional-deps",
+        "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+        "--additionalprobingpath",
+        "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+        "--additionalprobingpath",
+        "/home/administrator/.nuget/packages",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.dll"
+      ]
+    },
+    {
+      "receipt": "actor-live/sample-1-mapped-images.json",
+      "pid": 54339,
+      "first_party_modules": 6,
+      "total_mapped_modules": 152,
+      "argv": [
+        "dotnet",
+        "exec",
+        "--additional-deps",
+        "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.deps.json",
+        "--additionalprobingpath",
+        "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+        "--additionalprobingpath",
+        "/home/administrator/.nuget/packages",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.Sample.dll"
+      ]
+    }
+  ],
+  "first_party_observations": [
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.Commons.UniqueIds.dll",
+      "pe_sha256": "2c7cec1ecc17093189610057534097c586d73483d1aaa0d2d9611c424ea67b05",
+      "pdb_sha256": "2a0ca95d01ab70a872cfa246bd03abdc2bd60ab4cfa1eba153eaf82f3a4b292f",
+      "mvid_from_exact_pe_binding": "93c5c296-99d8-4594-bfeb-7cd8431fafc8",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
+          "mvid": "93c5c296-99d8-4594-bfeb-7cd8431fafc8",
+          "documents": 6,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.Commons.UniqueIds.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Admin.Abstractions.dll",
+      "pe_sha256": "e78191da7c35d10312f233bc5a1e6b9e61540db85d2ff9028582c907a34d2416",
+      "pdb_sha256": "976a3e0fa5d6750e1badd069e8d65249137baa813053aaeb12a55465656d0087",
+      "mvid_from_exact_pe_binding": "8d8fa789-ca65-4a63-8068-8b45c6df0cb1",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.pdb",
+          "mvid": "8d8fa789-ca65-4a63-8068-8b45c6df0cb1",
+          "documents": 115,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Admin.Abstractions.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Client.dll",
+      "pe_sha256": "f78d349a35933c7efc2540b067617f13c33f19210d5d785c98303b0fc3011023",
+      "pdb_sha256": "28ca58d135f2d0e2db27664bacd4ee5e1ec2ee5d2ade133a312fbe05dbf41aee",
+      "mvid_from_exact_pe_binding": "b5e888db-4c55-4a51-a7d3-700d6890e40d",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+          "mvid": "b5e888db-4c55-4a51-a7d3-700d6890e40d",
+          "documents": 296,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Client.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Contracts.dll",
+      "pe_sha256": "341c3728bf4aa8c5c945ba2b814735517d8f85832129d10e0e588705c38cf7fc",
+      "pdb_sha256": "882b7a987a01cf1d9357ce9291c4abe25fff87197c5610b3aca5253efa25cf91",
+      "mvid_from_exact_pe_binding": "ceb6bc49-fe34-44c1-8941-4fcf2ae20b0b",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+          "mvid": "ceb6bc49-fe34-44c1-8941-4fcf2ae20b0b",
+          "documents": 315,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Contracts.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.DomainService.dll",
+      "pe_sha256": "90725fe4667b244faa4078211c0da9145c8aa0ca9db8c25888e3787d439870e3",
+      "pdb_sha256": "d3bea853bf4e2f40d67c37ec0b7d3c806430a5ae3e571fc9b4a161c6f725b861",
+      "mvid_from_exact_pe_binding": "38a5e2fb-433c-49be-b9e2-e27dc0cf24fb",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+          "mvid": "38a5e2fb-433c-49be-b9e2-e27dc0cf24fb",
+          "documents": 188,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.DomainService.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Gateway.dll",
+      "pe_sha256": "6eb9b7bb81bd7537c5ca28969212506a41495f045d275fbadaa024dc726b48f5",
+      "pdb_sha256": "9d3e9f4683d9890b7c09a0ec0f52823d9459b8b956ce99436ce11040eca1c8b1",
+      "mvid_from_exact_pe_binding": "d612e55b-5070-485a-81ec-82c6aa622504",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.pdb",
+          "mvid": "d612e55b-5070-485a-81ec-82c6aa622504",
+          "documents": 133,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Gateway.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "pe_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "pdb_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "mvid_from_exact_pe_binding": "df2d7f97-f198-48d4-86d6-5aa0e0ca797d",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+          "mvid": "df2d7f97-f198-48d4-86d6-5aa0e0ca797d",
+          "documents": 155,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Server.dll",
+      "pe_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "pdb_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "mvid_from_exact_pe_binding": "61029048-4507-462f-a9e0-6b8fdb1db8a8",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.pdb",
+          "mvid": "61029048-4507-462f-a9e0-6b8fdb1db8a8",
+          "documents": 638,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Server.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.ServiceDefaults.dll",
+      "pe_sha256": "6524f86a52a6965fe84fbb2e488bb9d56f59b197a2af9d5b926266dfc5f317a1",
+      "pdb_sha256": "af8a6c17798c56add407a61570746fc21213b2dfe799413022494f415311a10e",
+      "mvid_from_exact_pe_binding": "bf255f10-dba3-472e-a422-3b3844eeee3f",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.pdb",
+          "mvid": "bf255f10-dba3-472e-a422-3b3844eeee3f",
+          "documents": 44,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.ServiceDefaults.dll",
+      "passed": true
+    },
+    {
+      "pid": 55943,
+      "maps_receipt": "actor-live/eventstore-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.dll",
+      "pe_sha256": "6c08d5fa7ae12f7b065690bf170823d5b316a852abb85f17cc2a9caeda4e41c4",
+      "pdb_sha256": "73cdb0b85d49e86f3b547ab18742c4b2d3bac317809adf547ed99d590e880f29",
+      "mvid_from_exact_pe_binding": "7bd4d283-3a48-4155-a49e-c5e9f130b125",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.pdb",
+          "mvid": "7bd4d283-3a48-4155-a49e-c5e9f130b125",
+          "documents": 5,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.Commons.UniqueIds.dll",
+      "pe_sha256": "2c7cec1ecc17093189610057534097c586d73483d1aaa0d2d9611c424ea67b05",
+      "pdb_sha256": "2a0ca95d01ab70a872cfa246bd03abdc2bd60ab4cfa1eba153eaf82f3a4b292f",
+      "mvid_from_exact_pe_binding": "93c5c296-99d8-4594-bfeb-7cd8431fafc8",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
+          "mvid": "93c5c296-99d8-4594-bfeb-7cd8431fafc8",
+          "documents": 6,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.Commons.UniqueIds.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Admin.Abstractions.dll",
+      "pe_sha256": "e78191da7c35d10312f233bc5a1e6b9e61540db85d2ff9028582c907a34d2416",
+      "pdb_sha256": "976a3e0fa5d6750e1badd069e8d65249137baa813053aaeb12a55465656d0087",
+      "mvid_from_exact_pe_binding": "8d8fa789-ca65-4a63-8068-8b45c6df0cb1",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.pdb",
+          "mvid": "8d8fa789-ca65-4a63-8068-8b45c6df0cb1",
+          "documents": 115,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Admin.Abstractions.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Client.dll",
+      "pe_sha256": "f78d349a35933c7efc2540b067617f13c33f19210d5d785c98303b0fc3011023",
+      "pdb_sha256": "28ca58d135f2d0e2db27664bacd4ee5e1ec2ee5d2ade133a312fbe05dbf41aee",
+      "mvid_from_exact_pe_binding": "b5e888db-4c55-4a51-a7d3-700d6890e40d",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+          "mvid": "b5e888db-4c55-4a51-a7d3-700d6890e40d",
+          "documents": 296,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Client.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Contracts.dll",
+      "pe_sha256": "341c3728bf4aa8c5c945ba2b814735517d8f85832129d10e0e588705c38cf7fc",
+      "pdb_sha256": "882b7a987a01cf1d9357ce9291c4abe25fff87197c5610b3aca5253efa25cf91",
+      "mvid_from_exact_pe_binding": "ceb6bc49-fe34-44c1-8941-4fcf2ae20b0b",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+          "mvid": "ceb6bc49-fe34-44c1-8941-4fcf2ae20b0b",
+          "documents": 315,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Contracts.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.DomainService.dll",
+      "pe_sha256": "90725fe4667b244faa4078211c0da9145c8aa0ca9db8c25888e3787d439870e3",
+      "pdb_sha256": "d3bea853bf4e2f40d67c37ec0b7d3c806430a5ae3e571fc9b4a161c6f725b861",
+      "mvid_from_exact_pe_binding": "38a5e2fb-433c-49be-b9e2-e27dc0cf24fb",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+          "mvid": "38a5e2fb-433c-49be-b9e2-e27dc0cf24fb",
+          "documents": 188,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.DomainService.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Gateway.dll",
+      "pe_sha256": "6eb9b7bb81bd7537c5ca28969212506a41495f045d275fbadaa024dc726b48f5",
+      "pdb_sha256": "9d3e9f4683d9890b7c09a0ec0f52823d9459b8b956ce99436ce11040eca1c8b1",
+      "mvid_from_exact_pe_binding": "d612e55b-5070-485a-81ec-82c6aa622504",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Gateway.pdb",
+          "mvid": "d612e55b-5070-485a-81ec-82c6aa622504",
+          "documents": 133,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Gateway.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "pe_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "pdb_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "mvid_from_exact_pe_binding": "df2d7f97-f198-48d4-86d6-5aa0e0ca797d",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+          "mvid": "df2d7f97-f198-48d4-86d6-5aa0e0ca797d",
+          "documents": 155,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.Server.dll",
+      "pe_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "pdb_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "mvid_from_exact_pe_binding": "61029048-4507-462f-a9e0-6b8fdb1db8a8",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Server.pdb",
+          "mvid": "61029048-4507-462f-a9e0-6b8fdb1db8a8",
+          "documents": 638,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.Server.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.ServiceDefaults.dll",
+      "pe_sha256": "6524f86a52a6965fe84fbb2e488bb9d56f59b197a2af9d5b926266dfc5f317a1",
+      "pdb_sha256": "af8a6c17798c56add407a61570746fc21213b2dfe799413022494f415311a10e",
+      "mvid_from_exact_pe_binding": "bf255f10-dba3-472e-a422-3b3844eeee3f",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.pdb",
+          "mvid": "bf255f10-dba3-472e-a422-3b3844eeee3f",
+          "documents": 44,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.ServiceDefaults.dll",
+      "passed": true
+    },
+    {
+      "pid": 64588,
+      "maps_receipt": "actor-live/eventstore-2-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/eventstore/Hexalith.EventStore.dll",
+      "pe_sha256": "6c08d5fa7ae12f7b065690bf170823d5b316a852abb85f17cc2a9caeda4e41c4",
+      "pdb_sha256": "73cdb0b85d49e86f3b547ab18742c4b2d3bac317809adf547ed99d590e880f29",
+      "mvid_from_exact_pe_binding": "7bd4d283-3a48-4155-a49e-c5e9f130b125",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.pdb",
+          "mvid": "7bd4d283-3a48-4155-a49e-c5e9f130b125",
+          "documents": 5,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/eventstore/Hexalith.EventStore.dll",
+      "passed": true
+    },
+    {
+      "pid": 54339,
+      "maps_receipt": "actor-live/sample-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.Client.dll",
+      "pe_sha256": "f78d349a35933c7efc2540b067617f13c33f19210d5d785c98303b0fc3011023",
+      "pdb_sha256": "28ca58d135f2d0e2db27664bacd4ee5e1ec2ee5d2ade133a312fbe05dbf41aee",
+      "mvid_from_exact_pe_binding": "b5e888db-4c55-4a51-a7d3-700d6890e40d",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Client.pdb",
+          "mvid": "b5e888db-4c55-4a51-a7d3-700d6890e40d",
+          "documents": 296,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/sample/Hexalith.EventStore.Client.dll",
+      "passed": true
+    },
+    {
+      "pid": 54339,
+      "maps_receipt": "actor-live/sample-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.Contracts.dll",
+      "pe_sha256": "341c3728bf4aa8c5c945ba2b814735517d8f85832129d10e0e588705c38cf7fc",
+      "pdb_sha256": "882b7a987a01cf1d9357ce9291c4abe25fff87197c5610b3aca5253efa25cf91",
+      "mvid_from_exact_pe_binding": "ceb6bc49-fe34-44c1-8941-4fcf2ae20b0b",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+          "mvid": "ceb6bc49-fe34-44c1-8941-4fcf2ae20b0b",
+          "documents": 315,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/sample/Hexalith.EventStore.Contracts.dll",
+      "passed": true
+    },
+    {
+      "pid": 54339,
+      "maps_receipt": "actor-live/sample-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.DomainService.dll",
+      "pe_sha256": "90725fe4667b244faa4078211c0da9145c8aa0ca9db8c25888e3787d439870e3",
+      "pdb_sha256": "d3bea853bf4e2f40d67c37ec0b7d3c806430a5ae3e571fc9b4a161c6f725b861",
+      "mvid_from_exact_pe_binding": "38a5e2fb-433c-49be-b9e2-e27dc0cf24fb",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+          "mvid": "38a5e2fb-433c-49be-b9e2-e27dc0cf24fb",
+          "documents": 188,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/sample/Hexalith.EventStore.DomainService.dll",
+      "passed": true
+    },
+    {
+      "pid": 54339,
+      "maps_receipt": "actor-live/sample-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.Sample.dll",
+      "pe_sha256": "a06c3dd1d322fb806a6e1e7f1a33a2b42a69af56fb56786cbea69cf108a2dc40",
+      "pdb_sha256": "476596c0c3de6485883c566d9eea4ea11878b7dbac16a97fe6b5128bd9139dc1",
+      "mvid_from_exact_pe_binding": "31e36813-d9bf-4282-8df2-2d192ed595d3",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.Sample.pdb",
+          "mvid": "31e36813-d9bf-4282-8df2-2d192ed595d3",
+          "documents": 21,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/sample/Hexalith.EventStore.Sample.dll",
+      "passed": true
+    },
+    {
+      "pid": 54339,
+      "maps_receipt": "actor-live/sample-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "pe_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "pdb_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "mvid_from_exact_pe_binding": "df2d7f97-f198-48d4-86d6-5aa0e0ca797d",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+          "mvid": "df2d7f97-f198-48d4-86d6-5aa0e0ca797d",
+          "documents": 155,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/sample/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "passed": true
+    },
+    {
+      "pid": 54339,
+      "maps_receipt": "actor-live/sample-1-mapped-images.json",
+      "mapped_path": "/tmp/eventstore-actor-admission-xxwq_ml3/sample/Hexalith.EventStore.ServiceDefaults.dll",
+      "pe_sha256": "6524f86a52a6965fe84fbb2e488bb9d56f59b197a2af9d5b926266dfc5f317a1",
+      "pdb_sha256": "af8a6c17798c56add407a61570746fc21213b2dfe799413022494f415311a10e",
+      "mvid_from_exact_pe_binding": "bf255f10-dba3-472e-a422-3b3844eeee3f",
+      "source_bindings": [
+        {
+          "pe": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+          "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.pdb",
+          "mvid": "bf255f10-dba3-472e-a422-3b3844eeee3f",
+          "documents": 44,
+          "identity_matches": true
+        }
+      ],
+      "retained_pe": "actor-live/qualified-runtime/sample/Hexalith.EventStore.ServiceDefaults.dll",
+      "passed": true
+    }
+  ],
+  "fresh_actor_checks": {
+    "count": 47,
+    "passed": 47
+  },
+  "actor_execution": {
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorCallbackAdmissionProcessTests",
+      "-showLiveOutput",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live.xml"
+    ],
+    "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+    "utc_start": "2026-10-22T16:07:45.892336+00:00",
+    "environment_overrides": {
+      "HEXALITH_ACTOR_ADMISSION_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live",
+      "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+      "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+      "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+    },
+    "runner_pid": 52749,
+    "pid": 52824,
+    "exit_code": 0,
+    "elapsed_seconds": 76.96341743599623,
+    "utc_end": "2026-10-22T16:09:02.850269+00:00"
+  },
+  "test_xml_environment": [
+    "64-bit (x64) .NET 10.0.13 [collection-per-class, non-parallel]"
+  ],
+  "mapped_framework_versions": [
+    {
+      "framework": "Microsoft.AspNetCore.App",
+      "version": "10.0.13"
+    },
+    {
+      "framework": "Microsoft.NETCore.App",
+      "version": "10.0.13"
+    }
+  ],
+  "native_daprd": {
+    "path": "/home/administrator/.dapr/bin/daprd",
+    "recorded_sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488",
+    "current_file_sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+  },
+  "sidecars": [
+    {
+      "pid": 54341,
+      "argv": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--app-id",
+        "sample",
+        "--app-port",
+        "52777",
+        "--app-protocol",
+        "http",
+        "--app-channel-address",
+        "127.0.0.1",
+        "--dapr-http-port",
+        "48579",
+        "--dapr-grpc-port",
+        "36711",
+        "--dapr-internal-grpc-port",
+        "50673",
+        "--metrics-port",
+        "46867",
+        "--resources-path",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/components",
+        "--config",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/discovery.yaml",
+        "--log-level",
+        "warn",
+        "--placement-host-address",
+        "127.0.0.1:65076",
+        "--scheduler-host-address",
+        "127.0.0.1:49635"
+      ]
+    },
+    {
+      "pid": 55944,
+      "argv": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--app-id",
+        "eventstore",
+        "--app-port",
+        "56567",
+        "--app-protocol",
+        "http",
+        "--app-channel-address",
+        "127.0.0.1",
+        "--dapr-http-port",
+        "57533",
+        "--dapr-grpc-port",
+        "44775",
+        "--dapr-internal-grpc-port",
+        "56893",
+        "--metrics-port",
+        "60427",
+        "--resources-path",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/components",
+        "--config",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/discovery.yaml",
+        "--log-level",
+        "warn",
+        "--placement-host-address",
+        "127.0.0.1:65076",
+        "--scheduler-host-address",
+        "127.0.0.1:49635"
+      ]
+    },
+    {
+      "pid": 64596,
+      "argv": [
+        "/home/administrator/.dapr/bin/daprd",
+        "--app-id",
+        "eventstore",
+        "--app-port",
+        "56567",
+        "--app-protocol",
+        "http",
+        "--app-channel-address",
+        "127.0.0.1",
+        "--dapr-http-port",
+        "57533",
+        "--dapr-grpc-port",
+        "44775",
+        "--dapr-internal-grpc-port",
+        "56893",
+        "--metrics-port",
+        "60427",
+        "--resources-path",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/components",
+        "--config",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/discovery.yaml",
+        "--log-level",
+        "warn",
+        "--placement-host-address",
+        "127.0.0.1:65076",
+        "--scheduler-host-address",
+        "127.0.0.1:49635"
+      ]
+    }
+  ],
+  "sidecar_log_versions": [
+    {
+      "path": "actor-live/eventstore-1-sidecar.stdout.log",
+      "recorded_versions": [
+        "1.18.7"
+      ]
+    },
+    {
+      "path": "actor-live/eventstore-2-sidecar.stdout.log",
+      "recorded_versions": [
+        "1.18.7"
+      ]
+    },
+    {
+      "path": "actor-live/sample-1-sidecar.stdout.log",
+      "recorded_versions": [
+        "1.18.7"
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "role": "redis",
+      "name": "admission-2c0d704fdced-redis",
+      "container_id": "4238ead4c1351b390ae1a5d37cf38a67cce9d850cabf5693e51b33920c6812ae",
+      "image_id": "sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541",
+      "repo_digests": [
+        "redis@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541"
+      ],
+      "created_argv": [
+        "docker",
+        "run",
+        "--rm",
+        "-d",
+        "--name",
+        "admission-2c0d704fdced-redis",
+        "--cidfile",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/redis.cid",
+        "--label",
+        "hexalith.qualification.run-id=admission-2c0d704fdced",
+        "-p",
+        "127.0.0.1::6379",
+        "redis:7-alpine"
+      ],
+      "creation_command_indices": [
+        0
+      ],
+      "inspect_command_indices": [
+        397
+      ],
+      "remove_command_indices": [
+        398
+      ],
+      "cleanup": {
+        "name": "admission-2c0d704fdced-redis",
+        "id": "4238ead4c1351b390ae1a5d37cf38a67cce9d850cabf5693e51b33920c6812ae",
+        "remove_exit_code": 0,
+        "absent": true,
+        "remaining_ids": ""
+      },
+      "fresh_read_only_absence_probe": {
+        "argv": [
+          "docker",
+          "container",
+          "inspect",
+          "4238ead4c1351b390ae1a5d37cf38a67cce9d850cabf5693e51b33920c6812ae"
+        ],
+        "utc_start": "2026-10-22T16:20:44.066369+00:00",
+        "exit_code": 1,
+        "stdout": "[]\n",
+        "stderr": "Error response from daemon: No such container: 4238ead4c1351b390ae1a5d37cf38a67cce9d850cabf5693e51b33920c6812ae\n"
+      }
+    },
+    {
+      "role": "placement",
+      "name": "admission-2c0d704fdced-placement",
+      "container_id": "d34bebe42924cbb06bd9b66d7d78b9818afd4dd6c515612774a428e4f1f74079",
+      "image_id": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "repo_digests": [
+        "daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc"
+      ],
+      "created_argv": [
+        "docker",
+        "run",
+        "--rm",
+        "-d",
+        "--name",
+        "admission-2c0d704fdced-placement",
+        "--cidfile",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/placement.cid",
+        "--label",
+        "hexalith.qualification.run-id=admission-2c0d704fdced",
+        "-p",
+        "127.0.0.1::50005",
+        "--entrypoint",
+        "./placement",
+        "daprio/dapr:1.18.7",
+        "--port",
+        "50005"
+      ],
+      "creation_command_indices": [
+        3
+      ],
+      "inspect_command_indices": [
+        394
+      ],
+      "remove_command_indices": [
+        395
+      ],
+      "cleanup": {
+        "name": "admission-2c0d704fdced-placement",
+        "id": "d34bebe42924cbb06bd9b66d7d78b9818afd4dd6c515612774a428e4f1f74079",
+        "remove_exit_code": 0,
+        "absent": true,
+        "remaining_ids": ""
+      },
+      "fresh_read_only_absence_probe": {
+        "argv": [
+          "docker",
+          "container",
+          "inspect",
+          "d34bebe42924cbb06bd9b66d7d78b9818afd4dd6c515612774a428e4f1f74079"
+        ],
+        "utc_start": "2026-10-22T16:20:44.103158+00:00",
+        "exit_code": 1,
+        "stdout": "[]\n",
+        "stderr": "Error response from daemon: No such container: d34bebe42924cbb06bd9b66d7d78b9818afd4dd6c515612774a428e4f1f74079\n"
+      }
+    },
+    {
+      "role": "scheduler",
+      "name": "admission-2c0d704fdced-scheduler",
+      "container_id": "3c9867501fac2cb0ee00b0fee48c4a05b2e3e41e5ddaf05e7c3d0da8bed9223f",
+      "image_id": "sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc",
+      "repo_digests": [
+        "daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc"
+      ],
+      "created_argv": [
+        "docker",
+        "run",
+        "--rm",
+        "-d",
+        "--name",
+        "admission-2c0d704fdced-scheduler",
+        "--cidfile",
+        "/tmp/eventstore-actor-admission-xxwq_ml3/scheduler.cid",
+        "--label",
+        "hexalith.qualification.run-id=admission-2c0d704fdced",
+        "-p",
+        "127.0.0.1:49635:50006",
+        "--entrypoint",
+        "./scheduler",
+        "daprio/dapr:1.18.7",
+        "--etcd-data-dir=/tmp/admission-etcd",
+        "--override-broadcast-host-port=127.0.0.1:49635",
+        "--etcd-client-listen-address=0.0.0.0"
+      ],
+      "creation_command_indices": [
+        6
+      ],
+      "inspect_command_indices": [
+        391
+      ],
+      "remove_command_indices": [
+        392
+      ],
+      "cleanup": {
+        "name": "admission-2c0d704fdced-scheduler",
+        "id": "3c9867501fac2cb0ee00b0fee48c4a05b2e3e41e5ddaf05e7c3d0da8bed9223f",
+        "remove_exit_code": 0,
+        "absent": true,
+        "remaining_ids": ""
+      },
+      "fresh_read_only_absence_probe": {
+        "argv": [
+          "docker",
+          "container",
+          "inspect",
+          "3c9867501fac2cb0ee00b0fee48c4a05b2e3e41e5ddaf05e7c3d0da8bed9223f"
+        ],
+        "utc_start": "2026-10-22T16:20:44.155451+00:00",
+        "exit_code": 1,
+        "stdout": "[]\n",
+        "stderr": "Error response from daemon: No such container: 3c9867501fac2cb0ee00b0fee48c4a05b2e3e41e5ddaf05e7c3d0da8bed9223f\n"
+      }
+    }
+  ],
+  "materialized_components": {
+    "pubsub.yaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: pubsub\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: '127.0.0.1:65056'\n    - name: redisPassword\n      value: ''\n",
+    "statestore.yaml": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: '127.0.0.1:65056'\n    - name: redisPassword\n      value: ''\n    - name: actorStateStore\n      value: 'true'\n    - name: keyPrefix\n      value: none\n"
+  },
+  "discovery_configuration": "apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: isolated-admission\nspec:\n  nameResolution:\n    component: sqlite\n    version: v1\n    configuration:\n      connectionString: \"/tmp/eventstore-actor-admission-xxwq_ml3/discovery.sqlite\"\n",
+  "cleanup": {
+    "processes": [
+      {
+        "pid": 64596,
+        "exit_code": 0,
+        "absent": true
+      },
+      {
+        "pid": 64588,
+        "exit_code": 0,
+        "absent": true
+      },
+      {
+        "pid": 55944,
+        "exit_code": -9,
+        "absent": true
+      },
+      {
+        "pid": 55943,
+        "exit_code": -9,
+        "absent": true
+      },
+      {
+        "pid": 54341,
+        "exit_code": 0,
+        "absent": true
+      },
+      {
+        "pid": 54339,
+        "exit_code": 0,
+        "absent": true
+      }
+    ],
+    "containers": [
+      {
+        "name": "admission-2c0d704fdced-scheduler",
+        "id": "3c9867501fac2cb0ee00b0fee48c4a05b2e3e41e5ddaf05e7c3d0da8bed9223f",
+        "remove_exit_code": 0,
+        "absent": true,
+        "remaining_ids": ""
+      },
+      {
+        "name": "admission-2c0d704fdced-placement",
+        "id": "d34bebe42924cbb06bd9b66d7d78b9818afd4dd6c515612774a428e4f1f74079",
+        "remove_exit_code": 0,
+        "absent": true,
+        "remaining_ids": ""
+      },
+      {
+        "name": "admission-2c0d704fdced-redis",
+        "id": "4238ead4c1351b390ae1a5d37cf38a67cce9d850cabf5693e51b33920c6812ae",
+        "remove_exit_code": 0,
+        "absent": true,
+        "remaining_ids": ""
+      }
+    ],
+    "logs": [
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-app.stdout.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-app.stderr.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-sidecar.stdout.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-sidecar.stderr.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-app.stdout.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-app.stderr.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-sidecar.stdout.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-sidecar.stderr.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-app.stdout.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-app.stderr.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-sidecar.stdout.log",
+        "closed": true
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-sidecar.stderr.log",
+        "closed": true
+      }
+    ],
+    "runtime": "/tmp/eventstore-actor-admission-xxwq_ml3",
+    "runtime_absent": true,
+    "passed": true
+  },
+  "current_runtime_directory_absent": true,
+  "input_sha256": {
+    "actor-live-command.json": "b4f80f707fd937e67dfda61e5ee23d3e075cfad2813ade05fe7678ec94dc53b9",
+    "actor-live.xml": "4320308654f1b0fcd852586340536b3566392e0497735a0d39ba379d1fcf9cc6",
+    "actor-live/checks.json": "90b9f271eb323823d819252a94c698c275c7dff79f9acd6da41f8a2f2c095f22",
+    "actor-live/cleanup.json": "720a7ee8fedcb37dee0426f7fed64a6c47a4fd398a89ee9122dd01ec3f395a3d",
+    "actor-live/eventstore-1-mapped-images.json": "0c06dd2254c6acd8f08efa33d9fd6786bbeda4038ffff5ba7917b8e94e0f68ad",
+    "actor-live/eventstore-1-sidecar.stdout.log": "0e54c8b1c5360fb031d76a2e224092a1b58ed736a2df93b5ab04dfe36c2099af",
+    "actor-live/eventstore-2-mapped-images.json": "07c002eb95d516099ce8fcb43b0cfedd3a9f3eb33ad51a1d132f1b25302e24c8",
+    "actor-live/eventstore-2-sidecar.stdout.log": "527655cd316f533c4d4c7abed52eca9ed17d4f5aba14f43be8a9ec049d05757d",
+    "actor-live/infrastructure-commands.json": "71ab448deb0250025d233c145e7446eb15777ad13694c4911ea5108cce5e54b9",
+    "actor-live/infrastructure.json": "0186e0bb2c7b6a284149430e7a646e9aba93cc07f0cebef87e2a4f33b1632ddb",
+    "actor-live/placement-image.json": "48f407a99affb67614d16b7eeca6f821169eb375c4fa82c4f64d2d435b38d1f9",
+    "actor-live/processes.json": "c27ca0484593d2296bfb327ead7d7a8958d486f1ef69578aa1a6ca8a8be9bbf3",
+    "actor-live/redis-image.json": "ea55bc6e28821b671ff07dcd9f112737b2c7de7018eaf0b31cd80f20d23f2c07",
+    "actor-live/runtime-inputs.json": "788c03d25f013badbc160791da1e2fec9627aff7c9c3f2e751bd18c8453d880a",
+    "actor-live/sample-1-mapped-images.json": "e7f6c315fb6aaad77637060be710bee0faf70f35e885534b6ba3df04781e69eb",
+    "actor-live/sample-1-sidecar.stdout.log": "da72ce193c1758b58169626dbfee733ebec7d408db2e4a5ef8114c4ff8792fac",
+    "actor-live/scheduler-image.json": "48f407a99affb67614d16b7eeca6f821169eb375c4fa82c4f64d2d435b38d1f9",
+    "debug-binary-freeze.json": "158f469fde4d8f42287dcd0e3143f51722a62235b01b32e4962a1d5e43e5b818",
+    "source-binding-final/all-pdb-documents.json": "82252d7af38a0f66d57ba10a26a77e66ac2b46b02062e6b048adb6cb28dda943"
+  },
+  "errors": []
+}

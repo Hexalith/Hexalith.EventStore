@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/tmp/folders-12-2-full-guard-probe-20261022T1739Z/bin/Probe.dll",
+    "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/full-guard-locations.json"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+  "pid": 1766917,
+  "utc_start": "2026-10-22T17:55:21.7758067+00:00",
+  "utc_end": "2026-10-22T18:13:21.2097087+00:00",
+  "elapsed_seconds": 1079.4339021,
+  "exit_code": 0,
+  "actual_repo_root": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+  "pinned_product_sha256": "1f60703a55926ba86b6e254c7705f4abec0de1199b2a223b71ec1aa9060babbd",
+  "input_manifest": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/full-guard-inputs.json",
+  "input_manifest_sha256": "62495871cc9dcab265909b00b04c7a0a8c574a89fcec0f6ebf2893270d3c0adf",
+  "source_root_appcontext_override": "AppContext APP_CONTEXT_BASE_DIRECTORY set to actual pinned test assembly folder before guard type initialization; resulting private RepoRoot asserted equal to snapshot.",
+  "error": null
+}

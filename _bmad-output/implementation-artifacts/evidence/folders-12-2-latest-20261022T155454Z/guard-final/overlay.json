@@ -1,0 +1,33 @@
+{
+  "utc": "2026-10-22T17:54:14.152667+00:00",
+  "base": "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z",
+  "successor": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+  "changes": [
+    {
+      "label": "origin",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs",
+      "before_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "after_sha256": "f71760a733ae0c743e57a083b547521a1d1cf99847c1522af837acc52d7033e7"
+    },
+    {
+      "label": "origin",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+      "before_sha256": "5301e922d191b4b983bad1e70c9c3d00c63b0077ecf2056b9ad957191f0b06b6",
+      "after_sha256": "87a9f199a816531a403cfa7d9c345459e2ed0812cb7acd5364794b6df8f03367"
+    },
+    {
+      "label": "snapshot",
+      "path": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs",
+      "before_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "after_sha256": "f71760a733ae0c743e57a083b547521a1d1cf99847c1522af837acc52d7033e7"
+    },
+    {
+      "label": "snapshot",
+      "path": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+      "before_sha256": "5301e922d191b4b983bad1e70c9c3d00c63b0077ecf2056b9ad957191f0b06b6",
+      "after_sha256": "87a9f199a816531a403cfa7d9c345459e2ed0812cb7acd5364794b6df8f03367"
+    }
+  ],
+  "reason": "Keep cursor fixture actual bytes identical using adjacent constant fragments; add both task-owned new partials to existing owning-reader theory. Two additional rows, no existing assertion or detector logic change.",
+  "assertions_deadlines_retries_limits_changed": false
+}

@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-22T18:41:52.606166+00:00",
+  "review_layers_skipped": [],
+  "all_layers_completed_before_each_triage": true,
+  "final_followups": [
+    {
+      "agent": "/root/final_blind",
+      "response": "No remaining concrete defects found in the scoped fixes."
+    },
+    {
+      "agent": "/root/final_edge",
+      "response": "None. The wrapper-exit gap is closed; the seventh control verifies surviving launcher cleanup after the wrapper exits."
+    },
+    {
+      "agent": "/root/final_verify",
+      "response": "No concrete gaps found. Final claims match the retained evidence: seven lifecycle controls, 21 audit mutations plus crash/stale-result rejection, 145,090 unchanged pinned paths, exact 16,762/16,764 file sets, and cleanup totals of 78 containers, 91 exact identities, 20 PID-only records, and 28 directories. The original nine-case Dapr execution remains explicitly separate from successor lifecycle controls. Folders preservation remains negative with 66 external deltas; overall qualification remains incomplete."
+    }
+  ],
+  "triage": "final-review-triage.json",
+  "followup_triage": "final-review-followup-triage.json",
+  "resolutions": "post-review-resolution.json",
+  "earlier_deferred_gates": "All earlier Domain, guard context/policy, hunk-header, immutable-history, historical materialization and Folders/consumer gates remain in qualification.json; review did not waive or relabel them."
+}

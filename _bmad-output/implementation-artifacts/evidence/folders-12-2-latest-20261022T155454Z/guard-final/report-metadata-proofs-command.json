@@ -1,0 +1,22 @@
+{
+  "started_utc": "2026-10-22T18:02:59.954331+00:00",
+  "completed_utc": "2026-10-22T18:03:11.930500+00:00",
+  "argv": [
+    "dotnet",
+    "/tmp/folders-12-2-guard-semantic-probe-20261022T1745Z/bin/Semantic.dll",
+    "--reports",
+    "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/report-metadata-proofs.json",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-abstractions-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-cli-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-mcp-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-ui-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/apphost-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/sample-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/server-full.xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/server-full.xml"
+  ],
+  "exit_code": 0,
+  "helper_source_sha256": "f771523ad4546c3769e5a41afdb9fab20e3674dfee9b7a72030ba11ff907f987",
+  "helper_binary_sha256": "b04b3735bdd7a5efc4383a8f935f934ebf099752c96e11b0ca986905eaa2d63d"
+}

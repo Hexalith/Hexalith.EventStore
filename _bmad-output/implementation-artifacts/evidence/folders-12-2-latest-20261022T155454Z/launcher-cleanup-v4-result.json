@@ -1,0 +1,1018 @@
+{
+  "passed": true,
+  "controls": [
+    {
+      "label": "malformed-capture",
+      "control": "malformed-capture",
+      "utc_start": "2026-10-22T18:36:48.172105+00:00",
+      "utc_end": "2026-10-22T18:36:52.256113+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-malformed-capture",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": 1,
+      "wrapper_session_cleanup": {
+        "members_before": [],
+        "members_after": [],
+        "wrapper_exit_code": 1
+      },
+      "driver_error": null,
+      "signals": [],
+      "containers": [
+        {
+          "id": "4b8dd7dc6c78948a6e6c39cccf80e095192e426543eb98f4592fad3d1801b235",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "4b8dd7dc6c78948a6e6c39cccf80e095192e426543eb98f4592fad3d1801b235"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 4b8dd7dc6c78948a6e6c39cccf80e095192e426543eb98f4592fad3d1801b235\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=4b8dd7dc6c78948a6e6c39cccf80e095192e426543eb98f4592fad3d1801b235",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "56c31cbd34e753da7f3253feace9aa18c37054ef8d807c3fad822b85161774d9",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "56c31cbd34e753da7f3253feace9aa18c37054ef8d807c3fad822b85161774d9"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 56c31cbd34e753da7f3253feace9aa18c37054ef8d807c3fad822b85161774d9\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=56c31cbd34e753da7f3253feace9aa18c37054ef8d807c3fad822b85161774d9",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "f0e362a059ceb65658176b5069582b18a08912f3785659385be84f6a74eab589",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "f0e362a059ceb65658176b5069582b18a08912f3785659385be84f6a74eab589"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: f0e362a059ceb65658176b5069582b18a08912f3785659385be84f6a74eab589\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=f0e362a059ceb65658176b5069582b18a08912f3785659385be84f6a74eab589",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [],
+      "runtime": "/tmp/eventstore-actor-admission-v7m_dwzl",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "label": "write-failure",
+      "control": "write-failure",
+      "utc_start": "2026-10-22T18:36:52.256229+00:00",
+      "utc_end": "2026-10-22T18:36:56.498422+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-write-failure",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": 1,
+      "wrapper_session_cleanup": {
+        "members_before": [],
+        "members_after": [],
+        "wrapper_exit_code": 1
+      },
+      "driver_error": null,
+      "signals": [],
+      "containers": [
+        {
+          "id": "3a5cbece480a586915165659347e6a17af4faf9bf94334c26698ed2211a2c757",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "3a5cbece480a586915165659347e6a17af4faf9bf94334c26698ed2211a2c757"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 3a5cbece480a586915165659347e6a17af4faf9bf94334c26698ed2211a2c757\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=3a5cbece480a586915165659347e6a17af4faf9bf94334c26698ed2211a2c757",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "c02c3367323d39d51344126efa2e5e51db78d3e37b731269442fa8fb90890e73",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "c02c3367323d39d51344126efa2e5e51db78d3e37b731269442fa8fb90890e73"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: c02c3367323d39d51344126efa2e5e51db78d3e37b731269442fa8fb90890e73\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=c02c3367323d39d51344126efa2e5e51db78d3e37b731269442fa8fb90890e73",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "542432219bf8363236528232b5925f66317e7e51bf589a9346e9a9efe2949684",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "542432219bf8363236528232b5925f66317e7e51bf589a9346e9a9efe2949684"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 542432219bf8363236528232b5925f66317e7e51bf589a9346e9a9efe2949684\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=542432219bf8363236528232b5925f66317e7e51bf589a9346e9a9efe2949684",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [],
+      "runtime": "/tmp/eventstore-actor-admission-7jdcxiue",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "label": "cancel",
+      "control": "cancel",
+      "utc_start": "2026-10-22T18:36:56.498516+00:00",
+      "utc_end": "2026-10-22T18:36:59.973634+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-cancel",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": 254,
+      "wrapper_session_cleanup": {
+        "members_before": [],
+        "members_after": [],
+        "wrapper_exit_code": 254
+      },
+      "driver_error": null,
+      "signals": [
+        {
+          "pid": 3052583,
+          "start_ticks": "13245142",
+          "signal": "SIGTERM"
+        }
+      ],
+      "containers": [
+        {
+          "id": "d85a873fc13bd7799c94b6d2fae1b25cf0a31b589271c27c339fe4908825843e",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "d85a873fc13bd7799c94b6d2fae1b25cf0a31b589271c27c339fe4908825843e"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: d85a873fc13bd7799c94b6d2fae1b25cf0a31b589271c27c339fe4908825843e\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=d85a873fc13bd7799c94b6d2fae1b25cf0a31b589271c27c339fe4908825843e",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "7e9af31a130415b4a054453c63fdcac3b781be8a281779a7dc6a8aafdc22b939",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "7e9af31a130415b4a054453c63fdcac3b781be8a281779a7dc6a8aafdc22b939"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 7e9af31a130415b4a054453c63fdcac3b781be8a281779a7dc6a8aafdc22b939\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=7e9af31a130415b4a054453c63fdcac3b781be8a281779a7dc6a8aafdc22b939",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "427ff1175ba0d608a0c14351433fe236861f4a7b1ae2e809bc456d021191707e",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "427ff1175ba0d608a0c14351433fe236861f4a7b1ae2e809bc456d021191707e"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 427ff1175ba0d608a0c14351433fe236861f4a7b1ae2e809bc456d021191707e\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=427ff1175ba0d608a0c14351433fe236861f4a7b1ae2e809bc456d021191707e",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [
+        {
+          "pid": 3052846,
+          "expected_start_ticks": null,
+          "current_start_ticks": null,
+          "absent": true
+        }
+      ],
+      "runtime": "/tmp/eventstore-actor-admission-1c_m4dyt",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "label": "runner-cancel",
+      "control": "runner-cancel",
+      "utc_start": "2026-10-22T18:36:59.973732+00:00",
+      "utc_end": "2026-10-22T18:37:04.062805+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-runner-cancel",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": 254,
+      "wrapper_session_cleanup": {
+        "members_before": [],
+        "members_after": [],
+        "wrapper_exit_code": 254
+      },
+      "driver_error": null,
+      "signals": [
+        {
+          "pid": 3053785,
+          "start_ticks": "13245489",
+          "signal": "SIGTERM"
+        }
+      ],
+      "containers": [
+        {
+          "id": "29a21119bf42fcf4caab9545e1fba125c1ec19f228fd5e4bea5e85bfb99c5eac",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "29a21119bf42fcf4caab9545e1fba125c1ec19f228fd5e4bea5e85bfb99c5eac"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 29a21119bf42fcf4caab9545e1fba125c1ec19f228fd5e4bea5e85bfb99c5eac\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=29a21119bf42fcf4caab9545e1fba125c1ec19f228fd5e4bea5e85bfb99c5eac",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "eadd69369bad2c6c95a273addb2ace821d1b491bdac6f91c1cd0ea045daf8a16",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "eadd69369bad2c6c95a273addb2ace821d1b491bdac6f91c1cd0ea045daf8a16"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: eadd69369bad2c6c95a273addb2ace821d1b491bdac6f91c1cd0ea045daf8a16\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=eadd69369bad2c6c95a273addb2ace821d1b491bdac6f91c1cd0ea045daf8a16",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "2b21ae290a8c4e2dde1af30c95ef4146f1d29840a94c8c9703a55dec769358c7",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "2b21ae290a8c4e2dde1af30c95ef4146f1d29840a94c8c9703a55dec769358c7"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 2b21ae290a8c4e2dde1af30c95ef4146f1d29840a94c8c9703a55dec769358c7\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=2b21ae290a8c4e2dde1af30c95ef4146f1d29840a94c8c9703a55dec769358c7",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [
+        {
+          "pid": 3054374,
+          "expected_start_ticks": "13245658",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3054376,
+          "expected_start_ticks": "13245659",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3054375,
+          "expected_start_ticks": "13245659",
+          "current_start_ticks": null,
+          "absent": true
+        }
+      ],
+      "runtime": "/tmp/eventstore-actor-admission-3glvtrek",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "label": "runner-crash",
+      "control": "runner-crash",
+      "utc_start": "2026-10-22T18:37:04.062902+00:00",
+      "utc_end": "2026-10-22T18:37:08.618195+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-runner-crash",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": 1,
+      "wrapper_session_cleanup": {
+        "members_before": [],
+        "members_after": [],
+        "wrapper_exit_code": 1
+      },
+      "driver_error": null,
+      "signals": [],
+      "containers": [
+        {
+          "id": "b15e0a2d759ff0187bb9197cca33479c280e906e55e772b36925efe8000cba19",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "b15e0a2d759ff0187bb9197cca33479c280e906e55e772b36925efe8000cba19"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: b15e0a2d759ff0187bb9197cca33479c280e906e55e772b36925efe8000cba19\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=b15e0a2d759ff0187bb9197cca33479c280e906e55e772b36925efe8000cba19",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "211c92465c52b111a5c76b8ff1eefd5368d28839d671428412fb8b016a8090be",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "211c92465c52b111a5c76b8ff1eefd5368d28839d671428412fb8b016a8090be"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 211c92465c52b111a5c76b8ff1eefd5368d28839d671428412fb8b016a8090be\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=211c92465c52b111a5c76b8ff1eefd5368d28839d671428412fb8b016a8090be",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "3091c03bf5f8c0f23e3df4a954e86a6df3b9828dff40b4339f9302fc5b560cee",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "3091c03bf5f8c0f23e3df4a954e86a6df3b9828dff40b4339f9302fc5b560cee"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 3091c03bf5f8c0f23e3df4a954e86a6df3b9828dff40b4339f9302fc5b560cee\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=3091c03bf5f8c0f23e3df4a954e86a6df3b9828dff40b4339f9302fc5b560cee",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [
+        {
+          "pid": 3056179,
+          "expected_start_ticks": "13246066",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3056180,
+          "expected_start_ticks": "13246067",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3056181,
+          "expected_start_ticks": "13246068",
+          "current_start_ticks": null,
+          "absent": true
+        }
+      ],
+      "runtime": "/tmp/eventstore-actor-admission-km8urwtb",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "label": "driver-error",
+      "control": "cancel",
+      "utc_start": "2026-10-22T18:37:08.618287+00:00",
+      "utc_end": "2026-10-22T18:37:12.256661+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-driver-error",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": 254,
+      "wrapper_session_cleanup": {
+        "members_before": [
+          {
+            "pid": 3056856,
+            "start_ticks": "13246353"
+          },
+          {
+            "pid": 3056875,
+            "start_ticks": "13246354"
+          },
+          {
+            "pid": 3057468,
+            "start_ticks": "13246518"
+          }
+        ],
+        "members_after": [],
+        "wrapper_exit_code": 254
+      },
+      "driver_error": "RuntimeError('Intentional driver failure after readiness')",
+      "signals": [],
+      "containers": [
+        {
+          "id": "d52ccecb9e5b511d1790c95d4c3c535405169ee830788e0c0c07a74178ee3320",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "d52ccecb9e5b511d1790c95d4c3c535405169ee830788e0c0c07a74178ee3320"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: d52ccecb9e5b511d1790c95d4c3c535405169ee830788e0c0c07a74178ee3320\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=d52ccecb9e5b511d1790c95d4c3c535405169ee830788e0c0c07a74178ee3320",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "8c3b5c24a090cecd004a7d3d678fe9be6abb5ef208166f74814aa4473ff22d41",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "8c3b5c24a090cecd004a7d3d678fe9be6abb5ef208166f74814aa4473ff22d41"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 8c3b5c24a090cecd004a7d3d678fe9be6abb5ef208166f74814aa4473ff22d41\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=8c3b5c24a090cecd004a7d3d678fe9be6abb5ef208166f74814aa4473ff22d41",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "61ed072bc40333cba7368c38d9e550c555b4436db4359cfb32fde4b87ce8243f",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "61ed072bc40333cba7368c38d9e550c555b4436db4359cfb32fde4b87ce8243f"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 61ed072bc40333cba7368c38d9e550c555b4436db4359cfb32fde4b87ce8243f\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=61ed072bc40333cba7368c38d9e550c555b4436db4359cfb32fde4b87ce8243f",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [
+        {
+          "pid": 3056856,
+          "expected_start_ticks": "13246353",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3056875,
+          "expected_start_ticks": "13246354",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3057468,
+          "expected_start_ticks": "13246518",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3057468,
+          "expected_start_ticks": null,
+          "current_start_ticks": null,
+          "absent": true
+        }
+      ],
+      "runtime": "/tmp/eventstore-actor-admission-69wt0zi5",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    },
+    {
+      "label": "wrapper-exit",
+      "control": "cancel",
+      "utc_start": "2026-10-22T18:37:12.256752+00:00",
+      "utc_end": "2026-10-22T18:37:15.955451+00:00",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+        "cleanup-v4-wrapper-exit",
+        "/usr/bin/python3",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live-v2.py"
+      ],
+      "expected_rejection_exit_code": -9,
+      "wrapper_session_cleanup": {
+        "members_before": [
+          {
+            "pid": 3058246,
+            "start_ticks": "13246718"
+          },
+          {
+            "pid": 3058981,
+            "start_ticks": "13246884"
+          }
+        ],
+        "members_after": [],
+        "wrapper_exit_code": -9
+      },
+      "driver_error": null,
+      "signals": [],
+      "containers": [
+        {
+          "id": "8d58df0eb0e56beae63f04abf0f1a0a30e63ce01a659ba623a715181b7746c48",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "8d58df0eb0e56beae63f04abf0f1a0a30e63ce01a659ba623a715181b7746c48"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 8d58df0eb0e56beae63f04abf0f1a0a30e63ce01a659ba623a715181b7746c48\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=8d58df0eb0e56beae63f04abf0f1a0a30e63ce01a659ba623a715181b7746c48",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "a653fcd757f0500fabdcd79ddd306bc17d810380eee8b0e9ce374fe930cbed5c",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "a653fcd757f0500fabdcd79ddd306bc17d810380eee8b0e9ce374fe930cbed5c"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: a653fcd757f0500fabdcd79ddd306bc17d810380eee8b0e9ce374fe930cbed5c\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=a653fcd757f0500fabdcd79ddd306bc17d810380eee8b0e9ce374fe930cbed5c",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        },
+        {
+          "id": "725a7f3e04ee65a402801c9bb5899f76dbce6d936b978c9aee617e9b9a708d73",
+          "absent": true,
+          "commands": [
+            {
+              "argv": [
+                "docker",
+                "container",
+                "inspect",
+                "725a7f3e04ee65a402801c9bb5899f76dbce6d936b978c9aee617e9b9a708d73"
+              ],
+              "exit_code": 1,
+              "stdout": "[]\n",
+              "stderr": "Error response from daemon: No such container: 725a7f3e04ee65a402801c9bb5899f76dbce6d936b978c9aee617e9b9a708d73\n"
+            },
+            {
+              "argv": [
+                "docker",
+                "container",
+                "ls",
+                "--all",
+                "--no-trunc",
+                "--filter",
+                "id=725a7f3e04ee65a402801c9bb5899f76dbce6d936b978c9aee617e9b9a708d73",
+                "--format",
+                "{{.ID}}"
+              ],
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ]
+        }
+      ],
+      "processes": [
+        {
+          "pid": 3058246,
+          "expected_start_ticks": "13246718",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3058981,
+          "expected_start_ticks": "13246884",
+          "current_start_ticks": null,
+          "absent": true
+        },
+        {
+          "pid": 3058981,
+          "expected_start_ticks": null,
+          "current_start_ticks": null,
+          "absent": true
+        }
+      ],
+      "runtime": "/tmp/eventstore-actor-admission-7qa1wg1y",
+      "runtime_absent": true,
+      "errors": [],
+      "passed": true
+    }
+  ],
+  "scope": "Real disposable owned Dapr infrastructure. Active runner/worker/observer are process-tree surrogates at the exact real subprocess boundary; these are lifecycle controls, not real-Dapr scenario acceptance."
+}

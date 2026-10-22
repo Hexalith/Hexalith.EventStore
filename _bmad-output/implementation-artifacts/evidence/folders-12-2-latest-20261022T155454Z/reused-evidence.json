@@ -1,0 +1,66 @@
+{
+  "reused_results": [
+    {
+      "executed_on": "S1 /tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "lanes": [
+        "client-full",
+        "testing-full",
+        "contracts-full",
+        "domain-full",
+        "domain-full-repeat",
+        "domain-failure-focused",
+        "runtime-preflight",
+        "actor-live",
+        "bounded-live",
+        "public-throttling-health",
+        "testing-integration-full"
+      ],
+      "reused_for": "Unchanged producer graph in final S5. These remain S1 executions, not S5 reruns or whole-source qualification. Failed Domain evidence remains failed.",
+      "identity_audit": "guard-final/input-identity-audit.json",
+      "identity_audit_sha256": "284e3b83bc2c58f5cf611077fe7e73e9c35ff055d83051694cdd68e77df34299",
+      "source_identity": "All72224 S1 input paths freshly hashed unchanged; S5 differs only in documented Server test files. No production source/config changes.",
+      "binary_identity": "All788 frozen worker files and all8 required PE/PDB hashes match all120 actual phase joins; final Unit output first-party comparison changes only Server.Tests PE/PDB. Final Unit tests are freshly executed.",
+      "binary_source_inventories": [
+        "snapshot-inputs.json",
+        "debug-binary-freeze.json",
+        "qualified-worker-runtime-inputs.json",
+        "guard-final/source-inputs.json",
+        "guard-final/binary-freeze.json",
+        "guard-final/producer-current-inputs.json"
+      ],
+      "limit": "Repository-wide historical materialization differs from mutable origin; historical packet/seal and Folders preservation gates remain open. No S1 repository predicate is silently asserted for a different mutable origin."
+    }
+  ],
+  "reused_context": [
+    {
+      "packet": "folders-12-2-current-source-20261022T134028Z",
+      "seal_sha256": "0b4d5ade382ea889b78fdb5cba7783c7f0fbaa1bdc68d06646b4fc4ade732135",
+      "scope": "Original negative disposition,21-location investigation input, earlier failure/skip debt; no result is substituted for final-snapshot execution."
+    },
+    {
+      "packet": "folders-12-2-gates-20261022T151209Z",
+      "seal_sha256": "eeff5272baa8ab53fb1fef872aca9db1f7fd0fb1a094d6e71a12c263778df1ec",
+      "scope": "Retained interrupted initial continuation, external-drift proof, initial Domain failures and diagnostic repeat; not final-snapshot acceptance."
+    }
+  ],
+  "reused_tool": {
+    "path": "../folders-12-2-gates-20261022T151209Z/pdb-verifier-runtime/Verifier.dll",
+    "scope": "Byte-pinned tool reused from verified sealed packet; all PDB audits reported here are fresh executions.",
+    "runtime_copy": "pdb-verifier-runtime/Verifier.dll",
+    "runtime_copy_sha256": "69359644f3a19399ddf0e963ddf1c88ac9b8e7f5ae73f1fc228c8e688aa06a53"
+  },
+  "reused_inventory": {
+    "path": "../folders-12-2-gates-20261022T151209Z/affected-server-regressions.json",
+    "scope": "547 test names only; outcomes must come from fresh final-snapshot Server XML.",
+    "sha256": "13a7eba218fce610f80268827cdebeea80dabca0d98256911d2d541197031a9f"
+  },
+  "utc": "2026-10-22T18:02:00.798007+00:00",
+  "retained_intermediate_results": {
+    "stages": [
+      "S2",
+      "S3",
+      "S4"
+    ],
+    "scope": "Fresh intermediate executions retained as negative/diagnostic history; no positive outcome substitutes for the final full Server XML."
+  }
+}

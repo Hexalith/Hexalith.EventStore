@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/audit-worker-captures-v3.py"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T18:36:48.149404+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 3049493,
+  "pid": 3049497,
+  "exit_code": 0,
+  "elapsed_seconds": 0.1391988449904602,
+  "utc_end": "2026-10-22T18:36:48.288709+00:00"
+}

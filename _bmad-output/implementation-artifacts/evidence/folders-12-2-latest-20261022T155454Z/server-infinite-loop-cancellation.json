@@ -1,0 +1,20 @@
+{
+  "reason": "Triage stack proves the existing ParameterResource diff test is in a nonadvancing GetUnifiedDiffSourcePath loop. This execution cannot complete; cancel and retain it before an independently bound test-only repair. No existing timeout/assertion was changed.",
+  "stack_receipt": "server-triage-stacks-command.json",
+  "signals": [
+    {
+      "signal": "SIGINT",
+      "utc": "2026-10-22T17:16:02.116278+00:00",
+      "pid": 43894,
+      "start_ticks": "12347771"
+    },
+    {
+      "signal": "SIGTERM",
+      "utc": "2026-10-22T17:16:04.116609+00:00",
+      "pid": 43894,
+      "start_ticks": "12347771"
+    }
+  ],
+  "full_run_qualified": false,
+  "later_full_run_required": true
+}

@@ -1,0 +1,29 @@
+{
+  "decision": "Keep current files and test them",
+  "source": "Explicit user reply to final source-version clarification",
+  "current_source_rows": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "current_sha256": "c4e7e851172fb9387e31a84973f39e5649f70eccbd9dfbd1abd0bede8f227c5a",
+      "matches_executed_source_inventory": true,
+      "archive_preserved": "external-source-observed/SecretsProtectionTests.cs",
+      "archived_sha256": "c4e7e851172fb9387e31a84973f39e5649f70eccbd9dfbd1abd0bede8f227c5a"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.cs",
+      "current_sha256": "02b458fa6fbca4683a6606af5a4ef08e5e936e5d1d1e91b727499effcee0f0dd",
+      "matches_executed_source_inventory": true,
+      "archive_preserved": "external-source-observed/SecretsProtectionTests.SourceContexts.cs",
+      "archived_sha256": "02b458fa6fbca4683a6606af5a4ef08e5e936e5d1d1e91b727499effcee0f0dd"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.Tests.cs",
+      "current_sha256": "e2a8ae68cd211c88b6b5bfa4cca7cb7faedb3fc38d18d6400d1a35739de5277b",
+      "matches_executed_source_inventory": true,
+      "archive_preserved": "external-source-observed/SecretsProtectionTests.SourceContexts.Tests.cs",
+      "archived_sha256": "e2a8ae68cd211c88b6b5bfa4cca7cb7faedb3fc38d18d6400d1a35739de5277b"
+    }
+  ],
+  "assertion_files_modified_by_this_task": false,
+  "execution_justification": "The selected current bytes match source-built.json and the portable-PDB-bound Server full run. No byte-changing restoration was performed; existing fresh run is applicable to this selection."
+}

@@ -1,0 +1,101 @@
+"""Pure fail-closed checks shared by the post-review runtime auditors."""
+import hashlib
+from pathlib import Path
+
+
+def binding_errors(bindings, summary):
+    errors = []
+    if summary.get('passed') is not True or summary.get('errors'):
+        errors.append('Source binding summary did not pass')
+    for row in bindings:
+        if row.get('identityMatches') is not True or not row.get('documents'):
+            errors.append('Source binding identity rejected: ' + row['pe'])
+        for doc in row.get('documents', []):
+            if doc.get('matches') is not True or doc.get('sha256', '').lower() != doc.get('expected', '').lower():
+                errors.append('Source binding document rejected: ' + doc['path'])
+    return errors
+
+
+def native_errors(processes, expected, required_pids=(), required_name=None):
+    errors = []
+    for row in processes:
+        role = required_name or ('dotnet' if row['pid'] in required_pids else Path(row['exe']).name)
+        if role not in ('dotnet', 'daprd'):
+            continue
+        chosen = expected.get(role)
+        if not chosen or row['exe'] != chosen['path'] or row.get('exe_sha256') != chosen['sha256']:
+            errors.append('Native executable identity differs: ' + str(row['pid']))
+    return errors
+
+
+def mapping_errors(capture, raw_rows, bindings):
+    errors = []
+    by_hash = {row['peSha256'].lower(): row for row in bindings}
+    first_party = [row for row in raw_rows if Path(row['path'].removesuffix(' (deleted)')).name.startswith('Hexalith.') and row['path'].removesuffix(' (deleted)').endswith('.dll')]
+    for raw in first_party:
+        matching = [image for image in capture['images'] if (image['device_major'], image['device_minor'], image['inode'], image['path']) == (raw['device_major'], raw['device_minor'], raw['inode'], raw['path'])]
+        if len(matching) != 1 or raw not in matching[0]['mapping_rows'] or raw['path'].endswith(' (deleted)'):
+            errors.append('Unauthenticated first-party raw mapping: ' + raw['path'])
+    for image in capture['images']:
+        if not Path(image['path']).name.startswith('Hexalith.'):
+            continue
+        mapped = [row for row in raw_rows if (row['device_major'], row['device_minor'], row['inode']) == (image['device_major'], image['device_minor'], image['inode'])]
+        bound = by_hash.get(image['dll_sha256'].lower())
+        if not mapped or image['mapping_rows'] != mapped or not any(row['path'] == image['path'] for row in mapped) or not bound or bound['pdbSha256'].lower() != image['pdb_sha256'].lower():
+            errors.append('First-party image lacks complete raw-map/source binding: ' + image['path'])
+    return errors
+
+
+def unit_mapping_valid(process, raw_rows):
+    rows = [row for row in raw_rows if (row['path'], row['device_major'], row['device_minor'], row['inode']) == (process['unit'], process['device_major'], process['device_minor'], process['inode'])]
+    return bool(rows) and [row['raw'] for row in rows] == process['actual_unit_map_rows']
+
+
+def component_errors(components, processes, selection, commands, cleanup):
+    errors = []
+    ports = {role: selection['environment']['EVENTSTORE_TEST_' + role.upper() + '_PORT'] for role in ('redis', 'placement', 'scheduler')}
+    for role, port in ports.items():
+        containers = [row for row in cleanup['containers'] if row['name'].endswith('-' + role)]
+        internal = '6379' if role == 'redis' else '50005' if role == 'placement' else '50006'
+        if len(containers) != 1 or not any(row['argv'] == ['docker', 'port', containers[0]['id'], internal] and row['exit_code'] == 0 and row['stdout'].strip() == '127.0.0.1:' + port for row in commands):
+            errors.append('Component endpoint lacks owned container port: ' + role)
+    for directory, files in components.items():
+        sidecars = [row for row in processes if Path(row['exe']).name == 'daprd' and '--resources-path' in row['argv'] and row['argv'][row['argv'].index('--resources-path') + 1] == directory]
+        if len(sidecars) != 1:
+            errors.append('Component directory lacks unique sidecar')
+            continue
+        args = sidecars[0]['argv']
+        app = args[args.index('--app-id') + 1]
+        for role in ('placement', 'scheduler'):
+            flag = '--' + role + '-host-address'
+            if flag not in args or args[args.index(flag) + 1] != 'localhost:' + ports[role]:
+                errors.append('Sidecar endpoint differs from owned infrastructure: ' + role)
+        for name, kind, setting in [('statestore', 'state.redis', 'actorStateStore'), ('pubsub', 'pubsub.redis', 'enableDeadLetter')]:
+            key = str(Path(directory) / (name + '.yaml'))
+            expected = ('apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: ' + name + '\nspec:\n  type: ' + kind + '\n  version: v1\n  metadata:\n    - name: redisHost\n      value: "localhost:' + ports['redis'] + '"\n    - name: redisPassword\n      value: ""\n    - name: ' + setting + '\n      value: "true"\nscopes:\n  - ' + app)
+            row = files.get(key, {})
+            if row.get('content') != expected or row.get('sha256') != hashlib.sha256(expected.encode()).hexdigest():
+                errors.append('Component content/configuration/hash differs: ' + key)
+        config = str(Path(directory) / 'test-runtime.yaml')
+        expected = 'apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: eventstore-test-runtime\nspec:\n  features:\n    - name: HotReload\n      enabled: false\n'
+        if '--config' not in args or args[args.index('--config') + 1] != config or files.get(config, {}).get('content') != expected or files.get(config, {}).get('sha256') != hashlib.sha256(expected.encode()).hexdigest():
+            errors.append('Sidecar runtime configuration differs')
+        if set(files) != {str(Path(directory) / (n + '.yaml')) for n in ('statestore', 'pubsub', 'test-runtime')}:
+            errors.append('Unexpected component file set')
+    return errors
+
+
+def ordinary_paths(root):
+    """Enumerate the frozen ordinary scope without trusting Git ignore rules."""
+    import os
+    excluded = {'references', '_bmad-output', '_bmad', '.git', 'bin', 'obj', '.artifacts', 'node_modules', '.agents', '.claude', '.codex', '__pycache__'}
+    roots = [root] + [path for path in (root / 'references').iterdir() if (path / '.git').exists()]
+    actual = set()
+    for repo in roots:
+        for directory, dirs, files in os.walk(repo):
+            dirs[:] = [name for name in dirs if name not in excluded]
+            for name in files:
+                path = Path(directory) / name
+                if name != 'SKILL.md' and path.is_file():
+                    actual.add(str(path))
+    return actual

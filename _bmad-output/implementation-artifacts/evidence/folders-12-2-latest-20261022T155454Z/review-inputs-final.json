@@ -1,0 +1,22 @@
+{
+  "diff": "/tmp/folders-12-2-final-review/task-owned-final.patch",
+  "sha256": "b99f1ea39b775201658341522301c8ffde8b55d72758f444b559865d28a33c5a",
+  "bytes": 182812,
+  "scope": "Selected task-owned source delta and final acceptance/audit/reporting code plus actual README/negative qualification/reuse metadata. Other source files and earlier failures are available through linked sealed/input manifests.",
+  "inputs": {
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live.py": "d8c32dbb3bf6096fa64f38bb604b86ce444c940db98ce093d2ab29666c57a592",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/audit-runtime.py": "3549538efb79670a6bfe589dd8fc659a5807597692db04b0d132c3dfe3a09514",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/audit-worker-captures.py": "ace6fe3f447b690b29adcc83c4053daac208a1baff84652b847eee599b8452b5",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/test-audit-controls.py": "378e5e737a7743857bd4c74bc1e00bd44092d737e2cf88e37ee98bae85ce9d7d",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/test-launcher-cleanup.py": "bc1bf93fc3d233997cba45ee19c0c90dd7c4c08b641bde9b97604608d6a5177e",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/check-late-inputs.py": "5623b1b9af3a0893eea5b907944b3caaaa1d531268aa6228d4c2a758335a22eb",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/verify.py": "34efed4c1e5fec8ada7d6ab71e90b9dc7e6d3f74681797649030666e9ab5b4ac",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/report-final-v2.py": "03ad3a24314caa623e0a28a333fd045ba8ceea72badc4d77a53953bdb2833efb",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/check-guard-cleanup.py": "32fd3535178e2862af5541b8135a42246fb94ffefae653f6eacd0b08d65eef4e",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/cleanup-private-tools.py": "a63152708aa467d092c26e3d8b444b176f23aa2099105b78a9073ea0634ed526",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/closing-runtime-cleanup.py": "a8d1ec595e7232c67a03317c3a3a8c56ae169860e4c520224c63f861cc7b9409",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/README.md": "7cf33b61ac3ad4eb0bf7f18f938137967b6f3484a98b3d79b353b083765a94f0",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/qualification.json": "ae54b0706c069fa6c2739a72627b6795cedc005a1f71a04fc3d8f6e4082cc3ac",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/reused-evidence.json": "7a29df8b77f4ac7ce7aba364c0bfa93eae92c9ab7a4d5599f1a61bb51bbea491"
+  }
+}

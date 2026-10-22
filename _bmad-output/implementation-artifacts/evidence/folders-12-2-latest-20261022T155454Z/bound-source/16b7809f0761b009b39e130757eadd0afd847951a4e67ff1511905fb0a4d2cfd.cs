@@ -1,0 +1,286 @@
+
+using System.Text.Json;
+
+using Hexalith.EventStore.Server.Actors;
+
+using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Actors;
+
+/// <summary>
+/// Story 4.4: the fixed-key publication recovery index. Every branch of <c>TryAdd</c>,
+/// <c>TryRemove</c> and <c>Prune</c> is exercised directly so no term in the actor's guards is
+/// merely defensive.
+/// </summary>
+public class UnpublishedPublicationIndexTests {
+    private static UnpublishedPublicationEntry Entry(string messageId, string correlationId = "corr-1")
+        => new(messageId, correlationId, DateTimeOffset.UtcNow);
+
+    [Fact]
+    public void StateKey_IsTheStableFixedKey() => UnpublishedPublicationIndex.StateKey.ShouldBe("publication-index");
+
+    [Fact]
+    public void Empty_HasNoEntries() => UnpublishedPublicationIndex.Empty.Entries.ShouldBeEmpty();
+
+    [Fact]
+    public void Entries_NullCollection_IsNormalizedToEmpty() => new UnpublishedPublicationIndex(null!).Entries.ShouldBeEmpty();
+
+    [Fact]
+    public void Entries_DuplicatePersistedMessageIds_AreNormalizedToOneOwner() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", "corr-first"),
+            Entry("msg-1", "corr-first"),
+            Entry("msg-2", "corr-second"),
+        ]);
+
+        index.Entries.Count.ShouldBe(2);
+        index.OwnerCount.ShouldBe(2);
+        index.Entries.Single(entry => entry.MessageId == "msg-1").CorrelationId.ShouldBe("corr-first");
+    }
+
+    [Fact]
+    public void Entries_DuplicatePersistedMessageIdWithConflictingCorrelations_FailsClosed() {
+        _ = Should.Throw<InvalidOperationException>(() => new UnpublishedPublicationIndex([
+            Entry("msg-1", "corr-first"),
+            Entry("msg-1", "corr-conflict"),
+        ]));
+    }
+
+    [Fact]
+    public void Entries_MalformedRemnantBeforeValidOwner_PrefersTheValidOwner() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", string.Empty),
+            Entry("msg-1", "corr-valid"),
+        ]);
+
+        index.Entries.ShouldHaveSingleItem().CorrelationId.ShouldBe("corr-valid");
+        index.OwnerCount.ShouldBe(1);
+        index.TryRemove("msg-1", out UnpublishedPublicationIndex removed).ShouldBeTrue();
+        removed.Entries.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void OwnerCount_IgnoresMalformedPersistedEntries() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1"),
+            new UnpublishedPublicationEntry(string.Empty, "corr-malformed", DateTimeOffset.UtcNow),
+        ]);
+
+        index.Entries.Count.ShouldBe(2);
+        index.OwnerCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void TryAdd_BelowCapacity_TracksTheEntry() {
+        PublicationIndexAddOutcome outcome = UnpublishedPublicationIndex.Empty.TryAdd(
+            Entry("msg-1"), maxEntries: 2, out UnpublishedPublicationIndex updated);
+
+        outcome.ShouldBe(PublicationIndexAddOutcome.Added);
+        updated.Entries.Count.ShouldBe(1);
+        updated.Contains("msg-1").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void TryAdd_SameCorrelationRefresh_DoesNotConsumeCapacity() {
+        DateTimeOffset committedAt = DateTimeOffset.UtcNow;
+        var index = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry("msg-1", "corr-1", committedAt),
+        ]);
+
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            new UnpublishedPublicationEntry("msg-1", "corr-1", committedAt.AddMinutes(1)),
+            maxEntries: 1,
+            out UnpublishedPublicationIndex updated);
+
+        outcome.ShouldBe(PublicationIndexAddOutcome.Added);
+        updated.Entries.ShouldHaveSingleItem().CommittedAt.ShouldBe(committedAt.AddMinutes(1));
+        updated.OwnerCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void TryAdd_ConflictingWellFormedOwner_FailsClosedWithoutSelectingEitherPath() {
+        var original = Entry("msg-1", "corr-old");
+        var index = new UnpublishedPublicationIndex([original]);
+
+        InvalidOperationException error = Should.Throw<InvalidOperationException>(() =>
+            index.TryAdd(Entry("msg-1", "corr-new"), maxEntries: 1, out _));
+
+        error.Message.ShouldContain("conflicting owners");
+        index.Entries.ShouldHaveSingleItem().ShouldBe(original);
+    }
+
+    [Fact]
+    public void TryAdd_MalformedSameIdRemnants_RemovesEveryRemnantWhenAddingTheOwner() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", string.Empty),
+            Entry("msg-1", "   "),
+            Entry("msg-2", "corr-other"),
+        ]);
+
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            Entry("msg-1", "corr-valid"), maxEntries: 8, out UnpublishedPublicationIndex updated);
+
+        outcome.ShouldBe(PublicationIndexAddOutcome.Added);
+        updated.Entries.Count.ShouldBe(2);
+        updated.Entries.Where(entry => entry.MessageId == "msg-1").ShouldHaveSingleItem()
+            .CorrelationId.ShouldBe("corr-valid");
+        updated.Contains("msg-2").ShouldBeTrue();
+        updated.OwnerCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public void TryAdd_AtCapacity_ReportsRefusalToTheCallerAndLeavesTheIndexUnchanged() {
+        var index = new UnpublishedPublicationIndex([Entry("msg-1")]);
+
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            Entry("msg-2"), maxEntries: 1, out UnpublishedPublicationIndex updated);
+
+        // Distinct from InvalidEntry: only this one is an operational backpressure condition.
+        outcome.ShouldBe(PublicationIndexAddOutcome.AtCapacity);
+        updated.ShouldBeSameAs(index);
+        updated.Contains("msg-2").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TryAdd_OwnerlessMalformedEntries_DoNotConsumeCapacity() {
+        var index = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry(string.Empty, "corr-malformed", DateTimeOffset.UtcNow),
+        ]);
+
+        PublicationIndexAddOutcome outcome = index.TryAdd(
+            Entry("msg-1"), maxEntries: 1, out UnpublishedPublicationIndex updated);
+
+        outcome.ShouldBe(PublicationIndexAddOutcome.Added);
+        updated.OwnerCount.ShouldBe(1);
+        updated.Entries.Count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData("", "corr-1")]
+    [InlineData("   ", "corr-1")]
+    [InlineData("msg-1", "")]
+    [InlineData("msg-1", "   ")]
+    public void TryAdd_MalformedEntry_IsRefused(string messageId, string correlationId) {
+        PublicationIndexAddOutcome outcome = UnpublishedPublicationIndex.Empty.TryAdd(
+            Entry(messageId, correlationId), maxEntries: 8, out UnpublishedPublicationIndex updated);
+
+        // A data defect, never reported to the caller as "too many pending commands".
+        outcome.ShouldBe(PublicationIndexAddOutcome.InvalidEntry);
+        updated.Entries.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TryRemove_KnownMessageId_RemovesOnlyThatEntry() {
+        var index = new UnpublishedPublicationIndex([Entry("msg-1"), Entry("msg-2")]);
+
+        bool removed = index.TryRemove("msg-1", out UnpublishedPublicationIndex updated);
+
+        removed.ShouldBeTrue();
+        updated.Contains("msg-1").ShouldBeFalse();
+        updated.Contains("msg-2").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void TryRemove_MalformedSameIdRemnants_RemovesEveryRemnant() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1", string.Empty),
+            Entry("msg-1", "   "),
+            Entry("msg-2"),
+        ]);
+
+        bool removed = index.TryRemove("msg-1", out UnpublishedPublicationIndex updated);
+
+        removed.ShouldBeTrue();
+        updated.Entries.ShouldHaveSingleItem().MessageId.ShouldBe("msg-2");
+        updated.Contains("msg-1").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("msg-unknown")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void TryRemove_UnknownOrBlankMessageId_ReportsNoRemoval(string messageId) {
+        var index = new UnpublishedPublicationIndex([Entry("msg-1")]);
+
+        bool removed = index.TryRemove(messageId, out UnpublishedPublicationIndex updated);
+
+        removed.ShouldBeFalse();
+        updated.ShouldBeSameAs(index);
+    }
+
+    [Fact]
+    public void Contains_IsOrdinalAndCaseSensitive() {
+        var index = new UnpublishedPublicationIndex([Entry("msg-1")]);
+
+        index.Contains("msg-1").ShouldBeTrue();
+        index.Contains("MSG-1").ShouldBeFalse();
+        index.Contains(string.Empty).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Prune_RemovesEveryNamedEntryIncludingBlankIdentities() {
+        var index = new UnpublishedPublicationIndex([
+            Entry("msg-1"),
+            Entry("msg-2"),
+            new UnpublishedPublicationEntry(string.Empty, "corr-blank", DateTimeOffset.UtcNow),
+        ]);
+
+        UnpublishedPublicationIndex pruned = index.Prune(["msg-1", string.Empty]);
+
+        pruned.Entries.Count.ShouldBe(1);
+        pruned.Contains("msg-2").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Prune_EmptySet_ReturnsTheSameInstance() {
+        var index = new UnpublishedPublicationIndex([Entry("msg-1")]);
+
+        index.Prune([]).ShouldBeSameAs(index);
+    }
+
+    // --- Persisted actor-state shape ---
+
+    [Fact]
+    public void JsonRoundTrip_PreservesEveryEntryIdentity() {
+        // The index is persisted through IActorStateManager, which serializes with System.Text.Json.
+        var original = new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry("msg-1", "corr-1", new DateTimeOffset(2026, 8, 7, 9, 0, 0, TimeSpan.Zero)),
+            new UnpublishedPublicationEntry("msg-2", "corr-2", new DateTimeOffset(2026, 8, 7, 9, 5, 0, TimeSpan.Zero)),
+        ]);
+
+        UnpublishedPublicationIndex? roundTripped =
+            JsonSerializer.Deserialize<UnpublishedPublicationIndex>(JsonSerializer.Serialize(original));
+
+        string json = JsonSerializer.Serialize(original);
+        json.ShouldNotContain("OwnerCount");
+
+        _ = roundTripped.ShouldNotBeNull();
+        roundTripped.Entries.Count.ShouldBe(2);
+        roundTripped.Contains("msg-1").ShouldBeTrue();
+        roundTripped.Contains("msg-2").ShouldBeTrue();
+        roundTripped.Entries[0].CorrelationId.ShouldBe("corr-1");
+        roundTripped.Entries[1].CommittedAt.ShouldBe(new DateTimeOffset(2026, 8, 7, 9, 5, 0, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void Deserialize_PayloadWithNullEntryElement_IsNormalizedInsteadOfPoisoningEveryActivation() {
+        // A null element used to NRE on every activation, so OnActivateAsync degraded forever and
+        // the index could never be repaired.
+        const string poisoned = """{"Entries":[null,{"MessageId":"msg-1","CorrelationId":"corr-1","CommittedAt":"2026-08-07T09:00:00+00:00"}]}""";
+
+        UnpublishedPublicationIndex? index = JsonSerializer.Deserialize<UnpublishedPublicationIndex>(poisoned);
+
+        _ = index.ShouldNotBeNull();
+        index.Entries.Count.ShouldBe(1);
+        index.Contains("msg-1").ShouldBeTrue();
+        _ = Should.NotThrow(() => index.TryAdd(Entry("msg-2"), maxEntries: 8, out _));
+    }
+
+    [Fact]
+    public void Deserialize_PayloadWithoutEntries_IsNormalizedToEmpty() {
+        UnpublishedPublicationIndex? index = JsonSerializer.Deserialize<UnpublishedPublicationIndex>("{}");
+
+        _ = index.ShouldNotBeNull();
+        index.Entries.ShouldBeEmpty();
+    }
+}

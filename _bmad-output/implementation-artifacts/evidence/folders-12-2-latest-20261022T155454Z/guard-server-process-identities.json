@@ -1,0 +1,643 @@
+{
+  "utc": "2026-10-22T17:36:49.888446+00:00",
+  "initial_probe_failure": "First probe found S2 already absent and raised FileNotFoundError before writing outputs; this receipt retains that limit explicitly.",
+  "processes": [
+    {
+      "label": "guardfix-server-full",
+      "pid": 738567,
+      "absent_at_probe": true,
+      "completed_receipt": {
+        "argv": [
+          "dotnet",
+          "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+          "-result-xml",
+          "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardfix-server-full.xml"
+        ],
+        "cwd": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+        "utc_start": "2026-10-22T17:21:33.323165+00:00",
+        "environment_overrides": {
+          "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+          "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+          "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z"
+        },
+        "runner_pid": 738545,
+        "pid": 738567,
+        "exit_code": 1,
+        "elapsed_seconds": 865.0630086120073,
+        "utc_end": "2026-10-22T17:35:58.347384+00:00"
+      },
+      "start_ticks": null,
+      "limit": "No start-tick or actual mapping observation captured for this completed intermediate Unit run."
+    },
+    {
+      "label": "guardtight-server-full",
+      "pid": 1227829,
+      "start_ticks": "12858701",
+      "argv": [
+        "dotnet",
+        "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+        "-result-xml",
+        "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardtight-server-full.xml"
+      ],
+      "exe": "/home/administrator/.dotnet/dotnet",
+      "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753",
+      "maps": "guardtight-server-full-process.maps",
+      "maps_sha256": "095b9fd05ca3f87642acedb05397ad16d3c8ceb513dde6243f7e51e3a51464cd",
+      "mapped_first_party": [
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/ByteAether.Ulid.dll",
+          "sha256": "fc4f3d99e88023ffbd37eea2941ddd81f604611fc967fedb116a4daaf9ae4590",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826726
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Castle.Core.dll",
+          "sha256": "9c5762ae27f2afe0913e8ffa494f705ffe9680699aa4fb79c2613344c918ee28",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826727
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Dapr.Actors.AspNetCore.dll",
+          "sha256": "c7deffe0f4b6c754fff3935a42ad378d729e85b277da853fbc8924790482d8b0",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826729
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Dapr.Actors.dll",
+          "sha256": "98d77fb28b39fe6832e06cb2bd66d58024b9587411b04965da385909f32a9dfa",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826728
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Dapr.AspNetCore.dll",
+          "sha256": "4db46444a22bbfd473e0f132139d943cec95e3637cdbf61077d88e618a48213d",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826730
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Dapr.Client.dll",
+          "sha256": "cc7b8e629416c52be2569d7610c5c830b19ba690d4f54300ffdee901dec99115",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826731
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Dapr.Common.dll",
+          "sha256": "9c10b91825371c10e469e91627080414bde4e8fa5acd894a2dbe398af03e1893",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826732
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Dapr.Protos.dll",
+          "sha256": "659938b9475b4951bd49086a66d8ad24f89ac6c1c33d6888adfefb8420edf03c",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826733
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/DiffEngine.dll",
+          "sha256": "0c6b99a47c609a4263b80feaed95a357e30be3ad5a1cda79355663e407682aa7",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826734
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/FluentValidation.DependencyInjectionExtensions.dll",
+          "sha256": "32385a476b65365d0f9de1819cd1f46d155d1f46beea68176603cf341b29a797",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826736
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/FluentValidation.dll",
+          "sha256": "07373bb5527d6d96908c60962102c9c1339b363c4ee8ad62277eb2ffc6387df4",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826708
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Google.Protobuf.dll",
+          "sha256": "e9b892ac667931162ffefa411ef8dc3eae777d634d8bfe8beddc28b1de95a612",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826745
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Grpc.Core.Api.dll",
+          "sha256": "5674c1203706b5a261e8bbd3499147d94fc80b5f077bf45f9934ca28a9c8574b",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826739
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Grpc.Net.Client.dll",
+          "sha256": "f884d8444feb888656cbb7de87ee8f53a50811329bb32c6e7a7a81cb1de008ef",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826740
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Grpc.Net.Common.dll",
+          "sha256": "fdff383bbd8e5015f3c4aaaa7508b769228f33c92ba14fec4e59d35c5d78e6ae",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826741
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Grpc.Reflection.dll",
+          "sha256": "87795d17c1385e7c05469c447ad8eecc883c3c71b4804319c5918a5a490c8d57",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826742
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+          "sha256": "2c7cec1ecc17093189610057534097c586d73483d1aaa0d2d9611c424ea67b05",
+          "pdb_sha256": "2a0ca95d01ab70a872cfa246bd03abdc2bd60ab4cfa1eba153eaf82f3a4b292f",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829257
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.Abstractions.dll",
+          "sha256": "238c60c994169e17591f91d73c17c7b8075652462a2eb1adb840a19a5a5fcba9",
+          "pdb_sha256": "2ef22f38782369f8adfefa362e59324863e3790af924312242b737cc4f4c2616",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829258
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+          "sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+          "pdb_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829259
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+          "sha256": "341c3728bf4aa8c5c945ba2b814735517d8f85832129d10e0e588705c38cf7fc",
+          "pdb_sha256": "882b7a987a01cf1d9357ce9291c4abe25fff87197c5610b3aca5253efa25cf91",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829261
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+          "sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+          "pdb_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829263
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Gateway.dll",
+          "sha256": "6eb9b7bb81bd7537c5ca28969212506a41495f045d275fbadaa024dc726b48f5",
+          "pdb_sha256": "9d3e9f4683d9890b7c09a0ec0f52823d9459b8b956ce99436ce11040eca1c8b1",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826657
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll",
+          "sha256": "a06c3dd1d322fb806a6e1e7f1a33a2b42a69af56fb56786cbea69cf108a2dc40",
+          "pdb_sha256": "476596c0c3de6485883c566d9eea4ea11878b7dbac16a97fe6b5128bd9139dc1",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829260
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+          "sha256": "2eca31c4b988a43f29b66af053eb86551c6a9f4da96811f88564a08c671ce1c3",
+          "pdb_sha256": "9d8ef735d1ed5ecf5392e7e3d672482f98e09c9cfdecb6750fa4cec760f41a35",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826641
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+          "sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+          "pdb_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829265
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+          "sha256": "670e2930f991094e1096147dd228eb878eec40b75c1be49e6796913f10b73826",
+          "pdb_sha256": "3cd4a732534a77342549b8bb02b1419860a65a37c26d59c0530face4b92335e9",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829267
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+          "sha256": "9e8baffadfae0b6730951c6922f3ffc45e0621684241d48e6951d9d21160e78b",
+          "pdb_sha256": "befb2c3622330a3ce16c47c2ae869fb60e820f7782a3b9fdf7373fa80b6f43d7",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829268
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.dll",
+          "sha256": "6c08d5fa7ae12f7b065690bf170823d5b316a852abb85f17cc2a9caeda4e41c4",
+          "pdb_sha256": "73cdb0b85d49e86f3b547ab18742c4b2d3bac317809adf547ed99d590e880f29",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829262
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.Tenants.Contracts.dll",
+          "sha256": "380171e155b555b168314f4c9a83c3be915d407d1ed3c0690245c301d5838e8d",
+          "pdb_sha256": "f534d966d21cacdd9a4ecee869a640c458dafb2d6d86035ed1c514fd1e627e44",
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1829270
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/MediatR.Contracts.dll",
+          "sha256": "c2601304aa9d15c51a543e1c3300368c64ac38633e7277bb835a04f68ddf6a61",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826744
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/MediatR.dll",
+          "sha256": "856b8a06d82033415ffef0edcac5f38256f1ef0336dbc372609f75b82a333d97",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826743
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll",
+          "sha256": "6aa38a3d01cc3e9bfd6ee5cc7c882f4d0399cfb807e52f19ff458f355a31851b",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826749
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.AspNetCore.Mvc.Testing.dll",
+          "sha256": "7e723731f8e33a1b4f2468fb300ca8adb414add46955523bf106153fd193136e",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826725
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.AspNetCore.OpenApi.dll",
+          "sha256": "ed704f63de95981f91ded8d0cc7642ad73c455b54e741b18dd42e9e44e60c51f",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826750
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.AspNetCore.SignalR.StackExchangeRedis.dll",
+          "sha256": "10ccc62ca65bc2e202fa5d8b1714093c6320cc6a8dcef164c3656047cb609991",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826711
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.AspNetCore.TestHost.dll",
+          "sha256": "83ac5277116768a9074df77b570ccfe743e3859bf66c414bed6f4000d8aefed0",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826710
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Bcl.AsyncInterfaces.dll",
+          "sha256": "5705d245072d3eb78400547b32147dbb6e2c8b02ba8bda76729798f5efdeaecb",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826738
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.Compliance.Abstractions.dll",
+          "sha256": "e4df4358dd2dd57be430a9e7f220bc49bef26ab00007c732605c0defc207e065",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826757
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.Diagnostics.ExceptionSummarization.dll",
+          "sha256": "6ae3665434f016222e9d75a54a44a62d01c412ef63b5d7462c3a22ad9757c4d8",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826760
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.Http.Resilience.dll",
+          "sha256": "b28b929922d42b1c979ee403f454387f4522bf973c149753f5300ae959d70531",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826761
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.ServiceDiscovery.Abstractions.dll",
+          "sha256": "58ac3be03e3c4ae03486b8ec619ca769bf94befd38f432d61b32b1fba8d7d193",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826764
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.ServiceDiscovery.dll",
+          "sha256": "3646d627b519e017c3392219b17416b04377c815a918248a503557fd40db9e0a",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826763
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.Telemetry.Abstractions.dll",
+          "sha256": "57af8ce079eb3bcec63fd176f1034012f8199c44d38f10168438cc78364a9030",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826765
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Extensions.TimeProvider.Testing.dll",
+          "sha256": "3b3a98527ab54b2c36d93007e202cf841729448544b89316e43ed5089b3454fa",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1827381
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.IdentityModel.Abstractions.dll",
+          "sha256": "46f14d67dfc1894eb24d80282895526db25a854af227eee2fa06a0383fd09e4c",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826766
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.IdentityModel.JsonWebTokens.dll",
+          "sha256": "b48515aeaa4a8fadc5fcacb45978c808a4d5bbffaf74f8894cc57c0769a9fb9e",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826767
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.IdentityModel.Logging.dll",
+          "sha256": "90b6fa70f28a3b7711fe95aa30a0c5551f1e6aa28565187aa7b3681194215c84",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826768
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll",
+          "sha256": "cf37440c96bd178f2676867b77fa651df001b56b2f42be99b08e5226b3ab4918",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826770
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.IdentityModel.Protocols.dll",
+          "sha256": "dd8823215cada7e1c7fe5d2a3b06395fb906baa5f79ec00411ad6a1f80585f60",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826769
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.IdentityModel.Tokens.dll",
+          "sha256": "84409b8c3a52313fe4f4f621fce39544f42074109e870ac2631e627c8b70210f",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826771
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.OpenApi.dll",
+          "sha256": "dae97412c5804da0906639014cb6bd73b2cf37ad02da95437ded59578946e6e9",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826773
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Microsoft.Testing.Platform.dll",
+          "sha256": "a3319a6bb4bdfb1df2e531765c5a48c2b48de1fe7cf4dcd932c9b82f114107da",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826785
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/NSubstitute.dll",
+          "sha256": "a67480457f480fa835ffe8c042b07420e5c78bd3049730d5b10ab834a5832bae",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826815
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Api.ProviderBuilderExtensions.dll",
+          "sha256": "d9248458b433d3317f3618b5d9fa9d776bd88a78220af2faab06f6416208094b",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826818
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Api.dll",
+          "sha256": "43a7484269df9efae3a063198c42683a631d90c278940ee3cc11435719481ced",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826817
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Exporter.OpenTelemetryProtocol.dll",
+          "sha256": "02a75ffefd0ca9f79043af39c73d44e3773a03dca8a9eaa8c49d465197bf6b45",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826819
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Extensions.Hosting.dll",
+          "sha256": "617ca46b1297625de495f3e5a903701c19bef0f727de2e46c60c3246f898cb5d",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826820
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Instrumentation.AspNetCore.dll",
+          "sha256": "10398265b32699e6f1087ade9c11ee5e331a9975b87b530dc418946fe4612fab",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826821
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Instrumentation.Http.dll",
+          "sha256": "01d9c4411bd9d6c3e3223929c680cff1703f5bf2d4289baaac91e3b41bca70d2",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1825117
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.Instrumentation.Runtime.dll",
+          "sha256": "fc12bb2bafc01952b83e0d452e717a6f466bd713453d6d95f0d50a4696f15799",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826822
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/OpenTelemetry.dll",
+          "sha256": "b780e5e7ec6b730b3207b5921395fe616070f13d0b0e63ad662131be4703a30b",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826816
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Polly.Core.dll",
+          "sha256": "37762ea6fcf05154685b0a616461705c837c2f07d98e4037dc3a0e4b4c186ea5",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826823
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Polly.Extensions.dll",
+          "sha256": "8adac7a20cd056b9a8623efb6e6f9b99a82e18d3c7b7f6c788f7fc4b20ce5f18",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826824
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Polly.RateLimiting.dll",
+          "sha256": "afe3042cd4062438857d42880623845f32575375f460fd1ac07f705ea0211804",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826825
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Shouldly.dll",
+          "sha256": "498dad657f324ab068e800d5711ae36feb4af4ba9a572eb941197e2fb677549d",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826827
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Swashbuckle.AspNetCore.SwaggerUI.dll",
+          "sha256": "e206aa659d72850c18102facaf0a12d946aa9a1b70b089fdf23b2853b6694e65",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826875
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/System.IdentityModel.Tokens.Jwt.dll",
+          "sha256": "593c82287b671e9cceefaf10c51df96793f6db30f9cfa60daabaaf80474670bf",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826831
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/YamlDotNet.dll",
+          "sha256": "d618138109a40e4a7250e49e2abad8c450e3636bee18d7499ab231e37fa9150a",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826840
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/xunit.v3.assert.dll",
+          "sha256": "ba29b691b762dbb1cd5597e8eea036a8e40b51848626b8d63131f935d41ec1f4",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1825583
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/xunit.v3.common.dll",
+          "sha256": "9cf3cd23eefabd397c0eb86e705a8e620f459715e2b3e0428db07ff68e53bf39",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826835
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/xunit.v3.core.dll",
+          "sha256": "ac165a05487a95a1d5c163bb08e81ae15b4f51c7d7fbb23f1c5fd55254b7e056",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826837
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/xunit.v3.mtp-v2.dll",
+          "sha256": "734d5b7650cd8e575d675cfdeca99519c51ebf7720552f14981fe83c3afad58b",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826836
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/xunit.v3.runner.common.dll",
+          "sha256": "4070293988b67cb44ac29647abb68188b528e1b29ab846f0223cdaff9c12a789",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826838
+        },
+        {
+          "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/xunit.v3.runner.inproc.console.dll",
+          "sha256": "19daaa378a3c0eea354434ca6dc3a38a91cc9b88507ae18b6c1e7ae7bc38a480",
+          "pdb_sha256": null,
+          "device_major": 8,
+          "device_minor": 48,
+          "inode": 1826839
+        }
+      ],
+      "identity_unchanged_during_capture": true
+    }
+  ]
+}

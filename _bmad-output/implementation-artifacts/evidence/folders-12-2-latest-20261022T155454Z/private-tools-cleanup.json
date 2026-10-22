@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "source_checks": [
+    {
+      "path": "/tmp/eventstore-gates-scanner-1l6o0i8f/Program.cs",
+      "sha256": "0b22597a072d4c4d502e25ffbc3d8c67b0f6bec2e7c24ad5139ab75ef80a83ad"
+    },
+    {
+      "path": "/tmp/eventstore-gates-scanner-1l6o0i8f/Scanner.csproj",
+      "sha256": "38e201f047792df530db8c7d157c2b6b19d1ed2e4134dba5da5c59e97d3b0da2"
+    },
+    {
+      "path": "/tmp/folders-observer-review/observer.py",
+      "sha256": "d23f2345648474a4859fb353dd53bcc1c7b01d2a957fc1b83a1211c1f534c2ec"
+    },
+    {
+      "path": "/tmp/folders-observer-review/tests.py",
+      "sha256": "6573aa0b99e84aacc82d97753c22ca1d2ace072ded63445b582e5afc7dd64abb"
+    }
+  ],
+  "files_sha256": {
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/Program.cs": "0b22597a072d4c4d502e25ffbc3d8c67b0f6bec2e7c24ad5139ab75ef80a83ad",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/Scanner.csproj": "38e201f047792df530db8c7d157c2b6b19d1ed2e4134dba5da5c59e97d3b0da2",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/bin/Debug/net10.0/Scanner": "7670f1a9363761ed15fc50b0be0a1729935537f895306d47d3434f59cd86de9f",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/bin/Debug/net10.0/Scanner.deps.json": "33a618045091a47ed038e2c3dfae55228111ad7e378bdeed8b36ee08f5357a93",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/bin/Debug/net10.0/Scanner.dll": "1aadafaef608efca82094ddfcc30efd05eb658bca21431a1697cacebb6ee071b",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/bin/Debug/net10.0/Scanner.pdb": "edf9cfead08dd7f357fd0dd556bce70a85c7c68de3579802c984d4b695a5a266",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/bin/Debug/net10.0/Scanner.runtimeconfig.json": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs": "f79c1ad9a9fc76110b3655f5bfb5ff4e3168e9addceff05b937c0796f0ec34eb",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.AssemblyInfo.cs": "58e16a719f9ffce9084f287308bb60170003c586f9820071e6e65d730fcb9dec",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.AssemblyInfoInputs.cache": "7d7a60aa797da8d46a544e64cd04d4e234c535756e1a81b437544d164e25f5d3",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.GeneratedMSBuildEditorConfig.editorconfig": "29969e0e48a6b77d3b80a49439cc1523dc09a7952cfb51a9c9f214ea0c20326a",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.GlobalUsings.g.cs": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.assets.cache": "90de07100138c6af52ffcec1808d117362555b730b48628345bcb3781bda4c04",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.csproj.CoreCompileInputs.cache": "8bfca76c231e41a3d84048dc30c01567973e7ee019c6287ddb6cf871d3aaecb1",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.csproj.FileListAbsolute.txt": "cf2ba83b7731c12420dbff5301b66b086aeab04c3221b4dd1e323582b2c363e8",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.dll": "1aadafaef608efca82094ddfcc30efd05eb658bca21431a1697cacebb6ee071b",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.genruntimeconfig.cache": "e339f60fbd80b478ae0527ecf26d1903a1955f5f1d3cc714375200f44c0dd0c5",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/Scanner.pdb": "edf9cfead08dd7f357fd0dd556bce70a85c7c68de3579802c984d4b695a5a266",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/apphost": "7670f1a9363761ed15fc50b0be0a1729935537f895306d47d3434f59cd86de9f",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/ref/Scanner.dll": "a4ad717ad706fb241df55ee0bb28be9230b3d3da995f960c738c1738a88ffa01",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Debug/net10.0/refint/Scanner.dll": "a4ad717ad706fb241df55ee0bb28be9230b3d3da995f960c738c1738a88ffa01",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Scanner.csproj.nuget.dgspec.json": "f8deeb7e40603ae85a3a463e7486ed58ff768f80e664576499bf70aeaec0a334",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Scanner.csproj.nuget.g.props": "4d1a69e994f861f592f56331d2e661611eaa7de95f72cae1da2f0d867d866941",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/Scanner.csproj.nuget.g.targets": "b14461e0cb1be3f77fcf9fe2fdd62889325ca92523d0f606980ed59eb5c4aa1c",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/project.assets.json": "b57befa90398cbe49cff89e3ac66cc11e6adfbaff90c3de37c79505a2bb5ac2c",
+    "/tmp/eventstore-gates-scanner-1l6o0i8f/obj/project.nuget.cache": "de11434f47daf55c0aadd241edf329d71c7ecbfe210dc8c7f2b0aa6ddb08546e",
+    "/tmp/folders-observer-review/observer-review.patch": "567f30752e6ceb9f268b52fa3327c19416bffd9a33342c68d0801b0c42a673aa",
+    "/tmp/folders-observer-review/observer.py": "d23f2345648474a4859fb353dd53bcc1c7b01d2a957fc1b83a1211c1f534c2ec",
+    "/tmp/folders-observer-review/prepared-identities.json": "eb534a402fd58629b6ea71ea199183202b7b5a966d88102cb7f116c593b3d081",
+    "/tmp/folders-observer-review/tests.py": "6573aa0b99e84aacc82d97753c22ca1d2ace072ded63445b582e5afc7dd64abb",
+    "/tmp/folders-observer-review/tools/__pycache__/bounded_worker_observer.cpython-314.pyc": "0548afd0b80458fdcc17929456134bd995b42f5cd0f74288323f97623f4ef196",
+    "/tmp/folders-observer-review/tools/bounded_worker_observer.py": "d23f2345648474a4859fb353dd53bcc1c7b01d2a957fc1b83a1211c1f534c2ec",
+    "/tmp/folders-observer-review/tools/tests/test_bounded_worker_observer.py": "6573aa0b99e84aacc82d97753c22ca1d2ace072ded63445b582e5afc7dd64abb"
+  },
+  "archive_sha256": "fcbc15441601e0a9dab4c12728746c7310aa3f4d50334cce1c88a78930860e17",
+  "directories_absent": {
+    "/tmp/eventstore-gates-scanner-1l6o0i8f": true,
+    "/tmp/folders-observer-review": true
+  },
+  "errors": [],
+  "retained_source_workspaces": [
+    "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+    "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+    "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+    "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z",
+    "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z"
+  ],
+  "retained_source_disposition": "Deliberately retained replay/build inputs; no running fixture is retained."
+}

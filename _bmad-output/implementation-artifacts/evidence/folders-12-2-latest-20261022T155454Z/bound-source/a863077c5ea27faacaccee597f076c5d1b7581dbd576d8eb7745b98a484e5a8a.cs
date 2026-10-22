@@ -1,0 +1,2573 @@
+
+using System.Diagnostics;
+
+using Dapr.Actors;
+using Dapr.Actors.Runtime;
+
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Telemetry;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
+using Hexalith.EventStore.Testing.Fakes;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using NSubstitute;
+
+using Shouldly;
+
+using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+
+namespace Hexalith.EventStore.Server.Tests.Actors;
+/// <summary>
+/// Story 4.2: Drain recovery and end-to-end drain cycle tests.
+/// Verifies ReceiveReminderAsync, DrainUnpublishedEventsAsync, and full drain lifecycle
+/// (AC: #1, #4, #5, #6, #9, #10, #12).
+/// </summary>
+public class EventDrainRecoveryTests {
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
+        IEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateActor(
+        string actorId = "test-tenant:test-domain:agg-001",
+        IActorStateManager? stateManager = null,
+        ICommandStatusStore? statusStore = null) {
+        stateManager ??= Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        statusStore ??= Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId(actorId) });
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
+
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        return (actor, stateManager, logger, eventPublisher, statusStore);
+    }
+
+    private static (AggregateActor Actor, IActorStateManager StateManager, ILogger<AggregateActor> Logger,
+        IEventPublisher EventPublisher, ICommandStatusStore StatusStore, ActorTimerManager TimerManager) CreateActorWithTimerManager(
+        string actorId = "test-tenant:test-domain:agg-001",
+        IActorStateManager? stateManager = null) {
+        stateManager ??= Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId(actorId), TimerManager = timerManager });
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, new NoOpEventPayloadProtectionService(), statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()), Substitute.For<IDeadLetterPublisher>());
+
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        return (actor, stateManager, logger, eventPublisher, statusStore, timerManager);
+    }
+
+    private static (AggregateActor Actor, InMemoryStateManager StateManager, IDomainServiceInvoker Invoker, FakeEventPublisher EventPublisher, ICommandStatusStore StatusStore) CreateInMemoryActor(
+        ICommandStatusStore statusStore,
+        InMemoryStateManager stateManager)
+    {
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        var eventPublisher = new FakeEventPublisher();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId("test-tenant:test-domain:agg-001") });
+        var actor = new AggregateActor(
+            host, logger, invoker, new FakeSnapshotManager(), new NoOpEventPayloadProtectionService(),
+            statusStore, eventPublisher, Options.Create(new EventDrainOptions()), Options.Create(new BackpressureOptions()),
+            Substitute.For<IDeadLetterPublisher>());
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+        _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(DomainResult.NoOp());
+        return (actor, stateManager, invoker, eventPublisher, statusStore);
+    }
+
+    private static UnpublishedEventsRecord CreateDrainRecord(
+        string correlationId = "corr-drain",
+        int eventCount = 2,
+        int retryCount = 0,
+        bool isRejection = false,
+        string? messageId = null) => new(
+        correlationId,
+        StartSequence: 1,
+        EndSequence: eventCount,
+        EventCount: eventCount,
+        CommandType: "CreateOrder",
+        IsRejection: isRejection,
+        FailedAt: DateTimeOffset.UtcNow,
+        RetryCount: retryCount,
+        LastFailureReason: "Pub/sub unavailable",
+        MessageId: messageId ?? correlationId, CausationId: "cause-drain");
+
+    /// <summary>
+    /// Seeds the persisted event range with distinct, valid stored message IDs.
+    /// </summary>
+    private static void ConfigureEventsInState(
+        IActorStateManager stateManager,
+        int eventCount,
+        string correlationId = "corr-drain",
+        int startSequence = 1,
+        string? causationId = null) {
+        int endSequence = startSequence + eventCount - 1;
+        var metadata = new AggregateMetadata(endSequence, DateTimeOffset.UtcNow, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+
+        for (int seq = startSequence; seq <= endSequence; seq++) {
+            var evt = new EventEnvelope(
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                correlationId, causationId ?? "cause-drain", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                [1, 2, 3], null);
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, evt));
+        }
+    }
+
+    private static void ConfigureThreeEventDrainWithMissingSequence(
+        IActorStateManager stateManager,
+        int missingSequence,
+        string correlationId = "corr-drain",
+        int startSequence = 10) {
+        const int eventCount = 3;
+        int endSequence = startSequence + eventCount - 1;
+        for (int seq = startSequence; seq <= endSequence; seq++) {
+            if (seq == missingSequence) {
+                continue;
+            }
+
+            var evt = new EventEnvelope(
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                correlationId, "cause-drain", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                [1, 2, 3], null);
+            _ = stateManager.TryGetStateAsync<EventEnvelope>(
+                $"test-tenant:test-domain:agg-001:events:{seq}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, evt));
+        }
+    }
+
+    private static async Task AssertDrainIntegrityFailureAsync(
+        IActorStateManager stateManager,
+        IEventPublisher eventPublisher,
+        ActorTimerManager timerManager,
+        string expectedRedactedFailureMustNotContain,
+        int expectedRetryCount = 1,
+        string correlationId = "corr-drain") {
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+
+        await stateManager.DidNotReceive().RemoveStateAsync(
+            $"drain:{correlationId}", Arg.Any<CancellationToken>());
+
+        await timerManager.DidNotReceive().UnregisterReminderAsync(
+            Arg.Any<ActorReminderToken>());
+
+        await stateManager.DidNotReceive().SetStateAsync(
+            $"drain:{correlationId}", Arg.Any<UnpublishedEventsRecord>(), Arg.Any<CancellationToken>());
+        await stateManager.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+
+        await stateManager.DidNotReceive().SetStateAsync(
+            "pending_command_count",
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static Task<Activity> CaptureDrainActivityAsync(Func<Task> action)
+        => CaptureDrainActivityAsync(correlationId: "corr-drain", action);
+
+    private static async Task<Activity> CaptureDrainActivityAsync(string correlationId, Func<Task> action) {
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener {
+            ShouldListenTo = source => source.Name == EventStoreActivitySource.SourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity => {
+                // ActivitySource.AddActivityListener registers the listener process-globally; xUnit collections
+                // run in parallel by default, so filter strictly by the operation name AND the correlationId
+                // tag set by AggregateActor before action() runs. This prevents cross-test capture between
+                // EventDrainRecoveryTests and Dw8DrainReasonClassifierTests when both fire drain activities.
+                if (activity.OperationName == EventStoreActivitySource.EventsDrain
+                    && string.Equals(
+                        activity.GetTagItem(EventStoreActivitySource.TagCorrelationId)?.ToString(),
+                        correlationId,
+                        StringComparison.Ordinal)) {
+                    stopped.Add(activity);
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await action().ConfigureAwait(false);
+
+        stopped.Count.ShouldBe(1);
+        return stopped[0];
+    }
+
+    // --- Task 7.2: Drain succeeds, events re-published ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_EventsRePublished() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(e => e.Count == 2),
+            "corr-drain",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+    }
+
+    // --- Task 7.3: Drain succeeds, reminder unregistered ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_RecordRemoved() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- record removed from state
+        await stateManager.Received(1).RemoveStateAsync(
+            "drain:corr-drain", Arg.Any<CancellationToken>());
+
+        // SaveStateAsync called to commit removal
+        await stateManager.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_ReminderUnregistered() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await timerManager.Received().UnregisterReminderAsync(
+            Arg.Any<ActorReminderToken>());
+    }
+
+    [Theory]
+    [InlineData("valid", 8L)]
+    [InlineData("legacy", 8L)]
+    [InlineData("wrong-identity", null)]
+    [InlineData("wrong-scope", null)]
+    [InlineData("wrong-sequence", null)]
+    [InlineData("wrong-correlation", null)]
+    [InlineData("wrong-causation", null)]
+    [InlineData("missing-idempotency", null)]
+    [InlineData("record-wrong-causation", null)]
+    [InlineData("record-carried-causation", 8L)]
+    [InlineData("record-rejection", null)]
+    [InlineData("wrong-count", null)]
+    [InlineData("missing-command-type", null)]
+    [InlineData("record-wrong-identity", null)]
+    [InlineData("record-legacy", 8L)]
+    [InlineData("record-missing-command-type", null)]
+    [InlineData("wrong-domain", null)]
+    [InlineData("wrong-aggregate", null)]
+    public async Task Durable_drain_proof_uses_its_verified_range_instead_of_the_aggregate_head(string scenario, long? expected)
+    {
+        (AggregateActor actor, IActorStateManager state, _, IEventPublisher publisher, ICommandStatusStore store) = CreateActor();
+        bool recordCarriesCausation = scenario is "record-carried-causation"
+            or "record-wrong-identity" or "record-legacy" or "record-missing-command-type" or "record-rejection";
+        UnpublishedEventsRecord record = CreateDrainRecord(eventCount: 2) with {
+            StartSequence = 7, EndSequence = 8,
+            IsRejection = scenario is "record-rejection",
+            MessageId = scenario is "legacy" or "record-legacy" ? null
+                : scenario is "wrong-identity" or "record-wrong-identity" ? "other" : "command-8",
+            EventCount = scenario is "wrong-count" ? 3 : 2,
+            CommandType = scenario is "missing-command-type" or "record-missing-command-type" ? "" : "CreateOrder",
+            CausationId = scenario switch {
+                "record-wrong-causation" => "other",
+                _ when recordCarriesCausation => "cause-drain",
+                _ => null,
+            },
+        };
+        state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(state, 2, startSequence: 7, causationId: "cause-drain");
+        if (scenario is not "missing-idempotency" && (!recordCarriesCausation || scenario == "record-legacy"))
+        {
+            var idempotency = new IdempotencyRecord("cause-drain", record.CorrelationId, true, null,
+                DateTimeOffset.UtcNow, EventCount: 2, MessageId: "command-8", CommandType: "CreateOrder",
+                Disposition: IdempotencyRecordDisposition.Recoverable);
+            // The actor's Recoverable -> Terminal staging must be visible to advisory validation.
+            state.TryGetStateAsync<IdempotencyRecord>("idempotency:command-8", Arg.Any<CancellationToken>())
+                .Returns(_ => new ConditionalValue<IdempotencyRecord>(true, idempotency));
+            state.When(manager => manager.SetStateAsync("idempotency:command-8", Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>()))
+                .Do(call => idempotency = call.ArgAt<IdempotencyRecord>(1));
+        }
+        state.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, new AggregateMetadata(30, DateTimeOffset.UtcNow, null)));
+        if (scenario is "wrong-scope" or "wrong-domain" or "wrong-aggregate" or "wrong-sequence" or "wrong-correlation" or "wrong-causation")
+        {
+            EventEnvelope mismatched = new(Guid.NewGuid().ToString(), scenario is "wrong-aggregate" ? "other" : "agg-001", "test-aggregate", scenario is "wrong-scope" ? "other" : "test-tenant",
+                scenario is "wrong-domain" ? "other" : "test-domain", scenario is "wrong-sequence" ? 6 : 7, 0, DateTimeOffset.UtcNow,
+                scenario is "wrong-correlation" ? "other" : "corr-drain",
+                scenario is "wrong-causation" ? "other" : "cause-drain",
+                "user", "1.0.0", "OrderCreated", 1, "json", [1], null);
+            state.TryGetStateAsync<EventEnvelope>("test-tenant:test-domain:agg-001:events:7", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, mismatched));
+        }
+        publisher.PublishEventsAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+        await actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero);
+        if (expected is null && scenario != "record-rejection")
+        {
+            // Invalid durable range/count is rejected before publication and must never report committed completion.
+            await store.DidNotReceive().WriteStatusAsync(Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed), Arg.Any<CancellationToken>());
+            _ = await publisher.DidNotReceive().PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+            return;
+        }
+        CommandStatus expectedStatus = scenario is "record-rejection" ? CommandStatus.Rejected : CommandStatus.Completed;
+        CommandStatusRecord terminal = store.ReceivedCalls().Select(call => call.GetArguments())
+            .Where(args => args.Length > 2 && args[2] is CommandStatusRecord status && status.Status == expectedStatus)
+            .Select(args => (CommandStatusRecord)args[2]!).Single();
+        terminal.CommittedEventSequence.ShouldBe(expected);
+        terminal.Domain.ShouldBe("test-domain");
+        await state.Received().SaveStateAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("disposition")]
+    [InlineData("correlation")]
+    [InlineData("event-count")]
+    [InlineData("accepted")]
+    [InlineData("message")]
+    [InlineData("command-type")]
+    [InlineData("state-fault")]
+    public async Task Legacy_drain_proof_withholds_sequence_when_idempotency_identity_does_not_match(string scenario)
+    {
+        (AggregateActor actor, IActorStateManager state, _, IEventPublisher publisher, ICommandStatusStore store) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(eventCount: 2) with {
+            StartSequence = 7, EndSequence = 8, MessageId = "command-8", CausationId = null,
+        };
+        state.TryGetStateAsync<UnpublishedEventsRecord>("drain:command-8", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(state, 2, startSequence: 7, causationId: "cause-drain");
+        if (scenario is "state-fault")
+        {
+            int reads = 0;
+            state.TryGetStateAsync<IdempotencyRecord>("idempotency:command-8", Arg.Any<CancellationToken>())
+                .Returns(_ => Interlocked.Increment(ref reads) == 1
+                    ? Task.FromException<ConditionalValue<IdempotencyRecord>>(
+                        new InvalidOperationException("idempotency state unavailable"))
+                    : Task.FromResult(new ConditionalValue<IdempotencyRecord>(false, default!)));
+        }
+        else
+        {
+            var idempotency = new IdempotencyRecord(
+                "cause-drain",
+                scenario is "correlation" ? "other" : record.CorrelationId,
+                scenario is not "accepted",
+                null,
+                DateTimeOffset.UtcNow,
+                EventCount: scenario is "event-count" ? 1 : 2,
+                MessageId: scenario is "message" ? "other" : "command-8",
+                CommandType: scenario is "command-type" ? "DeleteOrder" : "CreateOrder",
+                Disposition: scenario is "disposition"
+                    ? IdempotencyRecordDisposition.Terminal
+                    : IdempotencyRecordDisposition.Recoverable);
+            state.TryGetStateAsync<IdempotencyRecord>("idempotency:command-8", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<IdempotencyRecord>(true, idempotency));
+        }
+
+        publisher.PublishEventsAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        if (scenario == "state-fault")
+        {
+            await Should.ThrowAsync<DrainStateStoreException>(() => actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero));
+        }
+        else
+        {
+            await actor.ReceiveReminderAsync("drain-unpublished-command-8", [], TimeSpan.Zero, TimeSpan.Zero);
+        }
+
+        await store.DidNotReceive().WriteStatusAsync(Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<CommandStatusRecord>(), Arg.Any<CancellationToken>());
+        await state.DidNotReceive().SaveStateAsync(Arg.Any<CancellationToken>());
+        await state.DidNotReceive().RemoveStateAsync("drain:command-8", Arg.Any<CancellationToken>());
+        _ = await publisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>());
+
+    }
+
+    [Fact]
+    public async Task Stale_handoff_drain_reports_committed_sequence_without_an_idempotency_record()
+    {
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        (AggregateActor actor, _, _, _, _) = CreateInMemoryActor(statuses, state);
+        const string correlationId = "corr-shared";
+        var checkpoint = new PipelineState(
+            correlationId, CommandStatus.EventsStored, "CreateOrder", DateTimeOffset.UtcNow.AddMinutes(-5),
+            EventCount: 2, RejectionEventType: null, MessageId: "msg-stale", CausationId: "cause-stale",
+            StartSequence: 1, EndSequence: 2);
+        await state.SetStateAsync($"test-tenant:test-domain:agg-001:pipeline:{correlationId}", checkpoint).ConfigureAwait(true);
+        await state.SetStateAsync("test-tenant:test-domain:agg-001:metadata",
+            new AggregateMetadata(2, DateTimeOffset.UtcNow, null)).ConfigureAwait(true);
+        for (int sequence = 1; sequence <= 2; sequence++)
+        {
+            await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", new EventEnvelope(
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+                DateTimeOffset.UtcNow, correlationId, "cause-stale", "system", "1.0.0", "OrderCreated", 1, "json", [1], null))
+                .ConfigureAwait(true);
+        }
+
+        await state.SaveStateAsync().ConfigureAwait(true);
+        CommandEnvelope incoming = new(
+            MessageId: "msg-incoming", TenantId: "test-tenant", Domain: "test-domain", AggregateId: "agg-001",
+            CommandType: "CreateOrder", Payload: [1], CorrelationId: correlationId, CausationId: "cause-incoming",
+            UserId: "system", Extensions: null);
+        _ = await actor.ProcessCommandAsync(incoming).ConfigureAwait(true);
+
+        var drain = (UnpublishedEventsRecord)state.CommittedState["drain:msg-stale"];
+        drain.CausationId.ShouldBe("cause-stale");
+        drain.MessageId.ShouldBe("msg-stale");
+        state.CommittedState.ContainsKey("idempotency:msg-stale").ShouldBeFalse();
+
+        await actor.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName("msg-stale"), [], TimeSpan.Zero, TimeSpan.Zero)
+            .ConfigureAwait(true);
+
+        CommandStatusRecord completed = (await statuses.ReadStatusAsync("test-tenant", "msg-stale").ConfigureAwait(true)).ShouldNotBeNull();
+        completed.Status.ShouldBe(CommandStatus.Completed);
+        completed.CommittedEventSequence.ShouldBe(2);
+        completed.Domain.ShouldBe("test-domain");
+    }
+
+    [Fact]
+    public async Task Resume_publish_failure_drain_reports_committed_sequence_without_an_idempotency_record()
+    {
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeEventPublisher publisher, _) = CreateInMemoryActor(statuses, state);
+        const string messageId = "msg-resume-fail";
+        const string correlationId = "corr-resume-fail";
+        const string causationId = "cause-resume-fail";
+        var checkpoint = new PipelineState(
+            correlationId, CommandStatus.EventsStored, "CreateOrder", DateTimeOffset.UtcNow.AddMinutes(-5),
+            EventCount: 2, RejectionEventType: null, MessageId: messageId, CausationId: causationId,
+            StartSequence: 1, EndSequence: 2);
+        await state.SetStateAsync($"test-tenant:test-domain:agg-001:pipeline:{correlationId}", checkpoint).ConfigureAwait(true);
+        await state.SetStateAsync("test-tenant:test-domain:agg-001:metadata",
+            new AggregateMetadata(2, DateTimeOffset.UtcNow, null)).ConfigureAwait(true);
+        for (int sequence = 1; sequence <= 2; sequence++)
+        {
+            await state.SetStateAsync($"test-tenant:test-domain:agg-001:events:{sequence}", new EventEnvelope(
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+                DateTimeOffset.UtcNow, correlationId, causationId, "system", "1.0.0", "OrderCreated", 1, "json", [1], null))
+                .ConfigureAwait(true);
+        }
+
+        await state.SaveStateAsync().ConfigureAwait(true);
+        publisher.SetupFailure();
+        CommandEnvelope incoming = new(
+            MessageId: messageId, TenantId: "test-tenant", Domain: "test-domain", AggregateId: "agg-001",
+            CommandType: "CreateOrder", Payload: [1], CorrelationId: correlationId, CausationId: causationId,
+            UserId: "system", Extensions: null);
+        CommandProcessingResult failed = await actor.ProcessCommandAsync(incoming).ConfigureAwait(true);
+
+        failed.Accepted.ShouldBeTrue();
+        _ = await invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+        var drain = (UnpublishedEventsRecord)state.CommittedState[$"drain:{messageId}"];
+        drain.CausationId.ShouldBe(causationId);
+        state.CommittedState.ContainsKey($"idempotency:{messageId}").ShouldBeTrue();
+        await state.RemoveStateAsync($"idempotency:{messageId}").ConfigureAwait(true);
+        await state.SaveStateAsync().ConfigureAwait(true);
+        publisher.ClearFailure();
+
+        await actor.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName(messageId), [], TimeSpan.Zero, TimeSpan.Zero)
+            .ConfigureAwait(true);
+
+        CommandStatusRecord completed = (await statuses.ReadStatusAsync("test-tenant", messageId).ConfigureAwait(true)).ShouldNotBeNull();
+        completed.Status.ShouldBe(CommandStatus.Completed);
+        completed.CommittedEventSequence.ShouldBe(2);
+        completed.Domain.ShouldBe("test-domain");
+    }
+
+    [Fact]
+    public async Task Legacy_drain_proof_accepts_the_idempotency_record_written_by_publish_failure()
+    {
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        (AggregateActor actor, _, IDomainServiceInvoker invoker, FakeEventPublisher publisher, _) = CreateInMemoryActor(statuses, state);
+        invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(DomainResult.Success([new DrainProofEvent(), new DrainProofEvent()]));
+        publisher.SetupFailure();
+        CommandEnvelope command = new(
+            MessageId: "msg-publish-fail", TenantId: "test-tenant", Domain: "test-domain", AggregateId: "agg-001",
+            CommandType: "CreateOrder", Payload: [1, 2, 3], CorrelationId: "corr-publish-fail",
+            CausationId: "cause-publish-fail", UserId: "system", Extensions: null);
+
+        CommandProcessingResult failed = await actor.ProcessCommandAsync(command).ConfigureAwait(true);
+
+        failed.Accepted.ShouldBeTrue();
+        var drain = (UnpublishedEventsRecord)state.CommittedState[$"drain:{command.MessageId}"];
+        drain.CausationId.ShouldBe("cause-publish-fail");
+        var written = (IdempotencyRecord)state.CommittedState[$"idempotency:{command.MessageId}"];
+        written.Disposition.ShouldBe(IdempotencyRecordDisposition.Recoverable);
+        written.CausationId.ShouldBe("cause-publish-fail");
+        written.MessageId.ShouldBe(command.MessageId);
+        written.CommandType.ShouldBe(command.CommandType);
+        written.CorrelationId.ShouldBe(command.CorrelationId);
+        written.Accepted.ShouldBeTrue();
+        written.EventCount.ShouldBe(2);
+        await state.SetStateAsync($"drain:{command.MessageId}", drain with { CausationId = null }).ConfigureAwait(true);
+        await state.SaveStateAsync().ConfigureAwait(true);
+        publisher.ClearFailure();
+
+        await actor.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName(command.MessageId), [], TimeSpan.Zero, TimeSpan.Zero)
+            .ConfigureAwait(true);
+
+        CommandStatusRecord completed = (await statuses.ReadStatusAsync(command.TenantId, command.MessageId).ConfigureAwait(true))
+            .ShouldNotBeNull();
+        completed.Status.ShouldBe(CommandStatus.Completed);
+        completed.CommittedEventSequence.ShouldBe(2);
+        state.CommittedState.ShouldNotContainKey($"drain:{command.MessageId}");
+    }
+
+    /// <summary>Publishes drain proof only after committed recovery cleanup, preserving it after actor recreation.</summary>
+    [Fact]
+    public async Task DrainProofObservesDurableTerminalCleanupAndSurvivesRecreation()
+    {
+        const string messageId = "command-durable-drain";
+        const string identity = "test-tenant:test-domain:agg-001";
+        var state = new InMemoryStateManager();
+        var statuses = new InMemoryCommandStatusStore();
+        UnpublishedEventsRecord record = CreateDrainRecord(messageId: messageId) with
+        {
+            StartSequence = 7,
+            EndSequence = 8,
+        };
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var recoverable = new IdempotencyRecord("cause-drain", record.CorrelationId, true, null, now,
+            EventCount: 2, MessageId: messageId, CommandType: record.CommandType,
+            ExpiresAt: now.AddHours(1), Disposition: IdempotencyRecordDisposition.Recoverable);
+        var events = Enumerable.Range(7, 2).Select(sequence => new EventEnvelope(
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", sequence, 0,
+            now, record.CorrelationId, "cause-drain", "user", "1.0.0", "OrderCreated", 1, "json", [1], null)).ToArray();
+        await state.SetStateAsync($"drain:{messageId}", record).ConfigureAwait(true);
+        await state.SetStateAsync($"idempotency:{messageId}", recoverable).ConfigureAwait(true);
+        await state.SetStateAsync(UnpublishedPublicationIndex.StateKey, new UnpublishedPublicationIndex([
+            new UnpublishedPublicationEntry(messageId, record.CorrelationId, now),
+        ])).ConfigureAwait(true);
+        await state.SetStateAsync("pending_command_count", 1).ConfigureAwait(true);
+        await state.SetStateAsync($"{identity}:metadata", new AggregateMetadata(30, now, null)).ConfigureAwait(true);
+        foreach (EventEnvelope envelope in events)
+        {
+            await state.SetStateAsync($"{identity}:events:{envelope.SequenceNumber}", envelope).ConfigureAwait(true);
+        }
+        await state.SaveStateAsync().ConfigureAwait(true);
+        List<(CommandStatusRecord Status, IReadOnlyDictionary<string, object> State)> completedWrites = [];
+        var observer = new ObservingStatusStore(statuses, status =>
+        {
+            if (status.Status == CommandStatus.Completed)
+            {
+                completedWrites.Add((status, new Dictionary<string, object>(state.CommittedState)));
+            }
+        });
+        (AggregateActor actor, _, _, IEventPublisher publisher, _) = CreateActor(stateManager: state, statusStore: observer);
+        publisher.PublishEventsAsync(Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        await actor.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName(messageId), [], TimeSpan.Zero, TimeSpan.Zero)
+            .ConfigureAwait(true);
+
+        (CommandStatusRecord completed, IReadOnlyDictionary<string, object> committedAtWrite) = completedWrites.ShouldHaveSingleItem();
+        completed.MessageId.ShouldBe(messageId);
+        completed.CorrelationId.ShouldBe(record.CorrelationId);
+        completed.Domain.ShouldBe("test-domain");
+        completed.AggregateId.ShouldBe("agg-001");
+        completed.EventCount.ShouldBe(2);
+        completed.CommittedEventSequence.ShouldBe(8);
+        ((AggregateMetadata)committedAtWrite[$"{identity}:metadata"]).CurrentSequence.ShouldBe(30);
+        committedAtWrite.Values.OfType<EventEnvelope>().OrderBy(envelope => envelope.SequenceNumber).ShouldBe(events);
+        var terminal = (IdempotencyRecord)committedAtWrite[$"idempotency:{messageId}"];
+        terminal.Disposition.ShouldBe(IdempotencyRecordDisposition.Terminal);
+        terminal.MessageId.ShouldBe(messageId);
+        terminal.EventCount.ShouldBe(2);
+        committedAtWrite.ShouldNotContainKey($"drain:{messageId}");
+        ((UnpublishedPublicationIndex)committedAtWrite[UnpublishedPublicationIndex.StateKey]).Entries.ShouldBeEmpty();
+        committedAtWrite["pending_command_count"].ShouldBe(0);
+
+        var recreatedState = new InMemoryStateManager();
+        foreach ((string key, object value) in state.CommittedState)
+        {
+            await recreatedState.SetStateAsync(key, value).ConfigureAwait(true);
+        }
+        await recreatedState.SaveStateAsync().ConfigureAwait(true);
+        (AggregateActor recreated, _, _, IEventPublisher recreatedPublisher, _) = CreateActor(
+            stateManager: recreatedState, statusStore: observer);
+        await recreated.ReceiveReminderAsync(UnpublishedEventsRecord.GetReminderName(messageId), [], TimeSpan.Zero, TimeSpan.Zero)
+            .ConfigureAwait(true);
+
+        completedWrites.ShouldHaveSingleItem();
+        (await statuses.ReadStatusAsync("test-tenant", messageId).ConfigureAwait(true)).ShouldBe(completed);
+        recreatedState.CommittedState[$"idempotency:{messageId}"].ShouldBe(terminal);
+        recreatedState.CommittedState.ShouldNotContainKey($"drain:{messageId}");
+        ((UnpublishedPublicationIndex)recreatedState.CommittedState[UnpublishedPublicationIndex.StateKey]).Entries.ShouldBeEmpty();
+        recreatedState.CommittedState.Values.OfType<EventEnvelope>().OrderBy(envelope => envelope.SequenceNumber).ShouldBe(events);
+        _ = await recreatedPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(), Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>()).ConfigureAwait(true);
+    }
+
+    // --- Task 7.4: Drain succeeds, advisory status updated ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_AdvisoryStatusUpdatedToCompleted() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(isRejection: false);
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await statusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "corr-drain",
+            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.Completed),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- Task 7.5: Drain fails, retry count incremented ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainFails_RetryCountIncremented() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 2);
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Still unavailable"));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await stateManager.Received().SetStateAsync(
+            "drain:corr-drain",
+            Arg.Is<UnpublishedEventsRecord>(r => r.RetryCount == 3 && r.LastFailureReason == "Still unavailable"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainCleanupCommitsThenThrows_CompletesReminderAndStatusSideEffects() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            correlationId: "corr-cleanup-ambiguous",
+            eventCount: 1,
+            messageId: "msg-cleanup-ambiguous");
+        EventEnvelope persistedEvent = new(
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
+            "OrderCreated", 1, "json", [1], null);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["drain:msg-cleanup-ambiguous"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    "msg-cleanup-ambiguous", record.CorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = persistedEvent,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        (AggregateActor actor, _, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore,
+            ActorTimerManager timerManager) = CreateActorWithTimerManager(stateManager: stateManager);
+        _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                record.CorrelationId,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 1, null));
+
+        await actor.ReceiveReminderAsync(
+            "drain-unpublished-msg-cleanup-ambiguous", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        stateManager.CommittedState.ShouldNotContainKey("drain:msg-cleanup-ambiguous");
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
+        await timerManager.Received().UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+        await statusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "msg-cleanup-ambiguous",
+            Arg.Is<CommandStatusRecord>(status => status.Status == CommandStatus.Completed),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainCleanupCommitsThenCancels_PropagatesBeforeExternalSideEffects() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            correlationId: "corr-cleanup-cancel",
+            eventCount: 1,
+            messageId: "msg-cleanup-cancel");
+        EventEnvelope persistedEvent = new(
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
+            "OrderCreated", 1, "json", [1], null);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["drain:msg-cleanup-cancel"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    "msg-cleanup-cancel", record.CorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = persistedEvent,
+        });
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("cleanup canceled"));
+        (AggregateActor actor, _, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore,
+            ActorTimerManager timerManager) = CreateActorWithTimerManager(stateManager: stateManager);
+        _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                record.CorrelationId,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 1, null));
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => actor.ReceiveReminderAsync(
+            "drain-unpublished-msg-cleanup-cancel", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        stateManager.CommittedState.ShouldNotContainKey("drain:msg-cleanup-cancel");
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        await timerManager.DidNotReceive().UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+        await statusStore.DidNotReceiveWithAnyArgs().WriteStatusAsync(default!, default!, default!);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_RetryIncrementCommitsThenThrows_DoesNotSaveTheRecordTwice() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            correlationId: "corr-retry-ambiguous",
+            eventCount: 1,
+            messageId: "msg-retry-ambiguous");
+        EventEnvelope persistedEvent = new(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
+            "OrderCreated", 1, "json", [1], null);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["drain:msg-retry-ambiguous"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    "msg-retry-ambiguous", record.CorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = persistedEvent,
+        });
+        stateManager.FaultAfterCall("SaveState", 1, new InvalidOperationException("commit uncertain"));
+        (AggregateActor actor, _, _, IEventPublisher eventPublisher, _, _) =
+            CreateActorWithTimerManager(stateManager: stateManager);
+        _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                record.CorrelationId,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still unavailable"));
+
+        await actor.ReceiveReminderAsync(
+            "drain-unpublished-msg-retry-ambiguous", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState["drain:msg-retry-ambiguous"])
+            .RetryCount.ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_RetryIncrementCommitsThenCancels_PropagatesWithoutSecondSave() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            correlationId: "corr-retry-cancel",
+            eventCount: 1,
+            messageId: "msg-retry-cancel");
+        EventEnvelope persistedEvent = new(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
+            "OrderCreated", 1, "json", [1], null);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["drain:msg-retry-cancel"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    "msg-retry-cancel", record.CorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = persistedEvent,
+        });
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("retry canceled"));
+        (AggregateActor actor, _, _, IEventPublisher eventPublisher, _, _) =
+            CreateActorWithTimerManager(stateManager: stateManager);
+        _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                record.CorrelationId,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still unavailable"));
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => actor.ReceiveReminderAsync(
+            "drain-unpublished-msg-retry-cancel", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState["drain:msg-retry-cancel"])
+            .RetryCount.ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_RetryIncrementFailsBeforeCommit_RepairsDurableRecordOnce() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            correlationId: "corr-retry-precommit",
+            eventCount: 1,
+            messageId: "msg-retry-precommit");
+        EventEnvelope persistedEvent = new(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
+            "OrderCreated", 1, "json", [1], null);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["drain:msg-retry-precommit"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    "msg-retry-precommit", record.CorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = persistedEvent,
+        });
+        stateManager.FaultOnCall("SaveState", 1, new IOException("pre-commit failure"));
+        (AggregateActor actor, _, _, IEventPublisher eventPublisher, _, _) =
+            CreateActorWithTimerManager(stateManager: stateManager);
+        _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                record.CorrelationId,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still unavailable"));
+
+        await actor.ReceiveReminderAsync(
+            "drain-unpublished-msg-retry-precommit", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState["drain:msg-retry-precommit"])
+            .RetryCount.ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(2);
+        stateManager.Trace.ShouldContain("ClearCache");
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainRetryRemediationFailure_MarksActivityFailed() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            correlationId: "corr-retry-remediation",
+            eventCount: 1,
+            messageId: "msg-retry-remediation");
+        EventEnvelope persistedEvent = new(
+            Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+            DateTimeOffset.UtcNow, record.CorrelationId, record.CausationId!, "user-1", "1.0.0",
+            "OrderCreated", 1, "json", [1], null);
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            ["drain:msg-retry-remediation"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    "msg-retry-remediation", record.CorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = persistedEvent,
+        });
+        stateManager.FaultOnCall("SaveState", 1, new IOException("retry save failed"));
+        stateManager.FaultOnCall("ClearCache", 1, new IOException("discard failed"));
+        (AggregateActor actor, _, _, IEventPublisher eventPublisher, _, _) =
+            CreateActorWithTimerManager(stateManager: stateManager);
+        _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                record.CorrelationId,
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still unavailable"));
+
+        Activity activity = await CaptureDrainActivityAsync(
+            correlationId: record.CorrelationId,
+            async () => _ = await Should.ThrowAsync<ActorStateRemediationException>(
+                () => actor.ReceiveReminderAsync(
+                    "drain-unpublished-msg-retry-remediation", [], TimeSpan.Zero, TimeSpan.Zero)));
+
+        activity.Status.ShouldBe(ActivityStatusCode.Error);
+        activity.StatusDescription.ShouldBe("ActorStateRemediationFailed");
+        activity.GetTagItem("eventstore.failure_reason").ShouldBe("actor_state_remediation_failed");
+        activity.Events.ShouldContain(activityEvent => activityEvent.Name == "exception");
+    }
+
+    // --- Task 7.6: Drain fails, record preserved ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainFails_RecordPreserved() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "unavailable"));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- record NOT removed (only updated)
+        await stateManager.DidNotReceive().RemoveStateAsync(
+            "drain:corr-drain", Arg.Any<CancellationToken>());
+
+        // Updated record saved
+        await stateManager.Received().SetStateAsync(
+            "drain:corr-drain",
+            Arg.Is<UnpublishedEventsRecord>(r => r.RetryCount == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- Task 7.7: Drain fails, reminder continues ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainFails_LogsWarning() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "unavailable"));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- warning logged
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Drain failed")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    /// <summary>
+    /// Story 4.4 amendment: this test previously encoded UNBOUNDED retry -- any RetryCount kept the
+    /// reminder armed. Drain attempts are now capped, so the assertion is only meaningful at the
+    /// boundary: the LAST attempt still below <c>MaxDrainAttempts</c> must keep the reminder armed.
+    /// The at-cap behavior is pinned separately by the exhaustion tests below.
+    /// </summary>
+    [Fact]
+    public async Task ReceiveReminder_DrainFailsOnLastAttemptBelowCap_ReminderContinuesFiring() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
+        UnpublishedEventsRecord record = CreateDrainRecord(
+            retryCount: EventDrainOptions.DefaultMaxDrainAttempts - 1);
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "unavailable"));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- failure path must not unregister reminder
+        await timerManager.DidNotReceive().UnregisterReminderAsync(
+            Arg.Any<ActorReminderToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainPublishFails_ActivityFailureReasonIsStableCode() {
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(stateManager, 2);
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "test-tenant:test-domain:agg-001 unavailable"));
+
+        Activity activity = await CaptureDrainActivityAsync(() =>
+            actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        activity.GetTagItem("eventstore.failure_reason").ShouldBe(DrainReasonCodes.PublishFailed);
+        // Negative assertion: high-cardinality leak guard. The publisher's failure message
+        // contained the aggregate ActorId; that must never reach the activity tag.
+        (activity.GetTagItem("eventstore.failure_reason")?.ToString() ?? string.Empty)
+            .ShouldNotContain("test-tenant:test-domain:agg-001");
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(12)]
+    public async Task ReceiveReminder_DrainRangeMissingPersistedEvent_PreservesRecordAndDoesNotPublish(int missingSequence) {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-drain",
+            StartSequence: 10,
+            EndSequence: 12,
+            EventCount: 3,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "Pub/sub unavailable");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureThreeEventDrainWithMissingSequence(stateManager, missingSequence);
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await AssertDrainIntegrityFailureAsync(
+            stateManager,
+            eventPublisher,
+            timerManager,
+            $"sequence {missingSequence}");
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    public async Task ReceiveReminder_DrainRecordEventCountMismatch_PreservesRecordAndDoesNotPublish(int eventCount) {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _, ActorTimerManager timerManager) = CreateActorWithTimerManager();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-drain",
+            StartSequence: 10,
+            EndSequence: 12,
+            EventCount: eventCount,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "Pub/sub unavailable");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, eventCount: 3, startSequence: 10);
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        await AssertDrainIntegrityFailureAsync(
+            stateManager,
+            eventPublisher,
+            timerManager,
+            "EventCount");
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainRecordEventCountMismatch_ActivityFailureReasonIsStableCode() {
+        (AggregateActor actor, IActorStateManager stateManager, _, _, _, _) = CreateActorWithTimerManager();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-drain",
+            StartSequence: 10,
+            EndSequence: 12,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "Pub/sub unavailable");
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(stateManager, eventCount: 3, startSequence: 10);
+
+        Activity activity = await CaptureDrainActivityAsync(() =>
+            actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        activity.GetTagItem("eventstore.failure_reason").ShouldBe("command_identity_conflict");
+        // Negative assertion: high-cardinality leak guard. The integrity exception message
+        // contained the aggregate ActorId; that must never reach the activity tag.
+        (activity.GetTagItem("eventstore.failure_reason")?.ToString() ?? string.Empty)
+            .ShouldNotContain("test-tenant:test-domain:agg-001");
+    }
+
+    // --- Task 7.8: Orphaned reminder cleanup ---
+
+    [Fact]
+    public async Task ReceiveReminder_RecordNotFound_LogsWarning() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, ILogger<AggregateActor> logger, _, _) = CreateActor();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-orphan", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(false, default!));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-orphan", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- warning about orphaned reminder
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("orphaned reminder")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    // --- Task 7.9: Multiple unpublished drained independently ---
+
+    [Fact]
+    public async Task ReceiveReminder_MultipleUnpublished_DrainedIndependently() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+
+        UnpublishedEventsRecord record1 = CreateDrainRecord(correlationId: "corr-1");
+        UnpublishedEventsRecord record2 = CreateDrainRecord(correlationId: "corr-2") with { StartSequence = 3, EndSequence = 4 };
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record1));
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record2));
+
+        ConfigureEventsInState(stateManager, 2, "corr-1");
+        ConfigureEventsInState(stateManager, 2, "corr-2", startSequence: 3);
+
+        // First drain succeeds
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            "corr-1",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Second drain fails
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            "corr-2",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still down"));
+
+        // Act -- drain first
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-1", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- first record removed
+        await stateManager.Received().RemoveStateAsync(
+            "drain:corr-1", Arg.Any<CancellationToken>());
+
+        // Act -- drain second
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-2", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- second record updated, not removed
+        await stateManager.DidNotReceive().RemoveStateAsync(
+            "drain:corr-2", Arg.Any<CancellationToken>());
+        await stateManager.Received().SetStateAsync(
+            "drain:corr-2",
+            Arg.Is<UnpublishedEventsRecord>(r => r.RetryCount == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_MultipleUnpublished_UsesRecordedSequenceRangePerCorrelation() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+
+        var record1 = new UnpublishedEventsRecord(
+            CorrelationId: "corr-1",
+            StartSequence: 1,
+            EndSequence: 2,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "unavailable", MessageId: "corr-1", CausationId: "cause-drain");
+
+        var record2 = new UnpublishedEventsRecord(
+            CorrelationId: "corr-2",
+            StartSequence: 3,
+            EndSequence: 4,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "unavailable", MessageId: "corr-2", CausationId: "cause-drain");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record1));
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-2", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record2));
+
+        ConfigureEventsInState(stateManager, eventCount: 2, correlationId: "corr-1", startSequence: 1);
+        ConfigureEventsInState(stateManager, eventCount: 2, correlationId: "corr-2", startSequence: 3);
+
+        var publishedSequences = new Dictionary<string, IReadOnlyList<long>>();
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(callInfo => {
+                string correlationId = callInfo.ArgAt<string>(2);
+                IReadOnlyList<EventEnvelope> events = callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1);
+                publishedSequences[correlationId] = events.Select(e => e.SequenceNumber).ToArray();
+                return new EventPublishResult(true, events.Count, null);
+            });
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-1", [], TimeSpan.Zero, TimeSpan.Zero);
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-2", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        publishedSequences["corr-1"].ShouldBe([1L, 2L]);
+        publishedSequences["corr-2"].ShouldBe([3L, 4L]);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_PartialPublishRecovery_RePublishesCompleteRecordedRangeInOrder() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-partial",
+            StartSequence: 1,
+            EndSequence: 3,
+            EventCount: 3,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 1,
+            LastFailureReason: "Connection reset after event 2", MessageId: "corr-partial", CausationId: "cause-drain");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-partial", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, eventCount: 3, correlationId: "corr-partial", startSequence: 1);
+
+        IReadOnlyList<long>? publishedSequences = null;
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Do<IReadOnlyList<EventEnvelope>>(events =>
+                publishedSequences = events.Select(e => e.SequenceNumber).ToArray()),
+            "corr-partial",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-partial", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert
+        _ = publishedSequences.ShouldNotBeNull();
+        publishedSequences.ShouldBe([1L, 2L, 3L]);
+        await stateManager.Received(1).RemoveStateAsync(
+            "drain:corr-partial", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ReminderOverlap_SecondCallIsDuplicateTolerant() {
+        // Simulates actor restart / reminder overlap: drain record is still present for both calls
+        // because cleanup from the first run did not commit before deactivation.
+        // Expected: duplicate publish is allowed; cleanup is attempted on both runs.
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        var record = new UnpublishedEventsRecord(
+            CorrelationId: "corr-overlap",
+            StartSequence: 1,
+            EndSequence: 2,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: 0,
+            LastFailureReason: "initial failure", MessageId: "corr-overlap", CausationId: "cause-drain");
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-overlap", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, eventCount: 2, correlationId: "corr-overlap", startSequence: 1);
+
+        int publishCallCount = 0;
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            "corr-overlap",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(callInfo => {
+                publishCallCount++;
+                return new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null);
+            });
+
+        // Act — reminder fires twice (overlap or actor restart before cleanup committed)
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-overlap", [], TimeSpan.Zero, TimeSpan.Zero);
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-overlap", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert — duplicate publication is expected and allowed; cleanup must be attempted both times
+        publishCallCount.ShouldBe(2);
+        await stateManager.Received(2).RemoveStateAsync("drain:corr-overlap", Arg.Any<CancellationToken>());
+    }
+
+    // --- Task 7.10: Rejection events drained with correct status ---
+
+    [Fact]
+    public async Task ReceiveReminder_RejectionEvents_DrainedAndStatusRejected() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, ICommandStatusStore statusStore) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(isRejection: true);
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- status is Rejected (not Completed)
+        await statusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "corr-drain",
+            Arg.Is<CommandStatusRecord>(r => r.Status == CommandStatus.Rejected),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- Task 7.11: Unknown reminder ignored ---
+
+    [Fact]
+    public async Task ReceiveReminder_UnknownReminder_Ignored() {
+        // Arrange
+        (AggregateActor actor, _, ILogger<AggregateActor> logger, IEventPublisher eventPublisher, _) = CreateActor();
+
+        // Act
+        await actor.ReceiveReminderAsync("some-other-reminder", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- event publisher NOT called
+        _ = await eventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+
+        // Warning logged
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Unknown reminder")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    // --- Task 9.2: Full drain cycle ---
+
+    [Fact]
+    public async Task FullDrainCycle_PublishFails_ThenDrainSucceeds_EventsDelivered() {
+        // Arrange -- simulate full cycle: command → publish fails → drain succeeds
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 0);
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        // Now pub/sub is back
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- events delivered
+        _ = await eventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<IReadOnlyList<EventEnvelope>>(e => e.Count == 2),
+            "corr-drain",
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+
+        // Record removed
+        await stateManager.Received(1).RemoveStateAsync(
+            "drain:corr-drain", Arg.Any<CancellationToken>());
+    }
+
+    // --- Task 9.3: Multiple drain failures then success ---
+
+    [Fact]
+    public async Task FullDrainCycle_MultipleFails_ThenSuccess_RetryCountAccurate() {
+        // Arrange -- record with 3 prior failures
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord(retryCount: 3);
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- success despite previous retries
+        await stateManager.Received(1).RemoveStateAsync(
+            "drain:corr-drain", Arg.Any<CancellationToken>());
+    }
+
+    // --- Task 9.4: Events identical after drain ---
+
+    [Fact]
+    public async Task FullDrainCycle_EventsSameAsOriginal_NoDataLoss() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        IReadOnlyList<EventEnvelope>? publishedEvents = null;
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Do<IReadOnlyList<EventEnvelope>>(e => publishedEvents = e),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- events have correct sequence numbers
+        _ = publishedEvents.ShouldNotBeNull();
+        publishedEvents.Count.ShouldBe(2);
+        publishedEvents[0].SequenceNumber.ShouldBe(1);
+        publishedEvents[1].SequenceNumber.ShouldBe(2);
+        publishedEvents[0].AggregateId.ShouldBe("agg-001");
+        publishedEvents[1].AggregateId.ShouldBe("agg-001");
+    }
+
+    // --- Task 9.5: Topic correct after drain ---
+
+    [Fact]
+    public async Task FullDrainCycle_TopicCorrect_MatchesOriginalPublication() {
+        // Arrange
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord();
+
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+
+        ConfigureEventsInState(stateManager, 2);
+
+        Hexalith.EventStore.Contracts.Identity.AggregateIdentity? publishedIdentity = null;
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Do<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(id => publishedIdentity = id),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        // Act
+        await actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // Assert -- identity reconstructed correctly from actor ID
+        _ = publishedIdentity.ShouldNotBeNull();
+        publishedIdentity.TenantId.ShouldBe("test-tenant");
+        publishedIdentity.Domain.ShouldBe("test-domain");
+        publishedIdentity.AggregateId.ShouldBe("agg-001");
+        publishedIdentity.PubSubTopic.ShouldBe("test-tenant.test-domain.events");
+    }
+
+    // ===================================================================================
+    // Story 4.4: bounded drain attempts, exhaustion dead-lettering, the fail-closed index
+    // capacity branch, drain telemetry identity, and the Recoverable -> Terminal transition.
+    // ===================================================================================
+
+    private const string ExhaustedTrackingId = "msg-exhausted";
+    private const string ExhaustedCorrelationId = "corr-exhausted";
+
+    private sealed record BoundedDrainContext(
+        AggregateActor Actor,
+        IActorStateManager StateManager,
+        IEventPublisher EventPublisher,
+        ICommandStatusStore StatusStore,
+        IDeadLetterPublisher DeadLetterPublisher,
+        ActorTimerManager TimerManager,
+        IDomainServiceInvoker Invoker);
+
+    private static BoundedDrainContext CreateActorForBoundedDrain(
+        EventDrainOptions? drainOptions = null,
+        IActorStateManager? stateManager = null) {
+        stateManager ??= Substitute.For<IActorStateManager>();
+        ILogger<AggregateActor> logger = Substitute.For<ILogger<AggregateActor>>();
+        IDomainServiceInvoker invoker = Substitute.For<IDomainServiceInvoker>();
+        ISnapshotManager snapshotManager = Substitute.For<ISnapshotManager>();
+        ICommandStatusStore statusStore = Substitute.For<ICommandStatusStore>();
+        IEventPublisher eventPublisher = Substitute.For<IEventPublisher>();
+        IDeadLetterPublisher deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+        ActorTimerManager timerManager = Substitute.For<ActorTimerManager>();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions {
+                ActorId = new ActorId("test-tenant:test-domain:agg-001"),
+                TimerManager = timerManager,
+            });
+        var actor = new AggregateActor(
+            host,
+            logger,
+            invoker,
+            snapshotManager,
+            new NoOpEventPayloadProtectionService(),
+            statusStore,
+            eventPublisher,
+            Options.Create(drainOptions ?? new EventDrainOptions()),
+            Options.Create(new BackpressureOptions()),
+            deadLetterPublisher);
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        _ = deadLetterPublisher.PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        return new BoundedDrainContext(
+            actor, stateManager, eventPublisher, statusStore, deadLetterPublisher, timerManager, invoker);
+    }
+
+    private static UnpublishedEventsRecord SeedExhaustedRecord(
+        BoundedDrainContext context,
+        int retryCount,
+        bool deadLettered = false,
+        int pendingCommandCount = 1) {
+        var record = new UnpublishedEventsRecord(
+            ExhaustedCorrelationId,
+            StartSequence: 1,
+            EndSequence: 2,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: retryCount,
+            LastFailureReason: "Pub/sub unavailable",
+            MessageId: ExhaustedTrackingId,
+            DeadLettered: deadLettered, CausationId: "cause-drain");
+
+        _ = context.StateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            $"drain:{ExhaustedTrackingId}", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        _ = context.StateManager.TryGetStateAsync<int>(
+            "pending_command_count", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<int>(true, pendingCommandCount));
+        _ = context.StateManager.TryGetStateAsync<UnpublishedPublicationIndex>(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedPublicationIndex>(
+                true,
+                new UnpublishedPublicationIndex([
+                    new UnpublishedPublicationEntry(ExhaustedTrackingId, ExhaustedCorrelationId, DateTimeOffset.UtcNow),
+                ])));
+
+        ConfigureEventsInState(context.StateManager, eventCount: 2, correlationId: ExhaustedCorrelationId);
+        return record;
+    }
+
+    private static async Task<UnpublishedEventsRecord> SeedExhaustedCommittedStateAsync(
+        FaultInjectingActorStateManager stateManager,
+        bool deadLettered = false) {
+        var record = new UnpublishedEventsRecord(
+            ExhaustedCorrelationId,
+            StartSequence: 1,
+            EndSequence: 2,
+            EventCount: 2,
+            CommandType: "CreateOrder",
+            IsRejection: false,
+            FailedAt: DateTimeOffset.UtcNow,
+            RetryCount: EventDrainOptions.DefaultMaxDrainAttempts,
+            LastFailureReason: "Pub/sub unavailable",
+            MessageId: ExhaustedTrackingId,
+            DeadLettered: deadLettered, CausationId: "cause-drain");
+        await stateManager.SeedCommittedStateAsync(new Dictionary<string, object> {
+            [$"drain:{ExhaustedTrackingId}"] = record,
+            [UnpublishedPublicationIndex.StateKey] = new UnpublishedPublicationIndex([
+                new UnpublishedPublicationEntry(
+                    ExhaustedTrackingId, ExhaustedCorrelationId, DateTimeOffset.UtcNow),
+            ]),
+            ["pending_command_count"] = 1,
+            ["test-tenant:test-domain:agg-001:events:1"] = new EventEnvelope(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 1, 0,
+                DateTimeOffset.UtcNow, record.CorrelationId, "cause-drain", "system", "1.0.0", "Created", 1, "json", [1], null),
+            ["test-tenant:test-domain:agg-001:events:2"] = new EventEnvelope(Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", 2, 0,
+                DateTimeOffset.UtcNow, record.CorrelationId, "cause-drain", "system", "1.0.0", "Created", 1, "json", [1], null),
+        });
+        return record;
+    }
+
+    private static void SeedRecoverableIdempotencyRecord(BoundedDrainContext context, string messageId) {
+        var record = new IdempotencyRecord(
+            CausationId: messageId,
+            CorrelationId: ExhaustedCorrelationId,
+            Accepted: true,
+            ErrorMessage: null,
+            ProcessedAt: DateTimeOffset.UtcNow.AddHours(-1),
+            EventCount: 2,
+            MessageId: messageId,
+            CommandType: "CreateOrder",
+            ExpiresAt: DateTimeOffset.UtcNow.AddHours(23),
+            Disposition: IdempotencyRecordDisposition.Recoverable);
+        _ = context.StateManager.TryGetStateAsync<IdempotencyRecord>(
+            $"idempotency:{messageId}", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AttemptsExhausted_DoesNotPublishAndDeadLettersTheRange() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        _ = await ctx.DeadLetterPublisher.Received(1).PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<DeadLetterMessage>(m =>
+                !m.ReplayEligible
+                && m.ReasonCode == DrainReasonCodes.AttemptsExhausted
+                && m.CorrelationId == ExhaustedCorrelationId
+                && m.Command.MessageId == ExhaustedTrackingId
+                && m.StartSequence == 1
+                && m.EndSequence == 2
+                && m.DrainAttempts == EventDrainOptions.DefaultMaxDrainAttempts),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AttemptsExhausted_MarksRecordDeadLetteredBeforeRemovingIt() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts);
+        var calls = new List<string>();
+        ctx.StateManager
+            .When(s => s.SetStateAsync(
+                $"drain:{ExhaustedTrackingId}",
+                Arg.Is<UnpublishedEventsRecord>(r => r.DeadLettered),
+                Arg.Any<CancellationToken>()))
+            .Do(_ => calls.Add("mark"));
+        ctx.StateManager
+            .When(s => s.RemoveStateAsync($"drain:{ExhaustedTrackingId}", Arg.Any<CancellationToken>()))
+            .Do(_ => calls.Add("remove"));
+
+        // The SaveStateAsync between them is the load-bearing step: staging order alone proves
+        // nothing, because an unflushed mark is not durable and a fault would replay the publish.
+        ctx.StateManager.When(s => s.SaveStateAsync(Arg.Any<CancellationToken>())).Do(_ => calls.Add("save"));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        // The durable dead-letter mark must be COMMITTED before the post-publish mutations so a
+        // fault between them cannot dead-letter the same committed range twice.
+        int mark = calls.IndexOf("mark");
+        int remove = calls.IndexOf("remove");
+        mark.ShouldBeGreaterThanOrEqualTo(0);
+        remove.ShouldBeGreaterThan(mark);
+        calls.GetRange(mark, remove - mark).ShouldContain("save");
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ExhaustionMarkerCommitsThenThrows_ContinuesCleanupWithoutRepublishing() {
+        var stateManager = new FaultInjectingActorStateManager();
+        UnpublishedEventsRecord record = await SeedExhaustedCommittedStateAsync(stateManager);
+        stateManager.FaultAfterCall("SaveState", 1, new IOException("marker commit uncertain"));
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await ctx.Actor.ReceiveReminderAsync(
+            $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        stateManager.CommittedState.ShouldNotContainKey($"drain:{ExhaustedTrackingId}");
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        _ = record;
+        _ = await ctx.DeadLetterPublisher.Received(1).PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ExhaustionMarkerCommitsThenCancels_PropagatesBeforeCleanup() {
+        var stateManager = new FaultInjectingActorStateManager();
+        _ = await SeedExhaustedCommittedStateAsync(stateManager);
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("marker canceled"));
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => ctx.Actor.ReceiveReminderAsync(
+            $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState[$"drain:{ExhaustedTrackingId}"])
+            .DeadLettered.ShouldBeTrue();
+        ((UnpublishedPublicationIndex)stateManager.CommittedState[UnpublishedPublicationIndex.StateKey])
+            .Contains(ExhaustedTrackingId).ShouldBeTrue();
+        stateManager.CommittedState["pending_command_count"].ShouldBe(1);
+        stateManager.Trace.Count(operation => operation == "SaveState").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ExhaustionMarkerFailsBeforeCommit_DiscardsTheMarkerBatch() {
+        var stateManager = new FaultInjectingActorStateManager();
+        _ = await SeedExhaustedCommittedStateAsync(stateManager);
+        stateManager.FaultOnCall("SaveState", 1, new IOException("marker pre-commit failure"));
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<IOException>(() => ctx.Actor.ReceiveReminderAsync(
+            $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        UnpublishedEventsRecord durable = (UnpublishedEventsRecord)stateManager.CommittedState[
+            $"drain:{ExhaustedTrackingId}"];
+        durable.DeadLettered.ShouldBeFalse();
+        stateManager.CommittedState["pending_command_count"].ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ExhaustionCleanupCommitsThenThrows_CompletesExternalSideEffects() {
+        var stateManager = new FaultInjectingActorStateManager();
+        _ = await SeedExhaustedCommittedStateAsync(stateManager, deadLettered: true);
+        stateManager.FaultAfterCall("SaveState", 1, new IOException("cleanup commit uncertain"));
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        await ctx.Actor.ReceiveReminderAsync(
+            $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        stateManager.CommittedState.ShouldNotContainKey($"drain:{ExhaustedTrackingId}");
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        await ctx.TimerManager.Received(1).UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            ExhaustedTrackingId,
+            Arg.Is<CommandStatusRecord>(status =>
+                status.Status == CommandStatus.PublishFailed
+                && status.RecoveryReasonCode == DrainReasonCodes.AttemptsExhausted),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ExhaustionCleanupCommitsThenCancels_PropagatesBeforeExternalSideEffects() {
+        var stateManager = new FaultInjectingActorStateManager();
+        _ = await SeedExhaustedCommittedStateAsync(stateManager, deadLettered: true);
+        stateManager.FaultAfterCall(
+            "SaveState",
+            1,
+            new OperationCanceledException("cleanup canceled"));
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() => ctx.Actor.ReceiveReminderAsync(
+            $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        stateManager.CommittedState.ShouldNotContainKey($"drain:{ExhaustedTrackingId}");
+        stateManager.CommittedState["pending_command_count"].ShouldBe(0);
+        await ctx.TimerManager.DidNotReceive().UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+        await ctx.StatusStore.DidNotReceiveWithAnyArgs().WriteStatusAsync(default!, default!, default!);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ExhaustionCleanupFailsBeforeCommit_RetainsMarkedRecoveryOwner() {
+        var stateManager = new FaultInjectingActorStateManager();
+        _ = await SeedExhaustedCommittedStateAsync(stateManager, deadLettered: true);
+        stateManager.FaultOnCall("SaveState", 1, new IOException("cleanup pre-commit failure"));
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(stateManager: stateManager);
+
+        _ = await Should.ThrowAsync<IOException>(() => ctx.Actor.ReceiveReminderAsync(
+            $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        ((UnpublishedEventsRecord)stateManager.CommittedState[$"drain:{ExhaustedTrackingId}"])
+            .DeadLettered.ShouldBeTrue();
+        ((UnpublishedPublicationIndex)stateManager.CommittedState[UnpublishedPublicationIndex.StateKey])
+            .Contains(ExhaustedTrackingId).ShouldBeTrue();
+        stateManager.CommittedState["pending_command_count"].ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AttemptsExhausted_RemovesRecordEntryReminderAndPendingSlot() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StateManager.Received(1).RemoveStateAsync(
+            $"drain:{ExhaustedTrackingId}", Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(1).SetStateAsync(
+            UnpublishedPublicationIndex.StateKey,
+            Arg.Is<UnpublishedPublicationIndex>(i => !i.Contains(ExhaustedTrackingId)),
+            Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(1).SetStateAsync(
+            "pending_command_count", 0, Arg.Any<CancellationToken>());
+        await ctx.TimerManager.Received(1).UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AttemptsExhausted_StatusExposesNonRetryableExhaustionCode() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            ExhaustedTrackingId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed
+                && r.Retryable == false
+                && r.RecoveryReasonCode == DrainReasonCodes.AttemptsExhausted
+                && r.DrainAttemptCount == EventDrainOptions.DefaultMaxDrainAttempts),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AttemptsExhaustedAndDeadLetterSinkFails_RetainsRecordEntryAndReminder() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts);
+        _ = ctx.DeadLetterPublisher.PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StateManager.DidNotReceive().RemoveStateAsync(
+            $"drain:{ExhaustedTrackingId}", Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            $"drain:{ExhaustedTrackingId}",
+            Arg.Is<UnpublishedEventsRecord>(r => r.DeadLettered),
+            Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            UnpublishedPublicationIndex.StateKey,
+            Arg.Any<UnpublishedPublicationIndex>(),
+            Arg.Any<CancellationToken>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            "pending_command_count", Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await ctx.TimerManager.DidNotReceive().UnregisterReminderAsync(Arg.Any<ActorReminderToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AlreadyDeadLetteredRecord_DoesNotDeadLetterTheSameRangeTwice() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts, deadLettered: true);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        _ = await ctx.DeadLetterPublisher.DidNotReceive().PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>());
+
+        // The interrupted post-publish mutations still complete, exactly once.
+        await ctx.StateManager.Received(1).RemoveStateAsync(
+            $"drain:{ExhaustedTrackingId}", Arg.Any<CancellationToken>());
+        await ctx.StateManager.Received(1).SetStateAsync(
+            "pending_command_count", 0, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_OneAttemptBelowCap_StillPublishes() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts - 1);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        _ = await ctx.EventPublisher.Received(1).PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            ExhaustedCorrelationId,
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        _ = await ctx.DeadLetterPublisher.DidNotReceive().PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<DeadLetterMessage>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_ConfiguredCapHonored_ExhaustsAtTheConfiguredBound() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(new EventDrainOptions { MaxDrainAttempts = 2 });
+        _ = SeedExhaustedRecord(ctx, retryCount: 2);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        _ = await ctx.DeadLetterPublisher.Received(1).PublishDeadLetterAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Is<DeadLetterMessage>(m => m.DrainAttempts == 2),
+            Arg.Any<CancellationToken>());
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+    }
+
+    // --- P3: index-entry release on drain success ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_ReleasesThePublicationIndexEntry() {
+        // Without this release every recovered command leaks an entry, and with the fail-closed
+        // capacity branch a leaking index eventually rejects legitimate commands.
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, retryCount: 0);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StateManager.Received(1).SetStateAsync(
+            UnpublishedPublicationIndex.StateKey,
+            Arg.Is<UnpublishedPublicationIndex>(i => !i.Contains(ExhaustedTrackingId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- P4: retryability at the producing site, below the cap and on success ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainFailsBelowCap_StatusExposesRetryableWithAttemptCount() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, retryCount: 2);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still unavailable"));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            ExhaustedTrackingId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed
+                && r.Retryable == true
+                && r.RecoveryReasonCode == DrainReasonCodes.PublishFailed
+                && r.DrainAttemptCount == 3),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainThrowsBelowCap_StatusExposesRetryableWithClassifiedReason() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, retryCount: 1);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(Task.FromException<EventPublishResult>(new Dapr.DaprException("pubsub unavailable")));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            ExhaustedTrackingId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed
+                && r.Retryable == true
+                && r.RecoveryReasonCode == DrainReasonCodes.PublishFailed
+                && r.DrainAttemptCount == 2),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainFailureReachesTheCap_StatusAlreadyReportsNonRetryable() {
+        // P9 boundary: this attempt raises RetryCount to exactly MaxDrainAttempts, so the next
+        // firing only dead-letters. Promising one more try here would be a lie.
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(new EventDrainOptions { MaxDrainAttempts = 3 });
+        _ = SeedExhaustedRecord(ctx, retryCount: 2);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "still unavailable"));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            ExhaustedTrackingId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Retryable == false
+                && r.RecoveryReasonCode == DrainReasonCodes.AttemptsExhausted
+                && r.DrainAttemptCount == 3),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_StatusExposesNonRetryableCompletionWithAttemptCount() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, retryCount: 4);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            ExhaustedTrackingId,
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.Completed
+                && r.Retryable == false
+                && r.RecoveryReasonCode == null
+                && r.DrainAttemptCount == 4),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- P1: AC3 at the two PublishFailed producing sites ---
+
+    [Fact]
+    public async Task ProcessCommand_PublishFailedWithDrainArmed_StatusReportsRetryableNotUnknown() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        ConfigureFreshCommandState(ctx);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        // Retryable = null would tell a polling client "legacy record", not "a retry is coming".
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "msg-capacity",
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed
+                && r.Retryable == true
+                && r.RecoveryReasonCode == DrainReasonCodes.PublishFailed
+                && r.DrainAttemptCount == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResumePublishFailed_WithDrainArmed_StatusReportsRetryableNotUnknown() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        ConfigureFreshCommandState(ctx);
+        _ = ctx.StateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-capacity", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, new PipelineState(
+                "corr-capacity",
+                CommandStatus.EventsStored,
+                "CreateOrder",
+                DateTimeOffset.UtcNow.AddSeconds(-5),
+                EventCount: 2,
+                RejectionEventType: null,
+                MessageId: "msg-capacity",
+                CausationId: "msg-capacity",
+                StartSequence: 1,
+                EndSequence: 2)));
+        ConfigureEventsInState(ctx.StateManager, eventCount: 2, correlationId: "corr-capacity", causationId: "msg-capacity");
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        // Proves this is the RESUME producing site, not the first-pass one: resume never re-invokes
+        // the domain because the events are already committed.
+        _ = await ctx.Invoker.DidNotReceive().InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>());
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "msg-capacity",
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed
+                && r.Retryable == true
+                && r.RecoveryReasonCode == DrainReasonCodes.PublishFailed
+                && r.DrainAttemptCount == 0),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- PR3: retryability must reflect the recovery entry, not just reminder registration ---
+
+    [Fact]
+    public async Task ProcessCommand_ReminderRegistrationFailsButEntryTracked_StillReportsRetryable() {
+        // Registration failed, but the publication-recovery entry was staged in the commit batch, so
+        // the next activation WILL re-arm and publish. Reporting false here tells a polling client
+        // to abandon a command the platform is still going to deliver.
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        ConfigureFreshCommandState(ctx);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+        _ = ctx.TimerManager.RegisterReminderAsync(Arg.Any<ActorReminder>())
+            .Returns(Task.FromException(new InvalidOperationException("reminder store unavailable")));
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "msg-capacity",
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed && r.Retryable == true),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- PR4: the resume path reports (and preserves) the real attempt count ---
+
+    [Fact]
+    public async Task ResumePublishFailed_ExistingDrainRecord_CarriesForwardAndReportsItsAttemptCount() {
+        // Resume can run repeatedly for one committed range. Writing RetryCount 0 each time would
+        // hand the range a fresh budget on every resume, so MaxDrainAttempts would never be reached
+        // and the bound would not be a bound; reporting 0 would understate it to operators too.
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        ConfigureFreshCommandState(ctx);
+        _ = ctx.StateManager.TryGetStateAsync<PipelineState>(
+            Arg.Is<string>(s => s.Contains(":pipeline:corr-capacity", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(true, new PipelineState(
+                "corr-capacity",
+                CommandStatus.EventsStored,
+                "CreateOrder",
+                DateTimeOffset.UtcNow.AddSeconds(-5),
+                EventCount: 2,
+                RejectionEventType: null,
+                MessageId: "msg-capacity",
+                CausationId: "msg-capacity",
+                StartSequence: 1,
+                EndSequence: 2)));
+        ConfigureEventsInState(ctx.StateManager, eventCount: 2, correlationId: "corr-capacity", causationId: "msg-capacity");
+        _ = ctx.StateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:msg-capacity", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, new UnpublishedEventsRecord(
+                "corr-capacity", 1, 2, 2, "CreateOrder", false, DateTimeOffset.UtcNow.AddMinutes(-5),
+                RetryCount: 5, LastFailureReason: "pubsub down", MessageId: "msg-capacity")));
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(false, 0, "Pub/sub unavailable"));
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        await ctx.StatusStore.Received(1).WriteStatusAsync(
+            "test-tenant",
+            "msg-capacity",
+            Arg.Is<CommandStatusRecord>(r =>
+                r.Status == CommandStatus.PublishFailed && r.DrainAttemptCount == 5),
+            Arg.Any<CancellationToken>());
+
+        // And the persisted record keeps the budget rather than resetting it.
+        await ctx.StateManager.Received().SetStateAsync(
+            "drain:msg-capacity",
+            Arg.Is<UnpublishedEventsRecord>(r => r.RetryCount == 5),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- PR7b: PublicationIndexAddOutcome.InvalidEntry is UNREACHABLE through the actor ---
+    // No actor-level test is added here because none can be written without faking the guard.
+    // TryStagePublicationIndexEntryAsync is only ever called with (command.MessageId,
+    // command.CorrelationId), and an entry is malformed only when one of those is blank. Both are
+    // rejected strictly upstream of the staging site (AggregateActor.cs ~line 645):
+    //   - AggregateActor.cs:261 idempotencyChecker.CheckAsync -> CommandProcessingIdentity.Validate
+    //     -> ArgumentException.ThrowIfNullOrWhiteSpace(MessageId)
+    //   - AggregateActor.cs:306 stateMachine.LoadPipelineStateAsync
+    //     -> ArgumentException.ThrowIfNullOrWhiteSpace(correlationId)
+    // A blank correlation id therefore throws in LoadPipelineStateAsync, never reaching the branch.
+    // The distinction is still pinned where it IS reachable: UnpublishedPublicationIndexTests
+    // .TryAdd_MalformedEntry_IsRefused asserts the outcome at the type level. The defensive
+    // production branch is retained because TryAdd is a public API whose contract must hold.
+
+    // --- Recoverable -> Terminal disposition transition ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainSucceeds_TransitionsRecoverableIdempotencyRecordToTerminal() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, retryCount: 0);
+        SeedRecoverableIdempotencyRecord(ctx, ExhaustedTrackingId);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StateManager.Received(1).SetStateAsync(
+            $"idempotency:{ExhaustedTrackingId}",
+            Arg.Is<IdempotencyRecord>(r => r.Disposition == IdempotencyRecordDisposition.Terminal),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_AttemptsExhausted_TransitionsRecoverableIdempotencyRecordToTerminal() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, EventDrainOptions.DefaultMaxDrainAttempts);
+        SeedRecoverableIdempotencyRecord(ctx, ExhaustedTrackingId);
+
+        await ctx.Actor.ReceiveReminderAsync($"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero);
+
+        await ctx.StateManager.Received(1).SetStateAsync(
+            $"idempotency:{ExhaustedTrackingId}",
+            Arg.Is<IdempotencyRecord>(r => r.Disposition == IdempotencyRecordDisposition.Terminal),
+            Arg.Any<CancellationToken>());
+    }
+
+    // --- Drain activity identity tags ---
+
+    [Fact]
+    public async Task ReceiveReminder_DrainRuns_ActivityMessageIdComesFromTheRecordNotTheReminderSuffix() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain();
+        _ = SeedExhaustedRecord(ctx, retryCount: 0);
+        _ = ctx.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        Activity activity = await CaptureDrainActivityAsync(
+            ExhaustedCorrelationId,
+            () => ctx.Actor.ReceiveReminderAsync(
+                $"drain-unpublished-{ExhaustedTrackingId}", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        activity.GetTagItem("eventstore.message_id").ShouldBe(ExhaustedTrackingId);
+        activity.GetTagItem("eventstore.drain_tracking_id").ShouldBe(ExhaustedTrackingId);
+    }
+
+    [Fact]
+    public async Task ReceiveReminder_LegacyCorrelationKeyedRecord_DoesNotClaimACorrelationIdIsAMessageId() {
+        // A legacy record has no MessageId, so the reminder suffix is a correlation id. The
+        // eventstore.message_id tag must stay unset rather than mislabel it.
+        (AggregateActor actor, IActorStateManager stateManager, _, IEventPublisher eventPublisher, _) = CreateActor();
+        UnpublishedEventsRecord record = CreateDrainRecord() with { MessageId = null, CausationId = null };
+        _ = stateManager.TryGetStateAsync<UnpublishedEventsRecord>(
+            "drain:corr-drain", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedEventsRecord>(true, record));
+        ConfigureEventsInState(stateManager, 2);
+        _ = eventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(new EventPublishResult(true, 2, null));
+
+        Activity activity = await CaptureDrainActivityAsync(() =>
+            actor.ReceiveReminderAsync("drain-unpublished-corr-drain", [], TimeSpan.Zero, TimeSpan.Zero));
+
+        activity.GetTagItem("eventstore.message_id").ShouldBeNull();
+        activity.GetTagItem("eventstore.drain_tracking_id").ShouldBe("corr-drain");
+    }
+
+    // --- Actor-level fail-closed capacity branch ---
+
+    [Fact]
+    public async Task ProcessCommand_PublicationIndexAtCapacity_DiscardsStagedEventsBeforeAnyCommit() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(
+            new EventDrainOptions { MaxOutstandingPublicationEntries = 1 });
+        ConfigureFreshCommandState(ctx);
+        _ = ctx.StateManager.TryGetStateAsync<UnpublishedPublicationIndex>(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedPublicationIndex>(
+                true,
+                new UnpublishedPublicationIndex([
+                    new UnpublishedPublicationEntry("msg-other", "corr-other", DateTimeOffset.UtcNow),
+                ])));
+
+        var calls = new List<string>();
+        ctx.StateManager
+            .When(s => s.SetStateAsync(
+                Arg.Is<string>(k => k.Contains(":events:", StringComparison.Ordinal)),
+                Arg.Any<EventEnvelope>(),
+                Arg.Any<CancellationToken>()))
+            .Do(_ => calls.Add("stage-events"));
+        ctx.StateManager.When(s => s.ClearCacheAsync(Arg.Any<CancellationToken>())).Do(_ => calls.Add("clear"));
+        ctx.StateManager.When(s => s.SaveStateAsync(Arg.Any<CancellationToken>())).Do(_ => calls.Add("save"));
+
+        CommandProcessingResult result = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        result.Accepted.ShouldBeFalse();
+        result.BackpressureExceeded.ShouldBeTrue();
+        result.FailureReason.ShouldBe("BackpressureExceeded");
+        result.BackpressureThreshold.ShouldBe(1);
+
+        int stageIndex = calls.LastIndexOf("stage-events");
+        stageIndex.ShouldBeGreaterThanOrEqualTo(0, "the persistence step must have staged events");
+        int clearIndex = calls.IndexOf("clear", stageIndex);
+        clearIndex.ShouldBeGreaterThan(stageIndex, "the staged events must be discarded");
+        calls
+            .Skip(stageIndex + 1)
+            .Take(clearIndex - stageIndex - 1)
+            .ShouldNotContain("save", "no commit may happen between staging the events and discarding them");
+    }
+
+    [Fact]
+    public async Task ProcessCommand_PublicationIndexAtCapacity_NeitherPublishesNorCreatesADrainRecord() {
+        BoundedDrainContext ctx = CreateActorForBoundedDrain(
+            new EventDrainOptions { MaxOutstandingPublicationEntries = 1 });
+        ConfigureFreshCommandState(ctx);
+        _ = ctx.StateManager.TryGetStateAsync<UnpublishedPublicationIndex>(
+            UnpublishedPublicationIndex.StateKey, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<UnpublishedPublicationIndex>(
+                true,
+                new UnpublishedPublicationIndex([
+                    new UnpublishedPublicationEntry("msg-other", "corr-other", DateTimeOffset.UtcNow),
+                ])));
+
+        _ = await ctx.Actor.ProcessCommandAsync(CreateCapacityEnvelope());
+
+        _ = await ctx.EventPublisher.DidNotReceive().PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>());
+        await ctx.StateManager.DidNotReceive().SetStateAsync(
+            Arg.Is<string>(s => s.StartsWith("drain:", StringComparison.Ordinal)),
+            Arg.Any<UnpublishedEventsRecord>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static CommandEnvelope CreateCapacityEnvelope() => new(
+        MessageId: "msg-capacity",
+        TenantId: "test-tenant",
+        Domain: "test-domain",
+        AggregateId: "agg-001",
+        CommandType: "CreateOrder",
+        Payload: [1, 2, 3],
+        CorrelationId: "corr-capacity",
+        CausationId: null,
+        UserId: "system",
+        Extensions: null);
+
+    private static void ConfigureFreshCommandState(BoundedDrainContext context) {
+        _ = context.StateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+        _ = context.StateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
+        _ = context.StateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<PipelineState>(false, default!));
+        _ = context.Invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>())
+            .Returns(Hexalith.EventStore.Contracts.Results.DomainResult.Success([new CapacityTestEvent()]));
+        _ = context.EventPublisher.PublishEventsAsync(
+            Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+            Arg.Any<IReadOnlyList<EventEnvelope>>(),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>(),
+            Arg.Any<bool>())
+            .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+    }
+
+    private sealed record CapacityTestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
+
+    private sealed record DrainProofEvent : IEventPayload;
+}

@@ -1,0 +1,13 @@
+# Interrupted EventStore qualification attempt
+
+Disposition: **not qualified**. This append-only packet preserves the first continuation attempt, all failures, external source/binary drift, and cleanup evidence. See `disposition.json`, `secret-disposition.json`, `source-drift-observed.json` and `binary-drift-observed.json`.
+
+The original sealed handoff verified (6101 files; seal `0b4d5ade382ea889b78fdb5cba7783c7f0fbaa1bdc68d06646b4fc4ade732135`). Its ordinary sources matched initially, but all1012 local binary/manifest inputs were absent. Fresh Debug/project-reference builds passed. Fresh Server run:6360 pass,1 guard failure at19 locations,25 skips. Client2073 pass/2 skips, Contracts2442 pass/2 skips, Testing155 pass. Domain full initially1162 pass/2fail; focused cases and separate full repeat1164 passed. The failed first execution remains a nondeterminism gate. Fresh actor acceptance passed47 checks.
+
+The bounded attempt stopped after1passed/3failed cases and5 captured workers. It is incomplete against the strict9-case/30-worker/120-module requirement. Generated AssemblyInfo disk bytes changed following an external commit/build, and the proof reader incorrectly preferred those shared generated files over authenticated embedded PDB source. Failures and cancellation are retained. Owned fixture cleanup passed; the separate observation cleanup predicate correctly fails its missing full-coverage condition while reporting no surviving PID/start identities or component directories.
+
+Another session committed the in-progress packet as `cb414530223f77cc845450a4877a4472559de2ad` and changed Server source, dependencies and212 binary/manifest paths. No commit, staging or dependency update was performed by this agent. The user selected latest inputs for a fresh isolated successor run. The observer hardening has10 passing Python regressions; generated-source selection repairs were prepared after stopping the attempt and are not claimed as executed acceptance here.
+
+`bounded-live-v3-executed.py` is the exact executed matrix launcher. `bounded-live-v4.py` has separately executed real-infrastructure malformed-capture/write-failure/SIGTERM cleanup controls. Their expected rejection command receipts and successful cleanup results are distinct from matrix acceptance. Earlier output-path collisions and the failed raw-index predicate are retained explicitly. `report.py` is an unexecuted draft, not a qualification result.
+
+No Folders adoption, packaged equivalence, performance closure or whole Story12.2 completion is claimed. SHA256SUMS binds this packet's exact file set; successor evidence must not overwrite it.

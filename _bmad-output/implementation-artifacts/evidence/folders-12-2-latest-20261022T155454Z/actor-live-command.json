@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "dotnet",
+    "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.ActorCallbackAdmissionProcessTests",
+    "-showLiveOutput",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live.xml"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T16:07:45.892336+00:00",
+  "environment_overrides": {
+    "HEXALITH_ACTOR_ADMISSION_EVIDENCE_DIRECTORY": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 52749,
+  "pid": 52824,
+  "exit_code": 0,
+  "elapsed_seconds": 76.96341743599623,
+  "utc_end": "2026-10-22T16:09:02.850269+00:00"
+}

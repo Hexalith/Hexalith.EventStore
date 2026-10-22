@@ -1,0 +1,1646 @@
+
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
+
+using Dapr.Actors;
+using Dapr.Actors.Client;
+using Dapr.Client;
+
+using Hexalith.EventStore.Client.Effects;
+using Hexalith.EventStore.Client.Reminders;
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Contracts.Events;
+using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Snapshots;
+using Hexalith.EventStore.Contracts.Projections;
+using Hexalith.EventStore.DomainService;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Pipeline.Commands;
+using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Testing.Fakes;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+using RedisConnectionMultiplexer = StackExchange.Redis.IConnectionMultiplexer;
+using RedisDatabase = StackExchange.Redis.IDatabase;
+using RedisValue = StackExchange.Redis.RedisValue;
+
+namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Fixtures;
+/// <summary>
+/// Integration test fixture that starts a local <c>daprd</c> process,
+/// reusing the existing Dapr infrastructure (Redis, placement, scheduler) from <c>dapr init</c>.
+/// Provides a running Dapr environment with actor support for Tier 2 integration tests.
+/// Implements <see cref="IAsyncLifetime"/> for xUnit lifecycle management.
+/// </summary>
+public sealed partial class DaprTestContainerFixture : IAsyncLifetime
+{
+    // `dapr init` publishes the control plane on different host ports depending on the CLI
+    // version and platform: the container ports are 50005/50006, but recent CLIs remap them to
+    // 6050/6060 on the host. Probing both candidates removes the stale OS predicate that made the
+    // fixture abort on a perfectly healthy control plane.
+    private static readonly int[] PlacementPortCandidates = DaprTestInfrastructurePorts.ReadCandidates("EVENTSTORE_TEST_PLACEMENT_PORT", 50005, 6050);
+    private static readonly int[] SchedulerPortCandidates = DaprTestInfrastructurePorts.ReadCandidates("EVENTSTORE_TEST_SCHEDULER_PORT", 50006, 6060);
+    private static int _placementPort;
+    private static int _schedulerPort;
+
+    /// <summary>Gets the placement host port resolved by the pre-flight probe.</summary>
+    private static int PlacementHostPort => RequireResolvedPort(Volatile.Read(ref _placementPort), "placement");
+
+    /// <summary>Gets the scheduler host port resolved by the pre-flight probe.</summary>
+    private static int SchedulerHostPort => RequireResolvedPort(Volatile.Read(ref _schedulerPort), "scheduler");
+
+    /// <summary>Gets the placement host port the pre-flight probe selected, or zero before it ran.</summary>
+    public static int ObservedPlacementPort => Volatile.Read(ref _placementPort);
+
+    /// <summary>Gets the scheduler host port the pre-flight probe selected, or zero before it ran.</summary>
+    public static int ObservedSchedulerPort => Volatile.Read(ref _schedulerPort);
+
+    /// <summary>Gets the placement host ports the pre-flight probe considers, in probe order.</summary>
+    public static IReadOnlyList<int> PlacementPortProbeOrder => PlacementPortCandidates;
+
+    /// <summary>Gets the scheduler host ports the pre-flight probe considers, in probe order.</summary>
+    public static IReadOnlyList<int> SchedulerPortProbeOrder => SchedulerPortCandidates;
+
+    /// <summary>
+    /// Fails loudly when a sidecar would be started before the pre-flight probe resolved a port.
+    /// The backing fields are static and default to zero, so without this guard a sidecar could be
+    /// launched with <c>--placement-host-address localhost:0</c> and no diagnostic.
+    /// </summary>
+    /// <param name="port">The resolved port.</param>
+    /// <param name="serviceName">The control-plane service name.</param>
+    /// <returns>The resolved port.</returns>
+    private static int RequireResolvedPort(int port, string serviceName)
+        => port != 0
+            ? port
+            : throw new InvalidOperationException(
+                $"The Dapr {serviceName} host port has not been resolved. "
+                + "VerifyPrerequisitesAsync must complete before a sidecar is started.");
+    private static readonly int RedisPort = DaprTestInfrastructurePorts.Read("EVENTSTORE_TEST_REDIS_PORT", 6379);
+    private const int HealthTimeoutSeconds = 60;
+    private const int WarmUpTimeoutSeconds = 45;
+    private static readonly Lazy<Task<RedisConnectionMultiplexer>> RedisConnection =
+        new(async () => await StackExchange.Redis.ConnectionMultiplexer
+            .ConnectAsync($"{RedisEndpoint},abortConnect=false")
+            .ConfigureAwait(false));
+
+    private Process? _daprProcess;
+    private WebApplication? _testHost;
+    private Process? _replicaDaprProcess;
+    private WebApplication? _replicaTestHost;
+    private int _appPort;
+    private int _daprHttpPort;
+    private int _daprGrpcPort;
+    private int _daprInternalGrpcPort;
+    private int _daprMetricsPort;
+    private int _daprProfilePort;
+    private int _replicaAppPort;
+    private int _replicaDaprHttpPort;
+    private int _replicaDaprGrpcPort;
+    private int _replicaDaprInternalGrpcPort;
+    private int _replicaDaprMetricsPort;
+    private int _replicaDaprProfilePort;
+    private string? _componentsDir;
+    private string? _runtimeConfigurationPath;
+
+    private string? _previousDaprHttpPort;
+    private string? _previousDaprGrpcPort;
+    private readonly StringBuilder _daprStdout = new();
+    private readonly StringBuilder _daprStderr = new();
+    private readonly StringBuilder _replicaDaprStdout = new();
+    private readonly StringBuilder _replicaDaprStderr = new();
+    private volatile bool _hostStopping;
+    private string? _hostStopStackTrace;
+
+    /// <summary>Gets the Dapr HTTP endpoint for test clients.</summary>
+    public string DaprHttpEndpoint => $"http://localhost:{_daprHttpPort}";
+
+    /// <summary>Gets the second Dapr HTTP endpoint after <see cref="EnsureReplicaAsync"/> completes.</summary>
+    public string ReplicaDaprHttpEndpoint => _replicaDaprProcess is not null
+        ? $"http://localhost:{_replicaDaprHttpPort}"
+        : throw new InvalidOperationException("The live-sidecar replica has not started.");
+
+    /// <summary>Gets the configured Redis endpoint used by this fixture and its backend diagnostics.</summary>
+    internal static string RedisEndpoint => $"localhost:{RedisPort}";
+
+    /// <summary>Gets the isolated Dapr application ID used by this fixture run.</summary>
+    public string AppId { get; } = $"eventstore-live-{Guid.NewGuid():N}";
+
+    /// <summary>Gets the application HTTP endpoint hosting the Dapr actors.</summary>
+    public string AppHttpEndpoint => $"http://localhost:{_appPort}";
+
+    /// <summary>Gets the Dapr gRPC endpoint for test clients.</summary>
+    public string DaprGrpcEndpoint => $"http://localhost:{_daprGrpcPort}";
+
+    /// <summary>Gets the isolated aggregate actor type name registered by this fixture run.</summary>
+    public string AggregateActorTypeName { get; } = $"AggregateActorTests{Guid.NewGuid():N}";
+
+    /// <summary>Gets the isolated typed-reminder actor type name registered by this fixture run.</summary>
+    public string ReminderActorTypeName { get; } = $"ReminderActorTests{Guid.NewGuid():N}";
+
+    /// <summary>
+    /// Gets the per-run Dapr app-channel token. The primary sidecar presents it on every app call and the
+    /// reminder callback filter requires it, because the fixture host runs outside Development.
+    /// </summary>
+    public string AppApiToken { get; } = $"live-app-token-{Guid.NewGuid():N}";
+
+    /// <summary>Gets the synthetic reminder intents the live intent source re-folds; they survive host restarts.</summary>
+    public LiveReminderIntents ReminderIntents { get; } = new();
+
+    /// <summary>Gets the fake domain service invoker for configuring test responses.</summary>
+    public FakeDomainServiceInvoker DomainServiceInvoker { get; } = new();
+
+    /// <summary>Gets the fake event publisher for test assertions.</summary>
+    public FakeEventPublisher EventPublisher { get; } = new();
+
+    /// <summary>Gets the fake dead-letter publisher for test assertions.</summary>
+    public FakeDeadLetterPublisher DeadLetterPublisher { get; } = new();
+
+    /// <summary>Gets the in-memory command status store for test assertions.</summary>
+    public InMemoryCommandStatusStore CommandStatusStore { get; } = new();
+
+    /// <summary>Gets the opt-in append-durability race gate used by Story 4.5.</summary>
+    public AppendDurabilityRaceControl AppendDurabilityRaceControl { get; } = new();
+
+    /// <summary>Gets the exact generated Redis actor-state component supplied to the live Dapr sidecar.</summary>
+    public string StateStoreComponentYaml { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Gets the generated actor-state component with the per-run <c>scopes:</c> list removed.
+    /// Hashing this form binds the configuration identity across runs; the raw form still carries
+    /// the randomized application id and is retained separately.
+    /// </summary>
+    public string StateStoreComponentCanonicalYaml { get; private set; } = string.Empty;
+
+    /// <summary>Gets the running test host services.</summary>
+    public IServiceProvider Services => _testHost?.Services
+        ?? throw new InvalidOperationException("The live-sidecar test host has not started.");
+
+    /// <summary>Gets the second host services after <see cref="EnsureReplicaAsync"/> completes.</summary>
+    public IServiceProvider ReplicaServices => _replicaTestHost?.Services
+        ?? throw new InvalidOperationException("The live-sidecar replica host has not started.");
+
+    /// <inheritdoc/>
+    public async ValueTask InitializeAsync()
+    {
+        int[] ports = GetAvailablePorts(6);
+        _appPort = ports[0];
+        _daprHttpPort = ports[1];
+        _daprGrpcPort = ports[2];
+        _daprInternalGrpcPort = ports[3];
+        _daprMetricsPort = ports[4];
+        _daprProfilePort = ports[5];
+
+        // The Dapr .NET Actors runtime uses the DAPR_* env vars to find the sidecar.
+        // Since the fixture starts daprd on random ports, we must set these for the in-process app.
+        _previousDaprHttpPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT");
+        _previousDaprGrpcPort = Environment.GetEnvironmentVariable("DAPR_GRPC_PORT");
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
+
+        try
+        {
+            await VerifyPrerequisitesAsync().ConfigureAwait(false);
+
+            _componentsDir = CreateComponentFiles();
+            _runtimeConfigurationPath = DaprTestRuntimeConfiguration.Create(
+                _componentsDir, Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPR_HOT_RELOAD"));
+
+            await StartTestHostAsync().ConfigureAwait(false);
+
+            await VerifyAppListeningAsync().ConfigureAwait(false);
+
+            StartDaprSidecar();
+
+            await WaitForDaprHealthAsync().ConfigureAwait(false);
+
+            // Let the sidecar complete its initial app discovery (GET /dapr/config)
+            // and actor registration with the placement service before running tests.
+            await Task.Delay(2000).ConfigureAwait(false);
+
+            await VerifyAppListeningAsync().ConfigureAwait(false);
+
+            await ActivateProjectionDeliveryWriterProtocolAsync().ConfigureAwait(false);
+
+            // Warm the actor runtime (placement dissemination + activation + Redis round-trip)
+            // before any live-sidecar test asserts, so cold-start latency on CI runners does not
+            // make the first real actor call fail open. See
+            // sprint-change-proposal-2026-06-22-ci-release-retier.md.
+            await WarmUpActorRuntimeAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            await DisposeTestResourcesAsync().ConfigureAwait(false);
+            RestoreDaprPortEnvironment();
+            throw;
+        }
+    }
+
+    private Task ActivateProjectionDeliveryWriterProtocolAsync()
+        => ActivateProjectionDeliveryWriterProtocolAsync(Services);
+
+    private static async Task ActivateProjectionDeliveryWriterProtocolAsync(IServiceProvider services)
+    {
+        IProjectionDeliveryCutover cutover = services.GetRequiredService<IProjectionDeliveryCutover>();
+        ProjectionDeliveryCutoverStatus status = await cutover.ActivateAsync(
+            new ProjectionDeliveryCutoverRequest(
+                "2794ecba4c435de5e53603aa6080b8d32d669858",
+                "disposable-live-fixture-backup",
+                WritersQuiesced: true,
+                RetryWorkersQuiesced: true,
+                DowngradeProhibitedAcknowledged: true)).ConfigureAwait(false);
+        if (status != ProjectionDeliveryCutoverStatus.Activated)
+        {
+            throw new InvalidOperationException("Projection delivery writer protocol v2 could not be activated for the live fixture.");
+        }
+    }
+
+    /// <summary>
+    /// Performs a throwaway ETag actor round-trip with bounded retry so placement dissemination,
+    /// actor activation, and the Redis state round-trip are all hot before any live-sidecar test
+    /// asserts. This absorbs the cold-start latency that otherwise makes the first real actor call
+    /// fail open (return null) on slower CI runners.
+    /// </summary>
+    private async Task WarmUpActorRuntimeAsync()
+    {
+        var factory = new ActorProxyFactory(new ActorProxyOptions
+        {
+            HttpEndpoint = DaprHttpEndpoint,
+            RequestTimeout = TimeSpan.FromSeconds(15),
+        });
+
+        string actorId = $"warmup:{Guid.NewGuid():N}";
+        IETagActor proxy = factory.CreateActorProxy<IETagActor>(
+            new ActorId(actorId), ETagActor.ETagActorTypeName);
+
+        var stopwatch = Stopwatch.StartNew();
+        Exception? lastError = null;
+        while (stopwatch.Elapsed < TimeSpan.FromSeconds(WarmUpTimeoutSeconds))
+        {
+            try
+            {
+                string seeded = await proxy.RegenerateAsync().ConfigureAwait(false);
+                string? readBack = await proxy.GetCurrentETagAsync().ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(readBack) && string.Equals(readBack, seeded, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+            }
+
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Dapr actor runtime did not warm up within {WarmUpTimeoutSeconds}s.\n" +
+            $"Last error: {lastError?.Message ?? "(round-trip returned an inconsistent ETag)"}\n" +
+            $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
+            $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}");
+    }
+
+    /// <summary>
+    /// Throws if the test host has begun shutting down. Call from tests to get a clear
+    /// diagnostic instead of a generic "connection refused" from the sidecar.
+    /// </summary>
+    public void ThrowIfHostStopped()
+    {
+        if (_hostStopping)
+        {
+            throw new InvalidOperationException(
+                $"Test host shut down unexpectedly.\n" +
+                $"Stop stack trace:\n{_hostStopStackTrace}");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeTestResourcesAsync().ConfigureAwait(false);
+        RestoreDaprPortEnvironment();
+    }
+
+    /// <summary>
+    /// Clears shared fake state before a test class configures its scenario.
+    /// </summary>
+    public void ResetTestState()
+    {
+        DomainServiceInvoker.ClearAll();
+        EventPublisher.Reset();
+        DeadLetterPublisher.Reset();
+        CommandStatusStore.Clear();
+        AppendDurabilityRaceControl.Reset();
+        Services.GetRequiredService<LiveNamedProjectionFaultControl>().Reset();
+    }
+
+    /// <summary>
+    /// Restarts both the application host and its Dapr sidecar while preserving the Redis state store.
+    /// </summary>
+    public async Task RestartHostAndSidecarAsync()
+    {
+        await StopDaprSidecarAsync().ConfigureAwait(false);
+        await StopTestHostAsync().ConfigureAwait(false);
+
+        _hostStopping = false;
+        _hostStopStackTrace = null;
+
+        await StartTestHostAsync().ConfigureAwait(false);
+        await VerifyAppListeningAsync().ConfigureAwait(false);
+
+        StartDaprSidecar();
+        await WaitForDaprHealthAsync().ConfigureAwait(false);
+        await Task.Delay(2000).ConfigureAwait(false);
+        await VerifyAppListeningAsync().ConfigureAwait(false);
+        await ActivateProjectionDeliveryWriterProtocolAsync().ConfigureAwait(false);
+        await WarmUpActorRuntimeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Starts a second application host and sidecar under the same Dapr application identity and
+    /// actor state store. The replica is created only for tests that require a real multi-host
+    /// placement topology.
+    /// </summary>
+    public async Task EnsureReplicaAsync()
+    {
+        if (_replicaTestHost is not null
+            && _replicaDaprProcess is not null
+            && !_replicaDaprProcess.HasExited)
+        {
+            try
+            {
+                await VerifyReplicaAppListeningAsync().ConfigureAwait(false);
+                await WaitForReplicaDaprHealthAsync().ConfigureAwait(false);
+                return;
+            }
+            catch
+            {
+                await CleanupReplicaAsync().ConfigureAwait(false);
+            }
+        }
+        else if (_replicaTestHost is not null || _replicaDaprProcess is not null)
+        {
+            await CleanupReplicaAsync().ConfigureAwait(false);
+        }
+
+        try
+        {
+            int[] ports = GetAvailablePorts(6);
+            _replicaAppPort = ports[0];
+            _replicaDaprHttpPort = ports[1];
+            _replicaDaprGrpcPort = ports[2];
+            _replicaDaprInternalGrpcPort = ports[3];
+            _replicaDaprMetricsPort = ports[4];
+            _replicaDaprProfilePort = ports[5];
+
+            Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _replicaDaprHttpPort.ToString());
+            Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _replicaDaprGrpcPort.ToString());
+            try
+            {
+                await StartReplicaTestHostAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _daprHttpPort.ToString());
+                Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _daprGrpcPort.ToString());
+            }
+
+            StartReplicaDaprSidecar();
+            await WaitForReplicaDaprHealthAsync().ConfigureAwait(false);
+            await Task.Delay(2000).ConfigureAwait(false);
+            await VerifyReplicaAppListeningAsync().ConfigureAwait(false);
+            await ActivateProjectionDeliveryWriterProtocolAsync(ReplicaServices).ConfigureAwait(false);
+        }
+        catch
+        {
+            await CleanupReplicaAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    /// <summary>Removes the primary host and sidecar while leaving the shared durable state intact.</summary>
+    public async Task StopPrimaryHostAndSidecarAsync()
+    {
+        await StopDaprSidecarAsync().ConfigureAwait(false);
+        await StopTestHostAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Stops the on-demand replica without removing shared durable state.</summary>
+    public async Task StopReplicaHostAndSidecarAsync()
+    {
+        await StopReplicaDaprSidecarAsync().ConfigureAwait(false);
+        await StopReplicaTestHostAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Configures the domain service invoker with Counter domain responses for integration tests.
+    /// </summary>
+    public void SetupCounterDomain()
+    {
+        DomainServiceInvoker.SetupResponse(
+            "IncrementCounter",
+            DomainResult.Success(new IEventPayload[]
+            {
+                new Hexalith.EventStore.Sample.Counter.Events.CounterIncremented(),
+            }));
+
+        DomainServiceInvoker.SetupResponse(
+            "DecrementCounter",
+            DomainResult.Success(new IEventPayload[]
+            {
+                new Hexalith.EventStore.Sample.Counter.Events.CounterDecremented(),
+            }));
+
+        DomainServiceInvoker.SetupResponse(
+            "ResetCounter",
+            DomainResult.Success(new IEventPayload[]
+            {
+                new Hexalith.EventStore.Sample.Counter.Events.CounterReset(),
+            }));
+    }
+
+    private static FoldedSnapshotCaptureLimits CreateFoldedCounterCaptureLimits() => new(
+        maximumCaptureWorkspaceBytes: 64L * 1024 * 1024,
+        maximumPreCommandStateGraphBytes: 1024 * 1024,
+        maximumWorkingStateGraphBytes: 1024 * 1024,
+        maximumDetachedEventGraphBytes: 2 * 1024 * 1024,
+        maximumEventCount: 1000,
+        maximumEventBytes: 1024 * 1024,
+        maximumStateJsonBytes: 1024 * 1024,
+        maximumDomainParsedStateGraphBytes: 8L * 1024 * 1024,
+        maximumEscapedWireStateBytes: 6 * 1024 * 1024 + 2,
+        maximumActorParsedStateBytes: 1024 * 1024,
+        maximumActorParsedGraphBytes: 8L * 1024 * 1024,
+        maximumCanonicalStateMeasurementBytes: 1024 * 1024,
+        maximumCanonicalEnvelopeBytes: 1024 * 1024 + 4096,
+        maximumNodeCount: 100_000,
+        maximumDepth: 64,
+        maximumSerializerScratchBytes: 32L * 1024 * 1024,
+        maximumSimultaneousLiveBytes: 64L * 1024 * 1024,
+        maximumActorWorkspaceBytes: 64L * 1024 * 1024);
+
+    /// <summary>
+    /// Reads aggregate actor state directly from Redis using the fixture's isolated actor type name.
+    /// </summary>
+    /// <param name="key">The aggregate state key, such as a metadata, snapshot, or event-stream key.</param>
+    /// <returns>The raw JSON value stored by Dapr for the actor state entry.</returns>
+    public async Task<string> GetAggregateActorStateJsonAsync(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        string? json = await TryGetAggregateActorStateJsonAsync(key).ConfigureAwait(false);
+        return json ?? throw new InvalidOperationException(
+            $"Redis actor state for key '{key}' did not become available after retries. Redis key: '{GetAggregateActorRedisKey(key)}'.");
+    }
+
+    /// <summary>
+    /// Tries to read aggregate actor state directly from Redis using the fixture's composite namespace.
+    /// </summary>
+    /// <param name="key">The aggregate state key.</param>
+    /// <returns>The raw JSON, or <see langword="null"/> when the entry is absent after bounded retries.</returns>
+    public async Task<string?> TryGetAggregateActorStateJsonAsync(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        string redisKey = GetAggregateActorRedisKey(key);
+        RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
+        RedisDatabase database = multiplexer.GetDatabase();
+
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
+            if (!json.IsNullOrEmpty)
+            {
+                return json.ToString();
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
+        return null;
+    }
+
+    /// <summary>Reads a generic Dapr state-store entry directly from the fixture Redis store.</summary>
+    /// <param name="key">The logical generic-state key.</param>
+    /// <returns>The raw JSON persisted by Dapr.</returns>
+    public async Task<string> GetGenericStateJsonAsync(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        string redisKey = $"{AppId}||{key}";
+        RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
+        RedisDatabase database = multiplexer.GetDatabase();
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
+            if (!json.IsNullOrEmpty)
+            {
+                return json.ToString();
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Redis generic state for key '{key}' did not become available after retries. Redis key: '{redisKey}'.");
+    }
+
+    /// <summary>Reads one named actor-state entry directly from the fixture Redis store.</summary>
+    /// <param name="actorType">The registered Dapr actor type.</param>
+    /// <param name="actorId">The actor identifier.</param>
+    /// <param name="stateName">The actor state entry name.</param>
+    /// <returns>The raw JSON persisted by Dapr.</returns>
+    public async Task<string> GetActorStateJsonAsync(string actorType, string actorId, string stateName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(stateName);
+
+        string redisKey = $"{AppId}||{actorType}||{actorId}||{stateName}";
+        RedisConnectionMultiplexer multiplexer = await RedisConnection.Value.ConfigureAwait(false);
+        RedisDatabase database = multiplexer.GetDatabase();
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            RedisValue json = await database.HashGetAsync(redisKey, "data").ConfigureAwait(false);
+            if (!json.IsNullOrEmpty)
+            {
+                return json.ToString();
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Redis actor state did not become available for actor type '{actorType}' and state '{stateName}'.");
+    }
+
+    private async ValueTask DisposeTestResourcesAsync()
+    {
+        await StopReplicaDaprSidecarAsync().ConfigureAwait(false);
+        await StopReplicaTestHostAsync().ConfigureAwait(false);
+        await StopDaprSidecarAsync().ConfigureAwait(false);
+        await StopTestHostAsync().ConfigureAwait(false);
+
+        if (_componentsDir is not null && Directory.Exists(_componentsDir))
+        {
+            try
+            {
+                Directory.Delete(_componentsDir, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup of temp files
+            }
+        }
+
+        _componentsDir = null;
+    }
+
+    private async Task StopDaprSidecarAsync()
+    {
+        if (_daprProcess is not null && !_daprProcess.HasExited)
+        {
+            _daprProcess.Kill(entireProcessTree: true);
+            await _daprProcess.WaitForExitAsync().ConfigureAwait(false);
+        }
+
+        _daprProcess?.Dispose();
+        _daprProcess = null;
+    }
+
+    private async Task StopReplicaDaprSidecarAsync()
+    {
+        if (_replicaDaprProcess is not null && !_replicaDaprProcess.HasExited)
+        {
+            _replicaDaprProcess.Kill(entireProcessTree: true);
+            await _replicaDaprProcess.WaitForExitAsync().ConfigureAwait(false);
+        }
+
+        _replicaDaprProcess?.Dispose();
+        _replicaDaprProcess = null;
+    }
+
+    private async Task StopTestHostAsync()
+    {
+        if (_testHost is null)
+        {
+            return;
+        }
+
+        await _testHost.StopAsync().ConfigureAwait(false);
+        await _testHost.DisposeAsync().ConfigureAwait(false);
+        _testHost = null;
+    }
+
+    private async Task StopReplicaTestHostAsync()
+    {
+        if (_replicaTestHost is null)
+        {
+            return;
+        }
+
+        await _replicaTestHost.StopAsync().ConfigureAwait(false);
+        await _replicaTestHost.DisposeAsync().ConfigureAwait(false);
+        _replicaTestHost = null;
+    }
+
+    private async Task CleanupReplicaAsync()
+    {
+        try
+        {
+            await StopReplicaDaprSidecarAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await StopReplicaTestHostAsync().ConfigureAwait(false);
+        }
+    }
+
+    private void RestoreDaprPortEnvironment()
+    {
+        Environment.SetEnvironmentVariable("DAPR_HTTP_PORT", _previousDaprHttpPort);
+        Environment.SetEnvironmentVariable("DAPR_GRPC_PORT", _previousDaprGrpcPort);
+    }
+
+    private static async Task VerifyPrerequisitesAsync()
+    {
+        var failures = new List<string>();
+
+        if (!await IsPortReachableAsync("localhost", RedisPort, "Redis").ConfigureAwait(false))
+        {
+            failures.Add($"Redis is not reachable on localhost:{RedisPort}");
+        }
+
+        int placementPort = await ResolveReachablePortAsync(PlacementPortCandidates, "Placement").ConfigureAwait(false);
+        if (placementPort == 0)
+        {
+            failures.Add(
+                "Dapr placement service is not reachable on localhost:"
+                + string.Join(" or localhost:", PlacementPortCandidates));
+        }
+        else
+        {
+            Interlocked.Exchange(ref _placementPort, placementPort);
+        }
+
+        int schedulerPort = await ResolveReachablePortAsync(SchedulerPortCandidates, "Scheduler").ConfigureAwait(false);
+        if (schedulerPort == 0)
+        {
+            failures.Add(
+                "Dapr scheduler service is not reachable on localhost:"
+                + string.Join(" or localhost:", SchedulerPortCandidates));
+        }
+        else
+        {
+            Interlocked.Exchange(ref _schedulerPort, schedulerPort);
+        }
+
+        if (failures.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Dapr infrastructure pre-flight check failed. Have you run 'dapr init'?\n" +
+                string.Join("\n", failures.Select(f => $"  - {f}")));
+        }
+    }
+
+    /// <summary>Returns the first reachable candidate host port, or zero when none answered.</summary>
+    /// <param name="candidates">The candidate host ports published by <c>dapr init</c>.</param>
+    /// <param name="serviceName">The control-plane service name used for diagnostics.</param>
+    /// <returns>The reachable port, or zero.</returns>
+    private static async Task<int> ResolveReachablePortAsync(int[] candidates, string serviceName)
+    {
+        foreach (int candidate in candidates)
+        {
+            if (await IsPortReachableAsync("localhost", candidate, serviceName).ConfigureAwait(false))
+            {
+                return candidate;
+            }
+        }
+
+        return 0;
+    }
+
+    private static async Task<bool> IsPortReachableAsync(string host, int port, string serviceName)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await client.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private void StartDaprSidecar()
+    {
+        string daprdPath = ResolveDaprdPath();
+
+        _daprProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = daprdPath,
+                Arguments = string.Join(' ',
+                    "--app-id", AppId,
+                    "--app-port", _appPort.ToString(),
+                    "--app-protocol", "http",
+                    "--app-channel-address", "127.0.0.1",
+                    "--dapr-http-port", _daprHttpPort.ToString(),
+                    "--dapr-grpc-port", _daprGrpcPort.ToString(),
+                    "--dapr-internal-grpc-port", _daprInternalGrpcPort.ToString(),
+                    "--metrics-port", _daprMetricsPort.ToString(),
+                    "--profile-port", _daprProfilePort.ToString(),
+                    "--resources-path", $"\"{_componentsDir}\"",
+                    "--log-level", "info",
+                    "--placement-host-address", $"localhost:{PlacementHostPort}",
+                    "--scheduler-host-address", $"localhost:{SchedulerHostPort}"),
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            },
+            EnableRaisingEvents = true,
+        };
+
+        // The sidecar presents this token on every app-channel call, which the reminder callback filter requires.
+        if (_runtimeConfigurationPath is not null)
+        {
+            _daprProcess.StartInfo.Arguments += $" --config \"{_runtimeConfigurationPath}\"";
+        }
+
+        _daprProcess.StartInfo.Environment["APP_API_TOKEN"] = AppApiToken;
+
+        _daprProcess.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_daprStdout)
+                {
+                    _ = _daprStdout.AppendLine(e.Data);
+                }
+            }
+        };
+
+        _daprProcess.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_daprStderr)
+                {
+                    _ = _daprStderr.AppendLine(e.Data);
+                }
+            }
+        };
+
+        _ = _daprProcess.Start();
+        _daprProcess.BeginOutputReadLine();
+        _daprProcess.BeginErrorReadLine();
+
+        if (_daprProcess.HasExited)
+        {
+            throw new InvalidOperationException(
+                $"daprd exited immediately with code {_daprProcess.ExitCode}.\nstderr: {GetCapturedStderr()}");
+        }
+    }
+
+    private void StartReplicaDaprSidecar()
+    {
+        string daprdPath = ResolveDaprdPath();
+
+        _replicaDaprProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = daprdPath,
+                Arguments = string.Join(' ',
+                    "--app-id", AppId,
+                    "--app-port", _replicaAppPort.ToString(),
+                    "--app-protocol", "http",
+                    "--app-channel-address", "127.0.0.1",
+                    "--dapr-http-port", _replicaDaprHttpPort.ToString(),
+                    "--dapr-grpc-port", _replicaDaprGrpcPort.ToString(),
+                    "--dapr-internal-grpc-port", _replicaDaprInternalGrpcPort.ToString(),
+                    "--metrics-port", _replicaDaprMetricsPort.ToString(),
+                    "--profile-port", _replicaDaprProfilePort.ToString(),
+                    "--resources-path", $"\"{_componentsDir}\"",
+                    "--log-level", "info",
+                    "--placement-host-address", $"localhost:{PlacementHostPort}",
+                    "--scheduler-host-address", $"localhost:{SchedulerHostPort}"),
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            },
+            EnableRaisingEvents = true,
+        };
+
+        if (_runtimeConfigurationPath is not null)
+        {
+            _replicaDaprProcess.StartInfo.Arguments += $" --config \"{_runtimeConfigurationPath}\"";
+        }
+
+        _replicaDaprProcess.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_replicaDaprStdout)
+                {
+                    _ = _replicaDaprStdout.AppendLine(e.Data);
+                }
+            }
+        };
+        _replicaDaprProcess.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                lock (_replicaDaprStderr)
+                {
+                    _ = _replicaDaprStderr.AppendLine(e.Data);
+                }
+            }
+        };
+
+        _ = _replicaDaprProcess.Start();
+        _replicaDaprProcess.BeginOutputReadLine();
+        _replicaDaprProcess.BeginErrorReadLine();
+        if (_replicaDaprProcess.HasExited)
+        {
+            throw new InvalidOperationException(
+                $"Replica daprd exited immediately with code {_replicaDaprProcess.ExitCode}.\n" +
+                $"stderr: {GetCapturedReplicaStderr()}");
+        }
+    }
+
+    /// <summary>
+    /// Removes the per-run <c>scopes:</c> block from a generated component document so the
+    /// remaining text identifies the provider configuration rather than one randomized run.
+    /// The block must be terminal -- exactly what the evidence validator assumes when it
+    /// re-derives the canonical form as everything before <c>"\nscopes:"</c>. A generator that
+    /// ever emits a top-level key after <c>scopes:</c> throws here instead of letting the C# and
+    /// Python derivations diverge silently.
+    /// </summary>
+    /// <param name="componentYaml">The generated component document.</param>
+    /// <returns>The component document up to, but excluding, its terminal scopes block.</returns>
+    /// <exception cref="InvalidOperationException">A top-level key follows the scopes block.</exception>
+    public static string StripTerminalScopes(string componentYaml)
+    {
+        ArgumentNullException.ThrowIfNull(componentYaml);
+
+        string normalized = componentYaml.Replace("\r\n", "\n", StringComparison.Ordinal);
+        int index = normalized.IndexOf("\nscopes:", StringComparison.Ordinal);
+        if (index < 0)
+        {
+            return normalized.TrimEnd('\n');
+        }
+
+        string remainder = normalized[(index + 1)..];
+        foreach (string line in remainder.Split('\n').Skip(1))
+        {
+            if (line.Length > 0 && !char.IsWhiteSpace(line[0]))
+            {
+                throw new InvalidOperationException(
+                    "The generated state-store component emits a top-level key after 'scopes:'. "
+                    + "The canonical form assumes a terminal scopes block; update both the C# and "
+                    + "the evidence validator together before capturing.");
+            }
+        }
+
+        return normalized[..index];
+    }
+
+    /// <summary>
+    /// Reads the version reported by the exact <c>daprd</c> binary this fixture launches, so the
+    /// evidence records an observed runtime rather than a source literal.
+    /// </summary>
+    /// <returns>The trimmed runtime version, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedDaprRuntimeVersionAsync()
+        => await RunCapturedProcessAsync(ResolveDaprdPath(), ["--version"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the image reference configured for a running Dapr control-plane or Redis container.
+    /// </summary>
+    /// <param name="containerName">The container name, for example <c>dapr_redis</c>.</param>
+    /// <returns>The trimmed image reference, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedContainerImageAsync(string containerName)
+        => await RunCapturedProcessAsync(
+            "docker",
+            ["inspect", containerName, "--format", "{{.Config.Image}}"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the local image <em>ID</em> of a running container. This is the content digest of the
+    /// image configuration on this host; it is <em>not</em> a registry repository digest and must
+    /// not be used in a <c>docker pull name@sha256:...</c> reference.
+    /// </summary>
+    /// <param name="containerName">The container name.</param>
+    /// <returns>The trimmed image ID, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedContainerImageIdAsync(string containerName)
+        => await RunCapturedProcessAsync(
+            "docker",
+            ["inspect", containerName, "--format", "{{.Image}}"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the registry repository digests of a local image. These are the values that work in a
+    /// <c>docker pull name@sha256:...</c> reference; the list is empty for a locally built image.
+    /// </summary>
+    /// <param name="imageReference">The image reference, for example <c>redis:6</c>.</param>
+    /// <returns>The trimmed JSON digest list, or a diagnostic marker when it cannot be read.</returns>
+    public static async Task<string> ReadObservedRepositoryDigestsAsync(string imageReference)
+        => await RunCapturedProcessAsync(
+            "docker",
+            ["image", "inspect", imageReference, "--format", "{{json .RepoDigests}}"]).ConfigureAwait(false);
+
+    /// <summary>
+    /// Reads the Redis persistence configuration that a lost-write finding depends on.
+    /// </summary>
+    /// <returns>The <c>appendonly</c>/<c>save</c> settings, or a diagnostic marker.</returns>
+    public static async Task<string> ReadObservedRedisPersistenceAsync()
+    {
+        // Redis 6 CONFIG GET accepts one parameter per call; two probes keep the capture portable.
+        string appendOnly = await RunCapturedProcessAsync(
+            "docker",
+            ["exec", "dapr_redis", "redis-cli", "config", "get", "appendonly"]).ConfigureAwait(false);
+        string save = await RunCapturedProcessAsync(
+            "docker",
+            ["exec", "dapr_redis", "redis-cli", "config", "get", "save"]).ConfigureAwait(false);
+        return string.Join(
+            " | ",
+            appendOnly.ReplaceLineEndings(" ").Trim(),
+            save.ReplaceLineEndings(" ").Trim());
+    }
+
+    /// <summary>Runs a short probe process and captures its output without throwing.</summary>
+    /// <param name="fileName">The executable to run.</param>
+    /// <param name="arguments">The argument list.</param>
+    /// <returns>Trimmed standard output, or a <c>&lt;unavailable: ...&gt;</c> marker.</returns>
+    private static async Task<string> RunCapturedProcessAsync(string fileName, string[] arguments)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo(fileName)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            foreach (string argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            using var process = new Process { StartInfo = startInfo };
+            _ = process.Start();
+            Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+            Task<string> stderr = process.StandardError.ReadToEndAsync();
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await process.WaitForExitAsync(cancellation.Token).ConfigureAwait(false);
+            string output = await stdout.ConfigureAwait(false);
+            string error = await stderr.ConfigureAwait(false);
+            return process.ExitCode == 0
+                ? output.Trim()
+                : $"<unavailable: exit {process.ExitCode}: {error.Trim()}>";
+        }
+        catch (Exception ex)
+        {
+            return $"<unavailable: {ex.GetType().Name}: {ex.Message}>";
+        }
+    }
+
+    private static string ResolveDaprdPath()
+    {
+        string? configured = Environment.GetEnvironmentVariable("EVENTSTORE_TEST_DAPRD_PATH");
+        if (configured is not null)
+        {
+            if (!Path.IsPathFullyQualified(configured) || !File.Exists(configured))
+                throw new InvalidOperationException("EVENTSTORE_TEST_DAPRD_PATH must identify an existing absolute binary path.");
+            return configured;
+        }
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string candidate = Path.Combine(home, ".dapr", "bin", "daprd" + (OperatingSystem.IsWindows() ? ".exe" : string.Empty));
+
+        if (File.Exists(candidate))
+        {
+            return candidate;
+        }
+
+        return OperatingSystem.IsWindows() ? "daprd.exe" : "daprd";
+    }
+
+    private async Task StartTestHostAsync()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing",
+        });
+
+        builder.Configuration["DAPR_HTTP_PORT"] = _daprHttpPort.ToString();
+        builder.Configuration["DAPR_GRPC_PORT"] = _daprGrpcPort.ToString();
+        builder.Configuration["Dapr:HttpPort"] = _daprHttpPort.ToString();
+        builder.Configuration["Dapr:GrpcPort"] = _daprGrpcPort.ToString();
+        builder.Configuration["EventStore:Actors:AggregateActorTypeName"] = AggregateActorTypeName;
+        builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
+        builder.Configuration["EventStore:DomainService:AppId"] = AppId;
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        ConfigureIdempotencyAdmission(builder);
+
+        _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(_appPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
+
+        _ = builder.Services.AddSingleton(
+            new DaprClientBuilder()
+                .UseHttpEndpoint(DaprHttpEndpoint)
+                .UseGrpcEndpoint(DaprGrpcEndpoint)
+                .Build());
+        _ = builder.Services.AddSingleton(AppendDurabilityRaceControl);
+        _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
+        _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
+            "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
+            CreateFoldedCounterCaptureLimits());
+        _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
+        _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
+        _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>()
+            .BindConfiguration("EventStore:DomainService");
+        _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterDetailProjectionHandler>();
+        _ = builder.Services.AddScoped<IAsyncDomainProjectionHandler, LiveCounterIndexProjectionHandler>();
+        _ = builder.Services.AddSingleton<LiveNamedProjectionFaultControl>();
+        ConfigureGuardedCounter(builder);
+
+        _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
+        _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
+        _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
+        _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
+
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["foldedcounter"] = 10);
+        ConfigureTypedReminders(builder);
+
+        _testHost = builder.Build();
+        EnsureTestingEnvironment(_testHost.Services, "primary");
+
+        _ = _testHost.Lifetime.ApplicationStopping.Register(() =>
+        {
+            _hostStopping = true;
+            _hostStopStackTrace = Environment.StackTrace;
+        });
+
+        _ = _testHost.MapActorsHandlers();
+
+        // The actor handlers are already mapped, so this proves the SDK mapping yields to the host.
+        _ = _testHost.MapEventStoreReminders();
+        _ = _testHost.MapPost(
+            "/project",
+            (ProjectionRequest request) => Microsoft.AspNetCore.Http.Results.Ok(
+                new ProjectionResponse(
+                    "counter-legacy",
+                    JsonSerializer.SerializeToElement(new { eventCount = request.Events.Length }))));
+        _ = _testHost.MapPost(
+            "/project/v2",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .DispatchAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/v1",
+            async (ProjectionDispatchRequest request,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await DomainProjectionDispatcher
+                           .RebuildAsync(serviceProvider, request, options.Value, identityOptions.Value, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/stage/v1",
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Stage, context, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/commit/v1",
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Commit, context, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/abort/v1",
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Abort, context, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/project/rebuild/verify/v1",
+            async (ProjectionDispatchRequest request, Microsoft.AspNetCore.Http.HttpContext context,
+                   IServiceProvider serviceProvider,
+                   IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                   IOptions<DomainProjectionIdentityOptions> identityOptions,
+                   CancellationToken cancellationToken) => Microsoft.AspNetCore.Http.Results.Ok(
+                       await ExecuteLiveRebuildAsync(serviceProvider, request, options.Value, identityOptions.Value,
+                           DomainProjectionRebuildBatchAction.Verify, context, cancellationToken)
+                           .ConfigureAwait(false)));
+        _ = _testHost.MapPost(
+            "/admin/operational-index-metadata",
+            (AdminOperationalIndexMetadata.Request request,
+             IServiceProvider serviceProvider,
+             IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+             IOptions<DomainProjectionIdentityOptions> identityOptions) => {
+                var discovery = new Hexalith.EventStore.Client.Discovery.DiscoveryResult(
+                    [new Hexalith.EventStore.Client.Discovery.DiscoveredDomain(
+                        typeof(Hexalith.EventStore.Sample.Counter.CounterAggregate),
+                        "counter",
+                        typeof(Hexalith.EventStore.Sample.Counter.State.CounterState),
+                        Hexalith.EventStore.Client.Discovery.DomainKind.Aggregate)],
+                    []);
+                AdminOperationalIndexMetadata.Response response = AdminOperationalIndexMetadata.Create(
+                    discovery,
+                    request.Domains,
+                    queryHandlers: null,
+                    serviceProvider.GetServices<IAsyncDomainProjectionHandler>(),
+                    identityOptions.Value.AppId,
+                    identityOptions.Value.ServiceVersion,
+                    options.Value,
+                    keyedProcessorDomains: [LiveGuardedCounterProjectionHandler.SourceDomain, LiveReplayCounterProjectionHandler.SourceDomain]);
+                return Microsoft.AspNetCore.Http.Results.Ok(request.ProjectionSourceGuardVersion == 1
+                    ? DomainProjectionReplayRecovery.BindMetadata(serviceProvider,
+                        DomainProjectionOwnerProof.BindMetadata(response, serviceProvider.GetServices<DomainProjectionOwnerProofRegistration>()),
+                        serviceProvider.GetServices<IAsyncDomainProjectionHandler>())
+                    : response);
+            });
+        MapGuardedCounterProof(_testHost);
+        _ = _testHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
+
+        await _testHost.StartAsync().ConfigureAwait(false);
+
+        IServer server = _testHost.Services.GetRequiredService<IServer>();
+        ICollection<string>? addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+        if (addresses is null || addresses.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"Kestrel did not bind to any addresses. Expected port {_appPort}.");
+        }
+    }
+
+    private async Task StartReplicaTestHostAsync()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing",
+        });
+
+        builder.Configuration["DAPR_HTTP_PORT"] = _replicaDaprHttpPort.ToString();
+        builder.Configuration["DAPR_GRPC_PORT"] = _replicaDaprGrpcPort.ToString();
+        builder.Configuration["Dapr:HttpPort"] = _replicaDaprHttpPort.ToString();
+        builder.Configuration["Dapr:GrpcPort"] = _replicaDaprGrpcPort.ToString();
+        builder.Configuration["EventStore:Actors:AggregateActorTypeName"] = AggregateActorTypeName;
+        builder.Configuration["EventStore:ProjectionDispatch:RetryWorkerInterval"] = "00:10:00";
+        builder.Configuration["EventStore:DomainService:AppId"] = AppId;
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        ConfigureIdempotencyAdmission(builder);
+
+        _ = builder.WebHost.ConfigureKestrel(serverOptions => serverOptions.ListenLocalhost(
+            _replicaAppPort,
+            listenOptions => listenOptions.Protocols = HttpProtocols.Http1));
+
+        _ = builder.Services.AddSingleton(
+            new DaprClientBuilder()
+                .UseHttpEndpoint($"http://localhost:{_replicaDaprHttpPort}")
+                .UseGrpcEndpoint($"http://localhost:{_replicaDaprGrpcPort}")
+                .Build());
+        _ = builder.Services.AddSingleton(AppendDurabilityRaceControl);
+        _ = builder.Services.AddSingleton<IGlobalPositionAllocator, LiveSidecarGlobalPositionAllocator>();
+        _ = builder.Services.AddSingleton<IIdempotencyIntentAdapter, LiveIncrementCounterIdempotencyIntentAdapter>();
+        _ = builder.Services.AddEventStoreServer(builder.Configuration);
+        _ = builder.Services.AddEventStoreFoldedSnapshotQualification<Hexalith.EventStore.Sample.Counter.State.CounterState>(
+            "foldedcounter", "foldedcounter", "live-counter-v1", "live-counter-replay-parity",
+            CreateFoldedCounterCaptureLimits());
+        _ = builder.Services.AddSingleton<ITrustedEffectAdmissionPolicy, SyntheticTrustedEffectAdmissionPolicy>();
+        _ = builder.Services.AddSingleton<DomainProjectionCatalogRegistry>();
+        _ = builder.Services.AddOptions<DomainProjectionIdentityOptions>().BindConfiguration("EventStore:DomainService");
+        ConfigureGuardedCounter(builder);
+        _ = builder.Services.AddSingleton<IDomainServiceInvoker>(DomainServiceInvoker);
+        _ = builder.Services.AddSingleton<IEventPublisher>(EventPublisher);
+        _ = builder.Services.AddSingleton<IDeadLetterPublisher>(DeadLetterPublisher);
+        _ = builder.Services.AddSingleton<ICommandStatusStore>(CommandStatusStore);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["counter"] = 15);
+        _ = builder.Services.Configure<SnapshotOptions>(o => o.DomainIntervals["foldedcounter"] = 10);
+
+        _replicaTestHost = builder.Build();
+        EnsureTestingEnvironment(_replicaTestHost.Services, "replica");
+        _ = _replicaTestHost.MapActorsHandlers();
+        MapGuardedCounterProof(_replicaTestHost);
+        _ = _replicaTestHost.MapPost("/project/v2",
+            async (ProjectionDispatchRequest request, IServiceProvider services,
+                IOptions<Hexalith.EventStore.Client.Projections.ProjectionDispatchOptions> options,
+                IOptions<DomainProjectionIdentityOptions> identity, CancellationToken cancellationToken)
+                => Microsoft.AspNetCore.Http.Results.Ok(await DomainProjectionDispatcher.DispatchAsync(
+                    services, request, options.Value, identity.Value, cancellationToken).ConfigureAwait(false)));
+        _ = _replicaTestHost.MapGet("/healthz", () => Microsoft.AspNetCore.Http.Results.Ok("healthy"));
+        await _replicaTestHost.StartAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Registers the Story 4.11 typed-reminder runtime on the primary host with synthetic seams: the intent
+    /// source reads <see cref="ReminderIntents"/>, delegation is the fixture-only token, and submission routes
+    /// through the synthetic admission policy and gateway proof straight to the target aggregate actor.
+    /// Periodic reconciliation is disabled so tests drive each pass explicitly.
+    /// </summary>
+    private void ConfigureTypedReminders(WebApplicationBuilder builder)
+    {
+        builder.Configuration["APP_API_TOKEN"] = AppApiToken;
+        builder.Configuration["EventStore:Reminders:ActorTypeName"] = ReminderActorTypeName;
+        builder.Configuration["EventStore:Reminders:Workload"] = "synthetic-test";
+        builder.Configuration["EventStore:Reminders:Purposes:" + EffectKindCatalog.DateResume] = "synthetic-integration";
+        builder.Configuration["EventStore:Reminders:ReconciliationEnabled"] = "false";
+        _ = builder.Services.AddSingleton(ReminderIntents);
+        _ = builder.Services.AddEventStoreReminders<LiveReminderIntentSource>();
+        _ = builder.Services.AddSingleton<IReminderDelegationTokenProvider, SyntheticReminderDelegationTokenProvider>();
+        _ = builder.Services.AddSingleton<ITrustedEffectSubmitter>(serviceProvider => new LiveActorTrustedEffectSubmitter(
+            serviceProvider.GetRequiredService<ITrustedEffectAdmissionPolicy>(),
+            serviceProvider.GetRequiredService<ITrustedEffectGatewayProof>(),
+            serviceProvider.GetRequiredService<IActorProxyFactory>(),
+            AggregateActorTypeName));
+    }
+
+    private static void ConfigureIdempotencyAdmission(WebApplicationBuilder builder)
+    {
+        builder.Configuration["EventStore:IdempotencyAdmission:Enabled"] = "true";
+        builder.Configuration["EventStore:IdempotencyAdmission:ActiveDigestKeyVersion"] = "live-v1";
+        builder.Configuration["EventStore:IdempotencyAdmission:DigestKeySource"] = "Configuration";
+        builder.Configuration["EventStore:IdempotencyAdmission:DigestKeys:live-v1"] =
+            "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+    }
+
+    private static void EnsureTestingEnvironment(IServiceProvider services, string hostName)
+    {
+        string environmentName = services
+            .GetRequiredService<Microsoft.Extensions.Hosting.IHostEnvironment>()
+            .EnvironmentName;
+        if (!string.Equals(environmentName, "Testing", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"The {hostName} live-sidecar host resolved environment '{environmentName}' instead of 'Testing'.");
+        }
+    }
+
+    /// <summary>Gets the composite Redis key this fixture reads for one aggregate actor state key.</summary>
+    /// <param name="key">The aggregate state key.</param>
+    /// <returns>The composite Redis hash key.</returns>
+    public string GetAggregateActorRedisKeyForEvidence(string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        return GetAggregateActorRedisKey(key);
+    }
+
+    private string GetAggregateActorRedisKey(string key)
+    {
+        string[] segments = key.Split(':', 4);
+        if (segments.Length < 3)
+        {
+            throw new ArgumentException(
+                "Aggregate actor state keys must begin with tenant, domain, and aggregate id segments.",
+                nameof(key));
+        }
+
+        string actorId = $"{segments[0]}:{segments[1]}:{segments[2]}";
+        return $"{AppId}||{AggregateActorTypeName}||{actorId}||{key}";
+    }
+
+    private string CreateComponentFiles()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), $"dapr-components-{Guid.NewGuid():N}");
+        _ = Directory.CreateDirectory(tempDir);
+
+        string stateStoreYaml = $$"""
+            apiVersion: dapr.io/v1alpha1
+            kind: Component
+            metadata:
+              name: statestore
+            spec:
+              type: state.redis
+              version: v1
+              metadata:
+                - name: redisHost
+                  value: "localhost:{{RedisPort}}"
+                - name: redisPassword
+                  value: ""
+                - name: actorStateStore
+                  value: "true"
+            scopes:
+              - {{AppId}}
+            """;
+        StateStoreComponentYaml = stateStoreYaml;
+        StateStoreComponentCanonicalYaml = StripTerminalScopes(stateStoreYaml);
+
+        string pubSubYaml = $$"""
+            apiVersion: dapr.io/v1alpha1
+            kind: Component
+            metadata:
+              name: pubsub
+            spec:
+              type: pubsub.redis
+              version: v1
+              metadata:
+                - name: redisHost
+                  value: "localhost:{{RedisPort}}"
+                - name: redisPassword
+                  value: ""
+                - name: enableDeadLetter
+                  value: "true"
+            scopes:
+              - {{AppId}}
+            """;
+
+        File.WriteAllText(Path.Combine(tempDir, "statestore.yaml"), stateStoreYaml);
+        File.WriteAllText(Path.Combine(tempDir, "pubsub.yaml"), pubSubYaml);
+
+        return tempDir;
+    }
+
+    /// <summary>
+    /// Waits for daprd to become healthy using the outbound healthcheck,
+    /// which verifies placement connectivity required for actors.
+    /// </summary>
+    private async Task WaitForDaprHealthAsync()
+    {
+        using var httpClient = new HttpClient();
+        string healthUrl = $"{DaprHttpEndpoint}/v1.0/healthz/outbound";
+
+        HttpStatusCode lastStatus = default;
+        string? lastError = null;
+
+        for (int i = 0; i < HealthTimeoutSeconds; i++)
+        {
+            if (_daprProcess?.HasExited == true)
+            {
+                throw new InvalidOperationException(
+                    $"daprd exited with code {_daprProcess.ExitCode} during health check.\n" +
+                    $"stdout:\n{GetCapturedStdout()}\n" +
+                    $"stderr:\n{GetCapturedStderr()}");
+            }
+
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                lastStatus = response.StatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex.Message;
+            }
+
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+
+        string diagnostics =
+            $"Dapr sidecar did not become healthy within {HealthTimeoutSeconds} seconds.\n" +
+            $"Health endpoint: {healthUrl}\n" +
+            $"Last HTTP status: {lastStatus}\n" +
+            $"Last connection error: {lastError ?? "(none)"}\n" +
+            $"Ports: app={_appPort}, daprHttp={_daprHttpPort}, daprGrpc={_daprGrpcPort}\n" +
+            $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
+            $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}";
+
+        throw new InvalidOperationException(diagnostics);
+    }
+
+    private async Task WaitForReplicaDaprHealthAsync()
+    {
+        using var httpClient = new HttpClient();
+        string healthUrl = $"http://localhost:{_replicaDaprHttpPort}/v1.0/healthz/outbound";
+        HttpStatusCode lastStatus = default;
+        string? lastError = null;
+        for (int i = 0; i < HealthTimeoutSeconds; i++)
+        {
+            if (_replicaDaprProcess?.HasExited == true)
+            {
+                throw new InvalidOperationException(
+                    $"Replica daprd exited with code {_replicaDaprProcess.ExitCode} during health check.\n" +
+                    $"stdout:\n{GetCapturedReplicaStdout()}\n" +
+                    $"stderr:\n{GetCapturedReplicaStderr()}");
+            }
+
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                lastStatus = response.StatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex.Message;
+            }
+
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Replica Dapr sidecar did not become healthy within {HealthTimeoutSeconds} seconds.\n" +
+            $"Health endpoint: {healthUrl}\n" +
+            $"Last HTTP status: {lastStatus}\n" +
+            $"Last connection error: {lastError ?? "(none)"}\n" +
+            $"--- replica daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedReplicaStdout(), 2000)}\n" +
+            $"--- replica daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedReplicaStderr(), 2000)}");
+    }
+
+    private string GetCapturedStdout()
+    {
+        lock (_daprStdout)
+        {
+            return _daprStdout.ToString();
+        }
+    }
+
+    private string GetCapturedStderr()
+    {
+        lock (_daprStderr)
+        {
+            return _daprStderr.ToString();
+        }
+    }
+
+    private string GetCapturedReplicaStdout()
+    {
+        lock (_replicaDaprStdout)
+        {
+            return _replicaDaprStdout.ToString();
+        }
+    }
+
+    private string GetCapturedReplicaStderr()
+    {
+        lock (_replicaDaprStderr)
+        {
+            return _replicaDaprStderr.ToString();
+        }
+    }
+
+    private static string TailString(string value, int maxChars)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxChars)
+        {
+            return value;
+        }
+
+        return "..." + value[^maxChars..];
+    }
+
+    /// <summary>
+    /// Allocates multiple unique ports simultaneously, eliminating the TOCTOU race
+    /// where sequential allocations can return the same port after the listener closes.
+    /// </summary>
+    private static int[] GetAvailablePorts(int count)
+    {
+        var listeners = new TcpListener[count];
+        int[] ports = new int[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            listeners[i] = new TcpListener(IPAddress.Loopback, 0);
+            listeners[i].Start();
+            ports[i] = ((IPEndPoint)listeners[i].LocalEndpoint).Port;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            listeners[i].Stop();
+        }
+
+        return ports;
+    }
+
+    /// <summary>
+    /// Verifies the test host app is accepting HTTP requests on the expected port.
+    /// Uses actual HTTP GET (not just TCP connect) to confirm the full request pipeline is alive.
+    /// Also detects if the host has started shutting down.
+    /// </summary>
+    private async Task VerifyAppListeningAsync()
+    {
+        if (_hostStopping)
+        {
+            throw new InvalidOperationException(
+                $"Test host is shutting down before verification.\n" +
+                $"Stop stack trace:\n{_hostStopStackTrace}");
+        }
+
+        using var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(3),
+        };
+        string healthUrl = $"http://127.0.0.1:{_appPort}/healthz";
+        string? lastError = null;
+
+        for (int i = 0; i < 30; i++)
+        {
+            if (_hostStopping)
+            {
+                throw new InvalidOperationException(
+                    $"Test host began shutting down during verification (attempt {i + 1}).\n" +
+                    $"Stop stack trace:\n{_hostStopStackTrace}");
+            }
+
+            try
+            {
+                _ = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                return;
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex.Message;
+            }
+            catch (TaskCanceledException)
+            {
+                lastError = "Request timed out";
+            }
+
+            await Task.Delay(200).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Test host HTTP check failed on http://127.0.0.1:{_appPort} after 30 attempts.\n" +
+            $"Host stopping: {_hostStopping}\n" +
+            $"Last HTTP error: {lastError}\n" +
+            $"Ports: app={_appPort}, daprHttp={_daprHttpPort}, daprGrpc={_daprGrpcPort}\n" +
+            $"--- daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedStdout(), 2000)}\n" +
+            $"--- daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedStderr(), 2000)}");
+    }
+
+    private async Task VerifyReplicaAppListeningAsync()
+    {
+        using var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(3),
+        };
+        string healthUrl = $"http://127.0.0.1:{_replicaAppPort}/healthz";
+        string? lastError = null;
+        for (int i = 0; i < 30; i++)
+        {
+            try
+            {
+                HttpResponseMessage response = await httpClient.GetAsync(healthUrl).ConfigureAwait(false);
+                if (response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+
+                lastError = $"HTTP {(int)response.StatusCode}";
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = ex.Message;
+            }
+            catch (TaskCanceledException)
+            {
+                lastError = "Request timed out";
+            }
+
+            await Task.Delay(200).ConfigureAwait(false);
+        }
+
+        throw new InvalidOperationException(
+            $"Replica test host HTTP check failed on {healthUrl} after 30 attempts.\n" +
+            $"Last HTTP error: {lastError}\n" +
+            $"--- replica daprd stdout (last 2000 chars) ---\n{TailString(GetCapturedReplicaStdout(), 2000)}\n" +
+            $"--- replica daprd stderr (last 2000 chars) ---\n{TailString(GetCapturedReplicaStderr(), 2000)}");
+    }
+}

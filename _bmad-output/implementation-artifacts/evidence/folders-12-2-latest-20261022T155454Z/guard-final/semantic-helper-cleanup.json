@@ -1,0 +1,218 @@
+{
+  "utc": "2026-10-22T18:18:21.994526+00:00",
+  "owned_helper_path": "/tmp/folders-12-2-guard-semantic-probe-20261022T1745Z",
+  "archive": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/semantic-helper.tar.gz",
+  "archive_sha256": "76f764ba9cfee86db770a8808ccbac7d33228bf2338aa8928b85566043034f2a",
+  "verified_members": [
+    {
+      "member": "Program.cs",
+      "sha256": "f771523ad4546c3769e5a41afdb9fab20e3674dfee9b7a72030ba11ff907f987",
+      "size": 13793
+    },
+    {
+      "member": "Semantic.csproj",
+      "sha256": "38e201f047792df530db8c7d157c2b6b19d1ed2e4134dba5da5c59e97d3b0da2",
+      "size": 211
+    },
+    {
+      "member": "bin/Semantic",
+      "sha256": "bef3e2ce2e8599022697f504799b1873370df11b1b7ae8f07d7cf31e5d81bdd3",
+      "size": 78192
+    },
+    {
+      "member": "bin/Semantic.deps.json",
+      "sha256": "f27165fb3c1d67577961d376a9dff106f69baa4e3b1d8f2fb7d72cd24bea7007",
+      "size": 396
+    },
+    {
+      "member": "bin/Semantic.dll",
+      "sha256": "b04b3735bdd7a5efc4383a8f935f934ebf099752c96e11b0ca986905eaa2d63d",
+      "size": 45056
+    },
+    {
+      "member": "bin/Semantic.pdb",
+      "sha256": "c318bf1b6ce181e61ed6b5e32986a4df3e30a0cf33a8796cfc72a18cfd398ce1",
+      "size": 14916
+    },
+    {
+      "member": "bin/Semantic.runtimeconfig.json",
+      "sha256": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a",
+      "size": 259
+    },
+    {
+      "member": "final_analysis.py",
+      "sha256": "0ee482a2dbabda2d6c705515701cdcb9dab7b9afd686eb378e4bcef82e45a581",
+      "size": 18139
+    },
+    {
+      "member": "global.json",
+      "sha256": "8abaad26584f555d7581405cc5e45e5bf4866a2c8b1fa64b937a42cf0c81d0ad",
+      "size": 59
+    },
+    {
+      "member": "nonarchive_proofs.py",
+      "sha256": "3210ede85a0010135ca56ae501f07b69c117fd8900c3eaf028410dba0c4ee0fe",
+      "size": 9959
+    },
+    {
+      "member": "obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "sha256": "f79c1ad9a9fc76110b3655f5bfb5ff4e3168e9addceff05b937c0796f0ec34eb",
+      "size": 196
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.AssemblyInfo.cs",
+      "sha256": "a52615ac1aaf9f974188ce92b284d6c56595cb1f9741487104548d4d25cebe71",
+      "size": 935
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.AssemblyInfoInputs.cache",
+      "sha256": "4e3248595635d1f528f8195640a352d75bb3bfb58d11115751bbdbc7a05c8d90",
+      "size": 65
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.GeneratedMSBuildEditorConfig.editorconfig",
+      "sha256": "7db1db7f9097813789ac928a4ec7f43fd7e83fd6f1c47bb5be857f7ec2c285e6",
+      "size": 818
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.GlobalUsings.g.cs",
+      "sha256": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592",
+      "size": 231
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.assets.cache",
+      "sha256": "589305e74ba9e2a130480c740f5aadf20a556dcc024a610681a9aacc0a291bd6",
+      "size": 157
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.csproj.CoreCompileInputs.cache",
+      "sha256": "b0bb9666b05fdeb50969934a11386c8973c002b637b5d0cb0e096c9fee2dc2ea",
+      "size": 65
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.csproj.FileListAbsolute.txt",
+      "sha256": "897995597c4188d1e9da3d07bba75264654976e4e5fee22168768216ced771a6",
+      "size": 2600
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.dll",
+      "sha256": "b04b3735bdd7a5efc4383a8f935f934ebf099752c96e11b0ca986905eaa2d63d",
+      "size": 45056
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.genruntimeconfig.cache",
+      "sha256": "b4b0d17b0f42bb61f7d03a883a90d9996de86f01314db2f7a4903891f7e4e60a",
+      "size": 65
+    },
+    {
+      "member": "obj/Debug/net10.0/Semantic.pdb",
+      "sha256": "c318bf1b6ce181e61ed6b5e32986a4df3e30a0cf33a8796cfc72a18cfd398ce1",
+      "size": 14916
+    },
+    {
+      "member": "obj/Debug/net10.0/apphost",
+      "sha256": "bef3e2ce2e8599022697f504799b1873370df11b1b7ae8f07d7cf31e5d81bdd3",
+      "size": 78192
+    },
+    {
+      "member": "obj/Debug/net10.0/ref/Semantic.dll",
+      "sha256": "b1cf7a35def8830b5f60481df0d9e837c0838684760306f248cae8e92ab1dfa6",
+      "size": 6144
+    },
+    {
+      "member": "obj/Debug/net10.0/refint/Semantic.dll",
+      "sha256": "b1cf7a35def8830b5f60481df0d9e837c0838684760306f248cae8e92ab1dfa6",
+      "size": 6144
+    },
+    {
+      "member": "obj/Semantic.csproj.nuget.dgspec.json",
+      "sha256": "4bfc8bd0190bbe9b5846c012c98d56949d711a7f298bfb83702f099fb67de2a8",
+      "size": 21146
+    },
+    {
+      "member": "obj/Semantic.csproj.nuget.g.props",
+      "sha256": "4d1a69e994f861f592f56331d2e661611eaa7de95f72cae1da2f0d867d866941",
+      "size": 1136
+    },
+    {
+      "member": "obj/Semantic.csproj.nuget.g.targets",
+      "sha256": "b14461e0cb1be3f77fcf9fe2fdd62889325ca92523d0f606980ed59eb5c4aa1c",
+      "size": 149
+    },
+    {
+      "member": "obj/project.assets.json",
+      "sha256": "4f62f9fd51129a17fa1e8e86e51f72e4fcddcc31f182e61a206fa5ff91a8ea0f",
+      "size": 20474
+    },
+    {
+      "member": "obj/project.nuget.cache",
+      "sha256": "83669a45a3556215e6ae57d7ca2e7711c3bba928055e72a0bf32678440f1b45c",
+      "size": 212
+    },
+    {
+      "member": "v1/Program.cs.source",
+      "sha256": "9431ca96593429cae189aa305b061c1c489d55eeb332e46779f21dbced5be79a",
+      "size": 9869
+    },
+    {
+      "member": "v1/bin/Semantic",
+      "sha256": "bef3e2ce2e8599022697f504799b1873370df11b1b7ae8f07d7cf31e5d81bdd3",
+      "size": 78192
+    },
+    {
+      "member": "v1/bin/Semantic.deps.json",
+      "sha256": "f27165fb3c1d67577961d376a9dff106f69baa4e3b1d8f2fb7d72cd24bea7007",
+      "size": 396
+    },
+    {
+      "member": "v1/bin/Semantic.dll",
+      "sha256": "31a03f88a813c2629f720570aa0fb56e457edc5c2f0c0f1004bc738d641d7f4b",
+      "size": 34304
+    },
+    {
+      "member": "v1/bin/Semantic.pdb",
+      "sha256": "c64eedfe64ad11b8fbfa032468a2b08e7d31222be3b86d98089648669c6b8d67",
+      "size": 13916
+    },
+    {
+      "member": "v1/bin/Semantic.runtimeconfig.json",
+      "sha256": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a",
+      "size": 259
+    },
+    {
+      "member": "v2/Program.cs.source",
+      "sha256": "dc0a5c34fc65cf2581774bea91290584f88cfffb392e5f00fd6894c273b1508b",
+      "size": 9851
+    },
+    {
+      "member": "v2/bin/Semantic",
+      "sha256": "bef3e2ce2e8599022697f504799b1873370df11b1b7ae8f07d7cf31e5d81bdd3",
+      "size": 78192
+    },
+    {
+      "member": "v2/bin/Semantic.deps.json",
+      "sha256": "f27165fb3c1d67577961d376a9dff106f69baa4e3b1d8f2fb7d72cd24bea7007",
+      "size": 396
+    },
+    {
+      "member": "v2/bin/Semantic.dll",
+      "sha256": "dcfcccc8cd0ecd964dc3ae489b9a8e8d22722b089004ad73efdf12bdcde22bf9",
+      "size": 34304
+    },
+    {
+      "member": "v2/bin/Semantic.pdb",
+      "sha256": "2f2463d8a6daaf545b3ac273ba5a87abec908286396cfba0721b24ee395614e5",
+      "size": 13916
+    },
+    {
+      "member": "v2/bin/Semantic.runtimeconfig.json",
+      "sha256": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a",
+      "size": 259
+    }
+  ],
+  "active_helper_pids_before_cleanup": [],
+  "preserved_generator": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/finalize-failure-analysis.py",
+  "preserved_generator_sha256": "0ee482a2dbabda2d6c705515701cdcb9dab7b9afd686eb378e4bcef82e45a581",
+  "scope": "All owned semantic helper source/project/binary/versions/scripts archived and hash-verified, then exact owned temp directory removed. No product/snapshot/history paths touched; all probe results remain separately in packet.",
+  "owned_path_exists_after_cleanup": false
+}

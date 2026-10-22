@@ -1,0 +1,305 @@
+
+using System.Security.Claims;
+
+using Dapr.Actors;
+using Dapr.Actors.Client;
+
+using Hexalith.EventStore.Authorization;
+using Hexalith.EventStore.Configuration;
+using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.ErrorHandling;
+using Hexalith.EventStore.Server.Actors.Authorization;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+
+using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Authorization;
+
+public class ActorRbacValidatorTests {
+    private const string ActorType = "TestRbacValidatorActor";
+    private const string Domain = "Sales";
+    private const string MessageCategory = "command";
+    private const string MessageType = "SubmitOrder";
+    private const string TenantId = "tenant-123";
+    private const string UserId = "user-456";
+
+    private static ClaimsPrincipal CreatePrincipalWithNameIdentifier(string userId) {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId) };
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+    }
+
+    private static ClaimsPrincipal CreatePrincipalWithoutNameIdentifier() {
+        var claims = new List<Claim> { new("name", "Display Name") };
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "test"));
+    }
+
+    private static (ActorRbacValidator validator, IActorProxyFactory factory) CreateValidator() {
+        IActorProxyFactory factory = Substitute.For<IActorProxyFactory>();
+        IOptions<EventStoreAuthorizationOptions> options = Options.Create(
+            new EventStoreAuthorizationOptions {
+                RbacValidatorActorName = ActorType,
+            });
+        ILogger<ActorRbacValidator> logger = NullLoggerFactory.Instance.CreateLogger<ActorRbacValidator>();
+        var validator = new ActorRbacValidator(factory, options, logger);
+        return (validator, factory);
+    }
+
+    private static void SetupActorProxy(
+        IActorProxyFactory factory,
+        ActorValidationResponse? response) {
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        _ = actor.ValidatePermissionAsync(Arg.Any<RbacValidationRequest>())
+            .Returns(Task.FromResult(response)!);
+
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(
+            Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+    }
+
+    private static void SetupActorProxyThrows(
+        IActorProxyFactory factory,
+        Exception exception) {
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        _ = actor.ValidatePermissionAsync(Arg.Any<RbacValidationRequest>())
+            .Throws(exception);
+
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(
+            Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorAllows_ReturnsAllowed() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(true));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        RbacValidationResult result = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDenies_ReturnsDeniedWithReason() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "No write permission"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        RbacValidationResult result = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None);
+
+        // Assert
+        result.IsAuthorized.ShouldBeFalse();
+        result.Reason.ShouldBe("No write permission");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorReturnsNull_ThrowsServiceUnavailable() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, null);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act & Assert
+        AuthorizationServiceUnavailableException ex = await Should.ThrowAsync<AuthorizationServiceUnavailableException>(
+            () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None));
+
+        ex.ActorTypeName.ShouldBe(ActorType);
+        ex.ActorId.ShouldBe(TenantId);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorUnreachable_ThrowsServiceUnavailable() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxyThrows(factory, new HttpRequestException("Connection refused"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act & Assert
+        AuthorizationServiceUnavailableException ex = await Should.ThrowAsync<AuthorizationServiceUnavailableException>(
+            () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None));
+
+        _ = ex.InnerException.ShouldBeOfType<HttpRequestException>();
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ExtractsUserIdFromNameIdentifierClaim() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        RbacValidationRequest? capturedRequest = null;
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier("specific-user-id");
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None);
+
+        // Assert
+        _ = capturedRequest.ShouldNotBeNull();
+        capturedRequest.UserId.ShouldBe("specific-user-id");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ForwardsAggregateIdToActorRequest() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        RbacValidationRequest? capturedRequest = null;
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None, "order-123");
+
+        // Assert
+        _ = capturedRequest.ShouldNotBeNull();
+        capturedRequest.AggregateId.ShouldBe("order-123");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_NoNameIdentifierClaim_ThrowsInvalidOperation() {
+        // Arrange
+        (ActorRbacValidator validator, _) = CreateValidator();
+        ClaimsPrincipal user = CreatePrincipalWithoutNameIdentifier();
+
+        // Act & Assert
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+            () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None));
+
+        ex.Message.ShouldContain("NameIdentifier");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ForwardsMessageCategory() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        RbacValidationRequest? capturedRequest = null;
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, "query", CancellationToken.None);
+
+        // Assert
+        _ = capturedRequest.ShouldNotBeNull();
+        capturedRequest.MessageCategory.ShouldBe("query");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ForwardsDomainAndMessageType() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        RbacValidationRequest? capturedRequest = null;
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, "Inventory", "AdjustStock", MessageCategory, CancellationToken.None);
+
+        // Assert
+        _ = capturedRequest.ShouldNotBeNull();
+        capturedRequest.Domain.ShouldBe("Inventory");
+        capturedRequest.MessageType.ShouldBe("AdjustStock");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_PassesThroughUnknownMessageCategory() {
+        // Arrange — proxy does NOT validate messageCategory (actor's responsibility)
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        IRbacValidatorActor actor = Substitute.For<IRbacValidatorActor>();
+        RbacValidationRequest? capturedRequest = null;
+        _ = actor.ValidatePermissionAsync(Arg.Do<RbacValidationRequest>(r => capturedRequest = r))
+            .Returns(Task.FromResult(new ActorValidationResponse(true)));
+        _ = factory.CreateActorProxy<IRbacValidatorActor>(Arg.Any<ActorId>(), Arg.Any<string>())
+            .Returns(actor);
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, TenantId, Domain, MessageType, "notification", CancellationToken.None);
+
+        // Assert
+        _ = capturedRequest.ShouldNotBeNull();
+        capturedRequest.MessageCategory.ShouldBe("notification");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ChecksCancellationBeforeActorCall() {
+        // Arrange
+        (ActorRbacValidator validator, _) = CreateValidator();
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, cts.Token));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ServiceUnavailableExceptionPreservesDiagnostics() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxyThrows(factory, new TimeoutException("Timed out"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act & Assert
+        AuthorizationServiceUnavailableException ex = await Should.ThrowAsync<AuthorizationServiceUnavailableException>(
+            () => validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None));
+
+        ex.ActorTypeName.ShouldBe(ActorType);
+        ex.ActorId.ShouldBe(TenantId);
+        ex.Reason.ShouldBe("Timed out");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_PassesTenantIdAsActorId() {
+        // Arrange
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(true));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        // Act
+        _ = await validator.ValidateAsync(user, "my-tenant", Domain, MessageType, MessageCategory, CancellationToken.None);
+
+        // Assert
+        _ = factory.Received(1).CreateActorProxy<IRbacValidatorActor>(
+            Arg.Is<ActorId>(id => id.GetId() == "my-tenant"),
+            Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ActorDeniesWithReasonCode_MapsTypedReasonCode() {
+        (ActorRbacValidator validator, IActorProxyFactory factory) = CreateValidator();
+        SetupActorProxy(factory, new ActorValidationResponse(false, "Permission denied.", "insufficient_permission"));
+        ClaimsPrincipal user = CreatePrincipalWithNameIdentifier(UserId);
+
+        RbacValidationResult result = await validator.ValidateAsync(user, TenantId, Domain, MessageType, MessageCategory, CancellationToken.None);
+
+        result.IsAuthorized.ShouldBeFalse();
+        result.ReasonCode.ShouldBe(AuthorizationFailureReason.InsufficientPermission);
+    }
+}

@@ -1,0 +1,1074 @@
+{
+  "scenarios": [
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-3f080f912e384424b762003fdd25ba82",
+      "count": 10001,
+      "buffered_owner": false,
+      "inherited_owner": false,
+      "workers": [
+        {
+          "pid": 16847,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:4C710D3FCBD17D18A41F89BE6F264199E5738596130E9290F5146E64512AB553",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4585,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 930,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3070,
+            "MaximumBatchOperations": 3,
+            "PhysicalWrites": 36
+          }
+        },
+        {
+          "pid": 19472,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 109638,
+            "MaximumIdentityValueBytes": 12294,
+            "MaximumCheckpointValueBytes": 1696,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 109638,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 47539
+          }
+        },
+        {
+          "pid": 48771,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 109642,
+            "MaximumIdentityValueBytes": 12294,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 109642,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 46022
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-850aaa63cc9d42db9ad1193e5ec45122",
+      "count": 129,
+      "buffered_owner": false,
+      "inherited_owner": true,
+      "workers": [
+        {
+          "pid": 16556,
+          "phase": "inherited",
+          "observations": {
+            "originalOwnerOmitted": true,
+            "retainedProofEpoch": 2,
+            "selectedGeneration": 3,
+            "inheritedCheckpointSha256": "45B913FDB13F293B7EBD1E432561E87A734FF804D86E91643BF0E7BA2022FD52",
+            "inheritedCheckpointBase64": "eyJjYXB0dXJlZEV2ZW50RGlnZXN0cyI6bnVsbCwiY2FwdHVyZWRJZGVudGl0eVJlZmVyZW5jZSI6eyJjb3VudCI6MTMwLCJlcG9jaCI6MiwiaGVpZ2h0IjoxLCJsYXN0UG9zaXRpb24iOjM5MCwibmFtZXNwYWNlSGFzaCI6Ijk3RkVEMjMwMzQ2QzYxNDE3M0NDRDE0OEM4MDFGRURCRURFQUNDQ0NFQUM3NjRBODNGMDI0RDE2NkNEMjA4NTEiLCJvcGVyYXRpb25IYXNoIjoiNTk5QzQ2NDNBQUNGNkVBMDA0RjE3MDVCODI4ODZDNTBGNTVCQjg4OTcwREJCN0EwQkJCN0RBRDQwNzc3QTYyOCIsInJvb3REaWdlc3QiOiJBRkRGNUU5NTZERThCQ0MxNjJERDI3Njk2MzY3OEM0NEM3NTFCQ0FBQjNBRTYwMzQyMTBGMkUzQzQ0MjY4M0UxIiwic2NvcGVIYXNoIjoia1VpQXRvdk43cUxwdlViN0htY1hyRW5RXzQ5SzNERkJLSkdxYm5aV0ZlMCIsInNvdXJjZUhhc2giOiI5NTI1Njg3NTE1MTA0M0FCRENBRkREMjZGRDM5MEM2NTBENjMxMUUxRDcxODVERjQ3N0NFNTA3MzZCNkE1RDBCIiwidmVyc2lvbiI6MX0sIm93bmVyU2VxdWVuY2VOdW1iZXIiOjEzMCwicG9zaXRpb24iOjM5MCwidG9rZW4iOiJNemt3In0=",
+            "inheritedEpoch": {
+              "version": 1,
+              "epoch": 3,
+              "activeGeneration": 3,
+              "phase": 0,
+              "operationId": "independent-owner-b",
+              "inventoryFingerprint": "v1:0w84TdlSsG7Dou505EWQgv-f1DuAM6jXxNRwtmPGXsA",
+              "captureHighWatermarks": {
+                "owner-b": 388
+              },
+              "consumerCheckpoints": {},
+              "requiredWriters": [
+                "ordinary-dispatch"
+              ],
+              "registeredWriters": [
+                "ordinary-dispatch"
+              ],
+              "journal": [],
+              "stageFingerprint": "stream:26B3ACBE602BDCF95881900B283C80B2CCDAEFF1FE1D040657842E2EBD9AE2CC:1",
+              "stageKeys": [],
+              "stageMutations": null,
+              "stageManifestDigest": null,
+              "stageControlIndexIntent": null,
+              "retainedControlIndexNames": [],
+              "offboardingAuditId": null,
+              "stageChunks": null,
+              "stageExecutionStarted": false,
+              "cleanupChunks": null,
+              "captureChunks": null,
+              "cleanupPreparedChunks": null,
+              "stageStreaming": false,
+              "stageCompletedPageCount": 0,
+              "stageSealedPageCount": 0,
+              "cleanupStreamOperationId": null,
+              "cleanupStreamEpoch": 0,
+              "cleanupStreamPageCount": 0,
+              "ownerSequenceHandoffPending": false,
+              "stageReservedPageCount": 0,
+              "deliveryConflicts": [],
+              "deliveryConflictOverflow": null,
+              "parkingEvidence": [],
+              "parkingEvidenceOverflow": null,
+              "copyOnWriteAnchorGeneration": 0,
+              "cleanupPromotedRetirements": false,
+              "operationTenantId": "bounded-850aaa63cc9d42db9ad1193e5ec45122"
+            },
+            "unchangedReplayVerified": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 1484,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 0,
+            "MaximumBatchOperations": 0,
+            "PhysicalWrites": 1
+          }
+        },
+        {
+          "pid": 7381,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:E5D7E90C7183594A65DB0C71201ECBAF7F248A6AC97F907C78315CAA7A1A31EB",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4561,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 914,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3053,
+            "MaximumBatchOperations": 4,
+            "PhysicalWrites": 42
+          }
+        },
+        {
+          "pid": 8200,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true,
+            "originalOwnerOmitted": true,
+            "retainedProofEpoch": 2,
+            "selectedGeneration": 3,
+            "inheritedCheckpointSha256": "45B913FDB13F293B7EBD1E432561E87A734FF804D86E91643BF0E7BA2022FD52",
+            "inheritedCheckpointBase64": "eyJjYXB0dXJlZEV2ZW50RGlnZXN0cyI6bnVsbCwiY2FwdHVyZWRJZGVudGl0eVJlZmVyZW5jZSI6eyJjb3VudCI6MTMwLCJlcG9jaCI6MiwiaGVpZ2h0IjoxLCJsYXN0UG9zaXRpb24iOjM5MCwibmFtZXNwYWNlSGFzaCI6Ijk3RkVEMjMwMzQ2QzYxNDE3M0NDRDE0OEM4MDFGRURCRURFQUNDQ0NFQUM3NjRBODNGMDI0RDE2NkNEMjA4NTEiLCJvcGVyYXRpb25IYXNoIjoiNTk5QzQ2NDNBQUNGNkVBMDA0RjE3MDVCODI4ODZDNTBGNTVCQjg4OTcwREJCN0EwQkJCN0RBRDQwNzc3QTYyOCIsInJvb3REaWdlc3QiOiJBRkRGNUU5NTZERThCQ0MxNjJERDI3Njk2MzY3OEM0NEM3NTFCQ0FBQjNBRTYwMzQyMTBGMkUzQzQ0MjY4M0UxIiwic2NvcGVIYXNoIjoia1VpQXRvdk43cUxwdlViN0htY1hyRW5RXzQ5SzNERkJLSkdxYm5aV0ZlMCIsInNvdXJjZUhhc2giOiI5NTI1Njg3NTE1MTA0M0FCRENBRkREMjZGRDM5MEM2NTBENjMxMUUxRDcxODVERjQ3N0NFNTA3MzZCNkE1RDBCIiwidmVyc2lvbiI6MX0sIm93bmVyU2VxdWVuY2VOdW1iZXIiOjEzMCwicG9zaXRpb24iOjM5MCwidG9rZW4iOiJNemt3In0=",
+            "inheritedEpoch": {
+              "version": 1,
+              "epoch": 3,
+              "activeGeneration": 3,
+              "phase": 0,
+              "operationId": "independent-owner-b",
+              "inventoryFingerprint": "v1:0w84TdlSsG7Dou505EWQgv-f1DuAM6jXxNRwtmPGXsA",
+              "captureHighWatermarks": {
+                "owner-b": 388
+              },
+              "consumerCheckpoints": {},
+              "requiredWriters": [
+                "ordinary-dispatch"
+              ],
+              "registeredWriters": [
+                "ordinary-dispatch"
+              ],
+              "journal": [],
+              "stageFingerprint": "stream:26B3ACBE602BDCF95881900B283C80B2CCDAEFF1FE1D040657842E2EBD9AE2CC:1",
+              "stageKeys": [],
+              "stageMutations": null,
+              "stageManifestDigest": null,
+              "stageControlIndexIntent": null,
+              "retainedControlIndexNames": [],
+              "offboardingAuditId": null,
+              "stageChunks": null,
+              "stageExecutionStarted": false,
+              "cleanupChunks": null,
+              "captureChunks": null,
+              "cleanupPreparedChunks": null,
+              "stageStreaming": false,
+              "stageCompletedPageCount": 0,
+              "stageSealedPageCount": 0,
+              "cleanupStreamOperationId": null,
+              "cleanupStreamEpoch": 0,
+              "cleanupStreamPageCount": 0,
+              "ownerSequenceHandoffPending": false,
+              "stageReservedPageCount": 0,
+              "deliveryConflicts": [],
+              "deliveryConflictOverflow": null,
+              "parkingEvidence": [],
+              "parkingEvidenceOverflow": null,
+              "copyOnWriteAnchorGeneration": 0,
+              "cleanupPromotedRetirements": false,
+              "operationTenantId": "bounded-850aaa63cc9d42db9ad1193e5ec45122"
+            }
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54984,
+            "MaximumIdentityValueBytes": 10298,
+            "MaximumCheckpointValueBytes": 1664,
+            "MaximumOwnerManifestValueBytes": 1242,
+            "MaximumCanonicalBatchBytes": 54984,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 2603
+          }
+        },
+        {
+          "pid": 3345,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54987,
+            "MaximumIdentityValueBytes": 10298,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1242,
+            "MaximumCanonicalBatchBytes": 54987,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 1466
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-b28176644a354eeda95e9c05ba7320f1",
+      "count": 129,
+      "buffered_owner": true,
+      "inherited_owner": true,
+      "workers": [
+        {
+          "pid": 31632,
+          "phase": "inherited",
+          "observations": {
+            "originalOwnerOmitted": true,
+            "retainedProofEpoch": 2,
+            "selectedGeneration": 3,
+            "inheritedCheckpointSha256": "F959BBAF6DE891687DA628B10111B653502D2E317AD7091A6031829D09766E58",
+            "inheritedCheckpointBase64": "eyJjYXB0dXJlZEV2ZW50RGlnZXN0cyI6bnVsbCwiY2FwdHVyZWRJZGVudGl0eVJlZmVyZW5jZSI6eyJjb3VudCI6MTMwLCJlcG9jaCI6MiwiaGVpZ2h0IjoxLCJsYXN0UG9zaXRpb24iOjM5MCwibmFtZXNwYWNlSGFzaCI6IjAxQUJGRTlCNUQ5RDBEOUUyRjEwRThDOEI3ODBEOEQzMTE1MEEyMEYwNUNFRkRCOTI0MjUzNTc3RDcxODhGMjkiLCJvcGVyYXRpb25IYXNoIjoiNTk5QzQ2NDNBQUNGNkVBMDA0RjE3MDVCODI4ODZDNTBGNTVCQjg4OTcwREJCN0EwQkJCN0RBRDQwNzc3QTYyOCIsInJvb3REaWdlc3QiOiIwODU1QzcwQ0Y5QTYxQ0I1NjQ2QzBGNUMxQTUyNUVDQTY3QjU2NjIyQThBOUI5QjY1N0Y5NDFDNUMwRUMwOTJCIiwic2NvcGVIYXNoIjoiaUQzN3FUMnZreTluUkNqbm1EbjJvOEhzLW12Tm9VckZfRVVqeUlyeDZLZyIsInNvdXJjZUhhc2giOiI5NTI1Njg3NTE1MTA0M0FCRENBRkREMjZGRDM5MEM2NTBENjMxMUUxRDcxODVERjQ3N0NFNTA3MzZCNkE1RDBCIiwidmVyc2lvbiI6MX0sIm93bmVyU2VxdWVuY2VOdW1iZXIiOjEzMCwicG9zaXRpb24iOjM5MCwidG9rZW4iOiJNemt3In0=",
+            "inheritedEpoch": {
+              "version": 1,
+              "epoch": 3,
+              "activeGeneration": 3,
+              "phase": 0,
+              "operationId": "independent-owner-b",
+              "inventoryFingerprint": "v1:0w84TdlSsG7Dou505EWQgv-f1DuAM6jXxNRwtmPGXsA",
+              "captureHighWatermarks": {
+                "owner-b": 388
+              },
+              "consumerCheckpoints": {},
+              "requiredWriters": [
+                "ordinary-dispatch"
+              ],
+              "registeredWriters": [
+                "ordinary-dispatch"
+              ],
+              "journal": [],
+              "stageFingerprint": "stream:26B3ACBE602BDCF95881900B283C80B2CCDAEFF1FE1D040657842E2EBD9AE2CC:1",
+              "stageKeys": [],
+              "stageMutations": null,
+              "stageManifestDigest": null,
+              "stageControlIndexIntent": null,
+              "retainedControlIndexNames": [],
+              "offboardingAuditId": null,
+              "stageChunks": null,
+              "stageExecutionStarted": false,
+              "cleanupChunks": null,
+              "captureChunks": null,
+              "cleanupPreparedChunks": null,
+              "stageStreaming": false,
+              "stageCompletedPageCount": 0,
+              "stageSealedPageCount": 0,
+              "cleanupStreamOperationId": null,
+              "cleanupStreamEpoch": 0,
+              "cleanupStreamPageCount": 0,
+              "ownerSequenceHandoffPending": false,
+              "stageReservedPageCount": 0,
+              "deliveryConflicts": [],
+              "deliveryConflictOverflow": null,
+              "parkingEvidence": [],
+              "parkingEvidenceOverflow": null,
+              "copyOnWriteAnchorGeneration": 0,
+              "cleanupPromotedRetirements": false,
+              "operationTenantId": "bounded-b28176644a354eeda95e9c05ba7320f1"
+            },
+            "unchangedReplayVerified": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 1484,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 0,
+            "MaximumBatchOperations": 0,
+            "PhysicalWrites": 1
+          }
+        },
+        {
+          "pid": 22374,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:7E351D66FC7BFFD0904555691A07B8065E502264D2029AD310C165B31B3B97F0",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4561,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 914,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3053,
+            "MaximumBatchOperations": 4,
+            "PhysicalWrites": 42
+          }
+        },
+        {
+          "pid": 23682,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true,
+            "originalOwnerOmitted": true,
+            "retainedProofEpoch": 2,
+            "selectedGeneration": 3,
+            "inheritedCheckpointSha256": "F959BBAF6DE891687DA628B10111B653502D2E317AD7091A6031829D09766E58",
+            "inheritedCheckpointBase64": "eyJjYXB0dXJlZEV2ZW50RGlnZXN0cyI6bnVsbCwiY2FwdHVyZWRJZGVudGl0eVJlZmVyZW5jZSI6eyJjb3VudCI6MTMwLCJlcG9jaCI6MiwiaGVpZ2h0IjoxLCJsYXN0UG9zaXRpb24iOjM5MCwibmFtZXNwYWNlSGFzaCI6IjAxQUJGRTlCNUQ5RDBEOUUyRjEwRThDOEI3ODBEOEQzMTE1MEEyMEYwNUNFRkRCOTI0MjUzNTc3RDcxODhGMjkiLCJvcGVyYXRpb25IYXNoIjoiNTk5QzQ2NDNBQUNGNkVBMDA0RjE3MDVCODI4ODZDNTBGNTVCQjg4OTcwREJCN0EwQkJCN0RBRDQwNzc3QTYyOCIsInJvb3REaWdlc3QiOiIwODU1QzcwQ0Y5QTYxQ0I1NjQ2QzBGNUMxQTUyNUVDQTY3QjU2NjIyQThBOUI5QjY1N0Y5NDFDNUMwRUMwOTJCIiwic2NvcGVIYXNoIjoiaUQzN3FUMnZreTluUkNqbm1EbjJvOEhzLW12Tm9VckZfRVVqeUlyeDZLZyIsInNvdXJjZUhhc2giOiI5NTI1Njg3NTE1MTA0M0FCRENBRkREMjZGRDM5MEM2NTBENjMxMUUxRDcxODVERjQ3N0NFNTA3MzZCNkE1RDBCIiwidmVyc2lvbiI6MX0sIm93bmVyU2VxdWVuY2VOdW1iZXIiOjEzMCwicG9zaXRpb24iOjM5MCwidG9rZW4iOiJNemt3In0=",
+            "inheritedEpoch": {
+              "version": 1,
+              "epoch": 3,
+              "activeGeneration": 3,
+              "phase": 0,
+              "operationId": "independent-owner-b",
+              "inventoryFingerprint": "v1:0w84TdlSsG7Dou505EWQgv-f1DuAM6jXxNRwtmPGXsA",
+              "captureHighWatermarks": {
+                "owner-b": 388
+              },
+              "consumerCheckpoints": {},
+              "requiredWriters": [
+                "ordinary-dispatch"
+              ],
+              "registeredWriters": [
+                "ordinary-dispatch"
+              ],
+              "journal": [],
+              "stageFingerprint": "stream:26B3ACBE602BDCF95881900B283C80B2CCDAEFF1FE1D040657842E2EBD9AE2CC:1",
+              "stageKeys": [],
+              "stageMutations": null,
+              "stageManifestDigest": null,
+              "stageControlIndexIntent": null,
+              "retainedControlIndexNames": [],
+              "offboardingAuditId": null,
+              "stageChunks": null,
+              "stageExecutionStarted": false,
+              "cleanupChunks": null,
+              "captureChunks": null,
+              "cleanupPreparedChunks": null,
+              "stageStreaming": false,
+              "stageCompletedPageCount": 0,
+              "stageSealedPageCount": 0,
+              "cleanupStreamOperationId": null,
+              "cleanupStreamEpoch": 0,
+              "cleanupStreamPageCount": 0,
+              "ownerSequenceHandoffPending": false,
+              "stageReservedPageCount": 0,
+              "deliveryConflicts": [],
+              "deliveryConflictOverflow": null,
+              "parkingEvidence": [],
+              "parkingEvidenceOverflow": null,
+              "copyOnWriteAnchorGeneration": 0,
+              "cleanupPromotedRetirements": false,
+              "operationTenantId": "bounded-b28176644a354eeda95e9c05ba7320f1"
+            }
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54984,
+            "MaximumIdentityValueBytes": 10382,
+            "MaximumCheckpointValueBytes": 1664,
+            "MaximumOwnerManifestValueBytes": 1246,
+            "MaximumCanonicalBatchBytes": 54984,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 2522
+          }
+        },
+        {
+          "pid": 17020,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54987,
+            "MaximumIdentityValueBytes": 10382,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1246,
+            "MaximumCanonicalBatchBytes": 54987,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 1438
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-b7ceba2b86fd453bb663dfde7aaddb1c",
+      "count": 129,
+      "buffered_owner": true,
+      "inherited_owner": false,
+      "workers": [
+        {
+          "pid": 44234,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:17CC949F1FC6306A2D1BEF32B1D4D6E8F719AE3CF755105CF1A9EB91CD145AFC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4565,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 914,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3057,
+            "MaximumBatchOperations": 3,
+            "PhysicalWrites": 37
+          }
+        },
+        {
+          "pid": 44947,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54987,
+            "MaximumIdentityValueBytes": 10354,
+            "MaximumCheckpointValueBytes": 1664,
+            "MaximumOwnerManifestValueBytes": 1246,
+            "MaximumCanonicalBatchBytes": 54987,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 1720
+          }
+        },
+        {
+          "pid": 41470,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54991,
+            "MaximumIdentityValueBytes": 10354,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1246,
+            "MaximumCanonicalBatchBytes": 54991,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 1437
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-deef41882e2a4b22b2c26994933315c8",
+      "count": 32769,
+      "buffered_owner": false,
+      "inherited_owner": false,
+      "workers": [
+        {
+          "pid": 52681,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:EED3B93DF494442124029BBCF34545CA218CE63A3113D3CEC9B753437D83320A",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4585,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 930,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3071,
+            "MaximumBatchOperations": 3,
+            "PhysicalWrites": 36
+          }
+        },
+        {
+          "pid": 55724,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 110553,
+            "MaximumIdentityValueBytes": 12302,
+            "MaximumCheckpointValueBytes": 1696,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 110553,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 153011
+          }
+        },
+        {
+          "pid": 12452,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 110556,
+            "MaximumIdentityValueBytes": 12302,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 110556,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 148735
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-e7fea7aa97f04633ba652963d23657bc",
+      "count": 10001,
+      "buffered_owner": true,
+      "inherited_owner": true,
+      "workers": [
+        {
+          "pid": 3029,
+          "phase": "inherited",
+          "observations": {
+            "originalOwnerOmitted": true,
+            "retainedProofEpoch": 2,
+            "selectedGeneration": 3,
+            "inheritedCheckpointSha256": "1149B87CC638E2F68DA4A98E9E0765CE2A3B5CD4D469610832E3DD8CA33B20B1",
+            "inheritedCheckpointBase64": "eyJjYXB0dXJlZEV2ZW50RGlnZXN0cyI6bnVsbCwiY2FwdHVyZWRJZGVudGl0eVJlZmVyZW5jZSI6eyJjb3VudCI6MTAwMDIsImVwb2NoIjoyLCJoZWlnaHQiOjIsImxhc3RQb3NpdGlvbiI6MzAwMDYsIm5hbWVzcGFjZUhhc2giOiJERDA1QjcyRDAzNzlFNDI4MEI4QUVCMjA3MDdDRUUxRDE4RTkzNzA1QzVBRjgzQUMxRDVENEU5NzFBQzZGMUMyIiwib3BlcmF0aW9uSGFzaCI6IjU5OUM0NjQzQUFDRjZFQTAwNEYxNzA1QjgyODg2QzUwRjU1QkI4ODk3MERCQjdBMEJCQjdEQUQ0MDc3N0E2MjgiLCJyb290RGlnZXN0IjoiQ0Q5RDBCOUQ0RjZBNkI1RUZCNkVEMDUwRjFFRDI1RkE5MkVFMUI3ODg2RDY5RkU4QzU3MUE5N0M5OEVCRTk1NyIsInNjb3BlSGFzaCI6IllHemRvLWdsTHRUYTJXNjktV0h2Q2NtUHRHYzQwNnB0T19yRnZHZFBnNXciLCJzb3VyY2VIYXNoIjoiOTUyNTY4NzUxNTEwNDNBQkRDQUZERDI2RkQzOTBDNjUwRDYzMTFFMUQ3MTg1REY0NzdDRTUwNzM2QjZBNUQwQiIsInZlcnNpb24iOjF9LCJvd25lclNlcXVlbmNlTnVtYmVyIjoxMDAwMiwicG9zaXRpb24iOjMwMDA2LCJ0b2tlbiI6Ik16QXdNRFk9In0=",
+            "inheritedEpoch": {
+              "version": 1,
+              "epoch": 3,
+              "activeGeneration": 3,
+              "phase": 0,
+              "operationId": "independent-owner-b",
+              "inventoryFingerprint": "v1:0w84TdlSsG7Dou505EWQgv-f1DuAM6jXxNRwtmPGXsA",
+              "captureHighWatermarks": {
+                "owner-b": 388
+              },
+              "consumerCheckpoints": {},
+              "requiredWriters": [
+                "ordinary-dispatch"
+              ],
+              "registeredWriters": [
+                "ordinary-dispatch"
+              ],
+              "journal": [],
+              "stageFingerprint": "stream:26B3ACBE602BDCF95881900B283C80B2CCDAEFF1FE1D040657842E2EBD9AE2CC:1",
+              "stageKeys": [],
+              "stageMutations": null,
+              "stageManifestDigest": null,
+              "stageControlIndexIntent": null,
+              "retainedControlIndexNames": [],
+              "offboardingAuditId": null,
+              "stageChunks": null,
+              "stageExecutionStarted": false,
+              "cleanupChunks": null,
+              "captureChunks": null,
+              "cleanupPreparedChunks": null,
+              "stageStreaming": false,
+              "stageCompletedPageCount": 0,
+              "stageSealedPageCount": 0,
+              "cleanupStreamOperationId": null,
+              "cleanupStreamEpoch": 0,
+              "cleanupStreamPageCount": 0,
+              "ownerSequenceHandoffPending": false,
+              "stageReservedPageCount": 0,
+              "deliveryConflicts": [],
+              "deliveryConflictOverflow": null,
+              "parkingEvidence": [],
+              "parkingEvidenceOverflow": null,
+              "copyOnWriteAnchorGeneration": 0,
+              "cleanupPromotedRetirements": false,
+              "operationTenantId": "bounded-e7fea7aa97f04633ba652963d23657bc"
+            },
+            "unchangedReplayVerified": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 1484,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 0,
+            "MaximumBatchOperations": 0,
+            "PhysicalWrites": 1
+          }
+        },
+        {
+          "pid": 23928,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:38EA8EB3791A0C2AAE00D60D67341796D3211C21D7AFFDEB0F705B8304FA7D61",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4577,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 930,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3066,
+            "MaximumBatchOperations": 4,
+            "PhysicalWrites": 41
+          }
+        },
+        {
+          "pid": 25804,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true,
+            "originalOwnerOmitted": true,
+            "retainedProofEpoch": 2,
+            "selectedGeneration": 3,
+            "inheritedCheckpointSha256": "1149B87CC638E2F68DA4A98E9E0765CE2A3B5CD4D469610832E3DD8CA33B20B1",
+            "inheritedCheckpointBase64": "eyJjYXB0dXJlZEV2ZW50RGlnZXN0cyI6bnVsbCwiY2FwdHVyZWRJZGVudGl0eVJlZmVyZW5jZSI6eyJjb3VudCI6MTAwMDIsImVwb2NoIjoyLCJoZWlnaHQiOjIsImxhc3RQb3NpdGlvbiI6MzAwMDYsIm5hbWVzcGFjZUhhc2giOiJERDA1QjcyRDAzNzlFNDI4MEI4QUVCMjA3MDdDRUUxRDE4RTkzNzA1QzVBRjgzQUMxRDVENEU5NzFBQzZGMUMyIiwib3BlcmF0aW9uSGFzaCI6IjU5OUM0NjQzQUFDRjZFQTAwNEYxNzA1QjgyODg2QzUwRjU1QkI4ODk3MERCQjdBMEJCQjdEQUQ0MDc3N0E2MjgiLCJyb290RGlnZXN0IjoiQ0Q5RDBCOUQ0RjZBNkI1RUZCNkVEMDUwRjFFRDI1RkE5MkVFMUI3ODg2RDY5RkU4QzU3MUE5N0M5OEVCRTk1NyIsInNjb3BlSGFzaCI6IllHemRvLWdsTHRUYTJXNjktV0h2Q2NtUHRHYzQwNnB0T19yRnZHZFBnNXciLCJzb3VyY2VIYXNoIjoiOTUyNTY4NzUxNTEwNDNBQkRDQUZERDI2RkQzOTBDNjUwRDYzMTFFMUQ3MTg1REY0NzdDRTUwNzM2QjZBNUQwQiIsInZlcnNpb24iOjF9LCJvd25lclNlcXVlbmNlTnVtYmVyIjoxMDAwMiwicG9zaXRpb24iOjMwMDA2LCJ0b2tlbiI6Ik16QXdNRFk9In0=",
+            "inheritedEpoch": {
+              "version": 1,
+              "epoch": 3,
+              "activeGeneration": 3,
+              "phase": 0,
+              "operationId": "independent-owner-b",
+              "inventoryFingerprint": "v1:0w84TdlSsG7Dou505EWQgv-f1DuAM6jXxNRwtmPGXsA",
+              "captureHighWatermarks": {
+                "owner-b": 388
+              },
+              "consumerCheckpoints": {},
+              "requiredWriters": [
+                "ordinary-dispatch"
+              ],
+              "registeredWriters": [
+                "ordinary-dispatch"
+              ],
+              "journal": [],
+              "stageFingerprint": "stream:26B3ACBE602BDCF95881900B283C80B2CCDAEFF1FE1D040657842E2EBD9AE2CC:1",
+              "stageKeys": [],
+              "stageMutations": null,
+              "stageManifestDigest": null,
+              "stageControlIndexIntent": null,
+              "retainedControlIndexNames": [],
+              "offboardingAuditId": null,
+              "stageChunks": null,
+              "stageExecutionStarted": false,
+              "cleanupChunks": null,
+              "captureChunks": null,
+              "cleanupPreparedChunks": null,
+              "stageStreaming": false,
+              "stageCompletedPageCount": 0,
+              "stageSealedPageCount": 0,
+              "cleanupStreamOperationId": null,
+              "cleanupStreamEpoch": 0,
+              "cleanupStreamPageCount": 0,
+              "ownerSequenceHandoffPending": false,
+              "stageReservedPageCount": 0,
+              "deliveryConflicts": [],
+              "deliveryConflictOverflow": null,
+              "parkingEvidence": [],
+              "parkingEvidenceOverflow": null,
+              "copyOnWriteAnchorGeneration": 0,
+              "cleanupPromotedRetirements": false,
+              "operationTenantId": "bounded-e7fea7aa97f04633ba652963d23657bc"
+            }
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 109634,
+            "MaximumIdentityValueBytes": 12294,
+            "MaximumCheckpointValueBytes": 1696,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 109634,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 48287
+          }
+        },
+        {
+          "pid": 34223,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 109638,
+            "MaximumIdentityValueBytes": 12294,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 109638,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 45995
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-ebabc61e196f4ea08d6ac7636415ae47",
+      "count": 10001,
+      "buffered_owner": true,
+      "inherited_owner": false,
+      "workers": [
+        {
+          "pid": 39492,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:523D250B49C648FE8274F52EE8624E55F0F39C7F4E8B5615543C450C646BC783",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4585,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 930,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3070,
+            "MaximumBatchOperations": 3,
+            "PhysicalWrites": 36
+          }
+        },
+        {
+          "pid": 40897,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 109638,
+            "MaximumIdentityValueBytes": 12294,
+            "MaximumCheckpointValueBytes": 1696,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 109638,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 47479
+          }
+        },
+        {
+          "pid": 50244,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 109642,
+            "MaximumIdentityValueBytes": 12294,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1254,
+            "MaximumCanonicalBatchBytes": 109642,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 45994
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-f3a95f104b114f9a9dcc7c64ab6aa14d",
+      "count": 129,
+      "buffered_owner": false,
+      "inherited_owner": false,
+      "workers": [
+        {
+          "pid": 36752,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:21C71B025A2627B179AA14EFAFBDA5301B873329551031D641D075272D894F98",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4565,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 914,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3057,
+            "MaximumBatchOperations": 3,
+            "PhysicalWrites": 37
+          }
+        },
+        {
+          "pid": 37455,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54987,
+            "MaximumIdentityValueBytes": 10330,
+            "MaximumCheckpointValueBytes": 1664,
+            "MaximumOwnerManifestValueBytes": 1242,
+            "MaximumCanonicalBatchBytes": 54987,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 1780
+          }
+        },
+        {
+          "pid": 32699,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 54991,
+            "MaximumIdentityValueBytes": 10330,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1242,
+            "MaximumCanonicalBatchBytes": 54991,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 1465
+          }
+        }
+      ]
+    },
+    {
+      "directory": "bounded-scenarios/bounded-identity-bounded-f965f5ccac0e4a8ab44ed04130b0e541",
+      "count": 32769,
+      "buffered_owner": true,
+      "inherited_owner": false,
+      "workers": [
+        {
+          "pid": 70485,
+          "phase": "promote",
+          "observations": {
+            "batchId": "identity-seed:B61E6821048C4DFFD61965CE41E44D5CCB5116CBB3D19654B4F02D1861BA85FE",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerEpochInstalled": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 4585,
+            "MaximumIdentityValueBytes": 0,
+            "MaximumCheckpointValueBytes": 930,
+            "MaximumOwnerManifestValueBytes": 0,
+            "MaximumCanonicalBatchBytes": 3071,
+            "MaximumBatchOperations": 3,
+            "PhysicalWrites": 36
+          }
+        },
+        {
+          "pid": 76251,
+          "phase": "resume",
+          "observations": {
+            "partialHandoffObserved": true,
+            "firstOwnerSeeded": true,
+            "secondOwnerCheckpointAbsent": true,
+            "handoffFenceHeld": true,
+            "partialHandoffRecovered": true
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 110553,
+            "MaximumIdentityValueBytes": 12302,
+            "MaximumCheckpointValueBytes": 1696,
+            "MaximumOwnerManifestValueBytes": 1258,
+            "MaximumCanonicalBatchBytes": 110553,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 152951
+          }
+        },
+        {
+          "pid": 53235,
+          "phase": "stage",
+          "observations": {
+            "batchId": "BAE9795FF404E4723F34F7EDA80C52B70BE90FFAE099178BF8A8D8745A4CC2AC",
+            "phase": "AfterInstallOperation",
+            "ordinal": 0,
+            "preparedMarkerObserved": true,
+            "participantInstalled": true,
+            "stageReturned": false,
+            "stageSealed": false,
+            "completedStagePages": 0
+          },
+          "measurements": {
+            "MaximumPhysicalValueBytes": 110556,
+            "MaximumIdentityValueBytes": 12302,
+            "MaximumCheckpointValueBytes": 0,
+            "MaximumOwnerManifestValueBytes": 1258,
+            "MaximumCanonicalBatchBytes": 110556,
+            "MaximumBatchOperations": 68,
+            "PhysicalWrites": 148707
+          }
+        }
+      ]
+    }
+  ],
+  "distinct_worker_pids": [
+    3029,
+    3345,
+    7381,
+    8200,
+    12452,
+    16556,
+    16847,
+    17020,
+    19472,
+    22374,
+    23682,
+    23928,
+    25804,
+    31632,
+    32699,
+    34223,
+    36752,
+    37455,
+    39492,
+    40897,
+    41470,
+    44234,
+    44947,
+    48771,
+    50244,
+    52681,
+    53235,
+    55724,
+    70485,
+    76251
+  ],
+  "observed_maximums": {
+    "MaximumPhysicalValueBytes": 110556,
+    "MaximumIdentityValueBytes": 12302,
+    "MaximumCheckpointValueBytes": 1696,
+    "MaximumOwnerManifestValueBytes": 1258,
+    "MaximumCanonicalBatchBytes": 110556,
+    "MaximumBatchOperations": 68,
+    "PhysicalWrites": 153011
+  }
+}

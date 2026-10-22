@@ -1,0 +1,45 @@
+{
+  "processes": [
+    {
+      "pid": 43110,
+      "exit_code": -15,
+      "absent": true
+    }
+  ],
+  "containers": [
+    {
+      "name": "admission-71da18b1194a-scheduler",
+      "id": "ee3869b4c9f860b72362a8c58b489f31ec1ee2169add3b6cd82e20081527f4f3",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-71da18b1194a-placement",
+      "id": "32c65595bc6f1f400bfc335bbe26637af1604f96a5514649b5c0ece499f8c84f",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-71da18b1194a-redis",
+      "id": "a76406ecbe5d936983efbfcd4cf683d3377a462021e740634090814f070f8e5e",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    }
+  ],
+  "logs": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-controls-v2/cancel/bounded-infrastructure/control-child.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-controls-v2/cancel/bounded-infrastructure/control-child.stderr.log",
+      "closed": true
+    }
+  ],
+  "runtime": "/tmp/eventstore-actor-admission-bxtzw4ap",
+  "runtime_absent": true,
+  "passed": true
+}

@@ -1,0 +1,846 @@
+{
+  "utc": "2026-10-22T18:35:11.827016+00:00",
+  "frozen_inputs_passed": true,
+  "ordinary_file_set_comparisons": [
+    {
+      "root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "expected_count": 16762,
+      "actual_count": 16762,
+      "unexpected": [],
+      "missing": []
+    },
+    {
+      "root": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+      "expected_count": 16764,
+      "actual_count": 16764,
+      "unexpected": [],
+      "missing": []
+    }
+  ],
+  "frozen_input_paths": 145090,
+  "frozen_input_changes": [],
+  "conflicting_input_hashes": [],
+  "folders_passed": false,
+  "folders_protected_paths": 8963,
+  "folders_changes": [
+    {
+      "path": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-v2-source-requalification-pending.yaml",
+      "expected": "daf76906eb890a4e40636630091d86fce9ffe3df6059f957db1c368a8b4977be",
+      "actual": "68a93e8b1e246b4634fd329366088d3ab6c97e56d9b1f58bf00370674dd06338"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerServiceCollectionExtensions.cs",
+      "expected": "0ececd50ad1f2fa53ada33fb65466eda6390251a120ccad4183b5e5a886e2bea",
+      "actual": "a45a6c90caaee2bc0183998e8e2d949c54cf90d52a22e32071840955043bdc13"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/HistoricalMutationAuthorization.cs",
+      "expected": "d2babffb79cd515f82961bc1f54beb3948b1c66ef898183a81796b90b7ec9e8d",
+      "actual": "6e168b1da3f505c889808da82f614f4a61ae531d6c9230b32b482b14ad8127a4"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersDomainServiceEndpoints.cs",
+      "expected": "47e42317db5e6b9364a730ca47ec7a7b7d4e4090661b78a0e148922f870fde4a",
+      "actual": "dc2c86d1096f0781f8b9023964fbb8da0bae02c97d03beb537686d7eda22c700"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerModule.cs",
+      "expected": "96ba8531962b7fc1a804a10cf1958467ee9434de5f24de7435a9c1cff95fb3e3",
+      "actual": "0e6bfc0621eecf04bc66c3afcd699088d4332725bf2742e2d81b38e00d169e11"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/ActorFoldedFolderRepository.cs",
+      "expected": "5fb187b96deda052df54316214fd4b6114578b22610cd539d10dff894204a43b",
+      "actual": "2252537bf023045579118159f27165d1a775dd1f6375a23f5a2d237f548899fa"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FolderDomainProcessor.cs",
+      "expected": "9958774658c9354ea8cf7c58b4c03eb79c681712ca736c15ee703e39a2bd99bf",
+      "actual": "0e684cdbcd77965a0f9feef4f3ecd5dcb21d6d9a6928f32a1219030ea5b35d8f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.EventStore/FoldersIdempotencyIntentAdapterCatalog.cs",
+      "expected": "64b71fb988eedff7dcb4bc5ce4c56c90cdb07ce551351eba2a2499c585fbb3cf",
+      "actual": "591c61096f6348464b6cce0b523d7a22e732cc7899b915c74c6702d07c0432dd"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.EventStore/FoldersCanonicalIntentBuilder.cs",
+      "expected": "24ff6ee85779105371a139e1fa3baf4c2929545dd6ec333e43b19ba6417feb66",
+      "actual": "5b1ff1a5451623d270c285352966dd36fe643fae2888904aef182c479c4e4bd9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.EventStore/FoldersIdempotencyIntentAdapterServiceCollectionExtensions.cs",
+      "expected": "468b07e4ebac56642bea10849b080740282f67bb081d9fcf4edcad961b261248",
+      "actual": "e742e2772cc9a5ea93019880713ccd9dc3b317eb87ffaff5bf1bad3a709e1f3f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v2.yaml",
+      "expected": "ee9c7bddd0428d3809555c591af0b0bd760b0c88e336720e569c7d7b259807b0",
+      "actual": "9f2adc4e92e5b3ea8705ec4916b7b015bb53e7e1acf7b198878504b9437a8d34"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v1.yaml",
+      "expected": "ac2257eced95bccb63fd73baf76d918a727ee468997012c83d72dc7ad16aea8e",
+      "actual": "a6153d1a77fd49d3c7a43302fbe440d546108dc40e76ff0014c757d0cd38dbfa"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersIdempotencyHelpers.g.cs",
+      "expected": "a9313ede8fdff1e52c7c900f03a58b352b9434cef7936a23dcdae853a7a53526",
+      "actual": "ce9d8b25d3b574cb22cd92bdf2062c57b4f4379e23f33b51a018c790185fdf67"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersClient.g.cs",
+      "expected": "dbc41081169dc3562d91bfa2133f9655b2fa5a68843aa9737197c522e476d2b5",
+      "actual": "8020632be8f23e3b9630d7838f260bba699ec20c7d14ebe67a2fe8cf9748e838"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileStreamStagingEvidence.cs",
+      "expected": "c13910dba7ed8277b29b7119a93220b9425df0641c74ff961d3b86b02a9a7af0",
+      "actual": "7c997257dde4ba5703954ce8072cf18668b2abc38666cf7465c0d0b547e8020c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUploadDescriptor.cs",
+      "expected": "abcff08f30cee63a67d63c005a85edab1f1e4a115b8e52ad45e7bbb727335ede",
+      "actual": "9254eba0bc30b6204028ed46496c1ff6e27e879de29431f3066c27183e8103ed"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUpload.cs",
+      "expected": "14026186717988d53a84aab88d31b14df464a17618cbce2244438b980c5d93bf",
+      "actual": "195f331ad771d091dd940f4c446ec722b05d9391d340bf4baece741982d08fc0"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FoldersFileUploadExtensions.cs",
+      "expected": "76f3ebc7c7563c3a6043b6fb34870e370e0d78d3140bed29cd8433a238797201",
+      "actual": "cffedabd78b80ff7fa3266b5288c285de0b27318b0f9f00298964d1bb62dbd16"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authorization/FolderCommandActionTokenMapper.cs",
+      "expected": "4b4d43900b6f0425aff11555c1256c487922c0769f7a98fa570bb9b117a00205",
+      "actual": "fbe9d1528b8a4571a87d0c2cc54f57015422da14cc17ba7365246a5d6f242126"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/FoldersGatewayHumanBearerHandler.cs",
+      "expected": "2b9e05ea6e86646051fe4bcfdc74f02ba3345a77b932f3aff29d71e22530a763",
+      "actual": "7fc9d6c8877cdbab43ec834f3fe6a4405d5bf968a0c2b9cf972eeb7db1ae7ff9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/VerifiedReceiptEventStoreAuthorizationValidator.cs",
+      "expected": "1285eea97b173a474b73a501c2c2eb96b58b29c2396f77761d6b1b3b68d396f8",
+      "actual": "6b5cce02b3888d9979dd48aa00f019196053c102c75d26aebb3c2e3657c794b6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockLeaseMetadata.cs",
+      "expected": "20d16e4fbcd0fe7af364de87265092a1c26a25d0c423640968e73b09ed7beb36",
+      "actual": "fd6da8a6efd347838f6d4ced5242771ec369981b01a610fc50013dd6b26d626d"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusQueryHandler.cs",
+      "expected": "77decdae7443788cc6f78952de4e3c64d1318ff2faf3c33bdd4dbc83c90f1ddb",
+      "actual": "1896df19a3d56dba5103c39db583e56e0223d40353d8ce8e43b64888a9872cd3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusReadModelSnapshot.cs",
+      "expected": "c8d8b75575aa1a161a93522fa59a357d4fbdc5b777bede486be242cec16ae677",
+      "actual": "06b1f6120477e9d7d23569a50dc7e194a8b6e1a98cd87981b12e191e42a500e6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextItem.cs",
+      "expected": "43f18883b30fc44548e0134223a3fae8d1a1fc8cd460c6f07bba77017f9f880b",
+      "actual": "5e94ab1b8779fd71d4e46eb131f75f165c93c27ac03016fbe1430e4944a90c84"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextSourceStatus.cs",
+      "expected": "ba7540e80b51005ad485ea36fc04b38006f5431043cd8d1fa985eef100e19864",
+      "actual": "ae019e5759d20ea15e6e6eb644649207eac3c0ccfa1aab6087f5a3475547225f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextQueryHandler.cs",
+      "expected": "e4fe29ac071ec6e91d6cf0c51a63e1b826b4b1c4b3151e8bfe8c79192a2896dc",
+      "actual": "ad706a7daee0c090ba9e1f7aae44f6bc7cdfda7755a728f697576fcfd348abb4"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextResultCode.cs",
+      "expected": "c6e8cb40e14002c533bde923699148560586946edd46e792ded1c43a3a32fedf",
+      "actual": "6e27568832745ee56cb9d20756431836ad52bfb5bcd50e71b073ed5f6fdefac6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceRequest.cs",
+      "expected": "6efe3053597fba35c08fb7c26ef7651fd6ba33b2e314aea9a4f1355ebeea0d4b",
+      "actual": "d9802f6ea869e78dee41a9190bce4a8cdc160e34d985b50a21acb39ebf332130"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderState.cs",
+      "expected": "7b75311c1803724d35c870f739864b8701c0bd5f00c50f1e186022799eebc2dc",
+      "actual": "ab152be934c4cefab146697a6f500ed6202156bb9bb9cb3f5d568c705812ebf7"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreRequest.cs",
+      "expected": "9f1f7d9286adcec1bf5f24438b8369021d68b4fb5aedf684074dca9093f8cebc",
+      "actual": "e56f44afb01eab3a7d8e55d6e134b7e0bcc43b833be5adb75950b8c534177877"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationRequest.cs",
+      "expected": "f55dccb55fe9da2043bf6be321a6f84cc5371b715a4f5838c8bd8f7c8339dfee",
+      "actual": "69b65e57dcfc21fa42cb4f9d78fb82bb929d6cfb5c95e0009d261d91e9f893c6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyValidator.cs",
+      "expected": "1f0ac1a5c52931d3398e91d7c982da2ab22a3e12208f4e26be0ec4dd3149f884",
+      "actual": "ee32da8ab04ee3cc2382ac2dbc6ece3b58f0e5684c8f03f02152cd56053b3d4d"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationService.cs",
+      "expected": "1867402cfa36e348532b16e1ffcd2b03fef29ba4d16b3ccf006abef61ffd76b0",
+      "actual": "89d2e7efb2f6be4ea32da199d77e0d9ae5d918a86e6f833a7aedb017b2831599"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreRequest.cs",
+      "expected": "10b69fa4320e3752b0f52757a59d541c2a91d67a5da5ea9fba2024180183d779",
+      "actual": "24c88410e79358411094ecac08811be5ff93d3f89fd6211fae48a13cc1092a99"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/MutateWorkspaceFile.cs",
+      "expected": "e502bdc6c36bdb7938cbd44c13863fd2a73243526d34da69d243a4df178166d8",
+      "actual": "79bbcc37644dab93f73b70b1ace84ecc0c99f392eb4a6a547b611b6671feb1de"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationAccepted.cs",
+      "expected": "eea5b0b369b3e00b3511aabe5ed1bcd53277b8e2c9b2d95e24eeb709a9bb349c",
+      "actual": "594db134801199e2823e49b03e74e11945309eb7967383d8b14588a11e67e0f8"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderAggregate.cs",
+      "expected": "03588c7587a1db586dbed069d4d24e4c423153707aefa36a6e49747cdb71dae3",
+      "actual": "1d0be6874f5344def673afc32d57a6c533313338ff4ab40f3b242c8b2423e67c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderCommandValidator.cs",
+      "expected": "6e6d934fb094c3abb3c4a49410dc874325415fd296c5d41bd2412972be339005",
+      "actual": "865c2c5452594edfe02c0fdfd0a39c0f634b7263ea056594f8e18e451057d7d6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderStateApply.cs",
+      "expected": "eaa073b45a4671599dcfb9b20c44957f6d70e5ef1563fb19a448b9969994cee8",
+      "actual": "e0fe432182b51076bbd09f4bee76dd20ff3578c84b14edf3c1883d714d520558"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceLockAcquired.cs",
+      "expected": "6b307ce2bd6edb17bc71616f519d92a7beb96cfef27f79dd402b4d943c1e5fda",
+      "actual": "2fcb3bbf711e46fb4bc9289435f352dc570bcf23e2be5a81cfd28f7818abaee3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreResult.cs",
+      "expected": "ba12e120ae8301ba49200b9e78eeeef3cfcb5649ec6e1baf257b5f06830eb496",
+      "actual": "297c1febd709aaea3347aed7c4e071115ff1741d72a2c329f0e29a866ab24c74"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceResult.cs",
+      "expected": "a5d64e01cb27d17151c2459414c533023a7a1e058a4222288ceff97b3e5f7b20",
+      "actual": "9c6aaeb03433289cd7306f391fc9e4d27960a444ee5fe0d751014ef5be49102b"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreResult.cs",
+      "expected": "a72fbb61927195d17ee00c8a762e4ad56597933e8a59a419552df900a98bcbfd",
+      "actual": "aa559480fd9d2880d6719c349ea69627bc665645fbbaf96eba3704dd4ec22431"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Projections/OperationalStatus/OperationalStatusFold.cs",
+      "expected": "acba5ce6b7491a7646c40da50f49978fa6f9c07b2abfa46295ff94e728669487",
+      "actual": "b14bd0a00daae63f67b810739b303a985e3cbe6f1d470b069c192d9f684cbd23"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/fixtures/previous-spine.yaml",
+      "expected": "f90619433f8876af8f5cd2740112bc705e59dcfa695d1321b2706bcadd701066",
+      "actual": "77bfc0db114e6970c9fe12cad3b5e45ce6da72505e0e0554323fbcb1143b62f9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/fixtures/parity-contract.yaml",
+      "expected": "38a0392fff62d2919f92f4325954dbb8fcd3adf36e97ae6ef38338443e1d2568",
+      "actual": "656f576120b2b5c439601f168e5dfed4d305783a5dc3c952c5d8a4c1ec734a10"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Client.Tests/FileUploadConvenienceTests.cs",
+      "expected": "96a3be921e740c5b07321478eaee1d962247ceed63476f262012cb44ee1d376e",
+      "actual": "3f5197d3a1f10f7e85458098d4c41967c63b35027c1ea3d9a551bb7d7f5c43f3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/Hexalith.Folders.Server.Tests.csproj",
+      "expected": "e2726080fe0b5c17a6276626d84b45d2868ead7ce717cc2653f325c0bdff417b",
+      "actual": "b1a3611ae05ca8286762f5fcff3843efa43e17700cf099f05c73eed584836b29"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/MutationEnvelopeEndpointMatrixTests.cs",
+      "expected": "79604e27847fe763b3d74393240c2754e3a62bf1611ef2b5860991096b9f33c6",
+      "actual": "d9f35ef3193427cb40f2af28e295e1c8892c2d6a8bfd3b7668a81388662e97ca"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/WorkspaceLockEndpointTests.cs",
+      "expected": "0ecebbbfe0688ae99534b26b3827881a2e38fca3ff5db3fda09d3f5b1dda3e67",
+      "actual": "dcac7a5afce0e190b8b345fad26fa6f356841f32f199632c7c45e1dc7180d385"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/FolderEventReplayTests.cs",
+      "expected": "81efd85458c914dc03ddfb6dbac0d27407adc98869f3613c6252f604a31b7088",
+      "actual": "9431441f4b40e032c3be945c1d00a01b840f08cd17f7b4da8f2cf6e9324c0af2"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/FileContextEndpointTests.cs",
+      "expected": "39636025bdb76dc0fe5459b568ec9acfb5da2a0c61a70a8aebf2465e0abf3611",
+      "actual": "6c42468f4a4a5d14f4c607c1141869cca5fddc3eb57dc2b89c07eb7320cc9c57"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/OperationalStatusProjectionHandlerTests.cs",
+      "expected": "2b5af2145df80aea351ecfb194b31f0966c308297f596ad092142207155f153b",
+      "actual": "7b05181ad7a3b7a7d43522d340a6f09c47e6c8810b6cbc1134b84d2c1c7b4739"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.EventStore.Tests/MutateFilesIdempotencyIntentAdapterTests.cs",
+      "expected": "e40cdb50c6452cd62174bd1830c50a3b92608f3fb9fce49ab6877ee693096d12",
+      "actual": "bfadbddd417e417fb82cd028c039300cdc8c304d79a466a1383bf277b3d89582"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.EventStore.Tests/FoldersIdempotencyIntentAdapterCatalogTests.cs",
+      "expected": "3cd86bf204374fb93596802317159877804cd6be24427a4f1af239785649f844",
+      "actual": "d33ee1bdd18223072c33dcd27c9c241ee72429816b5de73034137e82116de6fa"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/Hexalith.Folders.AppHost.Tests.csproj",
+      "expected": "2ad2c44aea6a4ba3d19688efb92fecd1af69ca4d18ccebf34ba8257729b13f82",
+      "actual": "2259f6ceeb49110fdcd304f856e56d0aa85655f844a9d1d591f92f1d1dbfbe85"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs",
+      "expected": "24507e4aa5d3d3f40ae7286126c15b89a52a3a267cd5b20b7648995210c4436e",
+      "actual": "fa8d2681a5f6683fce7ed10b51526f61a9f8c77841e929315d3eb14a42ec3840"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityRuntimeBinding.cs",
+      "expected": "dad1ff997b95fa176f58e6db7ad7e6d34f698f2a72150946325606536f3a4ec7",
+      "actual": "5a3835b29671beb8300cec774797068ba6c81dc99b55549e0cace5af583930eb"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.IntegrationTests/Hexalith.Folders.IntegrationTests.csproj",
+      "expected": "a53d1df8cc6652f92cf71d2c1d56ddee56a733171c5b3824d711ea95db710801",
+      "actual": "5d26227eb48be761b239d4b1fa334e1864d03aedef95ca34b3e139b81cc3718a"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Contracts.Tests/OpenApi/Pd10ConformanceSetTests.cs",
+      "expected": "7f80a97d555f776024b52362ee03e08592b565fc134e6836e4799d428d79426b",
+      "actual": "b37da12964e9b3774cb9e97333338ea8ee6471c4b76811941bd438ce9992744c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/tools/Task36FoldObserver/Task36HostingStartup.cs",
+      "expected": "51e2e202fe75c8b1e4bf2b01f29cd3f249f7de10201819adc230b614bf07f657",
+      "actual": "9d135303cc22f159ac850191fc2340b09a91ac9597d6c51f315266eafe1dfbb3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/tools/parity-oracle-generator/Program.cs",
+      "expected": "a4e44cdbbbeb1d4eb60f5ec267db350dbae90e4fe6e973e6bcdd0407f5e0c851",
+      "actual": "e382d5eea425d4e2f02ac0e72ee9991075d6a84d9cce209993c2cf23d04c2660"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/fixtures/event-evolution/operational-status-inventory.json",
+      "expected": "fa3809dd7bbfa551c12b968942a976a3ebf16d8b22e7f13a610f2ce37822e838",
+      "actual": "b6b770fca400c502fece769b5a6df5e69a19a1666304860294f90db3d3d1afff"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Tests/Queries/FileContext/WorkspaceFileContextQueryHandlerTests.cs",
+      "expected": "11f417876f72b17765ac1f5ea131c805f8a87d7d79efb2a1ab1355880e24b92d",
+      "actual": "35bdeee63b2afbf6c511091d714badc0716ae42c9ebcec48a7d7bdb7a314b13e"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Tests/Aggregates/Folder/FolderLifecycleReplayDeterminismTests.cs",
+      "expected": "c035043d08ebf22be77da75357f030933cf2af0f80b84bae4b6e88daeeaac75e",
+      "actual": "70f57f8709372915c873544d3011f56663518fb23fd3df036dc65a3bffb3eb5c"
+    }
+  ],
+  "all_initial_protected_paths": 55821,
+  "all_initial_protected_changes": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/SHA256SUMS",
+      "expected": "5f520613018309fd7ed0bee56bf3d4c0725b55e8444af91c3c30a3c1961fd5af",
+      "actual": "2def0a3addc26bacced971419d0c1df9508d3834853385c423ce81ba52357377"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch",
+      "expected": "d8d028f2155b6e3a58eccc81d58f55fbb85ba4ca600a25b5afdffb5a74a039ca",
+      "actual": "cab06008db1f71bcd601f330d61582bb111a10c252e20f9d998f596d7d0c257c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-admission-auth-rate.xml",
+      "expected": "4c376b036cfe9867a20d7dccf2a2120754be5ce2fa85c019351e0c26f385664b",
+      "actual": "c56cc04b8a01830c096f9adab9b97fef89f36ee6c29b210734ed23768b234de4"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-source.patch",
+      "expected": "c17f28cc74090e96d6a17e0531ef02f982f924ecd4437b4567dda8991288cb0d",
+      "actual": "e0ef530005303f8c4729afeecadc70491462254a547fd6d612c66e58f1d6891b"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-v2-source-requalification-pending.yaml",
+      "expected": "daf76906eb890a4e40636630091d86fce9ffe3df6059f957db1c368a8b4977be",
+      "actual": "68a93e8b1e246b4634fd329366088d3ab6c97e56d9b1f58bf00370674dd06338"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerServiceCollectionExtensions.cs",
+      "expected": "0ececd50ad1f2fa53ada33fb65466eda6390251a120ccad4183b5e5a886e2bea",
+      "actual": "a45a6c90caaee2bc0183998e8e2d949c54cf90d52a22e32071840955043bdc13"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/HistoricalMutationAuthorization.cs",
+      "expected": "d2babffb79cd515f82961bc1f54beb3948b1c66ef898183a81796b90b7ec9e8d",
+      "actual": "6e168b1da3f505c889808da82f614f4a61ae531d6c9230b32b482b14ad8127a4"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersDomainServiceEndpoints.cs",
+      "expected": "47e42317db5e6b9364a730ca47ec7a7b7d4e4090661b78a0e148922f870fde4a",
+      "actual": "dc2c86d1096f0781f8b9023964fbb8da0bae02c97d03beb537686d7eda22c700"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerModule.cs",
+      "expected": "96ba8531962b7fc1a804a10cf1958467ee9434de5f24de7435a9c1cff95fb3e3",
+      "actual": "0e6bfc0621eecf04bc66c3afcd699088d4332725bf2742e2d81b38e00d169e11"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/ActorFoldedFolderRepository.cs",
+      "expected": "5fb187b96deda052df54316214fd4b6114578b22610cd539d10dff894204a43b",
+      "actual": "2252537bf023045579118159f27165d1a775dd1f6375a23f5a2d237f548899fa"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FolderDomainProcessor.cs",
+      "expected": "9958774658c9354ea8cf7c58b4c03eb79c681712ca736c15ee703e39a2bd99bf",
+      "actual": "0e684cdbcd77965a0f9feef4f3ecd5dcb21d6d9a6928f32a1219030ea5b35d8f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.EventStore/FoldersIdempotencyIntentAdapterCatalog.cs",
+      "expected": "64b71fb988eedff7dcb4bc5ce4c56c90cdb07ce551351eba2a2499c585fbb3cf",
+      "actual": "591c61096f6348464b6cce0b523d7a22e732cc7899b915c74c6702d07c0432dd"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.EventStore/FoldersCanonicalIntentBuilder.cs",
+      "expected": "24ff6ee85779105371a139e1fa3baf4c2929545dd6ec333e43b19ba6417feb66",
+      "actual": "5b1ff1a5451623d270c285352966dd36fe643fae2888904aef182c479c4e4bd9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.EventStore/FoldersIdempotencyIntentAdapterServiceCollectionExtensions.cs",
+      "expected": "468b07e4ebac56642bea10849b080740282f67bb081d9fcf4edcad961b261248",
+      "actual": "e742e2772cc9a5ea93019880713ccd9dc3b317eb87ffaff5bf1bad3a709e1f3f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v2.yaml",
+      "expected": "ee9c7bddd0428d3809555c591af0b0bd760b0c88e336720e569c7d7b259807b0",
+      "actual": "9f2adc4e92e5b3ea8705ec4916b7b015bb53e7e1acf7b198878504b9437a8d34"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v1.yaml",
+      "expected": "ac2257eced95bccb63fd73baf76d918a727ee468997012c83d72dc7ad16aea8e",
+      "actual": "a6153d1a77fd49d3c7a43302fbe440d546108dc40e76ff0014c757d0cd38dbfa"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersIdempotencyHelpers.g.cs",
+      "expected": "a9313ede8fdff1e52c7c900f03a58b352b9434cef7936a23dcdae853a7a53526",
+      "actual": "ce9d8b25d3b574cb22cd92bdf2062c57b4f4379e23f33b51a018c790185fdf67"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersClient.g.cs",
+      "expected": "dbc41081169dc3562d91bfa2133f9655b2fa5a68843aa9737197c522e476d2b5",
+      "actual": "8020632be8f23e3b9630d7838f260bba699ec20c7d14ebe67a2fe8cf9748e838"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileStreamStagingEvidence.cs",
+      "expected": "c13910dba7ed8277b29b7119a93220b9425df0641c74ff961d3b86b02a9a7af0",
+      "actual": "7c997257dde4ba5703954ce8072cf18668b2abc38666cf7465c0d0b547e8020c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUploadDescriptor.cs",
+      "expected": "abcff08f30cee63a67d63c005a85edab1f1e4a115b8e52ad45e7bbb727335ede",
+      "actual": "9254eba0bc30b6204028ed46496c1ff6e27e879de29431f3066c27183e8103ed"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUpload.cs",
+      "expected": "14026186717988d53a84aab88d31b14df464a17618cbce2244438b980c5d93bf",
+      "actual": "195f331ad771d091dd940f4c446ec722b05d9391d340bf4baece741982d08fc0"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FoldersFileUploadExtensions.cs",
+      "expected": "76f3ebc7c7563c3a6043b6fb34870e370e0d78d3140bed29cd8433a238797201",
+      "actual": "cffedabd78b80ff7fa3266b5288c285de0b27318b0f9f00298964d1bb62dbd16"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authorization/FolderCommandActionTokenMapper.cs",
+      "expected": "4b4d43900b6f0425aff11555c1256c487922c0769f7a98fa570bb9b117a00205",
+      "actual": "fbe9d1528b8a4571a87d0c2cc54f57015422da14cc17ba7365246a5d6f242126"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/FoldersGatewayHumanBearerHandler.cs",
+      "expected": "2b9e05ea6e86646051fe4bcfdc74f02ba3345a77b932f3aff29d71e22530a763",
+      "actual": "7fc9d6c8877cdbab43ec834f3fe6a4405d5bf968a0c2b9cf972eeb7db1ae7ff9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/VerifiedReceiptEventStoreAuthorizationValidator.cs",
+      "expected": "1285eea97b173a474b73a501c2c2eb96b58b29c2396f77761d6b1b3b68d396f8",
+      "actual": "6b5cce02b3888d9979dd48aa00f019196053c102c75d26aebb3c2e3657c794b6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockLeaseMetadata.cs",
+      "expected": "20d16e4fbcd0fe7af364de87265092a1c26a25d0c423640968e73b09ed7beb36",
+      "actual": "fd6da8a6efd347838f6d4ced5242771ec369981b01a610fc50013dd6b26d626d"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusQueryHandler.cs",
+      "expected": "77decdae7443788cc6f78952de4e3c64d1318ff2faf3c33bdd4dbc83c90f1ddb",
+      "actual": "1896df19a3d56dba5103c39db583e56e0223d40353d8ce8e43b64888a9872cd3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusReadModelSnapshot.cs",
+      "expected": "c8d8b75575aa1a161a93522fa59a357d4fbdc5b777bede486be242cec16ae677",
+      "actual": "06b1f6120477e9d7d23569a50dc7e194a8b6e1a98cd87981b12e191e42a500e6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextItem.cs",
+      "expected": "43f18883b30fc44548e0134223a3fae8d1a1fc8cd460c6f07bba77017f9f880b",
+      "actual": "5e94ab1b8779fd71d4e46eb131f75f165c93c27ac03016fbe1430e4944a90c84"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextSourceStatus.cs",
+      "expected": "ba7540e80b51005ad485ea36fc04b38006f5431043cd8d1fa985eef100e19864",
+      "actual": "ae019e5759d20ea15e6e6eb644649207eac3c0ccfa1aab6087f5a3475547225f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextQueryHandler.cs",
+      "expected": "e4fe29ac071ec6e91d6cf0c51a63e1b826b4b1c4b3151e8bfe8c79192a2896dc",
+      "actual": "ad706a7daee0c090ba9e1f7aae44f6bc7cdfda7755a728f697576fcfd348abb4"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextResultCode.cs",
+      "expected": "c6e8cb40e14002c533bde923699148560586946edd46e792ded1c43a3a32fedf",
+      "actual": "6e27568832745ee56cb9d20756431836ad52bfb5bcd50e71b073ed5f6fdefac6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceRequest.cs",
+      "expected": "6efe3053597fba35c08fb7c26ef7651fd6ba33b2e314aea9a4f1355ebeea0d4b",
+      "actual": "d9802f6ea869e78dee41a9190bce4a8cdc160e34d985b50a21acb39ebf332130"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderState.cs",
+      "expected": "7b75311c1803724d35c870f739864b8701c0bd5f00c50f1e186022799eebc2dc",
+      "actual": "ab152be934c4cefab146697a6f500ed6202156bb9bb9cb3f5d568c705812ebf7"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreRequest.cs",
+      "expected": "9f1f7d9286adcec1bf5f24438b8369021d68b4fb5aedf684074dca9093f8cebc",
+      "actual": "e56f44afb01eab3a7d8e55d6e134b7e0bcc43b833be5adb75950b8c534177877"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationRequest.cs",
+      "expected": "f55dccb55fe9da2043bf6be321a6f84cc5371b715a4f5838c8bd8f7c8339dfee",
+      "actual": "69b65e57dcfc21fa42cb4f9d78fb82bb929d6cfb5c95e0009d261d91e9f893c6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyValidator.cs",
+      "expected": "1f0ac1a5c52931d3398e91d7c982da2ab22a3e12208f4e26be0ec4dd3149f884",
+      "actual": "ee32da8ab04ee3cc2382ac2dbc6ece3b58f0e5684c8f03f02152cd56053b3d4d"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationService.cs",
+      "expected": "1867402cfa36e348532b16e1ffcd2b03fef29ba4d16b3ccf006abef61ffd76b0",
+      "actual": "89d2e7efb2f6be4ea32da199d77e0d9ae5d918a86e6f833a7aedb017b2831599"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreRequest.cs",
+      "expected": "10b69fa4320e3752b0f52757a59d541c2a91d67a5da5ea9fba2024180183d779",
+      "actual": "24c88410e79358411094ecac08811be5ff93d3f89fd6211fae48a13cc1092a99"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/MutateWorkspaceFile.cs",
+      "expected": "e502bdc6c36bdb7938cbd44c13863fd2a73243526d34da69d243a4df178166d8",
+      "actual": "79bbcc37644dab93f73b70b1ace84ecc0c99f392eb4a6a547b611b6671feb1de"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationAccepted.cs",
+      "expected": "eea5b0b369b3e00b3511aabe5ed1bcd53277b8e2c9b2d95e24eeb709a9bb349c",
+      "actual": "594db134801199e2823e49b03e74e11945309eb7967383d8b14588a11e67e0f8"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderAggregate.cs",
+      "expected": "03588c7587a1db586dbed069d4d24e4c423153707aefa36a6e49747cdb71dae3",
+      "actual": "1d0be6874f5344def673afc32d57a6c533313338ff4ab40f3b242c8b2423e67c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderCommandValidator.cs",
+      "expected": "6e6d934fb094c3abb3c4a49410dc874325415fd296c5d41bd2412972be339005",
+      "actual": "865c2c5452594edfe02c0fdfd0a39c0f634b7263ea056594f8e18e451057d7d6"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderStateApply.cs",
+      "expected": "eaa073b45a4671599dcfb9b20c44957f6d70e5ef1563fb19a448b9969994cee8",
+      "actual": "e0fe432182b51076bbd09f4bee76dd20ff3578c84b14edf3c1883d714d520558"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceLockAcquired.cs",
+      "expected": "6b307ce2bd6edb17bc71616f519d92a7beb96cfef27f79dd402b4d943c1e5fda",
+      "actual": "2fcb3bbf711e46fb4bc9289435f352dc570bcf23e2be5a81cfd28f7818abaee3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreResult.cs",
+      "expected": "ba12e120ae8301ba49200b9e78eeeef3cfcb5649ec6e1baf257b5f06830eb496",
+      "actual": "297c1febd709aaea3347aed7c4e071115ff1741d72a2c329f0e29a866ab24c74"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceResult.cs",
+      "expected": "a5d64e01cb27d17151c2459414c533023a7a1e058a4222288ceff97b3e5f7b20",
+      "actual": "9c6aaeb03433289cd7306f391fc9e4d27960a444ee5fe0d751014ef5be49102b"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreResult.cs",
+      "expected": "a72fbb61927195d17ee00c8a762e4ad56597933e8a59a419552df900a98bcbfd",
+      "actual": "aa559480fd9d2880d6719c349ea69627bc665645fbbaf96eba3704dd4ec22431"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Projections/OperationalStatus/OperationalStatusFold.cs",
+      "expected": "acba5ce6b7491a7646c40da50f49978fa6f9c07b2abfa46295ff94e728669487",
+      "actual": "b14bd0a00daae63f67b810739b303a985e3cbe6f1d470b069c192d9f684cbd23"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/fixtures/previous-spine.yaml",
+      "expected": "f90619433f8876af8f5cd2740112bc705e59dcfa695d1321b2706bcadd701066",
+      "actual": "77bfc0db114e6970c9fe12cad3b5e45ce6da72505e0e0554323fbcb1143b62f9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/fixtures/parity-contract.yaml",
+      "expected": "38a0392fff62d2919f92f4325954dbb8fcd3adf36e97ae6ef38338443e1d2568",
+      "actual": "656f576120b2b5c439601f168e5dfed4d305783a5dc3c952c5d8a4c1ec734a10"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Client.Tests/FileUploadConvenienceTests.cs",
+      "expected": "96a3be921e740c5b07321478eaee1d962247ceed63476f262012cb44ee1d376e",
+      "actual": "3f5197d3a1f10f7e85458098d4c41967c63b35027c1ea3d9a551bb7d7f5c43f3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/Hexalith.Folders.Server.Tests.csproj",
+      "expected": "e2726080fe0b5c17a6276626d84b45d2868ead7ce717cc2653f325c0bdff417b",
+      "actual": "b1a3611ae05ca8286762f5fcff3843efa43e17700cf099f05c73eed584836b29"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/MutationEnvelopeEndpointMatrixTests.cs",
+      "expected": "79604e27847fe763b3d74393240c2754e3a62bf1611ef2b5860991096b9f33c6",
+      "actual": "d9f35ef3193427cb40f2af28e295e1c8892c2d6a8bfd3b7668a81388662e97ca"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/WorkspaceLockEndpointTests.cs",
+      "expected": "0ecebbbfe0688ae99534b26b3827881a2e38fca3ff5db3fda09d3f5b1dda3e67",
+      "actual": "dcac7a5afce0e190b8b345fad26fa6f356841f32f199632c7c45e1dc7180d385"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/FolderEventReplayTests.cs",
+      "expected": "81efd85458c914dc03ddfb6dbac0d27407adc98869f3613c6252f604a31b7088",
+      "actual": "9431441f4b40e032c3be945c1d00a01b840f08cd17f7b4da8f2cf6e9324c0af2"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/FileContextEndpointTests.cs",
+      "expected": "39636025bdb76dc0fe5459b568ec9acfb5da2a0c61a70a8aebf2465e0abf3611",
+      "actual": "6c42468f4a4a5d14f4c607c1141869cca5fddc3eb57dc2b89c07eb7320cc9c57"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/OperationalStatusProjectionHandlerTests.cs",
+      "expected": "2b5af2145df80aea351ecfb194b31f0966c308297f596ad092142207155f153b",
+      "actual": "7b05181ad7a3b7a7d43522d340a6f09c47e6c8810b6cbc1134b84d2c1c7b4739"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.EventStore.Tests/MutateFilesIdempotencyIntentAdapterTests.cs",
+      "expected": "e40cdb50c6452cd62174bd1830c50a3b92608f3fb9fce49ab6877ee693096d12",
+      "actual": "bfadbddd417e417fb82cd028c039300cdc8c304d79a466a1383bf277b3d89582"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.EventStore.Tests/FoldersIdempotencyIntentAdapterCatalogTests.cs",
+      "expected": "3cd86bf204374fb93596802317159877804cd6be24427a4f1af239785649f844",
+      "actual": "d33ee1bdd18223072c33dcd27c9c241ee72429816b5de73034137e82116de6fa"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/Hexalith.Folders.AppHost.Tests.csproj",
+      "expected": "2ad2c44aea6a4ba3d19688efb92fecd1af69ca4d18ccebf34ba8257729b13f82",
+      "actual": "2259f6ceeb49110fdcd304f856e56d0aa85655f844a9d1d591f92f1d1dbfbe85"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs",
+      "expected": "24507e4aa5d3d3f40ae7286126c15b89a52a3a267cd5b20b7648995210c4436e",
+      "actual": "fa8d2681a5f6683fce7ed10b51526f61a9f8c77841e929315d3eb14a42ec3840"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityRuntimeBinding.cs",
+      "expected": "dad1ff997b95fa176f58e6db7ad7e6d34f698f2a72150946325606536f3a4ec7",
+      "actual": "5a3835b29671beb8300cec774797068ba6c81dc99b55549e0cace5af583930eb"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.IntegrationTests/Hexalith.Folders.IntegrationTests.csproj",
+      "expected": "a53d1df8cc6652f92cf71d2c1d56ddee56a733171c5b3824d711ea95db710801",
+      "actual": "5d26227eb48be761b239d4b1fa334e1864d03aedef95ca34b3e139b81cc3718a"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Contracts.Tests/OpenApi/Pd10ConformanceSetTests.cs",
+      "expected": "7f80a97d555f776024b52362ee03e08592b565fc134e6836e4799d428d79426b",
+      "actual": "b37da12964e9b3774cb9e97333338ea8ee6471c4b76811941bd438ce9992744c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/tools/Task36FoldObserver/Task36HostingStartup.cs",
+      "expected": "51e2e202fe75c8b1e4bf2b01f29cd3f249f7de10201819adc230b614bf07f657",
+      "actual": "9d135303cc22f159ac850191fc2340b09a91ac9597d6c51f315266eafe1dfbb3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/tools/parity-oracle-generator/Program.cs",
+      "expected": "a4e44cdbbbeb1d4eb60f5ec267db350dbae90e4fe6e973e6bcdd0407f5e0c851",
+      "actual": "e382d5eea425d4e2f02ac0e72ee9991075d6a84d9cce209993c2cf23d04c2660"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/fixtures/event-evolution/operational-status-inventory.json",
+      "expected": "fa3809dd7bbfa551c12b968942a976a3ebf16d8b22e7f13a610f2ce37822e838",
+      "actual": "b6b770fca400c502fece769b5a6df5e69a19a1666304860294f90db3d3d1afff"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Tests/Queries/FileContext/WorkspaceFileContextQueryHandlerTests.cs",
+      "expected": "11f417876f72b17765ac1f5ea131c805f8a87d7d79efb2a1ab1355880e24b92d",
+      "actual": "35bdeee63b2afbf6c511091d714badc0716ae42c9ebcec48a7d7bdb7a314b13e"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Tests/Aggregates/Folder/FolderLifecycleReplayDeterminismTests.cs",
+      "expected": "c035043d08ebf22be77da75357f030933cf2af0f80b84bae4b6e88daeeaac75e",
+      "actual": "70f57f8709372915c873544d3011f56663518fb23fd3df036dc65a3bffb3eb5c"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs",
+      "expected": "029d8cce794cb26795aebe1ce907e45fa62310b5a9e061ed6d2fc04fd1a306e6",
+      "actual": "41a1f2eae6fa2b3eef27e4c77ec5b3aaf5a58a0a557f92e9a178545831db1ee3"
+    }
+  ],
+  "repositories": {
+    "/home/administrator/projects/hexalith/eventstore": {
+      "head": "175082be7f108c95ea61e93b9df1ccf0a240534c",
+      "branch": "main",
+      "status": " M _bmad-output/implementation-artifacts/deferred-work.md\n M _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/infrastructure-commands.json\n M _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-launcher.json\n M _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/contracts-full.json\n M _bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/SHA256SUMS\n M _bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-admission-auth-rate.xml\n M _bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch\n M _bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-source.patch\n M _bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md\n M _bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md\n M _bmad-output/implementation-artifacts/spec-folders-12-2-remaining-gates.md\n M docs/implementation/ext-protection-1-owner-acceptance.md\n M references/Hexalith.Builds\n M references/Hexalith.FrontComposer\n M references/Hexalith.McpCli\n M references/Hexalith.Platform\n M references/Hexalith.Tenants\n M src/Hexalith.EventStore.Server/Security/IPublishedTrustRevocationEvidence.cs\n M src/Hexalith.EventStore.Server/Security/PublishedTrustDeletionConsumptionAuthority.cs\n M tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs\n M tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs\n M tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs\n M tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustDeletionConsumptionAuthorityTests.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustDispatchFixture.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.Tests.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs\n M tools/bounded_worker_observer.py\n M tools/tests/test_bounded_worker_observer.py\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/README.md\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/SHA256SUMS\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/affected-server-regressions.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/binary-drift-observed.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-first-run-stop.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/cleanup.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/components.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/mapped-images.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/observation-errors.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/observed-cleanup.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/observed-processes.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-infrastructure/worker-captures.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bounded-live.xml\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/check-preservation-semantic.py\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-controls-first-output-collision.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-controls-v2/\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-v2-cancel.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-v2-malformed-capture.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/cleanup-v2-write-failure.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/contracts-full.xml\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/disposition.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-failure-disposition.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-full-repeat.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-full-repeat.xml\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-retained-identity-focused.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-retained-identity-focused.xml\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-sweep-focused.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/domain-sweep-focused.xml\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/generated-client-assemblyinfo-drift.cs.source\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/guard-source-user-disposition.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/launcher-cleanup-v2-command.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/launcher-cleanup-v2-result.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/observer-final-regressions-command.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/observer-review-prepared-identities.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/observer-review.patch\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/observer-source-versions.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/observer-sources/\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/report.py\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/source-drift-observed.json\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/test-launcher-cleanup-v2.py\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/verify.py\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/\n?? tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustReplacementAuthorityTests.cs\n?? tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustReplacementFixture.cs\n?? tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EmptyCalls.cs\n?? tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs\n",
+      "staged_diff": "",
+      "submodules": " 3f194e17174994d308ec84af9ee2b5aa68674d0d references/Hexalith.AI.Tools (heads/main)\n+2d653b611c8efcffb4d27bd8715d5dbf24eaebfd references/Hexalith.Builds (v4.35.2-10-g2d653b6)\n 1663028fb6d9f46a0bf17919edeb21bb99be1587 references/Hexalith.Commons (v2.30.3-4-g1663028)\n+dfac0818e5a40b19145a01333cc5fc00bcd4b47e references/Hexalith.FrontComposer (v4.7.0-52-gdfac0818)\n+4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69 references/Hexalith.McpCli (v1.0.0-51-g4b3e7ff)\n 63327920814a293e0168986be212deb10b81dc00 references/Hexalith.Memories (v2.29.8-7-g63327920)\n+3beff28eede537eb36e84cdb93900af2556202d7 references/Hexalith.Platform (heads/main)\n 221ac4592ba908ae7661ba1fa9e2d1fcc23baee0 references/Hexalith.PolymorphicSerializations (v1.19.5)\n+1e60af449c1fdc3f9801cf57e8847e00faab2394 references/Hexalith.Tenants (v5.10.1-15-g1e60af44)\n",
+      "index_sha256": "2bb45131c00faa933fab7f68d9f4e294db89309ad3d4585af0f3d469875d104e",
+      "initial_head": "995117f9b899a2994e99257091b0ea35cfbe5090",
+      "initial_index_sha256": "150dab7bc99f96ba0a9bb5bc770012cdba1e99c12035477f604d148358a9a546"
+    },
+    "/home/administrator/projects/hexalith/folders": {
+      "head": "28513763ec5c0405ab942b1e5266a483573f451d",
+      "branch": "main",
+      "status": " M _bmad-output/implementation-artifacts/evidence/story-12-2-v2-source-requalification-pending.yaml\n M _bmad-output/implementation-artifacts/sprint-status.yaml\n M docs/exit-criteria/c3-retention.md\n M docs/operations/retention-and-tenant-deletion.md\n m references/Hexalith.EventStore\n M scripts/generate-pd10-v2-contract.py\n M src/Hexalith.Folders.Client/Convenience/FileStreamStagingEvidence.cs\n M src/Hexalith.Folders.Client/Convenience/FileUpload.cs\n M src/Hexalith.Folders.Client/Convenience/FileUploadDescriptor.cs\n M src/Hexalith.Folders.Client/Convenience/FoldersFileUploadExtensions.cs\n M src/Hexalith.Folders.Client/Generated/HexalithFoldersClient.g.cs\n M src/Hexalith.Folders.Client/Generated/HexalithFoldersIdempotencyHelpers.g.cs\n M src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v1.yaml\n M src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v2.yaml\n M src/Hexalith.Folders.EventStore/FoldersCanonicalIntentBuilder.cs\n M src/Hexalith.Folders.EventStore/FoldersIdempotencyIntentAdapterCatalog.cs\n M src/Hexalith.Folders.EventStore/FoldersIdempotencyIntentAdapterServiceCollectionExtensions.cs\n M src/Hexalith.Folders.Server/ActorFoldedFolderRepository.cs\n M src/Hexalith.Folders.Server/Authentication/FoldersGatewayHumanBearerHandler.cs\n M src/Hexalith.Folders.Server/Authentication/VerifiedReceiptEventStoreAuthorizationValidator.cs\n M src/Hexalith.Folders.Server/Authorization/FolderCommandActionTokenMapper.cs\n M src/Hexalith.Folders.Server/FolderDomainProcessor.cs\n M src/Hexalith.Folders.Server/FoldersDomainServiceEndpoints.cs\n M src/Hexalith.Folders.Server/FoldersServerModule.cs\n M src/Hexalith.Folders.Server/FoldersServerServiceCollectionExtensions.cs\n M src/Hexalith.Folders.Server/HistoricalMutationAuthorization.cs\n M src/Hexalith.Folders/Aggregates/Folder/FolderAggregate.cs\n M src/Hexalith.Folders/Aggregates/Folder/FolderCommandValidator.cs\n M src/Hexalith.Folders/Aggregates/Folder/FolderState.cs\n M src/Hexalith.Folders/Aggregates/Folder/FolderStateApply.cs\n M src/Hexalith.Folders/Aggregates/Folder/MutateWorkspaceFile.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreRequest.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreResult.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreRequest.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreResult.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationAccepted.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationRequest.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationService.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspaceLockAcquired.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceRequest.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceResult.cs\n M src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyValidator.cs\n M src/Hexalith.Folders/Projections/OperationalStatus/OperationalStatusFold.cs\n M src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextItem.cs\n M src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextQueryHandler.cs\n M src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextResultCode.cs\n M src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextSourceStatus.cs\n M src/Hexalith.Folders/Queries/Folders/WorkspaceLockLeaseMetadata.cs\n M src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusQueryHandler.cs\n M src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusReadModelSnapshot.cs\n M tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs\n M tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityRuntimeBinding.cs\n M tests/Hexalith.Folders.AppHost.Tests/Hexalith.Folders.AppHost.Tests.csproj\n M tests/Hexalith.Folders.Client.Tests/FileUploadConvenienceTests.cs\n M tests/Hexalith.Folders.Contracts.Tests/OpenApi/Pd10ConformanceSetTests.cs\n M tests/Hexalith.Folders.EventStore.Tests/FoldersIdempotencyIntentAdapterCatalogTests.cs\n M tests/Hexalith.Folders.EventStore.Tests/MutateFilesIdempotencyIntentAdapterTests.cs\n M tests/Hexalith.Folders.IntegrationTests/Hexalith.Folders.IntegrationTests.csproj\n M tests/Hexalith.Folders.Server.Tests/FileContextEndpointTests.cs\n M tests/Hexalith.Folders.Server.Tests/FolderEventReplayTests.cs\n M tests/Hexalith.Folders.Server.Tests/Hexalith.Folders.Server.Tests.csproj\n M tests/Hexalith.Folders.Server.Tests/MutationEnvelopeEndpointMatrixTests.cs\n M tests/Hexalith.Folders.Server.Tests/OperationalStatusProjectionHandlerTests.cs\n M tests/Hexalith.Folders.Server.Tests/WorkspaceLockEndpointTests.cs\n M tests/Hexalith.Folders.Tests/Aggregates/Folder/FolderLifecycleReplayDeterminismTests.cs\n M tests/Hexalith.Folders.Tests/Queries/FileContext/WorkspaceFileContextQueryHandlerTests.cs\n M tests/fixtures/event-evolution/operational-status-inventory.json\n M tests/fixtures/parity-contract.yaml\n M tests/fixtures/previous-spine.yaml\n M tests/tools/Task36FoldObserver/Task36HostingStartup.cs\n M tests/tools/parity-oracle-generator/Program.cs\n?? _bmad-output/implementation-artifacts/spec-12-3-durable-workspace-file-content-store-and-content-read-source.md\n?? _bmad-output/implementation-artifacts/story-12-3-content-prerequisite-proposal-2026-10-22.md\n?? docs/contract/workspace-content-administration-v1.yaml\n?? docs/operations/workspace-content-authority.md\n?? src/Hexalith.Folders.Client/Convenience/WorkspaceFileStreamUploadExtensions.cs\n?? src/Hexalith.Folders.EventStore/AuthorizeContentErasureIdempotencyIntentAdapter.cs\n?? src/Hexalith.Folders.Server/Content/\n?? src/Hexalith.Folders.Server/FolderDomainProcessor.ContentBatch.cs\n?? src/Hexalith.Folders.Server/FoldersDomainServiceEndpoints.Content.cs\n?? src/Hexalith.Folders/Aggregates/Folder/WorkspaceContentBinding.cs\n?? src/Hexalith.Folders/Aggregates/Folder/WorkspaceContentErasureAuthorized.cs\n?? src/Hexalith.Folders/Queries/FileContext/IWorkspaceFilePolicySource.cs\n?? src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContentClassification.cs\n?? src/Hexalith.Folders/Queries/FileContext/WorkspaceFilePolicySnapshot.cs\n?? tests/Hexalith.Folders.AppHost.Tests/WorkspaceContentDurabilityAcceptanceFixture.cs\n?? tests/Hexalith.Folders.AppHost.Tests/WorkspaceContentDurabilityAcceptanceTests.cs\n?? tests/Hexalith.Folders.Client.Tests/WorkspaceFileStreamUploadTests.cs\n?? tests/Hexalith.Folders.IntegrationTests/WorkspaceContentProcessWiringTests.cs\n?? tests/Hexalith.Folders.Server.Tests/WorkspaceContentErasureGrantTests.cs\n?? tests/Hexalith.Folders.Server.Tests/WorkspaceContentRejectionMappingTests.cs\n?? tests/Hexalith.Folders.Server.Tests/WorkspaceContentTransportTestServices.cs\n?? tests/Hexalith.Folders.Tests/Aggregates/Folder/WorkspaceContentBindingTests.cs\n?? tests/Hexalith.Folders.Tests/Queries/FileContext/WorkspaceFileContentClassificationTests.cs\n?? tests/Hexalith.Folders.Tests/Queries/FileContext/WorkspaceFilePolicySnapshotTests.cs\n?? tests/tools/Task36FoldObserver/ContentQualificationClock.cs\n",
+      "staged_diff": "",
+      "submodules": "-3f194e17174994d308ec84af9ee2b5aa68674d0d references/Hexalith.AI.Tools\n 0d8b910e0ee4df31198838f35242d0e6be9c80c4 references/Hexalith.Builds (v4.35.2-9-g0d8b910)\n-1663028fb6d9f46a0bf17919edeb21bb99be1587 references/Hexalith.Commons\n-995117f9b899a2994e99257091b0ea35cfbe5090 references/Hexalith.EventStore\n-dfac0818e5a40b19145a01333cc5fc00bcd4b47e references/Hexalith.FrontComposer\n 4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69 references/Hexalith.McpCli (v1.0.0-51-g4b3e7ff)\n-63327920814a293e0168986be212deb10b81dc00 references/Hexalith.Memories\n a9a3c20d2e4079766c44c77dc4b66ba3d68b08f0 references/Hexalith.Platform (heads/main)\n-221ac4592ba908ae7661ba1fa9e2d1fcc23baee0 references/Hexalith.PolymorphicSerializations\n a4f617d94807a678e8f14ae8434f61681eb2341c references/Hexalith.Projects (v1.1.0-158-ga4f617d)\n-7cfa1c38847f7f4340b1cc11a9137f28430bd6c6 references/Hexalith.Tenants\n",
+      "index_sha256": "e9d2b3f61c61f4090bd0727bd31b81491c7a0709638e959123eb264069244340",
+      "initial_head": "0534d1388a2f3334b581d0a0d362f0b341e10809",
+      "initial_index_sha256": "690faf70716d08e3586ef074de9ca2344c6da33bd930681a3893469e7a6ae3c9"
+    }
+  },
+  "latest_origin_changes": {
+    "/home/administrator/projects/hexalith/eventstore": {
+      "head": "175082be7f108c95ea61e93b9df1ccf0a240534c",
+      "selected_head": "cb414530223f77cc845450a4877a4472559de2ad",
+      "input_changes": [
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/Directory.Packages.props",
+          "expected": "db5d5fe58b48b384b9bd311e22cc29cccc4fdb41fe5bcb29ac39d5439f98a58e",
+          "actual": "4fe25096ceefd11e8ffffe1ab6a1854e18ac36c853a6805fa72285433b03b638"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/scripts/validate-eventstore-package-authority.ps1",
+          "expected": "c968faa8815eb0709c8fdbcf2a025672c2434314c453eeca38addbacfeb848d3",
+          "actual": "1a73ba2bbb9dfb6563688541d6cddb5814653f41c8a5507b1e985ae260755058"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchParticipantProof.cs",
+          "expected": "c87810a0de9ceb5205d608607204c1c2f7ff2b965fefb87f7fdd90d75ab4ee03",
+          "actual": "0f3fe28d1c80a22825e76d26d7a348f9829541303556b884b7548d560afaf151"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchTerminalFence.cs",
+          "expected": "8885ef9fcdb8cf9c740181508d2d59e966cd910e64e7d895e357c4cb681c7545",
+          "actual": "acc26cc39c564ddb1db302691e23298d918879e2ad969653c64360001631c8f7"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs",
+          "expected": "029d8cce794cb26795aebe1ce907e45fa62310b5a9e061ed6d2fc04fd1a306e6",
+          "actual": "41a1f2eae6fa2b3eef27e4c77ec5b3aaf5a58a0a557f92e9a178545831db1ee3"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.SecurityException.cs",
+          "expected": "372473d5d8b066365cd11f3c60a751598f8e1425e40c1196bcac97f0bdaa9aba",
+          "actual": "66c7fff77299053554007fe6f397151e9c959923602bdc7ae46e1c3a16b46b15"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs",
+          "expected": "6d01ce80133eea3cd61bfc6ab667794683a9e8b5699d8eafbbe5673f71b5060d",
+          "actual": "852032df9ef406dd3988ccaac89110adacb89a01f6974d4faa6c65aa0929a0ed"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EvidenceSemanticIngestion.cs",
+          "expected": "5301e922d191b4b983bad1e70c9c3d00c63b0077ecf2056b9ad957191f0b06b6",
+          "actual": "87a9f199a816531a403cfa7d9c345459e2ed0812cb7acd5364794b6df8f03367"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.Tests.cs",
+          "expected": "e2a8ae68cd211c88b6b5bfa4cca7cb7faedb3fc38d18d6400d1a35739de5277b",
+          "actual": "254fcc787df76c188f3697abf72978cdced8722e45d0463a92e2414381f1560a"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.cs",
+          "expected": "02b458fa6fbca4683a6606af5a4ef08e5e936e5d1d1e91b727499effcee0f0dd",
+          "actual": "830ffe0ebc72fa0a05e59abcc5ab8861dd281b3ee6a2392963f2e122731b05c6"
+        },
+        {
+          "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+          "expected": "452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e",
+          "actual": "d4a22374dd25a8668d4cf93b04cbf7f75561146b55fc830b8520c7e9a26021b7"
+        }
+      ]
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants": {
+      "head": "1e60af449c1fdc3f9801cf57e8847e00faab2394",
+      "selected_head": "1e60af449c1fdc3f9801cf57e8847e00faab2394",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.AI.Tools": {
+      "head": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+      "selected_head": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons": {
+      "head": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+      "selected_head": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds": {
+      "head": "2d653b611c8efcffb4d27bd8715d5dbf24eaebfd",
+      "selected_head": "2d653b611c8efcffb4d27bd8715d5dbf24eaebfd",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.FrontComposer": {
+      "head": "dfac0818e5a40b19145a01333cc5fc00bcd4b47e",
+      "selected_head": "dfac0818e5a40b19145a01333cc5fc00bcd4b47e",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.PolymorphicSerializations": {
+      "head": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+      "selected_head": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Memories": {
+      "head": "63327920814a293e0168986be212deb10b81dc00",
+      "selected_head": "63327920814a293e0168986be212deb10b81dc00",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Platform": {
+      "head": "3beff28eede537eb36e84cdb93900af2556202d7",
+      "selected_head": "3beff28eede537eb36e84cdb93900af2556202d7",
+      "input_changes": []
+    },
+    "/home/administrator/projects/hexalith/eventstore/references/Hexalith.McpCli": {
+      "head": "4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69",
+      "selected_head": "4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69",
+      "input_changes": []
+    }
+  },
+  "interpretation": "Snapshot inputs and Folders are strict predicates. Original workspace changes are reported separately; no external source, dependency, Git index or historical evidence is restored or overwritten."
+}

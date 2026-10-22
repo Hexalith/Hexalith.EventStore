@@ -1,0 +1,325 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
+
+using Dapr.Client;
+
+using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+using Hexalith.EventStore.Admin.Abstractions.Models.Tenants;
+using Hexalith.EventStore.Admin.Abstractions.Services;
+using Hexalith.EventStore.Admin.Server.Configuration;
+using Hexalith.Tenants.Contracts.Commands;
+using Hexalith.Tenants.Contracts.Enums;
+using Hexalith.Tenants.Contracts.Identity;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Hexalith.EventStore.Admin.Server.Services;
+
+/// <summary>
+/// DAPR-backed implementation of <see cref="ITenantCommandService"/>.
+/// All write methods route through EventStore's command pipeline (POST /api/v1/commands).
+/// </summary>
+public sealed class DaprTenantCommandService : ITenantCommandService {
+    private const string _commandEndpoint = "api/v1/commands";
+    private const string _errorNoOperation = "error-no-operation";
+    private static readonly string[] _tenantRoleNames = Enum.GetNames<TenantRole>();
+
+    private readonly IAdminAuthContext _authContext;
+    private readonly DaprClient _daprClient;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<DaprTenantCommandService> _logger;
+    private readonly AdminServerOptions _options;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DaprTenantCommandService"/> class.
+    /// </summary>
+    /// <param name="daprClient">The DAPR client.</param>
+    /// <param name="httpClientFactory">The HTTP client factory for DAPR service invocation.</param>
+    /// <param name="options">The admin server options.</param>
+    /// <param name="authContext">The admin auth context for JWT forwarding.</param>
+    /// <param name="logger">The logger.</param>
+    public DaprTenantCommandService(
+        DaprClient daprClient,
+        IHttpClientFactory httpClientFactory,
+        IOptions<AdminServerOptions> options,
+        IAdminAuthContext authContext,
+        ILogger<DaprTenantCommandService> logger) {
+        ArgumentNullException.ThrowIfNull(daprClient);
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(authContext);
+        ArgumentNullException.ThrowIfNull(logger);
+        _daprClient = daprClient;
+        _httpClientFactory = httpClientFactory;
+        _options = options.Value;
+        _authContext = authContext;
+        _logger = logger;
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> AddUserToTenantAsync(
+        string tenantId,
+        string userId,
+        string role,
+        CancellationToken ct = default) {
+        if (!TryParseTenantRole(role, out TenantRole tenantRole)) {
+            return InvalidRoleResult(role);
+        }
+
+        return await SubmitCommandAsync(
+            tenantId,
+            nameof(AddUserToTenant),
+            new AddUserToTenant(tenantId, userId, tenantRole),
+            ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> ChangeUserRoleAsync(
+        string tenantId,
+        string userId,
+        string newRole,
+        CancellationToken ct = default) {
+        if (!TryParseTenantRole(newRole, out TenantRole tenantRole)) {
+            return InvalidRoleResult(newRole);
+        }
+
+        return await SubmitCommandAsync(
+            tenantId,
+            nameof(ChangeUserRole),
+            new ChangeUserRole(tenantId, userId, tenantRole),
+            ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> CreateTenantAsync(
+        CreateTenantRequest request,
+        CancellationToken ct = default) {
+        ArgumentNullException.ThrowIfNull(request);
+        return await SubmitCommandAsync(
+            request.TenantId,
+            nameof(CreateTenant),
+            new CreateTenant(request.TenantId, request.Name, request.Description),
+            ct).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> DisableTenantAsync(
+        string tenantId,
+        CancellationToken ct = default)
+        => await SubmitCommandAsync(
+            tenantId,
+            nameof(DisableTenant),
+            new DisableTenant(tenantId),
+            ct).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> EnableTenantAsync(
+        string tenantId,
+        CancellationToken ct = default)
+        => await SubmitCommandAsync(
+            tenantId,
+            nameof(EnableTenant),
+            new EnableTenant(tenantId),
+            ct).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public async Task<AdminOperationResult> RemoveUserFromTenantAsync(
+        string tenantId,
+        string userId,
+        CancellationToken ct = default)
+        => await SubmitCommandAsync(
+            tenantId,
+            nameof(RemoveUserFromTenant),
+            new RemoveUserFromTenant(tenantId, userId),
+            ct).ConfigureAwait(false);
+
+    private static string ClassifyHttpFailure(HttpStatusCode statusCode, string? rejectionMessage) {
+        if (statusCode == HttpStatusCode.BadRequest) {
+            return "invalid-request";
+        }
+
+        if (statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout) {
+            return "timeout";
+        }
+
+        if (statusCode is HttpStatusCode.Unauthorized
+            or HttpStatusCode.Forbidden
+            or HttpStatusCode.NotFound
+            or HttpStatusCode.TooManyRequests
+            or HttpStatusCode.BadGateway
+            or HttpStatusCode.ServiceUnavailable) {
+            return "unavailable";
+        }
+
+        if (rejectionMessage is not null) {
+            return "rejected";
+        }
+
+        return statusCode >= HttpStatusCode.InternalServerError
+            ? "unexpected"
+            : ((int)statusCode).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static AdminOperationResult InvalidRoleResult(string? role)
+            => new(
+            false,
+            _errorNoOperation,
+            $"Invalid role '{role}'. Valid values: {string.Join(", ", _tenantRoleNames)}",
+            "invalid-request");
+
+    private static bool IsUnavailable(Exception exception)
+        => exception is HttpRequestException { StatusCode: null or HttpStatusCode.RequestTimeout or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout }
+            || exception is TimeoutException
+            || (exception.InnerException is not null && IsUnavailable(exception.InnerException));
+
+    private static bool TryParseTenantRole(string? role, out TenantRole tenantRole) {
+        string? normalizedRole = role?.Trim();
+
+        if (string.IsNullOrWhiteSpace(normalizedRole)) {
+            tenantRole = default;
+            return false;
+        }
+
+        foreach (TenantRole candidate in Enum.GetValues<TenantRole>()) {
+            if (string.Equals(candidate.ToString(), normalizedRole, StringComparison.OrdinalIgnoreCase)) {
+                tenantRole = candidate;
+                return true;
+            }
+        }
+
+        tenantRole = default;
+        return false;
+    }
+
+    private async Task<AdminOperationResult> SubmitCommandAsync<TPayload>(
+        string aggregateId,
+        string commandType,
+        TPayload payload,
+        CancellationToken ct) {
+        string? operationId = null;
+        try {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(_options.ServiceInvocationTimeoutSeconds));
+
+            string correlationId = UniqueIdHelper.GenerateSortableUniqueStringId();
+            operationId = correlationId;
+            JsonElement payloadElement = JsonSerializer.SerializeToElement(payload);
+
+            object commandBody = new {
+                messageId = UniqueIdHelper.GenerateSortableUniqueStringId(),
+                tenant = TenantIdentity.DefaultTenantId,
+                domain = TenantIdentity.Domain,
+                aggregateId,
+                commandType,
+                payload = payloadElement,
+                correlationId,
+                extensions = (Dictionary<string, string>?)null,
+            };
+
+            using HttpRequestMessage httpRequest = _daprClient.CreateInvokeMethodRequest(
+                HttpMethod.Post,
+                _options.EventStoreAppId,
+                _commandEndpoint)
+                ?? new HttpRequestMessage(HttpMethod.Post, _commandEndpoint);
+            httpRequest.Content = JsonContent.Create(commandBody);
+
+            string? token = _authContext.GetToken();
+            if (token is not null) {
+                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
+            HttpClient httpClient = _httpClientFactory.CreateClient();
+            using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cts.Token).ConfigureAwait(false);
+
+            if (httpResponse.StatusCode == HttpStatusCode.Accepted) {
+                return new AdminOperationResult(true, correlationId, null, null);
+            }
+
+            string errorBody = await httpResponse.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+
+            if (httpResponse.IsSuccessStatusCode) {
+                _logger.LogWarning(
+                    "Command {CommandType} for aggregate {AggregateId} returned unexpected success status {StatusCode}: {Error}",
+                    commandType,
+                    aggregateId,
+                    (int)httpResponse.StatusCode,
+                    errorBody);
+                return new AdminOperationResult(
+                    false,
+                    correlationId,
+                    $"Unexpected response status {(int)httpResponse.StatusCode} from EventStore command endpoint.",
+                    "UNEXPECTED_STATUS");
+            }
+
+            _logger.LogWarning(
+                "Command {CommandType} for aggregate {AggregateId} returned {StatusCode}: {Error}",
+                commandType,
+                aggregateId,
+                (int)httpResponse.StatusCode,
+                errorBody);
+
+            string? userMessage = null;
+            try {
+                using var doc = JsonDocument.Parse(errorBody);
+                // Extract rejection type name and humanize it (e.g., "TenantAlreadyExistsRejection" → "Tenant already exists")
+                if (doc.RootElement.TryGetProperty("type", out JsonElement typeEl)) {
+                    string? typeName = typeEl.GetString();
+                    if (!string.IsNullOrEmpty(typeName)) {
+                        // Get class name after last '.'
+                        int lastDot = typeName.LastIndexOf('.');
+                        string className = lastDot >= 0 ? typeName[(lastDot + 1)..] : typeName;
+                        if (className.EndsWith("Rejection", StringComparison.Ordinal)) {
+                            // Remove "Rejection" suffix and insert spaces before uppercase letters
+                            className = className.Replace("Rejection", string.Empty, StringComparison.Ordinal);
+                            userMessage = System.Text.RegularExpressions.Regex
+                                .Replace(className, "(?<=.)([A-Z])", " $1")
+                                .Trim();
+                            // Lowercase all except first letter
+                            if (userMessage.Length > 1) {
+                                userMessage = char.ToUpperInvariant(userMessage[0]) + userMessage[1..].ToLowerInvariant();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (JsonException) {
+                // Fall through to default message
+            }
+
+            string errorCode = ClassifyHttpFailure(httpResponse.StatusCode, userMessage);
+
+            return new AdminOperationResult(
+                false,
+                correlationId,
+                userMessage ?? $"Command rejected ({(int)httpResponse.StatusCode}). See server logs with correlation ID {correlationId}.",
+                errorCode);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+            _logger.LogWarning("Command {CommandType} for aggregate {AggregateId} timed out.", commandType, aggregateId);
+            string id = operationId ?? _errorNoOperation;
+            return new AdminOperationResult(
+                false,
+                id,
+                $"{commandType} request timed out. The operation may still be processing. Operation ID: {id}.",
+                "timeout");
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to submit command {CommandType} for aggregate {AggregateId}.", commandType, aggregateId);
+            string id = operationId ?? _errorNoOperation;
+            return new AdminOperationResult(
+                false,
+                id,
+                IsUnavailable(ex)
+                    ? $"EventStore service is unavailable. Operation ID: {id}."
+                    : $"Unexpected tenant command failure. Operation ID: {id}.",
+                IsUnavailable(ex) ? "unavailable" : "unexpected");
+        }
+    }
+}

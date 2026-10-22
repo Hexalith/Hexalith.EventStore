@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "dotnet",
+    "--info"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T16:19:11.675400+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 77065,
+  "pid": 77103,
+  "exit_code": 0,
+  "elapsed_seconds": 0.40537476300960407,
+  "utc_end": "2026-10-22T16:19:12.080921+00:00"
+}

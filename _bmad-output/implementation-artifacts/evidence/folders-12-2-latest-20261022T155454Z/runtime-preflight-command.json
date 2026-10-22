@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "timeout",
+    "--signal=INT",
+    "--kill-after=30s",
+    "20m",
+    "dotnet",
+    "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-class",
+    "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityRuntimeProofTests",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/runtime-preflight.xml"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T16:06:24.649681+00:00",
+  "environment_overrides": {
+    "BOUNDED_IDENTITY_GENERATED_SOURCE_DIR": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/generated-source",
+    "BOUNDED_IDENTITY_MAP_DIR": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/preflight-maps",
+    "BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/runtime-preflight-proof.json",
+    "BOUNDED_IDENTITY_MAP_OBSERVER": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 13105,
+  "pid": 13409,
+  "exit_code": 0,
+  "elapsed_seconds": 1.4161453809938394,
+  "utc_end": "2026-10-22T16:06:26.067108+00:00"
+}

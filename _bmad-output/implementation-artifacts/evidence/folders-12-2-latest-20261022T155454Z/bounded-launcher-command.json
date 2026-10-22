@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live.py"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T16:06:49.174062+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 30537,
+  "pid": 30575,
+  "exit_code": 0,
+  "elapsed_seconds": 3467.130340653006,
+  "utc_end": "2026-10-22T17:04:36.127887+00:00"
+}

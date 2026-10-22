@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "control": "Pristine retained Unit mapping",
+      "passed": true
+    },
+    {
+      "control": "Empty raw Unit map rejected even with recomputed receipt hash",
+      "passed": true
+    },
+    {
+      "control": "Unit inode mismatch rejected",
+      "passed": true
+    },
+    {
+      "control": "New ordinary input detected: extra.cs",
+      "passed": true
+    },
+    {
+      "control": "New ordinary input detected: extra.csproj",
+      "passed": true
+    },
+    {
+      "control": "New ordinary input detected: Directory.Build.props",
+      "passed": true
+    },
+    {
+      "control": "New ordinary input detected: config.json",
+      "passed": true
+    },
+    {
+      "control": "New ordinary input detected: components.yaml",
+      "passed": true
+    },
+    {
+      "control": "Ignored source addition still detected",
+      "passed": true
+    }
+  ],
+  "owned_temporary_directory_absent": true
+}

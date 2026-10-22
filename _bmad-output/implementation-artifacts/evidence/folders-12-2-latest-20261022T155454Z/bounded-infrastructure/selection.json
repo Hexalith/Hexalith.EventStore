@@ -1,0 +1,16 @@
+{
+  "environment": {
+    "EVENTSTORE_TEST_REDIS_PORT": "63937",
+    "EVENTSTORE_TEST_PLACEMENT_PORT": "63948",
+    "EVENTSTORE_TEST_SCHEDULER_PORT": "58723",
+    "EVENTSTORE_TEST_DAPR_HOT_RELOAD": "false",
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "BOUNDED_IDENTITY_EVIDENCE_DIR": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios",
+    "BOUNDED_IDENTITY_GENERATED_SOURCE_DIR": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/generated-source",
+    "BOUNDED_IDENTITY_MAP_OBSERVER": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+    "BOUNDED_IDENTITY_MAP_DIR": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/worker-maps"
+  },
+  "daprd": "/home/administrator/.dapr/bin/daprd",
+  "daprd_sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+}

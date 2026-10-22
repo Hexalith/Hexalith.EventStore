@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/check-final-inputs.py"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T17:01:55.414167+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 306445,
+  "pid": 306581,
+  "exit_code": 1,
+  "elapsed_seconds": 131.44466230401304,
+  "utc_end": "2026-10-22T17:04:06.851566+00:00"
+}

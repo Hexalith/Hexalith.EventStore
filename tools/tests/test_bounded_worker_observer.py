@@ -88,6 +88,48 @@ class BoundedWorkerObserverTests(unittest.TestCase):
         self.assertTrue(receipt["exe_sha256"])
         self.assertEqual(os.getpid(), receipt["pid"])
 
+    def test_invalid_expected_hashes_retain_rejection_receipts_for_real_mapped_image(self):
+        # Change only the test inventory to the already mapped native executable;
+        # the observer still reads the real living parent and writes its own receipt.
+        wrapper = self.directory / "native-observer.py"
+        wrapper.write_text(
+            "import functools,importlib.util,sys\n"
+            f"s=importlib.util.spec_from_file_location('observer',{str(SCRIPT)!r})\n"
+            "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
+            f"m.observe=functools.partial(m.observe,required={{{self.pe.stem!r}}})\n"
+            "raise SystemExit(m.main())\n")
+        module = {"name": self.pe.stem, "pe": str(self.pe), "pdb": str(self.pdb), **self.expected}
+        for key in ("peSha256", "pdbSha256"):
+            for index, invalid in enumerate((None, 7, "a" * 63, "a" * 65, "z" * 64)):
+                with self.subTest(key=key, value=invalid):
+                    request = {"pid": os.getpid(), "start_ticks": OBSERVER.start_ticks(os.getpid()),
+                               "modules": [{**module, key: invalid}]}
+                    output = self.directory / (key + "-" + str(index))
+                    result = subprocess.run([sys.executable, str(wrapper), "--output", str(output)],
+                                            input=json.dumps(request), text=True, capture_output=True, check=False)
+                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
+                    receipt = json.loads(next(output.glob("*.json")).read_text())
+                    self.assertFalse(receipt["passed"])
+                    self.assertEqual(["Expected " + key + " must be a string of exactly 64 hexadecimal characters."], receipt["errors"])
+                    self.assertIn(str(self.pe), receipt["raw_maps"])
+                    self.assertEqual(request["start_ticks"], receipt["start_ticks_after"])
+                    self.assertEqual(invalid, receipt["request"]["modules"][0][key])
+
+    def test_deleted_extra_sdk_mapping_fails_closed_and_retains_raw_mapping_row(self):
+        raw = "1000-2000 r--p 00000000 00:01 42 /retired/Hexalith.Unexpected.dll (deleted)"
+        deleted = OBSERVER.mapping_rows(raw)[0]
+        module = {"name": self.pe.stem, "pe": str(self.pe), "pdb": str(self.pdb), **self.expected}
+        request = {"pid": os.getpid(), "start_ticks": OBSERVER.start_ticks(os.getpid()), "modules": [module]}
+        with patch.object(OBSERVER.os, "getppid", return_value=os.getpid()), \
+                patch.object(OBSERVER, "mapping_rows", return_value=self.rows + [deleted]):
+            receipt = OBSERVER.observe(request, os.getpid(), required={self.pe.stem})
+        self.assertFalse(receipt["passed"])
+        self.assertEqual([deleted], receipt["deleted_sdk_mapping_rows"])
+        self.assertEqual(raw, receipt["deleted_sdk_mapping_rows"][0]["raw"])
+        self.assertIn("Deleted first-party image mapping", receipt["errors"][0])
+        self.assertEqual(1, len(receipt["images"]))
+        self.assertEqual(self.expected["peSha256"], receipt["images"][0]["dll_sha256"])
+
     def test_malformed_request_retains_a_rejection_receipt(self):
         output = self.directory / "malformed"
         result = subprocess.run([sys.executable, str(SCRIPT), "--output", str(output)],

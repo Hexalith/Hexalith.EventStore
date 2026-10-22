@@ -1,0 +1,102 @@
+{
+  "utc": "2026-10-22T18:03:59.878334+00:00",
+  "snapshot": "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z",
+  "input_manifest": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/full-guard-inputs.json",
+  "input_manifest_sha256": "19bc416c7101138438b17cb465f9b782a64a035cc2dd5b54ed1217dcbe312935",
+  "enumerated_entries": 59496,
+  "regular_files": 59487,
+  "nonregular_entries": [
+    {
+      "path": "references/Hexalith.AI.Tools",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.Builds",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "0d8b910e0ee4df31198838f35242d0e6be9c80c4",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.Commons",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.FrontComposer",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "9b8cbf28c621cbf45429eab8db1a50cfc4bf1c38",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.McpCli",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "6b01b3dc57a241ebe5b3096be635469ff00d8221",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.Memories",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "63327920814a293e0168986be212deb10b81dc00",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.Platform",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "9a43e1ad8678db4016cc78db63545984cee727c8",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.PolymorphicSerializations",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    },
+    {
+      "path": "references/Hexalith.Tenants",
+      "file_exists_before": false,
+      "is_directory_before": true,
+      "file_exists_now": false,
+      "directory_exists_now": true,
+      "git_index_mode": "160000",
+      "git_index_object": "f0792c44f98b4dd9492020e1bb6b108e84dc12e7",
+      "kind": "root-declared submodule gitlink, not regular reader input"
+    }
+  ],
+  "missing_regular_entries": 0,
+  "scope": "All nine nonregular GetTrackedFiles entries are explicitly pinned root gitlinks. No regular-file input is silently omitted; post-scan input identity is separately recorded by the owning full scan."
+}

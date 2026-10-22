@@ -44,14 +44,9 @@ internal static class ProjectionBoundedIdentityRuntimeProof
                 string path = metadata.GetString(document.Name);
                 // SDK-generated sources are separately bound by their containing PE/PDB.
                 if (!path.Contains("/src/", StringComparison.Ordinal) && !path.Contains("/tests/", StringComparison.Ordinal)) continue;
-                byte[] bytes = ReadDocumentSource(metadata, handle, path), expected = metadata.GetBlobBytes(document.Hash);
-                Guid algorithm = metadata.GetGuid(document.HashAlgorithm);
-                byte[] actual = algorithm == new Guid("8829d00f-11b8-4213-878b-770e8597ac16") ? SHA256.HashData(bytes)
-                    : algorithm == new Guid("ff1816ec-aa5e-4d10-87f7-6f4963833460") ? SHA1.HashData(bytes)
-                    : throw new InvalidOperationException("Unsupported PDB source hash algorithm.");
-                if (!actual.AsSpan().SequenceEqual(expected)) throw new InvalidOperationException("Runtime PDB source differs: " + path);
+                byte[] bytes = ReadValidatedDocumentSource(metadata, handle, path), expected = metadata.GetBlobBytes(document.Hash);
                 string sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
-                bool generated = path.Contains("/obj/", StringComparison.Ordinal);
+                bool generated = IsGeneratedPath(path);
                 if (generated && Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_GENERATED_SOURCE_DIR") is { } captureDirectory)
                 {
                     Directory.CreateDirectory(captureDirectory);
@@ -103,9 +98,24 @@ internal static class ProjectionBoundedIdentityRuntimeProof
             throw new InvalidOperationException("The external module observer rejected the worker mappings; retained receipt: " + directory);
     }
 
-    private static byte[] ReadDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
+    /// <summary>Reads the selected source and enforces the unchanged portable PDB document checksum.</summary>
+    internal static byte[] ReadValidatedDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
     {
-        if (File.Exists(path)) return File.ReadAllBytes(path);
+        byte[] bytes = ReadDocumentSource(metadata, handle, path);
+        var document = metadata.GetDocument(handle);
+        byte[] expected = metadata.GetBlobBytes(document.Hash);
+        Guid algorithm = metadata.GetGuid(document.HashAlgorithm);
+        byte[] actual = algorithm == new Guid("8829d00f-11b8-4213-878b-770e8597ac16") ? SHA256.HashData(bytes)
+            : algorithm == new Guid("ff1816ec-aa5e-4d10-87f7-6f4963833460") ? SHA1.HashData(bytes)
+            : throw new InvalidOperationException("Unsupported PDB source hash algorithm.");
+        if (!actual.AsSpan().SequenceEqual(expected)) throw new InvalidOperationException("Runtime PDB source differs: " + path);
+        return bytes;
+    }
+
+    /// <summary>Prefers authenticated embedded generated source while retaining current ordinary source authority.</summary>
+    internal static byte[] ReadDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
+    {
+        if (!IsGeneratedPath(path) && File.Exists(path)) return File.ReadAllBytes(path);
         foreach (var debugHandle in metadata.GetCustomDebugInformation(handle))
         {
             var debug = metadata.GetCustomDebugInformation(debugHandle);
@@ -122,6 +132,11 @@ internal static class ProjectionBoundedIdentityRuntimeProof
             if (inflater.ReadByte() != -1) throw new InvalidOperationException("Embedded PDB source length differs from its header.");
             return source;
         }
+        if (File.Exists(path)) return File.ReadAllBytes(path);
         throw new InvalidOperationException("Runtime PDB source is unavailable and is not embedded: " + path);
     }
+
+    /// <summary>Recognizes generated paths by complete build-output directory segments on either platform.</summary>
+    private static bool IsGeneratedPath(string path)
+        => path.Replace('\\', '/').Split('/').Any(segment => segment is "obj" or "bin");
 }

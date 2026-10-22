@@ -1,0 +1,15 @@
+{
+  "fresh_failed_case": "Hexalith.EventStore.DomainService.Tests.Processes.ProcessPublicationTests.RegistrationCostDoesNotGrowWithHistoricalPages",
+  "full_xml": "domain-full.xml",
+  "failure": "System.TimeoutException",
+  "path": [
+    "ProcessPublicationTests.cs:741 pre-registering520 historical candidates",
+    "ProcessCheckpointStore.cs:180 EnsureCandidateAsync -> ReadCandidatePageAsync(root0)",
+    "ProcessCheckpointStore.cs:527 ReadPageAsync -> :289 ReadAsync",
+    "ProcessReadDeadline.cs:58 task.WaitAsync(original100ms control-read timeout)"
+  ],
+  "proven": "Failure happened during unmeasured setup; measured.EnsureCandidateAsync(Source) and CandidatePageReads.ShouldBe(2) were not reached. InMemoryReadModelStore; no Dapr/network read. Slot admission succeeded; exhaustion has a different exception.",
+  "uncertain": "Scheduling sensitivity is plausible (up to14 overlapping tests), but queue delay versus slow read execution is not proven. No deadline/assertion/production semantic was changed.",
+  "focused_receipt": "domain-failure-focused-command.json",
+  "gate": "Focused success does not replace the failed full execution. Earlier two Domain failures remain independently retained in the sealed interrupted attempt."
+}

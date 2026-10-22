@@ -1,0 +1,1152 @@
+{
+  "passed": true,
+  "utc_start": "2026-10-22T17:41:58.721175+00:00",
+  "argv": [
+    "/usr/bin/python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/input-identity-audit-v3.py"
+  ],
+  "auditor_sha256": "dcfc2b4722c2e7c9ca216538a2ff801230d2c9c98378c5b68f79924bfbf1f7a3",
+  "reused_exhaustive_audit": {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/input-identity-audit.json",
+    "sha256": "e2c4378636d7760c2c8891993baf8427e42d9e98aef169ae7c8a3e5d02d27457",
+    "utc_start": "2026-10-22T17:38:35.718214+00:00",
+    "utc_end": "2026-10-22T17:39:43.125678+00:00",
+    "retained_passed": false,
+    "retained_errors": [
+      "Build-context metadata differs beyond literal S2-to-S3 paths: MvcTestingAppManifest.json"
+    ]
+  },
+  "fresh_metadata_checks": [
+    {
+      "relative": ".msCoverageExtensionSourceRootsMapping_Hexalith.EventStore.Server.Tests",
+      "before_sha256": "2ec81b4d7d00ffb9e76df6b32da3b8dc0156d0421318750eae3c9681b6624a2a",
+      "after_sha256": "f07f1d8d5434bd5372c9de35c595ed05d7b9d4bf7560ff4562d9d8042d802862",
+      "encoding": "utf-16-le",
+      "json_escaped_slashes": false,
+      "exact_snapshot_path_translation": true
+    },
+    {
+      "relative": ".msCoverageSourceRootsMapping_Hexalith.EventStore.Server.Tests",
+      "before_sha256": "2ec81b4d7d00ffb9e76df6b32da3b8dc0156d0421318750eae3c9681b6624a2a",
+      "after_sha256": "f07f1d8d5434bd5372c9de35c595ed05d7b9d4bf7560ff4562d9d8042d802862",
+      "encoding": "utf-16-le",
+      "json_escaped_slashes": false,
+      "exact_snapshot_path_translation": true
+    },
+    {
+      "relative": "CoverletSourceRootsMapping_Hexalith.EventStore.Server.Tests",
+      "before_sha256": "2ec81b4d7d00ffb9e76df6b32da3b8dc0156d0421318750eae3c9681b6624a2a",
+      "after_sha256": "f07f1d8d5434bd5372c9de35c595ed05d7b9d4bf7560ff4562d9d8042d802862",
+      "encoding": "utf-16-le",
+      "json_escaped_slashes": false,
+      "exact_snapshot_path_translation": true
+    },
+    {
+      "relative": "MvcTestingAppManifest.json",
+      "before_sha256": "f62e828d33f8d6bb7e618b7f17e6156fc3ac6382b9b7f589018d6d71a86def82",
+      "after_sha256": "16c78492f5557caeae91bfbc1a2d82239cb1395680cf0ad28a6b775aed81445c",
+      "encoding": "utf-8",
+      "json_escaped_slashes": true,
+      "exact_snapshot_path_translation": true
+    }
+  ],
+  "fresh_reference_hashes": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-3f080f912e384424b762003fdd25ba82/streamed-10001-promote.json",
+      "expected_sha256": "180c4cbdcf59c04916afdf3e79bdc59ec06b76799907ae7e7fa6e0d6600cdad1",
+      "actual_sha256": "180c4cbdcf59c04916afdf3e79bdc59ec06b76799907ae7e7fa6e0d6600cdad1",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-3f080f912e384424b762003fdd25ba82/streamed-10001-resume.json",
+      "expected_sha256": "b17d2172f82bdde5a53e0f9d784e9ef425f095cb4a59bc507687fa8001d10b0b",
+      "actual_sha256": "b17d2172f82bdde5a53e0f9d784e9ef425f095cb4a59bc507687fa8001d10b0b",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-3f080f912e384424b762003fdd25ba82/streamed-10001-stage.json",
+      "expected_sha256": "920bbfa79fdc4133800ebe123323bdaa791b1f0a43858a3249b259e399bcc4c3",
+      "actual_sha256": "920bbfa79fdc4133800ebe123323bdaa791b1f0a43858a3249b259e399bcc4c3",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-850aaa63cc9d42db9ad1193e5ec45122/streamed-129-inherited.json",
+      "expected_sha256": "e0a5f92d3f1032299906e49e91e4c96f449cf9ee29880f45a4419027c283ab51",
+      "actual_sha256": "e0a5f92d3f1032299906e49e91e4c96f449cf9ee29880f45a4419027c283ab51",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-850aaa63cc9d42db9ad1193e5ec45122/streamed-129-promote.json",
+      "expected_sha256": "ef9ec0ea932f518ce935c7c5822839b711cd1b0678999d8fff6e1180553550f3",
+      "actual_sha256": "ef9ec0ea932f518ce935c7c5822839b711cd1b0678999d8fff6e1180553550f3",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-850aaa63cc9d42db9ad1193e5ec45122/streamed-129-resume.json",
+      "expected_sha256": "647d4e46d5b85c979748da4dc585eae136071c6e1feb094a77f1948e47616a5a",
+      "actual_sha256": "647d4e46d5b85c979748da4dc585eae136071c6e1feb094a77f1948e47616a5a",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-850aaa63cc9d42db9ad1193e5ec45122/streamed-129-stage.json",
+      "expected_sha256": "653f3785402c6b730b90f66d3ee7a6d30bfcddb4de2b383c080a7c5bb2adf93a",
+      "actual_sha256": "653f3785402c6b730b90f66d3ee7a6d30bfcddb4de2b383c080a7c5bb2adf93a",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b28176644a354eeda95e9c05ba7320f1/buffered-129-inherited.json",
+      "expected_sha256": "8aa8c875e33d724fc2d24a75a932543f8391d74d4ceda7c2fb0047af91de965e",
+      "actual_sha256": "8aa8c875e33d724fc2d24a75a932543f8391d74d4ceda7c2fb0047af91de965e",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b28176644a354eeda95e9c05ba7320f1/buffered-129-promote.json",
+      "expected_sha256": "0bb8ae970d4a8805776cf702c5298c38c5682ac680c0b22f55b104def8cfd227",
+      "actual_sha256": "0bb8ae970d4a8805776cf702c5298c38c5682ac680c0b22f55b104def8cfd227",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b28176644a354eeda95e9c05ba7320f1/buffered-129-resume.json",
+      "expected_sha256": "5bde5dc5535ca9939d904ba35952135f54ee4140fad24485bc17eb31fd91d19b",
+      "actual_sha256": "5bde5dc5535ca9939d904ba35952135f54ee4140fad24485bc17eb31fd91d19b",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b28176644a354eeda95e9c05ba7320f1/buffered-129-stage.json",
+      "expected_sha256": "3b84c1857d7af6d637d362a9d5fc9e9df635b385a934f84533484e1617d13654",
+      "actual_sha256": "3b84c1857d7af6d637d362a9d5fc9e9df635b385a934f84533484e1617d13654",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b7ceba2b86fd453bb663dfde7aaddb1c/buffered-129-promote.json",
+      "expected_sha256": "c7232724e5fae6ad289c42cefdab7c042903fdbac680e63c62fe6e8b113c1ad0",
+      "actual_sha256": "c7232724e5fae6ad289c42cefdab7c042903fdbac680e63c62fe6e8b113c1ad0",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b7ceba2b86fd453bb663dfde7aaddb1c/buffered-129-resume.json",
+      "expected_sha256": "7beb37dae8c01d17903036d8471a384e2b6f2c6ef346c912d1d1bb765569f394",
+      "actual_sha256": "7beb37dae8c01d17903036d8471a384e2b6f2c6ef346c912d1d1bb765569f394",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-b7ceba2b86fd453bb663dfde7aaddb1c/buffered-129-stage.json",
+      "expected_sha256": "32d0bcfbbef0a3e1a84b0406e312c904552ce3ab10bb1d616c20c0b233bc7c01",
+      "actual_sha256": "32d0bcfbbef0a3e1a84b0406e312c904552ce3ab10bb1d616c20c0b233bc7c01",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-deef41882e2a4b22b2c26994933315c8/streamed-32769-promote.json",
+      "expected_sha256": "62349554b6e9aa6680ec84797812fdbd24c23eb3aff1b91cab5bb013bc93fe36",
+      "actual_sha256": "62349554b6e9aa6680ec84797812fdbd24c23eb3aff1b91cab5bb013bc93fe36",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-deef41882e2a4b22b2c26994933315c8/streamed-32769-resume.json",
+      "expected_sha256": "6d0dfcb03575e704f120ac709ff796e73641f3162c75618eec22c4afb63888ae",
+      "actual_sha256": "6d0dfcb03575e704f120ac709ff796e73641f3162c75618eec22c4afb63888ae",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-deef41882e2a4b22b2c26994933315c8/streamed-32769-stage.json",
+      "expected_sha256": "9d739c16f26eca52344d6088ad6ff42a959fc3ba36133d6d8560f1f3192e4646",
+      "actual_sha256": "9d739c16f26eca52344d6088ad6ff42a959fc3ba36133d6d8560f1f3192e4646",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-e7fea7aa97f04633ba652963d23657bc/buffered-10001-inherited.json",
+      "expected_sha256": "b68f8e3e1a973fec1531e55d2ac14ad1c50906f8662cdd6ba6daa9c1d7353c41",
+      "actual_sha256": "b68f8e3e1a973fec1531e55d2ac14ad1c50906f8662cdd6ba6daa9c1d7353c41",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-e7fea7aa97f04633ba652963d23657bc/buffered-10001-promote.json",
+      "expected_sha256": "c7bb458dd188ba4f65d297b11279c0063bcc754de63904268270fdcd4496f940",
+      "actual_sha256": "c7bb458dd188ba4f65d297b11279c0063bcc754de63904268270fdcd4496f940",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-e7fea7aa97f04633ba652963d23657bc/buffered-10001-resume.json",
+      "expected_sha256": "bb88c850f461878d2e193e09ee3176de97ae11be5d785131c475af63547d1366",
+      "actual_sha256": "bb88c850f461878d2e193e09ee3176de97ae11be5d785131c475af63547d1366",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-e7fea7aa97f04633ba652963d23657bc/buffered-10001-stage.json",
+      "expected_sha256": "1533c0e23f1bdf2c50c6116d07c4b2beae067e4473d5c1df1e3095adeaa1f87c",
+      "actual_sha256": "1533c0e23f1bdf2c50c6116d07c4b2beae067e4473d5c1df1e3095adeaa1f87c",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-ebabc61e196f4ea08d6ac7636415ae47/buffered-10001-promote.json",
+      "expected_sha256": "307e087f6ae0579b02ed49b89bb9d454afea397bd0689bb2846ec74e710703f7",
+      "actual_sha256": "307e087f6ae0579b02ed49b89bb9d454afea397bd0689bb2846ec74e710703f7",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-ebabc61e196f4ea08d6ac7636415ae47/buffered-10001-resume.json",
+      "expected_sha256": "0fb1bb5387015ea72649ce106db4b4738ab07857907be9039f7384878c7f7567",
+      "actual_sha256": "0fb1bb5387015ea72649ce106db4b4738ab07857907be9039f7384878c7f7567",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-ebabc61e196f4ea08d6ac7636415ae47/buffered-10001-stage.json",
+      "expected_sha256": "c011969ba36202640da40fd550cbc64ffb5f1504c324888cd36430c307fabca0",
+      "actual_sha256": "c011969ba36202640da40fd550cbc64ffb5f1504c324888cd36430c307fabca0",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-f3a95f104b114f9a9dcc7c64ab6aa14d/streamed-129-promote.json",
+      "expected_sha256": "1d5583bd4dcc17d9357502890fd4071f7b7067d24bf4c0b4b0a9f41249660ce5",
+      "actual_sha256": "1d5583bd4dcc17d9357502890fd4071f7b7067d24bf4c0b4b0a9f41249660ce5",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-f3a95f104b114f9a9dcc7c64ab6aa14d/streamed-129-resume.json",
+      "expected_sha256": "cc3e89f20435024f785db5678c9cbb7b67fb7697450abf519cb61b2d4e80d6d6",
+      "actual_sha256": "cc3e89f20435024f785db5678c9cbb7b67fb7697450abf519cb61b2d4e80d6d6",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-f3a95f104b114f9a9dcc7c64ab6aa14d/streamed-129-stage.json",
+      "expected_sha256": "d28ee464d2f6a904e4c8573f5b8e0569a8e667ef7d9955baf4897a255090c5c5",
+      "actual_sha256": "d28ee464d2f6a904e4c8573f5b8e0569a8e667ef7d9955baf4897a255090c5c5",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-f965f5ccac0e4a8ab44ed04130b0e541/buffered-32769-promote.json",
+      "expected_sha256": "56768f8033a5878e9e13e097597a45f41fdf466a114efd6df20b720b59bbefdf",
+      "actual_sha256": "56768f8033a5878e9e13e097597a45f41fdf466a114efd6df20b720b59bbefdf",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-f965f5ccac0e4a8ab44ed04130b0e541/buffered-32769-resume.json",
+      "expected_sha256": "0ee3c224fec3c2b8381dc081d778ced3c23b7a7c4936f2b44b8c0174f5613276",
+      "actual_sha256": "0ee3c224fec3c2b8381dc081d778ced3c23b7a7c4936f2b44b8c0174f5613276",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-scenarios/bounded-identity-bounded-f965f5ccac0e4a8ab44ed04130b0e541/buffered-32769-stage.json",
+      "expected_sha256": "6e8eb8a8c2815febfd6a665901b875d7a9ac16f969770cd7e6cd933b9b3ac870",
+      "actual_sha256": "6e8eb8a8c2815febfd6a665901b875d7a9ac16f969770cd7e6cd933b9b3ac870",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/current-inputs.json",
+      "expected_sha256": "1c612bb10394bf949e9880626912fa8b2ec6d25447b7770f67df5a12b6972bb4",
+      "actual_sha256": "1c612bb10394bf949e9880626912fa8b2ec6d25447b7770f67df5a12b6972bb4",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/debug-binary-freeze.json",
+      "expected_sha256": "158f469fde4d8f42287dcd0e3143f51722a62235b01b32e4962a1d5e43e5b818",
+      "actual_sha256": "158f469fde4d8f42287dcd0e3143f51722a62235b01b32e4962a1d5e43e5b818",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/final-input-integrity.json",
+      "expected_sha256": "16d76b7295fb6c885b661f36faec49f3e55aee6149cea90006812586d06afc4c",
+      "actual_sha256": "16d76b7295fb6c885b661f36faec49f3e55aee6149cea90006812586d06afc4c",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/binary-freeze.json",
+      "expected_sha256": "fab8d44f88f50c4f685e49e7b3684bb130d53e56529b3d4225fd01b9e546bf1d",
+      "actual_sha256": "fab8d44f88f50c4f685e49e7b3684bb130d53e56529b3d4225fd01b9e546bf1d",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/current-inputs.json",
+      "expected_sha256": "8add00ab22585a96febc7d56c95a205f748c4b84cc29c6168e6af16998181d68",
+      "actual_sha256": "8add00ab22585a96febc7d56c95a205f748c4b84cc29c6168e6af16998181d68",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/input-identity-audit.json",
+      "expected_sha256": "2a1b40b4cc2c5d9a7d7b8b0eb2ff8d0ac5e16dfb105d916309ad1068863d01c3",
+      "actual_sha256": "2a1b40b4cc2c5d9a7d7b8b0eb2ff8d0ac5e16dfb105d916309ad1068863d01c3",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/source-inputs.json",
+      "expected_sha256": "6f2b92769a0facec4c31e223838c123b2a55ca04a2042e35ae92e62d82c759c9",
+      "actual_sha256": "6f2b92769a0facec4c31e223838c123b2a55ca04a2042e35ae92e62d82c759c9",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/binary-freeze.json",
+      "expected_sha256": "605f105788caecb196f5d4daa0ad1ca66368d46d70a35fe9bce0f34c96bb9a41",
+      "actual_sha256": "605f105788caecb196f5d4daa0ad1ca66368d46d70a35fe9bce0f34c96bb9a41",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/fixture-correction.json",
+      "expected_sha256": "59161ccd094838c34634e216a9d8280bd6b4dd8acd8d470924f60c7c8fb51ca3",
+      "actual_sha256": "59161ccd094838c34634e216a9d8280bd6b4dd8acd8d470924f60c7c8fb51ca3",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/overlay.json",
+      "expected_sha256": "c92097a3887c415c23f3061f5e7af8ed66b9f3597b7c16c5f6b91f18494ed984",
+      "actual_sha256": "c92097a3887c415c23f3061f5e7af8ed66b9f3597b7c16c5f6b91f18494ed984",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/producer-current-inputs.json",
+      "expected_sha256": "485e315128250d887c45dbe8533e27f8657c853eae815745c801fe5bc8434139",
+      "actual_sha256": "485e315128250d887c45dbe8533e27f8657c853eae815745c801fe5bc8434139",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/Hexalith.EventStore.Server.Tests.deps.json",
+      "expected_sha256": "07c948ad5e4b7167f8b20b34c0f87c6ade24a8584d654a2a95d9b1cf6fe0744a",
+      "actual_sha256": "07c948ad5e4b7167f8b20b34c0f87c6ade24a8584d654a2a95d9b1cf6fe0744a",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/Hexalith.EventStore.Server.Tests.dll",
+      "expected_sha256": "2eca31c4b988a43f29b66af053eb86551c6a9f4da96811f88564a08c671ce1c3",
+      "actual_sha256": "2eca31c4b988a43f29b66af053eb86551c6a9f4da96811f88564a08c671ce1c3",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/Hexalith.EventStore.Server.Tests.pdb",
+      "expected_sha256": "9d8ef735d1ed5ecf5392e7e3d672482f98e09c9cfdecb6750fa4cec760f41a35",
+      "actual_sha256": "9d8ef735d1ed5ecf5392e7e3d672482f98e09c9cfdecb6750fa4cec760f41a35",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/Hexalith.EventStore.Server.Tests.runtimeconfig.json",
+      "expected_sha256": "4761a312947a31a30aec259d9ee6f10407d89806d812cd102f3b3aec250dc8b4",
+      "actual_sha256": "4761a312947a31a30aec259d9ee6f10407d89806d812cd102f3b3aec250dc8b4",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/SecretsProtectionTests.EmptyCalls.cs.source",
+      "expected_sha256": "5c9a09d3383605fd96c8fcdf95f7a80bd19a0e34e8f0ffbbf116741be780daf7",
+      "actual_sha256": "5c9a09d3383605fd96c8fcdf95f7a80bd19a0e34e8f0ffbbf116741be780daf7",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/SecretsProtectionTests.UnifiedDiffCursor.cs.source",
+      "expected_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "actual_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/SecretsProtectionTests.cs.source",
+      "expected_sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "actual_sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/source-inputs.json",
+      "expected_sha256": "74a30bb33d45b2654405edff8b621cb1d14b0141ea5d75fa01ec999b8a55e8de",
+      "actual_sha256": "74a30bb33d45b2654405edff8b621cb1d14b0141ea5d75fa01ec999b8a55e8de",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/qualified-worker-runtime-inputs.json",
+      "expected_sha256": "bec2a1f057e0b686b37657778ce593070a5cc9f9e9d58a7651af18ec59145511",
+      "actual_sha256": "bec2a1f057e0b686b37657778ce593070a5cc9f9e9d58a7651af18ec59145511",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/snapshot-inputs.json",
+      "expected_sha256": "45b7cb3ccb1db9f65406ec44ab0eb2b9b8b68891faff315fe76a02fbe107437d",
+      "actual_sha256": "45b7cb3ccb1db9f65406ec44ab0eb2b9b8b68891faff315fe76a02fbe107437d",
+      "passed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/tracked-guard-inputs.json",
+      "expected_sha256": "e3a2fb67bd51469a58ee8d4ca1f4d6cc3acac6b0b03c6ce30c55f691355d8d03",
+      "actual_sha256": "e3a2fb67bd51469a58ee8d4ca1f4d6cc3acac6b0b03c6ce30c55f691355d8d03",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "expected_sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+      "actual_sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Client.pdb",
+      "expected_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+      "actual_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "expected_sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+      "actual_sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+      "expected_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+      "actual_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "expected_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "actual_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+      "expected_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "actual_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "expected_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "actual_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.pdb",
+      "expected_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "actual_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "expected_sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+      "actual_sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Client.pdb",
+      "expected_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+      "actual_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "expected_sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+      "actual_sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+      "expected_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+      "actual_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "expected_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "actual_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+      "expected_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "actual_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "expected_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "actual_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.pdb",
+      "expected_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "actual_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EmptyCalls.cs",
+      "expected_sha256": "5c9a09d3383605fd96c8fcdf95f7a80bd19a0e34e8f0ffbbf116741be780daf7",
+      "actual_sha256": "5c9a09d3383605fd96c8fcdf95f7a80bd19a0e34e8f0ffbbf116741be780daf7",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs",
+      "expected_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "actual_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "expected_sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "actual_sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.deps.json",
+      "expected_sha256": "07c948ad5e4b7167f8b20b34c0f87c6ade24a8584d654a2a95d9b1cf6fe0744a",
+      "actual_sha256": "07c948ad5e4b7167f8b20b34c0f87c6ade24a8584d654a2a95d9b1cf6fe0744a",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+      "expected_sha256": "2eca31c4b988a43f29b66af053eb86551c6a9f4da96811f88564a08c671ce1c3",
+      "actual_sha256": "2eca31c4b988a43f29b66af053eb86551c6a9f4da96811f88564a08c671ce1c3",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.pdb",
+      "expected_sha256": "9d8ef735d1ed5ecf5392e7e3d672482f98e09c9cfdecb6750fa4cec760f41a35",
+      "actual_sha256": "9d8ef735d1ed5ecf5392e7e3d672482f98e09c9cfdecb6750fa4cec760f41a35",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.runtimeconfig.json",
+      "expected_sha256": "4761a312947a31a30aec259d9ee6f10407d89806d812cd102f3b3aec250dc8b4",
+      "actual_sha256": "4761a312947a31a30aec259d9ee6f10407d89806d812cd102f3b3aec250dc8b4",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "expected_sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+      "actual_sha256": "3da99689f31cb780aa3d9f3016d05f1f0cf7bb8c4270356a680bd3a6e954835d",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Client.pdb",
+      "expected_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+      "actual_sha256": "c4be817e0661d6af1a66a91fa7db851d992d6b4f1a93f3d93fb10eb9256d20b9",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "expected_sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+      "actual_sha256": "0e28ec8108f4b2a3e3f3fdf7f33f7de14c861ced6e5fc0b5fdc5c716b1c21bdd",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.DomainService.pdb",
+      "expected_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+      "actual_sha256": "1e953462bd25819e57e658044849b36bb74a6c3e7cf3e655cd6828cf45a16a4c",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "expected_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "actual_sha256": "dca3d48aa21849c9b5cbaff826c4190299ed3cffb8e7e5a16c73fc5b406d76b1",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.pdb",
+      "expected_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "actual_sha256": "b3f6920b073c26c1c1e339df71ffa04cf2cfbd34558898e21af8f24c9af54112",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "expected_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "actual_sha256": "bd6ba21a2876fd58ecfc06ee61807d98d201c624aef2d9d7ed9b8f3666c45562",
+      "passed": true
+    },
+    {
+      "path": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.pdb",
+      "expected_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "actual_sha256": "f6068efed0aee6cd65054af4d67652d5345f7f47d2272a816439f0fef233c6fe",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "reused_exhaustive_scope": {
+    "s1_paths": 72224,
+    "s2_paths": 145087,
+    "s3_guard_paths": 59487,
+    "s3_ordinary_paths": 16764,
+    "unit_output_paths": 682,
+    "worker_module_observations": 120,
+    "qualified_worker_paths": 788,
+    "pdb_pairs": 65
+  },
+  "producer_current_inputs": {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/producer-current-inputs.json",
+    "sha256": "485e315128250d887c45dbe8533e27f8657c853eae815745c801fe5bc8434139",
+    "paths": 217952
+  },
+  "strict_current_inputs_retained": {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/current-inputs.json",
+    "paths": 81187,
+    "sha256": "1c612bb10394bf949e9880626912fa8b2ec6d25447b7770f67df5a12b6972bb4",
+    "unchanged": true
+  },
+  "separate_preservation_conflicts": {
+    "receipt": "final-input-integrity.json",
+    "sha256": "16d76b7295fb6c885b661f36faec49f3e55aee6149cea90006812586d06afc4c",
+    "folders_passed": false,
+    "folders_changes": [
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerServiceCollectionExtensions.cs",
+        "expected": "0ececd50ad1f2fa53ada33fb65466eda6390251a120ccad4183b5e5a886e2bea",
+        "actual": "f763f547f44fff1af7114ed8b7b3241f5c75b1b00e9811b43a60c14d633751b2"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/HistoricalMutationAuthorization.cs",
+        "expected": "d2babffb79cd515f82961bc1f54beb3948b1c66ef898183a81796b90b7ec9e8d",
+        "actual": "6e168b1da3f505c889808da82f614f4a61ae531d6c9230b32b482b14ad8127a4"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersDomainServiceEndpoints.cs",
+        "expected": "47e42317db5e6b9364a730ca47ec7a7b7d4e4090661b78a0e148922f870fde4a",
+        "actual": "b9416faba11d0de1846108b1b13a696e5d4fda8b28791e6c4fe7c8452d8076f2"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerModule.cs",
+        "expected": "96ba8531962b7fc1a804a10cf1958467ee9434de5f24de7435a9c1cff95fb3e3",
+        "actual": "0e6bfc0621eecf04bc66c3afcd699088d4332725bf2742e2d81b38e00d169e11"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/ActorFoldedFolderRepository.cs",
+        "expected": "5fb187b96deda052df54316214fd4b6114578b22610cd539d10dff894204a43b",
+        "actual": "2252537bf023045579118159f27165d1a775dd1f6375a23f5a2d237f548899fa"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FolderDomainProcessor.cs",
+        "expected": "9958774658c9354ea8cf7c58b4c03eb79c681712ca736c15ee703e39a2bd99bf",
+        "actual": "427c431fdbb0f2ea30221646e12e35e25eaabdf66bd9a2cdb2b5b20499a89480"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v2.yaml",
+        "expected": "ee9c7bddd0428d3809555c591af0b0bd760b0c88e336720e569c7d7b259807b0",
+        "actual": "9f2adc4e92e5b3ea8705ec4916b7b015bb53e7e1acf7b198878504b9437a8d34"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v1.yaml",
+        "expected": "ac2257eced95bccb63fd73baf76d918a727ee468997012c83d72dc7ad16aea8e",
+        "actual": "a6153d1a77fd49d3c7a43302fbe440d546108dc40e76ff0014c757d0cd38dbfa"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersIdempotencyHelpers.g.cs",
+        "expected": "a9313ede8fdff1e52c7c900f03a58b352b9434cef7936a23dcdae853a7a53526",
+        "actual": "ce9d8b25d3b574cb22cd92bdf2062c57b4f4379e23f33b51a018c790185fdf67"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersClient.g.cs",
+        "expected": "dbc41081169dc3562d91bfa2133f9655b2fa5a68843aa9737197c522e476d2b5",
+        "actual": "8020632be8f23e3b9630d7838f260bba699ec20c7d14ebe67a2fe8cf9748e838"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileStreamStagingEvidence.cs",
+        "expected": "c13910dba7ed8277b29b7119a93220b9425df0641c74ff961d3b86b02a9a7af0",
+        "actual": "7c997257dde4ba5703954ce8072cf18668b2abc38666cf7465c0d0b547e8020c"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUploadDescriptor.cs",
+        "expected": "abcff08f30cee63a67d63c005a85edab1f1e4a115b8e52ad45e7bbb727335ede",
+        "actual": "9254eba0bc30b6204028ed46496c1ff6e27e879de29431f3066c27183e8103ed"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUpload.cs",
+        "expected": "14026186717988d53a84aab88d31b14df464a17618cbce2244438b980c5d93bf",
+        "actual": "195f331ad771d091dd940f4c446ec722b05d9391d340bf4baece741982d08fc0"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FoldersFileUploadExtensions.cs",
+        "expected": "76f3ebc7c7563c3a6043b6fb34870e370e0d78d3140bed29cd8433a238797201",
+        "actual": "cffedabd78b80ff7fa3266b5288c285de0b27318b0f9f00298964d1bb62dbd16"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authorization/FolderCommandActionTokenMapper.cs",
+        "expected": "4b4d43900b6f0425aff11555c1256c487922c0769f7a98fa570bb9b117a00205",
+        "actual": "fbe9d1528b8a4571a87d0c2cc54f57015422da14cc17ba7365246a5d6f242126"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/FoldersGatewayHumanBearerHandler.cs",
+        "expected": "2b9e05ea6e86646051fe4bcfdc74f02ba3345a77b932f3aff29d71e22530a763",
+        "actual": "7fc9d6c8877cdbab43ec834f3fe6a4405d5bf968a0c2b9cf972eeb7db1ae7ff9"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/VerifiedReceiptEventStoreAuthorizationValidator.cs",
+        "expected": "1285eea97b173a474b73a501c2c2eb96b58b29c2396f77761d6b1b3b68d396f8",
+        "actual": "6b5cce02b3888d9979dd48aa00f019196053c102c75d26aebb3c2e3657c794b6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockLeaseMetadata.cs",
+        "expected": "20d16e4fbcd0fe7af364de87265092a1c26a25d0c423640968e73b09ed7beb36",
+        "actual": "fd6da8a6efd347838f6d4ced5242771ec369981b01a610fc50013dd6b26d626d"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusQueryHandler.cs",
+        "expected": "77decdae7443788cc6f78952de4e3c64d1318ff2faf3c33bdd4dbc83c90f1ddb",
+        "actual": "1896df19a3d56dba5103c39db583e56e0223d40353d8ce8e43b64888a9872cd3"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusReadModelSnapshot.cs",
+        "expected": "c8d8b75575aa1a161a93522fa59a357d4fbdc5b777bede486be242cec16ae677",
+        "actual": "06b1f6120477e9d7d23569a50dc7e194a8b6e1a98cd87981b12e191e42a500e6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextItem.cs",
+        "expected": "43f18883b30fc44548e0134223a3fae8d1a1fc8cd460c6f07bba77017f9f880b",
+        "actual": "5e94ab1b8779fd71d4e46eb131f75f165c93c27ac03016fbe1430e4944a90c84"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextSourceStatus.cs",
+        "expected": "ba7540e80b51005ad485ea36fc04b38006f5431043cd8d1fa985eef100e19864",
+        "actual": "ae019e5759d20ea15e6e6eb644649207eac3c0ccfa1aab6087f5a3475547225f"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextQueryHandler.cs",
+        "expected": "e4fe29ac071ec6e91d6cf0c51a63e1b826b4b1c4b3151e8bfe8c79192a2896dc",
+        "actual": "74afc21e259c63b14082dfba47e421e9167850d34f998906eb9987797205354f"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextResultCode.cs",
+        "expected": "c6e8cb40e14002c533bde923699148560586946edd46e792ded1c43a3a32fedf",
+        "actual": "6e27568832745ee56cb9d20756431836ad52bfb5bcd50e71b073ed5f6fdefac6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceRequest.cs",
+        "expected": "6efe3053597fba35c08fb7c26ef7651fd6ba33b2e314aea9a4f1355ebeea0d4b",
+        "actual": "d9802f6ea869e78dee41a9190bce4a8cdc160e34d985b50a21acb39ebf332130"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderState.cs",
+        "expected": "7b75311c1803724d35c870f739864b8701c0bd5f00c50f1e186022799eebc2dc",
+        "actual": "ab152be934c4cefab146697a6f500ed6202156bb9bb9cb3f5d568c705812ebf7"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreRequest.cs",
+        "expected": "9f1f7d9286adcec1bf5f24438b8369021d68b4fb5aedf684074dca9093f8cebc",
+        "actual": "e56f44afb01eab3a7d8e55d6e134b7e0bcc43b833be5adb75950b8c534177877"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationRequest.cs",
+        "expected": "f55dccb55fe9da2043bf6be321a6f84cc5371b715a4f5838c8bd8f7c8339dfee",
+        "actual": "69b65e57dcfc21fa42cb4f9d78fb82bb929d6cfb5c95e0009d261d91e9f893c6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyValidator.cs",
+        "expected": "1f0ac1a5c52931d3398e91d7c982da2ab22a3e12208f4e26be0ec4dd3149f884",
+        "actual": "ee32da8ab04ee3cc2382ac2dbc6ece3b58f0e5684c8f03f02152cd56053b3d4d"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationService.cs",
+        "expected": "1867402cfa36e348532b16e1ffcd2b03fef29ba4d16b3ccf006abef61ffd76b0",
+        "actual": "cd7eb98997649e583ad850a7fb63136635713df0b2f46019f02101b16c9432a2"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreRequest.cs",
+        "expected": "10b69fa4320e3752b0f52757a59d541c2a91d67a5da5ea9fba2024180183d779",
+        "actual": "24c88410e79358411094ecac08811be5ff93d3f89fd6211fae48a13cc1092a99"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/MutateWorkspaceFile.cs",
+        "expected": "e502bdc6c36bdb7938cbd44c13863fd2a73243526d34da69d243a4df178166d8",
+        "actual": "79bbcc37644dab93f73b70b1ace84ecc0c99f392eb4a6a547b611b6671feb1de"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationAccepted.cs",
+        "expected": "eea5b0b369b3e00b3511aabe5ed1bcd53277b8e2c9b2d95e24eeb709a9bb349c",
+        "actual": "594db134801199e2823e49b03e74e11945309eb7967383d8b14588a11e67e0f8"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderAggregate.cs",
+        "expected": "03588c7587a1db586dbed069d4d24e4c423153707aefa36a6e49747cdb71dae3",
+        "actual": "1d0be6874f5344def673afc32d57a6c533313338ff4ab40f3b242c8b2423e67c"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderCommandValidator.cs",
+        "expected": "6e6d934fb094c3abb3c4a49410dc874325415fd296c5d41bd2412972be339005",
+        "actual": "865c2c5452594edfe02c0fdfd0a39c0f634b7263ea056594f8e18e451057d7d6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderStateApply.cs",
+        "expected": "eaa073b45a4671599dcfb9b20c44957f6d70e5ef1563fb19a448b9969994cee8",
+        "actual": "83a91d024f00e462390755717523e712555ae59f7f6d0068ad249bf1ae0afc1a"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceLockAcquired.cs",
+        "expected": "6b307ce2bd6edb17bc71616f519d92a7beb96cfef27f79dd402b4d943c1e5fda",
+        "actual": "2fcb3bbf711e46fb4bc9289435f352dc570bcf23e2be5a81cfd28f7818abaee3"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreResult.cs",
+        "expected": "ba12e120ae8301ba49200b9e78eeeef3cfcb5649ec6e1baf257b5f06830eb496",
+        "actual": "297c1febd709aaea3347aed7c4e071115ff1741d72a2c329f0e29a866ab24c74"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceResult.cs",
+        "expected": "a5d64e01cb27d17151c2459414c533023a7a1e058a4222288ceff97b3e5f7b20",
+        "actual": "9c6aaeb03433289cd7306f391fc9e4d27960a444ee5fe0d751014ef5be49102b"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreResult.cs",
+        "expected": "a72fbb61927195d17ee00c8a762e4ad56597933e8a59a419552df900a98bcbfd",
+        "actual": "aa559480fd9d2880d6719c349ea69627bc665645fbbaf96eba3704dd4ec22431"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Projections/OperationalStatus/OperationalStatusFold.cs",
+        "expected": "acba5ce6b7491a7646c40da50f49978fa6f9c07b2abfa46295ff94e728669487",
+        "actual": "b14bd0a00daae63f67b810739b303a985e3cbe6f1d470b069c192d9f684cbd23"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/FileContextEndpointTests.cs",
+        "expected": "39636025bdb76dc0fe5459b568ec9acfb5da2a0c61a70a8aebf2465e0abf3611",
+        "actual": "d4612a88d653f026b082c301e4a6bc2db7127a3e28eb5fd58b94d855a472a12a"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/Hexalith.Folders.AppHost.Tests.csproj",
+        "expected": "2ad2c44aea6a4ba3d19688efb92fecd1af69ca4d18ccebf34ba8257729b13f82",
+        "actual": "2259f6ceeb49110fdcd304f856e56d0aa85655f844a9d1d591f92f1d1dbfbe85"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs",
+        "expected": "24507e4aa5d3d3f40ae7286126c15b89a52a3a267cd5b20b7648995210c4436e",
+        "actual": "e5391a54058bff4c7bc7c79aa4fd375b14eca8d2f0e4d092863cd02e6d6e8320"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.IntegrationTests/Hexalith.Folders.IntegrationTests.csproj",
+        "expected": "a53d1df8cc6652f92cf71d2c1d56ddee56a733171c5b3824d711ea95db710801",
+        "actual": "5d26227eb48be761b239d4b1fa334e1864d03aedef95ca34b3e139b81cc3718a"
+      }
+    ],
+    "all_initial_protected_changes": [
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/SHA256SUMS",
+        "expected": "5f520613018309fd7ed0bee56bf3d4c0725b55e8444af91c3c30a3c1961fd5af",
+        "actual": "2def0a3addc26bacced971419d0c1df9508d3834853385c423ce81ba52357377"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch",
+        "expected": "d8d028f2155b6e3a58eccc81d58f55fbb85ba4ca600a25b5afdffb5a74a039ca",
+        "actual": "cab06008db1f71bcd601f330d61582bb111a10c252e20f9d998f596d7d0c257c"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-admission-auth-rate.xml",
+        "expected": "4c376b036cfe9867a20d7dccf2a2120754be5ce2fa85c019351e0c26f385664b",
+        "actual": "c56cc04b8a01830c096f9adab9b97fef89f36ee6c29b210734ed23768b234de4"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-source.patch",
+        "expected": "c17f28cc74090e96d6a17e0531ef02f982f924ecd4437b4567dda8991288cb0d",
+        "actual": "e0ef530005303f8c4729afeecadc70491462254a547fd6d612c66e58f1d6891b"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerServiceCollectionExtensions.cs",
+        "expected": "0ececd50ad1f2fa53ada33fb65466eda6390251a120ccad4183b5e5a886e2bea",
+        "actual": "f763f547f44fff1af7114ed8b7b3241f5c75b1b00e9811b43a60c14d633751b2"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/HistoricalMutationAuthorization.cs",
+        "expected": "d2babffb79cd515f82961bc1f54beb3948b1c66ef898183a81796b90b7ec9e8d",
+        "actual": "6e168b1da3f505c889808da82f614f4a61ae531d6c9230b32b482b14ad8127a4"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersDomainServiceEndpoints.cs",
+        "expected": "47e42317db5e6b9364a730ca47ec7a7b7d4e4090661b78a0e148922f870fde4a",
+        "actual": "b9416faba11d0de1846108b1b13a696e5d4fda8b28791e6c4fe7c8452d8076f2"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FoldersServerModule.cs",
+        "expected": "96ba8531962b7fc1a804a10cf1958467ee9434de5f24de7435a9c1cff95fb3e3",
+        "actual": "0e6bfc0621eecf04bc66c3afcd699088d4332725bf2742e2d81b38e00d169e11"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/ActorFoldedFolderRepository.cs",
+        "expected": "5fb187b96deda052df54316214fd4b6114578b22610cd539d10dff894204a43b",
+        "actual": "2252537bf023045579118159f27165d1a775dd1f6375a23f5a2d237f548899fa"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/FolderDomainProcessor.cs",
+        "expected": "9958774658c9354ea8cf7c58b4c03eb79c681712ca736c15ee703e39a2bd99bf",
+        "actual": "427c431fdbb0f2ea30221646e12e35e25eaabdf66bd9a2cdb2b5b20499a89480"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v2.yaml",
+        "expected": "ee9c7bddd0428d3809555c591af0b0bd760b0c88e336720e569c7d7b259807b0",
+        "actual": "9f2adc4e92e5b3ea8705ec4916b7b015bb53e7e1acf7b198878504b9437a8d34"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Contracts/openapi/hexalith.folders.v1.yaml",
+        "expected": "ac2257eced95bccb63fd73baf76d918a727ee468997012c83d72dc7ad16aea8e",
+        "actual": "a6153d1a77fd49d3c7a43302fbe440d546108dc40e76ff0014c757d0cd38dbfa"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersIdempotencyHelpers.g.cs",
+        "expected": "a9313ede8fdff1e52c7c900f03a58b352b9434cef7936a23dcdae853a7a53526",
+        "actual": "ce9d8b25d3b574cb22cd92bdf2062c57b4f4379e23f33b51a018c790185fdf67"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Generated/HexalithFoldersClient.g.cs",
+        "expected": "dbc41081169dc3562d91bfa2133f9655b2fa5a68843aa9737197c522e476d2b5",
+        "actual": "8020632be8f23e3b9630d7838f260bba699ec20c7d14ebe67a2fe8cf9748e838"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileStreamStagingEvidence.cs",
+        "expected": "c13910dba7ed8277b29b7119a93220b9425df0641c74ff961d3b86b02a9a7af0",
+        "actual": "7c997257dde4ba5703954ce8072cf18668b2abc38666cf7465c0d0b547e8020c"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUploadDescriptor.cs",
+        "expected": "abcff08f30cee63a67d63c005a85edab1f1e4a115b8e52ad45e7bbb727335ede",
+        "actual": "9254eba0bc30b6204028ed46496c1ff6e27e879de29431f3066c27183e8103ed"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FileUpload.cs",
+        "expected": "14026186717988d53a84aab88d31b14df464a17618cbce2244438b980c5d93bf",
+        "actual": "195f331ad771d091dd940f4c446ec722b05d9391d340bf4baece741982d08fc0"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Client/Convenience/FoldersFileUploadExtensions.cs",
+        "expected": "76f3ebc7c7563c3a6043b6fb34870e370e0d78d3140bed29cd8433a238797201",
+        "actual": "cffedabd78b80ff7fa3266b5288c285de0b27318b0f9f00298964d1bb62dbd16"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authorization/FolderCommandActionTokenMapper.cs",
+        "expected": "4b4d43900b6f0425aff11555c1256c487922c0769f7a98fa570bb9b117a00205",
+        "actual": "fbe9d1528b8a4571a87d0c2cc54f57015422da14cc17ba7365246a5d6f242126"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/FoldersGatewayHumanBearerHandler.cs",
+        "expected": "2b9e05ea6e86646051fe4bcfdc74f02ba3345a77b932f3aff29d71e22530a763",
+        "actual": "7fc9d6c8877cdbab43ec834f3fe6a4405d5bf968a0c2b9cf972eeb7db1ae7ff9"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders.Server/Authentication/VerifiedReceiptEventStoreAuthorizationValidator.cs",
+        "expected": "1285eea97b173a474b73a501c2c2eb96b58b29c2396f77761d6b1b3b68d396f8",
+        "actual": "6b5cce02b3888d9979dd48aa00f019196053c102c75d26aebb3c2e3657c794b6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockLeaseMetadata.cs",
+        "expected": "20d16e4fbcd0fe7af364de87265092a1c26a25d0c423640968e73b09ed7beb36",
+        "actual": "fd6da8a6efd347838f6d4ced5242771ec369981b01a610fc50013dd6b26d626d"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusQueryHandler.cs",
+        "expected": "77decdae7443788cc6f78952de4e3c64d1318ff2faf3c33bdd4dbc83c90f1ddb",
+        "actual": "1896df19a3d56dba5103c39db583e56e0223d40353d8ce8e43b64888a9872cd3"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/Folders/WorkspaceLockStatusReadModelSnapshot.cs",
+        "expected": "c8d8b75575aa1a161a93522fa59a357d4fbdc5b777bede486be242cec16ae677",
+        "actual": "06b1f6120477e9d7d23569a50dc7e194a8b6e1a98cd87981b12e191e42a500e6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextItem.cs",
+        "expected": "43f18883b30fc44548e0134223a3fae8d1a1fc8cd460c6f07bba77017f9f880b",
+        "actual": "5e94ab1b8779fd71d4e46eb131f75f165c93c27ac03016fbe1430e4944a90c84"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextSourceStatus.cs",
+        "expected": "ba7540e80b51005ad485ea36fc04b38006f5431043cd8d1fa985eef100e19864",
+        "actual": "ae019e5759d20ea15e6e6eb644649207eac3c0ccfa1aab6087f5a3475547225f"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextQueryHandler.cs",
+        "expected": "e4fe29ac071ec6e91d6cf0c51a63e1b826b4b1c4b3151e8bfe8c79192a2896dc",
+        "actual": "74afc21e259c63b14082dfba47e421e9167850d34f998906eb9987797205354f"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Queries/FileContext/WorkspaceFileContextResultCode.cs",
+        "expected": "c6e8cb40e14002c533bde923699148560586946edd46e792ded1c43a3a32fedf",
+        "actual": "6e27568832745ee56cb9d20756431836ad52bfb5bcd50e71b073ed5f6fdefac6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceRequest.cs",
+        "expected": "6efe3053597fba35c08fb7c26ef7651fd6ba33b2e314aea9a4f1355ebeea0d4b",
+        "actual": "d9802f6ea869e78dee41a9190bce4a8cdc160e34d985b50a21acb39ebf332130"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderState.cs",
+        "expected": "7b75311c1803724d35c870f739864b8701c0bd5f00c50f1e186022799eebc2dc",
+        "actual": "ab152be934c4cefab146697a6f500ed6202156bb9bb9cb3f5d568c705812ebf7"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreRequest.cs",
+        "expected": "9f1f7d9286adcec1bf5f24438b8369021d68b4fb5aedf684074dca9093f8cebc",
+        "actual": "e56f44afb01eab3a7d8e55d6e134b7e0bcc43b833be5adb75950b8c534177877"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationRequest.cs",
+        "expected": "f55dccb55fe9da2043bf6be321a6f84cc5371b715a4f5838c8bd8f7c8339dfee",
+        "actual": "69b65e57dcfc21fa42cb4f9d78fb82bb929d6cfb5c95e0009d261d91e9f893c6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyValidator.cs",
+        "expected": "1f0ac1a5c52931d3398e91d7c982da2ab22a3e12208f4e26be0ec4dd3149f884",
+        "actual": "ee32da8ab04ee3cc2382ac2dbc6ece3b58f0e5684c8f03f02152cd56053b3d4d"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationService.cs",
+        "expected": "1867402cfa36e348532b16e1ffcd2b03fef29ba4d16b3ccf006abef61ffd76b0",
+        "actual": "cd7eb98997649e583ad850a7fb63136635713df0b2f46019f02101b16c9432a2"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreRequest.cs",
+        "expected": "10b69fa4320e3752b0f52757a59d541c2a91d67a5da5ea9fba2024180183d779",
+        "actual": "24c88410e79358411094ecac08811be5ff93d3f89fd6211fae48a13cc1092a99"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/MutateWorkspaceFile.cs",
+        "expected": "e502bdc6c36bdb7938cbd44c13863fd2a73243526d34da69d243a4df178166d8",
+        "actual": "79bbcc37644dab93f73b70b1ace84ecc0c99f392eb4a6a547b611b6671feb1de"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileMutationAccepted.cs",
+        "expected": "eea5b0b369b3e00b3511aabe5ed1bcd53277b8e2c9b2d95e24eeb709a9bb349c",
+        "actual": "594db134801199e2823e49b03e74e11945309eb7967383d8b14588a11e67e0f8"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderAggregate.cs",
+        "expected": "03588c7587a1db586dbed069d4d24e4c423153707aefa36a6e49747cdb71dae3",
+        "actual": "1d0be6874f5344def673afc32d57a6c533313338ff4ab40f3b242c8b2423e67c"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderCommandValidator.cs",
+        "expected": "6e6d934fb094c3abb3c4a49410dc874325415fd296c5d41bd2412972be339005",
+        "actual": "865c2c5452594edfe02c0fdfd0a39c0f634b7263ea056594f8e18e451057d7d6"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/FolderStateApply.cs",
+        "expected": "eaa073b45a4671599dcfb9b20c44957f6d70e5ef1563fb19a448b9969994cee8",
+        "actual": "83a91d024f00e462390755717523e712555ae59f7f6d0068ad249bf1ae0afc1a"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceLockAcquired.cs",
+        "expected": "6b307ce2bd6edb17bc71616f519d92a7beb96cfef27f79dd402b4d943c1e5fda",
+        "actual": "2fcb3bbf711e46fb4bc9289435f352dc570bcf23e2be5a81cfd28f7818abaee3"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileDeleteOperationStoreResult.cs",
+        "expected": "ba12e120ae8301ba49200b9e78eeeef3cfcb5649ec6e1baf257b5f06830eb496",
+        "actual": "297c1febd709aaea3347aed7c4e071115ff1741d72a2c329f0e29a866ab24c74"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspacePathPolicyEvidenceResult.cs",
+        "expected": "a5d64e01cb27d17151c2459414c533023a7a1e058a4222288ceff97b3e5f7b20",
+        "actual": "9c6aaeb03433289cd7306f391fc9e4d27960a444ee5fe0d751014ef5be49102b"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Aggregates/Folder/WorkspaceFileContentStoreResult.cs",
+        "expected": "a72fbb61927195d17ee00c8a762e4ad56597933e8a59a419552df900a98bcbfd",
+        "actual": "aa559480fd9d2880d6719c349ea69627bc665645fbbaf96eba3704dd4ec22431"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/src/Hexalith.Folders/Projections/OperationalStatus/OperationalStatusFold.cs",
+        "expected": "acba5ce6b7491a7646c40da50f49978fa6f9c07b2abfa46295ff94e728669487",
+        "actual": "b14bd0a00daae63f67b810739b303a985e3cbe6f1d470b069c192d9f684cbd23"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.Server.Tests/FileContextEndpointTests.cs",
+        "expected": "39636025bdb76dc0fe5459b568ec9acfb5da2a0c61a70a8aebf2465e0abf3611",
+        "actual": "d4612a88d653f026b082c301e4a6bc2db7127a3e28eb5fd58b94d855a472a12a"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/Hexalith.Folders.AppHost.Tests.csproj",
+        "expected": "2ad2c44aea6a4ba3d19688efb92fecd1af69ca4d18ccebf34ba8257729b13f82",
+        "actual": "2259f6ceeb49110fdcd304f856e56d0aa85655f844a9d1d591f92f1d1dbfbe85"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs",
+        "expected": "24507e4aa5d3d3f40ae7286126c15b89a52a3a267cd5b20b7648995210c4436e",
+        "actual": "e5391a54058bff4c7bc7c79aa4fd375b14eca8d2f0e4d092863cd02e6d6e8320"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/folders/tests/Hexalith.Folders.IntegrationTests/Hexalith.Folders.IntegrationTests.csproj",
+        "expected": "a53d1df8cc6652f92cf71d2c1d56ddee56a733171c5b3824d711ea95db710801",
+        "actual": "5d26227eb48be761b239d4b1fa334e1864d03aedef95ca34b3e139b81cc3718a"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs",
+        "expected": "029d8cce794cb26795aebe1ce907e45fa62310b5a9e061ed6d2fc04fd1a306e6",
+        "actual": "41a1f2eae6fa2b3eef27e4c77ec5b3aaf5a58a0a557f92e9a178545831db1ee3"
+      }
+    ],
+    "conflicting_input_hashes": [],
+    "latest_origin_changes": {
+      "/home/administrator/projects/hexalith/eventstore": {
+        "head": "61122209dea0fcdd2d64bf5eaa903c4a8242df4f",
+        "selected_head": "cb414530223f77cc845450a4877a4472559de2ad",
+        "input_changes": [
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchParticipantProof.cs",
+            "expected": "c87810a0de9ceb5205d608607204c1c2f7ff2b965fefb87f7fdd90d75ab4ee03",
+            "actual": "0f3fe28d1c80a22825e76d26d7a348f9829541303556b884b7548d560afaf151"
+          },
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Client/Projections/ReadModelBatchTerminalFence.cs",
+            "expected": "8885ef9fcdb8cf9c740181508d2d59e966cd910e64e7d895e357c4cb681c7545",
+            "actual": "acc26cc39c564ddb1db302691e23298d918879e2ad969653c64360001631c8f7"
+          },
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs",
+            "expected": "029d8cce794cb26795aebe1ce907e45fa62310b5a9e061ed6d2fc04fd1a306e6",
+            "actual": "41a1f2eae6fa2b3eef27e4c77ec5b3aaf5a58a0a557f92e9a178545831db1ee3"
+          },
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.cs",
+            "expected": "6d01ce80133eea3cd61bfc6ab667794683a9e8b5699d8eafbbe5673f71b5060d",
+            "actual": "ca735e722070e940736a7c5b632e6778af3c8e66de172b9d2aeec9d4e44f87a1"
+          },
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.Tests.cs",
+            "expected": "e2a8ae68cd211c88b6b5bfa4cca7cb7faedb3fc38d18d6400d1a35739de5277b",
+            "actual": "254fcc787df76c188f3697abf72978cdced8722e45d0463a92e2414381f1560a"
+          },
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.cs",
+            "expected": "02b458fa6fbca4683a6606af5a4ef08e5e936e5d1d1e91b727499effcee0f0dd",
+            "actual": "830ffe0ebc72fa0a05e59abcc5ab8861dd281b3ee6a2392963f2e122731b05c6"
+          },
+          {
+            "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+            "expected": "452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e",
+            "actual": "5012c7c57e6e7f71e6693dd41d8e3873c950394efdacec7e9a39f1abe834bd4e"
+          }
+        ]
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants": {
+        "head": "1e60af449c1fdc3f9801cf57e8847e00faab2394",
+        "selected_head": "1e60af449c1fdc3f9801cf57e8847e00faab2394",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.AI.Tools": {
+        "head": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+        "selected_head": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons": {
+        "head": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+        "selected_head": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds": {
+        "head": "2d653b611c8efcffb4d27bd8715d5dbf24eaebfd",
+        "selected_head": "2d653b611c8efcffb4d27bd8715d5dbf24eaebfd",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.FrontComposer": {
+        "head": "dfac0818e5a40b19145a01333cc5fc00bcd4b47e",
+        "selected_head": "dfac0818e5a40b19145a01333cc5fc00bcd4b47e",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.PolymorphicSerializations": {
+        "head": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+        "selected_head": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Memories": {
+        "head": "63327920814a293e0168986be212deb10b81dc00",
+        "selected_head": "63327920814a293e0168986be212deb10b81dc00",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Platform": {
+        "head": "3beff28eede537eb36e84cdb93900af2556202d7",
+        "selected_head": "3beff28eede537eb36e84cdb93900af2556202d7",
+        "input_changes": []
+      },
+      "/home/administrator/projects/hexalith/eventstore/references/Hexalith.McpCli": {
+        "head": "4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69",
+        "selected_head": "4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69",
+        "input_changes": []
+      }
+    }
+  },
+  "reuse_scope": "The exhaustive S1/S2/S3 byte/source comparisons are reused from v2 with their exact receipt hash and retained failure. Fresh checks authenticate the listed evidence/runtime references and the four metadata byte transformations. The sole v2 JSON-escaping interpretation failure is resolved; every earlier failure remains retained.",
+  "producer_reuse_justified": true,
+  "scope_limit": "Fresh Unit execution and PDB/source verification remain separate gates; mutable origin, Folders adoption and whole-story completion are not qualified.",
+  "utc_end": "2026-10-22T17:41:59.200376+00:00"
+}

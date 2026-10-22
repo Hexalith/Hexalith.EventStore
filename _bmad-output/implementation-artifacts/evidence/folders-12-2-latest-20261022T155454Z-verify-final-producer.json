@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/verify.py",
+    "--final-producer-inputs"
+  ],
+  "utc_start": "2026-10-22T18:44:36.143684+00:00",
+  "utc_end": "2026-10-22T18:45:52.578507+00:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"seal_passed\": true,\n  \"all_requested_checks_passed\": true,\n  \"sealed_files\": 6820,\n  \"seal_sha256\": \"0d697511eda8366afd42787ce1e74f75e9651862512fe48aff739b5c8fdd7518\",\n  \"disposition\": \"not_fully_qualified\",\n  \"current_inputs_checked\": false,\n  \"final_producer_inputs_checked\": true,\n  \"errors\": []\n}\n",
+  "stderr": "",
+  "result": {
+    "seal_passed": true,
+    "all_requested_checks_passed": true,
+    "sealed_files": 6820,
+    "seal_sha256": "0d697511eda8366afd42787ce1e74f75e9651862512fe48aff739b5c8fdd7518",
+    "disposition": "not_fully_qualified",
+    "current_inputs_checked": false,
+    "final_producer_inputs_checked": true,
+    "errors": []
+  },
+  "verification_script_sha256": "34efed4c1e5fec8ada7d6ab71e90b9dc7e6d3f74681797649030666e9ab5b4ac"
+}

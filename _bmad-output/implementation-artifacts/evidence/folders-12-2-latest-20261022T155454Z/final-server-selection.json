@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-22T18:00:47.143338+00:00",
+  "source_root": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+  "full_server_label": "guardfinal-server-full",
+  "focused_label": "guardfinal-focused",
+  "pdb_binding": "source-binding-guardfinal",
+  "identity_audit": "guard-final/input-identity-audit.json",
+  "producer_input_manifest": "guard-final/producer-current-inputs.json",
+  "complete_guard_inventory": "guard-final/full-guard-locations.json",
+  "complete_guard_classification": "guard-final/current-failure-analysis.json",
+  "scope": "S1 ordinary producer graph plus final test-only changes. All intermediate results and historical materialization limits are separate; mutable origin is not qualified."
+}

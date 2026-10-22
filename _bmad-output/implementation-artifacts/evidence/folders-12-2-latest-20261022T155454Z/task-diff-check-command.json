@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "git",
+    "diff",
+    "--check",
+    "995117f9b899a2994e99257091b0ea35cfbe5090",
+    "--",
+    "tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs",
+    "tools/bounded_worker_observer.py",
+    "tools/tests/test_bounded_worker_observer.py"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T16:38:37.586014+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 83708,
+  "pid": 83712,
+  "exit_code": 0,
+  "elapsed_seconds": 0.022140725995996036,
+  "utc_end": "2026-10-22T16:38:37.608389+00:00"
+}

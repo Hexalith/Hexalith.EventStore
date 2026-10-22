@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "dotnet",
+    "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "-method",
+    "Hexalith.EventStore.DomainService.Tests.Processes.ProcessPublicationTests.RegistrationCostDoesNotGrowWithHistoricalPages",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/domain-failure-focused.xml"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T16:19:10.509123+00:00",
+  "environment_overrides": {
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 76288,
+  "pid": 76292,
+  "exit_code": 0,
+  "elapsed_seconds": 2.17445560998749,
+  "utc_end": "2026-10-22T16:19:12.683715+00:00"
+}

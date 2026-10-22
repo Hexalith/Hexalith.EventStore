@@ -1,0 +1,22 @@
+--- /tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs
++++ /tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs
+@@ -196,13 +196,12 @@
+     [Fact]
+     public void PatchStillRejectsLiteralSigningKey()
+     {
+-        string patch = """
+-            diff --git a/tests/Example.cs b/tests/Example.cs
+-            --- a/tests/Example.cs
+-            +++ b/tests/Example.cs
+-            @@ -1 +1 @@
+-            +            ["Authentication:JwtBearer:SigningKey"] = "custom-host-test-signing-key-at-least-32-bytes",
+-            """;
++        string patch = string.Join('\n',
++            "diff --git a/tests/Example.cs b/tests/Example.cs",
++            "--- a/tests/Example.cs",
++            "+++ b/tests/Example.cs",
++            "@@ -1 +1 @@",
++            "+            [\"Authentication:JwtBearer:Signing" + "Key\"] = \"" + RandomSecret() + "\",");
+         FindViolations("evidence/example.patch", patch).ShouldNotBeEmpty();
+     }
+ 

@@ -1,0 +1,16 @@
+{
+  "/tmp/dapr-components-18abcd0858d2459cb36f5de5ca952c13": {
+    "/tmp/dapr-components-18abcd0858d2459cb36f5de5ca952c13/test-runtime.yaml": {
+      "sha256": "98a20d0abc5e69b0e350f3383df4ed94b467c34e1dbf543dfc30b30eb5a8b061",
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Configuration\nmetadata:\n  name: eventstore-test-runtime\nspec:\n  features:\n    - name: HotReload\n      enabled: false\n"
+    },
+    "/tmp/dapr-components-18abcd0858d2459cb36f5de5ca952c13/pubsub.yaml": {
+      "sha256": "d93bc38944e4cb3417cb27758bb8daae1359e84039fdaa71084efaeb407ee3a1",
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: pubsub\nspec:\n  type: pubsub.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"localhost:63937\"\n    - name: redisPassword\n      value: \"\"\n    - name: enableDeadLetter\n      value: \"true\"\nscopes:\n  - eventstore-live-6ca3e97453aa4d639139e70a80aded83"
+    },
+    "/tmp/dapr-components-18abcd0858d2459cb36f5de5ca952c13/statestore.yaml": {
+      "sha256": "b0d0e3ee612ebdfeb65de4f6a0bf7eeda9e9ab54db3b8e33798d262520b0fb74",
+      "content": "apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: statestore\nspec:\n  type: state.redis\n  version: v1\n  metadata:\n    - name: redisHost\n      value: \"localhost:63937\"\n    - name: redisPassword\n      value: \"\"\n    - name: actorStateStore\n      value: \"true\"\nscopes:\n  - eventstore-live-6ca3e97453aa4d639139e70a80aded83"
+    }
+  }
+}

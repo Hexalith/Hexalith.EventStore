@@ -164,6 +164,70 @@ public sealed partial class SecretsProtectionTests
         FindViolations("docs/git.md", content).ShouldBe([sameLine ? "docs/git.md:1" : "docs/git.md:2"]);
     }
 
+    /// <summary>
+    /// Verifies a parameter resource selected from the application builder is not a committed credential.
+    /// </summary>
+    [Fact]
+    public void ParameterResourceAssignment_IsNotACredential()
+    {
+        const string name = "to" + "ken";
+        const string line = "ParameterResource " + name + " = builder.Resources.OfType<ParameterResource>()";
+        FindViolations("tests/Example.cs", line).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a unified diff is scanned with the language of the file it changes.
+    /// </summary>
+    [Fact]
+    public void PatchOfParameterResourceAssignment_UsesSourceLanguage()
+    {
+        const string name = "to" + "ken";
+        string patch = string.Join('\n',
+            "diff --git a/tests/Example.cs b/tests/Example.cs",
+            "--- a/tests/Example.cs",
+            "+++ b/tests/Example.cs",
+            "@@ -1 +1 @@",
+            "+        ParameterResource " + name + " = builder.Resources.OfType<ParameterResource>()");
+        FindViolations("evidence/example.patch", patch).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies source-language recognition in a diff does not accept a literal signing key.
+    /// </summary>
+    [Fact]
+    public void PatchStillRejectsLiteralSigningKey()
+    {
+        string patch = string.Join('\n',
+            "diff --git a/tests/Example.cs b/tests/Example.cs",
+            "--- a/tests/Example.cs",
+            "+++ b/tests/Example.cs",
+            "@@ -1 +1 @@",
+            "+            [\"Authentication:JwtBearer:Signing" + "Key\"] = \"" + RandomSecret() + "\",");
+        FindViolations("evidence/example.patch", patch).ShouldNotBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies a content-addressed C# snapshot is scanned as C# source.
+    /// </summary>
+    [Fact]
+    public void BoundSourceSnapshot_RecognizesRuntimeTokenFactory()
+    {
+        const string path = "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/bound-source/0061cf8da6a685406cc0d821da4bb93be45ce3caf39525a2d207e92523879ec3.source";
+        FindViolations(path).ShouldBeEmpty();
+    }
+
+    /// <summary>
+    /// Verifies an HTML-escaped password placeholder in a URI is not a usable credential.
+    /// </summary>
+    [Fact]
+    public void HtmlEncodedPasswordPlaceholder_IsNotACredential()
+    {
+        const string uri = "https://user:&lt;password&gt;@identity.example.com";
+        FindViolations("evidence/report.xml", uri).ShouldBeEmpty();
+        FindViolations("evidence/report.xml", "https://user:" + RandomSecret() + "@identity.example.com")
+            .ShouldNotBeEmpty();
+    }
+
     [Fact]
     public void UsableLiteralAssignments_AreRejected()
     {
@@ -2620,7 +2684,8 @@ public sealed partial class SecretsProtectionTests
     {
         int separator = userInfo.IndexOf(':');
         string credential = separator >= 0 ? userInfo[(separator + 1)..] : userInfo;
-        return IsInertPlaceholder(credential);
+        return IsInertPlaceholder(credential)
+            || IsInertPlaceholder(System.Net.WebUtility.HtmlDecode(credential));
     }
 
     /// <summary>
@@ -2947,11 +3012,85 @@ public sealed partial class SecretsProtectionTests
             && JavaScriptReferenceExpressionPattern().IsMatch(value[..transform]);
     }
 
+    /// <summary>
+    /// Returns the repository path named by the unified diff header that owns <paramref name="index"/>.
+    /// </summary>
+    /// <param name="content">Unified diff text.</param>
+    /// <param name="index">Character index inside a hunk.</param>
+    /// <returns>The source path, or null when the header is absent or unsafe.</returns>
+    private static string? GetUnifiedDiffSourcePath(string content, int index)
+    {
+        int search = Math.Min(index, content.Length);
+        while (search > 0)
+        {
+            int lineStart = content.LastIndexOf('\n', search - 1) + 1;
+            int lineEnd = search;
+            string line = content[lineStart..lineEnd].TrimEnd('\r');
+            if (line.StartsWith("+++ ", StringComparison.Ordinal)
+                || line.StartsWith("--- ", StringComparison.Ordinal))
+            {
+                string candidate = line[4..].Trim();
+                int tab = candidate.IndexOf('\t');
+                if (tab >= 0)
+                {
+                    candidate = candidate[..tab];
+                }
+
+                if (candidate is "/dev/null")
+                {
+                    search = Math.Max(0, lineStart - 1);
+                    continue;
+                }
+
+                if (candidate.StartsWith("b/", StringComparison.Ordinal)
+                    || candidate.StartsWith("a/", StringComparison.Ordinal))
+                {
+                    candidate = candidate[2..];
+                }
+
+                if (candidate.Length == 0
+                    || candidate.Contains("..", StringComparison.Ordinal)
+                    || Path.IsPathRooted(candidate))
+                {
+                    return null;
+                }
+
+                return candidate.Replace('\\', '/');
+            }
+
+            if (line.StartsWith("diff --git ", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            search = Math.Max(0, lineStart - 1);
+        }
+
+        return null;
+    }
+
     private static string GetEffectiveSourcePath(string relativePath, string content, int index)
     {
         if (relativePath.EndsWith(".cs.source", StringComparison.OrdinalIgnoreCase))
         {
             return relativePath[..^".source".Length];
+        }
+
+        if (relativePath.EndsWith(".source", StringComparison.OrdinalIgnoreCase))
+        {
+            string trimmed = content.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
+            string extension = trimmed.StartsWith('@') ? ".razor" : ".cs";
+            return relativePath[..^".source".Length] + extension;
+        }
+
+        if (relativePath.EndsWith(".patch", StringComparison.OrdinalIgnoreCase)
+            || relativePath.EndsWith(".diff", StringComparison.OrdinalIgnoreCase))
+        {
+            string? patchedPath = GetUnifiedDiffSourcePath(content, index);
+            if (patchedPath is not null)
+            {
+                return patchedPath;
+            }
         }
         if (relativePath.StartsWith(".playwright-cli/traces/", StringComparison.Ordinal)
             && relativePath.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
@@ -3092,7 +3231,7 @@ public sealed partial class SecretsProtectionTests
         string arguments = value[(open + 1)..close];
         if (string.IsNullOrWhiteSpace(arguments))
         {
-            return false;
+            return ParameterResourceSelectionPattern().IsMatch(value);
         }
 
         string withoutLiterals = CSharpLiteralPattern().Replace(arguments, string.Empty);
@@ -3658,6 +3797,9 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"\Anew\s+(?:CancellationTokenSource|(?:global::)?System\.Threading\.CancellationTokenSource)\s*\(\s*\)\z", RegexOptions.CultureInvariant)]
     private static partial Regex CancellationTokenSourceEmptyConstructorPattern();
+
+    [GeneratedRegex(@"\A[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*\.Resources\.OfType<ParameterResource>\(\s*\)\z", RegexOptions.CultureInvariant)]
+    private static partial Regex ParameterResourceSelectionPattern();
 
     [GeneratedRegex(@"\Acall\.Arg\s*<\s*(?:CancellationToken|(?:global::)?System\.Threading\.CancellationToken)\s*>\s*\(\s*\)\z", RegexOptions.CultureInvariant)]
     private static partial Regex TypedCancellationArgumentPattern();

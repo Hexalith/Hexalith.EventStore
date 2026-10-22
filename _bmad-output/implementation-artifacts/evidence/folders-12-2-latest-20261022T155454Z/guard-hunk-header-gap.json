@@ -1,0 +1,28 @@
+{
+  "disposition": "unresolved-pre-existing-detection-gap",
+  "selected_snapshot": "guard-version-selection.json",
+  "paths": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.cs",
+      "lines": [
+        120,
+        130,
+        149,
+        153,
+        186,
+        190
+      ]
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.SourceContexts.Tests.cs",
+      "lines": [
+        192,
+        204
+      ]
+    }
+  ],
+  "finding": "SourceDiffView opens a source fence on a hunk header without retaining header text; reconstructed views are scanned while the original tool-output region is masked. Body controls do not establish header coverage.",
+  "relationship": "Independent false-negative path. Original21 includes a specification literal reproduction, which is distinct from this dropped-header path.",
+  "user_selection": "Keep current files and test them; use latest. No transient archived changes were restored.",
+  "next": "A narrow successor repair can retain header text outside fences in both views and add generated header-only and adjacent-header controls, then build/test and issue a new source/binary binding and seal."
+}

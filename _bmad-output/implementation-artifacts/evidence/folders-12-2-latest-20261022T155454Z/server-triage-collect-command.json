@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/home/administrator/.dotnet/tools/dotnet-dump",
+    "collect",
+    "--process-id",
+    "43894",
+    "--type",
+    "Triage",
+    "--output",
+    "/tmp/folders-12-2-server-triage-20261022T171047Z/server.triage"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "utc_start": "2026-10-22T17:09:57.641449+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z"
+  },
+  "runner_pid": 502872,
+  "pid": 502875,
+  "exit_code": 0,
+  "elapsed_seconds": 0.9640451219893293,
+  "utc_end": "2026-10-22T17:09:58.605805+00:00"
+}

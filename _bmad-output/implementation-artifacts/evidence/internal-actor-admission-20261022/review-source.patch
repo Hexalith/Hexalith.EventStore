@@ -478,7 +478,7 @@ index 000000000..8b0b84d74
 +                ["Authentication:JwtBearer:SigningKey"] = null,
 +                ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
 +                ["Authentication:WorkloadIssuer:ClientId"] = "eventstore",
-+                ["Authentication:WorkloadIssuer:ClientSecret"] = "fixture-workload-client-secret",
++                ["Authentication:WorkloadIssuer:ClientSecret"] = "<client-secret>",
 +                [DaprAppChannelToken.ConfigurationKey] = ChannelToken,
 +                ["EventStore:RateLimiting:PermitLimit"] = tenantLimit ? "2" : "100",
 +                ["EventStore:RateLimiting:ConsumerPermitLimit"] = tenantLimit ? "100" : "2",
@@ -850,7 +850,7 @@ index 000000000..17dd46b8d
 +                   and recovery_terminal["fencingToken"] == fence and recovery_terminal["replayResult"]["resultPayload"] == result["resultPayload"],
 +                   admission=recovery_terminal)
 +        path = "/actors/IdempotencyAdmissionActor/" + b + "/method/InspectAsync"
-+        for label, headers in [("missing", {}), ("wrong", {"dapr-api-token": "wrong"})]:
++        for label, headers in [("missing", {}), ("wrong", {"dapr-api-token": "<token>"})]:
 +            status, _, body = self.request(n["app_url"] + path, headers=headers, method="PUT")
 +            self.check("actor_channel_" + label + "_denied", status in (401, 403), status=status, body=body)
 +        status, _, body = self.request(n["app_url"] + "/api/v1/trusted-effects", {}, {"dapr-api-token": n["env"]["APP_API_TOKEN"]})

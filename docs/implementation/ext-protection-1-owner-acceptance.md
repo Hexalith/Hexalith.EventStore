@@ -2,6 +2,36 @@
 
 **Disposition: incomplete delivery; do not accept as Committed.** The partial implementation contains occurrence-aware interaction field protection, safe actor completion and idle recovery wiring, sealed distribution, default-provider refusal, typed erased aggregate replay, and an owner-verifier harness with actual capability-signature and native-original correlation. It does not contain the complete production artifact required by the Agents register. The missing custody/authority implementations are source delivery gaps, not merely missing environment variables. No Live verification ran; no Agents consumer was enabled; no register/status was changed by this continuation.
 
+## Delivery continuation — 2026-10-22: reviewed components, full contract blocked
+
+This is the latest disposition; older discovery and source-status statements below are historical. The run began at full commit `995117f9b899a2994e99257091b0ea35cfbe5090`. Concurrent owner work advanced HEAD to `cb414530223f77cc845450a4877a4472559de2ad` and captured the planning continuation among unrelated Folders work. This run did not stage, commit, push, branch, update a dependency or change a register. Neither observed commit is a complete protection target.
+
+The v23 successor component now implements `PublishedTrustDeletionConsumptionAuthority.VerifyBlockedReplacementAsync` instead of inheriting permanent refusal. It captures the exact original, verifies the retained ES256 signature and full target manifest, correlates actual issue/capability/JWS/signing/receipt evidence, and requires independently current nonpending exact revocation evidence. Issued-but-already-blocked reconciliation requires no dispatch and grants no destructive permission. Missing evidence remains default-deny.
+
+Activation now authenticates the same complete retained successor and actual issue plus distinct dispatch receipts/operations. Retained revoked public verifiers establish authenticity only on these successor paths; ordinary dispatch still rejects revoked keys. The owner remains responsible for the atomic key-block-set comparison and the exact replacement-key-blocked result. Admission-integrity blocks cannot reopen.
+
+Three independent review layers completed. Two claims were refuted from the existing qualified guard boundary and same-owner compare; six verification findings were corrected; the pre-existing installed guard/next-successor fixture gap remains a blocking G2/G5/G6 item. Follow-up verification review found no remaining concrete gap in the corrections. Evidence is retained at `/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261022T153216Z-595b9f24`:
+
+- `final-components.xml` and `final-components.json`: **285 passed**, zero failures/skips/unrun, including 98 replacement cases, actual-verifier actor persisted-state recovery/retry/lookup and second-compromise/no-provider-effect cases.
+- `reviewed-build.json` and the fresh `review-fix-v23-*-commands.json`: Debug/project-reference builds passed with zero warnings/errors. Initial stale-assets, fixture and nullable-mock failures are preserved separately.
+- `retained-components.xml` / `retained-components.json` repeat the same **285 passing** checks from the retained, before/after hash-verified 682-file `reviewed-test-runtime` snapshot. This prevents concurrent build-output changes from redefining the final evidence; it is not an additional 285 distinct tests.
+- `verifier-offline.json`: **55 passed**, offline only. `source-inventory.json`: unchanged 41-case plan, SHA-256 `c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c`, `liveExecuted:false`. A planned case is not an executed Live proof.
+- `review-v1-triage.json`, `review-summary.json`, `reviewed-source-inventory.json` and `reviewed-working-tree.diff` retain the source boundary, review dispositions and tested snapshot. Hash inventories are local integrity evidence, not acceptance or trust anchors.
+
+**Full delivery remains BLOCKED and the full spec remains in-progress.** `full-delivery-gaps.json` identifies the exact remaining owner artifacts. Platform's approved `custody-lifecycle-v1` semantic Dapr component, physical provider, complete copy/buffer closure and independently surviving authority are absent. The installed binding is `ext-secrets-1-hmac`, with `lifecycleOrAllCopyQualified:false`. Retained native result hash `6efa381bc70b3de57a24142e5e679f53781c7f89d5ab6740fb7664966f30888e` still records `ObservedRevival` and `g1Qualified:false`; it was not rerun.
+
+This is also a source-delivery gap: `PublishedTrustDeletionConsumptionAuthority.ValidateStateAsync` rejects initial owner revision zero and incorrectly equates independent protection-owner and governance-guard revisions. Its synthetic state-proof scope does not match the actor's retained transitions. A real independently authenticated installation/genesis/current-owner protocol and concrete EventStore adapter are required; absent or restored local state is not genesis authority. The installed exact guard/cell authority, mixed-root snapshot/recovery support, independent owner fixtures and complete verifier chains also remain open. New currentness test callbacks are synthetic and do not supply those artifacts.
+
+`commitment-packet.blocked.json` is a **NotSubmitted** proposal. `TargetVersionOrCommit` and the accepted profile hash are null because no complete immutable owner artifact exists. Proposed date `2026-11-02` remains unaccepted. The exact executable candidate command, from Agents root, is preserved but **was not run**:
+
+```bash
+python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts
+```
+
+The profile path is absent. The packet cannot be accepted as Committed. No Live/cohort attempt or Agents consumer ran; Story 8.3 and RQ-1 Level 5 remain gated. The isolated EventStore AppHost started/described/stopped successfully, but application resources were still Waiting at observation, so this is lifecycle evidence only. The unrelated Tenants session was preserved.
+
+The next actionable delivery prompt is `/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261022T153216Z-595b9f24/next-owner-delivery-prompt.md`. It names the existing Platform owner, approved decision/spec, exact missing component/current-state records and EventStore adapter handback, without inventing custody values or requesting a new architecture decision.
+
 ## Owner qualification commitment packet — 2026-10-21
 
 This section is the current proposal for Agents Story 5.4 phase 0. It does not change the Agents register, does not mark EXT-PROTECTION-1 `Committed` or `Available`, and does not run Live. OQ-5.4-1 still requires this record to be `Committed` before a cohort. One attempt per accepted target set, retained attempt directories, and original recovery journals stay in force. Unrelated EventStore working-tree changes are preserved and are not part of this proposal.

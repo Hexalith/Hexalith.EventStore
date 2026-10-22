@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "utc": "2026-10-22T16:21:08.387671+00:00",
+  "source_files": 16762,
+  "tracked_guard_files": 59487,
+  "archive_sha256": "c340577211153a6d692a198f6818101174d286c904046de0166eaac82e960bab",
+  "task_paths": [
+    "tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs",
+    "tools/bounded_worker_observer.py",
+    "tools/tests/test_bounded_worker_observer.py"
+  ],
+  "diff_baseline": "995117f9b899a2994e99257091b0ea35cfbe5090",
+  "diff_exit_code": 0,
+  "errors": []
+}

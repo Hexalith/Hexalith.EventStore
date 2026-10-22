@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "dotnet",
+    "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-method",
+    "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.UnifiedDiffSourceLookup*",
+    "-method",
+    "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.PatchOfParameterResourceAssignment_UsesSourceLanguage",
+    "-method",
+    "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.PatchStillRejectsLiteralSigningKey",
+    "-method",
+    "Hexalith.EventStore.Server.Tests.Security.SecretsProtectionTests.ParameterResourceAssignment_IsNotACredential",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardfix-cursor-regressions.xml"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+  "utc_start": "2026-10-22T17:21:33.317750+00:00",
+  "environment_overrides": {
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z"
+  },
+  "runner_pid": 738544,
+  "pid": 738562,
+  "exit_code": 0,
+  "elapsed_seconds": 0.6352358820004156,
+  "utc_end": "2026-10-22T17:21:33.953122+00:00"
+}

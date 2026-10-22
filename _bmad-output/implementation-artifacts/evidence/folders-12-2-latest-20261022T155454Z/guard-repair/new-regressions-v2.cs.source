@@ -1,0 +1,37 @@
+using Shouldly;
+
+namespace Hexalith.EventStore.Server.Tests.Security;
+
+public sealed partial class SecretsProtectionTests
+{
+    /// <summary>Finds the owning source header across hunk lines and deleted-file markers.</summary>
+    [Theory]
+    [InlineData("\n", false)]
+    [InlineData("\r\n", false)]
+    [InlineData("\n", true)]
+    [InlineData("\r\n", true)]
+    public void UnifiedDiffSourceLookup_TraversesHunkLinesAndDeletedTarget(string newline, bool deletedTarget)
+    {
+        string patch = string.Join(newline,
+            "diff --git a/tests/Example.cs b/tests/Example.cs",
+            "--- a/tests/Example.cs",
+            deletedTarget ? "+++ /dev/null" : "+++ b/tests/Example.cs",
+            "@@ -1 +1 @@",
+            string.Empty,
+            "+        ParameterResource token = builder.Resources.OfType<ParameterResource>()");
+
+        GetUnifiedDiffSourcePath(patch, patch.IndexOf("token", StringComparison.Ordinal))
+            .ShouldBe("tests/Example.cs");
+    }
+
+    /// <summary>Stops safely when preceding lines contain no source header.</summary>
+    [Theory]
+    [InlineData("value")]
+    [InlineData("\nvalue")]
+    [InlineData("\n\nvalue\n")]
+    public void UnifiedDiffSourceLookup_StopsAtHeaderlessBeginning(string content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        GetUnifiedDiffSourcePath(content, content.Length).ShouldBeNull();
+    }
+}

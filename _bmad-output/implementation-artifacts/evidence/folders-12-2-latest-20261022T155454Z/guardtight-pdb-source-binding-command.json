@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "dotnet",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/pdb-verifier-runtime/Verifier.dll",
+    "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/binary-freeze.json",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/source-binding-guardtight"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+  "utc_start": "2026-10-22T17:42:36.169283+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z"
+  },
+  "runner_pid": 1458294,
+  "pid": 1458295,
+  "exit_code": 0,
+  "elapsed_seconds": 0.5807019889907679,
+  "utc_end": "2026-10-22T17:42:36.750132+00:00"
+}

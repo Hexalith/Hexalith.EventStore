@@ -1,0 +1,14 @@
+{
+  "started_utc": "2026-10-22T18:13:55.452898+00:00",
+  "completed_utc": "2026-10-22T18:13:57.879597+00:00",
+  "argv": [
+    "dotnet",
+    "/tmp/folders-12-2-guard-semantic-probe-20261022T1745Z/bin/Semantic.dll",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/full-guard-locations.json",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/full-guard-semantic-classification.json",
+    "373513cd2d471148f1134980181052a2e87632f661ff70024612c0b3dacb69d5"
+  ],
+  "exit_code": 0,
+  "helper_source_sha256": "f771523ad4546c3769e5a41afdb9fab20e3674dfee9b7a72030ba11ff907f987",
+  "helper_binary_sha256": "b04b3735bdd7a5efc4383a8f935f934ebf099752c96e11b0ca986905eaa2d63d"
+}

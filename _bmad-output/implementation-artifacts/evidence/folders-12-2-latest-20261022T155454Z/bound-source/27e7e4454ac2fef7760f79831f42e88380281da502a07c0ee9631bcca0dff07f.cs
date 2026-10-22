@@ -1,0 +1,382 @@
+@page "/streams"
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Components
+@using Hexalith.EventStore.Admin.UI.Services
+@using Hexalith.EventStore.Admin.UI.Services.Exceptions
+
+@implements IAsyncDisposable
+
+@inject AdminStreamApiClient ApiClient
+@inject AdminTenantOptionsProvider TenantOptions
+@inject NavigationManager NavigationManager
+@inject DashboardRefreshService RefreshService
+@inject IJSRuntime JSRuntime
+@inject INotificationService ToastService
+
+<PageTitle>Streams - Hexalith EventStore Admin</PageTitle>
+
+<h1>Streams</h1>
+
+<StreamFilterBar SelectedStatus="@_statusFilter"
+                 SelectedStatusChanged="OnStatusFilterChanged"
+                 SelectedTenantId="@_tenantFilter"
+                 SelectedTenantIdChanged="OnTenantFilterChanged"
+                 SelectedDomain="@_domainFilter"
+                 SelectedDomainChanged="OnDomainFilterChanged"
+                 Tenants="_tenantOptions"
+                 TenantsDiagnostic="@_tenantsDiagnostic"
+                 Domains="_domains" />
+
+@if (!string.IsNullOrEmpty(_tenantsDiagnostic))
+{
+    <div role="status" aria-live="polite" data-testid="tenant-options-diagnostic"
+         style="font-size: 12px; color: var(--colorNeutralForeground3); margin-bottom: 8px;">
+        @_tenantsDiagnostic
+    </div>
+}
+
+@* Accessible status region for copy success/failure (does not rely on pointer-only toast). *@
+<div role="status" aria-live="polite" data-testid="copy-status"
+     style="@(string.IsNullOrEmpty(_copyStatus) ? "position: absolute; left: -10000px; height: 1px; width: 1px; overflow: hidden;" : "font-size: 12px; color: var(--colorNeutralForeground3); margin-bottom: 8px;")">
+    @_copyStatus
+</div>
+
+@if (_isLoading)
+{
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px;">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+    </div>
+}
+else if (_filteredItems is not null && _filteredItems.Count > 0)
+{
+    <div class="streams-grid-container">
+        <FluentDataGrid Items="@GetCurrentPage()" TGridItem="StreamSummary"
+                        Style="width: 100%;"
+                        OnRowClick="@(row => OnRowClick(row.Item))"
+                        GridTemplateColumns="1fr 1fr 1fr 1fr 1fr 1fr 1fr">
+            <TemplateColumn Title="Status" Class="streams-col-status">
+                <StatusBadge DisplayConfig="@(StatusBadge.StatusDisplayConfig.FromStreamStatus(context.StreamStatus))"
+                             AriaLabelPrefix="Stream status" />
+            </TemplateColumn>
+            <PropertyColumn Property="@(s => s.TenantId)" Title="Tenant" Class="monospace streams-col-tenant" />
+            <PropertyColumn Property="@(s => s.Domain)" Title="Domain" Class="monospace streams-col-domain" />
+            <TemplateColumn Title="Aggregate ID" Class="streams-col-aggid">
+                @{
+                    string fullId = context.AggregateId;
+                }
+                <button type="button" class="monospace grid-cell-truncate aggregate-id-copy"
+                        data-testid="aggregate-id-copy"
+                        title="@(fullId) (click to copy)"
+                        aria-label="@($"Copy aggregate ID {fullId} to clipboard")"
+                        @onclick="() => CopyAggregateId(fullId)"
+                        @onclick:stopPropagation="true"
+                        @onkeydown:stopPropagation="true">@TruncateId(fullId)</button>
+            </TemplateColumn>
+            <PropertyColumn Property="@(s => s.EventCount)" Title="Events" Align="DataGridCellAlignment.End"
+                            Class="streams-col-events" />
+            <TemplateColumn Title="Last Activity" Class="monospace streams-col-activity"
+                            SortBy="@(GridSort<StreamSummary>.ByDescending(s => s.LastActivityUtc))"
+                            IsDefaultSortColumn="true" InitialSortDirection="DataGridSortDirection.Descending">
+                <span class="monospace" style="font-size: 12px;">@context.LastActivityUtc.ToString("HH:mm:ss")</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Snapshot" Class="streams-col-snapshot" Align="DataGridCellAlignment.Center">
+                @if (context.HasSnapshot)
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Checkmark())" Color="Color.Success"
+                                Title="Has snapshot" />
+                }
+                else
+                {
+                    <span aria-label="No snapshot" title="No snapshot">&mdash;</span>
+                }
+            </TemplateColumn>
+        </FluentDataGrid>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;"
+             aria-live="polite">
+            <span style="font-size: 13px; color: var(--colorNeutralForeground3);">
+                Page @_currentPage of @_totalPages (@_filteredItems.Count total)
+            </span>
+            <div style="display: flex; gap: 8px;">
+                <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                              Disabled="@(_currentPage <= 1)"
+                              OnClick="PreviousPage">Previous</FluentButton>
+                <FluentButton Appearance="ButtonAppearance.Outline" Size="ButtonSize.Small"
+                              Disabled="@(_currentPage >= _totalPages)"
+                              OnClick="NextPage">Next</FluentButton>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <EmptyState Title="@(_errorMessage is not null ? "Access Denied" : "No streams found")"
+                Description="@(_errorMessage ?? "No streams match the current filters.")" />
+}
+
+@code {
+    private const int PageSize = 25;
+
+    private bool _isLoading = true;
+    private int _currentPage = 1;
+    private string _statusFilter = "All";
+    private string _tenantFilter = string.Empty;
+    private string _domainFilter = string.Empty;
+    private IReadOnlyList<StreamSummary>? _allItems;
+    private IReadOnlyList<StreamSummary>? _filteredItems;
+    private IReadOnlyList<TenantOption>? _tenantOptions;
+    private string? _tenantsDiagnostic;
+    private IReadOnlyList<string>? _domains;
+    private string? _errorMessage;
+    private string _copyStatus = string.Empty;
+
+    private int _totalPages => _filteredItems is null || _filteredItems.Count == 0
+        ? 1
+        : (int)Math.Ceiling((double)_filteredItems.Count / PageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrlParameters();
+        await LoadTenantsAsync();
+        await LoadStreamsAsync();
+
+        // Subscribe to polling signal — re-fetch with current filters on each tick
+        RefreshService.OnDataChanged += OnRefreshSignal;
+    }
+
+    private void OnRefreshSignal(DashboardData data)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadStreamsAsync();
+                StateHasChanged();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed during async callback
+            }
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        RefreshService.OnDataChanged -= OnRefreshSignal;
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private void ReadUrlParameters()
+    {
+        Uri uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        System.Collections.Specialized.NameValueCollection query =
+            System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        string? page = query["page"];
+        if (int.TryParse(page, out int p) && p > 0)
+        {
+            _currentPage = p;
+        }
+
+        string? status = query["status"];
+        if (!string.IsNullOrEmpty(status))
+        {
+            _statusFilter = status switch
+            {
+                "active" => "Active",
+                "idle" => "Idle",
+                "tombstoned" => "Tombstoned",
+                _ => "All",
+            };
+        }
+
+        _tenantFilter = query["tenant"] ?? string.Empty;
+        _domainFilter = query["domain"] ?? string.Empty;
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        TenantOptionsResult result = await TenantOptions.GetTenantOptionsAsync().ConfigureAwait(false);
+        _tenantOptions = result.Options;
+        _tenantsDiagnostic = result.Status switch
+        {
+            TenantOptionsLoadStatus.Loaded => null,
+            TenantOptionsLoadStatus.Empty => result.Diagnostic,
+            _ => result.Diagnostic,
+        };
+    }
+
+    private async Task LoadStreamsAsync()
+    {
+        _isLoading = true;
+
+        try
+        {
+            string? tenantId = string.IsNullOrEmpty(_tenantFilter) ? null : _tenantFilter;
+            string? domain = string.IsNullOrEmpty(_domainFilter) ? null : _domainFilter;
+            PagedResult<StreamSummary> result = await ApiClient
+                .GetRecentlyActiveStreamsAsync(tenantId, domain, 1000);
+            _allItems = result.Items;
+            _domains = _allItems.Select(s => s.Domain).Distinct().OrderBy(d => d).ToList();
+            ApplyStatusFilter();
+        }
+        catch (ForbiddenAccessException)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = "Access denied. Insufficient permissions to view streams.";
+        }
+        catch (Exception)
+        {
+            _allItems = [];
+            _filteredItems = [];
+            _errorMessage = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyStatusFilter()
+    {
+        if (_allItems is null)
+        {
+            _filteredItems = [];
+            return;
+        }
+
+        _filteredItems = _statusFilter switch
+        {
+            "Active" => _allItems.Where(s => s.StreamStatus == StreamStatus.Active).ToList(),
+            "Idle" => _allItems.Where(s => s.StreamStatus == StreamStatus.Idle).ToList(),
+            "Tombstoned" => _allItems.Where(s => s.StreamStatus == StreamStatus.Tombstoned).ToList(),
+            _ => _allItems.ToList(),
+        };
+
+        // Reset to page 1 if beyond range
+        if (_currentPage > _totalPages)
+        {
+            _currentPage = 1;
+        }
+    }
+
+    private IQueryable<StreamSummary> GetCurrentPage()
+    {
+        if (_filteredItems is null)
+        {
+            return Array.Empty<StreamSummary>().AsQueryable();
+        }
+
+        return _filteredItems
+            .OrderByDescending(s => s.LastActivityUtc)
+            .Skip((_currentPage - 1) * PageSize)
+            .Take(PageSize)
+            .AsQueryable();
+    }
+
+    private void OnRowClick(StreamSummary? stream)
+    {
+        if (stream is not null)
+        {
+            NavigationManager.NavigateTo(
+                $"/streams/{Uri.EscapeDataString(stream.TenantId)}/{Uri.EscapeDataString(stream.Domain)}/{Uri.EscapeDataString(stream.AggregateId)}");
+        }
+    }
+
+    private async Task OnStatusFilterChanged(string status)
+    {
+        _statusFilter = status;
+        _currentPage = 1;
+        ApplyStatusFilter();
+        UpdateUrl();
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private async Task OnTenantFilterChanged(string tenantId)
+    {
+        _tenantFilter = tenantId;
+        _currentPage = 1;
+        await LoadStreamsAsync().ConfigureAwait(false);
+        UpdateUrl();
+    }
+
+    private async Task OnDomainFilterChanged(string domain)
+    {
+        _domainFilter = domain;
+        _currentPage = 1;
+        await LoadStreamsAsync().ConfigureAwait(false);
+        UpdateUrl();
+    }
+
+    private void PreviousPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            UpdateUrl();
+        }
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages)
+        {
+            _currentPage++;
+            UpdateUrl();
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        List<string> queryParts = [];
+        if (_currentPage > 1)
+        {
+            queryParts.Add($"page={_currentPage}");
+        }
+
+        if (_statusFilter != "All")
+        {
+            queryParts.Add($"status={_statusFilter.ToLowerInvariant()}");
+        }
+
+        if (!string.IsNullOrEmpty(_tenantFilter))
+        {
+            queryParts.Add($"tenant={Uri.EscapeDataString(_tenantFilter)}");
+        }
+
+        if (!string.IsNullOrEmpty(_domainFilter))
+        {
+            queryParts.Add($"domain={Uri.EscapeDataString(_domainFilter)}");
+        }
+
+        string url = queryParts.Count > 0
+            ? $"/streams?{string.Join('&', queryParts)}"
+            : "/streams";
+        NavigationManager.NavigateTo(url, forceLoad: false, replace: true);
+    }
+
+    private async Task CopyAggregateId(string aggregateId)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", aggregateId);
+            _copyStatus = $"Copied aggregate ID {aggregateId} to clipboard.";
+            await ToastService.ShowSuccessAsync($"Copied {TruncateId(aggregateId)}").ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+            _copyStatus = $"Could not copy aggregate ID — clipboard unavailable. Full value: {aggregateId}";
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            _copyStatus = string.Empty;
+        }
+    }
+
+    private static string TruncateId(string id) =>
+        string.IsNullOrEmpty(id) || id.Length <= 8 ? id : id[..8] + "…";
+}

@@ -1,0 +1,146 @@
+{
+  "utc": "2026-10-22T18:14:27.079757+00:00",
+  "owned_helper_path": "/tmp/folders-12-2-full-guard-probe-20261022T1739Z",
+  "archive": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/owning-reader-helper.tar.gz",
+  "archive_sha256": "a569db6a93e95bc23f559b0b63a58ad833a98368e530ccebb532e6c6c2f8884d",
+  "verified_members": [
+    {
+      "member": "Probe.csproj",
+      "sha256": "38e201f047792df530db8c7d157c2b6b19d1ed2e4134dba5da5c59e97d3b0da2",
+      "size": 211
+    },
+    {
+      "member": "Program.cs",
+      "sha256": "7c64bab316e7c745d94f7897abab81e219faaba7357335dce556e5656700dc53",
+      "size": 5766
+    },
+    {
+      "member": "bin/Probe",
+      "sha256": "e758b42ea6bfea4fe8249a2a31514b215d3a88bc3f96b9ffa6fe93f49d79206b",
+      "size": 78192
+    },
+    {
+      "member": "bin/Probe.deps.json",
+      "sha256": "270e6953bb252252523c7ac8dae60651c18b12e6fc3f86cea95c9af79e10f37d",
+      "size": 387
+    },
+    {
+      "member": "bin/Probe.dll",
+      "sha256": "2cde149f7e73635d48f9aea6b53f383d1bcd2834946fa7820ddb1edbce7cb275",
+      "size": 32768
+    },
+    {
+      "member": "bin/Probe.pdb",
+      "sha256": "786951304544c224cc0ecea5d02f01018c377125fe216dcd109bc561d0349c7c",
+      "size": 12752
+    },
+    {
+      "member": "bin/Probe.runtimeconfig.json",
+      "sha256": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a",
+      "size": 259
+    },
+    {
+      "member": "global.json",
+      "sha256": "8abaad26584f555d7581405cc5e45e5bf4866a2c8b1fa64b937a42cf0c81d0ad",
+      "size": 59
+    },
+    {
+      "member": "obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "sha256": "f79c1ad9a9fc76110b3655f5bfb5ff4e3168e9addceff05b937c0796f0ec34eb",
+      "size": 196
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.AssemblyInfo.cs",
+      "sha256": "b367653615eacc3dae8b23c896e7517523f2223ff896d6f6fd120a8e416e8010",
+      "size": 926
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.AssemblyInfoInputs.cache",
+      "sha256": "09897b4c78290fcaa9c99d138798aa0e9e6e970dd73cc67c0a442755afe0b9f0",
+      "size": 65
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.GeneratedMSBuildEditorConfig.editorconfig",
+      "sha256": "b13e05cff9880f91fa2d7a4174cf139e10bd45f44b29c1f651fdbe78cbc86572",
+      "size": 811
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.GlobalUsings.g.cs",
+      "sha256": "8f86a2cbf00ff3eee0bda2bc0eb5e1fc19c8544d5dc650c53d0132325956b592",
+      "size": 231
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.assets.cache",
+      "sha256": "4c06deada35385722a910b3bfdbcb71c7c6bfb8ad4821ccdb4d2b5254bc0a368",
+      "size": 157
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.csproj.CoreCompileInputs.cache",
+      "sha256": "a2ffca47bedc5fa8a7e1ae5644de33e26ac383f16a5f8457392a0c8fabee1a86",
+      "size": 65
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.csproj.FileListAbsolute.txt",
+      "sha256": "2a1b9da1d89d88e60f668554511368b0700fdedd3e60d45c434db0c74f1803d8",
+      "size": 1167
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.dll",
+      "sha256": "2cde149f7e73635d48f9aea6b53f383d1bcd2834946fa7820ddb1edbce7cb275",
+      "size": 32768
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.genruntimeconfig.cache",
+      "sha256": "9da8301599dfb13aca1f1e64f16bf8044d2784f4159e4f33a2b1588025b9d68f",
+      "size": 65
+    },
+    {
+      "member": "obj/Debug/net10.0/Probe.pdb",
+      "sha256": "786951304544c224cc0ecea5d02f01018c377125fe216dcd109bc561d0349c7c",
+      "size": 12752
+    },
+    {
+      "member": "obj/Debug/net10.0/apphost",
+      "sha256": "e758b42ea6bfea4fe8249a2a31514b215d3a88bc3f96b9ffa6fe93f49d79206b",
+      "size": 78192
+    },
+    {
+      "member": "obj/Debug/net10.0/ref/Probe.dll",
+      "sha256": "84bee5ee03ba5be38eafe0d785efa51ed413d1a68ec794f65f4464573157c2d4",
+      "size": 5632
+    },
+    {
+      "member": "obj/Debug/net10.0/refint/Probe.dll",
+      "sha256": "84bee5ee03ba5be38eafe0d785efa51ed413d1a68ec794f65f4464573157c2d4",
+      "size": 5632
+    },
+    {
+      "member": "obj/Probe.csproj.nuget.dgspec.json",
+      "sha256": "d027713f877148c39520faf69e476c86ffb19591887f89aef575f5c99f287db5",
+      "size": 21086
+    },
+    {
+      "member": "obj/Probe.csproj.nuget.g.props",
+      "sha256": "4d1a69e994f861f592f56331d2e661611eaa7de95f72cae1da2f0d867d866941",
+      "size": 1136
+    },
+    {
+      "member": "obj/Probe.csproj.nuget.g.targets",
+      "sha256": "b14461e0cb1be3f77fcf9fe2fdd62889325ca92523d0f606980ed59eb5c4aa1c",
+      "size": 149
+    },
+    {
+      "member": "obj/project.assets.json",
+      "sha256": "7be11b7a8e5bb4a50bbd7fb1617bcfc45ae494a16adaab62c2988d36afba94ad",
+      "size": 20438
+    },
+    {
+      "member": "obj/project.nuget.cache",
+      "sha256": "3c29389547545cfcbc56f344d62ffebbc67b6c1259dca2252f0361646c473039",
+      "size": 200
+    }
+  ],
+  "active_helper_pids_before_cleanup": [],
+  "scope": "Only owned diagnostic helper source/project/binary/intermediates archived, hash-verified, then exact owned temp directory removed. No product/snapshot/history paths touched.",
+  "owned_path_exists_after_cleanup": false
+}

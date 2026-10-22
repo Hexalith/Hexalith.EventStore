@@ -1,0 +1,110 @@
+{
+  "processes": [
+    {
+      "pid": 64596,
+      "exit_code": 0,
+      "absent": true
+    },
+    {
+      "pid": 64588,
+      "exit_code": 0,
+      "absent": true
+    },
+    {
+      "pid": 55944,
+      "exit_code": -9,
+      "absent": true
+    },
+    {
+      "pid": 55943,
+      "exit_code": -9,
+      "absent": true
+    },
+    {
+      "pid": 54341,
+      "exit_code": 0,
+      "absent": true
+    },
+    {
+      "pid": 54339,
+      "exit_code": 0,
+      "absent": true
+    }
+  ],
+  "containers": [
+    {
+      "name": "admission-2c0d704fdced-scheduler",
+      "id": "3c9867501fac2cb0ee00b0fee48c4a05b2e3e41e5ddaf05e7c3d0da8bed9223f",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-2c0d704fdced-placement",
+      "id": "d34bebe42924cbb06bd9b66d7d78b9818afd4dd6c515612774a428e4f1f74079",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-2c0d704fdced-redis",
+      "id": "4238ead4c1351b390ae1a5d37cf38a67cce9d850cabf5693e51b33920c6812ae",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    }
+  ],
+  "logs": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-app.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-app.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-sidecar.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/sample-1-sidecar.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-app.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-app.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-sidecar.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-1-sidecar.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-app.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-app.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-sidecar.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/actor-live/eventstore-2-sidecar.stderr.log",
+      "closed": true
+    }
+  ],
+  "runtime": "/tmp/eventstore-actor-admission-xxwq_ml3",
+  "runtime_absent": true,
+  "passed": true
+}

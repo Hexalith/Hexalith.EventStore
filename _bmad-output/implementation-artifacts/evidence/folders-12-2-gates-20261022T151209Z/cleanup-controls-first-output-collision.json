@@ -1,0 +1,1 @@
+{"issue":"The first diagnostic driver's aggregate result path collided with its wrapper receipt. Every individual rejected command, raw cleanup receipt and the driver's stdout summary remains retained. The successor driver uses separate result/receipt paths and executes three fresh controls in a new directory; no failed acceptance was removed."}

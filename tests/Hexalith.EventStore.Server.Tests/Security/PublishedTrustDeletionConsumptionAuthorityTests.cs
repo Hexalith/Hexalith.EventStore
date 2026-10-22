@@ -536,7 +536,7 @@ public sealed class PublishedTrustDeletionConsumptionAuthorityTests
     [Fact]
     public async Task PublishedTrustAcceptsExactEvidenceAndDeniesAMismatchWithoutIssuingAnAnchor()
     {
-        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create(attestationOrdinal: 2);
         const string goodDigest = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
         var journal = Substitute.For<IAnchoredStateTransitionAuthority>();
         string rejected = new string('B', 64);
@@ -669,10 +669,10 @@ public sealed class PublishedTrustDeletionConsumptionAuthorityTests
         => new("evidence", new string('D', 64), "Committed", 10, 1, referenceId, receiptId);
 
     private static DeletionReattestationActivation Activation(PublishedTrustDispatchFixture world, DeletionBatchConsumptionRequest request)
-        => new("activate-1", "compromise-1", 0, "replacement-guard-1", request);
+        => new("activate-1", "compromise-1", 0, world.Batch.IssueReceiptId, request);
 
-    private static TenantGovernanceGuardState ActivationState(PublishedTrustDispatchFixture world, string outcome = "Unconsumed")
-        => world.WithBatch(world.Batch with { ProtectionOutcome = outcome }) with
+    private static TenantGovernanceGuardState ActivationState(PublishedTrustDispatchFixture world, string outcome = "ReplacementAwaitingActivation")
+        => world.WithBatch(world.Batch with { ProtectionOutcome = outcome, ProtectionReceiptId = "compromise-1" }) with
         {
             Receipts =
             [

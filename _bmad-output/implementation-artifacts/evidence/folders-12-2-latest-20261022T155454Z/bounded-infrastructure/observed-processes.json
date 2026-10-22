@@ -1,0 +1,492 @@
+{
+  "32204:12344684": {
+    "pid": 32204,
+    "start_ticks": "12344684",
+    "argv": [
+      "/usr/bin/python3",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/run.py",
+      "bounded-live",
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests",
+      "-showLiveOutput",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live.xml"
+    ],
+    "exe": "/usr/bin/python3.14",
+    "exe_sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"
+  },
+  "32206:12344687": {
+    "pid": 32206,
+    "start_ticks": "12344687",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityLiveTests",
+      "-showLiveOutput",
+      "-result-xml",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bounded-live.xml"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "32802:12344837": {
+    "pid": 32802,
+    "start_ticks": "12344837",
+    "argv": [
+      "/home/administrator/.dapr/bin/daprd",
+      "--app-id",
+      "eventstore-live-6ca3e97453aa4d639139e70a80aded83",
+      "--app-port",
+      "36491",
+      "--app-protocol",
+      "http",
+      "--app-channel-address",
+      "127.0.0.1",
+      "--dapr-http-port",
+      "46657",
+      "--dapr-grpc-port",
+      "37963",
+      "--dapr-internal-grpc-port",
+      "33191",
+      "--metrics-port",
+      "43161",
+      "--profile-port",
+      "41227",
+      "--resources-path",
+      "/tmp/dapr-components-18abcd0858d2459cb36f5de5ca952c13",
+      "--log-level",
+      "info",
+      "--placement-host-address",
+      "localhost:63948",
+      "--scheduler-host-address",
+      "localhost:58723",
+      "--config",
+      "/tmp/dapr-components-18abcd0858d2459cb36f5de5ca952c13/test-runtime.yaml"
+    ],
+    "exe": "/home/administrator/.dapr/bin/daprd",
+    "exe_sha256": "e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488"
+  },
+  "34223:12345194": {
+    "pid": 34223,
+    "start_ticks": "12345194",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "23928:12363854": {
+    "pid": 23928,
+    "start_ticks": "12363854",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "25804:12364541": {
+    "pid": 25804,
+    "start_ticks": "12364541",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "3029:12383167": {
+    "pid": 3029,
+    "start_ticks": "12383167",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "3275:12383286": {
+    "pid": 3275,
+    "start_ticks": "12383286",
+    "argv": [
+      "python3",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+      "--output",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/worker-maps"
+    ],
+    "exe": "/usr/bin/python3.14",
+    "exe_sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"
+  },
+  "3345:12383316": {
+    "pid": 3345,
+    "start_ticks": "12383316",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "7381:12384300": {
+    "pid": 7381,
+    "start_ticks": "12384300",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "8200:12384510": {
+    "pid": 8200,
+    "start_ticks": "12384510",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "16556:12386108": {
+    "pid": 16556,
+    "start_ticks": "12386108",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "17020:12386276": {
+    "pid": 17020,
+    "start_ticks": "12386276",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "22374:12387419": {
+    "pid": 22374,
+    "start_ticks": "12387419",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "23682:12387705": {
+    "pid": 23682,
+    "start_ticks": "12387705",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "31632:12389635": {
+    "pid": 31632,
+    "start_ticks": "12389635",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "32699:12389822": {
+    "pid": 32699,
+    "start_ticks": "12389822",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "36752:12390711": {
+    "pid": 36752,
+    "start_ticks": "12390711",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "37455:12390860": {
+    "pid": 37455,
+    "start_ticks": "12390860",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "41470:12391991": {
+    "pid": 41470,
+    "start_ticks": "12391991",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "44234:12392731": {
+    "pid": 44234,
+    "start_ticks": "12392731",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "44947:12392879": {
+    "pid": 44947,
+    "start_ticks": "12392879",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "48771:12393831": {
+    "pid": 48771,
+    "start_ticks": "12393831",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "16847:12408161": {
+    "pid": 16847,
+    "start_ticks": "12408161",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "19472:12408588": {
+    "pid": 19472,
+    "start_ticks": "12408588",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "12349:12425542": {
+    "pid": 12349,
+    "start_ticks": "12425542",
+    "argv": [
+      "python3",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+      "--output",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/worker-maps"
+    ],
+    "exe": "/usr/bin/python3.14",
+    "exe_sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"
+  },
+  "12452:12425555": {
+    "pid": 12452,
+    "start_ticks": "12425555",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "52681:12472963": {
+    "pid": 52681,
+    "start_ticks": "12472963",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "55724:12473659": {
+    "pid": 55724,
+    "start_ticks": "12473659",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "50222:12528646": {
+    "pid": 50222,
+    "start_ticks": "12528646",
+    "argv": [
+      "python3",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+      "--output",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/worker-maps"
+    ],
+    "exe": "/usr/bin/python3.14",
+    "exe_sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"
+  },
+  "50244:12528665": {
+    "pid": 50244,
+    "start_ticks": "12528665",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "39492:12545116": {
+    "pid": 39492,
+    "start_ticks": "12545116",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "40897:12545427": {
+    "pid": 40897,
+    "start_ticks": "12545427",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "53235:12562705": {
+    "pid": 53235,
+    "start_ticks": "12562705",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "70485:12622261": {
+    "pid": 70485,
+    "start_ticks": "12622261",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "76023:12623524": {
+    "pid": 76023,
+    "start_ticks": "12623524",
+    "argv": [
+      "python3",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+      "--output",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/worker-maps"
+    ],
+    "exe": "/usr/bin/python3.14",
+    "exe_sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"
+  },
+  "76251:12623558": {
+    "pid": 76251,
+    "start_ticks": "12623558",
+    "argv": [
+      "dotnet",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/qualified-Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "-class",
+      "Hexalith.EventStore.Server.LiveSidecar.Tests.Integration.ProjectionBoundedIdentityProcessWorkerTests"
+    ],
+    "exe": "/home/administrator/.dotnet/dotnet",
+    "exe_sha256": "594657cba5f6f34b80e927951f144881ff875df269b6fb5eba1c595730267753"
+  },
+  "369648:12690540": {
+    "pid": 369648,
+    "start_ticks": "12690540",
+    "argv": [
+      "python3",
+      "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/tools/bounded_worker_observer.py",
+      "--output",
+      "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/worker-maps"
+    ],
+    "exe": "/usr/bin/python3.14",
+    "exe_sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"
+  }
+}

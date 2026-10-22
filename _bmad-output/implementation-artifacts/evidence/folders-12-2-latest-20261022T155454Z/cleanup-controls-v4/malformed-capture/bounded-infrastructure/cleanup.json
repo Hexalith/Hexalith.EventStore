@@ -1,0 +1,30 @@
+{
+  "processes": [],
+  "containers": [
+    {
+      "name": "admission-3c48c66b024f-scheduler",
+      "id": "4b8dd7dc6c78948a6e6c39cccf80e095192e426543eb98f4592fad3d1801b235",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-3c48c66b024f-placement",
+      "id": "56c31cbd34e753da7f3253feace9aa18c37054ef8d807c3fad822b85161774d9",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-3c48c66b024f-redis",
+      "id": "f0e362a059ceb65658176b5069582b18a08912f3785659385be84f6a74eab589",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    }
+  ],
+  "logs": [],
+  "runtime": "/tmp/eventstore-actor-admission-v7m_dwzl",
+  "runtime_absent": true,
+  "passed": true
+}

@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-22T17:18:47.372295+00:00",
+  "base": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+  "successor": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+  "source_selection": "Selected frozen latest source plus only the test-side cursor repair and its seven new regression rows. Other later origin edits remain preserved in origin but are not silently imported into this bound snapshot.",
+  "changes": [
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "before_sha256": "452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e",
+      "after_sha256": "22230ab29679672082431dba0160c6caaa265fc50a32c1f2884f3def25d86ef8"
+    },
+    {
+      "path": "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs",
+      "before_sha256": null,
+      "after_sha256": "d2da413d9cd1a2898eb675bd793edef0565256d83359b12e17ceb0c81c90e4e8"
+    }
+  ],
+  "assertions_deadlines_detectors_modified": false
+}

@@ -1,0 +1,17 @@
+{
+  "pdbCount": 64,
+  "ordinaryDocumentCopies": 5309,
+  "generatedDocumentCopies": 379,
+  "uniqueArchivedGeneratedSources": 236,
+  "currentGeneratedDiskDifferences": [
+    {
+      "pdb": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/src/Hexalith.EventStore.Admin.Cli/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
+      "source": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z/references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/obj/Debug/net10.0/Hexalith.Commons.UniqueIds.AssemblyInfo.cs",
+      "expected": "53BBAFB28DB6BF6400844B96F4B83DD9314ED166A40B5D544FEADE96DFDE7898",
+      "diskSha256": "263FD6F8D63680A09114303895A5E90651ED0AB07E935F2DFBF5C94ED3F11D73",
+      "embeddedMatches": true
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

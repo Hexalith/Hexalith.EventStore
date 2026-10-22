@@ -1,0 +1,368 @@
+{
+  "disposition": "not_fully_qualified",
+  "utc": "2026-10-22T18:20:18.209761+00:00",
+  "scope": "S1 fresh isolated latest-selected EventStore producer graph plus separately bound final Server test-only overlay; no consumer adoption or whole-story acceptance.",
+  "source_revisions": [
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore",
+      "head": "cb414530223f77cc845450a4877a4472559de2ad",
+      "ordinary_inputs": 5807
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Tenants",
+      "head": "1e60af449c1fdc3f9801cf57e8847e00faab2394",
+      "ordinary_inputs": 866
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.AI.Tools",
+      "head": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+      "ordinary_inputs": 10
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Commons",
+      "head": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+      "ordinary_inputs": 215
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds",
+      "head": "2d653b611c8efcffb4d27bd8715d5dbf24eaebfd",
+      "ordinary_inputs": 1452
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.FrontComposer",
+      "head": "dfac0818e5a40b19145a01333cc5fc00bcd4b47e",
+      "ordinary_inputs": 3270
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.PolymorphicSerializations",
+      "head": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+      "ordinary_inputs": 63
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Memories",
+      "head": "63327920814a293e0168986be212deb10b81dc00",
+      "ordinary_inputs": 2947
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Platform",
+      "head": "3beff28eede537eb36e84cdb93900af2556202d7",
+      "ordinary_inputs": 793
+    },
+    {
+      "repository": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.McpCli",
+      "head": "4b3e7ff5cb0ba32dbaf3be8d5f7606531fc22e69",
+      "ordinary_inputs": 1339
+    }
+  ],
+  "s1_source_archive": "ordinary-source.tar.gz",
+  "s1_source_archive_sha256": "c340577211153a6d692a198f6818101174d286c904046de0166eaac82e960bab",
+  "s1_source_inventory": "snapshot-inputs.json",
+  "s1_binary_inventory": "debug-binary-freeze.json",
+  "final_server_test_overlay": {
+    "utc": "2026-10-22T18:00:47.143338+00:00",
+    "source_root": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+    "full_server_label": "guardfinal-server-full",
+    "focused_label": "guardfinal-focused",
+    "pdb_binding": "source-binding-guardfinal",
+    "identity_audit": "guard-final/input-identity-audit.json",
+    "producer_input_manifest": "guard-final/producer-current-inputs.json",
+    "complete_guard_inventory": "guard-final/full-guard-locations.json",
+    "complete_guard_classification": "guard-final/current-failure-analysis.json",
+    "scope": "S1 ordinary producer graph plus final test-only changes. All intermediate results and historical materialization limits are separate; mutable origin is not qualified."
+  },
+  "original_selected_server_execution": {
+    "receipt": "server-full-command.json",
+    "result": "interrupted after a proven cursor loop; no completed XML or passing outcome",
+    "diagnosis": "server-infinite-loop-cancellation.json"
+  },
+  "strict_bounded_observation_gate_closed": true,
+  "worker_count": 30,
+  "required_module_joins": 120,
+  "s1_pdb_source_binding_passed": true,
+  "s1_source_archive_verified": true,
+  "final_server_pdb_source_binding_passed": true,
+  "test_overlay_reuse_identity_passed": true,
+  "complete_historical_packet_materialization_preserved": false,
+  "historical_packet_materialization_audit": "guard-final/internal-actor-snapshot-seal-explanation.json",
+  "frozen_inputs_unchanged": true,
+  "folders_preservation_passed": false,
+  "closing_input_audit": "late-input-integrity.json",
+  "earlier_input_audit_retained": "final-input-integrity.json",
+  "actor_runtime_audit_passed": true,
+  "cleanup_passed": true,
+  "guard_execution_cleanup": "guard-resource-cleanup.json",
+  "fresh_tests": [
+    {
+      "label": "guardfinal-server-full",
+      "xml": "guardfinal-server-full.xml",
+      "xml_sha256": "1e57af202caa98af3cc7a36c67645e4384ab6a81fb02a78ef9185c892b9b1e8c",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+      "relation_to_final_server_overlay": "Fresh final Server overlay execution",
+      "passed": 6479,
+      "failed": 2,
+      "skipped": 25,
+      "errors": 0,
+      "total": 6506,
+      "not-run": 0
+    },
+    {
+      "label": "guardfix-server-full",
+      "xml": "guardfix-server-full.xml",
+      "xml_sha256": "e69d11db5eae61432181b4df36e9c4807ee308f50a9d552ff3581f6c40522f3b",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+      "relation_to_final_server_overlay": "Earlier intermediate guard execution; failures retained",
+      "passed": 6459,
+      "failed": 10,
+      "skipped": 25,
+      "errors": 0,
+      "total": 6494,
+      "not-run": 0
+    },
+    {
+      "label": "guardtight-server-full",
+      "xml": "guardtight-server-full.xml",
+      "xml_sha256": "3280648528953b1937fbc0cff465f52a5b6b2c707af322f366de50b1e901df9d",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+      "relation_to_final_server_overlay": "Earlier intermediate guard execution; failures retained",
+      "passed": 6476,
+      "failed": 3,
+      "skipped": 25,
+      "errors": 0,
+      "total": 6504,
+      "not-run": 0
+    },
+    {
+      "label": "guardfixtures-server-full",
+      "xml": "guardfixtures-server-full.xml",
+      "xml_sha256": "75edd766adf9497495af0aa7fd81baa73bb911a7e544db13c34cecd476d83d89",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z",
+      "relation_to_final_server_overlay": "Earlier intermediate guard execution; failures retained",
+      "passed": 6477,
+      "failed": 2,
+      "skipped": 25,
+      "errors": 0,
+      "total": 6504,
+      "not-run": 0
+    },
+    {
+      "label": "guardfix-cursor-regressions",
+      "xml": "guardfix-cursor-regressions.xml",
+      "xml_sha256": "674cafc79712e257ec3ca059ae272223ad138846d73c10e5deb44cf4bcaee23d",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+      "relation_to_final_server_overlay": "Earlier intermediate guard execution; failures retained",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 10,
+      "not-run": 0
+    },
+    {
+      "label": "guardtight-focused",
+      "xml": "guardtight-focused.xml",
+      "xml_sha256": "ff33f979aa8c36c5c30ef5c28e5458ffa740b2ed0b4f5050ce65847ad6583813",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+      "relation_to_final_server_overlay": "Earlier intermediate guard execution; failures retained",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 27,
+      "not-run": 0
+    },
+    {
+      "label": "guardfixtures-focused",
+      "xml": "guardfixtures-focused.xml",
+      "xml_sha256": "de15eb4deec1e17bf9692d8cc90963c8564647575b3a5ad759b1ee4de894c9f3",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z",
+      "relation_to_final_server_overlay": "Earlier intermediate guard execution; failures retained",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 34,
+      "not-run": 0
+    },
+    {
+      "label": "guardfinal-focused",
+      "xml": "guardfinal-focused.xml",
+      "xml_sha256": "2ce63ce94fbdb078f2ee22905d8f139450683477a453fea540a5a15da7179533",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+      "relation_to_final_server_overlay": "Fresh final Server overlay execution",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 36,
+      "not-run": 0
+    },
+    {
+      "label": "client-full",
+      "xml": "client-full.xml",
+      "xml_sha256": "6203903827087268b6ad918c15b3790fd826054f468c545bc6350e499c72d5d6",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 2073,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "total": 2075,
+      "not-run": 0
+    },
+    {
+      "label": "testing-full",
+      "xml": "testing-full.xml",
+      "xml_sha256": "148a51f1164216340f97a0fbed60954fdbb697e0f81e71af5ed061c9c8af0f19",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 155,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 155,
+      "not-run": 0
+    },
+    {
+      "label": "contracts-full",
+      "xml": "contracts-full.xml",
+      "xml_sha256": "bdd3070c0755a21dd9897d99db70782653446aa21a0fcbc5d91b32023f921332",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 2442,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "total": 2444,
+      "not-run": 0
+    },
+    {
+      "label": "domain-full",
+      "xml": "domain-full.xml",
+      "xml_sha256": "5206c303d63999efac7cd7bdbddfda477ba5bfd1cacbaa1e71815e1ace66deb2",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 1163,
+      "failed": 1,
+      "skipped": 0,
+      "errors": 0,
+      "total": 1164,
+      "not-run": 0
+    },
+    {
+      "label": "domain-full-repeat",
+      "xml": "domain-full-repeat.xml",
+      "xml_sha256": "1a101bc893ef53d7f819081f73c80d2c83258e242a27964366355961b780649d",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 1164,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 1164,
+      "not-run": 0
+    },
+    {
+      "label": "domain-failure-focused",
+      "xml": "domain-failure-focused.xml",
+      "xml_sha256": "53ff216cdf7fbb6ed44dcf88ba7c32f392a0fb05dc9a993feee64c0091b8c7a0",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 1,
+      "not-run": 0
+    },
+    {
+      "label": "runtime-preflight",
+      "xml": "runtime-preflight.xml",
+      "xml_sha256": "b778158ef7fb456ec6d25aa9de7a15b69311e18d57baa87402d051d61bcb8527",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 3,
+      "not-run": 0
+    },
+    {
+      "label": "actor-live",
+      "xml": "actor-live.xml",
+      "xml_sha256": "4320308654f1b0fcd852586340536b3566392e0497735a0d39ba379d1fcf9cc6",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 1,
+      "not-run": 0
+    },
+    {
+      "label": "bounded-live",
+      "xml": "bounded-live.xml",
+      "xml_sha256": "1b2ead4e60c6ea5989b0ba756ce525177bde44ae9cb0043a2123412b5b9c8330",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 9,
+      "not-run": 0
+    },
+    {
+      "label": "public-throttling-health",
+      "xml": "public-throttling-health.xml",
+      "xml_sha256": "d82fdb948d9ea50a7bedd935a2e165afa4a42b6005ccc994203d3e43d1eeef8d",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 33,
+      "not-run": 0
+    },
+    {
+      "label": "testing-integration-full",
+      "xml": "testing-integration-full.xml",
+      "xml_sha256": "8b205541df8deb64a71546252d707a753ed3fbccfdbc85861eb38db7024a1baa",
+      "execution_source_root": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
+      "relation_to_final_server_overlay": "Fresh S1 execution, reused for unchanged producer bytes under explicit identity audit",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "total": 48,
+      "not-run": 0
+    }
+  ],
+  "fresh_secret_guard_reported_count": 589,
+  "secret_guard_original_history_gate_closed": false,
+  "remaining_gates": [
+    "Original immutable-history credential material/policy blocker; external rewritten bytes do not retrospectively qualify the original sealed graph.",
+    "Current fresh full Server failures, enumerated in fresh-test-results.json; all false positives remain failures until lawfully resolved.",
+    "Selected internal-actor historical mirror omits217 ignored members and LF-normalizes261 captured sources; origin current3410-member seal passes, while the isolated mirror seal fails. Original21 lineage is separate.",
+    "Unchanged sealed-capture assertion demands a verified historical false positive, conflicting with selected .diff source recognition; assertion and historical bytes are preserved.",
+    "Selected guard drops diff hunk-header text: separate pre-existing false-negative gap.",
+    "Preserved Domain full-suite nondeterminism, including the current100ms setup timeout; focused/repeat results are diagnostic.",
+    "Strict Folders preservation predicate failed for external source/project drift. Exact deltas are retained; this task did not modify or restore Folders files.",
+    "Fresh Folders source-reference adoption, exact assembled runtime/source binding, strict provider and10001-position authenticated recovery acceptance.",
+    "Existing skipped/deferred debt, SM4 acknowledgement p95, Release/package/source equivalence/PD10, independent whole-story acceptance."
+  ],
+  "earlier_failures_preserved": [
+    "folders-12-2-current-source-20261022T134028Z",
+    "folders-12-2-gates-20261022T151209Z"
+  ],
+  "historical_results_substituted_for_current": false,
+  "explicit_test_overlay_reuse": "reused-evidence.json",
+  "report_recovery": "final-report-recovery-plan.json",
+  "folders_adoption_claimed": false,
+  "whole_story_complete": false,
+  "assistant_staged_committed_pushed": false,
+  "package_pins_changed_by_assistant": false,
+  "published_or_deployed": false
+}

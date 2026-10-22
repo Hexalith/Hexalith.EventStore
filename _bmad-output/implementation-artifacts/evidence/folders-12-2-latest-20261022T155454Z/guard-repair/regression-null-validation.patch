@@ -1,0 +1,12 @@
+--- tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs
++++ tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs
+@@ -30,5 +30,8 @@
+     [InlineData("\nvalue")]
+     [InlineData("\n\nvalue\n")]
+     public void UnifiedDiffSourceLookup_StopsAtHeaderlessBeginning(string content)
+-        => GetUnifiedDiffSourcePath(content, content.Length).ShouldBeNull();
++    {
++        ArgumentNullException.ThrowIfNull(content);
++        GetUnifiedDiffSourcePath(content, content.Length).ShouldBeNull();
++    }
+ }

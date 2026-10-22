@@ -1,0 +1,131 @@
+{
+  "utc": "2026-10-22T17:39:53.809397+00:00",
+  "snapshot": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+  "owning_reader": "ReadTrackedText returns null when File.Exists is false; actual nine root gitlinks are directories, not omitted regular files.",
+  "tracked_count": 59496,
+  "regular_file_count": 59487,
+  "root_gitlink_count": 9,
+  "missing_regular_file_count": 0,
+  "input_manifest": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/full-guard-inputs.json",
+  "input_manifest_sha256": "e6b1e38c1efb07665245e9b3313c9dfa8d04da738d3a827dca04bdba432eeb2e",
+  "index_sha256": "0b5c46ffd5f9e203b127b17143d4665eed58bf30cb3ada7c8c3def1337b39947",
+  "command": [
+    "git",
+    "-C",
+    "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+    "ls-files",
+    "--stage",
+    "--",
+    "references/Hexalith.AI.Tools",
+    "references/Hexalith.Builds",
+    "references/Hexalith.Commons",
+    "references/Hexalith.FrontComposer",
+    "references/Hexalith.McpCli",
+    "references/Hexalith.Memories",
+    "references/Hexalith.Platform",
+    "references/Hexalith.PolymorphicSerializations",
+    "references/Hexalith.Tenants"
+  ],
+  "exit_code": 0,
+  "entries": [
+    {
+      "path": "references/Hexalith.AI.Tools",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "3f194e17174994d308ec84af9ee2b5aa68674d0d",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.Builds",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "0d8b910e0ee4df31198838f35242d0e6be9c80c4",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.Commons",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "1663028fb6d9f46a0bf17919edeb21bb99be1587",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.FrontComposer",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "9b8cbf28c621cbf45429eab8db1a50cfc4bf1c38",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.McpCli",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "6b01b3dc57a241ebe5b3096be635469ff00d8221",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.Memories",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "63327920814a293e0168986be212deb10b81dc00",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.Platform",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "9a43e1ad8678db4016cc78db63545984cee727c8",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.PolymorphicSerializations",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "221ac4592ba908ae7661ba1fa9e2d1fcc23baee0",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    },
+    {
+      "path": "references/Hexalith.Tenants",
+      "exists": false,
+      "is_directory": true,
+      "sha256": null,
+      "size": null,
+      "mode": "160000",
+      "gitlink_revision": "f0792c44f98b4dd9492020e1bb6b108e84dc12e7",
+      "stage": "0",
+      "directory_exists_rechecked": true
+    }
+  ]
+}

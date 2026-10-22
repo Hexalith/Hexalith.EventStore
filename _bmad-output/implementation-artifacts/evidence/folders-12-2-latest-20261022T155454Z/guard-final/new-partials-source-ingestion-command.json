@@ -1,0 +1,16 @@
+{
+  "started_utc": "2026-10-22T18:07:15.729598+00:00",
+  "completed_utc": "2026-10-22T18:07:16.238721+00:00",
+  "argv": [
+    "dotnet",
+    "/tmp/folders-12-2-guard-semantic-probe-20261022T1745Z/bin/Semantic.dll",
+    "--source",
+    "/tmp/eventstore-folders-12-2-guardfinal-20261022T175200Z",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/new-partials-source-ingestion.json",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.UnifiedDiffCursor.cs",
+    "tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.EmptyCalls.cs"
+  ],
+  "exit_code": 0,
+  "helper_source_sha256": "f771523ad4546c3769e5a41afdb9fab20e3674dfee9b7a72030ba11ff907f987",
+  "helper_binary_sha256": "b04b3735bdd7a5efc4383a8f935f934ebf099752c96e11b0ca986905eaa2d63d"
+}

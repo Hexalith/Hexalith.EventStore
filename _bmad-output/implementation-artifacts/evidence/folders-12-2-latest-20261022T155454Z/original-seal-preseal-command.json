@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/verify.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T18:42:42.501655+00:00",
+  "environment_overrides": {},
+  "runner_pid": 3170166,
+  "pid": 3170209,
+  "exit_code": 0,
+  "elapsed_seconds": 0.6985605380032212,
+  "utc_end": "2026-10-22T18:42:43.200370+00:00"
+}

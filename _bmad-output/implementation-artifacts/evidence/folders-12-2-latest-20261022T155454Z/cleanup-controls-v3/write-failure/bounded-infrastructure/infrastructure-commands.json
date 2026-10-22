@@ -1,0 +1,269 @@
+[
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-0886a028fa17-redis",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-7qpkokdg/redis.cid",
+      "--label",
+      "hexalith.qualification.run-id=admission-0886a028fa17",
+      "-p",
+      "127.0.0.1::6379",
+      "redis:7-alpine"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.5448309119965415,
+    "stdout": "1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a",
+      "6379"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.02923452199320309,
+    "stdout": "127.0.0.1:65479\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "redis:7-alpine"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06869409698992968,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\",\n        \"RepoTags\": [\n            \"redis:7-alpine\",\n            \"redis:7.4-alpine\"\n        ],\n        \"RepoDigests\": [\n            \"redis@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-21T21:14:18.14788955Z\",\n        \"Config\": {\n            \"ExposedPorts\": {\n                \"6379/tcp\": {}\n            },\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"REDIS_VERSION=7.4.11\"\n            ],\n            \"Entrypoint\": [\n                \"docker-entrypoint.sh\"\n            ],\n            \"Cmd\": [\n                \"redis-server\"\n            ],\n            \"Volumes\": {\n                \"/data\": {}\n            },\n            \"WorkingDir\": \"/data\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 57295534,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:41058dd4c122275500b8ee145e3ff1692ea26c7c568f55c00caf2878e7c61db0\",\n                \"sha256:006e6be2c45cf39d25d84f8e6e7057a18e853b3850947e2e75370426a04b3de3\",\n                \"sha256:dcfe6036ae039ca46b9c98799b2d16578379e4e7f28133beb421a83c1d8273d5\",\n                \"sha256:18db2ba69d8364773392e4da34a6c6a86ad4e68eaf69a02968dc9c0fe726eddf\",\n                \"sha256:395ded6fa976c048ef1ad70e0891ea5f4e54c87e67cd50bc8aa71477390a4db7\",\n                \"sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef\",\n                \"sha256:f6a5665a3591433de5e1769be62915eea7e7fd9fad30909efe91adaa22067c97\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-22T15:17:37.251269933Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\",\n            \"size\": 10213\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/library/redis\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-0886a028fa17-placement",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-7qpkokdg/placement.cid",
+      "--label",
+      "hexalith.qualification.run-id=admission-0886a028fa17",
+      "-p",
+      "127.0.0.1::50005",
+      "--entrypoint",
+      "./placement",
+      "daprio/dapr:1.18.7",
+      "--port",
+      "50005"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.4197472500090953,
+    "stdout": "1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8",
+      "50005"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.031731694005429745,
+    "stdout": "127.0.0.1:65480\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "daprio/dapr:1.18.7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.062152219004929066,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"RepoTags\": [\n            \"daprio/dapr:1.18.7\"\n        ],\n        \"RepoDigests\": [\n            \"daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-09T20:12:36.054822184Z\",\n        \"Config\": {\n            \"User\": \"65532:65532\",\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"WorkingDir\": \"/\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 650052110,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:9486261b5a13f63ca6904b36721527ac8f19df53d300560138d69ae9b4c203de\",\n                \"sha256:621c35e751a51a9a9dc3e80aa0b7fe8be2a93402ea6ccd307d30852cd7776cda\",\n                \"sha256:763a77745f27b86cf26b97887b6842d83720e63b1c48848c0ba9ee54e351d63a\",\n                \"sha256:f0d0eff4c2312a7bd6e21797bdfea5eb35f60e76b555ce2b22794424af2cad36\",\n                \"sha256:275a30dd8ce958b21daa9ad962c6fbc09f98306ee2f486b65c9075dc257b1412\",\n                \"sha256:4d049f83d9cf21d1f5cc0e11deaf36df02790d0e60c1a3829538fb4b61685368\",\n                \"sha256:af5aa97ebe6ce1604747ec1e21af7136ded391bcabe4acef882e718a87c86bcc\",\n                \"sha256:6f1cdceb6a3146f0ccb986521156bef8a422cdbb0863396f7f751f575ba308f4\",\n                \"sha256:bd3cdfae1d3fdd83a2231d608969b38b82349777c2fff9a7c12d54f8ac5c9b38\",\n                \"sha256:4cde6b0bb6f50a5f255eef7b2a42162c661cf776b803225dcac9a659e396bb6b\",\n                \"sha256:ad51d0769d16ba578106a177987dfe3d2e02c1668c852b795b2f6b024068242a\",\n                \"sha256:187cfc6d1e3e8a40a5e64653bcd3239c140807dcf1c09e48021178705a5a6139\",\n                \"sha256:f2392a9484bf6b18f06beaf705b994e31dbb2716c99cf7d03c9c495cd107f364\",\n                \"sha256:641f90239595925670eccf07a875d85732d545db212af4a996b5232d156fb677\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-13T14:15:25.43547467Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n            \"digest\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n            \"size\": 1771\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/daprio/dapr\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-0886a028fa17-scheduler",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-7qpkokdg/scheduler.cid",
+      "--label",
+      "hexalith.qualification.run-id=admission-0886a028fa17",
+      "-p",
+      "127.0.0.1:33223:50006",
+      "--entrypoint",
+      "./scheduler",
+      "daprio/dapr:1.18.7",
+      "--etcd-data-dir=/tmp/bounded-etcd",
+      "--override-broadcast-host-port=127.0.0.1:33223",
+      "--etcd-client-listen-address=0.0.0.0"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.5778037350100931,
+    "stdout": "7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff",
+      "50006"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.028992931998800486,
+    "stdout": "127.0.0.1:33223\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "daprio/dapr:1.18.7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.060069267987273633,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"RepoTags\": [\n            \"daprio/dapr:1.18.7\"\n        ],\n        \"RepoDigests\": [\n            \"daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-09T20:12:36.054822184Z\",\n        \"Config\": {\n            \"User\": \"65532:65532\",\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"WorkingDir\": \"/\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 650052110,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:9486261b5a13f63ca6904b36721527ac8f19df53d300560138d69ae9b4c203de\",\n                \"sha256:621c35e751a51a9a9dc3e80aa0b7fe8be2a93402ea6ccd307d30852cd7776cda\",\n                \"sha256:763a77745f27b86cf26b97887b6842d83720e63b1c48848c0ba9ee54e351d63a\",\n                \"sha256:f0d0eff4c2312a7bd6e21797bdfea5eb35f60e76b555ce2b22794424af2cad36\",\n                \"sha256:275a30dd8ce958b21daa9ad962c6fbc09f98306ee2f486b65c9075dc257b1412\",\n                \"sha256:4d049f83d9cf21d1f5cc0e11deaf36df02790d0e60c1a3829538fb4b61685368\",\n                \"sha256:af5aa97ebe6ce1604747ec1e21af7136ded391bcabe4acef882e718a87c86bcc\",\n                \"sha256:6f1cdceb6a3146f0ccb986521156bef8a422cdbb0863396f7f751f575ba308f4\",\n                \"sha256:bd3cdfae1d3fdd83a2231d608969b38b82349777c2fff9a7c12d54f8ac5c9b38\",\n                \"sha256:4cde6b0bb6f50a5f255eef7b2a42162c661cf776b803225dcac9a659e396bb6b\",\n                \"sha256:ad51d0769d16ba578106a177987dfe3d2e02c1668c852b795b2f6b024068242a\",\n                \"sha256:187cfc6d1e3e8a40a5e64653bcd3239c140807dcf1c09e48021178705a5a6139\",\n                \"sha256:f2392a9484bf6b18f06beaf705b994e31dbb2716c99cf7d03c9c495cd107f364\",\n                \"sha256:641f90239595925670eccf07a875d85732d545db212af4a996b5232d156fb677\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-13T14:15:25.43547467Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n            \"digest\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n            \"size\": 1771\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/daprio/dapr\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "admission-0886a028fa17-scheduler"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.030107322992989793,
+    "stdout": "[\n    {\n        \"Id\": \"7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff\",\n        \"Created\": \"2026-10-22T18:32:25.22359575Z\",\n        \"Path\": \"./scheduler\",\n        \"Args\": [\n            \"--etcd-data-dir=/tmp/bounded-etcd\",\n            \"--override-broadcast-host-port=127.0.0.1:33223\",\n            \"--etcd-client-listen-address=0.0.0.0\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 170380,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-22T18:32:25.470947228Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff/hosts\",\n        \"LogPath\": \"\",\n        \"Name\": \"/admission-0886a028fa17-scheduler\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": null,\n            \"ContainerIDFile\": \"/tmp/eventstore-actor-admission-7qpkokdg/scheduler.cid\",\n            \"LogConfig\": {\n                \"Type\": \"local\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"bridge\",\n            \"PortBindings\": {\n                \"50006/tcp\": [\n                    {\n                        \"HostIp\": \"127.0.0.1\",\n                        \"HostPort\": \"33223\"\n                    }\n                ]\n            },\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": true,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": null,\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [],\n        \"Config\": {\n            \"Hostname\": \"7309111fb94e\",\n            \"Domainname\": \"\",\n            \"User\": \"65532:65532\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": false,\n            \"AttachStderr\": false,\n            \"ExposedPorts\": {\n                \"50006/tcp\": {}\n            },\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"Cmd\": [\n                \"--etcd-data-dir=/tmp/bounded-etcd\",\n                \"--override-broadcast-host-port=127.0.0.1:33223\",\n                \"--etcd-client-listen-address=0.0.0.0\"\n            ],\n            \"Image\": \"daprio/dapr:1.18.7\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/\",\n            \"Entrypoint\": [\n                \"./scheduler\"\n            ],\n            \"Labels\": {\n                \"desktop.docker.io/wsl-distro\": \"Ubuntu-26.04\",\n                \"hexalith.qualification.run-id\": \"admission-0886a028fa17\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"912c93e2e513464ff6cd38b8342488141872b07b2e378e7fb0bc63553e04e5f4\",\n            \"SandboxKey\": \"/var/run/docker/netns/912c93e2e513\",\n            \"Ports\": {\n                \"50006/tcp\": [\n                    {\n                        \"HostIp\": \"127.0.0.1\",\n                        \"HostPort\": \"33223\"\n                    }\n                ]\n            },\n            \"Networks\": {\n                \"bridge\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"87046c04e8257b834d3574646fc0c5ebf1927a756fbb6317f05adf1dc0fbcf8a\",\n                    \"EndpointID\": \"73b7ce9426774edcfe3f045b181fbb795acbf06b80a756a632057e6d4920238b\",\n                    \"Gateway\": \"172.17.0.1\",\n                    \"IPAddress\": \"172.17.0.8\",\n                    \"MacAddress\": \"72:3e:11:b7:70:1a\",\n                    \"IPPrefixLen\": 16,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.v2+json\",\n            \"digest\": \"sha256:279111415bbbbe73725dc5ec6d2c4db1e484c4224510c126d6077bad3c43269c\",\n            \"size\": 3235,\n            \"platform\": {\n                \"architecture\": \"amd64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.45925706200068817,
+    "stdout": "7309111fb94eebed9938926bc1ffedfab83d2d1bc5e0827b0e56d8942db39bff\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "container",
+      "ls",
+      "--all",
+      "--no-trunc",
+      "--filter",
+      "name=^/admission-0886a028fa17-scheduler$",
+      "--format",
+      "{{.ID}}"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.029579979018308222,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "admission-0886a028fa17-placement"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.029625260998727754,
+    "stdout": "[\n    {\n        \"Id\": \"1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8\",\n        \"Created\": \"2026-10-22T18:32:24.712207488Z\",\n        \"Path\": \"./placement\",\n        \"Args\": [\n            \"--port\",\n            \"50005\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 170315,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-22T18:32:24.854276444Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8/hosts\",\n        \"LogPath\": \"\",\n        \"Name\": \"/admission-0886a028fa17-placement\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": null,\n            \"ContainerIDFile\": \"/tmp/eventstore-actor-admission-7qpkokdg/placement.cid\",\n            \"LogConfig\": {\n                \"Type\": \"local\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"bridge\",\n            \"PortBindings\": {\n                \"50005/tcp\": [\n                    {\n                        \"HostIp\": \"127.0.0.1\",\n                        \"HostPort\": \"\"\n                    }\n                ]\n            },\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": true,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": null,\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [],\n        \"Config\": {\n            \"Hostname\": \"1960e35a021f\",\n            \"Domainname\": \"\",\n            \"User\": \"65532:65532\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": false,\n            \"AttachStderr\": false,\n            \"ExposedPorts\": {\n                \"50005/tcp\": {}\n            },\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"Cmd\": [\n                \"--port\",\n                \"50005\"\n            ],\n            \"Image\": \"daprio/dapr:1.18.7\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/\",\n            \"Entrypoint\": [\n                \"./placement\"\n            ],\n            \"Labels\": {\n                \"desktop.docker.io/wsl-distro\": \"Ubuntu-26.04\",\n                \"hexalith.qualification.run-id\": \"admission-0886a028fa17\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"7410f5196b6936955ed55b8ea2670a0e4b59bbfd796866bdcd67d65eb9d4ed7b\",\n            \"SandboxKey\": \"/var/run/docker/netns/7410f5196b69\",\n            \"Ports\": {\n                \"50005/tcp\": [\n                    {\n                        \"HostIp\": \"127.0.0.1\",\n                        \"HostPort\": \"65480\"\n                    }\n                ]\n            },\n            \"Networks\": {\n                \"bridge\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"87046c04e8257b834d3574646fc0c5ebf1927a756fbb6317f05adf1dc0fbcf8a\",\n                    \"EndpointID\": \"579ac19cd785c604f71e33fd591b232793b9c3c879259ec73b643bb84db7edcd\",\n                    \"Gateway\": \"172.17.0.1\",\n                    \"IPAddress\": \"172.17.0.7\",\n                    \"MacAddress\": \"d6:52:5f:6b:1f:cb\",\n                    \"IPPrefixLen\": 16,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.v2+json\",\n            \"digest\": \"sha256:279111415bbbbe73725dc5ec6d2c4db1e484c4224510c126d6077bad3c43269c\",\n            \"size\": 3235,\n            \"platform\": {\n                \"architecture\": \"amd64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.5594788079906721,
+    "stdout": "1960e35a021fedc00bc992993ca45f33f02595a64e6d86178277ae272dd240d8\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "container",
+      "ls",
+      "--all",
+      "--no-trunc",
+      "--filter",
+      "name=^/admission-0886a028fa17-placement$",
+      "--format",
+      "{{.ID}}"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.030730664992006496,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "admission-0886a028fa17-redis"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.029915225983131677,
+    "stdout": "[\n    {\n        \"Id\": \"1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a\",\n        \"Created\": \"2026-10-22T18:32:24.073097671Z\",\n        \"Path\": \"docker-entrypoint.sh\",\n        \"Args\": [\n            \"redis-server\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 170249,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-22T18:32:24.289589327Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a/hosts\",\n        \"LogPath\": \"\",\n        \"Name\": \"/admission-0886a028fa17-redis\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": null,\n            \"ContainerIDFile\": \"/tmp/eventstore-actor-admission-7qpkokdg/redis.cid\",\n            \"LogConfig\": {\n                \"Type\": \"local\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"bridge\",\n            \"PortBindings\": {\n                \"6379/tcp\": [\n                    {\n                        \"HostIp\": \"127.0.0.1\",\n                        \"HostPort\": \"\"\n                    }\n                ]\n            },\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": true,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": null,\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"volume\",\n                \"Name\": \"914c50cb0d330664ae6fae80618c672b317d7e80ecfed91a62ffbd91f4801ad8\",\n                \"Source\": \"/var/lib/docker/volumes/914c50cb0d330664ae6fae80618c672b317d7e80ecfed91a62ffbd91f4801ad8/_data\",\n                \"Destination\": \"/data\",\n                \"Driver\": \"local\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"1c3f0b9d67c5\",\n            \"Domainname\": \"\",\n            \"User\": \"\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": false,\n            \"AttachStderr\": false,\n            \"ExposedPorts\": {\n                \"6379/tcp\": {}\n            },\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"REDIS_VERSION=7.4.11\"\n            ],\n            \"Cmd\": [\n                \"redis-server\"\n            ],\n            \"Image\": \"redis:7-alpine\",\n            \"Volumes\": {\n                \"/data\": {}\n            },\n            \"WorkingDir\": \"/data\",\n            \"Entrypoint\": [\n                \"docker-entrypoint.sh\"\n            ],\n            \"Labels\": {\n                \"desktop.docker.io/wsl-distro\": \"Ubuntu-26.04\",\n                \"hexalith.qualification.run-id\": \"admission-0886a028fa17\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"7de388913a15baa256b5c22906d1bf2a1e26c25e5573abc1486dc3af0a73710f\",\n            \"SandboxKey\": \"/var/run/docker/netns/7de388913a15\",\n            \"Ports\": {\n                \"6379/tcp\": [\n                    {\n                        \"HostIp\": \"127.0.0.1\",\n                        \"HostPort\": \"65479\"\n                    }\n                ]\n            },\n            \"Networks\": {\n                \"bridge\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"87046c04e8257b834d3574646fc0c5ebf1927a756fbb6317f05adf1dc0fbcf8a\",\n                    \"EndpointID\": \"418eb0ac75d40780177335b6cbbe98db699e97cb7ab1ab395e7e47cd62500e31\",\n                    \"Gateway\": \"172.17.0.1\",\n                    \"IPAddress\": \"172.17.0.6\",\n                    \"MacAddress\": \"02:9d:a5:bc:9f:08\",\n                    \"IPPrefixLen\": 16,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n            \"digest\": \"sha256:8be847644e195abc4c10c8d9936cfa45332eccc6b714fa7b186ff43f1f4d5579\",\n            \"size\": 2288,\n            \"annotations\": {\n                \"com.docker.official-images.bashbrew.arch\": \"amd64\",\n                \"org.opencontainers.image.base.digest\": \"sha256:f765c92e59538d44c6946f8073bdbffd2e8d5916981161faed1b30aa0ef0c2c5\",\n                \"org.opencontainers.image.base.name\": \"alpine:3.21\",\n                \"org.opencontainers.image.created\": \"2026-10-21T21:13:28Z\",\n                \"org.opencontainers.image.revision\": \"74654c612ee06275377d483dc4e134e57b463e9e\",\n                \"org.opencontainers.image.source\": \"https://github.com/redis/docker-library-redis.git#74654c612ee06275377d483dc4e134e57b463e9e:alpine\",\n                \"org.opencontainers.image.url\": \"https://hub.docker.com/_/redis\",\n                \"org.opencontainers.image.version\": \"7.4.11-alpine\"\n            },\n            \"platform\": {\n                \"architecture\": \"amd64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.5022065099910833,
+    "stdout": "1c3f0b9d67c599d96d4084ad458b7618615a40af6b4dc630c55d57949f90e94a\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "container",
+      "ls",
+      "--all",
+      "--no-trunc",
+      "--filter",
+      "name=^/admission-0886a028fa17-redis$",
+      "--format",
+      "{{.ID}}"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.03589410602580756,
+    "stdout": "",
+    "stderr": ""
+  }
+]

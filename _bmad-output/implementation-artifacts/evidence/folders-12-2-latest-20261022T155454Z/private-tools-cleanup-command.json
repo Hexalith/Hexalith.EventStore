@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/cleanup-private-tools.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T18:12:53.877689+00:00",
+  "environment_overrides": {},
+  "runner_pid": 2295806,
+  "pid": 2295810,
+  "exit_code": 0,
+  "elapsed_seconds": 0.12472285400144756,
+  "utc_end": "2026-10-22T18:12:54.002809+00:00"
+}

@@ -1,0 +1,504 @@
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs
+index ba8947a8a..4b25c50dd 100644
+--- a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs
+@@ -1,4 +1,5 @@
+ using System.Buffers.Binary;
++using System.Diagnostics;
+ using System.IO.Compression;
+ using System.Reflection;
+ using System.Reflection.Metadata;
+@@ -43,14 +44,9 @@ internal static class ProjectionBoundedIdentityRuntimeProof
+                 string path = metadata.GetString(document.Name);
+                 // SDK-generated sources are separately bound by their containing PE/PDB.
+                 if (!path.Contains("/src/", StringComparison.Ordinal) && !path.Contains("/tests/", StringComparison.Ordinal)) continue;
+-                byte[] bytes = ReadDocumentSource(metadata, handle, path), expected = metadata.GetBlobBytes(document.Hash);
+-                Guid algorithm = metadata.GetGuid(document.HashAlgorithm);
+-                byte[] actual = algorithm == new Guid("8829d00f-11b8-4213-878b-770e8597ac16") ? SHA256.HashData(bytes)
+-                    : algorithm == new Guid("ff1816ec-aa5e-4d10-87f7-6f4963833460") ? SHA1.HashData(bytes)
+-                    : throw new InvalidOperationException("Unsupported PDB source hash algorithm.");
+-                if (!actual.AsSpan().SequenceEqual(expected)) throw new InvalidOperationException("Runtime PDB source differs: " + path);
++                byte[] bytes = ReadValidatedDocumentSource(metadata, handle, path), expected = metadata.GetBlobBytes(document.Hash);
+                 string sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
+-                bool generated = path.Contains("/obj/", StringComparison.Ordinal);
++                bool generated = IsGeneratedPath(path);
+                 if (generated && Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_GENERATED_SOURCE_DIR") is { } captureDirectory)
+                 {
+                     Directory.CreateDirectory(captureDirectory);
+@@ -65,12 +61,61 @@ internal static class ProjectionBoundedIdentityRuntimeProof
+                 ["pdbSha256"] = Convert.ToHexString(SHA256.HashData(stream)), ["loadedMvid"] = assembly.ManifestModule.ModuleVersionId.ToString(),
+                 ["peMvid"] = peMvid.ToString(), ["loadedMvidMatchesPe"] = true, ["documents"] = documents });
+         }
++        ObserveExternalMappings(result);
+         return result;
+     }
+ 
+-    private static byte[] ReadDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
++    /// <summary>Keeps the loaded worker alive while a separate process authenticates its actual OS mappings.</summary>
++    private static void ObserveExternalMappings(JsonArray runtime)
+     {
+-        if (File.Exists(path)) return File.ReadAllBytes(path);
++        string? observer = Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_MAP_OBSERVER");
++        string? directory = Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_MAP_DIR");
++        if (observer is null && directory is null) return;
++        if (!OperatingSystem.IsLinux() || observer is null || directory is null
++            || !Path.IsPathFullyQualified(observer) || !Path.IsPathFullyQualified(directory) || !File.Exists(observer))
++            throw new InvalidOperationException("The external module observer requires Linux and absolute observer/evidence paths.");
++        string stat = File.ReadAllText($"/proc/{Environment.ProcessId}/stat");
++        string startTicks = stat[(stat.LastIndexOf(')') + 1)..].Split(' ', StringSplitOptions.RemoveEmptyEntries)[19];
++        var modules = new JsonArray();
++        foreach (var module in runtime)
++        {
++            var item = new JsonObject();
++            foreach (string key in new[] { "name", "pe", "pdb", "peSha256", "pdbSha256", "loadedMvid" })
++                item[key] = module![key]!.DeepClone();
++            modules.Add(item);
++        }
++        var request = new JsonObject { ["pid"] = Environment.ProcessId, ["start_ticks"] = startTicks, ["modules"] = modules };
++        var start = new ProcessStartInfo("python3") { UseShellExecute = false, RedirectStandardInput = true };
++        start.ArgumentList.Add(observer);
++        start.ArgumentList.Add("--output");
++        start.ArgumentList.Add(directory);
++        using var process = Process.Start(start) ?? throw new InvalidOperationException("The external module observer did not start.");
++        process.StandardInput.Write(request.ToJsonString());
++        process.StandardInput.Close();
++        // The existing parent phase watchdog owns the deadline and process-tree cancellation.
++        process.WaitForExit();
++        if (process.ExitCode != 0)
++            throw new InvalidOperationException("The external module observer rejected the worker mappings; retained receipt: " + directory);
++    }
++
++    /// <summary>Reads the selected source and enforces the unchanged portable PDB document checksum.</summary>
++    internal static byte[] ReadValidatedDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
++    {
++        byte[] bytes = ReadDocumentSource(metadata, handle, path);
++        var document = metadata.GetDocument(handle);
++        byte[] expected = metadata.GetBlobBytes(document.Hash);
++        Guid algorithm = metadata.GetGuid(document.HashAlgorithm);
++        byte[] actual = algorithm == new Guid("8829d00f-11b8-4213-878b-770e8597ac16") ? SHA256.HashData(bytes)
++            : algorithm == new Guid("ff1816ec-aa5e-4d10-87f7-6f4963833460") ? SHA1.HashData(bytes)
++            : throw new InvalidOperationException("Unsupported PDB source hash algorithm.");
++        if (!actual.AsSpan().SequenceEqual(expected)) throw new InvalidOperationException("Runtime PDB source differs: " + path);
++        return bytes;
++    }
++
++    /// <summary>Prefers authenticated embedded generated source while retaining current ordinary source authority.</summary>
++    internal static byte[] ReadDocumentSource(MetadataReader metadata, DocumentHandle handle, string path)
++    {
++        if (!IsGeneratedPath(path) && File.Exists(path)) return File.ReadAllBytes(path);
+         foreach (var debugHandle in metadata.GetCustomDebugInformation(handle))
+         {
+             var debug = metadata.GetCustomDebugInformation(debugHandle);
+@@ -87,6 +132,11 @@ internal static class ProjectionBoundedIdentityRuntimeProof
+             if (inflater.ReadByte() != -1) throw new InvalidOperationException("Embedded PDB source length differs from its header.");
+             return source;
+         }
++        if (File.Exists(path)) return File.ReadAllBytes(path);
+         throw new InvalidOperationException("Runtime PDB source is unavailable and is not embedded: " + path);
+     }
++
++    /// <summary>Recognizes generated paths by complete build-output directory segments on either platform.</summary>
++    private static bool IsGeneratedPath(string path)
++        => path.Replace('\\', '/').Split('/').Any(segment => segment is "obj" or "bin");
+ }
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs
+index 37798b7a1..e8e26617d 100644
+--- a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs
+@@ -1,4 +1,6 @@
++using System.Reflection.Metadata;
+ using System.Text.Json;
++using Hexalith.EventStore.Client.Projections;
+ using Shouldly;
+ 
+ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
+@@ -19,4 +21,43 @@ public sealed class ProjectionBoundedIdentityRuntimeProofTests
+         if (Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_PREFLIGHT_EVIDENCE") is { } path)
+             File.WriteAllText(path, proof.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+     }
++
++    [Theory]
++    [InlineData("obj", true)]
++    [InlineData("ordinary", false)]
++    public void EmbeddedGeneratedSourceAndCurrentOrdinarySourceKeepTheirAuthority(string segment, bool generated)
++    {
++        string pdb = Path.ChangeExtension(typeof(SharedProjectionEpochCoordinator).Assembly.Location, ".pdb");
++        using var stream = File.OpenRead(pdb);
++        using var provider = MetadataReaderProvider.FromPortablePdbStream(stream);
++        var metadata = provider.GetMetadataReader();
++        Guid embeddedSourceKind = new("0e8a571b-6926-466e-b4ad-8ab04611f5fe");
++        DocumentHandle handle = metadata.Documents.First(candidate =>
++            metadata.GetString(metadata.GetDocument(candidate).Name).Replace('\\', '/').Split('/').Contains("obj")
++            && metadata.GetCustomDebugInformation(candidate).Any(debugHandle =>
++                metadata.GetGuid(metadata.GetCustomDebugInformation(debugHandle).Kind) == embeddedSourceKind));
++        string directory = Directory.CreateTempSubdirectory("bounded-runtime-source-").FullName;
++        try
++        {
++            byte[] embedded = ProjectionBoundedIdentityRuntimeProof.ReadValidatedDocumentSource(metadata, handle,
++                Path.Combine(directory, "obj", "absent.cs"));
++            byte[] changed = "// isolated disk bytes differ from the compiled generated source\n"u8.ToArray();
++            changed.AsSpan().SequenceEqual(embedded).ShouldBeFalse();
++            string path = Path.Combine(directory, segment, "file.cs");
++            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
++            File.WriteAllBytes(path, changed);
++            byte[] selected = ProjectionBoundedIdentityRuntimeProof.ReadDocumentSource(metadata, handle, path);
++            selected.ShouldBe(generated ? embedded : changed);
++            if (generated)
++                ProjectionBoundedIdentityRuntimeProof.ReadValidatedDocumentSource(metadata, handle, path).ShouldBe(embedded);
++            else
++                Should.Throw<InvalidOperationException>(() =>
++                    ProjectionBoundedIdentityRuntimeProof.ReadValidatedDocumentSource(metadata, handle, path))
++                    .Message.ShouldBe("Runtime PDB source differs: " + path);
++        }
++        finally
++        {
++            Directory.Delete(directory, recursive: true);
++        }
++    }
+ }
+diff --git a/tools/bounded_worker_observer.py b/tools/bounded_worker_observer.py
+new file mode 100644
+index 000000000..cc6848a7f
+--- /dev/null
++++ b/tools/bounded_worker_observer.py
+@@ -0,0 +1,192 @@
++#!/usr/bin/env python3
++"""Authenticate a waiting bounded worker's existing Linux module mappings.
++
++The worker starts this child only after loading and hashing its four assemblies,
++then waits under its unchanged outer phase watchdog. This observer never loads or
++maps a target DLL. Its receipt binds real /proc mappings to open-file device/inode
++identities and hashes, while retaining failures as well as successes.
++"""
++import argparse
++import base64
++from datetime import datetime, timezone
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import stat
++import sys
++
++REQUIRED = frozenset({
++    "Hexalith.EventStore.Client", "Hexalith.EventStore.DomainService",
++    "Hexalith.EventStore.Server", "Hexalith.EventStore.Server.LiveSidecar.Tests",
++})
++
++
++def digest(stream):
++    return hashlib.file_digest(stream, "sha256").hexdigest()
++
++
++def start_ticks(pid):
++    return (Path("/proc") / str(pid) / "stat").read_text().rsplit(")", 1)[1].split()[19]
++
++
++def mapping_rows(raw):
++    rows = []
++    for line in raw.splitlines():
++        fields = line.split(None, 5)
++        if len(fields) != 6 or not fields[5].startswith("/"):
++            continue
++        major, minor = fields[3].split(":")
++        rows.append({"raw": line, "address": fields[0], "permissions": fields[1],
++                     "offset": fields[2], "device_major": int(major, 16),
++                     "device_minor": int(minor, 16), "inode": int(fields[4]),
++                     "path": re.sub(r"\\([0-7]{3})", lambda value: chr(int(value[1], 8)), fields[5])})
++    return rows
++
++
++def regular_file(path):
++    """Open the claimed path without accepting a final-component symlink."""
++    descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
++    stream = os.fdopen(descriptor, "rb")
++    if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
++        stream.close()
++        raise ValueError("Not a regular file: " + str(path))
++    return stream
++
++
++def file_identity(info):
++    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
++
++
++def authenticate_image(pe, pdb, rows, expected=None):
++    """Bind image bytes to mappings of that same open regular file, not its pathname alone."""
++    if expected is not None:
++        for key in ("peSha256", "pdbSha256"):
++            value = expected[key]
++            if not isinstance(value, str) or re.fullmatch(r"[0-9a-fA-F]{64}", value) is None:
++                raise ValueError("Expected " + key + " must be a string of exactly 64 hexadecimal characters.")
++    pe, pdb = Path(pe), Path(pdb)
++    if not pe.is_absolute() or not pdb.is_absolute():
++        raise ValueError("Module paths must be absolute.")
++    with regular_file(pe) as stream:
++        before = os.fstat(stream.fileno())
++        matches = [row for row in rows if row["inode"] == before.st_ino
++                   and row["device_major"] == os.major(before.st_dev)
++                   and row["device_minor"] == os.minor(before.st_dev)
++                   and not row["path"].endswith(" (deleted)")]
++        if not matches:
++            raise ValueError("Required image has no actual device/inode mapping: " + str(pe))
++        pe_hash = digest(stream)
++        if file_identity(before) != file_identity(os.fstat(stream.fileno())):
++            raise ValueError("Mapped PE changed during observation: " + str(pe))
++    with regular_file(pdb) as stream:
++        pdb_before = os.fstat(stream.fileno())
++        pdb_hash = digest(stream)
++        if file_identity(pdb_before) != file_identity(os.fstat(stream.fileno())):
++            raise ValueError("PDB changed during observation: " + str(pdb))
++    if expected is not None:
++        if pe_hash != expected["peSha256"].lower():
++            raise ValueError("Mapped PE hash mismatch: " + str(pe))
++        if pdb_hash != expected["pdbSha256"].lower():
++            raise ValueError("Mapped PDB hash mismatch: " + str(pdb))
++    return {"path": str(pe), "pdb": str(pdb), "dll_sha256": pe_hash,
++            "pdb_sha256": pdb_hash, "device_major": os.major(before.st_dev),
++            "device_minor": os.minor(before.st_dev), "inode": before.st_ino,
++            "mapping_rows": matches, "loaded_mvid": expected["loadedMvid"] if expected else None}
++
++
++def observe(request, parent_pid, required=REQUIRED):
++    """Read-only observation; a failed identity or missing image always rejects the receipt."""
++    result = {"schema": "bounded-worker-os-maps-v1", "passed": False,
++              "observed_at_utc": datetime.now(timezone.utc).isoformat(),
++              "observer_pid": os.getpid(), "observer_start_ticks": start_ticks(os.getpid()),
++              "observer_script": str(Path(__file__).resolve()),
++              "observer_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
++              "pid": parent_pid, "start_ticks": None, "request": request,
++              "images": [], "errors": []}
++    try:
++        before = start_ticks(parent_pid)
++        result["start_ticks"] = before
++        if os.getppid() != parent_pid or request["pid"] != parent_pid or request["start_ticks"] != before:
++            raise ValueError("Worker PID/start identity does not match the observer's living parent.")
++        proc = Path("/proc") / str(parent_pid)
++        cmdline = (proc / "cmdline").read_bytes()
++        result["argv"] = [part.decode("utf-8", errors="backslashreplace") for part in cmdline.rstrip(b"\0").split(b"\0")]
++        result["cmdline_base64"] = base64.b64encode(cmdline).decode("ascii")
++        result["exe"] = os.readlink(proc / "exe")
++        with (proc / "exe").open("rb") as stream:
++            result["exe_sha256"] = digest(stream)
++        result["raw_maps"] = (proc / "maps").read_text()
++        rows = mapping_rows(result["raw_maps"])
++        modules = request["modules"]
++        if len(modules) != len(required) or {item["name"] for item in modules} != required:
++            raise ValueError("Expected the exact required module inventory.")
++        for module in modules:
++            try:
++                if Path(module["pe"]).stem != module["name"]:
++                    raise ValueError("Module name disagrees with its image path: " + module["name"])
++                image = authenticate_image(module["pe"], module["pdb"], rows, module)
++                result["images"].append({"pid": parent_pid, "start_ticks": before, **image})
++            except (OSError, ValueError, KeyError, TypeError) as error:
++                result["errors"].append(str(error))
++        recorded = {(row["device_major"], row["device_minor"], row["inode"]) for row in result["images"]}
++        for row in rows:
++            identity = (row["device_major"], row["device_minor"], row["inode"])
++            deleted = row["path"].endswith(" (deleted)")
++            path = Path(row["path"].removesuffix(" (deleted)") if deleted else row["path"])
++            if not path.name.startswith("Hexalith.") or path.suffix != ".dll":
++                continue
++            if deleted:
++                result.setdefault("deleted_sdk_mapping_rows", []).append(row)
++                result["errors"].append("Deleted first-party image mapping cannot be authenticated: " + row["path"])
++                continue
++            if identity in recorded:
++                continue
++            recorded.add(identity)
++            try:
++                image = authenticate_image(path, path.with_suffix(".pdb"), rows)
++                result["images"].append({"pid": parent_pid, "start_ticks": before, **image})
++            except (OSError, ValueError) as error:
++                result["errors"].append(str(error))
++        after = start_ticks(parent_pid)
++        result["start_ticks_after"] = after
++        if before != after or os.getppid() != parent_pid:
++            result["errors"].append("Worker PID/start identity changed during observation.")
++        result["passed"] = not result["errors"]
++    except (OSError, ValueError, KeyError, IndexError, TypeError) as error:
++        result["errors"].append(str(error))
++    return result
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--output", type=Path, required=True)
++    args = parser.parse_args()
++    if not args.output.is_absolute():
++        parser.error("--output must be absolute")
++    parent_pid = os.getppid()
++    try:
++        request = json.load(sys.stdin)
++    except (ValueError, OSError) as error:
++        request = {"invalid_request": str(error)}
++    result = observe(request, parent_pid)
++    args.output.mkdir(parents=True, exist_ok=True)
++    receipt = args.output / (str(parent_pid) + "-" + str(result["start_ticks"]) + ".json")
++    try:
++        with receipt.open("x") as stream:
++            json.dump(result, stream, indent=2)
++            stream.write("\n")
++    except FileExistsError:
++        result["passed"] = False
++        result["errors"].append("An earlier receipt already exists; it was preserved.")
++        receipt = args.output / (str(parent_pid) + "-" + str(result["start_ticks"]) + "-rejected-" + str(os.getpid()) + ".json")
++        with receipt.open("x") as stream:
++            json.dump(result, stream, indent=2)
++            stream.write("\n")
++    print(json.dumps({"passed": result["passed"], "receipt": str(receipt), "errors": result["errors"]}))
++    return 0 if result["passed"] else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tools/tests/test_bounded_worker_observer.py b/tools/tests/test_bounded_worker_observer.py
+new file mode 100644
+index 000000000..cd436cdb6
+--- /dev/null
++++ b/tools/tests/test_bounded_worker_observer.py
+@@ -0,0 +1,142 @@
++"""Exercise real /proc mappings and failure retention without Dapr or synthetic DLL mappings."""
++import hashlib
++import importlib.util
++import json
++import os
++from pathlib import Path
++import shutil
++import subprocess
++import sys
++import tempfile
++import unittest
++from unittest.mock import patch
++
++SCRIPT = Path(__file__).resolve().parents[1] / "bounded_worker_observer.py"
++SPEC = importlib.util.spec_from_file_location("bounded_worker_observer", SCRIPT)
++OBSERVER = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(OBSERVER)
++
++
++@unittest.skipUnless(sys.platform == "linux", "Linux /proc is the observation authority.")
++class BoundedWorkerObserverTests(unittest.TestCase):
++    def setUp(self):
++        self.temporary = tempfile.TemporaryDirectory()
++        self.directory = Path(self.temporary.name)
++        self.pe = Path(os.readlink("/proc/self/exe"))
++        self.pdb = self.directory / "native-symbol-fixture.pdb"
++        self.pdb.write_bytes(b"test symbol bytes")
++        self.rows = OBSERVER.mapping_rows(Path("/proc/self/maps").read_text())
++        self.expected = {"peSha256": hashlib.sha256(self.pe.read_bytes()).hexdigest(),
++                         "pdbSha256": hashlib.sha256(self.pdb.read_bytes()).hexdigest(),
++                         "loadedMvid": "fixture-native-image"}
++
++    def tearDown(self):
++        self.temporary.cleanup()
++
++    def test_real_existing_native_mapping_is_authenticated_without_creating_a_mapping(self):
++        result = OBSERVER.authenticate_image(self.pe, self.pdb, self.rows, self.expected)
++        self.assertTrue(result["mapping_rows"])
++        self.assertEqual(os.stat(self.pe).st_ino, result["inode"])
++        self.assertEqual(self.expected["peSha256"], result["dll_sha256"])
++
++    def test_identical_bytes_at_different_inode_do_not_establish_actual_mapping(self):
++        copy = self.directory / self.pe.name
++        shutil.copyfile(self.pe, copy)
++        with self.assertRaisesRegex(ValueError, "no actual device/inode mapping"):
++            OBSERVER.authenticate_image(copy, self.pdb, self.rows, self.expected)
++
++    def test_pe_hash_mismatch_rejects_real_mapping(self):
++        with self.assertRaisesRegex(ValueError, "PE hash mismatch"):
++            OBSERVER.authenticate_image(self.pe, self.pdb, self.rows, {**self.expected, "peSha256": "0" * 64})
++
++    def test_pdb_hash_mismatch_rejects_real_mapping(self):
++        with self.assertRaisesRegex(ValueError, "PDB hash mismatch"):
++            OBSERVER.authenticate_image(self.pe, self.pdb, self.rows, {**self.expected, "pdbSha256": "0" * 64})
++
++    def test_final_component_symlink_is_rejected(self):
++        link = self.directory / "linked-image"
++        link.symlink_to(self.pe)
++        with self.assertRaises(OSError):
++            OBSERVER.authenticate_image(link, self.pdb, self.rows, self.expected)
++
++    def test_stale_worker_start_identity_fails_closed(self):
++        request = {"pid": os.getpid(), "start_ticks": "stale", "modules": []}
++        with patch.object(OBSERVER.os, "getppid", return_value=os.getpid()):
++            result = OBSERVER.observe(request, os.getpid())
++        self.assertFalse(result["passed"])
++        self.assertIn("PID/start identity", result["errors"][0])
++
++    def test_observer_retains_missing_module_failure_and_raw_maps(self):
++        modules = []
++        for name in sorted(OBSERVER.REQUIRED):
++            pe = self.directory / (name + ".dll")
++            pe.write_bytes(b"unmapped fixture bytes")
++            modules.append({"name": name, "pe": str(pe), "pdb": str(self.pdb),
++                            "peSha256": hashlib.sha256(pe.read_bytes()).hexdigest(),
++                            "pdbSha256": self.expected["pdbSha256"], "loadedMvid": "fixture"})
++        request = {"pid": os.getpid(), "start_ticks": OBSERVER.start_ticks(os.getpid()), "modules": modules}
++        output = self.directory / "receipts"
++        result = subprocess.run([sys.executable, str(SCRIPT), "--output", str(output)],
++                                input=json.dumps(request), text=True, capture_output=True, check=False)
++        self.assertEqual(1, result.returncode, result.stdout + result.stderr)
++        receipt = json.loads(next(output.glob("*.json")).read_text())
++        self.assertFalse(receipt["passed"])
++        self.assertEqual(4, len(receipt["errors"]))
++        self.assertTrue(all("no actual device/inode mapping" in error for error in receipt["errors"]))
++        self.assertIn(str(self.pe), receipt["raw_maps"])
++        self.assertEqual(request["start_ticks"], receipt["start_ticks_after"])
++        self.assertTrue(receipt["exe_sha256"])
++        self.assertEqual(os.getpid(), receipt["pid"])
++
++    def test_invalid_expected_hashes_retain_rejection_receipts_for_real_mapped_image(self):
++        # Change only the test inventory to the already mapped native executable;
++        # the observer still reads the real living parent and writes its own receipt.
++        wrapper = self.directory / "native-observer.py"
++        wrapper.write_text(
++            "import functools,importlib.util,sys\n"
++            f"s=importlib.util.spec_from_file_location('observer',{str(SCRIPT)!r})\n"
++            "m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\n"
++            f"m.observe=functools.partial(m.observe,required={{{self.pe.stem!r}}})\n"
++            "raise SystemExit(m.main())\n")
++        module = {"name": self.pe.stem, "pe": str(self.pe), "pdb": str(self.pdb), **self.expected}
++        for key in ("peSha256", "pdbSha256"):
++            for index, invalid in enumerate((None, 7, "a" * 63, "a" * 65, "z" * 64)):
++                with self.subTest(key=key, value=invalid):
++                    request = {"pid": os.getpid(), "start_ticks": OBSERVER.start_ticks(os.getpid()),
++                               "modules": [{**module, key: invalid}]}
++                    output = self.directory / (key + "-" + str(index))
++                    result = subprocess.run([sys.executable, str(wrapper), "--output", str(output)],
++                                            input=json.dumps(request), text=True, capture_output=True, check=False)
++                    self.assertEqual(1, result.returncode, result.stdout + result.stderr)
++                    receipt = json.loads(next(output.glob("*.json")).read_text())
++                    self.assertFalse(receipt["passed"])
++                    self.assertEqual(["Expected " + key + " must be a string of exactly 64 hexadecimal characters."], receipt["errors"])
++                    self.assertIn(str(self.pe), receipt["raw_maps"])
++                    self.assertEqual(request["start_ticks"], receipt["start_ticks_after"])
++                    self.assertEqual(invalid, receipt["request"]["modules"][0][key])
++
++    def test_deleted_extra_sdk_mapping_fails_closed_and_retains_raw_mapping_row(self):
++        raw = "1000-2000 r--p 00000000 00:01 42 /retired/Hexalith.Unexpected.dll (deleted)"
++        deleted = OBSERVER.mapping_rows(raw)[0]
++        module = {"name": self.pe.stem, "pe": str(self.pe), "pdb": str(self.pdb), **self.expected}
++        request = {"pid": os.getpid(), "start_ticks": OBSERVER.start_ticks(os.getpid()), "modules": [module]}
++        with patch.object(OBSERVER.os, "getppid", return_value=os.getpid()), \
++                patch.object(OBSERVER, "mapping_rows", return_value=self.rows + [deleted]):
++            receipt = OBSERVER.observe(request, os.getpid(), required={self.pe.stem})
++        self.assertFalse(receipt["passed"])
++        self.assertEqual([deleted], receipt["deleted_sdk_mapping_rows"])
++        self.assertEqual(raw, receipt["deleted_sdk_mapping_rows"][0]["raw"])
++        self.assertIn("Deleted first-party image mapping", receipt["errors"][0])
++        self.assertEqual(1, len(receipt["images"]))
++        self.assertEqual(self.expected["peSha256"], receipt["images"][0]["dll_sha256"])
++
++    def test_malformed_request_retains_a_rejection_receipt(self):
++        output = self.directory / "malformed"
++        result = subprocess.run([sys.executable, str(SCRIPT), "--output", str(output)],
++                                input="{", text=True, capture_output=True, check=False)
++        self.assertEqual(1, result.returncode)
++        self.assertFalse(json.loads(next(output.glob("*.json")).read_text())["passed"])
++
++
++if __name__ == "__main__":
++    unittest.main()

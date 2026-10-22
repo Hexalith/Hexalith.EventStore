@@ -1,0 +1,72 @@
+{
+  "passed": true,
+  "utc": "2026-10-22T18:18:45.549534+00:00",
+  "processes": [
+    {
+      "label": "server-full",
+      "command_receipt": "server-full-command.json",
+      "pid": 43894,
+      "expected_identity": {
+        "start_ticks": "12347771",
+        "receipt": "server-active-observation.json"
+      },
+      "current_start_ticks": null,
+      "absent": true,
+      "exit_code": -15,
+      "identity_scope": "PID/start ticks plus completed child receipt"
+    },
+    {
+      "label": "guardfix-server-full",
+      "command_receipt": "guardfix-server-full-command.json",
+      "pid": 738567,
+      "expected_identity": null,
+      "current_start_ticks": null,
+      "absent": true,
+      "exit_code": 1,
+      "identity_scope": "Completed child receipt and PID absence; start ticks were not captured"
+    },
+    {
+      "label": "guardtight-server-full",
+      "command_receipt": "guardtight-server-full-command.json",
+      "pid": 1227829,
+      "expected_identity": {
+        "start_ticks": "12858701",
+        "receipt": "guard-server-process-identities.json"
+      },
+      "current_start_ticks": null,
+      "absent": true,
+      "exit_code": 1,
+      "identity_scope": "PID/start ticks plus completed child receipt"
+    },
+    {
+      "label": "guardfixtures-server-full",
+      "command_receipt": "guardfixtures-server-full-command.json",
+      "pid": 1502069,
+      "expected_identity": {
+        "start_ticks": "12932978",
+        "receipt": "final-server-process-identity.json"
+      },
+      "current_start_ticks": null,
+      "absent": true,
+      "exit_code": 1,
+      "identity_scope": "PID/start ticks plus completed child receipt"
+    },
+    {
+      "label": "guardfinal-server-full",
+      "command_receipt": "guardfinal-server-full-command.json",
+      "pid": 1755280,
+      "expected_identity": {
+        "start_ticks": "12992591",
+        "receipt": "selected-final-server-process-identity.json"
+      },
+      "current_start_ticks": null,
+      "absent": true,
+      "exit_code": 1,
+      "identity_scope": "PID/start ticks plus completed child receipt"
+    }
+  ],
+  "final_actual_mapped_unit_source_bound": true,
+  "final_unit_mvid_from_bound_pe": "9515f8fb-5cdf-4083-9d0f-39200071af3e",
+  "scope": "Guard execution processes only; Dapr resources and private-tool directories have separate cleanup receipts.",
+  "errors": []
+}

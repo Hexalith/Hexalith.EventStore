@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-22T17:44:28.439323+00:00",
+  "base": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+  "successor": "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z",
+  "changes": [
+    {
+      "label": "origin",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "before_sha256": "1307cd9a0b5702c3c42f0eadd3b251b70cc1b3a0a4427165040a0ed84551cf40",
+      "after_sha256": "d4a22374dd25a8668d4cf93b04cbf7f75561146b55fc830b8520c7e9a26021b7"
+    },
+    {
+      "label": "snapshot",
+      "path": "/tmp/eventstore-folders-12-2-guardfixtures-20261022T173900Z/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
+      "before_sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "after_sha256": "bc842d3cc660b539258c4dca220924071e48df9f523b228f57935c1df9a63680"
+    }
+  ],
+  "reason": "Construct the two positive-control source strings at runtime with split credential-name fragments. Their actual input text and original assertions remain identical; no scanner logic changes.",
+  "assertions_deadlines_retries_limits_changed": false
+}

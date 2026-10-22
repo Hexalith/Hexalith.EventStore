@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "dotnet",
+    "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardfix-server-full.xml"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z",
+  "utc_start": "2026-10-22T17:21:33.323165+00:00",
+  "environment_overrides": {
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false",
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-guardfix-20261022T171346Z"
+  },
+  "runner_pid": 738545,
+  "pid": 738567,
+  "exit_code": 1,
+  "elapsed_seconds": 865.0630086120073,
+  "utc_end": "2026-10-22T17:35:58.347384+00:00"
+}

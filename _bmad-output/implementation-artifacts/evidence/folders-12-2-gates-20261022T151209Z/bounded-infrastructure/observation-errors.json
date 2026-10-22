@@ -1,0 +1,7 @@
+[
+  {
+    "pid": 25046,
+    "error": "FileNotFoundError(2, 'No such file or directory')",
+    "observed_at": 1792682420.190946
+  }
+]

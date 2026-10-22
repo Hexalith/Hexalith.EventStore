@@ -1,0 +1,69 @@
+{
+  "utc": "2026-10-22T17:33:39.957698+00:00",
+  "scope": "Only the independent temporary reflection-helper directory created by this investigation was removed. No product source, snapshot, historical evidence, Folders path or other directory was targeted.",
+  "removed_directory": "/tmp/folders-12-2-guard-expression-probe-20261022T1732Z",
+  "directory_absent_after": true,
+  "active_helper_pids": [],
+  "archive": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/reflection-helper.tar.gz",
+  "archive_sha256": "5d35e47e25768afcdd4ab6068c6e35d5e3b318d9fb08796b39d02c40044d7104",
+  "archive_members_verified": true,
+  "files": [
+    {
+      "path": "Program.cs",
+      "size": 4358,
+      "sha256": "15be6854617da5df75ced75b2d8d8af7ac1d91a3cceeea2b4a05657040b42c56"
+    },
+    {
+      "path": "Probe.csproj",
+      "size": 211,
+      "sha256": "38e201f047792df530db8c7d157c2b6b19d1ed2e4134dba5da5c59e97d3b0da2"
+    },
+    {
+      "path": "global.json",
+      "size": 59,
+      "sha256": "8abaad26584f555d7581405cc5e45e5bf4866a2c8b1fa64b937a42cf0c81d0ad"
+    },
+    {
+      "path": "results.json",
+      "size": 13020,
+      "sha256": "641cd0621e28b1ae78802bdac5918c584d861644c7ad6a7efcba0d9a626193c9"
+    },
+    {
+      "path": "bin/Probe",
+      "size": 78192,
+      "sha256": "e758b42ea6bfea4fe8249a2a31514b215d3a88bc3f96b9ffa6fe93f49d79206b"
+    },
+    {
+      "path": "bin/Probe.dll",
+      "size": 19456,
+      "sha256": "e698f0379d247bd7aef413ef16e38f7ce5a10f70d665672f617a8fc8558d486b"
+    },
+    {
+      "path": "bin/Probe.pdb",
+      "size": 12244,
+      "sha256": "2a7cb59e03ab0994fb52f74ec302245a8391817560c6a4a8c0f6584ca63736b2"
+    },
+    {
+      "path": "bin/Probe.deps.json",
+      "size": 387,
+      "sha256": "270e6953bb252252523c7ac8dae60651c18b12e6fc3f86cea95c9af79e10f37d"
+    },
+    {
+      "path": "bin/Probe.runtimeconfig.json",
+      "size": 259,
+      "sha256": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a"
+    }
+  ],
+  "build_command": [
+    "dotnet",
+    "build",
+    "/tmp/folders-12-2-guard-expression-probe-20261022T1732Z/Probe.csproj",
+    "-c",
+    "Debug",
+    "-o",
+    "/tmp/folders-12-2-guard-expression-probe-20261022T1732Z/bin",
+    "--nologo"
+  ],
+  "build_observed_result": "Build succeeded, 0 warnings, 0 errors. Only independent helper was built.",
+  "reflection_result": "Archived results.json; product S2 DLL unchanged."
+}

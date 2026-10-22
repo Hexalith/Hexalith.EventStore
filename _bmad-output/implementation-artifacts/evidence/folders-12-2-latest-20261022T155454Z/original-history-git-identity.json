@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-22T17:59:47.652770+00:00",
+  "scope": "Read-only historical Git blob identity; no credential values emitted or history modified.",
+  "rows": [
+    {
+      "argv": [
+        "git",
+        "show",
+        "995117f9b899a2994e99257091b0ea35cfbe5090:_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch"
+      ],
+      "git_blob_sha256": "d8d028f2155b6e3a58eccc81d58f55fbb85ba4ca600a25b5afdffb5a74a039ca",
+      "initial_expected_sha256": "d8d028f2155b6e3a58eccc81d58f55fbb85ba4ca600a25b5afdffb5a74a039ca",
+      "initial_identity_preserved_in_git": true,
+      "current_origin_sha256": "cab06008db1f71bcd601f330d61582bb111a10c252e20f9d998f596d7d0c257c"
+    },
+    {
+      "argv": [
+        "git",
+        "show",
+        "995117f9b899a2994e99257091b0ea35cfbe5090:_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-source.patch"
+      ],
+      "git_blob_sha256": "c17f28cc74090e96d6a17e0531ef02f982f924ecd4437b4567dda8991288cb0d",
+      "initial_expected_sha256": "c17f28cc74090e96d6a17e0531ef02f982f924ecd4437b4567dda8991288cb0d",
+      "initial_identity_preserved_in_git": true,
+      "current_origin_sha256": "e0ef530005303f8c4729afeecadc70491462254a547fd6d612c66e58f1d6891b"
+    }
+  ]
+}

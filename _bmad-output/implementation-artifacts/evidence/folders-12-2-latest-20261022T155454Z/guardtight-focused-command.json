@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "dotnet",
+    "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z/tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+    "-method",
+    "*EmptyCallRecognition*",
+    "-method",
+    "*ParameterResourceSelection_RequiresExactLiteralFreeExpression*",
+    "-method",
+    "*TypedCancellationRecognition*",
+    "-method",
+    "*RuntimeSourcesWithLiteralFallbacksOrOperands*",
+    "-method",
+    "*ParameterResourceAssignment*",
+    "-method",
+    "*PatchStillRejectsLiteralSigningKey*",
+    "-method",
+    "*UnifiedDiffSourceLookup*",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardtight-focused.xml"
+  ],
+  "cwd": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z",
+  "utc_start": "2026-10-22T17:32:25.890481+00:00",
+  "environment_overrides": {
+    "EVENTSTORE_QUALIFICATION_SOURCE_ROOT": "/tmp/eventstore-folders-12-2-guardtight-20261022T173000Z"
+  },
+  "runner_pid": 1225500,
+  "pid": 1225501,
+  "exit_code": 0,
+  "elapsed_seconds": 0.6400291900063166,
+  "utc_end": "2026-10-22T17:32:26.530707+00:00"
+}

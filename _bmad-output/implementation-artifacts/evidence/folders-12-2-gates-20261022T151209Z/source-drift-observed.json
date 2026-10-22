@@ -1,0 +1,27 @@
+[
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/Security/IPublishedTrustRevocationEvidence.cs",
+    "built": "476bcb107596722414dee3622e3a784e09ff0fec26c101d4ac82bda152727a69",
+    "current": "8062a458fff3d085b07520b074ebe180c38d893204f4dcab137d14dd3d32026c"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Server/Security/PublishedTrustDeletionConsumptionAuthority.cs",
+    "built": "4b3a66690b605d9d24b57961875d375d4eaacc73ed838933c007704414ef1c16",
+    "current": "8d43b88ae772307bb6137837069d190859127632a0a328c91f235f491e73d0cf"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustDeletionConsumptionAuthorityTests.cs",
+    "built": "590720f5c2ee6961ed934468b6e2a393ef751357ff546c35e88817c4f40bd373",
+    "current": "d5bd8e9a9fb8cce94288bfa4db29577b0169dfafcd96ddd3ebc4be36ee604ee6"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/PublishedTrustDispatchFixture.cs",
+    "built": "abb9911bb527d9d8e2bedc19b6cfb718656b2fd943dd7d276d5dedefdda47476",
+    "current": "427e1a230caf07d33f7fd47c171873f2d5fe9021f79ac9036526e636c8d4c42b"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Builds/Props/Directory.Packages.props",
+    "built": "c5cfacace71173f68c3c2d36d002aebab6dd205cf789957bcf9fc14a0474d13b",
+    "current": "59b67048d2ec5fd22c44f10e6b8b374f1096b9b2abe8fcbfa78d2022acd4ec83"
+  }
+]

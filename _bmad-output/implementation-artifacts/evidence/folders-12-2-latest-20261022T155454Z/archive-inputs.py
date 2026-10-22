@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Archive the selected ordinary source bytes and inventory the actual tracked guard inputs."""
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tarfile
+
+packet = Path(__file__).resolve().parent
+root = Path(os.environ['EVENTSTORE_QUALIFICATION_SOURCE_ROOT']).resolve()
+manifest = json.loads((packet / 'snapshot-inputs.json').read_text())
+
+def sha(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+errors = []
+with tarfile.open(packet / 'ordinary-source.tar.gz', 'w:gz') as archive:
+    for name, row in sorted(manifest.items()):
+        path = Path(name)
+        if not path.is_file() or sha(path) != row['sha256']:
+            errors.append(name)
+            continue
+        archive.add(path, arcname=str(path.relative_to(root)), recursive=False)
+tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=root, env=os.environ | {'GIT_OPTIONAL_LOCKS': '0'}).decode().split('\0')
+guard = {str(root / name): sha(root / name) for name in tracked if name and (root / name).is_file()}
+(packet / 'tracked-guard-inputs.json').write_text(json.dumps(guard, indent=2) + '\n')
+paths = [
+    'tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs',
+    'tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs',
+    'tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs',
+    'tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProofTests.cs',
+    'tools/bounded_worker_observer.py', 'tools/tests/test_bounded_worker_observer.py',
+]
+changes = packet / 'task-source'
+changes.mkdir()
+for name in paths:
+    dest = changes / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(root / name, dest)
+baseline = '995117f9b899a2994e99257091b0ea35cfbe5090'
+result = subprocess.run(['git', 'diff', '--binary', baseline, '--', *paths[2:]], cwd=root, env=os.environ | {'GIT_OPTIONAL_LOCKS': '0'}, capture_output=True)
+(packet / 'observer-source-from-initial.patch').write_bytes(result.stdout)
+(packet / 'task-source-diff.stderr').write_bytes(result.stderr)
+if result.returncode:
+    errors.append('git diff failed')
+output = {'passed': not errors, 'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'source_files': len(manifest), 'tracked_guard_files': len(guard), 'archive_sha256': sha(packet / 'ordinary-source.tar.gz'), 'task_paths': paths, 'diff_baseline': baseline, 'diff_exit_code': result.returncode, 'errors': errors}
+(packet / 'source-archive-result.json').write_text(json.dumps(output, indent=2) + '\n')
+print(json.dumps(output))
+raise SystemExit(0 if output['passed'] else 1)

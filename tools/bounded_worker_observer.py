@@ -61,6 +61,11 @@ def file_identity(info):
 
 def authenticate_image(pe, pdb, rows, expected=None):
     """Bind image bytes to mappings of that same open regular file, not its pathname alone."""
+    if expected is not None:
+        for key in ("peSha256", "pdbSha256"):
+            value = expected[key]
+            if not isinstance(value, str) or re.fullmatch(r"[0-9a-fA-F]{64}", value) is None:
+                raise ValueError("Expected " + key + " must be a string of exactly 64 hexadecimal characters.")
     pe, pdb = Path(pe), Path(pdb)
     if not pe.is_absolute() or not pdb.is_absolute():
         raise ValueError("Module paths must be absolute.")
@@ -128,8 +133,15 @@ def observe(request, parent_pid, required=REQUIRED):
         recorded = {(row["device_major"], row["device_minor"], row["inode"]) for row in result["images"]}
         for row in rows:
             identity = (row["device_major"], row["device_minor"], row["inode"])
-            path = Path(row["path"])
-            if identity in recorded or not path.name.startswith("Hexalith.") or path.suffix != ".dll":
+            deleted = row["path"].endswith(" (deleted)")
+            path = Path(row["path"].removesuffix(" (deleted)") if deleted else row["path"])
+            if not path.name.startswith("Hexalith.") or path.suffix != ".dll":
+                continue
+            if deleted:
+                result.setdefault("deleted_sdk_mapping_rows", []).append(row)
+                result["errors"].append("Deleted first-party image mapping cannot be authenticated: " + row["path"])
+                continue
+            if identity in recorded:
                 continue
             recorded.add(identity)
             try:
