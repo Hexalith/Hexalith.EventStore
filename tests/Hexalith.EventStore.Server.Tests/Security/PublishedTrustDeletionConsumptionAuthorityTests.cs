@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 
 using Dapr.Actors.Runtime;
@@ -330,6 +331,8 @@ public sealed class PublishedTrustDeletionConsumptionAuthorityTests
         provider.GetService<IInteractionProtectionBindingProvider>().ShouldBeNull();
         provider.GetService<IAtomicDeletionManifestProvider>().ShouldBeNull();
         provider.GetService<IDeletionConsumptionAuthority>().ShouldBeNull();
+        provider.GetService<ProtectionCurrentAnchorJournal>().ShouldBeNull();
+        provider.GetService<IInteractionOccurrenceAuthority>().ShouldBeNull();
         Should.Throw<InvalidOperationException>(() => provider.GetRequiredService<IEventPayloadProtectionService>());
 
         DeletionConsumptionActor consumption = DeletionConsumptionFixture.Create(new InMemoryStateManager());
@@ -337,6 +340,366 @@ public sealed class PublishedTrustDeletionConsumptionAuthorityTests
         InteractionOccurrenceRegistryActor registry = InteractionOccurrenceFixture.Create(new InMemoryStateManager(), null);
         (await registry.ReserveAsync(InteractionOccurrenceFixture.Request())).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
     }
+
+    /// <summary>Explicit binding registration exposes only the fail-closed adapters. The first effect still denies and writes nothing.</summary>
+    [Fact]
+    public async Task ExplicitBindingsFailClosedWithoutInstalledDeliveryOrAnchor()
+    {
+        var services = new ServiceCollection();
+        services.AddInteractionProtectionBindings();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IInteractionOccurrenceKeyProvider keys = provider.GetRequiredService<IInteractionOccurrenceKeyProvider>();
+        provider.GetRequiredService<IInteractionProtectionBindingProvider>().ShouldNotBeNull();
+        provider.GetRequiredService<ProtectionCurrentAnchorJournal>().ShouldNotBeNull();
+        IInteractionOccurrenceAuthority occurrences = provider.GetRequiredService<IInteractionOccurrenceAuthority>();
+        provider.GetRequiredService<IGovernanceGuardAuthority>().ShouldNotBeNull();
+        provider.GetRequiredService<IGuardedStateTransactionAuthority>().ShouldNotBeNull();
+        provider.GetService<IInteractionOccurrenceKeyDelivery>().ShouldBeNull();
+        provider.GetService<IDeletionConsumptionAuthority>().ShouldBeNull();
+        provider.GetService<IEventPayloadProtectionService>().ShouldBeNull();
+        (await keys.ResolveRootAsync(InteractionOccurrenceFixture.Request().Identity, InteractionOccurrenceFixture.Request().ProposedKeyReference, true, TestContext.Current.CancellationToken)).ShouldBeNull();
+        (await occurrences.GetInstalledEpochAsync("tenant-a", TestContext.Current.CancellationToken)).ShouldBeNull();
+
+        var occurrenceState = new InMemoryStateManager();
+        InteractionOccurrenceRegistryActor registry = InteractionOccurrenceFixture.Create(
+            occurrenceState, new InteractionOccurrenceAuthority(null, new ProtectionCurrentAnchorJournal(null)));
+        (await registry.ReserveAsync(InteractionOccurrenceFixture.Request())).Status.ShouldBe(InteractionOccurrenceReservationStatus.Unavailable);
+        occurrenceState.CommittedState.ShouldBeEmpty();
+
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        var consumptionState = new InMemoryStateManager();
+        DeletionConsumptionActor consumption = DeletionConsumptionFixture.Create(
+            consumptionState, new PublishedTrustDeletionConsumptionAuthority([world.Trust], world.Guard));
+        (await consumption.RegisterAsync(DeletionConsumptionFixture.Request())).Status.ShouldBe(DeletionConsumptionStatus.Unavailable);
+        consumptionState.CommittedState.ShouldBeEmpty();
+        await world.Guard.DidNotReceive().ExecuteAsync(Arg.Any<GovernanceGuardTransition>(), Arg.Any<IReadOnlyList<GuardedStateMutation>>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>Occurrence checks deny a missing installation, a divergent restore, and a plaintext seal. A verified revision does not record an anchor.</summary>
+    [Fact]
+    public async Task OccurrenceAuthorityDeniesMissingInstallationAndDoesNotRecord()
+    {
+        var journal = Substitute.For<IAnchoredStateTransitionAuthority>();
+        journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
+        var absent = new InteractionOccurrenceAuthority(null, journal);
+        InteractionOccurrenceRequest request = InteractionOccurrenceFixture.Request();
+        (await absent.AuthorizeOperationAsync(request.Identity, "Reserve", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await absent.ValidateStateAsync("tenant-a", "epoch-1", 1, new string('A', 64), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await absent.AdmitTransitionAsync(SampleTransition(), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await absent.GetInstalledEpochAsync("tenant-a", TestContext.Current.CancellationToken)).ShouldBeNull();
+        await journal.DidNotReceive().AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+
+        var installation = Substitute.For<IInteractionOccurrenceInstallation>();
+        installation.MatchesAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
+        var divergent = new InteractionOccurrenceAuthority(installation, journal);
+        (await divergent.ValidateStateAsync("tenant-a", "epoch-1", 1, new string('A', 64), TestContext.Current.CancellationToken)).ShouldBeFalse();
+
+        installation.MatchesAsync("tenant-a", "epoch-1", 1, new string('A', 64), Arg.Any<CancellationToken>()).Returns(true);
+        (await divergent.ValidateStateAsync("tenant-a", "epoch-1", 1, new string('A', 64), TestContext.Current.CancellationToken)).ShouldBeTrue();
+        installation.MatchesAsync("tenant-a", "epoch-1", 1, new string('B', 64), Arg.Any<CancellationToken>()).Returns(true);
+        (await divergent.RecordRevisionAsync("tenant-a", "epoch-1", 0, 1, new string('B', 64), TestContext.Current.CancellationToken)).ShouldBeTrue();
+        await journal.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+
+        var record = new InteractionOccurrenceRecord(request, request.ProposedKeyReference, 1, InteractionOccurrenceWriterState.Reserved, null, null);
+        installation.VerifySealedAsync(Arg.Any<InteractionOccurrenceRecord>(), Arg.Any<InteractionOccurrenceSealedResult>(), Arg.Any<CancellationToken>()).Returns(true);
+        (await divergent.VerifySealedAsync(record, InteractionOccurrenceFixture.Sealed() with { SerializationFormat = "json" }, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        await installation.DidNotReceive().VerifySealedAsync(Arg.Any<InteractionOccurrenceRecord>(), Arg.Any<InteractionOccurrenceSealedResult>(), Arg.Any<CancellationToken>());
+        (await divergent.VerifySealedAsync(record, InteractionOccurrenceFixture.Sealed(), TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await divergent.VerifySealedAsync(record with { WriterState = InteractionOccurrenceWriterState.Aborted }, InteractionOccurrenceFixture.Sealed(), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        await installation.Received(1).VerifySealedAsync(Arg.Any<InteractionOccurrenceRecord>(), Arg.Any<InteractionOccurrenceSealedResult>(), Arg.Any<CancellationToken>());
+
+        journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(false);
+        installation.MatchesAsync("tenant-a", "epoch-1", 2, new string('C', 64), Arg.Any<CancellationToken>()).Returns(true);
+        (await divergent.ValidateStateAsync("tenant-a", "epoch-1", 2, new string('C', 64), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await divergent.RecordRevisionAsync("tenant-a", "epoch-1", 1, 2, new string('C', 64), TestContext.Current.CancellationToken)).ShouldBeFalse();
+
+        AnchoredStateTransition transition = SampleTransition();
+        journal.AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
+        journal.RecoverTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
+        journal.RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
+        journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
+        (await divergent.AdmitTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await divergent.RecoverTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await divergent.RecordTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await divergent.VerifyTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        journal.AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(false);
+        journal.RecoverTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(false);
+        journal.RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(false);
+        journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(false);
+        (await divergent.AdmitTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await divergent.RecoverTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await divergent.RecordTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await divergent.VerifyTransitionAsync(transition, TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    /// <summary>Guard evidence is returned only for the exact installed receipt. Missing provenance returns null.</summary>
+    [Fact]
+    public async Task GuardAuthorityReturnsOnlyExactInstalledEvidence()
+    {
+        (await new GovernanceGuardAuthority(null).ReadLookupAsync(GuardTransition(), new string('A', 64), new string('B', 64), TestContext.Current.CancellationToken)).ShouldBeNull();
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        var installation = Substitute.For<IGovernanceGuardInstallation>();
+        var authority = new GovernanceGuardAuthority(installation);
+        GovernanceProtocolReceipt receipt = world.State.Receipts[0];
+        var recovery = new GovernanceSigningRecovery(world.Request.Capability, receipt.SigningRequestId, receipt.DetachedJwsDigest, receipt.ReceiptId, world.State.Revision, "key-v1", "authority-1", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddMinutes(1));
+        installation.ReadSigningRecoveryAsync(receipt, world.State, Arg.Any<CancellationToken>()).Returns(recovery);
+        (await authority.ReadSigningRecoveryAsync(receipt, world.State, TestContext.Current.CancellationToken)).ShouldBe(recovery);
+        GovernanceProtocolReceipt blankDigest = receipt with { DetachedJwsDigest = "" };
+        GovernanceProtocolReceipt blankSigning = receipt with { SigningRequestId = "" };
+        installation.ReadSigningRecoveryAsync(blankDigest, world.State, Arg.Any<CancellationToken>()).Returns(recovery);
+        installation.ReadSigningRecoveryAsync(blankSigning, world.State, Arg.Any<CancellationToken>()).Returns(recovery);
+        (await authority.ReadSigningRecoveryAsync(blankDigest, world.State, TestContext.Current.CancellationToken)).ShouldBeNull();
+        (await authority.ReadSigningRecoveryAsync(blankSigning, world.State, TestContext.Current.CancellationToken)).ShouldBeNull();
+
+        GovernanceGuardEvidence evidence = GuardEvidence("intent", "mutation", "receipt-1", "resource-1");
+        installation.ReadLookupAsync(Arg.Any<GovernanceGuardTransition>(), "intent", "mutation", Arg.Any<CancellationToken>()).Returns(evidence);
+        (await authority.ReadLookupAsync(GuardTransition(), "intent", "mutation", TestContext.Current.CancellationToken)).ShouldBe(evidence);
+        (await authority.ReadLookupAsync(GuardTransition(), "other", "mutation", TestContext.Current.CancellationToken)).ShouldBeNull();
+        installation.ReadLookupAsync(Arg.Any<GovernanceGuardTransition>(), "blank", "mutation", Arg.Any<CancellationToken>()).Returns(evidence with { AuthorityReceiptId = "" });
+        (await authority.ReadLookupAsync(GuardTransition(), "blank", "mutation", TestContext.Current.CancellationToken)).ShouldBeNull();
+        GovernanceGuardEvidence append = GuardEvidence("append", "mutation", "receipt-1", "");
+        installation.ReadAsync(Arg.Any<GovernanceGuardTransition>(), "append", "mutation", world.State, Arg.Any<CancellationToken>()).Returns(append);
+        (await authority.ReadAsync(GuardTransition(), "append", "mutation", world.State, TestContext.Current.CancellationToken)).ShouldBeNull();
+        installation.ReadAsync(Arg.Any<GovernanceGuardTransition>(), "append", "mutation", world.State, Arg.Any<CancellationToken>()).Returns(append with { AppendResourceId = "resource-1" });
+        (await authority.ReadAsync(GuardTransition(), "append", "mutation", world.State, TestContext.Current.CancellationToken)).ShouldBe(append with { AppendResourceId = "resource-1" });
+    }
+
+    /// <summary>A restored absent cell is not a fresh empty cell. A target that is not current is denied.</summary>
+    [Fact]
+    public async Task GuardedCellDeniesRestoredAbsenceAndAStaleTarget()
+    {
+        (await new GuardedStateTransactionAuthority(null).AuthorizeReadAsync(CellTarget(), "cell-1", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        var installation = Substitute.For<IGuardedStateInstallation>();
+        GuardedStateTransactionTarget target = CellTarget();
+        installation.GetCurrentAsync(target.TenantId, Arg.Any<CancellationToken>()).Returns(target);
+        var authority = new GuardedStateTransactionAuthority(installation);
+        installation.ReadCellAsync(target, "cell-1", null, Arg.Any<CancellationToken>()).Returns(GuardedCellHistory.RestoredAbsent);
+        (await authority.ValidateCellAsync(target, null, "cell-1", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        installation.ReadCellAsync(target, "cell-1", null, Arg.Any<CancellationToken>()).Returns(GuardedCellHistory.NeverWritten);
+        (await authority.ValidateCellAsync(target, null, "cell-1", TestContext.Current.CancellationToken)).ShouldBeTrue();
+        var occupied = new GuardedStateCell(target.TenantId, target.InstallationId, "cell-1", 1, "value"u8.ToArray());
+        installation.ReadCellAsync(target, "cell-1", occupied, Arg.Any<CancellationToken>()).Returns(GuardedCellHistory.Occupied);
+        (await authority.ValidateCellAsync(target, occupied, "cell-1", TestContext.Current.CancellationToken)).ShouldBeTrue();
+        installation.ReadCellAsync(target, "cell-1", null, Arg.Any<CancellationToken>()).Returns(GuardedCellHistory.Occupied);
+        (await authority.ValidateCellAsync(target, null, "cell-1", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        installation.ReadCellAsync(target, "cell-1", occupied, Arg.Any<CancellationToken>()).Returns(GuardedCellHistory.RestoredAbsent);
+        (await authority.ValidateCellAsync(target, occupied, "cell-1", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        installation.GetCurrentAsync(target.TenantId, Arg.Any<CancellationToken>()).Returns(target with { AuthorityRevision = "other" });
+        installation.AuthorizeReadAsync(Arg.Any<GuardedStateTransactionTarget>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
+        (await authority.AuthorizeReadAsync(target, "cell-1", TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    /// <summary>The journal admits one original, advances it once, and leaves a lost acknowledgement unresolved until lookup.</summary>
+    [Fact]
+    public async Task JournalAdvancesOneOriginalAndResolvesALostRecordOnlyByLookup()
+    {
+        var records = new Dictionary<string, ProtectionAnchorRecord>(StringComparer.Ordinal);
+        ProtectionAnchorRecord? lookup = null;
+        bool loseAdvance = true;
+        int advances = 0;
+        IProtectionAnchorStore store = AnchorStore(records, () => loseAdvance, () => advances++, value => lookup = value, () => lookup);
+        var journal = new ProtectionCurrentAnchorJournal(store);
+        AnchoredStateTransition original = SampleTransition();
+        (await journal.AdmitTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await journal.RecordTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await journal.VerifyTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        lookup!.Disposition.ShouldBe(ProtectionAnchorDisposition.Unknown);
+        advances.ShouldBe(1);
+        lookup = new(CopyTransition(original), ProtectionAnchorDisposition.Advanced, original.TargetRevision);
+        (await journal.VerifyTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        advances.ShouldBe(1);
+        loseAdvance = false;
+        (await journal.RecordTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        advances.ShouldBe(2);
+        AnchoredStateTransition other = SampleTransition("other-original"u8.ToArray());
+        (await journal.AdmitTransitionAsync(other, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await journal.RecordTransitionAsync(other, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        advances.ShouldBe(2);
+
+        var recoverStore = Substitute.For<IProtectionAnchorStore>();
+        ProtectionAnchorRecord admitted = new(CopyTransition(original), ProtectionAnchorDisposition.Admitted, original.ExpectedRevision);
+        recoverStore.RecoverAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+            ExactTransition(call.Arg<AnchoredStateTransition>(), original) ? ProtectionAnchorDisposition.Admitted : ProtectionAnchorDisposition.Conflict);
+        recoverStore.LookupAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+            ExactTransition(call.Arg<AnchoredStateTransition>(), original) ? admitted : null);
+        (await new ProtectionCurrentAnchorJournal(recoverStore).RecoverTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        await recoverStore.DidNotReceive().AdvanceAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+
+        var closed = new ProtectionCurrentAnchorJournal(null);
+        (await closed.AdmitTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await closed.RecordTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await closed.RecoverTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await closed.VerifyTransitionAsync(original, TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    /// <summary>Exact injected evidence can pass. Missing, stale, revoked, substituted, or cross-tenant evidence denies, and this authority does not mint an anchor.</summary>
+    [Fact]
+    public async Task PublishedTrustAcceptsExactEvidenceAndDeniesAMismatchWithoutIssuingAnAnchor()
+    {
+        PublishedTrustDispatchFixture world = PublishedTrustDispatchFixture.Create();
+        const string goodDigest = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        var journal = Substitute.For<IAnchoredStateTransitionAuthority>();
+        string rejected = new string('B', 64);
+        bool rejectAuthorize = false;
+        journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            string text = Encoding.UTF8.GetString(call.Arg<AnchoredStateTransition>().TargetBytes);
+            return !(rejectAuthorize && text.StartsWith("authorize\n", StringComparison.Ordinal)) && !text.Contains(rejected, StringComparison.Ordinal);
+        });
+        journal.AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
+        var revocations = Substitute.For<IPublishedTrustRevocationEvidence>();
+        bool revocationPending = false;
+        bool activationPending = false;
+        revocations.Matches(Arg.Any<DeletionCapabilityRevocationEnvelope>()).Returns(call => call.Arg<DeletionCapabilityRevocationEnvelope>().SignatureDigest == goodDigest);
+        revocations.Pending(Arg.Any<DeletionCapabilityRevocationEnvelope>()).Returns(_ => revocationPending);
+        revocations.MatchesActivation(Arg.Any<DeletionReattestationActivation>()).Returns(true);
+        revocations.PendingActivation(Arg.Any<DeletionReattestationActivation>()).Returns(_ => activationPending);
+        var authority = new PublishedTrustDeletionConsumptionAuthority([world.Trust], world.Guard, journal, revocations);
+        var block = new DeletionBatchBlockRequest("tenant-a", "batch-a", "block-1", goodDigest);
+        world.Guard.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(world.State with
+        {
+            Receipts = [.. world.State.Receipts, Receipt(goodDigest, "batch-a")],
+        });
+        (await authority.VerifyAdmissionBlockAsync(block, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        world.Guard.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(world.State with
+        {
+            Receipts = [.. world.State.Receipts, Receipt(goodDigest, "batch-a") with { Status = "Pending" }],
+        });
+        (await authority.VerifyAdmissionBlockAsync(block, TestContext.Current.CancellationToken)).ShouldBeFalse();
+
+        var envelope = new DeletionCapabilityRevocationEnvelope("issuer-a", "protection-a", "tenant-a", "DeletionBatchCapabilitySigningKey", "key-v1", 1, 3, "event-1", goodDigest);
+        (await authority.VerifyRevocationAsync(envelope, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        revocationPending = true;
+        (await authority.VerifyRevocationAsync(envelope, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        revocationPending = false;
+        (await new PublishedTrustDeletionConsumptionAuthority([world.Trust with { IsRevoked = true }], world.Guard, journal, revocations)
+            .VerifyRevocationAsync(envelope, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.VerifyRevocationAsync(envelope with { TenantId = "tenant-b" }, TestContext.Current.CancellationToken)).ShouldBeFalse();
+
+        DeletionReattestationActivation activation = Activation(world, world.Request);
+        world.Guard.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ActivationState(world));
+        (await authority.VerifyActivationAsync(activation, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        activationPending = true;
+        (await authority.VerifyActivationAsync(activation, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        activationPending = false;
+        (await authority.VerifyActivationAsync(activation with { Replacement = world.Request with { DispatchGuardRevision = world.State.Revision + 1 } }, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.VerifyActivationAsync(Activation(world, world.Request with { Capability = world.Request.Capability with { ManifestDigest = goodDigest } }), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.VerifyActivationAsync(Activation(world, world.Request with { Capability = world.Request.Capability with { TenantId = "tenant-b" } }), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        world.Guard.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ActivationState(world, "AdmissionBlocked"));
+        (await authority.VerifyActivationAsync(activation, TestContext.Current.CancellationToken)).ShouldBeFalse();
+
+        world.Guard.ReadAsync("tenant-b", Arg.Any<CancellationToken>()).Returns(world.State);
+        (await authority.AuthorizeOperationAsync("tenant-b", "batch-a", "ReserveAndConsumeDeletionBatch", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        world.Guard.ReadAsync("tenant-a", Arg.Any<CancellationToken>()).Returns(world.State);
+        (await authority.AuthorizeOperationAsync("tenant-a", "batch-a", "ReserveAndConsumeDeletionBatch", TestContext.Current.CancellationToken)).ShouldBeTrue();
+        rejectAuthorize = true;
+        (await authority.AuthorizeOperationAsync("tenant-a", "batch-a", "ReserveAndConsumeDeletionBatch", TestContext.Current.CancellationToken)).ShouldBeFalse();
+        rejectAuthorize = false;
+        (await authority.ValidateStateAsync("tenant-a", 0, goodDigest, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.ValidateStateAsync("tenant-a", world.State.Revision, goodDigest, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await authority.ValidateStateAsync("tenant-a", world.State.Revision, rejected, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.ValidateStateAsync("tenant-a", world.State.Revision - 1, goodDigest, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.RecordRevisionAsync("tenant-a", world.State.Revision - 1, world.State.Revision, goodDigest, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await authority.AdmitTransitionAsync(SampleTransition(goodDigest.Select(static _ => (byte)_).Take(8).ToArray()), TestContext.Current.CancellationToken)).ShouldBeTrue();
+        await journal.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+        await journal.Received(1).AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
+        journal.RecoverTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true, false);
+        journal.RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true, false);
+        AnchoredStateTransition forwarded = SampleTransition();
+        (await authority.RecoverTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await authority.RecordTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await authority.VerifyTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await authority.RecoverTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.RecordTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.VerifyTransitionAsync(SampleTransition(Encoding.UTF8.GetBytes(rejected)), TestContext.Current.CancellationToken)).ShouldBeFalse();
+    }
+
+    private static IProtectionAnchorStore AnchorStore(
+        Dictionary<string, ProtectionAnchorRecord> records,
+        Func<bool> loseAdvance,
+        Action countAdvance,
+        Action<ProtectionAnchorRecord?> setLookup,
+        Func<ProtectionAnchorRecord?> getLookup)
+    {
+        var store = Substitute.For<IProtectionAnchorStore>();
+        store.AdmitAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            AnchoredStateTransition transition = CopyTransition(call.Arg<AnchoredStateTransition>());
+            if (records.TryGetValue(transition.ScopeId, out ProtectionAnchorRecord? existing))
+            {
+                return ExactTransition(existing.Transition, transition) ? ProtectionAnchorDisposition.Admitted : ProtectionAnchorDisposition.Conflict;
+            }
+
+            records[transition.ScopeId] = new(transition, ProtectionAnchorDisposition.Admitted, transition.ExpectedRevision);
+            return ProtectionAnchorDisposition.Admitted;
+        });
+        store.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
+            records.TryGetValue(call.Arg<string>(), out ProtectionAnchorRecord? record) ? record : null);
+        store.AdvanceAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<long>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            countAdvance();
+            AnchoredStateTransition transition = CopyTransition(call.Arg<AnchoredStateTransition>());
+            if (loseAdvance())
+            {
+                setLookup(new(transition, ProtectionAnchorDisposition.Unknown, transition.ExpectedRevision));
+                return ProtectionAnchorDisposition.Unknown;
+            }
+
+            records[transition.ScopeId] = new(transition, ProtectionAnchorDisposition.Advanced, transition.TargetRevision);
+            setLookup(records[transition.ScopeId]);
+            return ProtectionAnchorDisposition.Advanced;
+        });
+        store.LookupAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(_ => getLookup());
+        return store;
+    }
+
+    private static GovernanceGuardTransition GuardTransition()
+        => new("tenant-a", "append-1", GovernanceGuardOperation.AppendWrite, 1, "epoch-1", "", null, null, null, null, null, null, "", "");
+
+    private static GovernanceGuardEvidence GuardEvidence(string intent, string mutation, string receiptId, string appendResourceId)
+        => new("tenant-a", intent, mutation, "authority-1", receiptId, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddMinutes(1), [], [], [], "writer", "legacy", "zero", 0, "observed", "v1", [], "block")
+        {
+            AppendResourceId = appendResourceId,
+        };
+
+    private static GuardedStateTransactionTarget CellTarget()
+        => new("tenant-a", "qualified-synthetic-component", "installed-tenant-partition", "source-installation", "tenant-guard", "complete-writer-revocation", "independent-current-authority", DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddMinutes(1));
+
+    private static GovernanceProtocolReceipt Receipt(string receiptId, string referenceId)
+        => new("evidence", new string('D', 64), "Committed", 10, 1, referenceId, receiptId);
+
+    private static DeletionReattestationActivation Activation(PublishedTrustDispatchFixture world, DeletionBatchConsumptionRequest request)
+        => new("activate-1", "compromise-1", 0, "replacement-guard-1", request);
+
+    private static TenantGovernanceGuardState ActivationState(PublishedTrustDispatchFixture world, string outcome = "Unconsumed")
+        => world.WithBatch(world.Batch with { ProtectionOutcome = outcome }) with
+        {
+            Receipts =
+            [
+                .. world.State.Receipts,
+                Receipt("compromise-1", world.Request.Capability.BatchId),
+                Receipt("replacement-guard-1", world.Request.Capability.BatchId),
+            ],
+        };
+
+    private static AnchoredStateTransition SampleTransition(byte[]? bytes = null)
+    {
+        byte[] owned = bytes ?? "original-anchor"u8.ToArray();
+        string target = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(owned));
+        string predecessor = new string('C', 64);
+        return new("scope-a", 0, 1, predecessor, target, owned);
+    }
+
+    private static AnchoredStateTransition CopyTransition(AnchoredStateTransition transition)
+        => transition with { TargetBytes = transition.TargetBytes.ToArray() };
+
+    private static bool ExactTransition(AnchoredStateTransition left, AnchoredStateTransition right)
+        => left.ScopeId == right.ScopeId
+            && left.ExpectedRevision == right.ExpectedRevision
+            && left.TargetRevision == right.TargetRevision
+            && left.PredecessorDigest == right.PredecessorDigest
+            && left.TargetDigest == right.TargetDigest
+            && left.TargetBytes.AsSpan().SequenceEqual(right.TargetBytes);
 
     private static IEnumerable<string> ActorNames(ServiceProvider provider)
         => provider.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value.Actors.Select(registration => registration.Type.ActorTypeName);

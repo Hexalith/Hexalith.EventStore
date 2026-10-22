@@ -385,3 +385,35 @@ The two direct logical-reader classes also passed 86 cases (`logical-reader-comp
 During development, a broad `Security.*` Server test selection was stopped after about 90 seconds because it included unrelated SecretsProtection evidence tests. It is retained as `server-security-run-1.log` and is **not** counted as passed. Earlier iterations exposed missing source revision reporting and legacy mock/default-interface compatibility failures; these were fixed. No test expectation was weakened to hide a failure.
 
 The full production integration/Level 4 gate is blocked by G1–G6, not by a claim that a successful synthetic source test constitutes irreversible destruction. The owner Live command was not invoked, even to record refusal. No dependency is Available and no OQ-5.4-1 phase was run.
+
+## Owner bindings checkpoint — 2026-10-22
+
+Observed full `HEAD` is `6b2988d0ecae276440cb2bd29a93af4c12d7c07c` on `main`. `git merge-base --is-ancestor HEAD origin/main` exits 0, so that commit is reachable from `origin/main`. The hash is an observation. It does not contain this delivery, and there is no accepted target. Do not treat `6b2988d0ecae276440cb2bd29a93af4c12d7c07c`, or a later documentation commit, as `TargetVersionOrCommit`.
+
+Proposed `TargetIntegrationDate` is `2026-11-02` only. That date is a proposal. No date is accepted, and the verifier does not encode this literal.
+
+The existing Live command was not run:
+
+```bash
+python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts
+```
+
+These remain the exact missing inputs. No value below is supplied or invented:
+
+- `/home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json`
+- `executor`, `observer`, and `enrollment` executables, anchors, credential references, and manifests
+- `capabilityTrust`
+- `runtime.allCopyLifecycleAuthorityReference`
+- `runtime.allCopyInventoryReference`
+- `runtime.nonrollbackJournalReference`
+- `runtime.restoreTarget`
+- `runtime.protectionOwnerReference`
+- `runtime.currentRevocationReference`
+- `runtime.publicTrustReference`
+- `runtime.publicAnchorRetentionReference`
+
+HMAC reference `31c28a9d1dd21eed8ca4d0c421088cb946b262c624ba461d0795cab92cd1feb3` is not a substitute for those inputs and is not a DEK or manifest provider.
+
+The 2026-10-18 discovery sentence is stale for Platform's internal, unregistered `CustodyKeyLifecycleBindingProvider` and `AtomicDeletionManifestBindingProvider`. Those types fail closed without an independent witness. It remains true that Server does not reference a Platform project. The payload-protection opt-in, the AppHost, and the default host still do not install key delivery, a binding source, an anchor, or a profile. `AddInteractionProtectionBindings` registers only the EventStore adapters and passes no delivery, source, installation, or store. With those inputs absent, the first effect is denied and no secret or profile value is written.
+
+A restored actor snapshot and a retained OpenBao revival are not current authority. The retained native result still records restored plaintext with `g1Qualified:false` and was not rerun. This section does not change the Agents register. It does not run Live, OQ-5.4-1, an Agents consumer, provisioning, or a destructive probe.
