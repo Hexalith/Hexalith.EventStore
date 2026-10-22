@@ -110,7 +110,7 @@ public sealed partial class ContractsPackageDependencyTests
     }
 
     [Fact]
-    public async Task RootPackagePropsContainsOnlyAuthorizedFivePinExceptionAsync()
+    public async Task RootPackagePropsDelegatesAllVersionsToSharedCatalogAsync()
     {
         string root = FindRepositoryRoot();
         XDocument packageVersions = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
