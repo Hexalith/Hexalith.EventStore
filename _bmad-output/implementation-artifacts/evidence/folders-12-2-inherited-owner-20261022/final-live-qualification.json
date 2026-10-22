@@ -1,0 +1,24 @@
+{
+  "command": [
+    "env",
+    "EVENTSTORE_TEST_REDIS_PORT=62859",
+    "EVENTSTORE_TEST_DAPR_HOT_RELOAD=false",
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false",
+    "BOUNDED_IDENTITY_EVIDENCE_DIR=/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/final-live",
+    "BOUNDED_IDENTITY_GENERATED_SOURCE_DIR=/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/generated",
+    "dotnet",
+    "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+    "-method",
+    "*FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff",
+    "-method",
+    "*FocusedInheritedOwnerReplayAfterProcessReplacement",
+    "-method",
+    "*OmittedOriginalOwnerReplaysAfterProcessReplacementWithTenThousandEvents",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/final-live.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:39:23.923903+00:00",
+  "elapsed_seconds": 415.43411114600895,
+  "exit_code": 0
+}

@@ -9,7 +9,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Client.Tests.Projections;
 
-public sealed class SharedProjectionBoundedIdentityTests
+public sealed partial class SharedProjectionBoundedIdentityTests
 {
     private static readonly SharedProjectionScope s_scope = new("statestore", "tenant-a", "widget", "bounded", ["writer"]);
 

@@ -1,0 +1,12 @@
+{
+  "command": [
+    "dotnet",
+    "tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll",
+    "-result-xml",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/domain-full.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:27:56.802606+00:00",
+  "elapsed_seconds": 293.35346002200095,
+  "exit_code": 0
+}

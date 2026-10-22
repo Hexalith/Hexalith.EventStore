@@ -1,0 +1,60 @@
+{
+  "modules": [
+    {
+      "name": "Hexalith.Folders.Tests",
+      "path": "/tmp/eventstore-inherited-owner-20261022-tiny/bin/Debug/net10.0/Hexalith.Folders.Tests.dll",
+      "mvid": "0f9a8a8a-1026-4888-868f-374a2b214726",
+      "sha256": "BF823E41266217374A97C0506F4C5B2D68A5884B69F8038393ED8DEC4F71076A"
+    },
+    {
+      "name": "Hexalith.EventStore.Client",
+      "path": "/tmp/eventstore-inherited-owner-20261022-tiny/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "mvid": "358a38d8-194f-4f4b-8a05-1dc46bff2209",
+      "sha256": "2BDF48488D2B4B707D4D3A5D7E016B95774F0A44648D2E0F92385D00F67F8D91"
+    },
+    {
+      "name": "Hexalith.EventStore.Contracts",
+      "path": "/tmp/eventstore-inherited-owner-20261022-tiny/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "mvid": "e667c2a5-dc32-4176-830e-42ad230fec4d",
+      "sha256": "DFD957D8585500DFBA897A120483D91B249CF2FB0679FDD7A0FF173564194175"
+    },
+    {
+      "name": "Hexalith.EventStore.DomainService",
+      "path": "/tmp/eventstore-inherited-owner-20261022-tiny/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "mvid": "fea0346e-16dd-46d0-b082-48376043137a",
+      "sha256": "D1537FB20CAEBFD89DA0E2CF50BE4C2D6A7F4F802500B7B1D4C48ED6ED286565"
+    },
+    {
+      "name": "Hexalith.Folders",
+      "path": "/tmp/eventstore-inherited-owner-20261022-tiny/bin/Debug/net10.0/Hexalith.Folders.dll",
+      "mvid": "64125f63-3797-4838-be34-bb9cba11a8a2",
+      "sha256": "B2F899B4C46A02D54B95B3FC09BBB46085405E022C37AA430ADB5446DE746949"
+    },
+    {
+      "name": "Hexalith.Folders.Server",
+      "path": "/tmp/eventstore-inherited-owner-20261022-tiny/bin/Debug/net10.0/Hexalith.Folders.Server.dll",
+      "mvid": "a4fb106c-59ee-49e7-95d4-51a6bb7b23a7",
+      "sha256": "6D07376CD00A5DD0912E9AA473BE57CCE64D9FAE1D554C34A84023E56A5D0829"
+    }
+  ],
+  "cases": [
+    {
+      "evolution_registry": false,
+      "canonical_sha256": "74EDA51810625515DA95C9F5375A9AF5DA32EC4F682726FEE573994FACCFD531",
+      "checkpoint_unchanged": true,
+      "direct_before": "AlreadyCaptured",
+      "direct_after": "AlreadyCaptured",
+      "named_after": "AlreadyCompleted",
+      "fold_callback_delta": 0
+    },
+    {
+      "evolution_registry": true,
+      "canonical_sha256": "510B4ECF93A4EE59C50D04A4E700698274088D2AC9E96DEB2C8937B0BB5636AB",
+      "checkpoint_unchanged": true,
+      "direct_before": "AlreadyCaptured",
+      "direct_after": "AlreadyCaptured",
+      "named_after": "AlreadyCompleted",
+      "fold_callback_delta": 0
+    }
+  ]
+}

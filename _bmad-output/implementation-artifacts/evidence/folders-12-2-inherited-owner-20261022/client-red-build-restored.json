@@ -1,0 +1,15 @@
+{
+  "command": [
+    "dotnet",
+    "build",
+    "tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-m:1"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:23:51.046268+00:00",
+  "elapsed_seconds": 12.108532858997933,
+  "exit_code": 0
+}

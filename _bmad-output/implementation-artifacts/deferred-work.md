@@ -6075,3 +6075,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md`
   summary: Verify that external P1R evidence validation does not depend on the live validator host (unverified medium risk).
   evidence: `validate_external_root` (`tools/p1r_isolation.py:389`) and `storage.materialize` re-check current `/proc/self/mountinfo`, outer-socket identity, directory ownership by the reading user and availability of the prior attempt root when `create_packet`/`validate_packet` run. Running both on a new-format receipt inside a fresh isolated runner and as a different user would settle whether valid evidence is refused.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-inherited-owner-duplicate.md`
+  summary: Correct buffered StageAsync copy-on-write staging so later sparse generations preserve untouched direct-generation rows.
+  evidence: Independent inherited-owner review observed that StageAsync uses direct-generation BuildBatch, while streamed staging installs copy-on-write pointers. A later sparse streamed promotion can omit a previously direct-staged row despite its retained checkpoint. This preexisting materialization defect is separate from the qualified Folders streamed-output replay path; retained identity evidence has no output-key or staging-mode inventory.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-inherited-owner-duplicate.md`
+  summary: Define authoritative source-continuity recovery when an inherited owner's entire checkpoint is physically lost.
+  evidence: Independent replay review traced JournalAsync's preexisting unknown-owner sequence-one admission after checkpoint deletion when the current capture omits that owner. Without the checkpoint/reference or another authoritative source inventory, the store cannot distinguish corruption from lawful first delivery. Referenced missing/corrupt identity proof is refused by this correction; arbitrary whole-checkpoint loss needs a separate inventory/recovery design.
+
+## Deferred from: code review of spec-3-22-bounded-qualification-evidence-production-and-admission.md (2026-10-22, chunks B+C)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md`
+  summary: Scan JSON credential keys that contain `/`, spaces or `@` (pre-existing scanner gap).
+  evidence: `{"db/password": "<literal>"}`, `{"db password": …}` and `{"@token": …}` produce no violation from either `FindViolations` or the pre-change `FindViolationsCore` (reflection probe on the Release Server.Tests DLL, 2026-10-22). The decoded JSON walker (`SecretsProtectionTests.SourceContexts.cs:77`) requires `\A[A-Za-z_][A-Za-z0-9_.:-]*\z`, and the raw assignment grammar skips these keys. A fix could test the final key segment with `IsCredentialName`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-22-bounded-qualification-evidence-production-and-admission.md`
+  summary: Scan literal strings nested under credential-named JSON arrays or objects (pre-existing scanner gap).
+  evidence: `{"password": ["<literal>"]}` and the ARM-parameter shape `{"adminPassword": {"value": "<literal>"}}` produce no violation either way (same probe). The walker (`SecretsProtectionTests.SourceContexts.cs:74`) checks scalar values only. A fix could carry the credential name down to descendant strings.

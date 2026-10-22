@@ -25,8 +25,9 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
         using var client = new DaprClientBuilder().UseGrpcEndpoint(endpoint).Build();
         var store = new ProjectionBoundedIdentityLiveStore(client);
         bool bufferedOwner = Required("BOUNDED_IDENTITY_BUFFERED") == "true";
+        bool inheritOwner = Required("BOUNDED_IDENTITY_INHERIT_OWNER") == "true";
         IAsyncDomainSharedProjectionStreamingRebuildHandler handler = bufferedOwner
-            ? new ProjectionBoundedIdentityBufferedLiveHandler() : new ProjectionBoundedIdentityLiveHandler();
+            ? new ProjectionBoundedIdentityBufferedLiveHandler(inheritOwner) : new ProjectionBoundedIdentityLiveHandler(inheritOwner);
         var coordinator = new SharedProjectionEpochCoordinator(store, store);
         var scope = handler.CreateScope(tenant);
         var services = new ServiceCollection();
@@ -59,7 +60,8 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
         {
             var payload = new JsonObject
             {
-                ["bufferedOwner"] = bufferedOwner, ["phase"] = phase, ["pid"] = Environment.ProcessId, ["count"] = count, ["tenant"] = tenant,
+                ["bufferedOwner"] = bufferedOwner, ["inheritOwner"] = inheritOwner,
+                ["phase"] = phase, ["pid"] = Environment.ProcessId, ["count"] = count, ["tenant"] = tenant,
                 ["measurements"] = JsonSerializer.SerializeToNode(store.Measurements), ["runtime"] = ProjectionBoundedIdentityRuntimeProof.Capture(),
                 ["observations"] = observations,
                 ["buildGraph"] = "Debug;UseHexalithProjectReferences=true;net10.0"
@@ -85,6 +87,31 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
             (await Send(Action(DomainSharedProjectionRebuildAction.Stage))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
             _ = await Send(Action(DomainSharedProjectionRebuildAction.Commit));
             throw new InvalidOperationException("Promoted handoff did not reach its armed real process interruption.", interruptionFailure);
+        }
+        if (phase == "inherited")
+        {
+            await VerifyOwnersAsync(count + 1);
+            await ObserveInheritedOwnerAsync();
+            var checkpoint = await RawAsync(CheckpointKey("owner-a"));
+            var row = (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value!.ToJsonString();
+            var lease = await coordinator.RefreshLeaseAsync(scope, handler.OrdinaryWriterId);
+            foreach (int sequence in new[] { 1, count / 2, count, count + 1 })
+            {
+                var item = Event("owner-a", sequence);
+                (await coordinator.JournalAsync(scope, lease, new SharedProjectionDelivery("owner-a", item.GlobalPosition,
+                    JsonSerializer.SerializeToUtf8Bytes(new ProjectionRequest(tenant, "widget", "owner-a", [item]), JsonSerializerOptions.Web),
+                    JsonSerializer.SerializeToUtf8Bytes(item.GlobalPosition), OwnerSequenceNumber: item.SequenceNumber)))
+                    .ShouldBe(SharedProjectionJournalResult.AlreadyCaptured);
+                (await OrdinaryAsync(item)).ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+            }
+            (await RawAsync(CheckpointKey("owner-a"))).Value.ToArray().ShouldBe(checkpoint.Value.ToArray());
+            (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value!.ToJsonString().ShouldBe(row);
+            observations["unchangedReplayVerified"] = true;
+            (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
+            (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
+            AssertBounds();
+            WriteEvidence();
+            return;
         }
         phase.ShouldBe("resume");
         string epochKey = "shared-epoch:" + scope.ComputeHash();
@@ -126,13 +153,50 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
         await coordinator.CapturedIdentities.ValidateCompleteAsync(scope, retained);
         foreach (int sequence in new[] { 1, count / 2, count, count + 1 })
             (await OrdinaryAsync(Event("owner-a", sequence))).ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
-        (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
-        (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
-        store.Measurements.MaximumBatchOperations.ShouldBeLessThanOrEqualTo(100);
-        store.Measurements.MaximumCanonicalBatchBytes.ShouldBeLessThanOrEqualTo(1_048_576);
-        store.Measurements.MaximumPhysicalValueBytes.ShouldBeLessThanOrEqualTo(1_048_576);
-        store.Measurements.MaximumIdentityValueBytes.ShouldBeLessThan(65_536);
+        if (!inheritOwner)
+        {
+            (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
+            (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
+            AssertBounds();
+            WriteEvidence();
+            return;
+        }
+        identity = identity with { OperationId = "independent-owner-b" };
+        var independent = await AccumulateAllAsync(onlyOtherOwner: true);
+        (await Send(new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Finalize, identity,
+            ExpectedAggregateCount: 1, ExpectedInventoryFingerprint: independent.InventoryFingerprint))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        (await Send(Action(DomainSharedProjectionRebuildAction.Stage))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        (await Send(Action(DomainSharedProjectionRebuildAction.Commit))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+        (await Send(Action(DomainSharedProjectionRebuildAction.Verify))).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+        await ObserveInheritedOwnerAsync();
+        AssertBounds();
         WriteEvidence();
+        // A distinct worker must prove the inherited original owner over persisted Dapr state.
+        Environment.Exit(73);
+
+        void AssertBounds()
+        {
+            store.Measurements.MaximumBatchOperations.ShouldBeLessThanOrEqualTo(100);
+            store.Measurements.MaximumCanonicalBatchBytes.ShouldBeLessThanOrEqualTo(1_048_576);
+            store.Measurements.MaximumPhysicalValueBytes.ShouldBeLessThanOrEqualTo(1_048_576);
+            store.Measurements.MaximumIdentityValueBytes.ShouldBeLessThan(65_536);
+        }
+
+        async Task ObserveInheritedOwnerAsync()
+        {
+            var epoch = (await store.GetAsync<JsonObject>("statestore", "shared-epoch:" + scope.ComputeHash())).Value!;
+            epoch["captureHighWatermarks"]!.AsObject().ContainsKey("owner-a").ShouldBeFalse();
+            epoch["captureHighWatermarks"]!.AsObject().ContainsKey("owner-b").ShouldBeTrue();
+            var checkpoint = (await coordinator.GetCheckpointAsync(scope, "owner-a"))!;
+            checkpoint.CapturedIdentityReference!.Epoch.ShouldBeLessThan(epoch["activeGeneration"]!.GetValue<long>());
+            observations["originalOwnerOmitted"] = true;
+            observations["retainedProofEpoch"] = checkpoint.CapturedIdentityReference.Epoch;
+            observations["selectedGeneration"] = epoch["activeGeneration"]!.GetValue<long>();
+            var raw = await RawAsync(CheckpointKey("owner-a"));
+            observations["inheritedCheckpointSha256"] = Convert.ToHexString(SHA256.HashData(raw.Value.Span));
+            observations["inheritedCheckpointBase64"] = Convert.ToBase64String(raw.Value.Span);
+            observations["inheritedEpoch"] = epoch.DeepClone();
+        }
 
         Task<RawStateEntry> RawAsync(string key) => new DaprReadModelBatchStateAccessor(client, "statestore")
             .ReadAsync(key, TestContext.Current.CancellationToken);
@@ -205,12 +269,13 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
             if (owner == "owner-a" && includeGrowth)
                 yield return (await store.GetAsync<ProjectionEventDto[]>("statestore", SourceKey(owner, count + 1) + ":growth")).Value.ShouldNotBeNull();
         }
-        async Task<DomainSharedProjectionRebuildResponse> AccumulateAllAsync(bool includeGrowth = false)
+        async Task<DomainSharedProjectionRebuildResponse> AccumulateAllAsync(bool includeGrowth = false, bool onlyOtherOwner = false)
         {
+            string[] owners = onlyOtherOwner ? ["owner-b"] : ["owner-a", "owner-b"];
             var fingerprints = new Dictionary<string, string>();
             string inventory = DomainSharedProjectionRebuildFingerprint.EmptyInventory;
             int ordinal = 0;
-            foreach (string owner in new[] { "owner-a", "owner-b" })
+            foreach (string owner in owners)
             {
                 using var hash = new DomainSharedProjectionHistoryFingerprintBuilder(owner, false, OwnerCount(owner) + (includeGrowth && owner == "owner-a" ? 1 : 0));
                 await foreach (var page in SourcePages(owner, includeGrowth)) foreach (var item in page) hash.Append(item);
@@ -218,11 +283,11 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
                 inventory = DomainSharedProjectionRebuildFingerprint.AppendInventory(inventory, ordinal++, fingerprints[owner]);
             }
             (await Send(new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Begin, identity,
-                CaptureInventoryFingerprint: inventory, SourceHighWatermarks: new Dictionary<string, long>
-                { ["owner-a"] = (count + (includeGrowth ? 1 : 0)) * 3L, ["owner-b"] = 129 * 3L + 1 }))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+                CaptureInventoryFingerprint: inventory, SourceHighWatermarks: owners.ToDictionary(owner => owner,
+                    owner => owner == "owner-a" ? (count + (includeGrowth ? 1 : 0)) * 3L : 129 * 3L + 1)))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
             DomainSharedProjectionRebuildResponse? accepted = null;
             ordinal = 0;
-            foreach (string owner in new[] { "owner-a", "owner-b" })
+            foreach (string owner in owners)
             {
                 int part = 0;
                 await foreach (var page in SourcePages(owner, includeGrowth))

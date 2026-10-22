@@ -1,0 +1,12 @@
+{
+  "command": [
+    "git",
+    "status",
+    "--short",
+    "--branch"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:50:38.320159+00:00",
+  "elapsed_seconds": 0.5209460890037008,
+  "exit_code": 0
+}

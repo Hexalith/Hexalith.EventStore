@@ -1,0 +1,10 @@
+{
+  "command": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/capture-runtime.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:44:31.242153+00:00",
+  "elapsed_seconds": 0.3703086580062518,
+  "exit_code": 0
+}

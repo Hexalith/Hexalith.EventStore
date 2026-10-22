@@ -7,14 +7,14 @@ using Hexalith.EventStore.DomainService;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>Domain-only fold that consumes every original event and materializes every original owner.</summary>
-internal sealed class ProjectionBoundedIdentityLiveHandler : IAsyncDomainSharedProjectionStreamedOwnerHandler
+internal sealed class ProjectionBoundedIdentityLiveHandler(bool copyOnWrite = false) : IAsyncDomainSharedProjectionStreamedOwnerHandler
 {
     public bool EpochEnabled => true;
     public string OrdinaryWriterId => "ordinary-dispatch";
     public string Domain => "widget";
     public string ProjectionType => "bounded-widget";
     public string RebuildStoreName => "statestore";
-    public SharedProjectionScope CreateScope(string tenantId) => new(RebuildStoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]);
+    public SharedProjectionScope CreateScope(string tenantId) => new(RebuildStoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]) { CopyOnWrite = copyOnWrite };
     public async IAsyncEnumerable<ReadOnlyMemory<byte>> StreamPartitionChunksAsync(DomainSharedProjectionRebuildIdentity identity,
         string aggregateId, IAsyncEnumerable<ProjectionEventDto> events,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)

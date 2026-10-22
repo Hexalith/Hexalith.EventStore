@@ -1683,13 +1683,15 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
         public string ProjectionType => "partitioned-widget";
         public string RebuildStoreName => StoreName;
         public bool FoldOrdinaryRows { get; set; }
+        public bool CopyOnWrite { get; set; }
         public bool FailFinalize { get; set; }
         public bool FailBufferedOwnerFold { get; set; }
         public bool EmitOneChunkPerEvent { get; set; }
         public int StreamedEventCount { get; private set; }
+        public int OrdinaryFoldCount { get; private set; }
 
         public virtual SharedProjectionScope CreateScope(string tenantId)
-            => new(StoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]);
+            => new(StoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]) { CopyOnWrite = CopyOnWrite };
 
         public Task<ReadOnlyMemory<byte>> PreparePartitionAsync(
             DomainSharedProjectionRebuildIdentity identity,
@@ -1780,6 +1782,7 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
             CancellationToken cancellationToken)
         {
             if (!FoldOrdinaryRows) return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([]);
+            OrdinaryFoldCount++;
             ProjectionRequest request = JsonSerializer.Deserialize<ProjectionRequest>(delivery.CanonicalPayload, JsonSerializerOptions.Web)!;
             return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
                 ReadModelBatchOperation.Write("row:" + request.AggregateId,

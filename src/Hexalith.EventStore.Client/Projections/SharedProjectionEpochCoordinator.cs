@@ -737,6 +737,43 @@ public sealed partial class SharedProjectionEpochCoordinator
 
             long? captured = await GetCapturedPositionAsync(scope, state, delivery.SourceStream, cancellationToken)
                 .ConfigureAwait(false);
+            if (scope.CopyOnWrite && captured is null && delivery.OwnerSequenceNumber > 0)
+            {
+                // A later generation may inherit this owner without capturing it again.
+                // Only its retained original identity proof can acknowledge that replay;
+                // an advanced checkpoint alone does not prove historical delivery bytes.
+                SharedProjectionCheckpoint? inheritedOwner = await ReadOwnerCheckpointAsync(
+                    scope, state, delivery.SourceStream, cancellationToken).ConfigureAwait(false);
+                // Earlier replacement generations may have discarded this owner. Paged
+                // proof must belong to the inherited lineage; inline proof has no epoch
+                // and is usable here only when inheritance began at generation zero.
+                bool retained = inheritedOwner?.CapturedIdentityReference is { } reference
+                    ? reference.Epoch >= (state.CopyOnWriteAnchorGeneration ?? state.ActiveGeneration)
+                        && reference.Epoch <= state.ActiveGeneration && delivery.OwnerSequenceNumber <= reference.Count
+                    : state.CopyOnWriteAnchorGeneration == 0 && state.ActiveGeneration > 0
+                        && inheritedOwner?.CapturedEventDigests is { } inline
+                        && delivery.OwnerSequenceNumber <= inline.LongLength / 32;
+                if (retained)
+                {
+                    byte[]? identity = await CapturedIdentities.ReadDigestAsync(
+                        scope, delivery.SourceStream, inheritedOwner!, delivery.OwnerSequenceNumber, cancellationToken).ConfigureAwait(false);
+                    if (identity is null) return SharedProjectionJournalResult.RebuildRequired;
+                    if (!SharedProjectionCapturedEventIdentity.Compute(delivery.SourceStream, delivery.EnvelopePosition,
+                        delivery.OwnerSequenceNumber, delivery.CanonicalPayload).AsSpan().SequenceEqual(identity))
+                    {
+                        if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery,
+                            Convert.ToHexString(identity), digest, cancellationToken).ConfigureAwait(false))
+                            return SharedProjectionJournalResult.IdentityConflict;
+                        continue;
+                    }
+
+                    // Proof reads cross awaits. Retry the lease/phase checks if another
+                    // writer changes the epoch fence while we authenticate this owner.
+                    if ((await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false)).ETag != entry.ETag)
+                        continue;
+                    return SharedProjectionJournalResult.AlreadyCaptured;
+                }
+            }
             if (captured is { } watermark && delivery.EnvelopePosition <= watermark)
             {
                 // A building generation may still abort. Until it is promoted, the old generation

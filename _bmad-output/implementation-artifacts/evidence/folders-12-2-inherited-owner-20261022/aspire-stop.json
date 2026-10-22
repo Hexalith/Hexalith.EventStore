@@ -1,0 +1,13 @@
+{
+  "command": [
+    "aspire",
+    "stop",
+    "--apphost",
+    "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj",
+    "--non-interactive"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:22:32.820549+00:00",
+  "elapsed_seconds": 2.3404049939999823,
+  "exit_code": 0
+}

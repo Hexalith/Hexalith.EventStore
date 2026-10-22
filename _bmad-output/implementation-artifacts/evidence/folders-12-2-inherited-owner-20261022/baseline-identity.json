@@ -1,0 +1,11 @@
+{
+  "command": [
+    "git",
+    "rev-parse",
+    "HEAD"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:26:12.812787+00:00",
+  "elapsed_seconds": 0.001562153993290849,
+  "exit_code": 0
+}

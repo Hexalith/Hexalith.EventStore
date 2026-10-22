@@ -1,0 +1,362 @@
+diff --git a/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs b/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs
+index 9542230e9..77ad3322a 100644
+--- a/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs
++++ b/src/Hexalith.EventStore.Client/Projections/SharedProjectionEpochCoordinator.cs
+@@ -737,6 +737,43 @@ public sealed partial class SharedProjectionEpochCoordinator
+ 
+             long? captured = await GetCapturedPositionAsync(scope, state, delivery.SourceStream, cancellationToken)
+                 .ConfigureAwait(false);
++            if (scope.CopyOnWrite && captured is null && delivery.OwnerSequenceNumber > 0)
++            {
++                // A later generation may inherit this owner without capturing it again.
++                // Only its retained original identity proof can acknowledge that replay;
++                // an advanced checkpoint alone does not prove historical delivery bytes.
++                SharedProjectionCheckpoint? inheritedOwner = await ReadOwnerCheckpointAsync(
++                    scope, state, delivery.SourceStream, cancellationToken).ConfigureAwait(false);
++                // Earlier replacement generations may have discarded this owner. Paged
++                // proof must belong to the inherited lineage; inline proof has no epoch
++                // and is usable here only when inheritance began at generation zero.
++                bool retained = inheritedOwner?.CapturedIdentityReference is { } reference
++                    ? reference.Epoch >= (state.CopyOnWriteAnchorGeneration ?? state.ActiveGeneration)
++                        && reference.Epoch <= state.ActiveGeneration && delivery.OwnerSequenceNumber <= reference.Count
++                    : state.CopyOnWriteAnchorGeneration == 0 && state.ActiveGeneration > 0
++                        && inheritedOwner?.CapturedEventDigests is { } inline
++                        && delivery.OwnerSequenceNumber <= inline.LongLength / 32;
++                if (retained)
++                {
++                    byte[]? identity = await CapturedIdentities.ReadDigestAsync(
++                        scope, delivery.SourceStream, inheritedOwner!, delivery.OwnerSequenceNumber, cancellationToken).ConfigureAwait(false);
++                    if (identity is null) return SharedProjectionJournalResult.RebuildRequired;
++                    if (!SharedProjectionCapturedEventIdentity.Compute(delivery.SourceStream, delivery.EnvelopePosition,
++                        delivery.OwnerSequenceNumber, delivery.CanonicalPayload).AsSpan().SequenceEqual(identity))
++                    {
++                        if (await RecordDeliveryConflictAsync(scope, state, entry.ETag, delivery,
++                            Convert.ToHexString(identity), digest, cancellationToken).ConfigureAwait(false))
++                            return SharedProjectionJournalResult.IdentityConflict;
++                        continue;
++                    }
++
++                    // Proof reads cross awaits. Retry the lease/phase checks if another
++                    // writer changes the epoch fence while we authenticate this owner.
++                    if ((await ReadStateAsync(scope, cancellationToken).ConfigureAwait(false)).ETag != entry.ETag)
++                        continue;
++                    return SharedProjectionJournalResult.AlreadyCaptured;
++                }
++            }
+             if (captured is { } watermark && delivery.EnvelopePosition <= watermark)
+             {
+                 // A building generation may still abort. Until it is promoted, the old generation
+diff --git a/tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionBoundedIdentityTests.cs b/tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionBoundedIdentityTests.cs
+index d2161b97b..cb91afd06 100644
+--- a/tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionBoundedIdentityTests.cs
++++ b/tests/Hexalith.EventStore.Client.Tests/Projections/SharedProjectionBoundedIdentityTests.cs
+@@ -9,7 +9,7 @@ using Shouldly;
+ 
+ namespace Hexalith.EventStore.Client.Tests.Projections;
+ 
+-public sealed class SharedProjectionBoundedIdentityTests
++public sealed partial class SharedProjectionBoundedIdentityTests
+ {
+     private static readonly SharedProjectionScope s_scope = new("statestore", "tenant-a", "widget", "bounded", ["writer"]);
+ 
+diff --git a/tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.cs b/tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.cs
+index 289364be1..696f55100 100644
+--- a/tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.cs
++++ b/tests/Hexalith.EventStore.DomainService.Tests/DomainPartitionedSharedProjectionRebuildTests.cs
+@@ -1683,13 +1683,15 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
+         public string ProjectionType => "partitioned-widget";
+         public string RebuildStoreName => StoreName;
+         public bool FoldOrdinaryRows { get; set; }
++        public bool CopyOnWrite { get; set; }
+         public bool FailFinalize { get; set; }
+         public bool FailBufferedOwnerFold { get; set; }
+         public bool EmitOneChunkPerEvent { get; set; }
+         public int StreamedEventCount { get; private set; }
++        public int OrdinaryFoldCount { get; private set; }
+ 
+         public virtual SharedProjectionScope CreateScope(string tenantId)
+-            => new(StoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]);
++            => new(StoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]) { CopyOnWrite = CopyOnWrite };
+ 
+         public Task<ReadOnlyMemory<byte>> PreparePartitionAsync(
+             DomainSharedProjectionRebuildIdentity identity,
+@@ -1780,6 +1782,7 @@ public sealed partial class DomainPartitionedSharedProjectionRebuildTests
+             CancellationToken cancellationToken)
+         {
+             if (!FoldOrdinaryRows) return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([]);
++            OrdinaryFoldCount++;
+             ProjectionRequest request = JsonSerializer.Deserialize<ProjectionRequest>(delivery.CanonicalPayload, JsonSerializerOptions.Web)!;
+             return Task.FromResult<IReadOnlyList<ReadModelBatchOperation>>([
+                 ReadModelBatchOperation.Write("row:" + request.AggregateId,
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityBufferedLiveHandler.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityBufferedLiveHandler.cs
+index a5ec5c333..449c4065b 100644
+--- a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityBufferedLiveHandler.cs
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityBufferedLiveHandler.cs
+@@ -7,9 +7,9 @@ using Hexalith.EventStore.DomainService;
+ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
+ 
+ /// <summary>Qualifies the unchanged buffered-owner, streamed-output contract consumed by Folders.</summary>
+-internal sealed class ProjectionBoundedIdentityBufferedLiveHandler : IAsyncDomainSharedProjectionStreamingRebuildHandler
++internal sealed class ProjectionBoundedIdentityBufferedLiveHandler(bool copyOnWrite = false) : IAsyncDomainSharedProjectionStreamingRebuildHandler
+ {
+-    private readonly ProjectionBoundedIdentityLiveHandler _inner = new();
++    private readonly ProjectionBoundedIdentityLiveHandler _inner = new(copyOnWrite);
+     public bool EpochEnabled => _inner.EpochEnabled;
+     public string OrdinaryWriterId => _inner.OrdinaryWriterId;
+     public string Domain => _inner.Domain;
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveHandler.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveHandler.cs
+index f7771d5e2..b08da092d 100644
+--- a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveHandler.cs
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveHandler.cs
+@@ -7,14 +7,14 @@ using Hexalith.EventStore.DomainService;
+ namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
+ 
+ /// <summary>Domain-only fold that consumes every original event and materializes every original owner.</summary>
+-internal sealed class ProjectionBoundedIdentityLiveHandler : IAsyncDomainSharedProjectionStreamedOwnerHandler
++internal sealed class ProjectionBoundedIdentityLiveHandler(bool copyOnWrite = false) : IAsyncDomainSharedProjectionStreamedOwnerHandler
+ {
+     public bool EpochEnabled => true;
+     public string OrdinaryWriterId => "ordinary-dispatch";
+     public string Domain => "widget";
+     public string ProjectionType => "bounded-widget";
+     public string RebuildStoreName => "statestore";
+-    public SharedProjectionScope CreateScope(string tenantId) => new(RebuildStoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]);
++    public SharedProjectionScope CreateScope(string tenantId) => new(RebuildStoreName, tenantId, Domain, ProjectionType, [OrdinaryWriterId]) { CopyOnWrite = copyOnWrite };
+     public async IAsyncEnumerable<ReadOnlyMemory<byte>> StreamPartitionChunksAsync(DomainSharedProjectionRebuildIdentity identity,
+         string aggregateId, IAsyncEnumerable<ProjectionEventDto> events,
+         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken token)
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs
+index c45202524..61fbe9052 100644
+--- a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityLiveTests.cs
+@@ -16,21 +16,34 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture
+     public Task FocusedProcessReplacementExercisesPartialStageAndOwnerHandoff(bool bufferedOwner)
+         => ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(129, bufferedOwner);
+ 
++    [Theory]
++    [InlineData(false)]
++    [InlineData(true)]
++    public Task FocusedInheritedOwnerReplayAfterProcessReplacement(bool bufferedOwner)
++        => RunProcessReplacementAsync(129, bufferedOwner, inheritOwner: true);
++
++    [Fact]
++    public Task OmittedOriginalOwnerReplaysAfterProcessReplacementWithTenThousandEvents()
++        => RunProcessReplacementAsync(10_001, bufferedOwner: true, inheritOwner: true);
++
+     [Theory]
+     [InlineData(10_001, false)]
+     [InlineData(32_769, false)]
+     [InlineData(10_001, true)]
+     [InlineData(32_769, true)]
+-    public async Task ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(int count, bool bufferedOwner)
++    public Task ProductionDispatcherResumesStagingAndPromotedHandoffAcrossDistinctProcesses(int count, bool bufferedOwner)
++        => RunProcessReplacementAsync(count, bufferedOwner, inheritOwner: false);
++
++    private async Task RunProcessReplacementAsync(int count, bool bufferedOwner, bool inheritOwner)
+     {
+         fixture.ThrowIfHostStopped();
+         string tenant = "bounded-" + Guid.NewGuid().ToString("N");
+-        string directory = Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_EVIDENCE_DIR")
+-            ?? Path.Combine(Path.GetTempPath(), "bounded-identity-" + tenant);
++        string directory = Path.Combine(Environment.GetEnvironmentVariable("BOUNDED_IDENTITY_EVIDENCE_DIR")
++            ?? Path.GetTempPath(), "bounded-identity-" + tenant);
+         Directory.CreateDirectory(directory);
+         var pids = new List<int>();
+         JsonArray? runtime = null;
+-        foreach (string phase in new[] { "stage", "promote", "resume" })
++        foreach (string phase in inheritOwner ? new[] { "stage", "promote", "resume", "inherited" } : new[] { "stage", "promote", "resume" })
+         {
+             string prefix = Path.Combine(directory, (bufferedOwner ? "buffered-" : "streamed-") + count + "-" + phase);
+             var start = new ProcessStartInfo("dotnet") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+@@ -39,6 +52,7 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture
+             start.ArgumentList.Add(typeof(ProjectionBoundedIdentityProcessWorkerTests).FullName!);
+             start.Environment["BOUNDED_IDENTITY_PHASE"] = phase;
+             start.Environment["BOUNDED_IDENTITY_BUFFERED"] = bufferedOwner ? "true" : "false";
++            start.Environment["BOUNDED_IDENTITY_INHERIT_OWNER"] = inheritOwner ? "true" : "false";
+             start.Environment["BOUNDED_IDENTITY_TENANT"] = tenant;
+             start.Environment["BOUNDED_IDENTITY_ENDPOINT"] = fixture.DaprGrpcEndpoint;
+             start.Environment["BOUNDED_IDENTITY_COUNT"] = count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+@@ -51,7 +65,7 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture
+             catch (OperationCanceledException) { process.Kill(entireProcessTree: true); throw; }
+             string output = await stdout + "\n" + await stderr;
+             await File.WriteAllTextAsync(prefix + ".log", output, TestContext.Current.CancellationToken);
+-            process.ExitCode.ShouldBe(phase == "resume" ? 0 : 73, output);
++            process.ExitCode.ShouldBe(phase == (inheritOwner ? "inherited" : "resume") ? 0 : 73, output);
+             var proof = JsonNode.Parse(await File.ReadAllTextAsync(prefix + ".json", TestContext.Current.CancellationToken))!;
+             proof["pid"]!.GetValue<int>().ShouldBe(process.Id);
+             var observed = proof["observations"]!.AsObject();
+@@ -65,17 +79,27 @@ public sealed class ProjectionBoundedIdentityLiveTests(DaprTestContainerFixture
+                 observed["stageSealed"]!.GetValue<bool>().ShouldBeFalse();
+                 observed["completedStagePages"]!.GetValue<int>().ShouldBe(0);
+             }
+-            else
++            else if (phase != "inherited")
+             {
+                 observed["firstOwnerSeeded"]!.GetValue<bool>().ShouldBeTrue();
+                 observed["secondOwnerCheckpointAbsent"]!.GetValue<bool>().ShouldBeTrue();
+                 observed["handoffFenceHeld"]!.GetValue<bool>().ShouldBeTrue();
+                 observed[phase == "promote" ? "secondOwnerEpochInstalled" : "partialHandoffRecovered"]!.GetValue<bool>().ShouldBeTrue();
+             }
++            if (inheritOwner && (phase is "resume" or "inherited"))
++            {
++                observed["originalOwnerOmitted"]!.GetValue<bool>().ShouldBeTrue();
++                observed["retainedProofEpoch"]!.GetValue<long>().ShouldBeLessThan(observed["selectedGeneration"]!.GetValue<long>());
++                string checkpoint = observed["inheritedCheckpointSha256"]!.GetValue<string>();
++                string checkpointFile = Path.Combine(directory, (bufferedOwner ? "buffered-" : "streamed-") + count + "-resume.json");
++                var promoted = JsonNode.Parse(await File.ReadAllTextAsync(checkpointFile, TestContext.Current.CancellationToken))!;
++                checkpoint.ShouldBe(promoted["observations"]!["inheritedCheckpointSha256"]!.GetValue<string>());
++                if (phase == "inherited") observed["unchangedReplayVerified"]!.GetValue<bool>().ShouldBeTrue();
++            }
+             if (runtime is null) runtime = proof["runtime"]!.AsArray();
+             else proof["runtime"]!.ToJsonString().ShouldBe(runtime.ToJsonString());
+             TestContext.Current.TestOutputHelper?.WriteLine($"BoundedIdentity phase={phase} count={count} pid={process.Id} evidence={prefix}.json");
+         }
+-        pids.Distinct().Count().ShouldBe(3);
++        pids.Distinct().Count().ShouldBe(inheritOwner ? 4 : 3);
+     }
+ }
+diff --git a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs
+index a3b9b9787..2e02b489d 100644
+--- a/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs
++++ b/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityProcessWorkerTests.cs
+@@ -25,8 +25,9 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
+         using var client = new DaprClientBuilder().UseGrpcEndpoint(endpoint).Build();
+         var store = new ProjectionBoundedIdentityLiveStore(client);
+         bool bufferedOwner = Required("BOUNDED_IDENTITY_BUFFERED") == "true";
++        bool inheritOwner = Required("BOUNDED_IDENTITY_INHERIT_OWNER") == "true";
+         IAsyncDomainSharedProjectionStreamingRebuildHandler handler = bufferedOwner
+-            ? new ProjectionBoundedIdentityBufferedLiveHandler() : new ProjectionBoundedIdentityLiveHandler();
++            ? new ProjectionBoundedIdentityBufferedLiveHandler(inheritOwner) : new ProjectionBoundedIdentityLiveHandler(inheritOwner);
+         var coordinator = new SharedProjectionEpochCoordinator(store, store);
+         var scope = handler.CreateScope(tenant);
+         var services = new ServiceCollection();
+@@ -59,7 +60,8 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
+         {
+             var payload = new JsonObject
+             {
+-                ["bufferedOwner"] = bufferedOwner, ["phase"] = phase, ["pid"] = Environment.ProcessId, ["count"] = count, ["tenant"] = tenant,
++                ["bufferedOwner"] = bufferedOwner, ["inheritOwner"] = inheritOwner,
++                ["phase"] = phase, ["pid"] = Environment.ProcessId, ["count"] = count, ["tenant"] = tenant,
+                 ["measurements"] = JsonSerializer.SerializeToNode(store.Measurements), ["runtime"] = ProjectionBoundedIdentityRuntimeProof.Capture(),
+                 ["observations"] = observations,
+                 ["buildGraph"] = "Debug;UseHexalithProjectReferences=true;net10.0"
+@@ -86,6 +88,31 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
+             _ = await Send(Action(DomainSharedProjectionRebuildAction.Commit));
+             throw new InvalidOperationException("Promoted handoff did not reach its armed real process interruption.", interruptionFailure);
+         }
++        if (phase == "inherited")
++        {
++            await VerifyOwnersAsync(count + 1);
++            await ObserveInheritedOwnerAsync();
++            var checkpoint = await RawAsync(CheckpointKey("owner-a"));
++            var row = (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value!.ToJsonString();
++            var lease = await coordinator.RefreshLeaseAsync(scope, handler.OrdinaryWriterId);
++            foreach (int sequence in new[] { 1, count / 2, count, count + 1 })
++            {
++                var item = Event("owner-a", sequence);
++                (await coordinator.JournalAsync(scope, lease, new SharedProjectionDelivery("owner-a", item.GlobalPosition,
++                    JsonSerializer.SerializeToUtf8Bytes(new ProjectionRequest(tenant, "widget", "owner-a", [item]), JsonSerializerOptions.Web),
++                    JsonSerializer.SerializeToUtf8Bytes(item.GlobalPosition), OwnerSequenceNumber: item.SequenceNumber)))
++                    .ShouldBe(SharedProjectionJournalResult.AlreadyCaptured);
++                (await OrdinaryAsync(item)).ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++            }
++            (await RawAsync(CheckpointKey("owner-a"))).Value.ToArray().ShouldBe(checkpoint.Value.ToArray());
++            (await coordinator.ReadAsync<JsonObject>(scope, "row:owner-a")).Value!.ToJsonString().ShouldBe(row);
++            observations["unchangedReplayVerified"] = true;
++            (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
++            (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
++            AssertBounds();
++            WriteEvidence();
++            return;
++        }
+         phase.ShouldBe("resume");
+         string epochKey = "shared-epoch:" + scope.ComputeHash();
+         RawStateEntry interruptedEpoch = await RawAsync(epochKey);
+@@ -126,13 +153,50 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
+         await coordinator.CapturedIdentities.ValidateCompleteAsync(scope, retained);
+         foreach (int sequence in new[] { 1, count / 2, count, count + 1 })
+             (await OrdinaryAsync(Event("owner-a", sequence))).ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
+-        (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
+-        (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
+-        store.Measurements.MaximumBatchOperations.ShouldBeLessThanOrEqualTo(100);
+-        store.Measurements.MaximumCanonicalBatchBytes.ShouldBeLessThanOrEqualTo(1_048_576);
+-        store.Measurements.MaximumPhysicalValueBytes.ShouldBeLessThanOrEqualTo(1_048_576);
+-        store.Measurements.MaximumIdentityValueBytes.ShouldBeLessThan(65_536);
++        if (!inheritOwner)
++        {
++            (await OrdinaryAsync(Event("owner-a", 1) with { MessageId = "contradictory-original" })).ShouldBe(ProjectionDispatchStatus.Failed);
++            (await coordinator.GetStatusAsync(scope)).DeliveryConflicts.ShouldNotBeEmpty();
++            AssertBounds();
++            WriteEvidence();
++            return;
++        }
++        identity = identity with { OperationId = "independent-owner-b" };
++        var independent = await AccumulateAllAsync(onlyOtherOwner: true);
++        (await Send(new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Finalize, identity,
++            ExpectedAggregateCount: 1, ExpectedInventoryFingerprint: independent.InventoryFingerprint))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await Send(Action(DomainSharedProjectionRebuildAction.Stage))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await Send(Action(DomainSharedProjectionRebuildAction.Commit))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++        (await Send(Action(DomainSharedProjectionRebuildAction.Verify))).Status.ShouldBe(ProjectionDispatchStatus.AlreadyCompleted);
++        await ObserveInheritedOwnerAsync();
++        AssertBounds();
+         WriteEvidence();
++        // A distinct worker must prove the inherited original owner over persisted Dapr state.
++        Environment.Exit(73);
++
++        void AssertBounds()
++        {
++            store.Measurements.MaximumBatchOperations.ShouldBeLessThanOrEqualTo(100);
++            store.Measurements.MaximumCanonicalBatchBytes.ShouldBeLessThanOrEqualTo(1_048_576);
++            store.Measurements.MaximumPhysicalValueBytes.ShouldBeLessThanOrEqualTo(1_048_576);
++            store.Measurements.MaximumIdentityValueBytes.ShouldBeLessThan(65_536);
++        }
++
++        async Task ObserveInheritedOwnerAsync()
++        {
++            var epoch = (await store.GetAsync<JsonObject>("statestore", "shared-epoch:" + scope.ComputeHash())).Value!;
++            epoch["captureHighWatermarks"]!.AsObject().ContainsKey("owner-a").ShouldBeFalse();
++            epoch["captureHighWatermarks"]!.AsObject().ContainsKey("owner-b").ShouldBeTrue();
++            var checkpoint = (await coordinator.GetCheckpointAsync(scope, "owner-a"))!;
++            checkpoint.CapturedIdentityReference!.Epoch.ShouldBeLessThan(epoch["activeGeneration"]!.GetValue<long>());
++            observations["originalOwnerOmitted"] = true;
++            observations["retainedProofEpoch"] = checkpoint.CapturedIdentityReference.Epoch;
++            observations["selectedGeneration"] = epoch["activeGeneration"]!.GetValue<long>();
++            var raw = await RawAsync(CheckpointKey("owner-a"));
++            observations["inheritedCheckpointSha256"] = Convert.ToHexString(SHA256.HashData(raw.Value.Span));
++            observations["inheritedCheckpointBase64"] = Convert.ToBase64String(raw.Value.Span);
++            observations["inheritedEpoch"] = epoch.DeepClone();
++        }
+ 
+         Task<RawStateEntry> RawAsync(string key) => new DaprReadModelBatchStateAccessor(client, "statestore")
+             .ReadAsync(key, TestContext.Current.CancellationToken);
+@@ -205,12 +269,13 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
+             if (owner == "owner-a" && includeGrowth)
+                 yield return (await store.GetAsync<ProjectionEventDto[]>("statestore", SourceKey(owner, count + 1) + ":growth")).Value.ShouldNotBeNull();
+         }
+-        async Task<DomainSharedProjectionRebuildResponse> AccumulateAllAsync(bool includeGrowth = false)
++        async Task<DomainSharedProjectionRebuildResponse> AccumulateAllAsync(bool includeGrowth = false, bool onlyOtherOwner = false)
+         {
++            string[] owners = onlyOtherOwner ? ["owner-b"] : ["owner-a", "owner-b"];
+             var fingerprints = new Dictionary<string, string>();
+             string inventory = DomainSharedProjectionRebuildFingerprint.EmptyInventory;
+             int ordinal = 0;
+-            foreach (string owner in new[] { "owner-a", "owner-b" })
++            foreach (string owner in owners)
+             {
+                 using var hash = new DomainSharedProjectionHistoryFingerprintBuilder(owner, false, OwnerCount(owner) + (includeGrowth && owner == "owner-a" ? 1 : 0));
+                 await foreach (var page in SourcePages(owner, includeGrowth)) foreach (var item in page) hash.Append(item);
+@@ -218,11 +283,11 @@ public sealed class ProjectionBoundedIdentityProcessWorkerTests
+                 inventory = DomainSharedProjectionRebuildFingerprint.AppendInventory(inventory, ordinal++, fingerprints[owner]);
+             }
+             (await Send(new(DomainSharedProjectionRebuildProtocol.Version, DomainSharedProjectionRebuildAction.Begin, identity,
+-                CaptureInventoryFingerprint: inventory, SourceHighWatermarks: new Dictionary<string, long>
+-                { ["owner-a"] = (count + (includeGrowth ? 1 : 0)) * 3L, ["owner-b"] = 129 * 3L + 1 }))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
++                CaptureInventoryFingerprint: inventory, SourceHighWatermarks: owners.ToDictionary(owner => owner,
++                    owner => owner == "owner-a" ? (count + (includeGrowth ? 1 : 0)) * 3L : 129 * 3L + 1)))).Status.ShouldBe(ProjectionDispatchStatus.Completed);
+             DomainSharedProjectionRebuildResponse? accepted = null;
+             ordinal = 0;
+-            foreach (string owner in new[] { "owner-a", "owner-b" })
++            foreach (string owner in owners)
+             {
+                 int part = 0;
+                 await foreach (var page in SourcePages(owner, includeGrowth))

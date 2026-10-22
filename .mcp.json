@@ -1,9 +1,8 @@
 {
   "mcpServers": {
     "fluent-ui-blazor": {
-      "type": "stdio",
-      "command": "fluentui-mcp",
-      "args": []
+      "type": "http",
+      "url": "http://127.0.0.1:8812/mcp"
     },
     "microsoft-learn": {
       "type": "http",

@@ -1,0 +1,16 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: pubsub
+spec:
+  type: pubsub.redis
+  version: v1
+  metadata:
+    - name: redisHost
+      value: "localhost:62859"
+    - name: redisPassword
+      value: ""
+    - name: enableDeadLetter
+      value: "true"
+scopes:
+  - eventstore-live-9bf5632e8ac34b619030b03d279d9cbc

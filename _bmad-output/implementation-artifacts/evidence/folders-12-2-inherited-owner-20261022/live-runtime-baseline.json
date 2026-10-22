@@ -1,0 +1,11 @@
+{
+  "command": [
+    "bash",
+    "-c",
+    "dotnet --info; dapr --version; docker inspect --format \"{{.Id}} {{.Image}} {{json .NetworkSettings.Ports}}\" eventstore-inherited-owner-20261022; docker image inspect --format \"{{.Id}} {{json .RepoDigests}}\" redis:6"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "started_at": "2026-10-22T07:28:35.994944+00:00",
+  "elapsed_seconds": 0.4185732860059943,
+  "exit_code": 0
+}

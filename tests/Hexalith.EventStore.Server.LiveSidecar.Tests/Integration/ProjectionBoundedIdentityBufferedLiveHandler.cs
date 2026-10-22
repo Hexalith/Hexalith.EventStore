@@ -7,9 +7,9 @@ using Hexalith.EventStore.DomainService;
 namespace Hexalith.EventStore.Server.LiveSidecar.Tests.Integration;
 
 /// <summary>Qualifies the unchanged buffered-owner, streamed-output contract consumed by Folders.</summary>
-internal sealed class ProjectionBoundedIdentityBufferedLiveHandler : IAsyncDomainSharedProjectionStreamingRebuildHandler
+internal sealed class ProjectionBoundedIdentityBufferedLiveHandler(bool copyOnWrite = false) : IAsyncDomainSharedProjectionStreamingRebuildHandler
 {
-    private readonly ProjectionBoundedIdentityLiveHandler _inner = new();
+    private readonly ProjectionBoundedIdentityLiveHandler _inner = new(copyOnWrite);
     public bool EpochEnabled => _inner.EpochEnabled;
     public string OrdinaryWriterId => _inner.OrdinaryWriterId;
     public string Domain => _inner.Domain;
