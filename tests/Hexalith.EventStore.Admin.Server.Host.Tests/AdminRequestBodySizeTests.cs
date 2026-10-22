@@ -1,6 +1,9 @@
+using System.Buffers;
 using System.IdentityModel.Tokens.Jwt;
+using System.IO.Pipelines;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -17,6 +20,7 @@ using Hexalith.EventStore.Admin.Server.Host.Middleware;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,6 +83,133 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
         else {
             _ = await factory.StreamService.Received(1).SandboxCommandAsync(
                 "tenant-a", "domain", "aggregate", Arg.Any<SandboxCommandRequest>(), Arg.Any<CancellationToken>());
+        }
+    }
+
+    [Fact]
+    public async Task Kestrel_UnknownLengthOverflow_ClosesConnectionAfterBoundedDrain() {
+        const int chunkSize = 64 * 1024;
+        const long sendCeiling = 32L * 1024 * 1024;
+        await using var factory = new RequestSizeHostFactory();
+        factory.UseKestrel(0);
+        using HttpClient client = CreateAdminClient(factory);
+        Uri address = client.BaseAddress.ShouldNotBeNull();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var tcp = new TcpClient();
+        await tcp.ConnectAsync(address.Host, address.Port, timeout.Token);
+        NetworkStream network = tcp.GetStream();
+        string token = CreateToken(new Claim(AdminClaimTypes.AdminRole, "Admin"));
+        await network.WriteAsync(
+            Encoding.ASCII.GetBytes(
+                "POST /api/v1/admin/streams/tenant-a/domain/aggregate/sandbox HTTP/1.1\r\n"
+                + $"Host: {address.Authority}\r\n"
+                + $"Authorization: Bearer {token}\r\n"
+                + "Content-Type: application/json\r\n"
+                + "Transfer-Encoding: chunked\r\n\r\n"),
+            timeout.Token);
+        byte[] chunk = Encoding.ASCII.GetBytes($"{chunkSize:x}\r\n{new string('a', chunkSize)}\r\n");
+        long sent = 0;
+        while (sent <= AdminRequestSizeLimits.OrdinaryJsonBody) {
+            await network.WriteAsync(chunk, timeout.Token);
+            sent += chunkSize;
+        }
+
+        string response = await ReadProblemResponseAsync(network, timeout.Token);
+
+        response.ShouldStartWith("HTTP/1.1 413");
+        response.ShouldContain("Connection: close", Case.Insensitive);
+        response.ShouldContain("application/problem+json");
+        response.ShouldContain("Payload Too Large");
+        response.ShouldNotContain(new string('a', 32));
+
+        // The request never ends. A server that keeps draining it accepts the whole ceiling.
+        try {
+            while (sent < sendCeiling) {
+                await network.WriteAsync(chunk, timeout.Token);
+                sent += chunkSize;
+            }
+        }
+        catch (IOException) {
+            // The server stopped consuming the request and closed the connection.
+        }
+
+        sent.ShouldBeLessThan(sendCeiling);
+        _ = await factory.StreamService.DidNotReceiveWithAnyArgs()
+            .SandboxCommandAsync(default!, default!, default!, default!, default);
+    }
+
+    [Fact]
+    public async Task UnknownLengthOverflow_StalledDrainIsAbortedAfterTimeout() {
+        // The writer stays open: the client overshoots the limit, then stops sending.
+        var pipe = new Pipe(new PipeOptions(pauseWriterThreshold: 0));
+        _ = await pipe.Writer.WriteAsync(new byte[AdminRequestSizeLimits.OrdinaryJsonBody + 1]);
+        HttpContext context = CreateMiddlewareContext(pipe.Reader.AsStream());
+        context.Request.Protocol = HttpProtocol.Http11;
+        IHttpRequestLifetimeFeature lifetime = Substitute.For<IHttpRequestLifetimeFeature>();
+        context.Features.Set(lifetime);
+        bool protectedWork = false;
+        var middleware = new AdminRequestBodySizeMiddleware(_ => {
+            protectedWork = true;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context).WaitAsync(TimeSpan.FromSeconds(30));
+
+        protectedWork.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status413PayloadTooLarge);
+        context.Response.Headers.Connection.ToString().ShouldBe("close");
+        lifetime.Received(1).Abort();
+    }
+
+    [Fact]
+    public async Task UnknownLengthOverflow_DrainReadFailureIsHandledAndAborts() {
+        var pipe = new Pipe(new PipeOptions(pauseWriterThreshold: 0));
+        _ = await pipe.Writer.WriteAsync(new byte[AdminRequestSizeLimits.OrdinaryJsonBody + 1]);
+        HttpContext context = CreateMiddlewareContext(pipe.Reader.AsStream());
+        IHttpRequestLifetimeFeature lifetime = Substitute.For<IHttpRequestLifetimeFeature>();
+        context.Features.Set(lifetime);
+        bool protectedWork = false;
+        var middleware = new AdminRequestBodySizeMiddleware(_ => {
+            protectedWork = true;
+            return Task.CompletedTask;
+        });
+
+        // The buffered bytes are read synchronously, so the call returns parked in the overflow drain.
+        Task invocation = middleware.InvokeAsync(context);
+        invocation.IsCompleted.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status413PayloadTooLarge);
+        await pipe.Writer.CompleteAsync(new IOException("connection reset during drain"));
+
+        await invocation.WaitAsync(TimeSpan.FromSeconds(30));
+
+        protectedWork.ShouldBeFalse();
+        context.Response.StatusCode.ShouldBe(StatusCodes.Status413PayloadTooLarge);
+        lifetime.Received(1).Abort();
+    }
+
+    [Fact]
+    public async Task UnknownLengthBody_ClearsPooledReadBufferBeforeReturningIt() {
+        const byte marker = (byte)'Z';
+        var context = new DefaultHttpContext();
+        context.Request.Body = new MemoryStream(Enumerable.Repeat(marker, 1024).ToArray());
+        context.Response.Body = new MemoryStream();
+        context.SetEndpoint(new Endpoint(
+            _ => Task.CompletedTask,
+            new EndpointMetadataCollection(new RequestSizeLimitAttribute(AdminRequestSizeLimits.OrdinaryJsonBody)),
+            "body limit test"));
+        var middleware = new AdminRequestBodySizeMiddleware(_ => Task.CompletedTask);
+
+        // Every await completes synchronously, so the buffer returns to this thread's pool slot.
+        Task invocation = middleware.InvokeAsync(context);
+
+        invocation.IsCompletedSuccessfully.ShouldBeTrue();
+        await invocation;
+        byte[] rented = ArrayPool<byte>.Shared.Rent(64 * 1024);
+        try {
+            Array.IndexOf(rented, marker).ShouldBe(-1, "request-body bytes survived in the shared pool");
+        }
+        finally {
+            ArrayPool<byte>.Shared.Return(rented);
         }
     }
 
@@ -205,11 +336,18 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
         using var content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(json)));
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         content.Headers.ContentLength = null;
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/streams/tenant-a/domain/aggregate/sandbox") {
+            Content = content,
+        };
 
-        using HttpResponseMessage response = await client.PostAsync(
-            "/api/v1/admin/streams/tenant-a/domain/aggregate/sandbox",
-            content);
+        // The test client re-wraps request content in a seekable stream, which would otherwise
+        // send a computed Content-Length.
+        request.Headers.TransferEncodingChunked = true;
+        _factory.Framing.ContentLengths.Clear();
 
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        _factory.Framing.ContentLengths.ShouldHaveSingleItem().ShouldBeNull();
         await AssertBoundaryResultAsync(response, rejected);
         if (rejected) {
             _ = await _factory.StreamService.DidNotReceiveWithAnyArgs()
@@ -286,6 +424,24 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
         return body;
     }
 
+    private static async Task<string> ReadProblemResponseAsync(NetworkStream network, CancellationToken cancellationToken) {
+        var received = new StringBuilder();
+        byte[] buffer = new byte[4096];
+        while (true) {
+            int read = await network.ReadAsync(buffer, cancellationToken);
+            if (read == 0) {
+                return received.ToString();
+            }
+
+            _ = received.Append(Encoding.UTF8.GetString(buffer, 0, read));
+            string text = received.ToString();
+            int headerEnd = text.IndexOf("\r\n\r\n", StringComparison.Ordinal);
+            if (headerEnd >= 0 && text.IndexOf('}', headerEnd) >= 0) {
+                return text;
+            }
+        }
+    }
+
     private static async Task AssertBoundaryResultAsync(HttpResponseMessage response, bool rejected) {
         if (!rejected) {
             response.StatusCode.ShouldNotBe(HttpStatusCode.RequestEntityTooLarge);
@@ -323,6 +479,8 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
 
         public IBackupCommandService BackupCommandService { get; } = Substitute.For<IBackupCommandService>();
 
+        public RequestBodyFramingRecorder Framing { get; } = new();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder) {
             ArgumentNullException.ThrowIfNull(builder);
             _ = StreamService.SandboxCommandAsync(
@@ -342,6 +500,7 @@ public class AdminRequestBodySizeTests : IClassFixture<AdminRequestBodySizeTests
                 _ = services.AddSingleton(StreamService);
                 _ = services.AddSingleton(TenantCommandService);
                 _ = services.AddSingleton(BackupCommandService);
+                _ = services.AddSingleton<IStartupFilter>(Framing);
             });
         }
     }

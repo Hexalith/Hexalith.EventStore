@@ -83,6 +83,27 @@ public class AdminStreamsControllerTests {
     }
 
     [Fact]
+    public async Task GetRecentCommands_OmittedCount_RequestsPublicDefault() {
+        var result = new PagedResult<CommandSummary>([], 0, null);
+        _ = _service.GetRecentCommandsAsync(
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<string?>(),
+                Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns(result);
+
+        _ = await _sut.GetRecentCommandsAsync("tenant-a", null, null);
+
+        _ = await _service.Received(1).GetRecentCommandsAsync(
+            "tenant-a",
+            null,
+            null,
+            1000,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GetAggregateState_NullResult_Returns404() {
         _ = _service.GetAggregateStateAtPositionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns((AggregateStateSnapshot)null!);

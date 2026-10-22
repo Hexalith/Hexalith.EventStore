@@ -1055,6 +1055,8 @@ public class ConsistencyPageTests : AdminUITestContext {
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldNotContain("foreign-check");
             cut.Markup.ShouldNotContain("tenant-secret");
+            NavManager.Uri.ShouldNotContain("tenant=");
+            NavManager.Uri.ShouldNotContain("domain=");
             cut.Markup.ShouldNotContain("Protected anomaly");
             cut.Markup.ShouldNotContain("Anomaly Detail");
             GetPrivateField<ConsistencyAnomaly?>(cut.Instance, "_selectedAnomaly").ShouldBeNull();
@@ -1065,6 +1067,7 @@ public class ConsistencyPageTests : AdminUITestContext {
                 GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks").ShouldBeEmpty();
                 GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_filteredChecks").ShouldBeEmpty();
                 FindStatCard(cut, "Total Checks").TextContent.ShouldContain("Total Checks: 0");
+                cut.Markup.ShouldContain("Access denied. Insufficient permissions to view consistency checks.");
             }
             else {
                 cut.Markup.ShouldContain("scoped-check");
@@ -1078,6 +1081,87 @@ public class ConsistencyPageTests : AdminUITestContext {
         else {
             _ = _mockConsistencyApi.Received(1).GetChecksAsync(null, Arg.Any<CancellationToken>());
         }
+    }
+
+    [Fact]
+    public void Consistency_WithoutReadableRole_ShowsDenialWithoutLoadingOrFetching() {
+        MutableAuthStateProvider authProvider = ConfigureRole(AdminRole.Admin);
+        authProvider.SignOut();
+        SetupChecks([CreateSummary("hidden-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0)]);
+
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+
+        cut.WaitForAssertion(
+            () => cut.Markup.ShouldContain("Access denied. Insufficient permissions to view consistency checks."),
+            TimeSpan.FromSeconds(5));
+        GetPrivateField<bool>(cut.Instance, "_isLoading").ShouldBeFalse();
+        cut.FindAll(".stat-card").Count.ShouldBe(4);
+        cut.Markup.ShouldNotContain("hidden-check");
+        _ = _mockConsistencyApi.DidNotReceive().GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Consistency_SupersededDetailResponseCannotReplaceNewerSelection() {
+        _ = ConfigureRole(AdminRole.Admin);
+        ConsistencyCheckSummary first = CreateSummary("first-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        ConsistencyCheckSummary second = CreateSummary("second-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0);
+        SetupChecks([first, second]);
+        var firstResponse = new TaskCompletionSource<ConsistencyCheckResult?>();
+        CancellationToken firstToken = default;
+        _ = _mockConsistencyApi.GetCheckResultAsync("first-check", Arg.Any<CancellationToken>()).Returns(call => {
+            firstToken = call.Arg<CancellationToken>();
+            return firstResponse.Task;
+        });
+        _ = _mockConsistencyApi.GetCheckResultAsync("second-check", Arg.Any<CancellationToken>())
+            .Returns(CreateResult("second-check", "tenant-a", []));
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("second-check"), TimeSpan.FromSeconds(5));
+        Task firstLookup = cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, first));
+        cut.WaitForAssertion(() => firstToken.CanBeCanceled.ShouldBeTrue(), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => InvokeRowClickAsync(cut.Instance, second));
+        firstToken.IsCancellationRequested.ShouldBeTrue();
+
+        // The superseded lookup ignores cancellation and answers last, within the same authorization.
+        firstResponse.SetResult(CreateResult("first-check", "tenant-a", []));
+        await firstLookup;
+        cut.Render();
+
+        GetPrivateField<ConsistencyCheckResult?>(cut.Instance, "_expandedCheckResult")
+            .ShouldNotBeNull().CheckId.ShouldBe("second-check");
+    }
+
+    [Fact]
+    public async Task Consistency_SupersededListResponseCannotReplaceNewerLoad() {
+        _ = ConfigureRole(AdminRole.Admin);
+        var firstResponse = new TaskCompletionSource<IReadOnlyList<ConsistencyCheckSummary>>();
+        CancellationToken firstToken = default;
+        int calls = 0;
+        _ = _mockConsistencyApi.GetChecksAsync(Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(call => {
+            if (calls++ == 0) {
+                firstToken = call.Arg<CancellationToken>();
+                return firstResponse.Task;
+            }
+            return Task.FromResult<IReadOnlyList<ConsistencyCheckSummary>>([
+                CreateSummary("second-check", "tenant-a", ConsistencyCheckStatus.Completed, 1, 0)]);
+        });
+        IRenderedComponent<Consistency> cut = Render<Consistency>();
+        cut.WaitForAssertion(() => calls.ShouldBe(1), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "OnManualRefresh"));
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("second-check"), TimeSpan.FromSeconds(5));
+        firstToken.IsCancellationRequested.ShouldBeTrue();
+
+        // The superseded load ignores cancellation and answers last, within the same authorization.
+        // It is the initial load, so its completion ends OnInitializedAsync and re-renders the page.
+        int rendersBeforeRelease = cut.RenderCount;
+        firstResponse.SetResult([CreateSummary("first-check", "tenant-a", ConsistencyCheckStatus.Running, 1, 0)]);
+        cut.WaitForState(() => cut.RenderCount > rendersBeforeRelease, TimeSpan.FromSeconds(5));
+
+        GetPrivateField<IReadOnlyList<ConsistencyCheckSummary>>(cut.Instance, "_allChecks")
+            .Select(check => check.CheckId).ShouldBe(["second-check"]);
+        GetPrivateField<bool>(cut.Instance, "_isLoading").ShouldBeFalse();
+        cut.Markup.ShouldNotContain("first-check");
     }
 
     [Theory]
