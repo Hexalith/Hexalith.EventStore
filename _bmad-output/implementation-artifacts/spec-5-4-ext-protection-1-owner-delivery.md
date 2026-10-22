@@ -2,7 +2,7 @@
 title: 'EXT-PROTECTION-1 Story 5.4 owner bindings'
 type: 'feature'
 created: '2026-10-22'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: c66a0a3345ad97b137959179a0583faf81d59e4b
