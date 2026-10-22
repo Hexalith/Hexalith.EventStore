@@ -39,6 +39,10 @@ public static class TestServiceOverrides {
                     || string.Equals(
                         r.Name,
                         "projection-delivery-writer-protocol",
+                        StringComparison.Ordinal)
+                    || string.Equals(
+                        r.Name,
+                        "projection-delivery-unresolved-conflict",
                         StringComparison.Ordinal))
                 .ToList();
             foreach (HealthCheckRegistration check in daprChecks) {

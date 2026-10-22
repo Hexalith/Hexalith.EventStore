@@ -1,0 +1,63 @@
+
+using System.ComponentModel;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Common;
+
+using ModelContextProtocol.Server;
+
+namespace Hexalith.EventStore.Admin.Mcp.Tools;
+/// <summary>
+/// MCP tools for approval-gated backup operations.
+/// </summary>
+[McpServerToolType]
+internal static class BackupWriteTools {
+    /// <summary>
+    /// Submit a deferred backup request for a tenant.
+    /// </summary>
+    [McpServerTool(Name = "backup-trigger")]
+    [Description("Submit a deferred backup request for a tenant (requires confirm: true). Does not prove backup execution.")]
+    public static async Task<string> TriggerBackup(
+        AdminApiClient adminApiClient,
+        [Description("Tenant ID")] string tenantId,
+        [Description("Optional backup description")] string? description = null,
+        [Description("Include snapshots in backup")] bool includeSnapshots = true,
+        [Description("Set to true to execute; false returns a preview")] bool confirm = false,
+        CancellationToken cancellationToken = default) {
+        description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        string? validation = ToolHelper.ValidateRequired((tenantId, "tenantId"))
+            ?? ToolHelper.ValidateTenantId(tenantId)
+            ?? ToolHelper.ValidatePreviewMatchesExecution((tenantId, "tenantId"), (description, "description"));
+        if (validation is not null) {
+            return validation;
+        }
+
+        string target = $"Submit deferred backup request for tenant '{tenantId}'";
+        string endpoint = $"POST /api/v1/admin/backups/{Uri.EscapeDataString(tenantId)}";
+        validation = ToolHelper.ValidatePreviewMatchesExecution((target, "target"), (endpoint, "endpoint"));
+        if (validation is not null) {
+            return validation;
+        }
+
+        if (!confirm) {
+            return ToolHelper.SerializePreview(
+                "backup-trigger",
+                target,
+                endpoint,
+                new { tenantId, description, includeSnapshots },
+                "Confirmation submits a request to the currently deferred backup backend. It does not prove backup execution or completion.",
+                "Admin");
+        }
+
+        try {
+            AdminOperationResult? result = await adminApiClient
+                .TriggerBackupAsync(tenantId, description, includeSnapshots, cancellationToken)
+                .ConfigureAwait(false);
+            return result is null
+                ? ToolHelper.SerializeError("server-error", "No result returned from the server.")
+                : ToolHelper.SerializeResult(result);
+        }
+        catch (Exception ex) {
+            return ToolHelper.HandleException(ex);
+        }
+    }
+}

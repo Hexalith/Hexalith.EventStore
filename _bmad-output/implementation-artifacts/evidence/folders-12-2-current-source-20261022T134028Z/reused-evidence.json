@@ -1,0 +1,37 @@
+[
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/source-inputs.json",
+    "sha256": "5179e693081099136aaa9a74c863dfc5bfa3a9ed907544332cb75c4b8e16c2b2",
+    "use": "historical comparison only; no result relabeled as fresh"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/SHA256SUMS",
+    "sha256": "5f520613018309fd7ed0bee56bf3d4c0725b55e8444af91c3c30a3c1961fd5af",
+    "use": "historical comparison only; no result relabeled as fresh"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/handoff.md",
+    "sha256": "cecd8669461de079ff62a316b0950b0e980efaa7cf3625c64eb61ae6e0130c6a",
+    "use": "historical comparison only; no result relabeled as fresh"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch",
+    "sha256": "d8d028f2155b6e3a58eccc81d58f55fbb85ba4ca600a25b5afdffb5a74a039ca",
+    "use": "historical comparison only; no result relabeled as fresh"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-sidecar-startup-20261022T105749Z/README.md",
+    "sha256": "b1bc2dd4c7547900e866f60c7b2fb5663a6a1090ffc55f5861ed92077107f8d1",
+    "use": "previous consumer selection and retained historical results only"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-sidecar-startup-20261022T105749Z/SHA256SUMS",
+    "sha256": "276ab7de9458e5446049e2e67cb2d6de41b7b76f90387c416a2f3d267e98e2a7",
+    "use": "previous consumer selection and retained historical results only"
+  },
+  {
+    "path": "/home/administrator/projects/hexalith/folders/_bmad-output/implementation-artifacts/evidence/story-12-2-sidecar-startup-20261022T105749Z/qualification.json",
+    "sha256": "267e5605994f4dc146188b105e0ec9441a3e3dd83a8d74244efaba7279739263",
+    "use": "previous consumer selection and retained historical results only"
+  }
+]

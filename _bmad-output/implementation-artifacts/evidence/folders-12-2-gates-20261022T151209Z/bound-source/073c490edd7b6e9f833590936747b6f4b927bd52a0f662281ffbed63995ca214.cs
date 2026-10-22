@@ -1,0 +1,210 @@
+using Hexalith.EventStore.Contracts.Authorization;
+using Hexalith.EventStore.Contracts.Queries;
+using Hexalith.EventStore.Server.Pipeline.Queries;
+using Hexalith.EventStore.Server.Queries;
+
+using MediatR;
+
+using Microsoft.Extensions.Logging;
+
+namespace Hexalith.EventStore.Server.Pipeline;
+
+/// <summary>
+/// Handles query submission: routes queries to projection actors via the query router.
+/// Unlike commands, queries are synchronous — no status tracking or archiving.
+/// </summary>
+public partial class SubmitQueryHandler(
+    IQueryRouter queryRouter,
+    ILogger<SubmitQueryHandler> logger) : IRequestHandler<SubmitQuery, SubmitQueryResult> {
+
+    public async Task<SubmitQueryResult> Handle(SubmitQuery request, CancellationToken cancellationToken) {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Log.QueryReceived(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId);
+
+        QueryRouterResult routerResult = await queryRouter
+            .RouteQueryAsync(request, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (routerResult.NotFound) {
+            throw new QueryNotFoundException(request.Tenant, request.Domain, request.AggregateId, request.QueryType);
+        }
+
+        if (!routerResult.Success) {
+            Log.QueryFailed(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId, GetSafeLogErrorMessage(routerResult.ErrorMessage));
+            throw CreateQueryFailureException(request, routerResult.ErrorMessage);
+        }
+
+        if (routerResult.Payload is null) {
+            Log.QueryCompletedWithoutPayload(logger, request.CorrelationId, request.QueryType, request.Tenant, request.Domain, request.AggregateId);
+            throw new InvalidOperationException("Projection query completed without a payload.");
+        }
+
+        return new SubmitQueryResult(
+            request.CorrelationId,
+            routerResult.Payload.Value,
+            routerResult.ProjectionType,
+            routerResult.Metadata);
+    }
+
+    private static Exception CreateQueryFailureException(SubmitQuery request, string? errorMessage) {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (string.Equals(errorMessage, QueryAdapterFailureReason.Forbidden, StringComparison.OrdinalIgnoreCase)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                403,
+                errorMessage!,
+                AuthorizationFailureReasonExtensions.InsufficientPermission);
+        }
+
+        // Client-input failures are 400, not 500. A projection adapter signals these with the
+        // shared QueryAdapterFailureReason sentinels (the same mechanism as Forbidden above), either
+        // bare or as a "sentinel: detail" prefix so a descriptive message survives. These exact/prefix
+        // sentinel checks MUST run before the fuzzy IsNotFound/IsNotImplemented substring checks below:
+        // a "sentinel: detail" message carries caller-supplied text (e.g. an invalid audit category
+        // value), so a detail containing "not found" / "not implemented" would otherwise be
+        // misclassified as 404/501 instead of the intended 400. The message is preserved as the
+        // ProblemDetails detail so consumers can react. Page and cursor failures are intentionally
+        // replaced with generic details below so protected pagination input is never echoed.
+        if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidPage))
+        {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                400,
+                "The supplied page is invalid.",
+                QueryProblemReasonCodes.InvalidPage)
+            {
+                AdapterFailureReason = QueryAdapterFailureReason.InvalidPage,
+            };
+        }
+
+        if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                400,
+                "The supplied cursor is invalid.",
+                QueryProblemReasonCodes.InvalidPage)
+            {
+                AdapterFailureReason = QueryAdapterFailureReason.InvalidCursor,
+            };
+        }
+
+        if (IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidEnvelope)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                400,
+                errorMessage!,
+                QueryProblemReasonCodes.MalformedRequest);
+        }
+
+        if (IsNotFound(errorMessage)) {
+            return new QueryNotFoundException(request.Tenant, request.Domain, request.AggregateId, request.QueryType);
+        }
+
+        if (IsNotImplemented(errorMessage)) {
+            return new QueryExecutionFailedException(
+                request.CorrelationId,
+                request.Tenant,
+                request.Domain,
+                request.AggregateId,
+                request.QueryType,
+                501,
+                errorMessage!,
+                QueryProblemReasonCodes.NotImplemented);
+        }
+
+        return new QueryExecutionFailedException(
+            request.CorrelationId,
+            request.Tenant,
+            request.Domain,
+            request.AggregateId,
+            request.QueryType,
+            500,
+            errorMessage ?? "Projection query execution failed.",
+            QueryProblemReasonCodes.InternalError);
+    }
+
+    // Matches a shared failure sentinel either exactly or as a "sentinel: detail" prefix, so a
+    // descriptive adapter message still classifies without a fuzzy substring match that could
+    // misclassify an unrelated internal error.
+    private static bool IsSentinel(string? errorMessage, string sentinel)
+        => !string.IsNullOrEmpty(errorMessage)
+            && (string.Equals(errorMessage, sentinel, StringComparison.Ordinal)
+                || errorMessage.StartsWith(sentinel + ":", StringComparison.Ordinal));
+
+    private static string? GetSafeLogErrorMessage(string? errorMessage)
+        => IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidCursor)
+            ? QueryAdapterFailureReason.InvalidCursor
+            : IsSentinel(errorMessage, QueryAdapterFailureReason.InvalidPage)
+                ? QueryAdapterFailureReason.InvalidPage
+                : errorMessage;
+
+    private static bool IsNotFound(string? errorMessage)
+        => !string.IsNullOrWhiteSpace(errorMessage)
+            && (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("no projection state available", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsNotImplemented(string? errorMessage)
+        => string.Equals(errorMessage, QueryAdapterFailureReason.UnsupportedQueryType, StringComparison.Ordinal)
+            || string.Equals(errorMessage, QueryAdapterFailureReason.UnknownQueryType, StringComparison.Ordinal)
+            || (!string.IsNullOrWhiteSpace(errorMessage)
+                && (errorMessage.Contains("not implemented", StringComparison.OrdinalIgnoreCase)
+                    || errorMessage.Contains("not yet implemented", StringComparison.OrdinalIgnoreCase)));
+
+    private static partial class Log {
+
+        [LoggerMessage(
+            EventId = 1212,
+            Level = LogLevel.Error,
+            Message = "Query routing returned success without payload: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryCompletedWithoutPayload")]
+        public static partial void QueryCompletedWithoutPayload(
+            ILogger logger,
+            string correlationId,
+            string queryType,
+            string tenantId,
+            string domain,
+            string aggregateId);
+
+        [LoggerMessage(
+            EventId = 1211,
+            Level = LogLevel.Warning,
+            Message = "Query routing returned failure: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, ErrorMessage={ErrorMessage}, Stage=QueryFailed")]
+        public static partial void QueryFailed(
+            ILogger logger,
+            string correlationId,
+            string queryType,
+            string tenantId,
+            string domain,
+            string aggregateId,
+            string? errorMessage);
+
+        [LoggerMessage(
+            EventId = 1210,
+            Level = LogLevel.Information,
+            Message = "Query received: CorrelationId={CorrelationId}, QueryType={QueryType}, TenantId={TenantId}, Domain={Domain}, AggregateId={AggregateId}, Stage=QueryReceived")]
+        public static partial void QueryReceived(
+            ILogger logger,
+            string correlationId,
+            string queryType,
+            string tenantId,
+            string domain,
+            string aggregateId);
+    }
+}

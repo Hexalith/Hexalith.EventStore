@@ -1,0 +1,146 @@
+[
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-130b71af6bfe-redis",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-ujlv2cu8/redis.cid",
+      "--label",
+      "hexalith.qualification.run-id=admission-130b71af6bfe",
+      "-p",
+      "127.0.0.1::6379",
+      "redis:7-alpine"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 1.7626637450011913,
+    "stdout": "f4bbd61ecd34d8d595d148c6bcaf14a515069e64ed04348256fab4a109b3ae72\n",
+    "stderr": "Unable to find image 'redis:7-alpine' locally\n7-alpine: Pulling from library/redis\nDigest: sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\nStatus: Downloaded newer image for redis:7-alpine\n"
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "f4bbd61ecd34d8d595d148c6bcaf14a515069e64ed04348256fab4a109b3ae72",
+      "6379"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.03140286399866454,
+    "stdout": "127.0.0.1:55795\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "redis:7-alpine"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.07927150100294966,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\",\n        \"RepoTags\": [\n            \"redis:7-alpine\",\n            \"redis:7.4-alpine\"\n        ],\n        \"RepoDigests\": [\n            \"redis@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-21T21:14:18.14788955Z\",\n        \"Config\": {\n            \"ExposedPorts\": {\n                \"6379/tcp\": {}\n            },\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"REDIS_VERSION=7.4.11\"\n            ],\n            \"Entrypoint\": [\n                \"docker-entrypoint.sh\"\n            ],\n            \"Cmd\": [\n                \"redis-server\"\n            ],\n            \"Volumes\": {\n                \"/data\": {}\n            },\n            \"WorkingDir\": \"/data\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 57295534,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:41058dd4c122275500b8ee145e3ff1692ea26c7c568f55c00caf2878e7c61db0\",\n                \"sha256:006e6be2c45cf39d25d84f8e6e7057a18e853b3850947e2e75370426a04b3de3\",\n                \"sha256:dcfe6036ae039ca46b9c98799b2d16578379e4e7f28133beb421a83c1d8273d5\",\n                \"sha256:18db2ba69d8364773392e4da34a6c6a86ad4e68eaf69a02968dc9c0fe726eddf\",\n                \"sha256:395ded6fa976c048ef1ad70e0891ea5f4e54c87e67cd50bc8aa71477390a4db7\",\n                \"sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef\",\n                \"sha256:f6a5665a3591433de5e1769be62915eea7e7fd9fad30909efe91adaa22067c97\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-22T15:17:37.251269933Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541\",\n            \"size\": 10213\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/library/redis\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-130b71af6bfe-placement",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-ujlv2cu8/placement.cid",
+      "--label",
+      "hexalith.qualification.run-id=admission-130b71af6bfe",
+      "-p",
+      "127.0.0.1::50005",
+      "--entrypoint",
+      "./placement",
+      "daprio/dapr:1.18.7",
+      "--port",
+      "50005"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.4483861399930902,
+    "stdout": "238b25a88a1ea26be8dcbaf7b9ef6fac7c016fa5e07b79e774fb75888a2bef14\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "238b25a88a1ea26be8dcbaf7b9ef6fac7c016fa5e07b79e774fb75888a2bef14",
+      "50005"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.02971801300009247,
+    "stdout": "127.0.0.1:55796\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "daprio/dapr:1.18.7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06660446900059469,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"RepoTags\": [\n            \"daprio/dapr:1.18.7\"\n        ],\n        \"RepoDigests\": [\n            \"daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-09T20:12:36.054822184Z\",\n        \"Config\": {\n            \"User\": \"65532:65532\",\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"WorkingDir\": \"/\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 650052110,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:9486261b5a13f63ca6904b36721527ac8f19df53d300560138d69ae9b4c203de\",\n                \"sha256:621c35e751a51a9a9dc3e80aa0b7fe8be2a93402ea6ccd307d30852cd7776cda\",\n                \"sha256:763a77745f27b86cf26b97887b6842d83720e63b1c48848c0ba9ee54e351d63a\",\n                \"sha256:f0d0eff4c2312a7bd6e21797bdfea5eb35f60e76b555ce2b22794424af2cad36\",\n                \"sha256:275a30dd8ce958b21daa9ad962c6fbc09f98306ee2f486b65c9075dc257b1412\",\n                \"sha256:4d049f83d9cf21d1f5cc0e11deaf36df02790d0e60c1a3829538fb4b61685368\",\n                \"sha256:af5aa97ebe6ce1604747ec1e21af7136ded391bcabe4acef882e718a87c86bcc\",\n                \"sha256:6f1cdceb6a3146f0ccb986521156bef8a422cdbb0863396f7f751f575ba308f4\",\n                \"sha256:bd3cdfae1d3fdd83a2231d608969b38b82349777c2fff9a7c12d54f8ac5c9b38\",\n                \"sha256:4cde6b0bb6f50a5f255eef7b2a42162c661cf776b803225dcac9a659e396bb6b\",\n                \"sha256:ad51d0769d16ba578106a177987dfe3d2e02c1668c852b795b2f6b024068242a\",\n                \"sha256:187cfc6d1e3e8a40a5e64653bcd3239c140807dcf1c09e48021178705a5a6139\",\n                \"sha256:f2392a9484bf6b18f06beaf705b994e31dbb2716c99cf7d03c9c495cd107f364\",\n                \"sha256:641f90239595925670eccf07a875d85732d545db212af4a996b5232d156fb677\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-13T14:15:25.43547467Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n            \"digest\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n            \"size\": 1771\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/daprio/dapr\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "-d",
+      "--name",
+      "admission-130b71af6bfe-scheduler",
+      "--cidfile",
+      "/tmp/eventstore-actor-admission-ujlv2cu8/scheduler.cid",
+      "--label",
+      "hexalith.qualification.run-id=admission-130b71af6bfe",
+      "-p",
+      "127.0.0.1:58049:50006",
+      "--entrypoint",
+      "./scheduler",
+      "daprio/dapr:1.18.7",
+      "--etcd-data-dir=/tmp/bounded-etcd",
+      "--override-broadcast-host-port=127.0.0.1:58049",
+      "--etcd-client-listen-address=0.0.0.0"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.49483427400991786,
+    "stdout": "5c3b4c73c08e800fef0e0e682a19c201f8f3f1bc98e67448f0334a5817db721f\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "port",
+      "5c3b4c73c08e800fef0e0e682a19c201f8f3f1bc98e67448f0334a5817db721f",
+      "50006"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.04167468899686355,
+    "stdout": "127.0.0.1:58049\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "daprio/dapr:1.18.7"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.06758244599041063,
+    "stdout": "[\n    {\n        \"Id\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n        \"RepoTags\": [\n            \"daprio/dapr:1.18.7\"\n        ],\n        \"RepoDigests\": [\n            \"daprio/dapr@sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-09T20:12:36.054822184Z\",\n        \"Config\": {\n            \"User\": \"65532:65532\",\n            \"Env\": [\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt\"\n            ],\n            \"WorkingDir\": \"/\"\n        },\n        \"Architecture\": \"amd64\",\n        \"Os\": \"linux\",\n        \"Size\": 650052110,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:9486261b5a13f63ca6904b36721527ac8f19df53d300560138d69ae9b4c203de\",\n                \"sha256:621c35e751a51a9a9dc3e80aa0b7fe8be2a93402ea6ccd307d30852cd7776cda\",\n                \"sha256:763a77745f27b86cf26b97887b6842d83720e63b1c48848c0ba9ee54e351d63a\",\n                \"sha256:f0d0eff4c2312a7bd6e21797bdfea5eb35f60e76b555ce2b22794424af2cad36\",\n                \"sha256:275a30dd8ce958b21daa9ad962c6fbc09f98306ee2f486b65c9075dc257b1412\",\n                \"sha256:4d049f83d9cf21d1f5cc0e11deaf36df02790d0e60c1a3829538fb4b61685368\",\n                \"sha256:af5aa97ebe6ce1604747ec1e21af7136ded391bcabe4acef882e718a87c86bcc\",\n                \"sha256:6f1cdceb6a3146f0ccb986521156bef8a422cdbb0863396f7f751f575ba308f4\",\n                \"sha256:bd3cdfae1d3fdd83a2231d608969b38b82349777c2fff9a7c12d54f8ac5c9b38\",\n                \"sha256:4cde6b0bb6f50a5f255eef7b2a42162c661cf776b803225dcac9a659e396bb6b\",\n                \"sha256:ad51d0769d16ba578106a177987dfe3d2e02c1668c852b795b2f6b024068242a\",\n                \"sha256:187cfc6d1e3e8a40a5e64653bcd3239c140807dcf1c09e48021178705a5a6139\",\n                \"sha256:f2392a9484bf6b18f06beaf705b994e31dbb2716c99cf7d03c9c495cd107f364\",\n                \"sha256:641f90239595925670eccf07a875d85732d545db212af4a996b5232d156fb677\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-13T14:15:25.43547467Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.docker.distribution.manifest.list.v2+json\",\n            \"digest\": \"sha256:0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc\",\n            \"size\": 1771\n        },\n        \"Identity\": {\n            \"Pull\": [\n                {\n                    \"Repository\": \"docker.io/daprio/dapr\"\n                }\n            ]\n        }\n    }\n]\n",
+    "stderr": ""
+  }
+]

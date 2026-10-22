@@ -1,0 +1,11 @@
+{
+  "old_count": 984,
+  "old_inventory_current_hash": "eee21473fe57b4aa1c71670d4d6454889d68d13290d3a0fa3350fe0a710db29a",
+  "expected_old_hash": "eee21473fe57b4aa1c71670d4d6454889d68d13290d3a0fa3350fe0a710db29a",
+  "followup_count": 2,
+  "followup_hash": "167bd2d4402c2a6bb8fa37d7f417ff2074ccdff8b52bd263e3c7b75523cdd927",
+  "paths": [
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/tiny-repro/Corrected.csproj",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-inherited-owner-20261022/tiny-repro/Diagnostic.csproj"
+  ]
+}

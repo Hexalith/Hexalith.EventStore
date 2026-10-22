@@ -1,0 +1,97 @@
+@namespace Hexalith.EventStore.Admin.UI.Components
+
+@using Hexalith.EventStore.Admin.Abstractions.Models.Streams
+@using Hexalith.EventStore.Admin.UI.Services
+
+<div class="stream-filter-bar" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+    @* Status toggle chips *@
+    <div style="display: flex; gap: 4px;">
+        @foreach (string status in _statusOptions)
+        {
+            <FluentButton Appearance="@(SelectedStatus == status ? ButtonAppearance.Primary : ButtonAppearance.Outline)"
+                          Size="ButtonSize.Small"
+                          OnClick="@(() => OnStatusChanged(status))">
+                @status
+            </FluentButton>
+        }
+    </div>
+
+    @* Tenant dropdown — driven by AdminTenantOptionsProvider; preserves provenance via TenantOption *@
+    <FluentSelect TOption="string" TValue="string"
+                  Value="@SelectedTenantId"
+                  ValueChanged="OnTenantChanged"
+                  Style="min-width: 160px;">
+        <FluentOption Value="@string.Empty">Authorized scope (all tenants for Admin)</FluentOption>
+        @if (Tenants is not null)
+        {
+            @foreach (TenantOption tenant in Tenants)
+            {
+                <FluentOption Value="@tenant.TenantId">@tenant.DisplayName</FluentOption>
+            }
+        }
+    </FluentSelect>
+
+    @* Domain dropdown *@
+    <FluentSelect TOption="string" TValue="string"
+                  Value="@SelectedDomain"
+                  ValueChanged="OnDomainChanged"
+                  Style="min-width: 160px;">
+        <FluentOption Value="@string.Empty">All Domains</FluentOption>
+        @if (Domains is not null)
+        {
+            @foreach (string domain in Domains)
+            {
+                <FluentOption Value="@domain">@domain</FluentOption>
+            }
+        }
+    </FluentSelect>
+</div>
+
+@code {
+    private static readonly string[] _statusOptions = ["All", "Active", "Idle", "Tombstoned"];
+
+    [Parameter]
+    public string SelectedStatus { get; set; } = "All";
+
+    [Parameter]
+    public EventCallback<string> SelectedStatusChanged { get; set; }
+
+    [Parameter]
+    public string SelectedTenantId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SelectedTenantIdChanged { get; set; }
+
+    [Parameter]
+    public string SelectedDomain { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SelectedDomainChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<TenantOption>? Tenants { get; set; }
+
+    [Parameter]
+    public string? TenantsDiagnostic { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string>? Domains { get; set; }
+
+    private async Task OnStatusChanged(string status)
+    {
+        SelectedStatus = status;
+        await SelectedStatusChanged.InvokeAsync(status).ConfigureAwait(false);
+    }
+
+    private async Task OnTenantChanged(string? tenantId)
+    {
+        SelectedTenantId = tenantId ?? string.Empty;
+        await SelectedTenantIdChanged.InvokeAsync(SelectedTenantId).ConfigureAwait(false);
+    }
+
+    private async Task OnDomainChanged(string? domain)
+    {
+        SelectedDomain = domain ?? string.Empty;
+        await SelectedDomainChanged.InvokeAsync(SelectedDomain).ConfigureAwait(false);
+    }
+}

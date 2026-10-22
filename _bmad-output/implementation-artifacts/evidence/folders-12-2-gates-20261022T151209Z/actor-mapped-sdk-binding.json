@@ -1,0 +1,240 @@
+{
+  "passed": true,
+  "observations": [
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.Commons.UniqueIds.dll",
+      "dll_sha256": "f84c910486784538f74343dacd689d574cc17824f21f2f1160028593b124d7a3",
+      "pdb_sha256": "fdf8193c7279cbf8259e83e72ad130cd76aee9d29f33f54f105de892aaf7425e",
+      "mvid": "db2148ba-8eb4-4d6a-b1ca-6ec37a98a025",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Admin.Abstractions.dll",
+      "dll_sha256": "2527a5245bab3bd63a7e8976b8e271938adcc9be87c142431591a099cb855bcf",
+      "pdb_sha256": "bd1a44395eef94fcc7c874327008508fabd99873a8f76d379a063f6f0fc805da",
+      "mvid": "39e0957d-e5e0-4b0e-8d66-42f7053d12f6",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "7ee59662f9048f49a0065d679da6218e409a10dea0ddcb1b918322a8bf14a527",
+      "pdb_sha256": "f3fd6e1311f5e0a4366c373e3ab93b9f8456b6b6ce0295ad4ec0c43cf45be591",
+      "mvid": "c38265b6-be24-4f39-a093-e6506514cd1e",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "4203496cfe03324c0fef4099a02797b793c5e1879a43824c2b5a594266dde93a",
+      "pdb_sha256": "5872a809b5faf2a7f312549ee1410d0877c4395222cb737cd51876c0da91d628",
+      "mvid": "df180fa4-aae4-4f00-aa70-6ca0becb4763",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "a5edb452970b564a4953d560043af3054203668c402afb19cb68a97437295e4c",
+      "pdb_sha256": "d3d772506820afcdb4584b5d6a3fc907eddf02f31fa98e473a9fe5d802d59c9c",
+      "mvid": "835bfeaf-1396-422f-94ca-349511db7ff7",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "0c690a235a8601a544e23676300d3a5ca5b002dde4c2ea518c640be243812735",
+      "pdb_sha256": "318423f190c3591d22fa1387545b3f8eb3460fb1f03b83ff640b91ff7fea6806",
+      "mvid": "e4287f05-de6e-42d4-b08b-5d9051920f07",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Gateway.dll",
+      "dll_sha256": "c497bcebeb4476ea1f01918b7d1ac98adf751d0ec40cb8d7d0cd6a80160fbff2",
+      "pdb_sha256": "3d5f1ed6fb280634fcbcfe5878e0de6eefb2c44093540a484d5688655b085456",
+      "mvid": "2e0b1c19-978a-4ecc-90f2-451770b57001",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.ServiceDefaults.dll",
+      "dll_sha256": "6e66a04440650b4256b51559b4cd4cf3238b01d52357207bbd07e71b2ce4247c",
+      "pdb_sha256": "96f9ac958deb907b066d564f3bc27d202a9fa7d5c59ea96afbb31eba8b81944d",
+      "mvid": "9b8a3169-15ed-4b12-aec3-0c467245d1b4",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-1-mapped-images",
+      "pid": 46369,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.dll",
+      "dll_sha256": "b4a23cd1c23b380a398acaf1461745bd9681f70801ba07b6b630f4dee2e23db3",
+      "pdb_sha256": "fa536b7f30576b334b2e1f68ce5359b0b13d28883695a3669152054c99eabe16",
+      "mvid": "eb16a335-7eab-4ff9-8e31-928dfb3269fa",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.Commons.UniqueIds.dll",
+      "dll_sha256": "f84c910486784538f74343dacd689d574cc17824f21f2f1160028593b124d7a3",
+      "pdb_sha256": "fdf8193c7279cbf8259e83e72ad130cd76aee9d29f33f54f105de892aaf7425e",
+      "mvid": "db2148ba-8eb4-4d6a-b1ca-6ec37a98a025",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Admin.Abstractions.dll",
+      "dll_sha256": "2527a5245bab3bd63a7e8976b8e271938adcc9be87c142431591a099cb855bcf",
+      "pdb_sha256": "bd1a44395eef94fcc7c874327008508fabd99873a8f76d379a063f6f0fc805da",
+      "mvid": "39e0957d-e5e0-4b0e-8d66-42f7053d12f6",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "7ee59662f9048f49a0065d679da6218e409a10dea0ddcb1b918322a8bf14a527",
+      "pdb_sha256": "f3fd6e1311f5e0a4366c373e3ab93b9f8456b6b6ce0295ad4ec0c43cf45be591",
+      "mvid": "c38265b6-be24-4f39-a093-e6506514cd1e",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "4203496cfe03324c0fef4099a02797b793c5e1879a43824c2b5a594266dde93a",
+      "pdb_sha256": "5872a809b5faf2a7f312549ee1410d0877c4395222cb737cd51876c0da91d628",
+      "mvid": "df180fa4-aae4-4f00-aa70-6ca0becb4763",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "a5edb452970b564a4953d560043af3054203668c402afb19cb68a97437295e4c",
+      "pdb_sha256": "d3d772506820afcdb4584b5d6a3fc907eddf02f31fa98e473a9fe5d802d59c9c",
+      "mvid": "835bfeaf-1396-422f-94ca-349511db7ff7",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "0c690a235a8601a544e23676300d3a5ca5b002dde4c2ea518c640be243812735",
+      "pdb_sha256": "318423f190c3591d22fa1387545b3f8eb3460fb1f03b83ff640b91ff7fea6806",
+      "mvid": "e4287f05-de6e-42d4-b08b-5d9051920f07",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.ServiceDefaults.dll",
+      "dll_sha256": "6e66a04440650b4256b51559b4cd4cf3238b01d52357207bbd07e71b2ce4247c",
+      "pdb_sha256": "96f9ac958deb907b066d564f3bc27d202a9fa7d5c59ea96afbb31eba8b81944d",
+      "mvid": "9b8a3169-15ed-4b12-aec3-0c467245d1b4",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.Gateway.dll",
+      "dll_sha256": "c497bcebeb4476ea1f01918b7d1ac98adf751d0ec40cb8d7d0cd6a80160fbff2",
+      "pdb_sha256": "3d5f1ed6fb280634fcbcfe5878e0de6eefb2c44093540a484d5688655b085456",
+      "mvid": "2e0b1c19-978a-4ecc-90f2-451770b57001",
+      "passed": true
+    },
+    {
+      "phase": "eventstore-2-mapped-images",
+      "pid": 52579,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/eventstore/Hexalith.EventStore.dll",
+      "dll_sha256": "b4a23cd1c23b380a398acaf1461745bd9681f70801ba07b6b630f4dee2e23db3",
+      "pdb_sha256": "fa536b7f30576b334b2e1f68ce5359b0b13d28883695a3669152054c99eabe16",
+      "mvid": "eb16a335-7eab-4ff9-8e31-928dfb3269fa",
+      "passed": true
+    },
+    {
+      "phase": "sample-1-mapped-images",
+      "pid": 45551,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/sample/Hexalith.EventStore.ServiceDefaults.dll",
+      "dll_sha256": "6e66a04440650b4256b51559b4cd4cf3238b01d52357207bbd07e71b2ce4247c",
+      "pdb_sha256": "96f9ac958deb907b066d564f3bc27d202a9fa7d5c59ea96afbb31eba8b81944d",
+      "mvid": "9b8a3169-15ed-4b12-aec3-0c467245d1b4",
+      "passed": true
+    },
+    {
+      "phase": "sample-1-mapped-images",
+      "pid": 45551,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/sample/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "7ee59662f9048f49a0065d679da6218e409a10dea0ddcb1b918322a8bf14a527",
+      "pdb_sha256": "f3fd6e1311f5e0a4366c373e3ab93b9f8456b6b6ce0295ad4ec0c43cf45be591",
+      "mvid": "c38265b6-be24-4f39-a093-e6506514cd1e",
+      "passed": true
+    },
+    {
+      "phase": "sample-1-mapped-images",
+      "pid": 45551,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/sample/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "a5edb452970b564a4953d560043af3054203668c402afb19cb68a97437295e4c",
+      "pdb_sha256": "d3d772506820afcdb4584b5d6a3fc907eddf02f31fa98e473a9fe5d802d59c9c",
+      "mvid": "835bfeaf-1396-422f-94ca-349511db7ff7",
+      "passed": true
+    },
+    {
+      "phase": "sample-1-mapped-images",
+      "pid": 45551,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/sample/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "4203496cfe03324c0fef4099a02797b793c5e1879a43824c2b5a594266dde93a",
+      "pdb_sha256": "5872a809b5faf2a7f312549ee1410d0877c4395222cb737cd51876c0da91d628",
+      "mvid": "df180fa4-aae4-4f00-aa70-6ca0becb4763",
+      "passed": true
+    },
+    {
+      "phase": "sample-1-mapped-images",
+      "pid": 45551,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/sample/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "phase": "sample-1-mapped-images",
+      "pid": 45551,
+      "path": "/tmp/eventstore-actor-admission-bqmchzke/sample/Hexalith.EventStore.Sample.dll",
+      "dll_sha256": "d04eccd57ac460fa1bbdf8fb9b57f1caa69b76d07f85e5f53a5d3c2d8a67f4ec",
+      "pdb_sha256": "b1e261801324cfe112a40c22573a9aa116d959bff08c106846a6b63063712a1f",
+      "mvid": "338a4f02-3541-48c8-b1cc-ee2e89786702",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

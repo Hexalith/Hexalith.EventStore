@@ -1,0 +1,1015 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+
+namespace Hexalith.EventStore.Contracts.Tests.Packaging;
+
+/// <summary>
+/// Verifies both operative Story 1.20 approval-role allowlist validators remain bound to
+/// their executable proof-packet commands and reject adversarial input. Approved membership
+/// stays single-sourced in the allowlist and packet rather than being restated by this test.
+/// </summary>
+public sealed class ProofPacketValidatorIntegrityTests
+{
+    private const string PacketRelativePath =
+        "_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md";
+
+    private const string AllowlistRelativePath =
+        "_bmad-output/implementation-artifacts/1-20-github-approval-role-allowlist.json";
+
+    private const string DeferredSkipAllowlistRelativePath =
+        "_bmad-output/implementation-artifacts/1-20-deferred-xunit-skip-allowlist.json";
+
+    private const string FollowupSpecRelativePath =
+        "_bmad-output/implementation-artifacts/spec-1-11-complete-projection-freshness-lifecycle.md";
+
+    private const string SprintStatusRelativePath =
+        "_bmad-output/implementation-artifacts/sprint-status.yaml";
+
+    private static readonly Regex BashBlockPattern = new(
+        @"^```bash\r?\n(?<body>.*?)^```\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
+
+    private static readonly Regex AdapterOutputPattern = new(
+        @"^""\$(?:RAW_EVIDENCE_PROVIDER_ADAPTER|A_PROVIDER_ADAPTER)""[ \t]+(?:download|describe)[ \t]*\\\r?\n(?:.*\r?\n)*?[ \t]*--output[ \t]+""\$(?<output>[A-Z0-9_]+)""",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
+    private static readonly Regex ValidatorPattern = new(
+        @"^[ \t]*jq[ \t]+-e[ \t]+-s[ \t]+'(?<program>.*?)'[ \t\r\n]+""(?<input>\$(?:APPROVAL_ROLE_ALLOWLIST|A_APPROVAL_ROLE_ALLOWLIST))""[ \t]+>/dev/null[ \t]*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.Singleline);
+
+    /// <summary>
+    /// Verifies the frozen publication command preserves the Alpine-compatible multi-RID
+    /// contract as single MSBuild arguments and gives the Production smoke its explicit,
+    /// non-secret authentication configuration.
+    /// </summary>
+    [Fact]
+    public void PacketContainerPublicationUsesAlpineCompatibleMultiRidAndProductionSmokeContract()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string runtimeIdentifiers = "linux-musl-x64;linux-musl-arm64";
+        string runtimeIdentifiersArgument =
+            $"\"-p:RuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"";
+
+        Regex.Matches(packet, Regex.Escape(runtimeIdentifiersArgument)).Count.ShouldBe(
+            2,
+            "Both restore and no-restore publish must receive the same multi-RID graph.");
+        packet.ShouldContain(
+            $"\"-p:ContainerRuntimeIdentifiers=\\\"{runtimeIdentifiers}\\\"\"");
+        packet.ShouldContain("-p:ContainerImageFormat=OCI");
+        packet.ShouldNotContain("\"-p:ContainerRuntimeIdentifiers=linux-x64;linux-arm64\"");
+        AssertHistoricalPacketRetired(root);
+        packet.ShouldContain("for _ in $(seq 1 180); do");
+        packet.ShouldContain(".publish_properties.runtime_identifiers ==");
+        packet.ShouldContain(".publish_properties.container_image_format == \"OCI\"");
+
+        // Regression: the SDK-captured image-index digest file must be read BOM-safe. MSBuild
+        // WriteLinesToFile Encoding="UTF-8" emits a UTF-8 BOM on SDK 10.0.302, which failed the
+        // ^sha256: digest regex the first time a container publish actually succeeded
+        // (candidate f0a72928). The capture target writes ASCII and the read strips any BOM.
+        packet.ShouldContain(
+            "IMAGE_DIGEST=\"$(tr -d '\\357\\273\\277' < \"$GENERATED_IMAGE_INDEX_DIGEST\")\"");
+        packet.ShouldNotContain("IMAGE_DIGEST=\"$(cat \"$GENERATED_IMAGE_INDEX_DIGEST\")\"");
+        packet.ShouldContain("Encoding=\"ASCII\" />");
+
+        // Regression: publish via the /t:PublishContainer target, NOT the DefaultContainer profile.
+        // Only the target form emits per-platform tags (<tag>-<rid>) that persist through this
+        // registry's GC and keep the index's child manifests pullable. The profile form pushed both
+        // architectures to a single tag, leaving the children untagged and GC-removed so the
+        // published index could not be pulled (candidate bcab5253).
+        packet.ShouldContain("/t:PublishContainer");
+        packet.ShouldNotContain("-p:PublishProfile=DefaultContainer");
+
+        // Regression: the literal package-inventory validator must print on success so its tee'd
+        // log is non-empty and passes the raw-evidence bundle's required-log `test -s` check.
+        packet.ShouldContain("print(f\"literal package inventory verified:");
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier's container smoke starts the image under the same startup
+    /// contract as the publication smoke, so a digest that smoked green at publication cannot
+    /// fail closed during authorization.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierContainerSmokeMatchesPublicationStartupContract()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string publicationSmoke = ExtractContract(packet, "container-smoke-contract");
+        string verifierSmoke = ExtractContract(packet, "container-smoke-verifier-contract");
+        AssertHistoricalPacketRetired(root);
+
+        // Regression: the verifier started the container with ASPNETCORE_URLS only. The host then
+        // failed startup for want of JWT bearer configuration — the v3.77.1 amd64 failure — so the
+        // A/B/C chain would have failed AFTER the irreversible WORM upload and both owner
+        // approvals, the most expensive point in the protocol.
+        string[] requiredStartupEnvironment =
+        [
+            "--env ASPNETCORE_URLS=http://+:8080",
+            "--env Authentication__JwtBearer__Audience=hexalith-eventstore",
+        ];
+
+        foreach (string setting in requiredStartupEnvironment)
+        {
+            publicationSmoke.Contains(setting, StringComparison.Ordinal).ShouldBeTrue(
+                $"The publication smoke must keep injecting {setting}.");
+            verifierSmoke.Contains(setting, StringComparison.Ordinal).ShouldBeTrue(
+                $"The verifier smoke must inject the same {setting} as the publication smoke.");
+        }
+
+        // Regression: the verifier polled for 90 seconds against the publication smoke's 180. The
+        // emulated arm64 platform has been observed needing 75 polls, leaving no useful margin.
+        verifierSmoke.Contains("for _ in $(seq 1 180); do", StringComparison.Ordinal).ShouldBeTrue(
+            "The verifier smoke must allow the same readiness budget as the publication smoke.");
+        verifierSmoke.Contains("seq 1 90", StringComparison.Ordinal).ShouldBeFalse(
+            "The verifier smoke must not keep the shorter readiness budget.");
+    }
+
+    /// <summary>
+    /// Verifies both copies of the Story 1.16 follow-up transform resolve the disposition flag
+    /// from the YAML front matter instead of counting a literal across the whole document.
+    /// </summary>
+    [Fact]
+    public void PacketFollowupSpecTransformResolvesFrontMatterFlagOnly()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        // Regression: the transform aborted unless "followup_review_recommended: true" occurred
+        // exactly once in the entire document, but the spec's own disposition prose quoted the
+        // flag. Block 15 runs after the irreversible WORM upload and block 16 carries the same
+        // transform, so the count guard would have failed at the protocol's most expensive point.
+        packet.Contains("runtime.count(\"followup_review_recommended: true\")", StringComparison.Ordinal)
+            .ShouldBeFalse("Neither transform may resolve the flag by counting whole-document literals.");
+
+        const string frontMatterScopedResolution =
+            "runtime_lines[unresolved_flag_lines[0]] = \"followup_review_recommended: false\"";
+        Regex.Matches(packet, Regex.Escape(frontMatterScopedResolution)).Count.ShouldBe(
+            2,
+            "Block 15 and the block 16 verifier must both resolve the flag inside the front matter.");
+
+        string spec = File.ReadAllText(Path.Combine(root, FollowupSpecRelativePath));
+        string[] lines = spec.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        lines[0].ShouldBe("---", "The follow-up spec must begin with YAML front matter.");
+        int frontMatterEnd = Array.IndexOf(lines, "---", 1);
+        frontMatterEnd.ShouldBeGreaterThan(0, "The follow-up spec front matter must be terminated.");
+        string[] frontMatterLines = lines.Take(frontMatterEnd).ToArray();
+        Regex.Matches(
+            string.Join('\n', frontMatterLines),
+            @"^[ \t]*followup_review_recommended[ \t]*:",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "The spec must carry exactly one front-matter recommendation key without case variants.");
+        frontMatterLines
+            .Count(line => line == "followup_review_recommended: false")
+            .ShouldBe(1, "The spec must carry exactly one resolved front-matter recommendation.");
+        frontMatterLines
+            .Count(line => line == "followup_review_recommended: true")
+            .ShouldBe(0, "The spec must not carry an unresolved front-matter recommendation.");
+    }
+
+    /// <summary>
+    /// Verifies the authorizing-C decision transform resumes at a heading that remains present in
+    /// evidence commit A after its completed decision replaces the runtime packet's discovery text.
+    /// </summary>
+    [Fact]
+    public void PacketAuthorizingDecisionTransformUsesEvidencePacketAnchor()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string legacyTransformAnchor =
+            "skip_decision_section && $0 == \"### Scoped corrective item\" {";
+        const string evidenceTransformAnchor =
+            "skip_decision_section && $0 == \"## Prerequisite And Review Ledger\" {";
+        const string evidenceAnchorHeading = "\n## Prerequisite And Review Ledger\n";
+
+        // Regression: the runtime packet contained "### Scoped corrective item", but evidence
+        // commit A replaced that discovery-only section. Pointer B therefore has no such heading,
+        // and the immutable authorizing-C transform could never stop skipping or pass its END
+        // guard. Resume at the first stable heading retained in the completed evidence packet.
+        packet.Contains(legacyTransformAnchor, StringComparison.Ordinal).ShouldBeFalse(
+            "The C transform must not depend on a heading removed by evidence commit A.");
+        Regex.Matches(packet, Regex.Escape(evidenceTransformAnchor)).Count.ShouldBe(
+            1,
+            "The C transform must resume exactly once at the completed evidence packet's prerequisite ledger.");
+
+        int decision = packet.IndexOf("\n## Decision\n", StringComparison.Ordinal);
+        int evidenceAnchor = packet.IndexOf(evidenceAnchorHeading, decision + 1, StringComparison.Ordinal);
+        int verifier = packet.IndexOf(
+            "\n### Evidence Commit A, Pointer-Only Commit B, And Authorizing Commit C Verification\n",
+            evidenceAnchor + 1,
+            StringComparison.Ordinal);
+        decision.ShouldBeGreaterThanOrEqualTo(0, "The packet must retain its Decision section.");
+        (evidenceAnchor > decision).ShouldBeTrue(
+            "The completed evidence packet must retain the transform's resume heading after Decision.");
+        (verifier > evidenceAnchor).ShouldBeTrue(
+            "The resume heading must be packet content, not text found only inside the verifier itself.");
+    }
+
+    /// <summary>
+    /// Verifies the authorizing-C final-decision transform can leave its skip state before EOF.
+    /// </summary>
+    [Fact]
+    public void PacketAuthorizingFinalDecisionTransformUsesStableTrailingAnchor()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string finalDecisionHeading = "\n## Final Decision\n";
+        const string authorizationBoundaryHeading = "\n## Authorization Record Boundary\n";
+
+        int finalDecision = packet.LastIndexOf(finalDecisionHeading, StringComparison.Ordinal);
+        int authorizationBoundary = packet.IndexOf(
+            authorizationBoundaryHeading,
+            finalDecision + finalDecisionHeading.Length,
+            StringComparison.Ordinal);
+
+        finalDecision.ShouldBeGreaterThanOrEqualTo(0, "The packet must retain its Final Decision section.");
+        (authorizationBoundary > finalDecision).ShouldBeTrue(
+            "A stable level-two heading must follow Final Decision so the C transform clears "
+            + "skip_final_section before its END guard.");
+    }
+
+    /// <summary>
+    /// Verifies the authorizing-C sprint transform matches and preserves the indentation of
+    /// comments nested under the development-status mapping.
+    /// </summary>
+    [Fact]
+    public void PacketAuthorizingSprintTransformMatchesNestedBlockerComments()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string sprintStatus = File
+            .ReadAllText(Path.Combine(root, SprintStatusRelativePath))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        string[] sprintStatusLines = sprintStatus.Split('\n');
+        const string blockerStart =
+            "  # Story 1.19 review is complete. Story 1.20 remains in progress while:";
+        const string blockerEnd =
+            "  # `final_decision: still blocked` cannot transition this story or Epic 1 to done.";
+        const string epicOneDone = "  epic-1: done";
+        const string storyOneNineteenDone =
+            "  1-19-correct-paged-rebuild-and-replay-equivalence: done";
+        const string completedStart =
+            "  # Story 1.20 owner-approved parity closure is complete; authorizing commit C";
+        const string completedEnd =
+            "  # verified every pinned artifact, approval, prerequisite, and migration decision.";
+        const string explicitExclusions =
+            "  # Explicitly excludes payload-protection G5 and Parties Story 8.7; those are Epic 8.";
+        const string storyOneTwentyDone =
+            "  1-20-owner-approved-parity-closure-and-runtime-pin: done";
+
+        Regex.Matches(
+            sprintStatus,
+            @"^[ \t]*epic-1[ \t]*:",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "Sprint status must contain the Epic 1 key exactly once.");
+        sprintStatusLines.Count(line => line == epicOneDone)
+            .ShouldBe(1, "Epic 1 must be done.");
+        Regex.Matches(
+            sprintStatus,
+            @"^[ \t]*1-20-owner-approved-parity-closure-and-runtime-pin[ \t]*:",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "Sprint status must contain the Story 1.20 key exactly once.");
+        sprintStatusLines.Count(line => line == storyOneTwentyDone)
+            .ShouldBe(1, "Story 1.20 must be done.");
+
+        string[] closureLines =
+        [
+            storyOneNineteenDone,
+            completedStart,
+            completedEnd,
+            explicitExclusions,
+            storyOneTwentyDone,
+        ];
+        foreach (string closureLine in closureLines)
+        {
+            sprintStatusLines.Count(line => line == closureLine).ShouldBe(
+                1,
+                $"The Story 1.19-to-Story 1.20 closure line must appear exactly once: {closureLine}");
+        }
+
+        string closureBlock = string.Join('\n', closureLines);
+        Regex.Matches(
+            sprintStatus,
+            $"^{Regex.Escape(closureBlock)}$",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline)
+            .Count.ShouldBe(1, "Sprint status must retain one exact, ordered Story 1.19-to-Story 1.20 closure block.");
+
+        sprintStatus.ShouldNotContain(blockerStart);
+        sprintStatus.ShouldNotContain(blockerEnd);
+        packet.ShouldContain($"$0 == \"{blockerStart}\" {{");
+        packet.ShouldContain($"in_blocker && $0 == \"{blockerEnd}\" {{");
+        packet.ShouldContain($"print \"{completedStart}\"");
+        packet.ShouldContain($"print \"{completedEnd}\"");
+        packet.ShouldNotContain(
+            "$0 == \"# Story 1.19 review is complete. Story 1.20 remains in progress while:\" {");
+        packet.ShouldNotContain(
+            "in_blocker && $0 == \"# `final_decision: still blocked` cannot transition this story or Epic 1 to done.\" {");
+    }
+
+    /// <summary>
+    /// Verifies every evidence-provider adapter invocation in the packet writes to a path that
+    /// does not already exist, as the adapter's own non-overwrite contract requires.
+    /// </summary>
+    [Fact]
+    public void PacketProviderAdapterInvocationsTargetNonExistentOutputPaths()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string adapter = File.ReadAllText(
+            Path.Combine(root, "tools", "evidence-provider-adapters", "azure-immutable-blob-v1.sh"));
+
+        // The adapter refuses to overwrite an existing output so a partial or stale artefact can
+        // never be credited as retrieved evidence. That guard is the contract this test binds to.
+        adapter.Contains("test ! -e \"$OUTPUT\"", StringComparison.Ordinal).ShouldBeTrue(
+            "The adapter must keep refusing to overwrite an existing output path.");
+
+        MatchCollection invocations = AdapterOutputPattern.Matches(packet);
+        invocations.Count.ShouldBe(
+            4,
+            "The packet must invoke the provider adapter exactly four times (block 15 download and "
+            + "describe, block 16 describe and download).");
+
+        foreach (Match invocation in invocations)
+        {
+            string variable = invocation.Groups["output"].Value;
+
+            // Regression: block 15 and block 16 assigned these output paths from a bare `mktemp`,
+            // which CREATES the file. The adapter then failed closed on its own non-overwrite
+            // guard, so the WORM proof could never be retrieved and the never-executed approval
+            // and A/B/C blocks were unreachable (found on the first real run, candidate f692f903).
+            packet.Contains($"{variable}=\"$(mktemp)\"", StringComparison.Ordinal).ShouldBeFalse(
+                $"{variable} must not be assigned an existing mktemp file; the adapter refuses to "
+                + "overwrite it.");
+            packet.Contains($"test ! -e \"${variable}\"", StringComparison.Ordinal).ShouldBeTrue(
+                $"{variable} must be proven absent before the adapter writes it.");
+        }
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier preserves the pinned evidence-provider adapter identity when it
+    /// extracts the executable from the tested runtime commit.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierExtractsProviderAdapterWithItsCanonicalFileName()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        packet.ShouldContain("A_PROVIDER_ADAPTER_DIRECTORY=\"$(mktemp -d)\"");
+        packet.ShouldContain(
+            "A_PROVIDER_ADAPTER=\"$A_PROVIDER_ADAPTER_DIRECTORY/$A_RAW_EVIDENCE_PROVIDER_ADAPTER_ID.sh\"");
+        packet.ShouldNotContain("A_PROVIDER_ADAPTER=\"$(mktemp)\"");
+        packet.ShouldContain("rm -rf -- \"$A_PROVIDER_ADAPTER_DIRECTORY\"");
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier distinguishes named closure prerequisites from accepted
+    /// limitations and ordinary Story 1.20 review follow-ups in the deferred-work ledger.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierScopesDeferredWorkToNamedClosurePrerequisites()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        packet.ShouldContain(
+            "if ($0 ~ /^## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin /) relevant = 1");
+        packet.ShouldContain(
+            "if ($0 ~ /^## Deferred from: Story 1\\.20 correct-course readiness audit /) relevant = 2");
+        packet.ShouldContain(
+            "if ($0 ~ /^## Deferred from: Story 1\\.20 current-HEAD source-topology gate /) relevant = 3");
+        packet.ShouldContain("exit !(seen[1] == 1 && seen[2] == 1 && seen[3] == 1 && invalid == 0)");
+        packet.ShouldNotContain("relevant = (\n");
+        packet.ShouldNotContain(
+            "relevant = ($0 ~ /Story 1\\.20/ || $0 ~ /1-20-owner-approved-parity-closure/)");
+
+        // Text assertions alone cannot distinguish a working program from one carrying a syntax
+        // error or an off-by-one gate - both defects this block has actually shipped before. Extract
+        // the AWK program and run it against fixtures.
+        string program = ExtractDeferredWorkAwkProgram(packet);
+        string temporaryDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"hexalith-deferred-gate-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
+
+        try
+        {
+            RunDeferredWorkGate(program, temporaryDirectory, "all-three.md", ConfirmedLedger(NamedPrerequisiteHeadings))
+                .ShouldBe(0, "All three named prerequisites, each confirmed exactly once, must pass the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "duplicate-and-missing.md",
+                ConfirmedLedger([NamedPrerequisiteHeadings[0], NamedPrerequisiteHeadings[0], NamedPrerequisiteHeadings[1]]))
+                .ShouldNotBe(0, "A duplicated prerequisite plus a missing one must fail even though three sections match.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "only-two.md",
+                ConfirmedLedger([NamedPrerequisiteHeadings[0], NamedPrerequisiteHeadings[1]]))
+                .ShouldNotBe(0, "A ledger missing one named prerequisite must fail the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "unconfirmed-status.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace("implementation-complete/evidence-confirmed", "accepted", StringComparison.Ordinal))
+                .ShouldNotBe(0, "A named prerequisite whose status is not evidence-confirmed must fail the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "with-decoy.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    + DeferredWorkSection("## Deferred from: code review of an-unrelated-story (2026-07-28)", "accepted"))
+                .ShouldBe(0, "An unrelated deferred-work section must not affect the named-prerequisite gate.");
+
+            // The three branches `status_count != 1` exists to catch had no fixture at all, so the
+            // gate's central condition was only ever exercised on its passing side
+            // (2026-07-28 delta code review).
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "zero-status.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace("  status: implementation-complete/evidence-confirmed\n", string.Empty, StringComparison.Ordinal))
+                .ShouldNotBe(0, "A named prerequisite with no status line at all must fail the gate.");
+
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "two-status.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace(
+                        "  status: implementation-complete/evidence-confirmed\n",
+                        "  status: implementation-complete/evidence-confirmed\n  status: implementation-complete/evidence-confirmed\n",
+                        StringComparison.Ordinal))
+                .ShouldNotBe(0, "A named prerequisite carrying two status lines must fail the gate.");
+
+            // A foreign heading INSIDE a relevant section must end that section. Before the fix
+            // `relevant` was reset only on `## Deferred from:`, so a `  status:` line under a `###`
+            // sub-heading was still attributed to the preceding named prerequisite.
+            //
+            // This fixture is deliberately built so the DONATED status is the confirmed value: the
+            // prerequisite itself has none, and the sub-heading supplies one. Under the old program
+            // that reads as a valid section and the whole gate exits 0; under the fixed program the
+            // prerequisite has zero status lines of its own and the gate exits non-zero. A fixture
+            // donating some *other* status value would fail under both programs and prove nothing.
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "foreign-heading-inside.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings)
+                    .Replace(
+                        "  status: implementation-complete/evidence-confirmed\n",
+                        "### DW-9: an unrelated sub-heading\n  status: implementation-complete/evidence-confirmed\n",
+                        StringComparison.Ordinal))
+                .ShouldNotBe(0, "A sub-heading must end the section, leaving the prerequisite with no status of its own.");
+
+            // A CRLF ledger is still a valid ledger; the trailing \r must not be captured into
+            // status_value and rejected.
+            RunDeferredWorkGate(
+                program,
+                temporaryDirectory,
+                "crlf.md",
+                ConfirmedLedger(NamedPrerequisiteHeadings).Replace("\n", "\r\n", StringComparison.Ordinal))
+                .ShouldBe(0, "A ledger with CRLF line endings must pass; \\r must be stripped from the status value.");
+        }
+        finally
+        {
+            Directory.Delete(temporaryDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies the A/B/C verifier limits the Owner Review body to that section instead of
+    /// scanning the following executable verifier subsection as review prose.
+    /// </summary>
+    [Fact]
+    public void PacketVerifierStopsOwnerReviewAtTheNextHeading()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+
+        packet.ShouldContain(
+            "A_OWNER_REVIEW=\"$(awk '/^## Owner Review$/{inside=1; next} inside && /^##[#]? /{exit} inside{print}' \"$A_PACKET\")\"");
+        packet.ShouldNotContain(
+            "A_OWNER_REVIEW=\"$(awk '/^## Owner Review$/{inside=1; next} inside && /^## /{exit} inside{print}' \"$A_PACKET\")\"");
+    }
+
+    /// <summary>
+    /// Verifies both allowlist validators are executable, bound to their expected inputs, accept
+    /// the approved allowlist, and reject malformed or over-authorized variants.
+    /// </summary>
+    [Fact]
+    public void PacketAllowlistValidatorsFailClosedForAdversarialInputs()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        string executableBash = string.Join(
+            Environment.NewLine,
+            BashBlockPattern.Matches(packet).Select(match => match.Groups["body"].Value));
+        Match[] validators = ValidatorPattern.Matches(executableBash).ToArray();
+        string commentedValidators = Regex.Replace(
+            executableBash,
+            @"^[ \t]*(?=jq[ \t]+-e[ \t]+-s)",
+            "# ",
+            RegexOptions.CultureInvariant | RegexOptions.Multiline);
+
+        validators.Length.ShouldBe(
+            2,
+            "The executable packet must contain exactly the candidate and evidence-commit-A allowlist validators.");
+        ValidatorPattern.Matches(commentedValidators).ShouldBeEmpty(
+            "Commented jq text is not an executable proof-packet validator.");
+        validators.Select(match => match.Groups["input"].Value).ShouldBe(
+            ["$APPROVAL_ROLE_ALLOWLIST", "$A_APPROVAL_ROLE_ALLOWLIST"],
+            ignoreOrder: true,
+            customMessage: "Each operative validator must remain bound to its intended allowlist input.");
+
+        string validAllowlist = File.ReadAllText(Path.Combine(root, AllowlistRelativePath));
+        string invalidSchema = MutateAllowlist(validAllowlist, rootObject =>
+            rootObject["schema"] = "invalid-schema");
+        string invalidRepository = MutateAllowlist(validAllowlist, rootObject =>
+            rootObject["repository"] = "invalid/repository");
+        string extraRole = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            roles["unexpected_role"] = new JsonArray("unexpected-reviewer");
+        });
+        string extraMember = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
+            firstRole.Add("unexpected-reviewer");
+        });
+        string missingRole = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            roles.Remove(roles.First().Key).ShouldBeTrue();
+        });
+        string emptyRole = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            roles[roles.First().Key] = new JsonArray();
+        });
+        string replacedMember = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
+            firstRole[0] = "unexpected-reviewer";
+        });
+        string duplicateMember = MutateAllowlist(validAllowlist, rootObject =>
+        {
+            JsonObject roles = rootObject["roles"].ShouldBeOfType<JsonObject>();
+            JsonArray firstRole = roles.First().Value.ShouldBeOfType<JsonArray>();
+            firstRole.Add(firstRole[0].ShouldNotBeNull().DeepClone());
+        });
+        string multipleDocuments = validAllowlist + Environment.NewLine + validAllowlist;
+
+        foreach (Match validator in validators)
+        {
+            string program = validator.Groups["program"].Value;
+            RunJq(program, validAllowlist).ShouldBe(
+                0,
+                "Each packet validator must accept the current owner-approved allowlist.");
+            RunJq(program, "{}").ShouldNotBe(0, "An empty object must fail closed.");
+            RunJq(program, invalidSchema).ShouldNotBe(0, "An invalid schema must fail closed.");
+            RunJq(program, invalidRepository).ShouldNotBe(0, "An invalid repository must fail closed.");
+            RunJq(program, extraRole).ShouldNotBe(0, "An extra role must fail closed.");
+            RunJq(program, extraMember).ShouldNotBe(0, "An extra approved-role member must fail closed.");
+            RunJq(program, missingRole).ShouldNotBe(0, "A missing approved role must fail closed.");
+            RunJq(program, emptyRole).ShouldNotBe(0, "An approved role without a member must fail closed.");
+            RunJq(program, replacedMember).ShouldNotBe(0, "A substituted approved-role member must fail closed.");
+            RunJq(program, duplicateMember).ShouldNotBe(0, "A duplicated approved-role member must fail closed.");
+            RunJq(program, multipleDocuments).ShouldNotBe(0, "Multiple JSON documents must fail closed.");
+        }
+    }
+
+    /// <summary>
+    /// Verifies the packet consumes the counter placement emitted by xUnit v3 and fails closed
+    /// for the obsolete root-only shape or any incomplete or contradictory summary.
+    /// </summary>
+    [Fact]
+    public void PacketXunitValidatorAcceptsRealV3SummaryAndRejectsInvalidSummaries()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string startMarker = "# xunit-result-contract-start";
+        const string endMarker = "# xunit-result-contract-end";
+        int start = packet.IndexOf(startMarker, StringComparison.Ordinal);
+        int bodyStart = start < 0 ? -1 : packet.IndexOf('\n', start) + 1;
+        int end = bodyStart <= 0 ? -1 : packet.IndexOf(endMarker, bodyStart, StringComparison.Ordinal);
+
+        start.ShouldBeGreaterThanOrEqualTo(0, "The executable packet must retain the xUnit validator start marker.");
+        bodyStart.ShouldBeGreaterThan(0, "The executable packet must place the validator after its start marker.");
+        end.ShouldBeGreaterThan(bodyStart, "The executable packet must retain the xUnit validator end marker.");
+        packet.LastIndexOf(startMarker, StringComparison.Ordinal).ShouldBe(start, "The xUnit validator marker must be unique.");
+        packet.LastIndexOf(endMarker, StringComparison.Ordinal).ShouldBe(end, "The xUnit validator marker must be unique.");
+
+        string validator = packet[bodyStart..end];
+        string temporaryDirectory = Path.Combine(Path.GetTempPath(), $"hexalith-xunit-validator-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
+        try
+        {
+            string scriptPath = Path.Combine(temporaryDirectory, "validate.sh");
+            File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\" \"$2\"" + Environment.NewLine);
+            string valid =
+                "<assemblies><assembly name=\"Fixture.Tests.dll\" total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">" +
+                "<collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>";
+            RunBashValidator(scriptPath, temporaryDirectory, "valid.xml", valid).ShouldBe(
+                0,
+                "The packet must accept the single-assembly summary emitted by xUnit v3.");
+
+            Dictionary<string, string> invalidFixtures = new(StringComparer.Ordinal)
+            {
+                ["root-only.xml"] =
+                    "<assemblies total=\"1\" passed=\"1\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">" +
+                    "<assembly name=\"Fixture.Tests.dll\"><collection><test type=\"Fixture.Tests.Case\" method=\"Passes\" result=\"Pass\" /></collection></assembly></assemblies>",
+                ["multiple-assemblies.xml"] = valid.Replace("</assemblies>", "<assembly name=\"Other.Tests.dll\" total=\"0\" passed=\"0\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\" /></assemblies>", StringComparison.Ordinal),
+                ["skipped.xml"] = valid.Replace("skipped=\"0\"", "skipped=\"1\"", StringComparison.Ordinal),
+                ["not-run.xml"] = valid.Replace("not-run=\"0\"", "not-run=\"1\"", StringComparison.Ordinal),
+                ["counter-mismatch.xml"] = valid.Replace("total=\"1\"", "total=\"2\"", StringComparison.Ordinal),
+                ["failed-result.xml"] = valid.Replace("result=\"Pass\"", "result=\"Fail\"", StringComparison.Ordinal),
+                ["aggregate-mismatch.xml"] = valid.Replace("<assemblies>", "<assemblies total=\"2\" passed=\"2\" failed=\"0\" errors=\"0\" skipped=\"0\" not-run=\"0\">", StringComparison.Ordinal),
+            };
+
+            foreach ((string fileName, string xml) in invalidFixtures)
+            {
+                RunBashValidator(scriptPath, temporaryDirectory, fileName, xml).ShouldNotBe(
+                    0,
+                    $"The packet must fail closed for {fileName}.");
+            }
+        }
+        finally
+        {
+            Directory.Delete(temporaryDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Verifies every deferred-test exception is exact: only a committed inventory may skip,
+    /// only under its bound evidence name and assembly, with byte-equivalent names and reasons.
+    /// </summary>
+    [Fact]
+    public void PacketXunitValidatorAllowsOnlyCommittedDeferredSkipInventory()
+    {
+        string root = FindRepositoryRoot();
+        string packet = File.ReadAllText(Path.Combine(root, PacketRelativePath));
+        const string startMarker = "# xunit-result-contract-start";
+        const string endMarker = "# xunit-result-contract-end";
+        int start = packet.IndexOf(startMarker, StringComparison.Ordinal);
+        int bodyStart = start < 0 ? -1 : packet.IndexOf('\n', start) + 1;
+        int end = bodyStart <= 0 ? -1 : packet.IndexOf(endMarker, bodyStart, StringComparison.Ordinal);
+        string validator = packet[bodyStart..end];
+        JsonObject allowlist = JsonNode.Parse(
+            File.ReadAllText(Path.Combine(root, DeferredSkipAllowlistRelativePath))).ShouldBeOfType<JsonObject>();
+        JsonArray lanes = allowlist["lanes"].ShouldBeOfType<JsonArray>();
+        lanes.Count.ShouldBe(6, "Only the six reviewed deferred red-phase lanes may contain skips.");
+        lanes.Sum(item => item.ShouldBeOfType<JsonObject>()["skip_count"].ShouldNotBeNull().GetValue<int>())
+            .ShouldBe(126, "The reviewed cross-cutting inventory contains exactly 126 deferred red-phase cases.");
+        string temporaryDirectory = Path.Combine(Path.GetTempPath(), $"hexalith-xunit-skips-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(temporaryDirectory);
+        try
+        {
+            string scriptPath = Path.Combine(temporaryDirectory, "validate.sh");
+            File.WriteAllText(scriptPath, validator + Environment.NewLine + "validate_xunit_result \"$1\" \"$2\"" + Environment.NewLine);
+            foreach (JsonObject lane in lanes.Select(item => item.ShouldBeOfType<JsonObject>()))
+            {
+                string evidenceName = lane["evidence_name"].ShouldNotBeNull().GetValue<string>();
+                string assembly = lane["assembly"].ShouldNotBeNull().GetValue<string>();
+                List<(string Name, string Reason)> skips = lane["tests"].ShouldBeOfType<JsonObject>()
+                    .Select(item => (Name: item.Key, Reason: item.Value.ShouldNotBeNull().GetValue<string>()))
+                    .OrderBy(item => item.Name, StringComparer.Ordinal)
+                    .ToList();
+                string safeName = evidenceName.Replace('-', '_');
+
+                skips.Count.ShouldBe(lane["skip_count"].ShouldNotBeNull().GetValue<int>());
+                ComputeSkipInventorySha256(skips).ShouldBe(
+                    lane["inventory_sha256"].ShouldNotBeNull().GetValue<string>(),
+                    $"The committed digest for {evidenceName} must bind every exact name and reason.");
+
+                string valid = CreateXunitFixture(assembly, skips);
+                RunBashValidator(scriptPath, temporaryDirectory, $"{safeName}-allowed.xml", valid, evidenceName).ShouldBe(
+                    0,
+                    $"The packet must accept the exact committed inventory for {evidenceName}.");
+                RunBashValidator(scriptPath, temporaryDirectory, $"{safeName}-wrong-evidence.xml", valid).ShouldNotBe(
+                    0,
+                    "Deferred skips must not be accepted by another evidence lane.");
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-wrong-assembly.xml",
+                    CreateXunitFixture("Other.Tests.dll", skips),
+                    evidenceName).ShouldNotBe(0, "Deferred skips must remain bound to their reviewed assembly.");
+
+                List<(string Name, string Reason)> changedReason = [.. skips];
+                changedReason[0] = (changedReason[0].Name, changedReason[0].Reason + " changed");
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-changed-reason.xml",
+                    CreateXunitFixture(assembly, changedReason),
+                    evidenceName).ShouldNotBe(0, "A changed skip reason must fail closed.");
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-missing-skip.xml",
+                    CreateXunitFixture(assembly, skips.Skip(1).ToList()),
+                    evidenceName).ShouldNotBe(0, "An unexpectedly enabled scaffold must change the reviewed contract.");
+
+                List<(string Name, string Reason)> unexpectedSkip = [.. skips];
+                unexpectedSkip.Add(("Unexpected.Tests.Case.Skips", "unexpected"));
+                RunBashValidator(
+                    scriptPath,
+                    temporaryDirectory,
+                    $"{safeName}-unexpected-skip.xml",
+                    CreateXunitFixture(assembly, unexpectedSkip),
+                    evidenceName).ShouldNotBe(0, "An additional skip must fail closed.");
+            }
+        }
+        finally
+        {
+            Directory.Delete(temporaryDirectory, recursive: true);
+        }
+    }
+
+    private static string MutateAllowlist(string json, Action<JsonObject> mutate)
+    {
+        JsonObject root = JsonNode.Parse(json).ShouldBeOfType<JsonObject>();
+        mutate(root);
+        return root.ToJsonString();
+    }
+
+    private static string ComputeSkipInventorySha256(
+        IEnumerable<(string Name, string Reason)> skips)
+    {
+        string canonical = string.Concat(
+            skips.OrderBy(item => item.Name, StringComparer.Ordinal)
+                .Select(item => $"{item.Name}\0{item.Reason}\n"));
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
+    }
+
+    private static string CreateXunitFixture(
+        string assembly,
+        IReadOnlyList<(string Name, string Reason)> skips)
+    {
+        XElement collection = new("collection",
+            new XElement(
+                "test",
+                new XAttribute("name", "Fixture.Tests.Case.Passes"),
+                new XAttribute("type", "Fixture.Tests.Case"),
+                new XAttribute("method", "Passes"),
+                new XAttribute("result", "Pass")));
+        foreach ((string name, string reason) in skips)
+        {
+            int separator = name.LastIndexOf('.');
+            collection.Add(
+                new XElement(
+                    "test",
+                    new XAttribute("name", name),
+                    new XAttribute("type", name[..separator]),
+                    new XAttribute("method", name[(separator + 1)..]),
+                    new XAttribute("result", "Skip"),
+                    new XElement("reason", reason)));
+        }
+
+        return new XDocument(
+            new XElement(
+                "assemblies",
+                new XElement(
+                    "assembly",
+                    new XAttribute("name", assembly),
+                    new XAttribute("total", skips.Count + 1),
+                    new XAttribute("passed", 1),
+                    new XAttribute("failed", 0),
+                    new XAttribute("errors", 0),
+                    new XAttribute("skipped", skips.Count),
+                    new XAttribute("not-run", 0),
+                    collection))).ToString(SaveOptions.DisableFormatting);
+    }
+
+    private static int RunJq(string program, string input)
+    {
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "jq",
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add("-e");
+        process.StartInfo.ArgumentList.Add("-s");
+        process.StartInfo.ArgumentList.Add(program);
+
+        process.Start().ShouldBeTrue("jq must be available to execute the proof-packet validators.");
+        process.StandardInput.Write(input);
+        process.StandardInput.Close();
+        process.WaitForExit(5000).ShouldBeTrue("jq validator execution must finish within five seconds.");
+        _ = process.StandardOutput.ReadToEnd();
+        _ = process.StandardError.ReadToEnd();
+        return process.ExitCode;
+    }
+
+    private static int RunBashValidator(
+        string scriptPath,
+        string directory,
+        string fileName,
+        string xml,
+        string evidenceName = "fixture")
+    {
+        string fixturePath = Path.Combine(directory, fileName);
+        File.WriteAllText(fixturePath, xml);
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "bash",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add(scriptPath);
+        process.StartInfo.ArgumentList.Add(fixturePath);
+        process.StartInfo.ArgumentList.Add(evidenceName);
+        process.StartInfo.WorkingDirectory = FindRepositoryRoot();
+
+        process.Start().ShouldBeTrue("bash must be available to execute the proof-packet validator.");
+        process.WaitForExit(5000).ShouldBeTrue("The xUnit validator must finish within five seconds.");
+        _ = process.StandardOutput.ReadToEnd();
+        _ = process.StandardError.ReadToEnd();
+        return process.ExitCode;
+    }
+
+    /// <summary>
+    /// The three closure prerequisites the deferred-work gate is scoped to, in gate order.
+    /// </summary>
+    private static readonly string[] NamedPrerequisiteHeadings =
+    [
+        "## Deferred from: exact-SHA gate of 1-20-owner-approved-parity-closure-and-runtime-pin (2026-07-16)",
+        "## Deferred from: Story 1.20 correct-course readiness audit (2026-07-16)",
+        "## Deferred from: Story 1.20 current-HEAD source-topology gate (2026-07-17)",
+    ];
+
+    private static string DeferredWorkSection(string heading, string status)
+        => $"{heading}\n\n- source_spec: `fixture.md`\n  summary: gate fixture\n  status: {status}\n\n";
+
+    private static string ConfirmedLedger(string[] headings)
+        => string.Concat(headings.Select(heading =>
+            DeferredWorkSection(heading, "implementation-complete/evidence-confirmed")));
+
+    /// <summary>
+    /// Extracts the deferred-work AWK program from the packet's executable verifier block so it can
+    /// be run rather than only pattern-matched.
+    /// </summary>
+    private static string ExtractDeferredWorkAwkProgram(string packet)
+    {
+        const string bodyMarker = "  function finish_section() {";
+        const string endMarker = "' \"$A_DEFERRED_WORK\"";
+
+        int bodyIndex = packet.IndexOf(bodyMarker, StringComparison.Ordinal);
+        bodyIndex.ShouldBeGreaterThanOrEqualTo(0, "The packet must declare the deferred-work AWK gate.");
+
+        int startIndex = packet.LastIndexOf("awk '", bodyIndex, StringComparison.Ordinal);
+        startIndex.ShouldBeGreaterThanOrEqualTo(0, "The deferred-work gate must be an awk invocation.");
+        startIndex += "awk '".Length;
+
+        int endIndex = packet.IndexOf(endMarker, bodyIndex, StringComparison.Ordinal);
+        endIndex.ShouldBeGreaterThan(
+            startIndex,
+            "The deferred-work AWK program must be applied to \"$A_DEFERRED_WORK\".");
+
+        return packet[startIndex..endIndex];
+    }
+
+    private static int RunDeferredWorkGate(
+        string program,
+        string directory,
+        string fileName,
+        string ledger)
+    {
+        string fixturePath = Path.Combine(directory, fileName);
+        File.WriteAllText(fixturePath, ledger);
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "awk",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            },
+        };
+        process.StartInfo.ArgumentList.Add(program);
+        process.StartInfo.ArgumentList.Add(fixturePath);
+        process.StartInfo.WorkingDirectory = FindRepositoryRoot();
+
+        // Start() with UseShellExecute=false throws Win32Exception when awk is absent rather than
+        // returning false, so the old ShouldBeTrue message was unreachable. Translate it.
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception exception)
+        {
+            throw new InvalidOperationException(
+                "awk must be available to execute the deferred-work gate.",
+                exception);
+        }
+
+        // Drain both pipes concurrently with the wait. Reading only after WaitForExit deadlocks the
+        // moment the child writes more than a pipe buffer, and the previous code then deleted the
+        // fixture directory out from under a process it had never killed (2026-07-28 delta review).
+        Task<string> standardOutputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> standardErrorTask = process.StandardError.ReadToEndAsync();
+
+        if (!process.WaitForExit(5000))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(5000);
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between the timeout and the kill; nothing to clean up.
+            }
+
+            throw new ShouldAssertException("The deferred-work gate must finish within five seconds.");
+        }
+
+        _ = standardOutputTask.GetAwaiter().GetResult();
+        string standardError = standardErrorTask.GetAwaiter().GetResult();
+
+        // A malformed program exits non-zero too, which would read as a correct rejection.
+        standardError.Contains("awk:", StringComparison.Ordinal).ShouldBeFalse(
+            $"The extracted AWK program must be valid for this awk implementation. stderr: {standardError}");
+
+        return process.ExitCode;
+    }
+
+    private static string ExtractContract(string packet, string marker)
+    {
+        string start = $"# {marker}-start";
+        string end = $"# {marker}-end";
+        int startIndex = packet.IndexOf(start, StringComparison.Ordinal);
+        startIndex.ShouldBeGreaterThanOrEqualTo(0, $"The packet must declare {start}.");
+        int endIndex = packet.IndexOf(end, startIndex, StringComparison.Ordinal);
+        endIndex.ShouldBeGreaterThan(startIndex, $"The packet must declare {end} after {start}.");
+        return packet[(startIndex + start.Length)..endIndex];
+    }
+
+    private static void AssertHistoricalPacketRetired(string root)
+    {
+        string manifestPath = Path.Combine(
+            root,
+            "_bmad-output",
+            "implementation-artifacts",
+            "evidence",
+            "story-5-3-retired-captures.json");
+        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllBytes(manifestPath));
+        JsonElement retirement = manifest.RootElement.GetProperty("retired").EnumerateArray().Single(item =>
+            item.GetProperty("path").GetString() == PacketRelativePath);
+
+        retirement.GetProperty("status").GetString().ShouldBe("retired");
+        retirement.GetProperty("authoritative").GetBoolean().ShouldBeFalse();
+        string actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, PacketRelativePath))))
+            .ToLowerInvariant();
+        actualHash.ShouldBe(retirement.GetProperty("sha256").GetString());
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        string[] startPaths = [Directory.GetCurrentDirectory(), AppContext.BaseDirectory];
+        foreach (string startPath in startPaths.Distinct(StringComparer.Ordinal))
+        {
+            DirectoryInfo? directory = new(startPath);
+            while (directory is not null)
+            {
+                if (File.Exists(Path.Combine(directory.FullName, PacketRelativePath.Replace('/', Path.DirectorySeparatorChar)))
+                    && File.Exists(Path.Combine(directory.FullName, AllowlistRelativePath.Replace('/', Path.DirectorySeparatorChar)))
+                    && Directory.Exists(Path.Combine(directory.FullName, "src", "Hexalith.EventStore.Contracts")))
+                {
+                    return directory.FullName;
+                }
+
+                directory = directory.Parent;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the repository root containing the Story 1.20 proof packet.");
+    }
+}

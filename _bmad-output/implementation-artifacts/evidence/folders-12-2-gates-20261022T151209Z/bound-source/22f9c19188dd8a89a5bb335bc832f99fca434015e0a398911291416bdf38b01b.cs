@@ -1,0 +1,749 @@
+using System.Text;
+using System.Text.Json;
+
+using Hexalith.Commons.UniqueIds;
+using Hexalith.EventStore.Client.Events;
+using Hexalith.EventStore.Client.Subscriptions;
+using Hexalith.EventStore.Client.Tests.Events;
+using Hexalith.EventStore.Contracts.Events;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
+
+using Shouldly;
+
+namespace Hexalith.EventStore.Client.Tests.Subscriptions;
+
+public class EventStoreDomainEventProcessorTests {
+    private static readonly string s_messageId = UniqueIdHelper.GenerateSortableUniqueStringId();
+    private static readonly string s_secondMessageId = UniqueIdHelper.GenerateSortableUniqueStringId();
+    private static readonly string s_duplicateMessageId = UniqueIdHelper.GenerateSortableUniqueStringId();
+
+    public sealed record TestEvent(string TenantId, int Value) : IEventPayload;
+
+    public sealed record MultiIdentityEvent(string TenantId, string AccountId, int Value) : IEventPayload;
+
+    private sealed class CapturingHandler : IEventStoreDomainEventHandler<TestEvent> {
+        public List<(TestEvent Event, EventStoreDomainEventContext Context)> Handled { get; } = [];
+
+        public Task HandleAsync(TestEvent @event, EventStoreDomainEventContext context, CancellationToken cancellationToken = default) {
+            Handled.Add((@event, context));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class MultiIdentityCapturingHandler : IEventStoreDomainEventHandler<MultiIdentityEvent> {
+        public List<(MultiIdentityEvent Event, EventStoreDomainEventContext Context)> Handled { get; } = [];
+
+        public Task HandleAsync(MultiIdentityEvent @event, EventStoreDomainEventContext context, CancellationToken cancellationToken = default) {
+            Handled.Add((@event, context));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FailingOnceHandler : IEventStoreDomainEventHandler<TestEvent> {
+        private bool _shouldFail = true;
+
+        public int InvocationCount { get; private set; }
+
+        public Task HandleAsync(TestEvent @event, EventStoreDomainEventContext context, CancellationToken cancellationToken = default) {
+            InvocationCount++;
+            if (_shouldFail) {
+                _shouldFail = false;
+                throw new InvalidOperationException("synthetic handler failure");
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CompletionFailingMarkerStore : IEventStoreDomainEventMarkerStore {
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("synthetic marker completion failure");
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class DispatchThenCompletionFailsOnceMarkerStore : IEventStoreDomainEventMarkerStore {
+        private EventStoreDomainEventMarkerAcquisitionResult _acquisition = EventStoreDomainEventMarkerAcquisitionResult.Acquired;
+
+        public int CompletionCount { get; private set; }
+
+        public int DispatchCount { get; private set; }
+
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(_acquisition);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default) {
+            DispatchCount++;
+            _acquisition = EventStoreDomainEventMarkerAcquisitionResult.CompletionPending;
+            return Task.FromResult(true);
+        }
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            CompletionCount++;
+            if (CompletionCount == 1) {
+                throw new InvalidOperationException("synthetic first completion failure");
+            }
+
+            _acquisition = EventStoreDomainEventMarkerAcquisitionResult.Completed;
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CompletionPendingFailingMarkerStore : IEventStoreDomainEventMarkerStore {
+        public int CompletionCount { get; private set; }
+
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.CompletionPending);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("dispatch must not run");
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            CompletionCount++;
+            throw new InvalidOperationException("synthetic persistent completion failure");
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class DispatchFailingMarkerStore : IEventStoreDomainEventMarkerStore {
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+
+        public Task<bool> MarkDispatchedAsync(string messageId, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("synthetic dispatch marker failure");
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class LegacyCompletionMarkerStore : IEventStoreDomainEventMarkerStore {
+        public List<CancellationToken> CompletionTokens { get; } = [];
+
+        public int ReleaseCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            CompletionTokens.Add(cancellationToken);
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default) {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T> {
+        public List<IReadOnlyDictionary<string, object?>> StructuredEntries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            if (state is IEnumerable<KeyValuePair<string, object?>> values) {
+                StructuredEntries.Add(values.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
+            }
+        }
+    }
+
+    private sealed class FixedAcquisitionMarkerStore : IEventStoreDomainEventMarkerStore {
+        private readonly EventStoreDomainEventMarkerAcquisitionResult _result;
+
+        public FixedAcquisitionMarkerStore(EventStoreDomainEventMarkerAcquisitionResult result) => _result = result;
+
+        public int AcquireCount { get; private set; }
+
+        public int MarkCompletedCount { get; private set; }
+
+        public Task<EventStoreDomainEventMarkerAcquisitionResult> TryAcquireAsync(
+            string messageId,
+            CancellationToken cancellationToken = default) {
+            AcquireCount++;
+            return Task.FromResult(_result);
+        }
+
+        public Task MarkCompletedAsync(string messageId, CancellationToken cancellationToken = default) {
+            MarkCompletedCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseAsync(string messageId, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private static EventStoreDomainEventEnvelope Envelope(string messageId, string aggregateId, byte[] payload)
+        => new(
+            messageId,
+            aggregateId,
+            TenantId: "system",
+            EventTypeName: typeof(TestEvent).FullName!,
+            SequenceNumber: 1,
+            Timestamp: DateTimeOffset.UnixEpoch,
+            CorrelationId: "corr-1",
+            SerializationFormat: "json",
+            Payload: payload);
+
+    private static EventStoreDomainEventEnvelope MultiIdentityEnvelope(string messageId, string aggregateId, byte[] payload)
+        => new(
+            messageId,
+            aggregateId,
+            TenantId: "system",
+            EventTypeName: typeof(MultiIdentityEvent).FullName!,
+            SequenceNumber: 1,
+            Timestamp: DateTimeOffset.UnixEpoch,
+            CorrelationId: "corr-1",
+            SerializationFormat: "json",
+            Payload: payload);
+
+    private static (EventStoreDomainEventProcessor Processor, CapturingHandler Handler, InMemoryEventStoreDomainEventMarkerStore MarkerStore) Build(string? payloadIdProperty = null) {
+        var handler = new CapturingHandler();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var markerStore = new InMemoryEventStoreDomainEventMarkerStore();
+
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            payloadIdProperty);
+
+        return (processor, handler, markerStore);
+    }
+
+    private static byte[] PayloadFor(string tenantId, int value)
+        => JsonSerializer.SerializeToUtf8Bytes(new TestEvent(tenantId, value));
+
+    private static byte[] MultiIdentityPayloadFor(string tenantId, string accountId, int value)
+        => JsonSerializer.SerializeToUtf8Bytes(new MultiIdentityEvent(tenantId, accountId, value));
+
+    [Fact]
+    public async Task ProcessAsync_KnownEventWithHandler_DispatchesAndReturnsProcessed() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+
+        EventStoreDomainEventProcessingResult result = await processor
+            .ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 42)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+        handler.Handled[0].Event.Value.ShouldBe(42);
+        handler.Handled[0].Context.AggregateId.ShouldBe("t1");
+        handler.Handled[0].Context.CorrelationId.ShouldBe("corr-1");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_LegacyMarkerStore_CompletesExactlyOnceWithoutCallerToken() {
+        var handler = new CapturingHandler();
+        var markerStore = new LegacyCompletionMarkerStore();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal) {
+                [typeof(TestEvent).FullName!] = typeof(TestEvent),
+            },
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        using var cancellation = new CancellationTokenSource();
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(
+            Envelope(s_messageId, "t1", PayloadFor("t1", 42)),
+            cancellation.Token);
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.CompletionTokens.ShouldBe([CancellationToken.None]);
+        markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SameMessageIdTwice_SecondIsDuplicate() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+
+        _ = await processor.ProcessAsync(Envelope(s_duplicateMessageId, "t1", PayloadFor("t1", 1)));
+        EventStoreDomainEventProcessingResult second = await processor.ProcessAsync(
+            Envelope(s_duplicateMessageId, "t1", Encoding.UTF8.GetBytes("{ not json")));
+
+        second.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UnknownEventType_ReturnsSkippedUnknownEventType() {
+        (EventStoreDomainEventProcessor processor, _, _) = Build();
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { EventTypeName = "Not.A.Known.Type" };
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(envelope);
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedUnknownEventType);
+
+        EventStoreDomainEventProcessingResult duplicate = await processor.ProcessAsync(envelope);
+        duplicate.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UnknownEventWithUnsupportedFormat_KeepsLegacyDisposition() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with {
+            EventTypeName = "Not.A.Known.Type",
+            SerializationFormat = "xml",
+        };
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.FailedInvalidPayload);
+        (await processor.ProcessAsync(envelope with { SerializationFormat = "json" }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        handler.Handled.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("xml")]
+    [InlineData("")]
+    public async Task ProcessAsync_RenamedV1Event_UnsupportedFormatRetriesThenReachesCurrentHandler(string unsupportedFormat)
+    {
+        string oldName = "Historical.VersionedTestEvent";
+        string currentName = typeof(VersionedTestEvent).FullName!;
+        var handler = Substitute.For<IEventStoreDomainEventHandler<VersionedTestEvent>>();
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton(handler)
+            .BuildServiceProvider();
+        var markers = new InMemoryEventStoreDomainEventMarkerStore();
+        var evolution = new EventPayloadEvolutionRegistry(
+            [typeof(VersionedTestEvent)],
+            [new TestPayloadUpcaster(oldName, 1, currentName, payload =>
+            {
+                payload["Value"] = payload["Amount"]!.GetValue<int>();
+                payload.Remove("Amount");
+                return payload;
+            }),
+            new TestPayloadUpcaster(currentName, 2, null, payload =>
+            {
+                payload["Value"] = payload["Value"]!.GetValue<int>() + 1;
+                return payload;
+            })]);
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type> { [currentName] = typeof(VersionedTestEvent) },
+            markers,
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            evolution: evolution);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", "{\"Amount\":4}"u8.ToArray())
+            with { EventTypeName = "VersionedTestEvent", PayloadVersion = 1 };
+
+        (await processor.ProcessAsync(envelope with { SerializationFormat = unsupportedFormat }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        await handler.DidNotReceive().HandleAsync(
+            Arg.Any<VersionedTestEvent>(), Arg.Any<EventStoreDomainEventContext>(), Arg.Any<CancellationToken>());
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        await handler.Received(1).HandleAsync(
+            Arg.Is<VersionedTestEvent>(value => value.Value == 5),
+            Arg.Any<EventStoreDomainEventContext>(), Arg.Any<CancellationToken>());
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_NoHandlerRegistered_ReturnsSkippedNoHandlers() {
+        ServiceProvider provider = new ServiceCollection().BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedNoHandlers);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_MalformedPayload_RemainsRetryableForCorrectedRedelivery() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        byte[] garbage = Encoding.UTF8.GetBytes("{ not json");
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", garbage);
+
+        EventStoreDomainEventProcessingResult first = await processor.ProcessAsync(envelope);
+        first.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+
+        EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope with { Payload = PayloadFor("t1", 7) });
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_PayloadIdCheckEnabled_MismatchSkipped() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build(payloadIdProperty: "TenantId");
+
+        // Envelope aggregate id "t1" but payload TenantId "other" — the event belongs to a different
+        // aggregate (e.g. another aggregate type sharing the topic). It is skipped and acknowledged, not
+        // dispatched and not retried.
+        EventStoreDomainEventProcessingResult result = await processor
+            .ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("other", 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.SkippedAggregateMismatch);
+        handler.Handled.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ProcessAsync_PayloadIdCheckEnabled_MatchAccepted() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build(payloadIdProperty: "TenantId");
+
+        EventStoreDomainEventProcessingResult result = await processor
+            .ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_HandlerException_ReleasesMarkerSoRedeliveryCanRun() {
+        var handler = new FailingOnceHandler();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 7));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
+        EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope);
+
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.InvocationCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CompletionFailureAfterHandlerSuccess_ThrowsAndDoesNotReleaseMarker() {
+        var handler = new CapturingHandler();
+        var markerStore = new CompletionFailingMarkerStore();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => processor.ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 7))));
+
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CompletionFailureRedelivery_CompletesWithoutDecodeOrRedispatch() {
+        var handler = new CapturingHandler();
+        var markerStore = new DispatchThenCompletionFailsOnceMarkerStore();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 7));
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
+        EventStoreDomainEventProcessingResult redelivery = await processor.ProcessAsync(envelope with {
+            SerializationFormat = " ",
+            Payload = [],
+        });
+
+        redelivery.ShouldBe(EventStoreDomainEventProcessingResult.Duplicate);
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.DispatchCount.ShouldBe(1);
+        markerStore.CompletionCount.ShouldBe(2);
+        markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_CompletionPendingPersistentFailure_ThrowsWithoutDecodeOrRelease() {
+        var markerStore = new CompletionPendingFailingMarkerStore();
+        ServiceProvider provider = new ServiceCollection().BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal),
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", []) with {
+            SerializationFormat = " ",
+        };
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => processor.ProcessAsync(envelope));
+
+        markerStore.CompletionCount.ShouldBe(1);
+        markerStore.ReleaseCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_DispatchMarkerFailure_ThrowsWithoutReleaseAndLogsStructuredContext() {
+        var handler = new CapturingHandler();
+        var markerStore = new DispatchFailingMarkerStore();
+        var logger = new CapturingLogger<EventStoreDomainEventProcessor>();
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type>(StringComparer.Ordinal) {
+                [typeof(TestEvent).FullName!] = typeof(TestEvent),
+            },
+            markerStore,
+            logger);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            () => processor.ProcessAsync(Envelope(s_messageId, "t1", PayloadFor("t1", 7))));
+
+        handler.Handled.Count.ShouldBe(1);
+        markerStore.ReleaseCount.ShouldBe(0);
+        logger.StructuredEntries.ShouldContain(entry =>
+            Equals(entry["MessageId"], s_messageId)
+            && Equals(entry["ExceptionType"], nameof(InvalidOperationException)));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_PayloadIdentityCache_IsScopedByEventTypeAndPropertyName() {
+        var firstHandler = new MultiIdentityCapturingHandler();
+        var secondHandler = new MultiIdentityCapturingHandler();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(MultiIdentityEvent).FullName!] = typeof(MultiIdentityEvent),
+        };
+        ServiceProvider firstProvider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<MultiIdentityEvent>>(firstHandler)
+            .BuildServiceProvider();
+        ServiceProvider secondProvider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<MultiIdentityEvent>>(secondHandler)
+            .BuildServiceProvider();
+        var firstProcessor = new EventStoreDomainEventProcessor(
+            firstProvider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            "TenantId");
+        var secondProcessor = new EventStoreDomainEventProcessor(
+            secondProvider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            "AccountId");
+
+        EventStoreDomainEventProcessingResult first = await firstProcessor.ProcessAsync(
+            MultiIdentityEnvelope(s_messageId, "tenant-1", MultiIdentityPayloadFor("tenant-1", "account-1", 1)));
+        EventStoreDomainEventProcessingResult second = await secondProcessor.ProcessAsync(
+            MultiIdentityEnvelope(s_secondMessageId, "account-1", MultiIdentityPayloadFor("tenant-1", "account-1", 2)));
+
+        first.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        second.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        firstHandler.Handled.Count.ShouldBe(1);
+        secondHandler.Handled.Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("MessageId")]
+    [InlineData("AggregateId")]
+    [InlineData("TenantId")]
+    [InlineData("EventTypeName")]
+    [InlineData("CorrelationId")]
+    [InlineData("SerializationFormat")]
+    public async Task ProcessAsync_BlankEnvelopeField_ReturnsRetryableCapabilityMismatch(string propertyName) {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope envelope = propertyName switch {
+            "MessageId" => Envelope(" ", "t1", PayloadFor("t1", 1)),
+            "AggregateId" => Envelope(s_messageId, " ", PayloadFor("t1", 1)),
+            "TenantId" => Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { TenantId = " " },
+            "EventTypeName" => Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { EventTypeName = " " },
+            "CorrelationId" => Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { CorrelationId = " " },
+            _ => Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { SerializationFormat = " " },
+        };
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(envelope);
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        handler.Handled.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ProcessAsync_InvalidIdentityAllowsCorrectedRedelivery() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope valid = Envelope(s_messageId, "t1", PayloadFor("t1", 1));
+
+        EventStoreDomainEventProcessingResult invalid = await processor.ProcessAsync(valid with { AggregateId = " " });
+        EventStoreDomainEventProcessingResult corrected = await processor.ProcessAsync(valid);
+
+        invalid.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        corrected.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("xml")]
+    [InlineData("")]
+    public async Task ProcessAsync_KnownUnsupportedSerializationFormat_RetriesWithoutCompletingMarker(string unsupportedFormat) {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1)) with { SerializationFormat = unsupportedFormat };
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(envelope);
+        EventStoreDomainEventProcessingResult retry = await processor.ProcessAsync(envelope with { SerializationFormat = "json" });
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        retry.ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_KnownEmptyPayload_RetriesWithoutCompletingMarker() {
+        (EventStoreDomainEventProcessor processor, CapturingHandler handler, _) = Build();
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", []);
+
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        (await processor.ProcessAsync(envelope with { Payload = PayloadFor("t1", 1) }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_SubscriptionKnownTypeRetriesWhenEvolutionRegistryDoesNotListIt() {
+        var handler = new CapturingHandler();
+        using ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            new Dictionary<string, Type> { [typeof(TestEvent).FullName!] = typeof(TestEvent) },
+            new InMemoryEventStoreDomainEventMarkerStore(),
+            NullLogger<EventStoreDomainEventProcessor>.Instance,
+            evolution: new EventPayloadEvolutionRegistry([], []));
+        EventStoreDomainEventEnvelope envelope = Envelope(s_messageId, "t1", PayloadFor("t1", 1));
+
+        (await processor.ProcessAsync(envelope with { SerializationFormat = "xml" }))
+            .ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        (await processor.ProcessAsync(envelope)).ShouldBe(EventStoreDomainEventProcessingResult.Processed);
+        handler.Handled.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_InvalidMessageId_ReturnsRetryableCapabilityMismatchBeforeMarkerAcquire() {
+        var handler = new CapturingHandler();
+        var markerStore = new FixedAcquisitionMarkerStore(EventStoreDomainEventMarkerAcquisitionResult.Acquired);
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(
+            Envelope("not-a-ulid", "t1", PayloadFor("t1", 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableCapabilityMismatch);
+        markerStore.AcquireCount.ShouldBe(0);
+        handler.Handled.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ProcessAsync_UnsupportedMarkerAcquisitionResult_KeepsDeliveryRetryable() {
+        var handler = new CapturingHandler();
+        var markerStore = new FixedAcquisitionMarkerStore((EventStoreDomainEventMarkerAcquisitionResult)999);
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton<IEventStoreDomainEventHandler<TestEvent>>(handler)
+            .BuildServiceProvider();
+        var registry = new Dictionary<string, Type>(StringComparer.Ordinal) {
+            [typeof(TestEvent).FullName!] = typeof(TestEvent),
+        };
+        var processor = new EventStoreDomainEventProcessor(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            registry,
+            markerStore,
+            NullLogger<EventStoreDomainEventProcessor>.Instance);
+
+        EventStoreDomainEventProcessingResult result = await processor.ProcessAsync(
+            Envelope(s_messageId, "t1", PayloadFor("t1", 1)));
+
+        result.ShouldBe(EventStoreDomainEventProcessingResult.RetryableInProgress);
+        markerStore.MarkCompletedCount.ShouldBe(0);
+        handler.Handled.ShouldBeEmpty();
+    }
+}

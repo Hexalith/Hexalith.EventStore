@@ -1,0 +1,13 @@
+{
+  "tool": "pdb-verifier-runtime/Verifier.dll",
+  "provenance_packet": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z",
+  "parent_seal_sha256": "0b4d5ade382ea889b78fdb5cba7783c7f0fbaa1bdc68d06646b4fc4ade732135",
+  "scope": "Tool binaries/source reused byte-for-byte after parent seal verification. PDB audits in this new packet are fresh execution, not reused results.",
+  "sha256": {
+    "pdb-verifier-runtime/Verifier.dll": "69359644f3a19399ddf0e963ddf1c88ac9b8e7f5ae73f1fc228c8e688aa06a53",
+    "pdb-verifier-runtime/Verifier": "bc941b7ca15e8b3fd967432d1236cc4e1dd9a82c994e67daf57132823983d3e7",
+    "pdb-verifier-runtime/Verifier.pdb": "0bacba370345c404d76d611ea106a989e7524f30eb5d27490ef4c7b51e5b6879",
+    "pdb-verifier-runtime/Verifier.runtimeconfig.json": "f9bc8e9f0c46247078ed47309f19a7576b4b94e4300e9de0003917d6bd2d667a",
+    "pdb-verifier-runtime/Verifier.deps.json": "a7e131c77ed8f4a81907b3bc450248c4c3dc6a308548cefd6edf29956dd163d2"
+  }
+}

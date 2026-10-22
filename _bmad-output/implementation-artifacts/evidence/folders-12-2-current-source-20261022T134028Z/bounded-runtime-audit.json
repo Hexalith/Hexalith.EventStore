@@ -1,0 +1,1279 @@
+{
+  "passed": false,
+  "scenario_count": 9,
+  "worker_count": 30,
+  "sidecar_count": 1,
+  "sdk_load_observations": [
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Testing.dll",
+      "dll_sha256": "2a01091fe0c14a1e0c54d9926ac0d2735bace4bb135361f33b5be5624769d4e1",
+      "pdb_sha256": "6b9de1a6055aabb9a1f95c8b0c5b0918d51e33738d01e16e5b6bd82da7e61671",
+      "mvid": "7926c3b0-123b-42b8-9f13-82f5394730a6",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.ServiceDefaults.dll",
+      "dll_sha256": "828db1061a1e2150b6115eac0bda8a76e61f9c26fc4fb67c30e8030d7ddf1a08",
+      "pdb_sha256": "be4bdde9d72f789c43692dabc49a84912f330e9e5e541d2015d4fa330e36817f",
+      "mvid": "1751d693-2e05-4790-a901-baf09b386079",
+      "passed": true
+    },
+    {
+      "pid": 30024,
+      "start_ticks": "11507760",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.dll",
+      "dll_sha256": "d04eccd57ac460fa1bbdf8fb9b57f1caa69b76d07f85e5f53a5d3c2d8a67f4ec",
+      "pdb_sha256": "b1e261801324cfe112a40c22573a9aa116d959bff08c106846a6b63063712a1f",
+      "mvid": "338a4f02-3541-48c8-b1cc-ee2e89786702",
+      "passed": true
+    },
+    {
+      "pid": 31620,
+      "start_ticks": "11508139",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 31620,
+      "start_ticks": "11508139",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 31620,
+      "start_ticks": "11508139",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 31620,
+      "start_ticks": "11508139",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 72683,
+      "start_ticks": "11522929",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 72683,
+      "start_ticks": "11522929",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 72683,
+      "start_ticks": "11522929",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 72683,
+      "start_ticks": "11522929",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 73441,
+      "start_ticks": "11523201",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 73441,
+      "start_ticks": "11523201",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 73441,
+      "start_ticks": "11523201",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 73441,
+      "start_ticks": "11523201",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 21344,
+      "start_ticks": "11540046",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 21344,
+      "start_ticks": "11540046",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 21344,
+      "start_ticks": "11540046",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 21344,
+      "start_ticks": "11540046",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 49542,
+      "start_ticks": "11586585",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 49542,
+      "start_ticks": "11586585",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 49542,
+      "start_ticks": "11586585",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 49542,
+      "start_ticks": "11586585",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 51314,
+      "start_ticks": "11587248",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 51314,
+      "start_ticks": "11587248",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 51314,
+      "start_ticks": "11587248",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 51314,
+      "start_ticks": "11587248",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 51314,
+      "start_ticks": "11587248",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 41574,
+      "start_ticks": "11645280",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 41574,
+      "start_ticks": "11645280",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 41574,
+      "start_ticks": "11645280",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 41574,
+      "start_ticks": "11645280",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 41574,
+      "start_ticks": "11645280",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 13496,
+      "start_ticks": "11662318",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 13496,
+      "start_ticks": "11662318",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 13496,
+      "start_ticks": "11662318",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 13496,
+      "start_ticks": "11662318",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 13496,
+      "start_ticks": "11662318",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 14235,
+      "start_ticks": "11662605",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 14235,
+      "start_ticks": "11662605",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 14235,
+      "start_ticks": "11662605",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 14235,
+      "start_ticks": "11662605",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 62804,
+      "start_ticks": "11681958",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 62804,
+      "start_ticks": "11681958",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 62804,
+      "start_ticks": "11681958",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 62804,
+      "start_ticks": "11681958",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 28766,
+      "start_ticks": "11735548",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 28766,
+      "start_ticks": "11735548",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 28766,
+      "start_ticks": "11735548",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 28766,
+      "start_ticks": "11735548",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 30984,
+      "start_ticks": "11736263",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 30984,
+      "start_ticks": "11736263",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 30984,
+      "start_ticks": "11736263",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 30984,
+      "start_ticks": "11736263",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 9924,
+      "start_ticks": "11792577",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 9924,
+      "start_ticks": "11792577",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 9924,
+      "start_ticks": "11792577",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 9924,
+      "start_ticks": "11792577",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 13774,
+      "start_ticks": "11793232",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 13774,
+      "start_ticks": "11793232",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 13774,
+      "start_ticks": "11793232",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 13774,
+      "start_ticks": "11793232",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 14191,
+      "start_ticks": "11793327",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 14191,
+      "start_ticks": "11793327",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 14191,
+      "start_ticks": "11793327",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 14191,
+      "start_ticks": "11793327",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 19454,
+      "start_ticks": "11794532",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 19454,
+      "start_ticks": "11794532",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 19454,
+      "start_ticks": "11794532",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 19454,
+      "start_ticks": "11794532",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 19607,
+      "start_ticks": "11794603",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 19607,
+      "start_ticks": "11794603",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 19607,
+      "start_ticks": "11794603",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 19607,
+      "start_ticks": "11794603",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 21753,
+      "start_ticks": "11795286",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 21753,
+      "start_ticks": "11795286",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 21753,
+      "start_ticks": "11795286",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 21753,
+      "start_ticks": "11795286",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 21753,
+      "start_ticks": "11795286",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 22177,
+      "start_ticks": "11795387",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 22177,
+      "start_ticks": "11795387",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 22177,
+      "start_ticks": "11795387",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 22177,
+      "start_ticks": "11795387",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 26523,
+      "start_ticks": "11796601",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 26523,
+      "start_ticks": "11796601",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 26523,
+      "start_ticks": "11796601",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 26523,
+      "start_ticks": "11796601",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 26523,
+      "start_ticks": "11796601",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 26830,
+      "start_ticks": "11796674",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 26830,
+      "start_ticks": "11796674",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 26830,
+      "start_ticks": "11796674",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 26830,
+      "start_ticks": "11796674",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 26830,
+      "start_ticks": "11796674",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 87501,
+      "start_ticks": "11813020",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 87501,
+      "start_ticks": "11813020",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 87501,
+      "start_ticks": "11813020",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 87501,
+      "start_ticks": "11813020",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 88781,
+      "start_ticks": "11813314",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 88781,
+      "start_ticks": "11813314",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 88781,
+      "start_ticks": "11813314",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 88781,
+      "start_ticks": "11813314",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 61023,
+      "start_ticks": "11831992",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 61023,
+      "start_ticks": "11831992",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 61023,
+      "start_ticks": "11831992",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 61023,
+      "start_ticks": "11831992",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 61398,
+      "start_ticks": "11832065",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 61398,
+      "start_ticks": "11832065",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 61398,
+      "start_ticks": "11832065",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 61398,
+      "start_ticks": "11832065",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 63283,
+      "start_ticks": "11832745",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 63283,
+      "start_ticks": "11832745",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 63283,
+      "start_ticks": "11832745",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 63283,
+      "start_ticks": "11832745",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 63608,
+      "start_ticks": "11832837",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 63608,
+      "start_ticks": "11832837",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 63608,
+      "start_ticks": "11832837",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 63608,
+      "start_ticks": "11832837",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 63608,
+      "start_ticks": "11832837",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 66264,
+      "start_ticks": "11833730",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 66264,
+      "start_ticks": "11833730",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 66264,
+      "start_ticks": "11833730",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 66264,
+      "start_ticks": "11833730",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 66264,
+      "start_ticks": "11833730",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.dll",
+      "dll_sha256": "5df8efb0ba56480637ab5b88afd0ec1ab6c6b01edc4b282d511723ef3f6aa71e",
+      "pdb_sha256": "98fa5409b450e6ebb0944c7927d178908a4d53f7443c109437a584b6709d2dc0",
+      "mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "passed": true
+    },
+    {
+      "pid": 68509,
+      "start_ticks": "11834416",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    },
+    {
+      "pid": 68509,
+      "start_ticks": "11834416",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 68509,
+      "start_ticks": "11834416",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 68509,
+      "start_ticks": "11834416",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 68682,
+      "start_ticks": "11834510",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "dll_sha256": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9",
+      "pdb_sha256": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5",
+      "mvid": "540e70b7-a617-46bb-9cf2-8158aa711478",
+      "passed": true
+    },
+    {
+      "pid": 68682,
+      "start_ticks": "11834510",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.dll",
+      "dll_sha256": "175c53f46b20328942ea3a20dd267c4a21faaff60c7cc53a9a9d3ba60d261273",
+      "pdb_sha256": "36b8b7be6efc46d5fb76af333df5b9b9e732e183042c8f78dfe333475b43e5fc",
+      "mvid": "99a9e402-c7e8-402b-ad2a-ec6eceb26a41",
+      "passed": true
+    },
+    {
+      "pid": 68682,
+      "start_ticks": "11834510",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll",
+      "dll_sha256": "0bda63e5d87a048664a995ed8373e3569e1ac07020500f9908c2b0e5d8ac7c47",
+      "pdb_sha256": "5a2d95d9cc5032629d850be99e1e5384d3ad9a14e78a9571630146672346b875",
+      "mvid": "a5153008-14e1-4bdc-a577-adbd5dab3113",
+      "passed": true
+    },
+    {
+      "pid": 68682,
+      "start_ticks": "11834510",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.dll",
+      "dll_sha256": "11d54e3006714341fbc17d7a92699c8eca61b1b9adc30043be62c334d979f56d",
+      "pdb_sha256": "4f91d811f0c39fe2eba0af4011598e64df2114d868c6d1690528f12e04146a6a",
+      "mvid": "9e672923-d119-453b-a2e3-42cebd96b969",
+      "passed": true
+    }
+  ],
+  "errors": [
+    "Worker module observation gap: 68509",
+    "Worker self-report disagrees with mapped module: 68509:Hexalith.EventStore.Server",
+    "Worker module observation gap: 68682",
+    "Worker self-report disagrees with mapped module: 68682:Hexalith.EventStore.Server",
+    "Worker module observation gap: 72683",
+    "Worker self-report disagrees with mapped module: 72683:Hexalith.EventStore.Server",
+    "Worker module observation gap: 73441",
+    "Worker self-report disagrees with mapped module: 73441:Hexalith.EventStore.Server",
+    "Worker module observation gap: 31620",
+    "Worker self-report disagrees with mapped module: 31620:Hexalith.EventStore.Server",
+    "Worker module observation gap: 22177",
+    "Worker self-report disagrees with mapped module: 22177:Hexalith.EventStore.Server",
+    "Worker module observation gap: 19607",
+    "Worker self-report disagrees with mapped module: 19607:Hexalith.EventStore.Server",
+    "Worker module observation gap: 19454",
+    "Worker self-report disagrees with mapped module: 19454:Hexalith.EventStore.Server",
+    "Worker module observation gap: 13774",
+    "Worker self-report disagrees with mapped module: 13774:Hexalith.EventStore.Server",
+    "Worker module observation gap: 14191",
+    "Worker self-report disagrees with mapped module: 14191:Hexalith.EventStore.Server",
+    "Worker module observation gap: 9924",
+    "Worker self-report disagrees with mapped module: 9924:Hexalith.EventStore.Server",
+    "Worker module observation gap: 63283",
+    "Worker self-report disagrees with mapped module: 63283:Hexalith.EventStore.Server",
+    "Worker module observation gap: 61398",
+    "Worker self-report disagrees with mapped module: 61398:Hexalith.EventStore.Server",
+    "Worker module observation gap: 61023",
+    "Worker self-report disagrees with mapped module: 61023:Hexalith.EventStore.Server",
+    "Worker module observation gap: 87501",
+    "Worker self-report disagrees with mapped module: 87501:Hexalith.EventStore.Server",
+    "Worker module observation gap: 88781",
+    "Worker self-report disagrees with mapped module: 88781:Hexalith.EventStore.Server",
+    "Worker module observation gap: 49542",
+    "Worker self-report disagrees with mapped module: 49542:Hexalith.EventStore.Server",
+    "Worker module observation gap: 21344",
+    "Worker self-report disagrees with mapped module: 21344:Hexalith.EventStore.Server",
+    "Worker module observation gap: 14235",
+    "Worker self-report disagrees with mapped module: 14235:Hexalith.EventStore.Server",
+    "Worker module observation gap: 28766",
+    "Worker self-report disagrees with mapped module: 28766:Hexalith.EventStore.Server",
+    "Worker module observation gap: 30984",
+    "Worker self-report disagrees with mapped module: 30984:Hexalith.EventStore.Server",
+    "Worker module observation gap: 62804",
+    "Worker self-report disagrees with mapped module: 62804:Hexalith.EventStore.Server"
+  ],
+  "observer_version": "v1, archived exactly; it did not retain transient observation exceptions. Required complete phase/process/module coverage above is verified independently; no absence-of-errors claim is made."
+}

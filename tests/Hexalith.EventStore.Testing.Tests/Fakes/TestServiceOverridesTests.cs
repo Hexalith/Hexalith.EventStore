@@ -50,15 +50,30 @@ public class TestServiceOverridesTests {
             () => outbox.DeferAsync(workItem, DateTimeOffset.UtcNow, cancellation.Token));
     }
 
-    [Fact]
-    public void RemoveDaprHealthChecks_RemovesWriterProtocolAndDaprChecksOnly() {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RemoveDaprHealthChecks_RemovesSidecarDependentChecksOnly(bool registerAfterOverride)
+    {
         var services = new ServiceCollection();
         _ = services.AddHealthChecks()
             .AddCheck("self", static () => HealthCheckResult.Healthy())
+            .AddCheck("projection-unrelated", static () => HealthCheckResult.Healthy())
             .AddCheck("dapr-sidecar", static () => HealthCheckResult.Healthy())
             .AddCheck("projection-delivery-writer-protocol", static () => HealthCheckResult.Healthy());
 
+        if (!registerAfterOverride)
+        {
+            _ = services.AddHealthChecks()
+                .AddCheck("projection-delivery-unresolved-conflict", static () => HealthCheckResult.Healthy());
+        }
+
         TestServiceOverrides.RemoveDaprHealthChecks(services);
+        if (registerAfterOverride)
+        {
+            _ = services.AddHealthChecks()
+                .AddCheck("projection-delivery-unresolved-conflict", static () => HealthCheckResult.Healthy());
+        }
         _ = services.AddHealthChecks()
             .AddCheck("dapr-registered-after-override", static () => HealthCheckResult.Healthy());
 
@@ -68,7 +83,7 @@ public class TestServiceOverridesTests {
             .Value
             .Registrations
             .Select(static registration => registration.Name)];
-        names.ShouldBe(["self"]);
+        names.ShouldBe(["self", "projection-unrelated"]);
     }
 
     private sealed class ThrowingCommandRouter : ICommandRouter {

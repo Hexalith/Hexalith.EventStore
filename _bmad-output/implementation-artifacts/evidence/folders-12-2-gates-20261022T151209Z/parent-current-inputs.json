@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/verify.py",
+    "--current-inputs"
+  ],
+  "utc": "2026-10-22T15:12:32.549487+00:00",
+  "exit_code": 1,
+  "summary": {
+    "passed": false,
+    "sealed_files": 6101,
+    "seal_sha256": "0b4d5ade382ea889b78fdb5cba7783c7f0fbaa1bdc68d06646b4fc4ade732135",
+    "checked_current_inputs": true
+  },
+  "errors_by_kind": {
+    "current-input": 1012
+  }
+}

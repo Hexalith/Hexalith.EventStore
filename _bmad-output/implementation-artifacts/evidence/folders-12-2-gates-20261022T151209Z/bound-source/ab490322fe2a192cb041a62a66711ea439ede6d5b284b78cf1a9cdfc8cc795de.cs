@@ -1,0 +1,123 @@
+using Bunit;
+
+using Hexalith.EventStore.Admin.Abstractions.Models.Streams;
+using Hexalith.EventStore.Admin.UI.Components;
+
+namespace Hexalith.EventStore.Admin.UI.Tests.Components;
+
+public class CausationChainViewTests : AdminUITestContext {
+    [Fact]
+    public void CausationChainView_RendersCommandType() {
+        CausationChain chain = CreateChain("IncrementCounter");
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain));
+
+        cut.Markup.ShouldContain("IncrementCounter");
+    }
+
+    [Fact]
+    public void CausationChainView_RendersCorrelationId() {
+        CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-abc-123");
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain));
+
+        // Correlation ID may be truncated to 8 chars
+        cut.Markup.ShouldContain("corr-abc");
+    }
+
+    [Fact]
+    public void CausationChainView_RendersEvents() {
+        var chain = new CausationChain(
+            "IncrementCounter", "cmd-1", "corr-1", "user-1",
+            [
+                new CausationEvent(5, "CounterIncremented", DateTimeOffset.UtcNow),
+                new CausationEvent(6, "ThresholdReached", DateTimeOffset.UtcNow),
+            ],
+            []);
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain));
+
+        string markup = cut.Markup;
+        markup.ShouldContain("CounterIncremented");
+        markup.ShouldContain("ThresholdReached");
+    }
+
+    [Fact]
+    public void CausationChainView_RendersAffectedProjections() {
+        var chain = new CausationChain(
+            "IncrementCounter", "cmd-1", "corr-1", "user-1",
+            [new CausationEvent(5, "CounterIncremented", DateTimeOffset.UtcNow)],
+            ["CounterSummary", "DashboardStats"]);
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain));
+
+        string markup = cut.Markup;
+        markup.ShouldContain("CounterSummary");
+        markup.ShouldContain("DashboardStats");
+    }
+
+    [Fact]
+    public void CausationChainView_InvokesOnCorrelationClick_ForCopyButton() {
+        CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-click-test");
+        string? copiedCorrelation = null;
+        string? tracedCorrelation = null;
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain)
+            .Add(c => c.OnCorrelationClick, id => copiedCorrelation = id)
+            .Add(c => c.OnOpenTraceMap, id => tracedCorrelation = id));
+
+        AngleSharp.Dom.IElement? copyButton = cut.FindAll("fluent-button")
+            .FirstOrDefault(b => b.GetAttribute("aria-label") == "Copy correlation ID");
+        _ = copyButton.ShouldNotBeNull();
+        copyButton!.Click();
+
+        copiedCorrelation.ShouldBe("corr-click-test");
+        tracedCorrelation.ShouldBeNull();
+    }
+
+    [Fact]
+    public void CausationChainView_InvokesOnOpenTraceMap_ForTraceButton() {
+        CausationChain chain = CreateChain("IncrementCounter", correlationId: "corr-trace-test");
+        string? copiedCorrelation = null;
+        string? tracedCorrelation = null;
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain)
+            .Add(c => c.OnCorrelationClick, id => copiedCorrelation = id)
+            .Add(c => c.OnOpenTraceMap, id => tracedCorrelation = id));
+
+        AngleSharp.Dom.IElement? traceButton = cut.FindAll("fluent-button")
+            .FirstOrDefault(b => b.GetAttribute("aria-label") == "Open trace map");
+        _ = traceButton.ShouldNotBeNull();
+        traceButton!.Click();
+
+        tracedCorrelation.ShouldBe("corr-trace-test");
+        copiedCorrelation.ShouldBeNull();
+    }
+
+    [Fact]
+    public void CausationChainView_RendersEmptyEvents_Gracefully() {
+        var chain = new CausationChain(
+            "IncrementCounter", "cmd-1", "corr-1", "user-1",
+            [],
+            []);
+
+        IRenderedComponent<CausationChainView> cut = Render<CausationChainView>(p => p
+            .Add(c => c.Chain, chain));
+
+        // Should render without throwing even with empty events/projections
+        cut.Markup.ShouldContain("IncrementCounter");
+    }
+
+    private static CausationChain CreateChain(
+        string commandType = "IncrementCounter",
+        string correlationId = "corr-1") => new(
+            commandType, "cmd-1", correlationId, "user-1",
+            [new CausationEvent(5, "CounterIncremented", DateTimeOffset.UtcNow)],
+            ["CounterSummary"]);
+}

@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "dotnet",
+    "tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+    "-result-xml",
+    "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/contracts-full.xml"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:18:49.201476+00:00",
+  "environment_overrides": {
+    "DOTNET_USE_POLLING_FILE_WATCHER": "1",
+    "DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE": "false"
+  },
+  "runner_pid": 73917,
+  "pid": 73941
+}

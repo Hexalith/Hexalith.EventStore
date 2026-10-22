@@ -1,0 +1,75 @@
+{
+  "reason": "Fresh build of the standalone project omitted by the solution; BuildProjectReferences=false preserves the already executing core graphs.",
+  "changes": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
+      "before": "fc286e1b15ff06706ce138c0971df1d44a5119dc41fb40d698db224544c72c84",
+      "after": "fdf8193c7279cbf8259e83e72ad130cd76aee9d29f33f54f105de892aaf7425e"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.dll",
+      "before": "b7eaddb6222654d2c37b04ac1522adbae2e8ad5d54989c4576ecb87903e18f50",
+      "after": "a34af2e9844cbde0efcad8df44139c5b8cfb13da228211c27bf4ceb619c1fa65"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+      "before": "dd69dc0fe1cc1cf5c4b40f6375ef76b15f4d83f20ac1ba8dad702b9369233850",
+      "after": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+      "before": "31e4ba375508f78f9a03a5204665bdc2305b56ba7d443bb9a2dc66bce015f781",
+      "after": "f84c910486784538f74343dacd689d574cc17824f21f2f1160028593b124d7a3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.pdb",
+      "before": "86b4078a1662a5e38829ca9dff7099c6ea426d6bcc2fcfd5ad042765dc8a3d35",
+      "after": "41a2f64b502fb7c3f659e1090bf3a3218ab46420cbdce2c7ab74879071d6e88d"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.PayloadProtection/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "before": "dd03bee3624b5843a7a1893c7bedb455cf728530b4863e07a695af729117ed54",
+      "after": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
+      "before": "fc286e1b15ff06706ce138c0971df1d44a5119dc41fb40d698db224544c72c84",
+      "after": "fdf8193c7279cbf8259e83e72ad130cd76aee9d29f33f54f105de892aaf7425e"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.dll",
+      "before": "b7eaddb6222654d2c37b04ac1522adbae2e8ad5d54989c4576ecb87903e18f50",
+      "after": "a34af2e9844cbde0efcad8df44139c5b8cfb13da228211c27bf4ceb619c1fa65"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.pdb",
+      "before": "dd69dc0fe1cc1cf5c4b40f6375ef76b15f4d83f20ac1ba8dad702b9369233850",
+      "after": "8b04832ddedbdbd7cc212b7141f32814296add4584d5b72ca3e30518ffe28df5"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+      "before": "838dd99a0deba22cfba70c97705b72df505ff87168c62ea4f27fe00f202cff95",
+      "after": "83deeb768ae30c4388720a5d46eebfcd01d92cabb9d1d530da3b4b6dca08837f"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll",
+      "before": "31e4ba375508f78f9a03a5204665bdc2305b56ba7d443bb9a2dc66bce015f781",
+      "after": "f84c910486784538f74343dacd689d574cc17824f21f2f1160028593b124d7a3"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.pdb",
+      "before": "86b4078a1662a5e38829ca9dff7099c6ea426d6bcc2fcfd5ad042765dc8a3d35",
+      "after": "41a2f64b502fb7c3f659e1090bf3a3218ab46420cbdce2c7ab74879071d6e88d"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.dll",
+      "before": "dd03bee3624b5843a7a1893c7bedb455cf728530b4863e07a695af729117ed54",
+      "after": "b0c82fae6243fad0c6d5cf753489220b7b307035540c074ded894b0825514cb9"
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.pdb",
+      "before": "72da2002a4108e347b294e25ffc36f9e6a419fa6d2633e79b0074a79fe666242",
+      "after": "62fdb1d25fbfc7a1a609340a97f06aa6fd1700678dec0a87bc52c87a8a7cd5f4"
+    }
+  ]
+}

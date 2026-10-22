@@ -1,0 +1,345 @@
+{
+  "tenant-admission:01YXP36B6JMHB0FFYWV8XJCQ7N:status": {
+    "status": 4,
+    "timestamp": "2026-10-22T15:20:57+00:00",
+    "aggregateId": "admission-counter",
+    "eventCount": 1,
+    "rejectionEventType": null,
+    "failureReason": null,
+    "timeoutDuration": null,
+    "messageId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "correlationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "retryable": null,
+    "recoveryReasonCode": null,
+    "drainAttemptCount": null,
+    "committedEventSequence": 1,
+    "domain": "counter"
+  },
+  "admin:storage-stream-count:tenant-admission": 1,
+  "projection-checkpoints-migrated:tenant-admission:counter:admission-counter:counter": {
+    "migrated": true
+  },
+  "eventstore||ProjectionLifecycleActor||tenant-admission:counter:admission-counter:counter||projection-lifecycle-epoch": 2,
+  "eventstore||AggregateActor||tenant-admission:counter:admission-counter||idempotency:01YXP36B6JMHB0FFYWV8XJCQ7N": {
+    "backpressureExceeded": false,
+    "rejectionEventType": null,
+    "causationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "messageId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "disposition": 1,
+    "correlationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "accepted": true,
+    "errorMessage": null,
+    "eventCount": 1,
+    "resultPayload": null,
+    "commandType": "IncrementCounter",
+    "expiresAt": "2026-10-23T15:20:57+00:00",
+    "resultPayloadWithheld": false,
+    "processedAt": "2026-10-22T15:20:57+00:00",
+    "backpressurePendingCount": null,
+    "backpressureThreshold": null,
+    "failureReason": null
+  },
+  "tenant-admission:01YXP36B6JMHB0FFYWV8XJCQ7N:command": {
+    "tenant": "tenant-admission",
+    "domain": "counter",
+    "aggregateId": "admission-counter",
+    "commandType": "IncrementCounter",
+    "payload": "eyJjb3VudGVySWQiOiJhZG1pc3Npb24tY291bnRlciJ9",
+    "extensions": null,
+    "originalTimestamp": "2026-10-22T15:21:03.1033941+00:00",
+    "messageId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "correlationId": "01YXP36B6JMHB0FFYWV8XJCQ7N"
+  },
+  "admin:storage-overview:all": {
+    "totalEventCount": 1,
+    "totalSizeBytes": null,
+    "indexStatus": 3,
+    "tenantBreakdown": [
+      {
+        "eventCount": 1,
+        "sizeBytes": null,
+        "tenantId": "tenant-admission",
+        "growthRatePerDay": null
+      }
+    ],
+    "totalStreamCount": 1
+  },
+  "projection-checkpoints:tenant-admission:counter:admission-counter:counter": {
+    "tenantId": "tenant-admission",
+    "domain": "counter",
+    "aggregateId": "admission-counter",
+    "lastDeliveredSequence": 1,
+    "updatedAt": "2026-10-22T15:21:03.600519+00:00"
+  },
+  "admin:storage-hot-streams:all": [
+    {
+      "eventCount": 1,
+      "sizeBytes": null,
+      "hasSnapshot": false,
+      "snapshotAge": null,
+      "tenantId": "tenant-admission",
+      "domain": "counter",
+      "aggregateId": "admission-counter",
+      "aggregateType": "CounterAggregate"
+    }
+  ],
+  "admin:storage-hot-streams:tenant-admission": [
+    {
+      "eventCount": 1,
+      "sizeBytes": null,
+      "hasSnapshot": false,
+      "snapshotAge": null,
+      "tenantId": "tenant-admission",
+      "domain": "counter",
+      "aggregateId": "admission-counter",
+      "aggregateType": "CounterAggregate"
+    }
+  ],
+  "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:metadata": {
+    "currentSequence": 1,
+    "lastModified": "2026-10-22T15:21:02.9321387+00:00",
+    "eTag": null,
+    "retainedFloor": 1,
+    "sourceProof": {
+      "retainedFloor": 1,
+      "erased": false,
+      "domain": "counter",
+      "headMessageId": "01M5J373PJB5YMPNVG69G8ZPV1",
+      "codecVersion": 1,
+      "tenantId": "tenant-admission",
+      "aggregateId": "admission-counter",
+      "sourceIncarnation": "01M5J373PG7YCT4YZ719FKV9R8",
+      "headSequence": 1,
+      "cumulativeDigest": "118922e76f17ae7ce53aaa75026ad25ee862f8125078460b7fc9dbac666e5ef2"
+    }
+  },
+  "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q||admission": {
+    "schemaVersion": 2,
+    "tenantPartition": "tenant-admission",
+    "keyDigest": "3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q",
+    "intentDigest": "tjtuFRezknxW5XxjqL8g4WCDAau5ZtMiyiPkGb87RHs",
+    "lastObservedAt": "2026-10-22T15:20:57+00:00",
+    "executionCorrelationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "state": 5,
+    "fencingToken": 1,
+    "executionMessageId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "digestKeyVersion": "local1",
+    "retentionTier": 1,
+    "replayExpiresAt": "2026-10-23T15:20:57+00:00",
+    "replayResult": {
+      "correlationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+      "eventCount": 1,
+      "resultPayload": null,
+      "backpressurePendingCount": null,
+      "backpressureThreshold": null,
+      "rejectionEventType": null,
+      "accepted": true,
+      "errorMessage": null,
+      "backpressureExceeded": false,
+      "failureReason": null,
+      "resultPayloadWithheld": false
+    },
+    "verificationTag": "Ix_OV44MT_JOS_3y03dm5byqqJpeM75Hc4ffbmt_lDQ",
+    "firstConsumedAt": "2026-10-22T15:20:57+00:00"
+  },
+  "admin:storage-stream-info:tenant-admission:counter:admission-counter": {
+    "eventCount": 1,
+    "sizeBytes": null,
+    "hasSnapshot": false,
+    "snapshotAge": null,
+    "tenantId": "tenant-admission",
+    "domain": "counter",
+    "aggregateId": "admission-counter",
+    "aggregateType": "CounterAggregate"
+  },
+  "admin:storage-stream-count:all": 1,
+  "eventstore||AggregateActor||tenant-admission:counter:admission-counter||publication-index": {
+    "entries": []
+  },
+  "eventstore||IdempotencyAdmissionDirectoryActor||tenant-admission||alias:local1:3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q": {
+    "promotionTargetActorId": null,
+    "schemaVersion": 1,
+    "canonicalActorId": "tenant-admission:local1:3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q",
+    "activeActorId": "tenant-admission:local1:3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q",
+    "aliases": [
+      "tenant-admission:local1:3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q"
+    ],
+    "promotionPhase": 0,
+    "promotionSourceActorId": null
+  },
+  "admin:command-activity:all": [
+    {
+      "correlationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+      "commandType": "IncrementCounter",
+      "status": 4,
+      "timestamp": "2026-10-22T15:20:57+00:00",
+      "eventCount": 1,
+      "failureReason": null,
+      "tenantId": "tenant-admission",
+      "domain": "counter",
+      "aggregateId": "admission-counter"
+    }
+  ],
+  "admin:storage-overview:tenant-admission": {
+    "totalEventCount": 1,
+    "totalSizeBytes": null,
+    "indexStatus": 3,
+    "tenantBreakdown": [
+      {
+        "eventCount": 1,
+        "sizeBytes": null,
+        "tenantId": "tenant-admission",
+        "growthRatePerDay": null
+      }
+    ],
+    "totalStreamCount": 1
+  },
+  "eventstore||IdempotencyAdmissionActor||tenant-admission:local1:recovery||admission": {
+    "verificationTag": "fixture-verification",
+    "intentDigest": "fixture-intent",
+    "executionMessageId": "01J00000000000000000000000",
+    "tenantPartition": "tenant-admission",
+    "firstConsumedAt": "2026-10-22T15:20:57+00:00",
+    "fencingToken": 1,
+    "replayResult": null,
+    "schemaVersion": 2,
+    "state": 4,
+    "keyDigest": "recovery",
+    "retentionTier": 1,
+    "replayExpiresAt": null,
+    "executionCorrelationId": "recovery-correlation",
+    "digestKeyVersion": "local1",
+    "lastObservedAt": "2026-10-22T15:20:57+00:00"
+  },
+  "admin:stream-activity:all": [
+    {
+      "lastEventSequence": 1,
+      "lastActivityUtc": "2026-10-22T15:20:57+00:00",
+      "eventCount": 1,
+      "hasSnapshot": false,
+      "streamStatus": 0,
+      "tenantId": "tenant-admission",
+      "domain": "counter",
+      "aggregateId": "admission-counter"
+    }
+  ],
+  "eventstore||AggregateActor||tenant-admission:counter:admission-counter||tenant-admission:counter:admission-counter:events:1": {
+    "applicationPayloadDigest": "34a36c7d0f5e92e2eefa91bdccabad1a05135535c7d285eb56ff9d8ff6a12a57",
+    "identity": {
+      "domain": "counter",
+      "aggregateId": "admission-counter",
+      "actorId": "tenant-admission:counter:admission-counter",
+      "eventStreamKeyPrefix": "tenant-admission:counter:admission-counter:events:",
+      "queueSession": "tenant-admission:counter:admission-counter",
+      "tenantId": "tenant-admission",
+      "metadataKey": "tenant-admission:counter:admission-counter:metadata",
+      "snapshotKey": "tenant-admission:counter:admission-counter:snapshot",
+      "pipelineKeyPrefix": "tenant-admission:counter:admission-counter:pipeline:",
+      "pubSubTopic": "tenant-admission.counter.events"
+    },
+    "messageId": "01M5J373PJB5YMPNVG69G8ZPV1",
+    "domain": "counter",
+    "sequenceNumber": 1,
+    "globalPosition": 1,
+    "domainServiceVersion": "v1",
+    "aggregateId": "admission-counter",
+    "aggregateType": "counter",
+    "userId": "qualification-runner",
+    "serializationFormat": "json",
+    "payload": "e30=",
+    "tenantId": "tenant-admission",
+    "timestamp": "2026-10-22T15:21:02.9321387+00:00",
+    "causationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "eventTypeName": "Hexalith.EventStore.Sample.Counter.Events.CounterIncremented",
+    "metadataVersion": 1,
+    "correlationId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+    "extensions": {
+      "eventstore.protection": "{\"state\":\"Unprotected\",\"metadataVersion\":1}"
+    }
+  },
+  "projection-activation:outbox:v1:08": {
+    "items": []
+  },
+  "eventstore||GlobalPositionActor||global||current-global-position": 1,
+  "tenant-admission:01YXP36B6JMHB0FFYWV8XJCQ7N:command-index": {
+    "entries": [
+      {
+        "messageId": "01YXP36B6JMHB0FFYWV8XJCQ7N",
+        "expiresAt": "2026-10-23T15:20:57+00:00"
+      }
+    ],
+    "overflowed": false,
+    "overflowExpiresAt": null
+  },
+  "eventstore||IdempotencyTenantLifecycleActor||tenant-admission||lifecycle": {
+    "references": [
+      {
+        "actorId": "tenant-admission:local1:3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q",
+        "digestKeyVersion": "local1",
+        "keyDigest": "3gbZ1ILrTTIEmNH4eheuC9NStuivYkO5eNIbepL3P_Q"
+      }
+    ],
+    "pendingTrustedEffectIds": [],
+    "schemaVersion": 1,
+    "tenant": "tenant-admission",
+    "state": 0,
+    "deleteAfter": null,
+    "hasTrustedEffectEvidence": false,
+    "trustedEffectEvidenceErased": false,
+    "trustedEffects": [],
+    "lastObservedAt": "2026-10-22T15:20:57+00:00",
+    "deletionApprovedAt": null,
+    "remainingRetention": null,
+    "legalHoldStartedAt": null
+  },
+  "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-rebuild-promotion": {
+    "promotedState": null,
+    "publicationBinding": {
+      "tenantId": "tenant-admission",
+      "projectionName": "counter",
+      "headSequence": 1,
+      "sourceFingerprint": "6b10fe11f2329c3b298e066c69011f0ece9925742f0fe8e59b3202fe38f59986",
+      "domain": "counter",
+      "aggregateId": "admission-counter",
+      "operationId": "01M5J374146ZHPYEX73JMF1YB0",
+      "headMessageId": "01M5J373PJB5YMPNVG69G8ZPV1",
+      "candidateFingerprint": "6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661"
+    },
+    "completed": true,
+    "publicationFloor": {
+      "sourceFingerprint": "6b10fe11f2329c3b298e066c69011f0ece9925742f0fe8e59b3202fe38f59986",
+      "candidateFingerprint": "6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661",
+      "aggregateId": "admission-counter",
+      "headSequence": 1,
+      "headMessageId": "01M5J373PJB5YMPNVG69G8ZPV1",
+      "tenantId": "tenant-admission",
+      "domain": "counter",
+      "projectionName": "counter",
+      "operationId": "01M5J374146ZHPYEX73JMF1YB0"
+    },
+    "previousState": null,
+    "selectedReplayFence": {
+      "sourceActorId": "tenant-admission:counter:admission-counter",
+      "projectionName": "counter",
+      "operationId": "01M5J374146ZHPYEX73JMF1YB0",
+      "headSequence": 1
+    },
+    "priorReplayFence": null,
+    "selectedStateFingerprint": "6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661",
+    "operationId": "01M5J374146ZHPYEX73JMF1YB0"
+  },
+  "eventstore||ETagActor||counter:tenant-admission||etag": "Y291bnRlcg.AgHJ_4w1Cki1fSRf8W4_tQ",
+  "eventstore||AggregateActor||tenant-admission:counter:admission-counter||pending_command_count": 0,
+  "eventstore||ProjectionActor||counter:tenant-admission:admission-counter||projection-state": {
+    "projectionType": "counter",
+    "tenantId": "tenant-admission",
+    "stateBytes": "eyJjb3VudCI6MX0=",
+    "notificationGroupScope": "counter-status",
+    "notificationMetadata": {
+      "change-kind": "counter-projection-updated"
+    }
+  },
+  "eventstore||AggregateActor||tenant-admission:counter:admission-counter||terminal-advisory-index": {
+    "entries": []
+  }
+}

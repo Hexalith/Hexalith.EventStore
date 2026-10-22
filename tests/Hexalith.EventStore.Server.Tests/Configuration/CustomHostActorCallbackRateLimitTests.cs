@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 using Hexalith.EventStore.Extensions;
 using Hexalith.EventStore.Server.Actors;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
@@ -23,7 +25,7 @@ public sealed class CustomHostActorCallbackRateLimitTests
     [Fact]
     public async Task RawDaprMappingUsesTrustedDelegateProvenanceForIndependentBoundedQuotasAsync()
     {
-        const string ChannelToken = "custom-host-channel-token";
+        string ChannelToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
         builder.WebHost.UseTestServer();
         // Unused controller/command services are outside this minimal mapping-only host.
@@ -33,7 +35,7 @@ public sealed class CustomHostActorCallbackRateLimitTests
             [DaprAppChannelToken.ConfigurationKey] = ChannelToken,
             ["Authentication:JwtBearer:Issuer"] = "custom-host-fixture",
             ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
-            ["Authentication:JwtBearer:SigningKey"] = "custom-host-test-signing-key-at-least-32-bytes",
+            ["Authentication:JwtBearer:SigningKey"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
             ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false",
             ["EventStore:RateLimiting:PermitLimit"] = "2",
             ["EventStore:RateLimiting:ConsumerPermitLimit"] = "2",

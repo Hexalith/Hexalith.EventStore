@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "/home/administrator/.dapr/bin/daprd",
+    "--version"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:32:02.976007+00:00",
+  "environment_overrides": {},
+  "runner_pid": 16152,
+  "pid": 16350,
+  "exit_code": 0,
+  "elapsed_seconds": 0.11047487299947534,
+  "utc_end": "2026-10-22T15:32:03.086639+00:00"
+}

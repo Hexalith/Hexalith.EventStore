@@ -1,6 +1,7 @@
 extern alias eventstore;
 
 using System.Net;
+using System.Security.Cryptography;
 using System.Net.Http.Json;
 
 using Hexalith.EventStore.Server.Tests.TestUtilities;
@@ -22,7 +23,7 @@ namespace Hexalith.EventStore.Server.Tests.Configuration;
 /// <summary>Exercises actor channel authorization and both global quotas in the production HTTP pipeline.</summary>
 public sealed class ActorCallbackRateLimitPipelineTests
 {
-    private const string ChannelToken = "actor-callback-fixture-token-with-sufficient-entropy";
+    private static readonly string ChannelToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private const string ActorType = "IdempotencyAdmissionActor";
 
     [Theory]
@@ -113,7 +114,7 @@ public sealed class ActorCallbackRateLimitPipelineTests
                 ["Authentication:JwtBearer:SigningKey"] = null,
                 ["Authentication:JwtBearer:RequireHttpsMetadata"] = "true",
                 ["Authentication:WorkloadIssuer:ClientId"] = "eventstore",
-                ["Authentication:WorkloadIssuer:ClientSecret"] = "fixture-workload-client-secret",
+                ["Authentication:WorkloadIssuer:ClientSecret"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)),
                 [DaprAppChannelToken.ConfigurationKey] = ChannelToken,
                 ["EventStore:RateLimiting:PermitLimit"] = tenantLimit ? "2" : "100",
                 ["EventStore:RateLimiting:ConsumerPermitLimit"] = tenantLimit ? "100" : "2",

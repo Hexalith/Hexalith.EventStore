@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/close.py"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T14:54:54.318422+00:00",
+  "environment_overrides": {},
+  "runner_pid": 8402,
+  "pid": 8413,
+  "exit_code": 1,
+  "elapsed_seconds": 0.9208100749965524,
+  "utc_end": "2026-10-22T14:54:55.239567+00:00"
+}

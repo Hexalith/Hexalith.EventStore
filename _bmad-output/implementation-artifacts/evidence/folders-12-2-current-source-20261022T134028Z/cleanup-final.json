@@ -1,0 +1,241 @@
+{
+  "passed": true,
+  "errors": [],
+  "containers": [
+    {
+      "id": "634bd7123084a44d3d2c09db64fa6580c99a3cd786aab5b8b551d152696a8981",
+      "name": "admission-c2f12d714bf0-scheduler",
+      "absent": true
+    },
+    {
+      "id": "102ffda0a95b436e4f55428771a81166a93dd21b29f6160590a7810ca3862467",
+      "name": "admission-c2f12d714bf0-placement",
+      "absent": true
+    },
+    {
+      "id": "935b50821057b7b8f08c0ad56ecafe0eb22ea03b03d4338f62c17eb76a7991eb",
+      "name": "admission-c2f12d714bf0-redis",
+      "absent": true
+    },
+    {
+      "id": "70c1e6a0effe21b9c20f7baaa3dddd722fbe87bd00410c48c0a4b803bc6246b6",
+      "name": "admission-62b8951d61d9-scheduler",
+      "absent": true
+    },
+    {
+      "id": "e4ea7fc027b7da0a08ab3c196053a89232963522038721749723257aa544bd4e",
+      "name": "admission-62b8951d61d9-placement",
+      "absent": true
+    },
+    {
+      "id": "56a4ecd38cc87a04af22698eb70c6f5676e0dfe8a9bd1011770c86cc5eda258e",
+      "name": "admission-62b8951d61d9-redis",
+      "absent": true
+    }
+  ],
+  "directories": [
+    {
+      "path": "/tmp/eventstore-actor-admission-y_l2nv9p",
+      "absent": true
+    },
+    {
+      "path": "/tmp/eventstore-actor-admission-3t2hrsvw",
+      "absent": true
+    },
+    {
+      "path": "/tmp/dapr-components-5efb036154c548b5bf6d55e609891042",
+      "absent": true
+    }
+  ],
+  "unrelated_tenants_pid": 67730,
+  "commands": [
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "634bd7123084a44d3d2c09db64fa6580c99a3cd786aab5b8b551d152696a8981"
+      ],
+      "exit_code": 1,
+      "observed_utc": "2026-10-22T14:55:41.021668+00:00",
+      "stdout": "\n",
+      "stderr": "error: no such object: 634bd7123084a44d3d2c09db64fa6580c99a3cd786aab5b8b551d152696a8981\n",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "id=634bd7123084a44d3d2c09db64fa6580c99a3cd786aab5b8b551d152696a8981"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.055728+00:00",
+      "stdout": "",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "102ffda0a95b436e4f55428771a81166a93dd21b29f6160590a7810ca3862467"
+      ],
+      "exit_code": 1,
+      "observed_utc": "2026-10-22T14:55:41.124970+00:00",
+      "stdout": "\n",
+      "stderr": "error: no such object: 102ffda0a95b436e4f55428771a81166a93dd21b29f6160590a7810ca3862467\n",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "id=102ffda0a95b436e4f55428771a81166a93dd21b29f6160590a7810ca3862467"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.164243+00:00",
+      "stdout": "",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "935b50821057b7b8f08c0ad56ecafe0eb22ea03b03d4338f62c17eb76a7991eb"
+      ],
+      "exit_code": 1,
+      "observed_utc": "2026-10-22T14:55:41.233228+00:00",
+      "stdout": "\n",
+      "stderr": "error: no such object: 935b50821057b7b8f08c0ad56ecafe0eb22ea03b03d4338f62c17eb76a7991eb\n",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "id=935b50821057b7b8f08c0ad56ecafe0eb22ea03b03d4338f62c17eb76a7991eb"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.261333+00:00",
+      "stdout": "",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "70c1e6a0effe21b9c20f7baaa3dddd722fbe87bd00410c48c0a4b803bc6246b6"
+      ],
+      "exit_code": 1,
+      "observed_utc": "2026-10-22T14:55:41.328796+00:00",
+      "stdout": "\n",
+      "stderr": "error: no such object: 70c1e6a0effe21b9c20f7baaa3dddd722fbe87bd00410c48c0a4b803bc6246b6\n",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "id=70c1e6a0effe21b9c20f7baaa3dddd722fbe87bd00410c48c0a4b803bc6246b6"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.358379+00:00",
+      "stdout": "",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "e4ea7fc027b7da0a08ab3c196053a89232963522038721749723257aa544bd4e"
+      ],
+      "exit_code": 1,
+      "observed_utc": "2026-10-22T14:55:41.434161+00:00",
+      "stdout": "\n",
+      "stderr": "error: no such object: e4ea7fc027b7da0a08ab3c196053a89232963522038721749723257aa544bd4e\n",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "id=e4ea7fc027b7da0a08ab3c196053a89232963522038721749723257aa544bd4e"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.468103+00:00",
+      "stdout": "",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "56a4ecd38cc87a04af22698eb70c6f5676e0dfe8a9bd1011770c86cc5eda258e"
+      ],
+      "exit_code": 1,
+      "observed_utc": "2026-10-22T14:55:41.544849+00:00",
+      "stdout": "\n",
+      "stderr": "error: no such object: 56a4ecd38cc87a04af22698eb70c6f5676e0dfe8a9bd1011770c86cc5eda258e\n",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "id=56a4ecd38cc87a04af22698eb70c6f5676e0dfe8a9bd1011770c86cc5eda258e"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.577616+00:00",
+      "stdout": "",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    },
+    {
+      "argv": [
+        "aspire",
+        "ps",
+        "--format",
+        "Json"
+      ],
+      "exit_code": 0,
+      "observed_utc": "2026-10-22T14:55:41.868771+00:00",
+      "stdout": "[\n  {\n    \"appHostPath\": \"/home/administrator/projects/hexalith/tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj\",\n    \"appHostPid\": 67730,\n    \"status\": \"running\",\n    \"sdkVersion\": \"13.6.1\",\n    \"cliPid\": 62588,\n    \"dashboardUrl\": \"https://localhost:17117/login?t=[REDACTED]\",\n    \"logFilePath\": \"/home/administrator/.aspire/logs/cli_20261021T172217864_detach-child_2575a417c1374a57a3b87c247c15aef4.log\"\n  }\n]\n",
+      "stderr": "",
+      "redaction": "Aspire dashboard login tokens only"
+    }
+  ],
+  "retained_generic_apphost_materialization": {
+    "paths": [
+      "/tmp/hexalith-eventstore-empty-dapr-resources",
+      "/tmp/hexalith-eventstore-dapr-components/statestore"
+    ],
+    "reason": "Preexisting ownership unknown; no deletion performed."
+  }
+}

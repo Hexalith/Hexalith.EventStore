@@ -1,0 +1,172 @@
+using System.Reflection;
+using System.Text;
+
+namespace Hexalith.EventStore.Admin.Cli.Formatting;
+
+/// <summary>
+/// Formats output as a human-readable aligned table with header separator.
+/// </summary>
+public class TableOutputFormatter : IOutputFormatter {
+    /// <inheritdoc/>
+    public string Format<T>(T item, IReadOnlyList<ColumnDefinition>? columns = null) {
+        ArgumentNullException.ThrowIfNull(item);
+
+        // Single object renders as key/value pairs (Property | Value)
+        IReadOnlyList<(string Header, Func<object, string> Accessor, ColumnDefinition? Def)> props = columns is not null
+            ? BuildAccessorsWithDefs(columns, typeof(T))
+            : BuildAccessorsFromType(typeof(T)).Select(p => (p.Header, p.Accessor, (ColumnDefinition?)null)).ToList();
+
+        List<(string Key, string Value)> rows = props
+            .Select(p => {
+                string value = p.Accessor(item);
+                if (p.Def?.MaxWidth is int maxWidth && maxWidth > 0) {
+                    value = Truncate(value, maxWidth);
+                }
+
+                return (p.Header, value);
+            })
+            .ToList();
+
+        if (rows.Count == 0) {
+            return "Property  Value\n--------  -----";
+        }
+
+        int keyWidth = rows.Max(r => r.Key.Length);
+        int valueWidth = rows.Max(r => r.Value.Length);
+        keyWidth = Math.Max(keyWidth, "Property".Length);
+        valueWidth = Math.Max(valueWidth, "Value".Length);
+
+        StringBuilder sb = new();
+        _ = sb.AppendLine($"{"Property".PadRight(keyWidth)}  {"Value".PadRight(valueWidth)}");
+        _ = sb.AppendLine($"{new string('-', keyWidth)}  {new string('-', valueWidth)}");
+
+        foreach ((string key, string value) in rows) {
+            _ = sb.AppendLine($"{key.PadRight(keyWidth)}  {value.PadRight(valueWidth)}");
+        }
+
+        return sb.ToString().TrimEnd('\r', '\n');
+    }
+
+    /// <inheritdoc/>
+    public string FormatCollection<T>(IReadOnlyList<T> items, IReadOnlyList<ColumnDefinition>? columns = null) {
+        ArgumentNullException.ThrowIfNull(items);
+
+        IReadOnlyList<(string Header, Func<object, string> Accessor, ColumnDefinition? Def)> props = columns is not null
+            ? BuildAccessorsWithDefs(columns, typeof(T))
+            : BuildAccessorsFromType(typeof(T)).Select(p => (p.Header, p.Accessor, (ColumnDefinition?)null)).ToList();
+
+        // Compute values for all rows up front
+        var rowValues = items
+            .Where(item => item is not null)
+            .Select(item => props.Select(p => p.Accessor(item!)).ToArray())
+            .ToList();
+
+        // Calculate column widths by scanning all values
+        int[] widths = new int[props.Count];
+        for (int i = 0; i < props.Count; i++) {
+            widths[i] = props[i].Header.Length;
+            foreach (string[] row in rowValues) {
+                widths[i] = Math.Max(widths[i], row[i].Length);
+            }
+
+            // Apply max width constraint if defined
+            if (props[i].Def?.MaxWidth is int maxWidth && maxWidth > 0) {
+                widths[i] = Math.Min(widths[i], maxWidth);
+            }
+        }
+
+        StringBuilder sb = new();
+
+        // Header
+        _ = sb.AppendLine(FormatRow(props.Select(p => p.Header).ToArray(), widths, props));
+
+        // Separator
+        _ = sb.AppendLine(string.Join("  ", widths.Select(w => new string('-', w))));
+
+        // Data rows
+        foreach (string[] row in rowValues) {
+            _ = sb.AppendLine(FormatRow(row, widths, props));
+        }
+
+        return sb.ToString().TrimEnd('\r', '\n');
+    }
+
+    private static IReadOnlyList<(string Header, Func<object, string> Accessor, ColumnDefinition? Def)> BuildAccessorsWithDefs(
+        IReadOnlyList<ColumnDefinition> columns,
+        Type type) {
+        List<(string, Func<object, string>, ColumnDefinition?)> result = [];
+        foreach (ColumnDefinition col in columns) {
+            PropertyInfo? prop = type.GetProperty(col.PropertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop is not null) {
+                result.Add((col.Header, obj => FormatPropertyValue(obj, prop), col));
+            }
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<(string Header, Func<object, string> Accessor)> BuildAccessorsFromColumns(
+        IReadOnlyList<ColumnDefinition> columns,
+        Type type)
+        => BuildAccessorsWithDefs(columns, type)
+            .Select(p => (p.Header, p.Accessor))
+            .ToList();
+
+    private static IReadOnlyList<(string Header, Func<object, string> Accessor)> BuildAccessorsFromType(Type type) {
+        List<(string, Func<object, string>)> result = [];
+        foreach (PropertyInfo prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
+            if (!IsScalarType(prop.PropertyType)) {
+                continue;
+            }
+
+            result.Add((prop.Name, obj => SafeOutputValueFormatter.Format(prop.GetValue(obj))));
+        }
+
+        return result;
+    }
+
+    private static string FormatRow(
+        string[] values,
+        int[] widths,
+        IReadOnlyList<(string Header, Func<object, string> Accessor, ColumnDefinition? Def)> props) {
+        string[] cells = new string[values.Length];
+        for (int i = 0; i < values.Length; i++) {
+            string val = Truncate(values[i], widths[i]);
+            Alignment align = props[i].Def?.Align ?? Alignment.Left;
+            cells[i] = align == Alignment.Right
+                ? val.PadLeft(widths[i])
+                : val.PadRight(widths[i]);
+        }
+
+        return string.Join("  ", cells);
+    }
+
+    // Per D4: fail-closed. When a descriptor property is null, render an empty cell rather than
+    // falling back to a raw value. Raw fields (PayloadJson, StateJson, OldValue, NewValue, ...)
+    // are not exposed through table view; users requiring full content must use --output json.
+    private static string FormatPropertyValue(object obj, PropertyInfo prop)
+        => SafeOutputValueFormatter.Format(prop.GetValue(obj));
+
+    private static bool IsScalarType(Type type) {
+        Type underlying = Nullable.GetUnderlyingType(type) ?? type;
+        if (underlying.IsPrimitive || underlying.IsEnum) {
+            return true;
+        }
+
+        return underlying == typeof(string)
+            || underlying == typeof(decimal)
+            || underlying == typeof(DateTime)
+            || underlying == typeof(DateTimeOffset)
+            || underlying == typeof(Guid);
+    }
+
+    private static string Truncate(string value, int maxWidth) {
+        if (maxWidth <= 0 || value.Length <= maxWidth) {
+            return value;
+        }
+
+        return maxWidth <= 3
+            ? new string('.', maxWidth)
+            : string.Concat(value.AsSpan(0, maxWidth - 3), "...");
+    }
+}

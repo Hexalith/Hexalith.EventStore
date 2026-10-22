@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "python3",
+    "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/check-preservation.py",
+    "preservation-interim-result.json"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:25:22.667344+00:00",
+  "environment_overrides": {},
+  "runner_pid": 78257,
+  "pid": 78261,
+  "exit_code": 1,
+  "elapsed_seconds": 21.880563397004153,
+  "utc_end": "2026-10-22T15:25:44.546156+00:00"
+}

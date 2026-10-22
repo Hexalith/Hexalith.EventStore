@@ -1,0 +1,209 @@
+
+using Dapr.Actors;
+using Dapr.Actors.Runtime;
+
+using Hexalith.EventStore.Contracts.Commands;
+using Hexalith.EventStore.Contracts.Results;
+using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Server.Actors;
+using Hexalith.EventStore.Server.Commands;
+using Hexalith.EventStore.Server.Configuration;
+using Hexalith.EventStore.Server.DomainServices;
+using Hexalith.EventStore.Server.Events;
+using Hexalith.EventStore.Server.Tests.TestUtilities;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using NSubstitute;
+
+using EventEnvelope = Hexalith.EventStore.Server.Events.EventEnvelope;
+
+namespace Hexalith.EventStore.Server.Tests.Actors;
+
+/// <summary>
+/// Test context record containing the actor and all mocks used during test setup.
+/// </summary>
+internal sealed record ActorTestContext(
+    AggregateActor Actor,
+    IActorStateManager StateManager,
+    ILogger<AggregateActor> Logger,
+    IDomainServiceInvoker Invoker,
+    ISnapshotManager SnapshotManager,
+    ICommandAggregateTypeResolver AggregateTypeResolver,
+    ICommandStatusStore StatusStore,
+    IEventPublisher EventPublisher,
+    IDeadLetterPublisher DeadLetterPublisher);
+
+/// <summary>
+/// Shared test infrastructure for AggregateActor tests.
+/// </summary>
+internal static class AggregateActorTestHelper {
+    internal static CommandEnvelope CreateTestEnvelope(
+        string tenantId = "test-tenant",
+        string? correlationId = null,
+        string? causationId = null) => new(
+        MessageId: Guid.NewGuid().ToString(),
+        TenantId: tenantId,
+        Domain: "test-domain",
+        AggregateId: "agg-001",
+        CommandType: "CreateOrder",
+        Payload: [1, 2, 3],
+        CorrelationId: correlationId ?? Guid.NewGuid().ToString(),
+        CausationId: causationId,
+        UserId: "system",
+        Extensions: null);
+
+    internal static ActorTestContext CreateActor(
+        IEventPayloadProtectionService? payloadProtectionService = null,
+        CommandConcurrencyOptions? concurrencyOptions = null,
+        TimeProvider? timeProvider = null,
+        IdempotencyExecutionContextProtector? executionContextProtector = null,
+        ILogger<AggregateActor>? logger = null,
+        IActorStateManager? stateManager = null,
+        IDomainServiceInvoker? invoker = null,
+        IEventPublisher? eventPublisher = null,
+        EventDrainOptions? eventDrainOptions = null,
+        IDeadLetterPublisher? deadLetterPublisher = null,
+        ITrustedEffectAdmissionPolicy? trustedEffectAdmissionPolicy = null,
+        ITrustedEffectAuditSink? trustedEffectAuditSink = null,
+        ITrustedEffectGatewayProof? trustedEffectGatewayProof = null,
+        ITrustedEffectErasureAuthority? trustedEffectErasureAuthority = null,
+        IServiceProvider? serviceProvider = null,
+        string actorId = "test-tenant:test-domain:agg-001",
+        ISnapshotManager? snapshotManager = null,
+        bool configureTrustedInvokerSubstitute = false,
+        ActorTimerManager? timerManager = null) {
+        bool configureSubstituteStateManager = stateManager is null;
+        bool configureDefaultInvoker = invoker is null;
+        bool configureDefaultPublisher = eventPublisher is null;
+        stateManager ??= Substitute.For<IActorStateManager>();
+        if (logger is null) {
+            logger = Substitute.For<ILogger<AggregateActor>>();
+            _ = logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        }
+
+        invoker ??= Substitute.For<IDomainServiceInvoker>();
+        if (configureDefaultInvoker || configureTrustedInvokerSubstitute)
+        {
+            // Forward only helper-created or explicitly opted-in substitutes. Real caller invokers
+            // must never receive argument matchers that could poison later tests.
+            IDomainServiceInvoker effectInvoker = invoker;
+            _ = invoker.InvokeTrustedEffectAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(),
+                Arg.Any<string?>(), Arg.Any<Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin>(), Arg.Any<CancellationToken>())
+                .Returns(call => effectInvoker.InvokeAsync(call.ArgAt<CommandEnvelope>(0), call.ArgAt<object?>(1), call.ArgAt<bool>(2), call.ArgAt<string?>(3), call.ArgAt<CancellationToken>(5)));
+        }
+        snapshotManager ??= Substitute.For<ISnapshotManager>();
+        ICommandAggregateTypeResolver aggregateTypeResolver = Substitute.For<ICommandAggregateTypeResolver>();
+        _ = aggregateTypeResolver.ResolveAsync(Arg.Any<CommandEnvelope>(), Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        ICommandStatusStore commandStatusStore = Substitute.For<ICommandStatusStore>();
+        eventPublisher ??= Substitute.For<IEventPublisher>();
+        var host = ActorHost.CreateForTest<AggregateActor>(
+            new ActorTestOptions { ActorId = new ActorId(actorId), TimerManager = timerManager ?? Substitute.For<ActorTimerManager>() });
+        if (deadLetterPublisher is null)
+        {
+            deadLetterPublisher = Substitute.For<IDeadLetterPublisher>();
+            _ = deadLetterPublisher.PublishDeadLetterAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<DeadLetterMessage>(),
+                Arg.Any<CancellationToken>())
+                .Returns(true);
+        }
+        var actor = new AggregateActor(host, logger, invoker, snapshotManager, payloadProtectionService ?? new NoOpEventPayloadProtectionService(), commandStatusStore, eventPublisher, Options.Create(eventDrainOptions ?? new EventDrainOptions()), Options.Create(new BackpressureOptions()), deadLetterPublisher, serviceProvider: serviceProvider, commandAggregateTypeResolver: aggregateTypeResolver, concurrencyOptions: Options.Create(concurrencyOptions ?? new CommandConcurrencyOptions()), timeProvider: timeProvider, executionContextProtector: executionContextProtector, trustedEffectAdmissionPolicy: trustedEffectAdmissionPolicy, trustedEffectGatewayProof: trustedEffectGatewayProof ?? (trustedEffectAdmissionPolicy is null ? null : Substitute.For<ITrustedEffectGatewayProof>()), trustedEffectAuditSink: trustedEffectAuditSink ?? Substitute.For<ITrustedEffectAuditSink>(), trustedEffectErasureAuthority: trustedEffectErasureAuthority);
+
+        // Set the mock state manager via reflection (Dapr runtime normally sets this)
+        ActorStateManagerTestHelper.SetStateManager(actor, stateManager);
+
+        // Default: domain service returns NoOp
+        if (configureDefaultInvoker)
+        {
+            _ = invoker.InvokeAsync(
+                    Arg.Any<CommandEnvelope>(),
+                    Arg.Any<object?>(),
+                    Arg.Any<CancellationToken>())
+                .Returns(DomainResult.NoOp());
+            _ = invoker.InvokeAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+                .Returns(DomainResult.NoOp());
+        }
+
+        // Default: no pipeline state (fresh command, not a resume)
+        if (configureSubstituteStateManager)
+        {
+            _ = stateManager.TryGetStateAsync<PipelineState>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<PipelineState>(false, default!));
+        }
+
+        // Default: event publisher succeeds
+        if (configureDefaultPublisher)
+        {
+            _ = eventPublisher.PublishEventsAsync(
+                Arg.Any<Hexalith.EventStore.Contracts.Identity.AggregateIdentity>(),
+                Arg.Any<IReadOnlyList<EventEnvelope>>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>(),
+                Arg.Any<bool>())
+                .Returns(callInfo => new EventPublishResult(true, callInfo.ArgAt<IReadOnlyList<EventEnvelope>>(1).Count, null));
+        }
+
+        return new ActorTestContext(actor, stateManager, logger, invoker, snapshotManager, aggregateTypeResolver, commandStatusStore, eventPublisher, deadLetterPublisher);
+    }
+
+    internal static void ConfigureNoDuplicate(IActorStateManager stateManager) {
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+
+        // Default: new aggregate (no metadata) -- Step 3 returns null state
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(false, default!));
+    }
+
+    internal static void ConfigureExistingAggregate(IActorStateManager stateManager, int eventCount) {
+        var metadata = new AggregateMetadata(eventCount, DateTimeOffset.UtcNow, null);
+        _ = stateManager.TryGetStateAsync<AggregateMetadata>(
+            "test-tenant:test-domain:agg-001:metadata", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<AggregateMetadata>(true, metadata));
+
+        string keyPrefix = "test-tenant:test-domain:agg-001:events:";
+        for (int i = 1; i <= eventCount; i++) {
+            int seq = i;
+            var evt = new EventEnvelope(
+                Guid.NewGuid().ToString(), "agg-001", "test-aggregate", "test-tenant", "test-domain", seq, 0, DateTimeOffset.UtcNow,
+                $"corr-{seq}", $"cause-{seq}", "user-1", "1.0.0", "OrderCreated", 1, "json",
+                [1, 2, 3], null);
+            _ = stateManager.TryGetStateAsync<EventEnvelope>($"{keyPrefix}{seq}", Arg.Any<CancellationToken>())
+                .Returns(new ConditionalValue<EventEnvelope>(true, evt));
+        }
+    }
+
+    internal static void ConfigureDuplicate(IActorStateManager stateManager, CommandEnvelope command) {
+        string normalizedCausationId = command.CausationId ?? command.MessageId;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var record = IdempotencyRecord.FromResult(
+            new CommandProcessingIdentity(command.MessageId, normalizedCausationId, command.CommandType),
+            new CommandProcessingResult(true, CorrelationId: command.CorrelationId),
+            now,
+            now.AddHours(24),
+            IdempotencyRecordDisposition.Terminal);
+        string key = $"idempotency:{command.MessageId}";
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(key, Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(true, record));
+
+        // Default for other keys
+        _ = stateManager.TryGetStateAsync<IdempotencyRecord>(
+            Arg.Is<string>(s => s != key), Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<IdempotencyRecord>(false, default!));
+    }
+
+    internal static bool IsSnapshotAwareCurrentState(object? state) =>
+        state is DomainServiceCurrentState snapshotState
+        && snapshotState.UsedSnapshot
+        && snapshotState.LastSnapshotSequence == 1
+        && snapshotState.CurrentSequence == 2
+        && snapshotState.Events.Count == 1;
+
+    // Test event types for domain invocation tests
+    internal sealed record TestEvent : Hexalith.EventStore.Contracts.Events.IEventPayload;
+
+    internal sealed record TestRejectionEvent : Hexalith.EventStore.Contracts.Events.IRejectionEvent;
+}

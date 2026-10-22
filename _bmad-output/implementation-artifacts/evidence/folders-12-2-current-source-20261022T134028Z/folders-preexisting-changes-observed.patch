@@ -1,0 +1,125 @@
+diff --git a/_bmad-output/implementation-artifacts/spec-12-2-durable-projections-and-task-completion-pipeline.md b/_bmad-output/implementation-artifacts/spec-12-2-durable-projections-and-task-completion-pipeline.md
+index e6ce8a41..56c2789c 100644
+--- a/_bmad-output/implementation-artifacts/spec-12-2-durable-projections-and-task-completion-pipeline.md
++++ b/_bmad-output/implementation-artifacts/spec-12-2-durable-projections-and-task-completion-pipeline.md
+@@ -111,7 +111,7 @@ context:
+ - [x] Review-three actual target readiness: Forgejo readiness/provider and workspace preparation seams/tests must observe the exact authorized bound repository metadata/required permission before advertising usable WorkspacePreparation and appending WorkspacePrepared. Reuse existing target resolver/HTTP binding/observation seams where applicable. Generic authenticated-user/version flags alone are insufficient. Deleted/inaccessible/wrong target or denied permission cannot append prepared success; keep private context outside source/projection/evidence and preserve unsupported/create/bind discovery behavior. Cover real target denial in the disposable-provider lane.
+ - [x] Review-three direct source corrections: reject null/blank identifiers for every workspace-bearing retained event and invalid acquisition/effective/expiry/lease consistency before persistence; do not change lawful retained identities. Confirmed reconciliation to committed clears superseded failure metadata while preserving earliest source-owned closure. Add red/green durable reader/Worker/named-intake regressions for these demonstrated cases.
+ - [x] Review-three verification gaps: source→persisted durable reader→public lifecycle query tests pin repository failed/unknown/reconciliation vocabulary; normal authenticated Worker route tests assert operational checkpoint/views before successful acknowledgement and a retry response on injected operational persistence failure. Keep current real opted-in acceptance strict.
+-- [ ] Task 36 / approved SDK bounded owner-identity consumption: verify the exact separately implemented EventStore candidate against its source/binary packet before building; replace the obsolete expected-refusal diagnostic with positive qualification through the production named/shared dispatcher and existing Folders handler. Use Debug project references, supported AccumulatePart/AccumulateComplete transport and MaxRebuildEventCount=40000. Prove complete 10,001/32,769-position histories, further growth/repeated rebuild, historical duplicate/conflicting identities, multiple original owners, catch-up, concurrency, inherited generations, interrupted promotion/process replacement. Reuse independently bound SDK coverage explicitly where appropriate. Preserve original histories, identity/continuity/CAS/generation checks and 100-operation/one-MiB limits. Run relevant consumer regressions and authenticated live acceptance; retain exact commands/results, loaded identities, hashes, PIDs and cleanup in a new packet. Keep SDK broad-regression failure, package/PD10, SM4 and independent-review gates distinct; whole story stays in-progress.
++- [x] Task 36 / approved SDK bounded owner-identity consumption: verify the exact separately implemented EventStore candidate against its source/binary packet before building; replace the obsolete expected-refusal diagnostic with positive qualification through the production named/shared dispatcher and existing Folders handler. Use Debug project references, supported AccumulatePart/AccumulateComplete transport and MaxRebuildEventCount=40000. Prove complete 10,001/32,769-position histories, further growth/repeated rebuild, historical duplicate/conflicting identities, multiple original owners, catch-up, concurrency, inherited generations, interrupted promotion/process replacement. Reuse independently bound SDK coverage explicitly where appropriate. Preserve original histories, identity/continuity/CAS/generation checks and 100-operation/one-MiB limits. Run relevant consumer regressions and authenticated live acceptance; retain exact commands/results, loaded identities, hashes, PIDs and cleanup in a new packet. Keep SDK broad-regression failure, package/PD10, SM4 and independent-review gates distinct; whole story stays in-progress.
+ 
+ - [x] Round-four command path (replace, do not patch): remove the operational branch from legacy `/project` in `FoldersDomainServiceEndpoints.cs` and delete `OperationalStatusRebuild.cs` with its fixture. `/project` returns the legacy response regardless of operational state. Workers live delivery is the only live writer; rebuild and repair run only through the SDK-driven named `/project/rebuild/shared/v1` transport, which owns session Begin/Abort/Verify. Move tests that relied on `/project` repair to that transport.
+ - [x] Round-four named rebuild: in `OperationalStatusProjectionHandler.cs`, validate each partition history as a contiguous 1..N prefix bound to the SDK-sealed capture. Never compare it with a live head; appends after capture reach the new generation through SDK catch-up.
+@@ -726,3 +726,41 @@ dependency pin, assertion, deadline, retry policy or admission setting changed.
+ Task 36 remains unchecked and Story 12.2 remains in-progress. Next diagnose the sidecar signal/restart
+ sequence before rerunning strict acceptance, then address the separately owned historical SDK admission
+ failure if it recurs. Package/PD10, SM4 and independent whole-story review remain separate open gates.
++
++## Task 36 selected-candidate consumer qualification — 2026-10-22
++
++The [startup correction and qualification packet](evidence/story-12-2-sidecar-startup-20261022T105749Z/README.md)
++identifies the earlier signal source: Dapr 1.18.7's hot-reload reconciler discovers the co-located
++`accesscontrol` configuration as CREATED and sends SIGHUP to itself. Native controls using identical
++deny-by-default configuration reproduce this after an unrelated watched-directory event; separating
++configuration from resources prevents it while keeping HotReload enabled. Only the fixture's
++`StartAsync` materialization paths changed. Policies, admission, assertions, deadlines and retries are unchanged.
++
++The unchanged strict authenticated real-provider case now passes 1/1, zero failures/skips, in 343.629
++xUnit seconds; the existing HTTP/rebuild helpers pass 22/22. All six concerns, clean-release closure,
++replay/closed-binding denial, scoped task reads, two concurrent Workers, interrupted generation recovery,
++changed host PIDs, rebuild, retention and safe storage/denial failures execute. The log has no
++configuration-triggered SIGHUP or admission-unavailable message. The two new earlier initialization
++failures remain retained: an initial compile/runtime reference-version mismatch, then a 90-second
++disposable-provider readiness timeout. No cause or SDK admission repair is inferred from the final pass.
++
++Task 36 is checked only for the selected qualified candidate. The prior sealed packet's passing 10,001
++authenticated recovery/inheritance lane, both 10,001/32,769 production-handler component sizes and
++explicitly bound SDK process evidence are reused; they were not rerun or counted as new coverage.
++No 32,769 Folders HTTP run is claimed. All production/SDK runtime artifacts remain byte-identical to
++that selection. Only the fixture test DLL/PDB were rebuilt against the exact selected references.
++Seven pre-existing external SDK source deltas are preserved and excluded from any current-source
++qualification claim; their newer runtime is neither built nor adopted here.
++
++The final audit retains 15,098 source/config hashes, 584 runtime artifacts and one manifest with zero
++execution drift; 186 actual module observations match, all nine sidecars separate configuration from
++watched resources, and the new fixture PDB matches 20 ordinary/five generated documents. Both reused
++packets and all 6,503 historical evidence hashes remain unchanged. Parent independently verifies the
++same runtime/XML/diff/cleanup facts. Exact fixture-owned resources are gone; the unrelated Tenants
++AppHost remains at PID 67730.
++
++Whole Story 12.2 stays in-progress. Acknowledgement p95 is 7792.582 ms against 1000 ms; Workers p95
++is 258.854 ms and status p95 is 79.891 ms. SM4 acknowledgement, Release/package/PD10, the separately
++owned SDK broad-regression/current-external-source dispositions and independent whole-story review
++remain open. No SDK source, dependency pin, Git index, release, retained event, content cleanup or
++public v2 change is included.
+diff --git a/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs b/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs
+index 935bf012..fec82b58 100644
+--- a/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs
++++ b/tests/Hexalith.Folders.AppHost.Tests/FolderDurabilityAcceptanceFixture.cs
+@@ -654,6 +654,12 @@ public sealed class FolderDurabilityAcceptanceFixture : IAsyncLifetime
+     {
+         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+         timeout.CancelAfter(TimeSpan.FromMinutes(4));
++        // Standalone Dapr loads --config separately from watched resources. Keeping the same
++        // Configuration in both paths makes unrelated directory events trigger a runtime reload.
++        string componentDirectory = Path.Combine(_temporaryDirectory, "components");
++        string configurationDirectory = Path.Combine(_temporaryDirectory, "configuration");
++        Directory.CreateDirectory(componentDirectory);
++        Directory.CreateDirectory(configurationDirectory);
+         _builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Hexalith_Folders_AppHost>(
+             ["--EnableKeycloak=true", "--KeycloakPersistent=false"], timeout.Token).ConfigureAwait(false);
+         ProjectResource originalWorker = _builder.Resources.OfType<ProjectResource>().Single(project => project.Name == "folders-workers");
+@@ -702,7 +708,7 @@ public sealed class FolderDurabilityAcceptanceFixture : IAsyncLifetime
+             .WithEnvironment("Logging__LogLevel__Hexalith.EventStore.Server.Commands.CommandRouter", "Debug");
+         if (_provider is not null)
+         {
+-            string secretComponent = Path.Combine(_temporaryDirectory, "provider-secretstore.yaml");
++            string secretComponent = Path.Combine(componentDirectory, "provider-secretstore.yaml");
+             await File.WriteAllTextAsync(secretComponent,
+                 $"apiVersion: dapr.io/v1alpha1\nkind: Component\nmetadata:\n  name: folders-provider-credentials\nspec:\n  type: secretstores.local.file\n  version: v1\n  metadata:\n    - name: secretsFile\n      value: '{_provider.SecretFile}'\n    - name: multiValued\n      value: 'true'\nscopes:\n  - {AppId("folders")}\n", timeout.Token).ConfigureAwait(false);
+             IResourceBuilder<ProjectResource> folders = _builder.CreateResourceBuilder(
+@@ -729,7 +735,7 @@ public sealed class FolderDurabilityAcceptanceFixture : IAsyncLifetime
+         {
+             if (component.Options?.LocalPath is string source)
+             {
+-                string path = Path.Combine(_temporaryDirectory, Path.GetFileName(source));
++                string path = Path.Combine(componentDirectory, Path.GetFileName(source));
+                 string content = await File.ReadAllTextAsync(source, timeout.Token).ConfigureAwait(false);
+                 if (component.Name is "statestore" or "pubsub" && !content.Contains("localhost:6379", StringComparison.Ordinal))
+                 {
+@@ -761,14 +767,14 @@ public sealed class FolderDurabilityAcceptanceFixture : IAsyncLifetime
+                 {
+                     foreach (string source in Directory.EnumerateFiles(Path.GetDirectoryName(config)!))
+                     {
+-                        string target = Path.Combine(_temporaryDirectory, Path.GetFileName(source));
++                        string target = Path.Combine(source == config ? configurationDirectory : componentDirectory, Path.GetFileName(source));
+                         if (!File.Exists(target))
+                         {
+                             await File.WriteAllTextAsync(target, IsolateDaprYaml(await File.ReadAllTextAsync(source, timeout.Token).ConfigureAwait(false)), timeout.Token).ConfigureAwait(false);
+                         }
+                     }
+ 
+-                    isolatedConfig = Path.Combine(_temporaryDirectory, Path.GetFileName(config));
++                    isolatedConfig = Path.Combine(configurationDirectory, Path.GetFileName(config));
+                 }
+ 
+                 annotation.Sidecar.Annotations.Remove(optionsAnnotation);
+@@ -777,7 +783,7 @@ public sealed class FolderDurabilityAcceptanceFixture : IAsyncLifetime
+                     AppId = AppId(project.Name),
+                     Config = isolatedConfig,
+                     ResourcesPaths = [project.Name.StartsWith("folders-workers-proof-", StringComparison.Ordinal)
+-                        ? Path.Combine(_temporaryDirectory, "ordinary-proof") : _temporaryDirectory],
++                        ? Path.Combine(_temporaryDirectory, "ordinary-proof") : componentDirectory],
+                 }));
+                 annotation.Sidecar.Annotations.Add(new EnvironmentCallbackAnnotation(context => context.EnvironmentVariables["NAMESPACE"] = DaprNamespace));
+             }
+@@ -785,7 +791,7 @@ public sealed class FolderDurabilityAcceptanceFixture : IAsyncLifetime
+ 
+         string proofDirectory = Path.Combine(_temporaryDirectory, "ordinary-proof");
+         Directory.CreateDirectory(proofDirectory);
+-        foreach (string source in Directory.EnumerateFiles(_temporaryDirectory, "*.yaml"))
++        foreach (string source in Directory.EnumerateFiles(componentDirectory, "*.yaml"))
+         {
+             string content = await File.ReadAllTextAsync(source, timeout.Token).ConfigureAwait(false);
+             if (Path.GetFileName(source) == "statestore.yaml")

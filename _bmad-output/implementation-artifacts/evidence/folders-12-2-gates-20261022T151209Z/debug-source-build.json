@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "Hexalith.EventStore.slnx",
+    "-c",
+    "Debug",
+    "-p:UseHexalithProjectReferences=true",
+    "-p:UseNuGetDeps=false",
+    "-m:1",
+    "-nr:false"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T15:14:45.997464+00:00",
+  "environment_overrides": {},
+  "runner_pid": 13754,
+  "pid": 13810,
+  "exit_code": 0,
+  "elapsed_seconds": 54.64140774500265,
+  "utc_end": "2026-10-22T15:15:40.635976+00:00"
+}

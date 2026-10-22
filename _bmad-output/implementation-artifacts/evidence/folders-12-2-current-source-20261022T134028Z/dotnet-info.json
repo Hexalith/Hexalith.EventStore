@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "dotnet",
+    "--info"
+  ],
+  "cwd": "/home/administrator/projects/hexalith/eventstore",
+  "utc_start": "2026-10-22T13:56:51.650700+00:00",
+  "environment_overrides": {},
+  "runner_pid": 88574,
+  "pid": 88590,
+  "exit_code": 0,
+  "elapsed_seconds": 0.17134056299983058,
+  "utc_end": "2026-10-22T13:56:51.822145+00:00"
+}

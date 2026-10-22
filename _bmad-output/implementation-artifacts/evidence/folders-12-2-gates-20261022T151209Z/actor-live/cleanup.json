@@ -1,0 +1,110 @@
+{
+  "processes": [
+    {
+      "pid": 52580,
+      "exit_code": 0,
+      "absent": true
+    },
+    {
+      "pid": 52579,
+      "exit_code": 0,
+      "absent": true
+    },
+    {
+      "pid": 46371,
+      "exit_code": -9,
+      "absent": true
+    },
+    {
+      "pid": 46369,
+      "exit_code": -9,
+      "absent": true
+    },
+    {
+      "pid": 45552,
+      "exit_code": 0,
+      "absent": true
+    },
+    {
+      "pid": 45551,
+      "exit_code": 0,
+      "absent": true
+    }
+  ],
+  "containers": [
+    {
+      "name": "admission-d41ca9548f6d-scheduler",
+      "id": "9773934d0c328dc97371474dd00de1937447d268af451411d86fa6b7cdb53d8d",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-d41ca9548f6d-placement",
+      "id": "26c167489656804a835b88ec2f205796f20678ca2792d21a906dd22e16bcae52",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    },
+    {
+      "name": "admission-d41ca9548f6d-redis",
+      "id": "dc6835b6b90fe6a17f3f9859c219c23942e3fe6035b8766f2d87dd7f1081eb60",
+      "remove_exit_code": 0,
+      "absent": true,
+      "remaining_ids": ""
+    }
+  ],
+  "logs": [
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/sample-1-app.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/sample-1-app.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/sample-1-sidecar.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/sample-1-sidecar.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-1-app.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-1-app.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-1-sidecar.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-1-sidecar.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-2-app.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-2-app.stderr.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-2-sidecar.stdout.log",
+      "closed": true
+    },
+    {
+      "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/actor-live/eventstore-2-sidecar.stderr.log",
+      "closed": true
+    }
+  ],
+  "runtime": "/tmp/eventstore-actor-admission-bqmchzke",
+  "runtime_absent": true,
+  "passed": true
+}

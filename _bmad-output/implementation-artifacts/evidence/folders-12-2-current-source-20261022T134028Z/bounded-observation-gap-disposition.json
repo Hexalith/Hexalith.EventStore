@@ -1,0 +1,212 @@
+{
+  "behavioral_result": "9 passed, 0 failed, 0 skipped",
+  "loaded_runtime_proof_modules": 120,
+  "external_agreement_by_module": {
+    "Hexalith.EventStore.Client": 30,
+    "Hexalith.EventStore.DomainService": 30,
+    "Hexalith.EventStore.Server": 8,
+    "Hexalith.EventStore.Server.LiveSidecar.Tests": 30
+  },
+  "missing_external_maps": [
+    {
+      "pid": 14235,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-af790f6394ee44d9968fa1c2aa749459/buffered-10001-resume.json"
+    },
+    {
+      "pid": 49542,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-a0f28f6986794f90b7661d728760f30a/streamed-32769-promote.json"
+    },
+    {
+      "pid": 21344,
+      "phase": "stage",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-a0f28f6986794f90b7661d728760f30a/streamed-32769-stage.json"
+    },
+    {
+      "pid": 72683,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-25d5396ea0e245c9ae5c4d59d44b08d3/streamed-10001-promote.json"
+    },
+    {
+      "pid": 73441,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-25d5396ea0e245c9ae5c4d59d44b08d3/streamed-10001-resume.json"
+    },
+    {
+      "pid": 31620,
+      "phase": "stage",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-25d5396ea0e245c9ae5c4d59d44b08d3/streamed-10001-stage.json"
+    },
+    {
+      "pid": 19607,
+      "phase": "stage",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-3934466614f848f085e49b6d11e970b4/buffered-129-stage.json"
+    },
+    {
+      "pid": 22177,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-3934466614f848f085e49b6d11e970b4/buffered-129-resume.json"
+    },
+    {
+      "pid": 68509,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-1fd3c349ac9f4d089e8244ac7f2460d5/buffered-129-promote.json"
+    },
+    {
+      "pid": 68682,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-1fd3c349ac9f4d089e8244ac7f2460d5/buffered-129-resume.json"
+    },
+    {
+      "pid": 88781,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-649d1c7baf2341d68844ae44e1fa89c3/buffered-10001-resume.json"
+    },
+    {
+      "pid": 61023,
+      "phase": "inherited",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-649d1c7baf2341d68844ae44e1fa89c3/buffered-10001-inherited.json"
+    },
+    {
+      "pid": 87501,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-649d1c7baf2341d68844ae44e1fa89c3/buffered-10001-promote.json"
+    },
+    {
+      "pid": 9924,
+      "phase": "stage",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-4eae6146a8dc4bb283acbbac601eaf38/streamed-129-stage.json"
+    },
+    {
+      "pid": 19454,
+      "phase": "inherited",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-4eae6146a8dc4bb283acbbac601eaf38/streamed-129-inherited.json"
+    },
+    {
+      "pid": 14191,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-4eae6146a8dc4bb283acbbac601eaf38/streamed-129-resume.json"
+    },
+    {
+      "pid": 13774,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-4eae6146a8dc4bb283acbbac601eaf38/streamed-129-promote.json"
+    },
+    {
+      "pid": 61398,
+      "phase": "stage",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-5f71cbe428dc429181b0f34beb657f98/streamed-129-stage.json"
+    },
+    {
+      "pid": 63283,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-5f71cbe428dc429181b0f34beb657f98/streamed-129-promote.json"
+    },
+    {
+      "pid": 30984,
+      "phase": "resume",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-db6e5a0803584f04bf4f9f87c64d1ce6/buffered-32769-resume.json"
+    },
+    {
+      "pid": 62804,
+      "phase": "stage",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-db6e5a0803584f04bf4f9f87c64d1ce6/buffered-32769-stage.json"
+    },
+    {
+      "pid": 28766,
+      "phase": "promote",
+      "module": "Hexalith.EventStore.Server",
+      "runtime_mvid": "fa83fb9d-54f5-4da3-8e0e-7eddf8cffd57",
+      "dll_sha256": "5DF8EFB0BA56480637AB5B88AFD0EC1AB6C6B01EDC4B282D511723EF3F6AA71E",
+      "pdb_sha256": "98FA5409B450E6EBB0944C7927D178908A4D53F7443C109437A584B6709D2DC0",
+      "proof": "bounded-scenarios/bounded-identity-bounded-db6e5a0803584f04bf4f9f87c64d1ce6/buffered-32769-promote.json"
+    }
+  ],
+  "disposition": "Strict external corroboration remains failed. All 30 worker CLR identities and source/binary checks are separately present; Server is acquired through typeof in the runtime-proof capture. No missing OS-map observation is inferred or replaced by a byte-identity claim. No acceptance assertion, retry, deadline, admission rule or limit changed.",
+  "audit_receipt_collision": "Initial command label matched the audit output name and overwrote its JSON with a command receipt; its stdout summary and receipt are retained, and an explicitly separate command label re-executed the read-only audit."
+}

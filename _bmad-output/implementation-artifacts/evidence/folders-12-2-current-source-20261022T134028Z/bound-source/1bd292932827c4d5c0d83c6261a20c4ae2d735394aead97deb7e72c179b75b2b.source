@@ -1,0 +1,255 @@
+using System.Security.Cryptography;
+
+using Aspire.Hosting;
+using Aspire.Hosting.Testing;
+
+using Hexalith.EventStore.AppHost;
+using Hexalith.EventStore.IntegrationTests.Helpers;
+using Hexalith.EventStore.IntegrationTests.Security;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Hexalith.EventStore.IntegrationTests.Fixtures;
+
+/// <summary>
+/// Shared fixture that starts the full Aspire topology WITH Keycloak enabled for
+/// Tier 3 E2E security tests (D11, R-001). Uses real OIDC tokens from Keycloak
+/// instead of synthetic symmetric JWTs.
+/// </summary>
+public class KeycloakAuthFixture : IAsyncLifetime {
+    private const string SecurityResourceName = "security";
+
+    private readonly Dictionary<string, string?> _envSnapshot = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _userPasswords = new(StringComparer.Ordinal);
+    private readonly ProjectionDeliveryWriterProtocolTestLease _writerProtocolLease = new();
+
+    private DistributedApplication? _app;
+    private IDistributedApplicationTestingBuilder? _builder;
+    private HttpClient? _eventStoreClient;
+    private LocalAuthenticationTestInvocation? _localAuthenticationTestInvocation;
+
+    /// <summary>
+    /// Gets the HTTP client for the EventStore service.
+    /// </summary>
+    public HttpClient EventStoreClient => _eventStoreClient ?? throw new InvalidOperationException(
+        "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
+
+    /// <summary>
+    /// Gets the running Aspire distributed application instance.
+    /// </summary>
+    public DistributedApplication App => _app ?? throw new InvalidOperationException(
+        "Test infrastructure not initialized. Ensure InitializeAsync has completed.");
+
+    /// <summary>
+    /// Gets the Keycloak token endpoint URL for acquiring real OIDC tokens.
+    /// </summary>
+    public string KeycloakTokenEndpoint {
+        get => field ?? throw new InvalidOperationException(
+            "Keycloak not initialized. Ensure InitializeAsync has completed."); private set;
+    }
+
+    /// <summary>
+    /// Gets the per-run administrator subject used by the tenant-bootstrap contract.
+    /// </summary>
+    public string AdminUserId { get; private set; } = string.Empty;
+
+    public async ValueTask InitializeAsync() {
+        // Enable Keycloak for real OIDC auth testing.
+        SnapshotAndSet("EnableKeycloak", "true");
+        SnapshotAndSet("KeycloakPersistent", "false");
+        AdminUserId = Guid.NewGuid().ToString("D");
+        _localAuthenticationTestInvocation = LocalAuthenticationCredentials.RegisterTestInvocation(
+            Convert.ToBase64String(RandomNumberGenerator.GetBytes(48)),
+            AdminUserId,
+            "admin-user");
+        _localAuthenticationTestInvocation.Activate();
+        ConfigureUsers(_localAuthenticationTestInvocation.Credentials);
+
+        SnapshotAndSet("ASPNETCORE_ENVIRONMENT", "Development");
+        SnapshotAndSet("DOTNET_ENVIRONMENT", "Development");
+        SnapshotAndSet("EventStore__Actors__AggregateActorTypeName", $"AggregateActorIntegration{Guid.NewGuid():N}");
+
+        try {
+            // 5-minute timeout: Keycloak container pull + realm import takes longer than no-Keycloak.
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
+            _builder = await DistributedApplicationTestingBuilder
+                .CreateAsync<Projects.Hexalith_EventStore_AppHost>()
+                .ConfigureAwait(false);
+
+            _ = _builder.Services.AddLogging(logging => {
+                _ = logging.SetMinimumLevel(LogLevel.Debug);
+                _ = logging.AddFilter(_builder.Environment.ApplicationName, LogLevel.Debug);
+                _ = logging.AddFilter("Aspire.", LogLevel.Warning);
+            });
+
+            _ = _builder.Services.ConfigureHttpClientDefaults(clientBuilder => _ = clientBuilder.AddStandardResilienceHandler());
+
+            _app = await _builder.BuildAsync().ConfigureAwait(false);
+            await _app.StartAsync(cts.Token).ConfigureAwait(false);
+
+            // Wait for Keycloak to be healthy (realm import must complete).
+            _ = await _app.ResourceNotifications
+                .WaitForResourceHealthyAsync(SecurityResourceName, cts.Token)
+                .WaitAsync(TimeSpan.FromMinutes(4), cts.Token)
+                .ConfigureAwait(false);
+
+            _eventStoreClient = _app.CreateHttpClient("eventstore");
+            _eventStoreClient.Timeout = TimeSpan.FromSeconds(60);
+
+            // Resolve the token endpoint and acquire a real administrator token before EventStore
+            // can be healthy; the production writer-protocol cutover itself requires that role.
+            HttpClient keycloakClient = _app.CreateHttpClient(SecurityResourceName);
+            KeycloakTokenEndpoint = $"{keycloakClient.BaseAddress}realms/hexalith/protocol/openid-connect/token";
+            string administratorToken = await AcquireAdministratorTokenAsync(cts.Token).ConfigureAwait(false);
+            string sourceCommit = await ProjectionDeliveryWriterProtocolTestLease
+                .ReadExactSourceCommitAsync(cts.Token)
+                .ConfigureAwait(false);
+            await _writerProtocolLease.ActivateAsync(
+                _eventStoreClient,
+                administratorToken,
+                sourceCommit,
+                "disposable-keycloak-auth-fixture-backup",
+                cts.Token).ConfigureAwait(false);
+
+            // Wait for EventStore to be healthy (depends on Keycloak for OIDC discovery).
+            _ = await _app.ResourceNotifications
+                .WaitForResourceHealthyAsync("eventstore", cts.Token)
+                .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+                .ConfigureAwait(false);
+
+            // Wait for sample domain service.
+            _ = await _app.ResourceNotifications
+                .WaitForResourceHealthyAsync("sample", cts.Token)
+                .WaitAsync(TimeSpan.FromMinutes(3), cts.Token)
+                .ConfigureAwait(false);
+
+        }
+        catch {
+            // xUnit does not invoke DisposeAsync when InitializeAsync throws (e.g. the 5-min topology
+            // timeout), so restore the env-var snapshot here to keep this fixture's process-wide
+            // mutations from leaking into the next serially-run collection.
+            await SafeShutdownAsync().ConfigureAwait(false);
+            RestoreEnvironmentSnapshot();
+            throw;
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        try {
+            await SafeShutdownAsync().ConfigureAwait(false);
+        }
+        finally {
+            RestoreEnvironmentSnapshot();
+        }
+    }
+
+    private async Task SafeShutdownAsync() {
+        Exception? markerRestorationException = null;
+        try {
+            await _writerProtocolLease.RestoreAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            markerRestorationException = ex;
+        }
+
+        _eventStoreClient?.Dispose();
+        _eventStoreClient = null;
+
+        if (_app is not null) {
+            try {
+                await _app.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception) {
+                // Ignore shutdown faults so the env-var restore in DisposeAsync still runs.
+            }
+
+            _app = null;
+        }
+
+        if (_builder is not null) {
+            try {
+                await _builder.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception) {
+                // Ignore shutdown faults so the env-var restore in DisposeAsync still runs.
+            }
+
+            _builder = null;
+        }
+
+        if (markerRestorationException is not null) {
+            throw new InvalidOperationException(
+                "The disposable Keycloak topology could not restore the store-global writer-protocol marker.",
+                markerRestorationException);
+        }
+    }
+
+    private async Task<string> AcquireAdministratorTokenAsync(CancellationToken cancellationToken) {
+        Exception? lastException = null;
+        while (!cancellationToken.IsCancellationRequested) {
+            try {
+                return await AcquireTokenAsync("admin-user", cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        throw new TimeoutException(
+            "Keycloak administrator token acquisition did not complete within the topology startup budget.",
+            lastException);
+    }
+
+    private void SnapshotAndSet(string name, string? newValue) {
+        if (!_envSnapshot.ContainsKey(name)) {
+            _envSnapshot[name] = Environment.GetEnvironmentVariable(name);
+        }
+
+        Environment.SetEnvironmentVariable(name, newValue);
+    }
+
+    /// <summary>
+    /// Acquires a token using the runtime-generated password for a named fixture identity.
+    /// </summary>
+    /// <param name="username">The non-secret fixture username.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The acquired access token.</returns>
+    public Task<string> AcquireTokenAsync(string username, CancellationToken cancellationToken = default) {
+        if (!_userPasswords.TryGetValue(username, out string? password)) {
+            throw new InvalidOperationException("The requested Keycloak fixture identity is not configured.");
+        }
+
+        return KeycloakTokenHelper.AcquireTokenAsync(
+            KeycloakTokenEndpoint,
+            "hexalith-eventstore",
+            username,
+            password,
+            cancellationToken);
+    }
+
+    private void ConfigureUsers(LocalAuthenticationCredentials credentials) {
+        _userPasswords[credentials.AdminUsername] = credentials.AdminPassword;
+        _userPasswords["tenant-a-user"] = credentials.TenantAPassword;
+        _userPasswords["tenant-b-user"] = credentials.TenantBPassword;
+        _userPasswords["readonly-user"] = credentials.ReadOnlyPassword;
+        _userPasswords["no-tenant-user"] = credentials.NoTenantPassword;
+    }
+
+    private void RestoreEnvironmentSnapshot() {
+        foreach (KeyValuePair<string, string?> entry in _envSnapshot) {
+            Environment.SetEnvironmentVariable(entry.Key, entry.Value);
+        }
+
+        _envSnapshot.Clear();
+        _userPasswords.Clear();
+        _localAuthenticationTestInvocation?.Dispose();
+        _localAuthenticationTestInvocation = null;
+        AdminUserId = string.Empty;
+    }
+}
+
+[CollectionDefinition("KeycloakAuthTests", DisableParallelization = true)]
+public class KeycloakAuthTestCollection : ICollectionFixture<KeycloakAuthFixture>;

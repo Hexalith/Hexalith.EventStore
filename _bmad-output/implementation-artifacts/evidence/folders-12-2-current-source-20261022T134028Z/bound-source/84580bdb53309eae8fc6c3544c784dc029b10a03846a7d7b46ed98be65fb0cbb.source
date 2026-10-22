@@ -1,0 +1,136 @@
+
+using Dapr.Actors.Runtime;
+
+using Hexalith.EventStore.Contracts.Identity;
+using Hexalith.EventStore.Server.Events;
+
+namespace Hexalith.EventStore.Testing.Fakes;
+/// <summary>
+/// In-memory implementation of <see cref="ISnapshotManager"/> for unit testing.
+/// Records all snapshot operations for test assertions.
+/// </summary>
+public sealed class FakeSnapshotManager : ISnapshotManager {
+    private readonly Dictionary<string, SnapshotRecord> _snapshots = [];
+    private readonly List<(string TenantId, string Domain, string AggregateType, long CurrentSequence, long LastSnapshotSequence)> _shouldCreateCalls = [];
+    private readonly List<(AggregateIdentity Identity, long SequenceNumber, object State)> _createCalls = [];
+    private readonly List<AggregateIdentity> _loadCalls = [];
+
+    /// <summary>Gets the stored snapshots keyed by snapshot key.</summary>
+    public IReadOnlyDictionary<string, SnapshotRecord> Snapshots => _snapshots;
+
+    /// <summary>Gets the recorded ShouldCreateSnapshotAsync calls.</summary>
+    public IReadOnlyList<(string TenantId, string Domain, string AggregateType, long CurrentSequence, long LastSnapshotSequence)> ShouldCreateCalls => _shouldCreateCalls;
+
+    /// <summary>Gets the recorded CreateSnapshotAsync calls.</summary>
+    public IReadOnlyList<(AggregateIdentity Identity, long SequenceNumber, object State)> CreateCalls => _createCalls;
+
+    /// <summary>Gets the recorded LoadSnapshotAsync calls.</summary>
+    public IReadOnlyList<AggregateIdentity> LoadCalls => _loadCalls;
+
+    /// <summary>
+    /// Gets or sets the default interval used by <see cref="ShouldCreateSnapshotAsync"/>.
+    /// Default: 100.
+    /// </summary>
+    public int DefaultInterval { get; set; } = 100;
+
+    /// <summary>
+    /// Gets or sets per-domain interval overrides for <see cref="ShouldCreateSnapshotAsync"/>.
+    /// </summary>
+    public Dictionary<string, int> DomainIntervals { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets per-tenant-domain interval overrides for <see cref="ShouldCreateSnapshotAsync"/>.
+    /// Key: "tenantId:domain" (lowercase, colon-separated). Resolution order: tenant-domain > domain > default.
+    /// </summary>
+    public Dictionary<string, int> TenantDomainIntervals { get; set; } = [];
+
+    /// <inheritdoc/>
+    public Task<bool> ShouldCreateSnapshotAsync(string tenantId, string domain, long currentSequence, long lastSnapshotSequence)
+        => ShouldCreateSnapshotAsync(tenantId, domain, domain, currentSequence, lastSnapshotSequence);
+
+    /// <inheritdoc/>
+    public Task<bool> ShouldCreateSnapshotAsync(
+        string tenantId,
+        string domain,
+        string aggregateType,
+        long currentSequence,
+        long lastSnapshotSequence,
+        CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(domain);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
+
+        _shouldCreateCalls.Add((tenantId, domain, aggregateType, currentSequence, lastSnapshotSequence));
+
+        // Three-tier resolution: tenant-domain > domain > default
+        string tenantDomainKey = $"{tenantId}:{domain}".ToLowerInvariant();
+        if (TenantDomainIntervals.TryGetValue(tenantDomainKey, out int tenantDomainInterval)) {
+            return Task.FromResult((currentSequence - lastSnapshotSequence) >= tenantDomainInterval);
+        }
+
+        int interval = DomainIntervals.TryGetValue(domain, out int domainInterval)
+            ? domainInterval
+            : DefaultInterval;
+
+        bool shouldCreate = (currentSequence - lastSnapshotSequence) >= interval;
+        return Task.FromResult(shouldCreate);
+    }
+
+    /// <inheritdoc/>
+    public Task CreateSnapshotAsync(
+        AggregateIdentity identity,
+        long sequenceNumber,
+        object state,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default,
+        bool throwOnFailure = false) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(stateManager);
+
+        _createCalls.Add((identity, sequenceNumber, state));
+
+        var snapshot = new SnapshotRecord(
+            SequenceNumber: sequenceNumber,
+            State: state,
+            CreatedAt: DateTimeOffset.UtcNow,
+            Domain: identity.Domain,
+            AggregateId: identity.AggregateId,
+            TenantId: identity.TenantId,
+            ProtectionMetadata: Hexalith.EventStore.Contracts.Security.EventStorePayloadProtectionMetadata.Unprotected());
+
+        _snapshots[identity.SnapshotKey] = snapshot;
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc/>
+    public Task<SnapshotRecord?> LoadSnapshotAsync(AggregateIdentity identity, IActorStateManager stateManager, string? correlationId = null, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(stateManager);
+
+        _loadCalls.Add(identity);
+
+        SnapshotRecord? result = _snapshots.TryGetValue(identity.SnapshotKey, out SnapshotRecord? snapshot)
+            ? snapshot
+            : null;
+
+        return Task.FromResult(result);
+    }
+
+    /// <inheritdoc/>
+    public Task<SnapshotLoadResult> InspectSnapshotForManualOverwriteAsync(
+        AggregateIdentity identity,
+        IActorStateManager stateManager,
+        string? correlationId = null,
+        CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(stateManager);
+
+        _loadCalls.Add(identity);
+        return Task.FromResult(
+            _snapshots.TryGetValue(identity.SnapshotKey, out SnapshotRecord? snapshot)
+                ? SnapshotLoadResult.Readable(snapshot)
+                : SnapshotLoadResult.Absent());
+    }
+}

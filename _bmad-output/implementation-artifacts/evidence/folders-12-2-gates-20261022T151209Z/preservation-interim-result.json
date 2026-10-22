@@ -1,0 +1,21 @@
+{
+  "passed": false,
+  "protected_files": 55821,
+  "changes": [],
+  "repositories": {
+    "/home/administrator/projects/hexalith/eventstore": {
+      "head": "995117f9b899a2994e99257091b0ea35cfbe5090",
+      "head_unchanged": true,
+      "index_unchanged": false,
+      "submodule_revisions_unchanged": true,
+      "status": " M src/Hexalith.EventStore.Testing/Fakes/TestServiceOverrides.cs\n M tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.FrozenEvidence.cs\n M tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Integration/ProjectionBoundedIdentityRuntimeProof.cs\n M tests/Hexalith.EventStore.Server.Tests/Configuration/ActorCallbackRateLimitPipelineTests.cs\n M tests/Hexalith.EventStore.Server.Tests/Configuration/CustomHostActorCallbackRateLimitTests.cs\n M tests/Hexalith.EventStore.Testing.Tests/Fakes/TestServiceOverridesTests.cs\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/\n?? _bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/\n?? _bmad-output/implementation-artifacts/spec-folders-12-2-current-source-qualification.md\n?? _bmad-output/implementation-artifacts/spec-folders-12-2-remaining-gates.md\n?? tests/Hexalith.EventStore.Contracts.Tests/Packaging/ContractsPackageDependencyTests.InheritedOwnerEvidence.cs\n?? tools/bounded_worker_observer.py\n?? tools/tests/test_bounded_worker_observer.py\n"
+    },
+    "/home/administrator/projects/hexalith/folders": {
+      "head": "0534d1388a2f3334b581d0a0d362f0b341e10809",
+      "head_unchanged": true,
+      "index_unchanged": true,
+      "submodule_revisions_unchanged": true,
+      "status": ""
+    }
+  }
+}
