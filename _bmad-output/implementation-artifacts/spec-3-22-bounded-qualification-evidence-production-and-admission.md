@@ -2,7 +2,7 @@
 title: 'Story 3.22: Bounded qualification evidence production and admission'
 type: 'refactor'
 created: '2026-10-21'
-status: 'done'
+status: 'in-progress'
 approved: '2026-10-21'
 approval: 'approve and stop'
 route: 'dispatch'
