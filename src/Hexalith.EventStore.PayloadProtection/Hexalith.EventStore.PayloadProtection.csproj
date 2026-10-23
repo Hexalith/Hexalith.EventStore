@@ -9,6 +9,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.Tests" />
+    <InternalsVisibleTo Include="Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapr.Client" />
   </ItemGroup>
 
   <ItemGroup>

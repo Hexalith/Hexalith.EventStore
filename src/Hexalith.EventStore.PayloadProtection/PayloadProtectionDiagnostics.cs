@@ -179,6 +179,8 @@ internal static class PayloadProtectionDiagnostics
             PayloadProtectionDiagnosticResult.MissingKey => "missing-key",
             PayloadProtectionDiagnosticResult.ConsistencyMismatch => "consistency-mismatch",
             PayloadProtectionDiagnosticResult.CryptographicFailure => "cryptographic-failure",
+            PayloadProtectionDiagnosticResult.Denied => "denied",
+            PayloadProtectionDiagnosticResult.Invalidated => "invalidated",
             _ => "malformed",
         };
 }

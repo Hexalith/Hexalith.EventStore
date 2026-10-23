@@ -36,7 +36,7 @@ internal sealed class PayloadCompatibilityRouter
     internal const string SharedV2ReaderId = "hexalith-pdenc-v2";
 
     private readonly PayloadProtectionCore _core;
-    private readonly Func<string, uint, CancellationToken, ValueTask<byte[]?>> _keyResolver;
+    private readonly Func<string, uint, CancellationToken, ValueTask<PayloadKeyResolution>> _keyResolver;
     private readonly ILegacyPayloadReader? _partiesV1Reader;
     private readonly SnapshotTypeRegistry _snapshotTypes;
     private readonly ISensitiveBufferObserver? _bufferObserver;
@@ -58,6 +58,19 @@ internal sealed class PayloadCompatibilityRouter
     /// <exception cref="ArgumentException">A legacy reader is null, unknown, or registered twice.</exception>
     internal PayloadCompatibilityRouter(
         Func<string, uint, CancellationToken, ValueTask<byte[]?>> keyResolver,
+        IEnumerable<ILegacyPayloadReader>? legacyReaders = null,
+        SnapshotTypeRegistry? snapshotTypes = null,
+        PayloadProtectionCore? core = null,
+        ISensitiveBufferObserver? bufferObserver = null)
+        : this((key, version, token) => PayloadKeyResolution.FromLegacyAsync(keyResolver, key, version, token),
+            legacyReaders, snapshotTypes, core, bufferObserver)
+    {
+        ArgumentNullException.ThrowIfNull(keyResolver);
+    }
+
+    /// <summary>Creates the exact reader set with a typed lifecycle-aware key resolver.</summary>
+    internal PayloadCompatibilityRouter(
+        Func<string, uint, CancellationToken, ValueTask<PayloadKeyResolution>> keyResolver,
         IEnumerable<ILegacyPayloadReader>? legacyReaders = null,
         SnapshotTypeRegistry? snapshotTypes = null,
         PayloadProtectionCore? core = null,

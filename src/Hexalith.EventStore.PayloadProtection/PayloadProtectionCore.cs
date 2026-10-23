@@ -43,6 +43,22 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         Action<int>? encryptionCheckpoint = null,
         Action<int>? traversalCheckpoint = null)
     {
+        ArgumentNullException.ThrowIfNull(materialFactory);
+        return ProtectEventAsync(payloadBytes, selectedPaths, context, _ => ValueTask.FromResult(materialFactory()),
+            maximumProtectedValueBytes, cancellationToken, encryptionCheckpoint, traversalCheckpoint).GetAwaiter().GetResult();
+    }
+
+    /// <summary>Validates the complete plan before asynchronously obtaining durable reservation material.</summary>
+    internal async ValueTask<CoreProtectionResult> ProtectEventAsync(
+        byte[] payloadBytes,
+        IReadOnlyCollection<string> selectedPaths,
+        PayloadProtectionContext context,
+        Func<CancellationToken, ValueTask<PayloadProtectionMaterial>> materialFactory,
+        int maximumProtectedValueBytes = PayloadProtectionLimits.CiphertextBytes,
+        CancellationToken cancellationToken = default,
+        Action<int>? encryptionCheckpoint = null,
+        Action<int>? traversalCheckpoint = null)
+    {
         ArgumentNullException.ThrowIfNull(payloadBytes);
         ArgumentNullException.ThrowIfNull(selectedPaths);
         ArgumentNullException.ThrowIfNull(context);
@@ -196,7 +212,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             cancellationToken.ThrowIfCancellationRequested();
             PayloadCryptography.EnsurePlatformSupport();
-            material = InvokeMaterialFactory(materialFactory, cancellationToken);
+            material = await InvokeMaterialFactoryAsync(materialFactory, cancellationToken).ConfigureAwait(false);
             material = ValidateMaterial(material);
             replacements = new List<JsonReplacement>(manifest.Paths.Count);
             for (int index = 0; index < manifest.Paths.Count; index++)
@@ -346,6 +362,19 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         int maximumProtectedValueBytes = PayloadProtectionLimits.CiphertextBytes,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(materialFactory);
+        return ProtectSnapshotAsync(snapshotBytes, context, _ => ValueTask.FromResult(materialFactory()), maximumProtectedValueBytes,
+            cancellationToken).GetAwaiter().GetResult();
+    }
+
+    /// <summary>Validates the complete snapshot before asynchronously obtaining durable reservation material.</summary>
+    internal async ValueTask<ProtectedSnapshotPayloadV2> ProtectSnapshotAsync(
+        byte[] snapshotBytes,
+        PayloadProtectionContext context,
+        Func<CancellationToken, ValueTask<PayloadProtectionMaterial>> materialFactory,
+        int maximumProtectedValueBytes = PayloadProtectionLimits.CiphertextBytes,
+        CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(snapshotBytes);
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(materialFactory);
@@ -390,7 +419,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             PayloadCryptography.EnsurePlatformSupport();
-            material = InvokeMaterialFactory(materialFactory, cancellationToken);
+            material = await InvokeMaterialFactoryAsync(materialFactory, cancellationToken).ConfigureAwait(false);
             material = ValidateMaterial(material);
             byte[] aad = AadCodec.Write(
                 context,
@@ -487,10 +516,25 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// interleaves them into a single non-monotonic stream that no bounded-work assertion can read.
     /// </param>
     /// <returns>The complete authenticated event JSON or one bounded unreadable reason.</returns>
-    internal async ValueTask<CoreUnprotectionResult> TryUnprotectEventAsync(
+    internal ValueTask<CoreUnprotectionResult> TryUnprotectEventAsync(
         byte[] protectedPayloadBytes,
         PayloadProtectionContext context,
         Func<string, uint, CancellationToken, ValueTask<byte[]?>> keyResolver,
+        CancellationToken cancellationToken = default,
+        Action<int>? traversalCheckpoint = null,
+        Action<int>? rewriteSortCheckpoint = null)
+    {
+        ArgumentNullException.ThrowIfNull(keyResolver);
+        return TryUnprotectEventAsync(protectedPayloadBytes, context,
+            (key, version, token) => PayloadKeyResolution.FromLegacyAsync(keyResolver, key, version, token),
+            cancellationToken, traversalCheckpoint, rewriteSortCheckpoint);
+    }
+
+    /// <summary>Authenticates one complete event using a typed lifecycle-aware key result.</summary>
+    internal async ValueTask<CoreUnprotectionResult> TryUnprotectEventAsync(
+        byte[] protectedPayloadBytes,
+        PayloadProtectionContext context,
+        Func<string, uint, CancellationToken, ValueTask<PayloadKeyResolution>> keyResolver,
         CancellationToken cancellationToken = default,
         Action<int>? traversalCheckpoint = null,
         Action<int>? rewriteSortCheckpoint = null)
@@ -502,6 +546,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Unprotect, out Activity? ambientActivity);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         byte[]? dek = null;
+        PayloadKeyResolution? resolution = null;
         byte[]? reconstructed = null;
         IReadOnlyList<ProtectedWrapper>? wrappers = null;
         ProtectedPathManifest? manifest = null;
@@ -590,7 +635,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             PayloadCryptography.EnsurePlatformSupport();
             try
             {
-                dek = await keyResolver(
+                resolution = await keyResolver(
                     first!.Envelope.KeyReference,
                     first.Envelope.DekVersion,
                     cancellationToken).ConfigureAwait(false);
@@ -598,6 +643,19 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 throw;
+            }
+            catch (PayloadProtectionStateException exception)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                diagnosticResult = exception.Reason switch
+                {
+                    UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
+                    UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
+                    UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
+                    UnreadableProtectedDataReason.ConsistencyMismatch => PayloadProtectionDiagnosticResult.ConsistencyMismatch,
+                    _ => PayloadProtectionDiagnosticResult.Unavailable,
+                };
+                return CoreUnprotectionResult.Unreadable(exception.Reason);
             }
             catch
             {
@@ -607,12 +665,21 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (dek is null)
+            if (resolution.Reason is UnreadableProtectedDataReason failure)
             {
-                diagnosticResult = PayloadProtectionDiagnosticResult.MissingKey;
-                return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey);
+                diagnosticResult = failure switch
+                {
+                    UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
+                    UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
+                    UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
+                    UnreadableProtectedDataReason.ConsistencyMismatch => PayloadProtectionDiagnosticResult.ConsistencyMismatch,
+                    _ => PayloadProtectionDiagnosticResult.Unavailable,
+                };
+                return CoreUnprotectionResult.Unreadable(failure);
             }
 
+            resolution.AssertCurrent(cancellationToken);
+            dek = resolution.TakeBytes();
             if (dek.Length != 32)
             {
                 diagnosticResult = PayloadProtectionDiagnosticResult.ConsistencyMismatch;
@@ -652,6 +719,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
                 }
 
                 int remainingNodes = checked(PayloadProtectionLimits.JsonNodes - prospectiveNodeCount);
+                resolution.AssertCurrent(cancellationToken);
                 int wrapperDepth = BoundedJsonDocument.GetDepth(document.Resolve(
                     wrapper.Path,
                     cancellationToken: cancellationToken,
@@ -703,6 +771,15 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            await resolution.ConfirmAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
+            if (resolution.RequiresAsyncRelease)
+            {
+                Clear(dek, SensitiveBufferKind.DataEncryptionKey);
+                dek = null;
+                await resolution.DisposeAsync().ConfigureAwait(false);
+                resolution = null;
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             CoreUnprotectionResult result = CoreUnprotectionResult.Readable(reconstructed);
             reconstructed = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
@@ -712,6 +789,18 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         {
             diagnosticResult = PayloadProtectionDiagnosticResult.Cancelled;
             throw;
+        }
+        catch (PayloadProtectionStateException exception)
+        {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
+            diagnosticResult = exception.Reason switch
+            {
+                UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
+                UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
+                UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
+                _ => PayloadProtectionDiagnosticResult.ConsistencyMismatch,
+            };
+            return CoreUnprotectionResult.Unreadable(exception.Reason);
         }
         catch (PayloadProtectionAuthenticationException)
         {
@@ -746,6 +835,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 Clear(dek, SensitiveBufferKind.DataEncryptionKey);
             }
+            if (resolution is not null) { await resolution.DisposeAsync().ConfigureAwait(false); }
 
             if (wrappers is not null)
             {
@@ -773,10 +863,22 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
     /// </param>
     /// <param name="cancellationToken">The caller cancellation token.</param>
     /// <returns>The complete authenticated snapshot JSON or one bounded unreadable reason.</returns>
-    internal async ValueTask<CoreUnprotectionResult> TryUnprotectSnapshotAsync(
+    internal ValueTask<CoreUnprotectionResult> TryUnprotectSnapshotAsync(
         ProtectedSnapshotPayloadV2 protectedSnapshot,
         PayloadProtectionContext context,
         Func<string, uint, CancellationToken, ValueTask<byte[]?>> keyResolver,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(keyResolver);
+        return TryUnprotectSnapshotAsync(protectedSnapshot, context,
+            (key, version, token) => PayloadKeyResolution.FromLegacyAsync(keyResolver, key, version, token), cancellationToken);
+    }
+
+    /// <summary>Authenticates one complete snapshot using a typed lifecycle-aware key result.</summary>
+    internal async ValueTask<CoreUnprotectionResult> TryUnprotectSnapshotAsync(
+        ProtectedSnapshotPayloadV2 protectedSnapshot,
+        PayloadProtectionContext context,
+        Func<string, uint, CancellationToken, ValueTask<PayloadKeyResolution>> keyResolver,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(protectedSnapshot);
@@ -786,6 +888,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         Activity? activity = PayloadProtectionDiagnostics.Start(PayloadProtectionOperation.Unprotect, out Activity? ambientActivity);
         PayloadProtectionDiagnosticResult diagnosticResult = PayloadProtectionDiagnosticResult.Malformed;
         byte[]? dek = null;
+        PayloadKeyResolution? resolution = null;
         byte[]? plaintext = null;
         PayloadProtectionEnvelope? envelope = null;
         ProtectedPathManifest? manifest = null;
@@ -837,11 +940,24 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             PayloadCryptography.EnsurePlatformSupport();
             try
             {
-                dek = await keyResolver(envelope.KeyReference, envelope.DekVersion, cancellationToken).ConfigureAwait(false);
+                resolution = await keyResolver(envelope.KeyReference, envelope.DekVersion, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 throw;
+            }
+            catch (PayloadProtectionStateException exception)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                diagnosticResult = exception.Reason switch
+                {
+                    UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
+                    UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
+                    UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
+                    UnreadableProtectedDataReason.ConsistencyMismatch => PayloadProtectionDiagnosticResult.ConsistencyMismatch,
+                    _ => PayloadProtectionDiagnosticResult.Unavailable,
+                };
+                return CoreUnprotectionResult.Unreadable(exception.Reason);
             }
             catch
             {
@@ -851,12 +967,21 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (dek is null)
+            if (resolution.Reason is UnreadableProtectedDataReason failure)
             {
-                diagnosticResult = PayloadProtectionDiagnosticResult.MissingKey;
-                return CoreUnprotectionResult.Unreadable(UnreadableProtectedDataReason.MissingKey);
+                diagnosticResult = failure switch
+                {
+                    UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
+                    UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
+                    UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
+                    UnreadableProtectedDataReason.ConsistencyMismatch => PayloadProtectionDiagnosticResult.ConsistencyMismatch,
+                    _ => PayloadProtectionDiagnosticResult.Unavailable,
+                };
+                return CoreUnprotectionResult.Unreadable(failure);
             }
 
+            resolution.AssertCurrent(cancellationToken);
+            dek = resolution.TakeBytes();
             if (dek.Length != 32)
             {
                 diagnosticResult = PayloadProtectionDiagnosticResult.ConsistencyMismatch;
@@ -894,6 +1019,15 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            await resolution.ConfirmAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
+            if (resolution.RequiresAsyncRelease)
+            {
+                Clear(dek, SensitiveBufferKind.DataEncryptionKey);
+                dek = null;
+                await resolution.DisposeAsync().ConfigureAwait(false);
+                resolution = null;
+                cancellationToken.ThrowIfCancellationRequested();
+            }
             CoreUnprotectionResult result = CoreUnprotectionResult.Readable(plaintext);
             plaintext = null;
             diagnosticResult = PayloadProtectionDiagnosticResult.Success;
@@ -903,6 +1037,18 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         {
             diagnosticResult = PayloadProtectionDiagnosticResult.Cancelled;
             throw;
+        }
+        catch (PayloadProtectionStateException exception)
+        {
+            CheckFailureCancellation(cancellationToken, ref diagnosticResult);
+            diagnosticResult = exception.Reason switch
+            {
+                UnreadableProtectedDataReason.ProviderDenied => PayloadProtectionDiagnosticResult.Denied,
+                UnreadableProtectedDataReason.KeyInvalidatedOrDeleted => PayloadProtectionDiagnosticResult.Invalidated,
+                UnreadableProtectedDataReason.MissingKey => PayloadProtectionDiagnosticResult.MissingKey,
+                _ => PayloadProtectionDiagnosticResult.ConsistencyMismatch,
+            };
+            return CoreUnprotectionResult.Unreadable(exception.Reason);
         }
         catch (PayloadProtectionAuthenticationException)
         {
@@ -932,6 +1078,7 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 Clear(dek, SensitiveBufferKind.DataEncryptionKey);
             }
+            if (resolution is not null) { await resolution.DisposeAsync().ConfigureAwait(false); }
 
             if (envelope is not null)
             {
@@ -948,14 +1095,14 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
         }
     }
 
-    private PayloadProtectionMaterial? InvokeMaterialFactory(
-        Func<PayloadProtectionMaterial> materialFactory,
+    private async ValueTask<PayloadProtectionMaterial?> InvokeMaterialFactoryAsync(
+        Func<CancellationToken, ValueTask<PayloadProtectionMaterial>> materialFactory,
         CancellationToken cancellationToken)
     {
         PayloadProtectionMaterial? material;
         try
         {
-            material = materialFactory();
+            material = await materialFactory(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

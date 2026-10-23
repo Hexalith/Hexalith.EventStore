@@ -29,4 +29,10 @@ internal enum PayloadProtectionDiagnosticResult
 
     /// <summary>The cryptographic platform or operation failed safely.</summary>
     CryptographicFailure = 8,
+
+    /// <summary>The key source denied authorization.</summary>
+    Denied = 9,
+
+    /// <summary>Current accepted lifecycle evidence forbids key use.</summary>
+    Invalidated = 10,
 }

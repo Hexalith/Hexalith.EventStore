@@ -1067,6 +1067,7 @@ public sealed class ReleasePackageManifestTests
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"));
         string advisory = File.ReadAllText(Path.Combine(root, ".github", "workflows", "advisory-tests.yml"));
         string payloadProtection = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection.yml"));
+        string payloadProtectionLifecycle = File.ReadAllText(Path.Combine(root, ".github", "workflows", "payload-protection-lifecycle.yml"));
         string docs = File.ReadAllText(Path.Combine(root, "docs", "ci.md"));
         string[] deferredProjects = DeferredTestLaneProjects(docs);
 
@@ -1085,6 +1086,7 @@ public sealed class ReleasePackageManifestTests
                 || integration.Contains(project, StringComparison.Ordinal)
                 || advisory.Contains(project, StringComparison.Ordinal)
                 || payloadProtection.Contains(project, StringComparison.Ordinal)
+                || payloadProtectionLifecycle.Contains(project, StringComparison.Ordinal)
                 || deferredProjects.Contains(project, StringComparer.Ordinal);
             if (!classified)
             {
