@@ -58,12 +58,14 @@ public sealed class DaprServiceInvocationHandlerTests {
     [Fact]
     public async Task SendAsyncWithRotatedOrRemovedCredentialResolvesEachSend()
     {
+        string firstToken = Guid.NewGuid().ToString("N");
+        string rotatedToken = Guid.NewGuid().ToString("N");
         string target = "first";
-        string? token = "first-token";
+        string? token = firstToken;
         var terminal = new CaptureHandler();
         using var handler = new DaprServiceInvocationHandler(() => (target, token)) { InnerHandler = terminal };
         using var invoker = new HttpMessageInvoker(handler);
-        foreach ((string nextTarget, string? nextToken) in new[] { ("first", "first-token"), ("second", "rotated-token"), ("second", (string?)null), ("second", "") })
+        foreach ((string nextTarget, string? nextToken) in new[] { ("first", firstToken), ("second", rotatedToken), ("second", (string?)null), ("second", "") })
         {
             target = nextTarget;
             token = nextToken;
