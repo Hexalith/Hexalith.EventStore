@@ -122,7 +122,8 @@ class SeparateSourceMountTests(unittest.TestCase):
                 root=Path(temporary)
                 outer,child=root/'outer-source',root/'child-source'
                 outer.mkdir();child.mkdir()
-                output=child/'attempt/isolation'
+                # Outside both roots, so only the root-mismatch refusal can stop the run.
+                output=root/'attempt/isolation'
                 command=['python3',str(isolation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(output.with_name('packet')),
                     '--inputs',str(root/'inputs.json'),'--source-root',str(child)]
                 args=['--out',str(output),'--source-root',str(outer)]
@@ -130,10 +131,13 @@ class SeparateSourceMountTests(unittest.TestCase):
                 with mock.patch.object(storage,'default_root',return_value=child/'diagnostics'), \
                         mock.patch.object(isolation.IsolatedRunner,'initialize') as initialized, \
                         mock.patch.object(subprocess,'run') as docker,mock.patch.object(subprocess,'check_output') as context, \
-                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()) as errors:
                     self.assertEqual(isolation.main([*args,'--',*command]),2)
                 initialized.assert_not_called();docker.assert_not_called();context.assert_not_called()
+                self.assertEqual(json.loads(errors.getvalue().splitlines()[0])['error'],
+                                 'controller and child selected source roots differ')
                 self.assertEqual(list(child.iterdir()),[])
+                self.assertFalse(output.parent.exists())
                 self.assertFalse((root/'summary').exists())
 
     def testSelectedSourceAndBuildsDestinationsRefuseBeforeAttemptAdmission(self):
@@ -214,8 +218,11 @@ class ControllerTests(unittest.TestCase):
             with self.subTest(packet=packet),mock.patch.object(self.worker,'docker') as docker:
                 command=['python3',str(self.worker.workspace/'tools/p1r-published-executor.py'),'run',
                     '--out',str(packet),'--inputs',str(self.worker.workspace/'inputs.json')]
+                # The runner is shared across subtests; judge only this subtest's errors.
+                before=len(self.worker.result['errors'])
                 self.assertEqual(self.worker._run(command),2)
-                self.assertIn('executor packet is outside the owned attempt directory or already exists',self.worker.result['errors'])
+                self.assertEqual(self.worker.result['errors'][before:],
+                    ['executor packet is outside the owned attempt directory or already exists'])
                 docker.assert_not_called()
 
     def testObservePlanningIdentitySurvivesProvisioningAndRefusesChangedBytes(self):

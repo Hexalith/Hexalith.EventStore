@@ -35,9 +35,10 @@ def materialize_wrapper(wrapper, enclosing, *, _budget=None):
         require(wrapper["evidence_context"] == enclosing, "isolation artifact context differs")
         commands = wrapper.get("commands")
         require(isinstance(commands, list), "external isolation command journal missing")
+        # The isolation runner externalizes every row it records, so a hash-only
+        # inline row is a downgrade here, not a suppressed capture.
         for command in commands + ([wrapper["command_stdout_command"]] if "command_stdout_command" in wrapper else []):
-            require(isinstance(command, dict) and (storage.OUTPUT_MARKERS <= command.keys()
-                    or not storage.OUTPUT_MARKERS.intersection(command) and command.get("output", False) is None),
+            require(isinstance(command, dict) and storage.OUTPUT_MARKERS <= command.keys(),
                     "mixed inline/external isolation command output")
         require("command_stdout" not in wrapper, "mixed inline/external isolation stdout")
     return storage.materialize(wrapper, enclosing, _budget=_budget)

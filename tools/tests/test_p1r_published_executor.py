@@ -172,6 +172,7 @@ class SeparateRootExecutorTests(unittest.TestCase):
                             (worker.return_value.execute if entry == 'run' else worker.return_value.observe_inputs).assert_called_once()
                         else:
                             outer.assert_called_once()
+                            self.assertEqual(outer.call_args.kwargs,{'source_root':f.source,'source_builds_root':f.source_builds})
                             self.assertEqual(outer.return_value.run.call_args.args[0][-4:],suffix)
                             worker.assert_not_called()
 
@@ -3034,9 +3035,6 @@ class PublishedPatchSourceTests(unittest.TestCase):
         self.assertFalse(executor.witnesses.requires_qualified_snapshot('3.127.0','snapshot-tail','source-to-3.110.0'))
 
 
-
-
-
 class ReviewedExecutorFinalizationTests(unittest.TestCase):
     def testRealStoreRestoreFinalizationKeepsExternalResponsesAndInventories(self):
         from test_p1r_published_qualification import LaneReceiptTests, at
@@ -3382,6 +3380,26 @@ class ReviewedExecutorSummaryTests(unittest.TestCase):
                             self.assertNotIn(data,retained,str(path))
                             self.assertNotIn(b'foreign-packet.txt',retained,str(path))
                             self.assertNotIn(b'foreign-sibling.txt',retained,str(path))
+
+    def testInterruptedControllerInitializationRetainsIts130SummaryOutcome(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            planning=root/'planning.json';planning.write_text('{}')
+            cli=self.cli()
+            with mock.patch.object(cli,'validate_observation_inputs'), \
+                    mock.patch.object(storage,'default_root',return_value=root/'diagnostics'), \
+                    mock.patch.object(subprocess,'check_output',side_effect=KeyboardInterrupt), \
+                    mock.patch.object(subprocess,'run',side_effect=AssertionError('Docker blocked')), \
+                    mock.patch.dict(os.environ,{},clear=True), \
+                    contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+                code=cli.main(['observe','--out',str(root/'attempt/packet'),'--planning-observations',str(planning),
+                    '--selection-reference','control','--summary-out',str(root/'summary')])
+            self.assertEqual(code,130)
+            summary=json.loads((root/'summary/summary.json').read_bytes())
+            self.assertEqual(summary['outcome']['exit_code'],130)
+            self.assertEqual(summary['outcome']['status'],'failed')
+            self.assertGreater(summary['outcome']['cleanup']['attempts'],0)
+            self.assertIn('isolation.json',summary['isolation_proof'])
 
     def testRequestedSummaryIncludesOuterCleanupFailureWithoutChildPacket(self):
         import p1r_isolation as isolation

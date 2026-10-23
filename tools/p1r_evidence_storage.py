@@ -581,12 +581,20 @@ def _attempt_files(root, budget, depth=0):
         raise InvalidPacket("attempt file enumeration unavailable") from failure
 
 
+def _regenerable_cache(name):
+    """Consumer NuGet caches and build outputs are restore/build products of the packet."""
+    parts = name.split("/")
+    return parts[0] == "consumers" and (len(parts) >= 4 and parts[2] == "packages"
+                                        or len(parts) >= 5 and parts[3] in ("bin", "obj"))
+
+
 def export_attempt(packet, destination, store, *, isolation=None, exit_code=None, error=None):
     """Export one bounded outcome, including failed initialization and outer cleanup."""
     packet, destination = Path(packet).absolute(), Path(destination).absolute()
     require(packet == packet.resolve(), "attempt packet substituted")
     validate_summary_destination(packet, destination, isolation=isolation)
     files, total, export_bytes, command_totals, documents, proofs = [], 0, 0, None, {}, {}
+    regenerable = {"files": 0, "bytes": 0}
     receipts = {"total": 0, "passed": 0, "failed": 0, "assertions": {"attempted": 0, "passed": 0, "failed": 0}}
     cleanup = {"attempts": 0, "errors": 0, "remaining": 0}
     roots = [("", packet)] + ([("isolation/", Path(isolation).absolute())] if isolation is not None else [])
@@ -597,10 +605,23 @@ def export_attempt(packet, destination, store, *, isolation=None, exit_code=None
             continue
         require(root == root.resolve() and root.is_dir(), "attempt packet substituted")
         for path in _attempt_files(root, enumeration):
+            name = prefix + path.relative_to(root).as_posix()
+            if not prefix and _regenerable_cache(name):
+                # Owner decision 2026-10-22: regenerable consumer caches are indexed by
+                # path, size and SHA-256 only. No copy is stored, so they consume no
+                # export byte budget; the cap remains a safety net for everything else.
+                data = bounded_file(path)
+                total += len(data)
+                entry = {"path": name, "bytes": len(data), "sha256": digest(data), "disposition": "regenerable-hash-only"}
+                index_bytes += len(canonical(entry)) + bool(files)
+                require(index_bytes <= INDEX_BYTES, "attempt complete index exceeds capture budget")
+                files.append(entry)
+                regenerable["files"] += 1
+                regenerable["bytes"] += len(data)
+                continue
             require(path.stat(follow_symlinks=False).st_size <= EXPORT_BYTES - export_bytes, "attempt export exceeds byte budget")
             data = bounded_file(path, limit=min(READ_BYTES, EXPORT_BYTES - export_bytes))
             total += len(data)
-            name = prefix + path.relative_to(root).as_posix()
             identity = {"kind": "packet-file", "path": name}
             reference, manifest = store._reference(data, identity, "raw-bytes")
             export_bytes += len(data) + len(manifest)
@@ -649,6 +670,7 @@ def export_attempt(packet, destination, store, *, isolation=None, exit_code=None
               or receipts["failed"] > 0 or receipts["assertions"]["failed"] > 0 or outer.get("passed") is False)
     finished = bool(outer.get("finished_utc") or execution.get("finished_utc"))
     summary = {"schema": SUMMARY_SCHEMA, "context": store.context, "files": len(files), "bytes": total,
+               "regenerable_hash_only": regenerable,
                "complete_index": store.retain(index, {"kind": "complete-index"}, "canonical-json"),
                "disposition": "diagnostic-only", "p1r_usable": False, "errors_count": errors,
                "outcome": {"status": "failed" if failed else "completed" if finished else "incomplete",

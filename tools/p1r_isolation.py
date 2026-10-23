@@ -460,6 +460,11 @@ class IsolatedRunner:
         for checkout in (ROOT, self.source_root, self.source_builds_root):
             if checkout is not None:
                 storage.external_path(self.output.parent, checkout)
+        if self.source_builds_root is not None:
+            # Both selected checkouts bound output placement only. A separate
+            # source/Builds run is bound privately from the command's own
+            # tooling-pinned suffix, so no single --source-root is forwarded.
+            self.source_root = None
         require(not self.output.exists() and self.output == self.output.resolve(), "isolation output exists or is substituted")
         self.invocation = uuid.uuid4().hex
         # The sole evidence bind must be created by this invocation. Adopting an
@@ -503,9 +508,8 @@ class IsolatedRunner:
             if self.source_root is not None:
                 validate_workspace(self.source_root, self.source_root, self.outer_host)
                 self.result["source_root"] = str(self.source_root)
-                if self.source_builds_root is None:
-                    self.controller_binding = preparation.source_binding(ROOT, self.source_root)
-                    self.result["controller_source_binding"] = self.controller_binding
+                self.controller_binding = preparation.source_binding(ROOT, self.source_root)
+                self.result["controller_source_binding"] = self.controller_binding
             validate_external_root(self.external_root, ROOT, self.outer_host)
             self.result["external_root"] = str(self.external_root)
             self.result["outer_host"] = self.outer_host

@@ -2116,9 +2116,6 @@ class SupportBoundaryTests(unittest.TestCase):
         self.assertFalse(blocked["technically_qualified"])
 
 
-
-
-
 class ReviewedBoundaryMeasurementTests(unittest.TestCase):
     def testMeasureCliForwardsSourceAndToolingBindingsAndRejectsUnpinnedBuilds(self):
         import importlib.util

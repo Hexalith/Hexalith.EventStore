@@ -85,15 +85,23 @@ class EvidenceStorageTests(unittest.TestCase):
         with self.assertRaises(InvalidPacket): storage.command_text(self.command())
         with self.assertRaises(InvalidPacket): storage.materialize({"schema": "hexalith.p1r.json-reference.v9"}, self.context)
 
-    def testExternalIsolationAllowsOnlyHashOnlyInlineCommandRows(self):
+    def testExternalIsolationRequiresCompleteOutputMarkersOnEveryCommandRow(self):
         import p1r_isolation_evidence as isolation_evidence
-        wrapper = {"evidence_context": self.context, "external_root": str(self.store.root),
-            "commands": [{"output": None, "output_sha256": digest(b"suppressed")}]}
-        self.assertIsNone(isolation_evidence.materialize_wrapper(wrapper, self.context)["commands"][0]["output"])
-        for row in ({"output": ""}, {"output": "inline"}, {"output_sha256": digest(b"missing")},
-                    dict(self.command(), output="inline")):
-            with self.subTest(row=row), self.assertRaises(InvalidPacket):
+        wrapper = {"evidence_context": self.context, "external_root": str(self.store.root), "commands": [self.command()]}
+        self.assertEqual(isolation_evidence.materialize_wrapper(wrapper, self.context)["commands"][0]["output"],
+                         "complete proof\n")
+        # The isolation runner externalizes every row, so even a hash-only inline
+        # row is a downgrade, refused here rather than by a later consumer.
+        for row in ({"output": None, "output_sha256": digest(b"suppressed")}, {"output": ""}, {"output": "inline"},
+                    {"output_sha256": digest(b"missing")}):
+            with self.subTest(row=row), self.assertRaisesRegex(InvalidPacket, "^mixed inline/external isolation command output$"):
                 isolation_evidence.materialize_wrapper(dict(wrapper, commands=[row]), self.context)
+        # Complete markers beside inline output reach, and are refused by, the common reader.
+        with self.assertRaisesRegex(InvalidPacket, "^unsupported or mixed command output schema$"):
+            isolation_evidence.materialize_wrapper(dict(wrapper, commands=[dict(self.command(), output="inline")]), self.context)
+        hash_only = {"output": None, "output_sha256": digest(b"suppressed")}
+        with self.assertRaisesRegex(InvalidPacket, "^mixed inline/external isolation command output$"):
+            isolation_evidence.materialize_wrapper(dict(wrapper, command_stdout_command=hash_only), self.context)
 
     def testSignatureReaderUsesCompleteVerifiedTextAndRejectsUnavailableProof(self):
         import p1r_published_qualification as qualification
@@ -255,13 +263,32 @@ class EvidenceStorageTests(unittest.TestCase):
             self.assertEqual(storage.materialize(inventory, self.context)[0]["output"], "required sealed output")
         self.assertEqual(inventory, original)
         self.assertEqual(manifest_bytes, {path: path.read_bytes() for path in manifest_bytes})
-        # Neither an unrelated artifact nor changed hold bytes extend retention.
+        # Neither an unrelated artifact nor a writable or changed hold record extends retention.
         other = self.command(b"unheld", 2)["output_ref"]
         with self.assertRaisesRegex(InvalidPacket, "expired without hold"):
             storage.resolve(other, self.context, other["artifact"]["identity"], now=future)
-        hold.chmod(0o600);hold.write_bytes(b"substituted")
-        with self.assertRaises(InvalidPacket):
+        exact = hold.read_bytes()
+        hold.chmod(0o600)
+        self.assertEqual(hold.read_bytes(), exact)
+        with self.assertRaisesRegex(InvalidPacket, "^artifact hold is not owner-written immutable proof$"):
             storage.resolve(inventory["reference"], self.context, {"kind": "inventory"}, now=future)
+        changed = bytes(exact[:-1]) + (b"X" if exact[-1:] != b"X" else b"Y")
+        hold.write_bytes(changed);hold.chmod(0o444)
+        self.assertEqual(len(hold.read_bytes()), len(exact))
+        with self.assertRaisesRegex(InvalidPacket, "^artifact hold record differs$"):
+            storage.resolve(inventory["reference"], self.context, {"kind": "inventory"}, now=future)
+
+    def testPlaceHoldRefusesForeignStoreAndUnavailableBytesWithoutWritingARecord(self):
+        other = storage.Store(self.root / "other-store", self.context)
+        foreign = other.retain(b"foreign bytes", {"kind": "foreign"})
+        with self.assertRaisesRegex(InvalidPacket, "^hold artifact belongs to another store$"):
+            self.store.place_hold(foreign)
+        unlinked = self.command(b"unlinked bytes")["output_ref"]
+        Path(unlinked["artifact"]["locator"]).unlink()
+        with self.assertRaisesRegex(InvalidPacket, "^artifact unavailable or substituted$"):
+            self.store.place_hold(unlinked)
+        for root in (self.store.root, other.root):
+            self.assertFalse((root / "holds").exists(), str(root))
 
     def testMalformedRetentionAndExpiredRetentionHaveDistinctRefusals(self):
         ref = self.command()["output_ref"]
@@ -443,8 +470,10 @@ class EvidenceAdmissionTests(unittest.TestCase):
             (root / ".gitignore").write_bytes((repository / ".gitignore").read_bytes())
             prefix = "_bmad-output/implementation-artifacts/evidence/story-3-22/attempt/"
             ignored = ["run.log", "Logs/capture.log", "packages/fixture.nupkg", "report.json", "results.json", "result.trx", "capture.zip", "capture.tar.gz", "payload.part", "capture.webm", "trace.dat", "commands.json", "reports/result.json", "results/TestResults.xml", "screenshots/home.png", "playwright-report/index.html",
-                "capture.xz", "capture.bz2", "capture.zst", "capture.rar", "capture.001", "capture.z01", "capture.dmp", "capture.gcdump", "capture.etl", "capture.mkv", "trace/arbitrary-name"]
-            allowed = ["summary.json", "verification.json", "source-baseline.json", "snapshot-baseline.cs", "snapshots/source.cs", "baseline.png", "snapshots/source.jpg"]
+                "capture.xz", "capture.bz2", "capture.zst", "capture.rar", "capture.001", "capture.z01", "capture.dmp", "capture.gcdump", "capture.etl", "capture.mkv", "trace/arbitrary-name",
+                "sdk-10.0.400/capture.001", "candidate-3.125.100/capture.z01", "sdk-10.0.400/run.log"]
+            allowed = ["summary.json", "verification.json", "source-baseline.json", "snapshot-baseline.cs", "snapshots/source.cs", "baseline.png", "snapshots/source.jpg",
+                "sdk-10.0.400/summary.json", "candidate-3.125.100/summary.json", "archive.z01/summary.json", "sdk-10.0.400/nested.001/summary.json"]
             for name, expected in [(name, True) for name in ignored] + [(name, False) for name in allowed]:
                 result = subprocess.run(["git", "check-ignore", "--no-index", prefix + name], cwd=root, capture_output=True)
                 self.assertEqual(result.returncode, 0 if expected else 1, name)
@@ -470,6 +499,69 @@ class ReviewedStorageTests(unittest.TestCase):
         with mock.patch.object(storage, "EXPORT_BYTES", first_bytes + second_bytes + 1):
             with self.assertRaisesRegex(InvalidPacket, "attempt export exceeds byte budget"):
                 storage.export_attempt(packet, self.repository / "summary", self.store)
+
+    def testRegenerableConsumerCachesAreIndexedByHashWithoutStoredCopies(self):
+        packet = self.root / "consumer-packet"
+        cached = {"consumers/candidate/packages/hexalith.eventstore.server/3.125.1/package.nupkg": os.urandom(4096),
+                  "consumers/candidate/probe/bin/Release/net10.0/Probe.dll": os.urandom(4096),
+                  "consumers/source/host/obj/project.assets.json": os.urandom(4096)}
+        copied = {"consumers/candidate/probe-binary.json": b'{"role":"candidate"}',
+                  "consumers/candidate/probe/Probe.csproj": b"<Project />",
+                  "consumers/candidate/packages.lock.json": b"{}", "execution.json": b'{"finished_utc":"done","errors":[]}'}
+        for name, data in {**cached, **copied}.items():
+            (packet / name).parent.mkdir(parents=True, exist_ok=True)
+            (packet / name).write_bytes(data)
+        copied_bytes = sum(len(data) + len(self.store._reference(data, {"kind": "packet-file", "path": name}, "raw-bytes")[1])
+                           for name, data in copied.items())
+        # Copying any cache member would exceed this cap; the complete index still fits.
+        with mock.patch.object(storage, "EXPORT_BYTES", copied_bytes + 8192):
+            summary = storage.export_attempt(packet, self.repository / "consumer-summary", self.store, exit_code=0)
+        self.assertEqual(summary["files"], len(cached) + len(copied))
+        self.assertEqual(summary["regenerable_hash_only"], {"files": len(cached), "bytes": sum(map(len, cached.values()))})
+        self.assertEqual(summary["bytes"], sum(map(len, {**cached, **copied}.values())))
+        index = {row["path"]: row for row in json.loads(storage.resolve(summary["complete_index"], self.context,
+                                                                       {"kind": "complete-index"}))["files"]}
+        stored = {path.name for path in (self.store.root / "objects").iterdir()}
+        for name, data in cached.items():
+            self.assertEqual(index[name], {"path": name, "bytes": len(data), "sha256": digest(data),
+                                           "disposition": "regenerable-hash-only"})
+            self.assertNotIn(digest(data), stored)
+        for name, data in copied.items():
+            self.assertEqual(storage.resolve(index[name]["reference"], self.context, {"kind": "packet-file", "path": name}), data)
+        # The same cache layout under the isolation sibling is not a consumer cache.
+        outer = self.root / "consumer-packet-isolation"
+        (outer / "consumers/candidate/packages").mkdir(parents=True)
+        (outer / "consumers/candidate/packages/copied.nupkg").write_bytes(b"isolation member")
+        summary = storage.export_attempt(packet, self.repository / "isolation-summary", self.store, isolation=outer)
+        self.assertEqual(summary["regenerable_hash_only"]["files"], len(cached))
+        self.assertIn(digest(b"isolation member"), {path.name for path in (self.store.root / "objects").iterdir()})
+
+    def testPublishedReadRetriesOnlyTheConcurrentLinkRaceAtMostThreeTimes(self):
+        payload = b"published once"
+        reference = self.store.retain(payload, {"kind": "retry"})
+        original = storage.bounded_file
+        def flaky(failures, message="artifact changed while reading"):
+            calls = []
+            def read(path, *args, **kwargs):
+                calls.append(Path(path))
+                if len(calls) <= failures:
+                    raise InvalidPacket(message)
+                return original(path, *args, **kwargs)
+            return read, calls
+        read, calls = flaky(1)
+        with mock.patch.object(storage, "bounded_file", side_effect=read):
+            self.assertEqual(self.store.retain(payload, {"kind": "retry"}), reference)
+        self.assertEqual(calls[:2], [Path(reference["artifact"]["locator"])] * 2)
+        read, calls = flaky(3)
+        with mock.patch.object(storage, "bounded_file", side_effect=read):
+            with self.assertRaisesRegex(InvalidPacket, "^artifact changed while reading$"):
+                self.store.retain(payload, {"kind": "retry"})
+        self.assertEqual(len(calls), 3)
+        read, calls = flaky(1, "artifact size or type differs")
+        with mock.patch.object(storage, "bounded_file", side_effect=read):
+            with self.assertRaisesRegex(InvalidPacket, "^artifact size or type differs$"):
+                self.store.retain(payload, {"kind": "retry"})
+        self.assertEqual(len(calls), 1)
 
     def testCompletedAttemptSummaryKeepsZeroExitAndPassingReceipts(self):
         packet = self.root / "completed";(packet / "receipts").mkdir(parents=True)

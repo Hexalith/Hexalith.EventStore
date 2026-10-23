@@ -261,7 +261,11 @@ def run_controller(root, receipt, context, private_failure=False, outer_failure=
             mock.patch.object(isolation,'stamp',side_effect=boundary.stamp), \
             mock.patch.object(isolation.subprocess,'run',side_effect=boundary.run), \
             mock.patch.object(qualification,'load_document',return_value=(context['inputs']['value'],selected.read_bytes(),'owner-selected')):
-        worker = isolation.IsolatedRunner(attempt/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',source_root=source_root)
+        # Construct the runner exactly as both CLIs do: a separate source/Builds
+        # selection passes both roots, a single tagged source passes only its root.
+        roots = ({'source_root':source_paths[0],'source_builds_root':source_paths[1]} if source_paths
+                 else {'source_root':source_root} if source_root is not None else {})
+        worker = isolation.IsolatedRunner(attempt/'wrapper',workspace=preparation.ROOT,outer_host='unix:///outer',**roots)
         boundary.worker = worker
         # Fixture executor timestamps are historical, so launch starts before them.
         original_run = boundary.run

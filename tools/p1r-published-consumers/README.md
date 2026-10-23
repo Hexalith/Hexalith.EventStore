@@ -366,15 +366,22 @@ outcome, and one external complete-index reference. Full journals, generated
 reports, videos, traces, archives and screenshot trees are excluded from new Git
 admission; existing tracked historical packets remain inputs.
 
-For an existing owner-selected input document in the mounted workspace:
+For an existing owner-selected input document in the mounted workspace, keep the
+input and summary under the story's evidence directory. A clean tooling-pinned
+binding refuses untracked `.json` inputs and directories outside `_bmad-output`:
 
 ```sh
 python3 tools/p1r-published-executor.py run \
-  --inputs ./owner-inputs.json --summary-out ./attempt-summary
+  --inputs _bmad-output/implementation-artifacts/evidence/<story>/owner-inputs.json \
+  --summary-out _bmad-output/implementation-artifacts/evidence/<story>/attempt-summary
 ```
 
-The summary directory must be fresh and must not overlap either full packet.
-Both CLIs check this before capture starts and recheck it during exclusive export.
+The summary directory must be fresh. Each CLI checks overlap before capture
+starts and rechecks it during exclusive export:
+`tools/p1r-published-executor.py` refuses a summary that overlaps its `--out`
+packet or the sibling `<out>-isolation/` packet;
+`tools/p1r-isolated-runner.py` refuses a summary that overlaps its own isolation
+`--out` only, not a child executor's `--out` named in the wrapped command.
 Qualification `prepare` packets also require an external destination, including
 when importing receipts or using a synthetic verifier. They refuse destinations
 inside the tooling, source or Builds checkouts, or an enclosing checkout, before
@@ -397,6 +404,10 @@ aggregate materialization I/O/decoded bytes are bounded at 256 MiB; manifests
 are bounded at 1 MiB. Summary export keeps an immutable copy of packet members
 for its complete index; the combined packet-copy, manifest and complete-index bytes are
 bounded at 256 MiB per export. Identical packet members reuse one stored payload.
+Regenerable consumer caches, `consumers/<role>/packages/` and each consumer
+project's `bin/` and `obj/`, are indexed by path, size and SHA-256 only. They are
+not copied, do not count toward that byte cap, and are marked
+`regenerable-hash-only` in the complete index.
 Exceeding a capture or reader budget refuses the operation.
 
 For materialization, use `p1r_evidence_storage.command_text(row, enclosing)` for
