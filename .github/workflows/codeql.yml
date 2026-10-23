@@ -23,7 +23,5 @@ jobs:
       contents: read
     with:
       languages: csharp
-      # Complete tracked-source extraction exhausted the previous sixty-minute cap.
-      # Retain all source inputs, build mode and analysis settings with a bounded
-      # allowance for the enlarged input set and the following query phase.
+      config-file: ./.github/codeql/codeql-config.yml
       timeout-minutes: 120

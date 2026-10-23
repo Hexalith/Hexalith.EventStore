@@ -11,7 +11,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Runs the required shared `domain-ci.yml@main` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
 | **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser/governance/evidence scaffolding suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
-| **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Thin caller to the shared CodeQL reusable workflow using `@main`. |
+| **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Shared CodeQL workflow using `@main`, with the module configuration excluding archived `_bmad-output` source copies. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
 | **Release** | `.github/workflows/release.yml` | manual dispatch from the current green `main` tip | Exact-source preflight followed by an EventStore-owned job in the protected `production` environment. The job exchanges GitHub OIDC through `NuGet/login`, runs semantic-release, and uses immutable `Hexalith.Builds` actions for the approved EventStore container. |
@@ -45,6 +45,12 @@ Hexalith.Builds action and reusable workflow references generally use `@main`
 by Hexalith policy. The EventStore-owned publication job is the explicit
 exception: it checks out one exact Builds commit and invokes its local actions.
 Its third-party actions are SHA-pinned in `release.yml`.
+
+CodeQL keeps C# analysis without builds and the default security queries. Its
+[configuration](../.github/codeql/codeql-config.yml) excludes only `_bmad-output/**`,
+which contains historical project and source copies rather than active build
+inputs. Application, test, sample, tool, and documentation source remains in the
+scan. The separate secret-protection gate continues scanning historical evidence.
 
 ## Test Lanes
 

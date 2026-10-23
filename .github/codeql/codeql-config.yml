@@ -1,0 +1,6 @@
+name: EventStore active source
+
+# Historical evidence contains copied projects and source snapshots. Keep every
+# active source tree in the default scan while avoiding repeated archive extraction.
+paths-ignore:
+  - _bmad-output/**
