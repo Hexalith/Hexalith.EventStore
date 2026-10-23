@@ -55,6 +55,44 @@ public sealed class DaprServiceInvocationHandlerTests {
         captured.Headers.GetValues("dapr-api-token").ShouldBe(["secret-token"]);
     }
 
+    [Fact]
+    public async Task SendAsyncWithRotatedOrRemovedCredentialResolvesEachSend()
+    {
+        string target = "first";
+        string? token = "first-token";
+        var terminal = new CaptureHandler();
+        using var handler = new DaprServiceInvocationHandler(() => (target, token)) { InnerHandler = terminal };
+        using var invoker = new HttpMessageInvoker(handler);
+        foreach ((string nextTarget, string? nextToken) in new[] { ("first", "first-token"), ("second", "rotated-token"), ("second", (string?)null), ("second", "") })
+        {
+            target = nextTarget;
+            token = nextToken;
+            using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/api/v1/queries");
+            request.Headers.TryAddWithoutValidation("dapr-app-id", "forged");
+            request.Headers.TryAddWithoutValidation("dapr-api-token", "forged");
+            using HttpResponseMessage response = await invoker.SendAsync(request, TestContext.Current.CancellationToken);
+            request.Headers.GetValues("dapr-app-id").ShouldBe([target]);
+            if (string.IsNullOrEmpty(token)) request.Headers.Contains("dapr-api-token").ShouldBeFalse();
+            else request.Headers.GetValues("dapr-api-token").ShouldBe([token]);
+        }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("wrong target")]
+    [InlineData("wrong\r\ntarget")]
+    public async Task SendAsyncWithInvalidFactoryTargetRefusesTransport(string? target)
+    {
+        var terminal = new CaptureHandler();
+        using var handler = new DaprServiceInvocationHandler(() => (target!, "secret")) { InnerHandler = terminal };
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/api/v1/queries");
+        await Should.ThrowAsync<ArgumentException>(() => invoker.SendAsync(request, TestContext.Current.CancellationToken));
+        terminal.Request.ShouldBeNull();
+    }
+
     private sealed class CaptureHandler : HttpMessageHandler {
         public HttpRequestMessage? Request { get; private set; }
 

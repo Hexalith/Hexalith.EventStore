@@ -29,6 +29,47 @@ public sealed class DaprServiceInvocationRegistrationTests {
         request.Headers.GetValues("dapr-api-token").ShouldBe(["secret-token"]);
     }
 
+    [Fact]
+    public async Task FactoriesUseDependencyInjectionOncePerSend()
+    {
+        var settings = new Dictionary<string, string?> { ["target"] = "eventstore", ["token"] = "first" };
+        var terminal = new CaptureHandler();
+        int stateReads = 0;
+        var services = new ServiceCollection();
+        services.AddSingleton(settings);
+        services.AddTransient<ConflictingHeaderHandler>();
+        services.AddHttpClient("test", client => client.BaseAddress = new Uri("http://localhost"))
+            .AddHttpMessageHandler<ConflictingHeaderHandler>()
+            .AddEventStoreDaprServiceInvocation(
+                provider =>
+                {
+                    stateReads++;
+                    return provider.GetRequiredService<Dictionary<string, string?>>();
+                },
+                state => state["target"]!,
+                state => state["token"])
+            .ConfigurePrimaryHttpMessageHandler(() => terminal);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("test");
+        foreach (string? token in new[] { "first", "rotated", null })
+        {
+            settings["token"] = token;
+            using HttpResponseMessage response = await client.GetAsync("/api/v1/queries", TestContext.Current.CancellationToken);
+            terminal.Request.ShouldNotBeNull().Headers.GetValues("dapr-app-id").ShouldBe(["eventstore"]);
+            if (token is null) terminal.Request.Headers.Contains("dapr-api-token").ShouldBeFalse();
+            else terminal.Request.Headers.GetValues("dapr-api-token").ShouldBe([token]);
+        }
+        stateReads.ShouldBe(3);
+    }
+
+    [Fact]
+    public void FixedOverloadRetainsLiteralNullArgumentValidation()
+    {
+        IHttpClientBuilder builder = new ServiceCollection().AddHttpClient("test");
+        Should.Throw<ArgumentNullException>(() => builder.AddEventStoreDaprServiceInvocation(null!));
+        Should.Throw<ArgumentNullException>(() => builder.AddEventStoreDaprServiceInvocation(null!, null));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

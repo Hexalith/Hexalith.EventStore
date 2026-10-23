@@ -72,6 +72,35 @@ public static class EventStoreServiceCollectionExtensions {
         return builder.AddHttpMessageHandler(() => new DaprServiceInvocationHandler(appId, apiToken));
     }
 
+    /// <summary>Adds DAPR routing whose target and credential are resolved for every outbound send.</summary>
+    /// <remarks>
+    /// Add this extension after authentication and forwarding handlers so it retains final ownership
+    /// of the DAPR headers. The state factory uses the HTTP handler's service scope and is invoked once
+    /// per send, so both selectors see the same current state, including reloadable options.
+    /// </remarks>
+    /// <typeparam name="TState">The routing state supplied by dependency injection.</typeparam>
+    /// <param name="builder">The HTTP client builder.</param>
+    /// <param name="stateFactory">Resolves the current routing state once on each send.</param>
+    /// <param name="appIdSelector">Selects the authoritative DAPR application id.</param>
+    /// <param name="apiTokenSelector">Selects the optional authoritative DAPR API token.</param>
+    /// <returns>The HTTP client builder for additional configuration.</returns>
+    public static IHttpClientBuilder AddEventStoreDaprServiceInvocation<TState>(
+        this IHttpClientBuilder builder,
+        Func<IServiceProvider, TState> stateFactory,
+        Func<TState, string> appIdSelector,
+        Func<TState, string?> apiTokenSelector)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(stateFactory);
+        ArgumentNullException.ThrowIfNull(appIdSelector);
+        ArgumentNullException.ThrowIfNull(apiTokenSelector);
+        return builder.AddHttpMessageHandler(provider => new DaprServiceInvocationHandler(() =>
+        {
+            TState state = stateFactory(provider);
+            return (appIdSelector(state), apiTokenSelector(state));
+        }));
+    }
+
     /// <summary>
     /// Configures the absolute browser-facing gateway origin used to emit the command-status <c>Location</c>
     /// header on generated command controllers' <c>202 Accepted</c> responses (architecture invariant AD-17).
