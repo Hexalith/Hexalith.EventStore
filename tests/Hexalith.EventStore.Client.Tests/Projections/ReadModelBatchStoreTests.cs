@@ -391,7 +391,7 @@ public class ReadModelBatchStoreTests {
     }
 
     [Fact]
-    public async Task ExecuteAsync_CompactionRace_PreservesConcurrentValueAndDoesNotReportSuccess() {
+    public async Task ExecuteAsync_CompactionRace_PreservesSupersedingValueAndCompletesHistoricalReceipt() {
         var store = new InMemoryReadModelStore();
         bool raced = false;
         store.BatchFaultHook = (phase, ordinal, _) => {
@@ -405,10 +405,12 @@ public class ReadModelBatchStoreTests {
 
         ReadModelBatchResult result = await store.ExecuteAsync(WriteBatch());
 
-        result.IsSuccess.ShouldBeFalse();
-        result.Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
+        result.Status.ShouldBe(ReadModelBatchStatus.Completed);
         store.Snapshot<Detail>(Store, "detail:agg-1")!.Version.ShouldBe(99);
-        store.Snapshot<IndexEntry>(Store, "index:counterView").ShouldBeNull();
+        store.Snapshot<IndexEntry>(Store, "index:counterView")!.Count.ShouldBe(2);
+        store.BatchFaultHook = null;
+        (await store.ExecuteAsync(WriteBatch())).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
+        store.Snapshot<Detail>(Store, "detail:agg-1")!.Version.ShouldBe(99);
     }
 
     [Fact]

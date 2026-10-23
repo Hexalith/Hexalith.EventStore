@@ -68,6 +68,10 @@ public static class EventStoreServiceCollectionExtensions {
         string? apiToken = null) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        if (appId.Any(static character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '.' and not '_'))
+        {
+            throw new ArgumentException("The DAPR application id must contain only ASCII letters, digits, hyphens, dots or underscores.", nameof(appId));
+        }
 
         return builder.AddHttpMessageHandler(() => new DaprServiceInvocationHandler(appId, apiToken));
     }

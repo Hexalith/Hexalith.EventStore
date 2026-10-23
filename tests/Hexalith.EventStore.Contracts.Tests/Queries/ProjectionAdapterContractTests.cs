@@ -73,6 +73,20 @@ public class ProjectionAdapterContractTests {
             || dependencyName.StartsWith("Grpc.", StringComparison.OrdinalIgnoreCase)
             || s_forbiddenExactDependencyNames.Contains(dependencyName, StringComparer.OrdinalIgnoreCase);
 
+    [Theory]
+    [InlineData("ActorResponseMismatch", nameof(QueryAdapterFailureReason.ResponseMismatch), "actor-response-mismatch")]
+    [InlineData("ActorException", nameof(QueryAdapterFailureReason.QueryExecutionFailure), "actor-exception")]
+    [InlineData("ActorNotFoundInfrastructure", nameof(QueryAdapterFailureReason.ReadModelUnavailable), "actor-not-found-infrastructure")]
+    public void SemanticFailureAliasesPreserveLegacyConstantsAndWireValues(string legacy, string semantic, string wire)
+    {
+        System.Reflection.FieldInfo previous = typeof(QueryAdapterFailureReason).GetField(legacy)!;
+        System.Reflection.FieldInfo current = typeof(QueryAdapterFailureReason).GetField(semantic)!;
+        previous.GetRawConstantValue().ShouldBe(wire);
+        current.GetRawConstantValue().ShouldBe(wire);
+        previous.GetCustomAttributes(typeof(ObsoleteAttribute), false).ShouldHaveSingleItem();
+        QueryResult.Failure((string)current.GetRawConstantValue()!).ErrorMessage.ShouldBe(wire);
+    }
+
     [Fact]
     public void QueryEnvelope_IsPublicContractsWireDto() {
         QueryEnvelope sut = CreateEnvelope();
@@ -770,12 +784,12 @@ public class ProjectionAdapterContractTests {
     public void QueryAdapterFailureReason_DefinesStableCoarseCategories() {
         QueryAdapterFailureReason.MissingPayload.ShouldBe("missing-payload");
         QueryAdapterFailureReason.InvalidEnvelope.ShouldBe("invalid-envelope");
-        QueryAdapterFailureReason.ActorResponseMismatch.ShouldBe("actor-response-mismatch");
+        QueryAdapterFailureReason.ResponseMismatch.ShouldBe("actor-response-mismatch");
         QueryAdapterFailureReason.UnsupportedQueryType.ShouldBe("unsupported-query-type");
         QueryAdapterFailureReason.SerializationFailure.ShouldBe("serialization-failure");
-        QueryAdapterFailureReason.ActorException.ShouldBe("actor-exception");
+        QueryAdapterFailureReason.QueryExecutionFailure.ShouldBe("actor-exception");
         QueryAdapterFailureReason.UnknownQueryType.ShouldBe("unknown-query-type");
-        QueryAdapterFailureReason.ActorNotFoundInfrastructure.ShouldBe("actor-not-found-infrastructure");
+        QueryAdapterFailureReason.ReadModelUnavailable.ShouldBe("actor-not-found-infrastructure");
     }
 
     /// <summary>

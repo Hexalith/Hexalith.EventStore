@@ -501,7 +501,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -520,7 +520,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -539,7 +539,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -559,7 +559,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -578,7 +578,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -594,7 +594,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Theory]
@@ -617,7 +617,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -636,7 +636,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Theory]
@@ -659,7 +659,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -673,7 +673,7 @@ public class QueryRouterTests {
         QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
 
         result.Success.ShouldBeFalse();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -701,7 +701,7 @@ public class QueryRouterTests {
         QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
 
         result.Success.ShouldBeFalse();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -1044,7 +1044,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorResponseMismatch);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ResponseMismatch);
     }
 
     [Fact]
@@ -1060,7 +1060,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -1076,7 +1076,7 @@ public class QueryRouterTests {
         result.Success.ShouldBeFalse();
         result.NotFound.ShouldBeFalse();
         result.Payload.ShouldBeNull();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -1093,7 +1093,7 @@ public class QueryRouterTests {
         QueryRouterResult result = await router.RouteQueryAsync(CreateTestQuery());
 
         result.Success.ShouldBeFalse();
-        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 
     [Fact]
@@ -1129,7 +1129,7 @@ public class QueryRouterTests {
     public async Task RouteQueryAsync_OperationCanceledException_IsNotConvertedToAdapterFailure() {
         // Story AC #3: when the weak actor invocation observes an OperationCanceledException,
         // the same cancellation category must propagate — it must NOT be flattened into a
-        // QueryAdapterFailureReason.ActorException result.
+        // QueryAdapterFailureReason.QueryExecutionFailure result.
         //
         // ROOT CAUSE (investigated 2026-05-19): The .NET async state machine catches any
         // OperationCanceledException thrown inside an async method and transitions the returned

@@ -1,0 +1,73 @@
+{
+  "owner": "Hexalith.EventStore",
+  "baselineCommit": "cd193902a52abb02572528958436d79a8ae25b9a",
+  "proofKind": "Candidate source verification; final reviewed source commit is recorded by the parent adoption receipt.",
+  "suites": {
+    "eventstoreClient": {
+      "total": 2102,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 2,
+      "rawLogSha256": "6573827f9ae3e60bb36eb0d7925f3ed284a142602c0f626f5b9df8dd619a12ac",
+      "workingDirectory": "references/Hexalith.EventStore",
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll",
+      "buildCommand": "dotnet build tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0"
+    },
+    "eventstoreAdminUi": {
+      "total": 1121,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "rawLogSha256": "15c74854f53053f62790eb0dc35afa1b8877e23578f43d79d83ec9bdf412b33e",
+      "workingDirectory": "references/Hexalith.EventStore",
+      "command": "dotnet tests/Hexalith.EventStore.Admin.UI.Tests/bin/Debug/net10.0/Hexalith.EventStore.Admin.UI.Tests.dll",
+      "buildCommand": "dotnet build tests/Hexalith.EventStore.Admin.UI.Tests/Hexalith.EventStore.Admin.UI.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0"
+    },
+    "eventstoreSample": {
+      "total": 194,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "rawLogSha256": "925f58d6ca9a94f712621b49d76e14ce57e09e334c9e3afdf46176b0f4a40f1a",
+      "workingDirectory": "references/Hexalith.EventStore",
+      "command": "dotnet tests/Hexalith.EventStore.Sample.Tests/bin/Debug/net10.0/Hexalith.EventStore.Sample.Tests.dll",
+      "buildCommand": "dotnet build tests/Hexalith.EventStore.Sample.Tests/Hexalith.EventStore.Sample.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0"
+    },
+    "eventstoreContractsFocused": {
+      "total": 115,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "rawLogSha256": "4643ea55eb57fffe789bfb911858f32dc0cb577868ba809fd68103c965f3ddb4",
+      "workingDirectory": "references/Hexalith.EventStore",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -class '*ProjectionAdapterContractTests'",
+      "buildCommand": "dotnet build tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj -c Debug -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0"
+    },
+    "eventstoreClientFinalFocused": {
+      "workingDirectory": "references/Hexalith.EventStore",
+      "command": "dotnet tests/Hexalith.EventStore.Client.Tests/bin/Debug/net10.0/Hexalith.EventStore.Client.Tests.dll -class '*ReadModelBatchStoreTests' -class '*DaprReadModelBatchTests' -class '*ReadModelReviewTwoRegressionTests'",
+      "total": 249,
+      "errors": 0,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Final source after removing redundant completed-staging cleanup calls. Transaction-qualified retry verification remains exact.",
+      "rawLogSha256": "f4f3d5efb421eced23c684b3ccba6a3d490a0bd62b2944a29ca57ca9363397e0"
+    },
+    "eventstoreContractsFullBounded": {
+      "workingDirectory": "references/Hexalith.EventStore",
+      "command": "dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll",
+      "result": "Cancelled after approximately ten minutes in existing package/provenance fixtures; runner exited 58. Not a completed full-suite pass.",
+      "exitCode": 58,
+      "reportedTotal": 2404,
+      "reportedFailed": 0,
+      "reportedSkipped": 2,
+      "reportedNotRun": 0,
+      "reportedSeconds": 631.487,
+      "focusedFallback": "ProjectionAdapterContractTests: 115/115, zero skips.",
+      "ownedProcessCleanup": "SIGINT led to runner and observed child-process exit; no forced termination was needed.",
+      "rawLogSha256": "18ea910a1cefb3e7f08712314b01b60f233f8928cb738062c9a4084902d29f43"
+    }
+  },
+  "packagePublicationQualified": false,
+  "deploymentQualified": false
+}

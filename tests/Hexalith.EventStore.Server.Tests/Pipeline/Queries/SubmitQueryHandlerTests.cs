@@ -182,8 +182,8 @@ public class SubmitQueryHandlerTests {
     [Theory]
     [InlineData(QueryAdapterFailureReason.MissingPayload)]
     [InlineData(QueryAdapterFailureReason.SerializationFailure)]
-    [InlineData(QueryAdapterFailureReason.ActorResponseMismatch)]
-    [InlineData(QueryAdapterFailureReason.ActorException)]
+    [InlineData(QueryAdapterFailureReason.ResponseMismatch)]
+    [InlineData(QueryAdapterFailureReason.QueryExecutionFailure)]
     public async Task Handle_AdapterEdgeFailureReason_ThrowsQueryExecutionFailedException(string failureReason) {
         // Arrange
         IQueryRouter router = Substitute.For<IQueryRouter>();

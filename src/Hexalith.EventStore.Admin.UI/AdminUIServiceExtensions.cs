@@ -116,7 +116,7 @@ public static class AdminUIServiceExtensions {
             client.Timeout = TimeSpan.FromSeconds(30);
         })
             .AddHttpMessageHandler<AdminApiAuthorizationHandler>()
-            .AddEventStoreDaprServiceInvocation("eventstore-admin", daprApiToken);
+            .AddEventStoreDaprServiceInvocation(builder.Configuration["EventStore:AdminServer:AppId"] ?? "eventstore-admin", daprApiToken);
 
         return builder;
     }

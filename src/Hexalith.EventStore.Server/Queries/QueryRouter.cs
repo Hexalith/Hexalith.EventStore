@@ -127,8 +127,8 @@ public partial class QueryRouter : IQueryRouter {
                     .ConfigureAwait(false);
 
                 if (result is null) {
-                    Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ActorResponseMismatch);
-                    return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorResponseMismatch);
+                    Log.QueryExecutionFailed(_logger, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId, QueryAdapterFailureReason.ResponseMismatch);
+                    return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ResponseMismatch);
                 }
 
                 if (!result.Success) {
@@ -223,11 +223,11 @@ public partial class QueryRouter : IQueryRouter {
         }
         catch (Dapr.Actors.ActorMethodInvocationException ex) {
             Log.ActorInvocationFailed(_logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
-            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.QueryExecutionFailure);
         }
         catch (Exception ex) {
             Log.ActorInvocationFailed(_logger, ex, query.CorrelationId, query.Tenant, query.Domain, query.AggregateId, query.QueryType, actorId);
-            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
+            return new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.QueryExecutionFailure);
         }
     }
 

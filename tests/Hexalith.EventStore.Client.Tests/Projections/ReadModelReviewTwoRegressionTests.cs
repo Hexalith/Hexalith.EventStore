@@ -120,9 +120,9 @@ public sealed class ReadModelReviewTwoRegressionTests
         store.BatchFaultHook = null;
         store.SeedRaw("statestore", "model", Value(99));
         byte[] newer = store.SnapshotRaw("statestore", "model")!;
-        // The first retry cannot prove the candidate, but leaves the committed historical receipt.
-        // The next retry recognizes that exact terminal decision without reclaiming the newer row.
-        (await store.ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.Indeterminate);
+        // Both compaction and terminal retries recognize the historical decision while
+        // preserving the exact superseding ordinary row.
+        (await store.ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.Completed);
         (await store.ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
         store.SnapshotRaw("statestore", "model").ShouldBe(newer);
     }

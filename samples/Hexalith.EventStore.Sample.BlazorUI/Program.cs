@@ -19,9 +19,7 @@ builder.Services.AddFluentUIComponents();
 // Outbound bearer-token acquisition + attachment for calls to the protected EventStore gateway.
 // The UI host consumes EventStore through the platform gateway client; it exposes no REST endpoints
 // of its own, so no inbound authentication scheme is registered.
-EventStoreApiAccessTokenProvider.AddHttpClient(builder.Services);
-builder.Services.AddSingleton<EventStoreApiAccessTokenProvider>();
-builder.Services.AddTransient<EventStoreApiAuthorizationHandler>();
+builder.Services.AddSampleUiGatewayClient(builder.Configuration);
 
 // EventStore SignalR client — receives real-time "changed" signals
 builder.Services.AddSingleton(sp => new EventStoreSignalRClientOptions {
@@ -57,13 +55,6 @@ builder.Services.AddHostedService<SignalRClientStartup>();
 // AddServiceDiscovery() default a no-op. DAPR forwards the Authorization bearer header unchanged,
 // so EventStore JWT/RBAC/tenant enforcement is preserved. Both projection queries and command
 // submissions flow through this single typed gateway client — the UI hosts no generic command path.
-string daprHttpEndpoint = DaprHttpEndpointResolver.Resolve(builder.Configuration);
-string? daprApiToken = builder.Configuration["DAPR_API_TOKEN"];
-
-builder.Services.AddEventStoreGatewayClient(options => options.BaseAddress = new Uri(daprHttpEndpoint))
-    .AddHttpMessageHandler<EventStoreApiAuthorizationHandler>()
-    .AddEventStoreDaprServiceInvocation("eventstore", daprApiToken);
-builder.Services.AddScoped<EventStoreProjectionQueryClient>();
 
 WebApplication app = builder.Build();
 

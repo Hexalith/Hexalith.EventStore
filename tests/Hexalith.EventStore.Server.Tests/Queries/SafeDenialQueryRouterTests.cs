@@ -317,7 +317,7 @@ public class SafeDenialQueryRouterTests {
     // only Forbidden and genuine not-found collapse together.
     [Fact]
     public async Task RouteQueryAsync_NonForbiddenFailure_OptedInRoute_PassesThroughUnchanged() {
-        var failureResult = new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.ActorException);
+        var failureResult = new QueryRouterResult(Success: false, Payload: null, NotFound: false, ErrorMessage: QueryAdapterFailureReason.QueryExecutionFailure);
         IQueryRouter inner = Substitute.For<IQueryRouter>();
         _ = inner.RouteQueryAsync(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>()).Returns(failureResult);
         SafeDenialQueryRouter sut = CreateSut(inner, ("orders", "list-orders"));

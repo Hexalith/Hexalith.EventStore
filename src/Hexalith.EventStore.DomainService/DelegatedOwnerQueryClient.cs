@@ -25,7 +25,7 @@ public sealed class DelegatedOwnerQueryClient(DaprClient dapr, IHttpClientFactor
             || context!.Request.Headers[EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName].Count != 1)
             return QueryResult.Failure("safe-denial");
         if (string.IsNullOrWhiteSpace(workload) || string.IsNullOrWhiteSpace(key))
-            return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
+            return QueryResult.Failure(QueryAdapterFailureReason.QueryExecutionFailure);
         var request = new BoundOwnerQueryRequest(query, caller.Query.UserId)
         {
             OriginatingQuery = caller.OriginalQuery,
@@ -33,16 +33,16 @@ public sealed class DelegatedOwnerQueryClient(DaprClient dapr, IHttpClientFactor
         };
         string gateway = configuration["Authentication:QueryAuthority:GatewayWorkloadId"] ?? "eventstore";
         string? assertion = await issuer.IssueAsync(new(gateway, EventStoreWorkloadOperations.GatewayOwnerAuthorityQuery), cancellationToken).ConfigureAwait(false);
-        if (assertion is null) return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
+        if (assertion is null) return QueryResult.Failure(QueryAdapterFailureReason.QueryExecutionFailure);
         using HttpRequestMessage message = dapr.CreateInvokeMethodRequest(gateway, "api/v1/queries/owner-authority/workload", request);
         message.Headers.TryAddWithoutValidation(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName, assertion);
         message.Headers.TryAddWithoutValidation(BoundOwnerQueryProof.HeaderName, BoundOwnerQueryProof.Issue(request, workload, key, clock.GetUtcNow()));
         using HttpResponseMessage response = await clients.CreateClient().SendAsync(message, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
             return QueryResult.Failure("safe-denial");
-        if (!response.IsSuccessStatusCode) return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
+        if (!response.IsSuccessStatusCode) return QueryResult.Failure(QueryAdapterFailureReason.QueryExecutionFailure);
         SubmitQueryResponse? result = await response.Content.ReadFromJsonAsync<SubmitQueryResponse>(cancellationToken).ConfigureAwait(false);
         return result?.Success == true ? QueryResult.FromPayload(result.Payload, query.QueryType)
-            : QueryResult.Failure(QueryAdapterFailureReason.ActorResponseMismatch);
+            : QueryResult.Failure(QueryAdapterFailureReason.ResponseMismatch);
     }
 }

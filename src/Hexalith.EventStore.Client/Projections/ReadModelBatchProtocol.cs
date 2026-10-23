@@ -126,8 +126,7 @@ internal sealed partial class ReadModelBatchProtocol {
             }
 
             if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
-                return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
-                    && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
+                return await VerifyCompactedBatchAsync(cancellationToken).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified");
             }
@@ -249,8 +248,7 @@ internal sealed partial class ReadModelBatchProtocol {
             }
 
             if (marker.Status == ReadModelBatchMarkerStatus.Completed) {
-                return await VerifyOperationKeysAsync(cancellationToken).ConfigureAwait(false)
-                    && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
+                return await VerifyCompactedBatchAsync(cancellationToken).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified");
             }
@@ -392,7 +390,7 @@ internal sealed partial class ReadModelBatchProtocol {
 
             switch (marker.Status) {
                 case ReadModelBatchMarkerStatus.Completed:
-                    return await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
+                    return await VerifyCompactedBatchAsync(cancellationToken).ConfigureAwait(false)
                         ? ReadModelBatchResult.AlreadyCompleted(_fingerprint)
                         : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 case ReadModelBatchMarkerStatus.Committed:
@@ -726,7 +724,7 @@ internal sealed partial class ReadModelBatchProtocol {
                 }
 
                 RawStateEntry verified = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
-                if (!IsCompacted(operation, verified)) {
+                if (!IsTerminalOperationState(operation, verified)) {
                     return false;
                 }
             }
@@ -742,41 +740,10 @@ internal sealed partial class ReadModelBatchProtocol {
                     continue; // This historical expiring candidate never reclaims a later writer.
                 }
                 if (_ownerSelection is not null || _ownerSelections is not null) return false;
-                if (_batch.RetainManifestForRecovery)
-                {
-                    // Commit is the durable historical decision. An ordinary row may already be
-                    // superseded after compaction; never restore our older candidate over it.
-                    if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) return false;
-                    continue;
-                }
-                // The key holds neither our envelope nor the compacted value: a concurrent single-key
-                // writer overwrote it after the commit marker became durable. The committed marker is the
-                // durable visibility decision, so reclaim the key to the committed end-state once (a foreign
-                // envelope belonging to a different batch is left untouched and retried).
-                if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) {
-                    return false;
-                }
-
-                if (operation.Kind == ReadModelBatchOperationKind.Delete) {
-                    _ = await _accessor
-                        .TryDeleteAsync(operation.Key, current.ETag, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                else {
-                    _ = await _accessor
-                        .TryWriteAsync(
-                            operation.Key,
-                            operation.CanonicalValue,
-                            current.ETag,
-                            Retention(operation),
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-
-                RawStateEntry reclaimed = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
-                if (!IsCompacted(operation, reclaimed)) {
-                    return false;
-                }
+                // Commit records a historical decision. Once our envelope has disappeared,
+                // an ordinary write, delete or tombstone may have superseded it. Never replay
+                // our older candidate over that state, regardless of manifest retention.
+                if (current.Exists && ReadModelBatchEnvelope.IsEnvelope(current.Value.Span)) return false;
             }
 
             if (_injector is not null) {
@@ -1166,7 +1133,7 @@ internal sealed partial class ReadModelBatchProtocol {
 
             switch (marker.Status) {
                 case ReadModelBatchMarkerStatus.Completed:
-                    return await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
+                    return await VerifyCompactedBatchAsync(token).ConfigureAwait(false)
                         ? ReadModelBatchResult.Completed(_fingerprint)
                         : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 case ReadModelBatchMarkerStatus.Committed:
@@ -1210,8 +1177,7 @@ internal sealed partial class ReadModelBatchProtocol {
                 ReadModelBatchMarkerStatus.Committed => await CompactAndCompleteAsync(token).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "compaction-race"),
-                ReadModelBatchMarkerStatus.Completed => await VerifyOperationKeysAsync(token).ConfigureAwait(false)
-                    && await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
+                ReadModelBatchMarkerStatus.Completed => await VerifyCompactedBatchAsync(token).ConfigureAwait(false)
                     ? Staging(ReadModelBatchStagingStatus.Committed)
                     : Staging(ReadModelBatchStagingStatus.Indeterminate, "operation-unverified"),
                 ReadModelBatchMarkerStatus.Aborted => Staging(ReadModelBatchStagingStatus.Aborted),
@@ -1285,6 +1251,12 @@ internal sealed partial class ReadModelBatchProtocol {
                         && final.Deadline == deadline && final.Value.Span.SequenceEqual(operation.CanonicalValue.Span)
                     : entry.Value.Span.SequenceEqual(operation.CanonicalValue.Span));
 
+    /// <summary>Accepts exact compaction or superseding ordinary state only for unguarded batches.</summary>
+    private bool IsTerminalOperationState(ReadModelBatchOperation operation, RawStateEntry entry)
+        => IsCompacted(operation, entry)
+            || _ownerSelection is null && _ownerSelections is null
+                && (!entry.Exists || !ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span));
+
     private bool IsOwnParticipant(ReadModelBatchOperation operation, RawStateEntry entry)
     {
         ReadModelBatchEnvelope? envelope = ReadModelBatchEnvelope.FromBytes(entry.Value);
@@ -1302,8 +1274,7 @@ internal sealed partial class ReadModelBatchProtocol {
     private async Task<bool> VerifyCompactedBatchAsync(CancellationToken cancellationToken) {
         foreach (ReadModelBatchOperation operation in _batch.Operations) {
             RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
-            if (!IsCompacted(operation, entry)
-                && (!_batch.RetainManifestForRecovery || _ownerSelection is not null || _ownerSelections is not null || entry.Exists && ReadModelBatchEnvelope.IsEnvelope(entry.Value.Span))) {
+            if (!IsTerminalOperationState(operation, entry)) {
                 return false;
             }
         }

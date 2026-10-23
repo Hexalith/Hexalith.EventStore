@@ -28,6 +28,6 @@ public sealed class DaprDomainQueryInvokerFailureTests
             .Returns(new DomainServiceRegistration("projects", "process", "tenant", "projects", null));
         var invoker = new DaprDomainQueryInvoker(dapr, factory, resolver, NullLogger<DaprDomainQueryInvoker>.Instance);
         QueryResult result = await invoker.InvokeAsync(new("tenant", "projects", "project", "read", [], "corr", "actor"));
-        result.Success.ShouldBeFalse(); result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        result.Success.ShouldBeFalse(); result.ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
     }
 }

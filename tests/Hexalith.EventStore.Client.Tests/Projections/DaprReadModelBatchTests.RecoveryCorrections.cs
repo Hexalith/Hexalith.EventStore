@@ -9,6 +9,46 @@ namespace Hexalith.EventStore.Client.Tests.Projections;
 public partial class DaprReadModelBatchTests
 {
     [Theory]
+    [InlineData(ReadModelBatchPhase.AfterCommit, false, false)]
+    [InlineData(ReadModelBatchPhase.AfterCommit, false, true)]
+    [InlineData(ReadModelBatchPhase.AfterCommit, true, false)]
+    [InlineData(ReadModelBatchPhase.AfterCommit, true, true)]
+    [InlineData(ReadModelBatchPhase.BeforeCompaction, false, false)]
+    [InlineData(ReadModelBatchPhase.BeforeCompaction, false, true)]
+    [InlineData(ReadModelBatchPhase.BeforeReceipt, false, false)]
+    [InlineData(ReadModelBatchPhase.BeforeReceipt, false, true)]
+    public async Task NonRetainedCommittedBatchNeverReclaimsSupersedingOrdinaryState(
+        ReadModelBatchPhase phase, bool batchDelete, bool newerDelete)
+    {
+        using var client = new RecordingDaprClient();
+        client.SeedByteStore("detail", "{\"version\":0}"u8.ToArray());
+        var accessor = new DaprReadModelBatchStateAccessor(client, Store);
+        string etag = (await accessor.ReadAsync("detail", TestContext.Current.CancellationToken)).ETag;
+        ReadModelBatch batch = new(Scope(), [batchDelete
+            ? ReadModelBatchOperation.Delete("detail", ReadModelBatchConcurrency.Match(etag))
+            : ReadModelBatchOperation.Write("detail", new Detail(1), ReadModelBatchConcurrency.Match(etag))]);
+        var protocol = new ReadModelBatchProtocol(accessor, new(), NullLogger.Instance);
+        (await protocol.ExecuteAsync(batch, new PendingBatchRecoveryStopAtPhase(phase), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeFalse();
+        byte[] newer = "{\"erased\":true,\"version\":99}"u8.ToArray();
+        if (newerDelete)
+        {
+            var current = await accessor.ReadAsync("detail", TestContext.Current.CancellationToken);
+            if (current.Exists) (await accessor.TryDeleteAsync("detail", current.ETag, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        }
+        else client.SeedByteStore("detail", newer);
+        byte[] expected = client.ByteStoreValue("detail");
+        (await CreateStore(client).ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
+        (await CreateStore(client).ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
+        (await CreateStore(client).StageAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Committed);
+        (await CreateStore(client).CommitAsync(batch)).Status.ShouldBe(ReadModelBatchStagingStatus.Committed);
+        client.ByteStoreValue("detail").ShouldBe(expected);
+        ReadModelBatchMarker receipt = ReadModelBatchMarker.ReadProof(client.ByteStoreValue(Scope().ComputeMarkerKey()))!;
+        receipt.Status.ShouldBe(ReadModelBatchMarkerStatus.Completed);
+        receipt.OriginalManifest.ShouldBeNull(); receipt.OriginalManifestKey.ShouldBeNull();
+        client.ByteStoreContains(ReadModelBatchKeys.ManifestKey(Scope().ComputeScopeHash())).ShouldBeFalse();
+    }
+
+    [Theory]
     [InlineData(ReadModelBatchPhase.BeforeReceipt, false)]
     [InlineData(ReadModelBatchPhase.RecoveryReceiptWritten, false)]
     [InlineData(ReadModelBatchPhase.RecoveryManifestReclaimed, false)]

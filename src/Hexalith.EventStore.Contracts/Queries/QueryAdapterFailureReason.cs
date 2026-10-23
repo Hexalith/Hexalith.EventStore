@@ -34,7 +34,11 @@ public static class QueryAdapterFailureReason {
     /// <summary>
     /// The actor response shape was null or otherwise incompatible.
     /// </summary>
-    public const string ActorResponseMismatch = "actor-response-mismatch";
+    [Obsolete("Use ResponseMismatch; the legacy wire value is unchanged.")]
+    public const string ActorResponseMismatch = ResponseMismatch;
+
+    /// <summary>The query response shape was null or otherwise incompatible. Preserves the historical adapter wire value.</summary>
+    public const string ResponseMismatch = "actor-response-mismatch";
 
     /// <summary>
     /// The actor does not support the query type.
@@ -49,7 +53,11 @@ public static class QueryAdapterFailureReason {
     /// <summary>
     /// Actor invocation failed before a valid adapter response was returned.
     /// </summary>
-    public const string ActorException = "actor-exception";
+    [Obsolete("Use QueryExecutionFailure; the legacy wire value is unchanged.")]
+    public const string ActorException = QueryExecutionFailure;
+
+    /// <summary>Query execution failed before a valid adapter response was returned. Preserves the historical adapter wire value.</summary>
+    public const string QueryExecutionFailure = "actor-exception";
 
     /// <summary>
     /// The query type is unknown to the projection adapter.
@@ -59,7 +67,11 @@ public static class QueryAdapterFailureReason {
     /// <summary>
     /// The actor runtime reported missing actor registration or address information.
     /// </summary>
-    public const string ActorNotFoundInfrastructure = "actor-not-found-infrastructure";
+    [Obsolete("Use ReadModelUnavailable; the legacy wire value is unchanged.")]
+    public const string ActorNotFoundInfrastructure = ReadModelUnavailable;
+
+    /// <summary>The read model or query infrastructure is unavailable. Preserves the historical adapter wire value.</summary>
+    public const string ReadModelUnavailable = "actor-not-found-infrastructure";
 
     /// <summary>
     /// The actor returned a 403 Forbidden response; the caller is not permitted to execute this query.

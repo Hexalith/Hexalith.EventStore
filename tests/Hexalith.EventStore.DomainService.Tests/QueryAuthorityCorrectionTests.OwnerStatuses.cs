@@ -88,7 +88,7 @@ public sealed partial class QueryAuthorityCorrectionTests
         handler.ExecuteAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(_ => client.InvokeAsync(new("tenant", "folders", "folder", "read")));
         await using ServiceProvider provider = new ServiceCollection().AddSingleton<IHttpContextAccessor>(accessor).AddSingleton(handler).BuildServiceProvider();
         QueryResult result = await DomainQueryDispatcher.ExecuteAsync(provider, query);
-        result.ErrorMessage.ShouldBe(status == HttpStatusCode.NotFound ? "safe-denial" : QueryAdapterFailureReason.ActorException);
+        result.ErrorMessage.ShouldBe(status == HttpStatusCode.NotFound ? "safe-denial" : QueryAdapterFailureReason.QueryExecutionFailure);
         result.PayloadBytes.ShouldBeNull();
     }
 }

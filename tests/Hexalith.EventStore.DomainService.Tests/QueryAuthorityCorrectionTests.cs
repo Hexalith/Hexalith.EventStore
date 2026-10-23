@@ -57,7 +57,7 @@ public sealed partial class QueryAuthorityCorrectionTests
         handler.Domain.Returns(query.Domain); handler.QueryType.Returns(query.QueryType);
         handler.ExecuteAsync(Arg.Any<QueryEnvelope>(), Arg.Any<CancellationToken>()).Returns(_ => client.InvokeAsync(new("tenant", "folders", "folder", "read")));
         await using ServiceProvider provider = new ServiceCollection().AddSingleton<IHttpContextAccessor>(accessor).AddSingleton(handler).BuildServiceProvider();
-        (await DomainQueryDispatcher.ExecuteAsync(provider, query)).ErrorMessage.ShouldBe(QueryAdapterFailureReason.ActorException);
+        (await DomainQueryDispatcher.ExecuteAsync(provider, query)).ErrorMessage.ShouldBe(QueryAdapterFailureReason.QueryExecutionFailure);
         (await client.InvokeAsync(new("tenant", "folders", "folder", "read"))).ErrorMessage.ShouldBe("safe-denial");
     }
 

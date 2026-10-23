@@ -48,14 +48,14 @@ public sealed class DaprDomainQueryInvoker(
             using HttpResponseMessage httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             if (httpResponse.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden) return QueryResult.Failure("safe-denial");
             if (!httpResponse.IsSuccessStatusCode && httpResponse.StatusCode != HttpStatusCode.BadRequest)
-                return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
+                return QueryResult.Failure(QueryAdapterFailureReason.QueryExecutionFailure);
             QueryResult? result = await httpResponse.Content
                 .ReadFromJsonAsync<QueryResult>(cancellationToken)
                 .ConfigureAwait(false);
             if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
                 return QueryResult.Failure(result?.ErrorMessage is QueryAdapterFailureReason.InvalidEnvelope or QueryAdapterFailureReason.InvalidCursor
-                    ? result.ErrorMessage : QueryAdapterFailureReason.ActorException);
-            return result ?? QueryResult.Failure(QueryAdapterFailureReason.ActorResponseMismatch);
+                    ? result.ErrorMessage : QueryAdapterFailureReason.QueryExecutionFailure);
+            return result ?? QueryResult.Failure(QueryAdapterFailureReason.ResponseMismatch);
         }
         catch (OperationCanceledException) {
             throw;
@@ -69,7 +69,7 @@ public sealed class DaprDomainQueryInvoker(
                 query.Domain,
                 query.QueryType,
                 query.CorrelationId);
-            return QueryResult.Failure(QueryAdapterFailureReason.ActorException);
+            return QueryResult.Failure(QueryAdapterFailureReason.QueryExecutionFailure);
         }
     }
 }
