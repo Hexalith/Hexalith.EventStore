@@ -230,7 +230,7 @@ internal sealed class RecordingDaprClient : DaprClient
     public override async Task<(ReadOnlyMemory<byte>, string)> GetByteStateAndETagAsync(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         BeforeReadByteState?.Invoke(key);
-        if (BeforeReadByteStateAsync is not null) await BeforeReadByteStateAsync(key, cancellationToken);
+        if (BeforeReadByteStateAsync is not null) await BeforeReadByteStateAsync(key, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return _byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
             ? (entry.Value, entry.ETag) : (ReadOnlyMemory<byte>.Empty, string.Empty);
@@ -244,13 +244,11 @@ internal sealed class RecordingDaprClient : DaprClient
 
     public override Task<Dictionary<string, string>> GetSecretAsync(string storeName, string key, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-    public override Task<(TValue, string)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
+    public override async Task<(TValue, string)> GetStateAndETagAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         if (!PersistTypedState) throw new NotSupportedException();
-        return _byteStore.TryGetValue(key, out (byte[] Value, string ETag) entry)
-            ? Task.FromResult((JsonSerializer.Deserialize<TValue>(entry.Value, JsonSerializerOptions), entry.ETag))
-            : Task.FromResult<(TValue, string)>((default, string.Empty));
+        (ReadOnlyMemory<byte> bytes, string etag) = await GetByteStateAndETagAsync(storeName, key, consistencyMode, metadata, cancellationToken).ConfigureAwait(false);
+        return bytes.IsEmpty ? (default, etag) : (JsonSerializer.Deserialize<TValue>(bytes.Span, JsonSerializerOptions), etag);
     }
 
     public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode, IReadOnlyDictionary<string, string> metadata, CancellationToken cancellationToken)
