@@ -8,7 +8,7 @@ internal sealed class DaprServiceInvocationHandler : DelegatingHandler
     internal DaprServiceInvocationHandler(string appId, string? apiToken)
         : this(() => (appId, apiToken))
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        ValidateAppId(appId);
     }
 
     internal DaprServiceInvocationHandler(Func<(string AppId, string? ApiToken)> routingFactory)
@@ -17,17 +17,23 @@ internal sealed class DaprServiceInvocationHandler : DelegatingHandler
         _routingFactory = routingFactory;
     }
 
+    /// <summary>Validates the same target syntax for fixed and per-send SDK routing.</summary>
+    internal static void ValidateAppId(string appId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
+        if (appId.Any(static character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '.' and not '_'))
+        {
+            throw new ArgumentException("The DAPR application id must contain only ASCII letters, digits, hyphens, dots or underscores.", nameof(appId));
+        }
+    }
+
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         (string appId, string? apiToken) = _routingFactory();
-        ArgumentException.ThrowIfNullOrWhiteSpace(appId);
-        if (appId.Any(static character => char.IsWhiteSpace(character) || char.IsControl(character)))
-        {
-            throw new ArgumentException("The DAPR application id must not contain whitespace or control characters.", nameof(appId));
-        }
+        ValidateAppId(appId);
 
         _ = request.Headers.Remove("dapr-app-id");
         _ = request.Headers.TryAddWithoutValidation("dapr-app-id", appId);

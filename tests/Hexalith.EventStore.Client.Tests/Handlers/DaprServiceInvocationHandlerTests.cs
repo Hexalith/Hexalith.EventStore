@@ -1,4 +1,6 @@
 using Hexalith.EventStore.Client.Handlers;
+using Hexalith.EventStore.Client.Registration;
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -93,6 +95,38 @@ public sealed class DaprServiceInvocationHandlerTests {
         using var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/api/v1/queries");
         await Should.ThrowAsync<ArgumentException>(() => invoker.SendAsync(request, TestContext.Current.CancellationToken));
         terminal.Request.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("eventstore/session")]
+    [InlineData("eventstore:session")]
+    [InlineData("éventstore")]
+    [InlineData("eventstore?session")]
+    [InlineData("eventstore#session")]
+    public async Task GenericRegistrationRejectsInvalidTargetsAtSend(string target)
+    {
+        var terminal = new CaptureHandler();
+        var services = new ServiceCollection();
+        services.AddHttpClient("runtime").ConfigurePrimaryHttpMessageHandler(() => terminal)
+            .AddEventStoreDaprServiceInvocation(_ => target, state => state, _ => (string?)null);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("runtime");
+        await Should.ThrowAsync<ArgumentException>(() => client.GetAsync("http://localhost/api", TestContext.Current.CancellationToken));
+        terminal.Request.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GenericRegistrationAcceptsTheCompleteFixedTargetSyntax()
+    {
+        const string target = "EventStore_session-a.1";
+        var terminal = new CaptureHandler();
+        var services = new ServiceCollection();
+        services.AddHttpClient("runtime").ConfigurePrimaryHttpMessageHandler(() => terminal)
+            .AddEventStoreDaprServiceInvocation(_ => target, state => state, _ => (string?)null);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("runtime");
+        using HttpResponseMessage response = await client.GetAsync("http://localhost/api", TestContext.Current.CancellationToken);
+        terminal.Request!.Headers.GetValues("dapr-app-id").ShouldBe([target]);
     }
 
     private sealed class CaptureHandler : HttpMessageHandler {

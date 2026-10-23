@@ -793,7 +793,6 @@ internal sealed partial class ReadModelBatchProtocol {
             }
         }
 
-        if (_batch.RetainManifestForRecovery && !await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)) return false;
         return await VerifyCompactedBatchAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -1272,6 +1271,13 @@ internal sealed partial class ReadModelBatchProtocol {
             : entry.Exists && entry.Value.Span.SequenceEqual(envelope.PreviousBytes().Span);
 
     private async Task<bool> VerifyCompactedBatchAsync(CancellationToken cancellationToken) {
+        if (_batch.RetainManifestForRecovery)
+        {
+            (ReadModelBatchMarker? retained, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
+            if (retained is null || retained.Status != ReadModelBatchMarkerStatus.Completed
+                || !string.Equals(retained.Fingerprint, _fingerprint, StringComparison.Ordinal)
+                || !await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)) return false;
+        }
         foreach (ReadModelBatchOperation operation in _batch.Operations) {
             RawStateEntry entry = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
             if (!IsTerminalOperationState(operation, entry)) {
@@ -1283,7 +1289,8 @@ internal sealed partial class ReadModelBatchProtocol {
         bool complete = marker is not null
             && marker.Status == ReadModelBatchMarkerStatus.Completed
             && string.Equals(marker.Fingerprint, _fingerprint, StringComparison.Ordinal);
-        return complete && await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
+        return complete && (_batch.RetainManifestForRecovery
+            || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false));
     }
 
     private async Task<bool> CleanupOriginalManifestAsync(CancellationToken cancellationToken)

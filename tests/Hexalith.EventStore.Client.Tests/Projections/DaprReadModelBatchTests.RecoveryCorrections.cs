@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Hexalith.EventStore.Client.Projections;
+using Hexalith.EventStore.Contracts.Projections;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 
@@ -8,6 +9,48 @@ namespace Hexalith.EventStore.Client.Tests.Projections;
 
 public partial class DaprReadModelBatchTests
 {
+    [Fact]
+    public async Task OtherBatchPendingEnvelopeSurvivesNonRetainedRecovery()
+    {
+        using var client = new RecordingDaprClient();
+        var accessor = new DaprReadModelBatchStateAccessor(client, Store);
+        var original = new ReadModelBatch(Scope(), [ReadModelBatchOperation.Write("detail", new Detail(1), ReadModelBatchConcurrency.CreateOnly)]);
+        var protocol = new ReadModelBatchProtocol(accessor, new(), NullLogger.Instance);
+        (await protocol.ExecuteAsync(original, new PendingBatchRecoveryStopAtPhase(ReadModelBatchPhase.BeforeReceipt), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeFalse();
+        ReadModelBatchMarker.ReadProof(client.ByteStoreValue(original.Scope.ComputeMarkerKey()))!.Status.ShouldBe(ReadModelBatchMarkerStatus.Committed);
+        string etag = (await accessor.ReadAsync("detail", TestContext.Current.CancellationToken)).ETag;
+        var competing = new ReadModelBatch(Scope() with { BatchId = "competing-dispatch" },
+            [ReadModelBatchOperation.Write("detail", new Detail(2), ReadModelBatchConcurrency.Match(etag))]);
+        (await new ReadModelBatchProtocol(accessor, new(), NullLogger.Instance).ExecuteAsync(competing,
+            new PendingBatchRecoveryStopAtPhase(ReadModelBatchPhase.AfterInstallOperation), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeFalse();
+        byte[] pending = client.ByteStoreValue("detail");
+        ReadModelBatchEnvelope.IsEnvelope(pending).ShouldBeTrue();
+
+        (await CreateStore(client).ExecuteAsync(original)).IsSuccess.ShouldBeFalse();
+        client.ByteStoreValue("detail").ShouldBe(pending);
+    }
+
+    [Fact]
+    public async Task GuardedCommittedBatchCannotAuthorizeSupersedingOrdinaryState()
+    {
+        using var client = new RecordingDaprClient();
+        var accessor = new DaprReadModelBatchStateAccessor(client, Store);
+        ReadModelBatchScope scope = Scope();
+        var owner = new ProjectionOwnerSelection(1, scope.TenantId, scope.Domain, scope.AggregateId,
+            scope.ProjectionType, "owner-1", "generation-1", 2, scope.BatchId, scope.BatchId, "version-2");
+        const string key = "tenant-1:counter:agg-1:counterView";
+        var original = new ReadModelBatch(scope, [ReadModelBatchOperation.Write(key,
+            new { Count = 2, ProjectionVersion = owner.FreshnessVersion, ProjectionOwner = owner }, ReadModelBatchConcurrency.CreateOnly)]) { OwnerSelection = owner };
+        var protocol = new ReadModelBatchProtocol(accessor, new(), NullLogger.Instance);
+        (await protocol.ExecuteAsync(original, new PendingBatchRecoveryStopAtPhase(ReadModelBatchPhase.BeforeReceipt), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeFalse();
+        ReadModelBatchMarker.ReadProof(client.ByteStoreValue(scope.ComputeMarkerKey()))!.Status.ShouldBe(ReadModelBatchMarkerStatus.Committed);
+        byte[] newer = "{\"erased\":true,\"version\":99}"u8.ToArray();
+        client.SeedByteStore(key, newer);
+
+        (await CreateStore(client).ExecuteAsync(original)).IsSuccess.ShouldBeFalse();
+        client.ByteStoreValue(key).ShouldBe(newer);
+    }
+
     [Theory]
     [InlineData(ReadModelBatchPhase.AfterCommit, false, false)]
     [InlineData(ReadModelBatchPhase.AfterCommit, false, true)]
@@ -87,6 +130,30 @@ public partial class DaprReadModelBatchTests
             ReadModelBatchEnvelope.FromBytes(client.ByteStoreValue("detail")).ShouldBeNull();
             (await restarted.ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
         }
+    }
+
+    [Theory]
+    [InlineData(ReadModelBatchPhase.RecoveryReceiptWritten, 10)]
+    [InlineData(ReadModelBatchPhase.RecoveryManifestReclaimed, 10)]
+    [InlineData(ReadModelBatchPhase.RecoveryReceiptWritten, 20_000)]
+    [InlineData(ReadModelBatchPhase.RecoveryManifestReclaimed, 20_000)]
+    public async Task DirectExecuteRetryFinishesOwnedRetainedAnchorBeforeTerminalVerification(ReadModelBatchPhase interruption, int size)
+    {
+        using var client = new RecordingDaprClient();
+        ReadModelBatch batch = new(Scope(), [ReadModelBatchOperation.Write("index", new IndexEntry(1), ReadModelBatchConcurrency.CreateOnly),
+            ReadModelBatchOperation.Write("detail", new { Name = new string('x', size) }, ReadModelBatchConcurrency.CreateOnly)]) { RetainManifestForRecovery = true };
+        var protocol = new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, Store), new(), NullLogger.Instance);
+        (await protocol.ExecuteAsync(batch, new PendingBatchRecoveryStopAtPhase(interruption), TestContext.Current.CancellationToken)).IsSuccess.ShouldBeFalse();
+        ReadModelBatchMarker.ReadProof(client.ByteStoreValue(batch.Scope.ComputeMarkerKey()))!.Status.ShouldBe(ReadModelBatchMarkerStatus.Completed);
+        ReadModelBatchEnvelope.FromBytes(client.ByteStoreValue("detail")).ShouldNotBeNull();
+        client.SeedByteStore("index", "{\"count\":99}"u8.ToArray());
+        byte[] superseding = client.ByteStoreValue("index");
+        (await CreateStore(client).ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
+        client.ByteStoreValue("index").ShouldBe(superseding);
+        ReadModelBatchEnvelope.FromBytes(client.ByteStoreValue("detail")).ShouldBeNull();
+        JsonDocument.Parse(client.ByteStoreValue("detail")).RootElement.GetProperty("name").GetString()!.Length.ShouldBe(size);
+        client.ByteStoreContains(ReadModelBatchKeys.ManifestKey(batch.Scope.ComputeScopeHash())).ShouldBeFalse();
+        (await CreateStore(client).ExecuteAsync(batch)).Status.ShouldBe(ReadModelBatchStatus.AlreadyCompleted);
     }
 
     [Theory]
