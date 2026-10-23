@@ -121,27 +121,6 @@ public sealed partial class SecretsProtectionTests
         });
     }
 
-    /// <summary>Scans the preserved real asset bytes, with no filename or content-hash exemption.</summary>
-    [Theory]
-    [InlineData("oq8-correction-20261017", "01e4ea21f085f56721f17b47f8718c9037a1c0ed4c81b7a7e2fbca11cf35770a")]
-    [InlineData("oq8-correction-20261017", "de9ac6ba4361a2de5d82ef00565764530cdbe39314bed45b076f2cceb93d5c30")]
-    [InlineData("runtime-corrections-20261017", "01e4ea21f085f56721f17b47f8718c9037a1c0ed4c81b7a7e2fbca11cf35770a.json")]
-    [InlineData("runtime-corrections-20261017", "0a566ae5b421fb192ebdad20b2ccdafcb55c601847e01cac8b0ddfe0bfcba1be.json")]
-    public void NuGetEvidenceMetadata_ActualHistoricalAssetsRemainScanned(string directory, string asset)
-    {
-        string original = "_bmad-output/implementation-artifacts/evidence/story-6-4/" + directory + "/asset-bytes/" + asset;
-        string content = ReadTrackedText(original).ShouldNotBeNull();
-        WithEvidenceRepository(root =>
-        {
-            const string path = "docs/renamed-capture";
-            WriteEvidenceFile(root, path, System.Text.Encoding.UTF8.GetBytes(content));
-            ScanTrackedFile(path, root).ShouldBeEmpty();
-            content = content.Insert(1, "\"pass" + "word\":\"" + RandomSecret() + "\",\n");
-            WriteEvidenceFile(root, path, System.Text.Encoding.UTF8.GetBytes(content));
-            ScanTrackedFile(path, root).ShouldBe([path + ":1"]);
-        });
-    }
-
     private static JsonObject CreateNuGetEvidenceMetadata(string package, string shape)
     {
         const string version = "10.0.0.0";

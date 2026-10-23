@@ -1,1 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n 'test.*(Source|source|Root|root|Wait|wait|Dirty|dirty|Finite|finite|Unenrolled|Shared|shared|Interrupt|interrupt|Cleanup|cleanup|Pending|pending|Failed|failed|Substitut|substitut)' tools/tests/test_p1r_*.py",workdir:"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",max_output_tokens:8500}));

@@ -1,7 +1,0 @@
-{
-  "scope": "unchanged owner-selected inputs copied for bounded control inside allowed private mount; no qualification reuse",
-  "source": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-6508b7c575884cce90582e036e06e6e8/owner-inputs.json",
-  "source_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
-  "copy": "/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-input-copy/owner-inputs.json",
-  "copy_sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1"
-}

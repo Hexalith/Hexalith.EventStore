@@ -1,9 +1,0 @@
-{
-  "source_files": 6518,
-  "all_final_run_inputs_unchanged": true,
-  "before": "final-source-before.json",
-  "after": "delivery-source-after.json",
-  "before_sha256": "417e217752419924d62e86d20186e1cf72fc8c3ac9899d21d8b1522ed9771949",
-  "after_sha256": "648decbc7b05605e3893d77aa21ae757f4e9b4cfd3c9aa3c87661019e848b28f",
-  "all_original_attempt_bindings_retained": true
-}

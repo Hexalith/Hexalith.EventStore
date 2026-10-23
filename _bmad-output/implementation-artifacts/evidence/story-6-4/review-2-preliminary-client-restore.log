@@ -1,4 +1,0 @@
-  Determining projects to restore...
-  Restored /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.TestContracts/Hexalith.EventStore.Client.TestContracts.csproj (in 229 ms).
-  Restored /home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Client.Tests/Hexalith.EventStore.Client.Tests.csproj (in 535 ms).
-  10 of 12 projects are up-to-date for restore.

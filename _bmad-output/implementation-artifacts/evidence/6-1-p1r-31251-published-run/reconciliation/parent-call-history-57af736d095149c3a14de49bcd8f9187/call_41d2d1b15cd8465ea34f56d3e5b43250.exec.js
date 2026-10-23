@@ -1,1 +1,0 @@
-text(await tools.exec_command({cmd:"sed -n '325,432p' tools/p1r_qualification.py; sed -n '1,140p' tools/tests/test_p1r_qualification.py",workdir:load("p1r_31251_run_state").integration_root,max_output_tokens:6000}));

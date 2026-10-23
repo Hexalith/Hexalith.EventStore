@@ -32,7 +32,12 @@ public sealed class DaprServiceInvocationRegistrationTests {
     [Fact]
     public async Task FactoriesUseDependencyInjectionOncePerSend()
     {
-        var settings = new Dictionary<string, string?> { ["target"] = "eventstore", ["token"] = "first" };
+        string rotatedToken = Guid.NewGuid().ToString("N");
+        var settings = new Dictionary<string, string?>
+        {
+            ["target"] = "eventstore",
+            ["token"] = Guid.NewGuid().ToString("N"),
+        };
         var terminal = new CaptureHandler();
         int stateReads = 0;
         var services = new ServiceCollection();
@@ -51,7 +56,7 @@ public sealed class DaprServiceInvocationRegistrationTests {
             .ConfigurePrimaryHttpMessageHandler(() => terminal);
         using ServiceProvider provider = services.BuildServiceProvider();
         using HttpClient client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("test");
-        foreach (string? token in new[] { "first", "rotated", null })
+        foreach (string? token in new[] { settings["token"], rotatedToken, null })
         {
             settings["token"] = token;
             using HttpResponseMessage response = await client.GetAsync("/api/v1/queries", TestContext.Current.CancellationToken);

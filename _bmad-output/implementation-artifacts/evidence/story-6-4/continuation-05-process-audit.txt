@@ -1,3 +1,0 @@
-No owned EventStore test/application/sidecar processes remain.
-Unrelated .NET/Dapr processes were left untouched.
-Existing shared Dapr placement/scheduler/Redis/Zipkin containers were left untouched.

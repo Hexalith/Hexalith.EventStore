@@ -1,8 +1,0 @@
-⧗   --- input ---
-docs(ci): record verified v3.122.0 publication
-
-Retain package, source workflow, container and commitlint verification evidence.
-Mark the reviewed repair complete after successful release and NuGet downloads.
-
-[skip ci]
-✔   found 0 problems, 0 warnings

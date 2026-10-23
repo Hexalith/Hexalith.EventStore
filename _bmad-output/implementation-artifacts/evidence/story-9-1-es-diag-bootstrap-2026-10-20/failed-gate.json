@@ -1,5 +1,0 @@
-{
-  "gate": "G-BASELINE",
-  "reason": "PRD section 11.4 requires one validated, owner-approved reconciled manifest and closed or revoked corrective authorizations. No such manifest or defined general baseline-validator lane is established at this source revision. This is a document-grounded failure observation; no general baseline validator was executed.",
-  "result": "FAIL"
-}

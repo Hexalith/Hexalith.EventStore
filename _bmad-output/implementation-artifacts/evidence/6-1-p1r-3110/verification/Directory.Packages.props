@@ -1,7 +1,0 @@
-<Project>
-  <PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup>
-  <ItemGroup>
-    <PackageVersion Include="Hexalith.EventStore.Server" Version="[$(EventStoreVersion)]" />
-    <PackageVersion Include="Hexalith.EventStore.DomainService" Version="[$(EventStoreVersion)]" />
-  </ItemGroup>
-</Project>

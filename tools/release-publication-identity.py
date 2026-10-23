@@ -31,7 +31,7 @@ def main():
         if os.environ.get("GITHUB_EVENT_NAME") != "workflow_dispatch":
             publisher._fail("run-identity-invalid", "Publication requires an explicit workflow dispatch.")
         source_proof = None
-        for workflow in ("ci.yml", "p1r-qualification.yml", "commitlint.yml"):
+        for workflow in ("ci.yml", "commitlint.yml"):
             proof = publisher.prove_current_green_source(
                 arguments.repository, arguments.source_sha, arguments.source_branch,
                 workflow, os.environ.get("GITHUB_TOKEN", ""),

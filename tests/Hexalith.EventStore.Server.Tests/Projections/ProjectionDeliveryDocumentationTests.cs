@@ -7,7 +7,7 @@ public sealed class ProjectionDeliveryDocumentationTests {
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 
     [Fact]
-    public void ConceptAndRunbook_GuardIdentityBoundsMigrationAndEvidenceLinks() {
+    public void ConceptAndRunbook_GuardIdentityBoundsMigrationAndRunbookLink() {
         string concept = File.ReadAllText(Path.Combine(_root, "docs", "concepts", "projection-delivery.md"));
         string cutover = File.ReadAllText(Path.Combine(_root, "docs", "operations", "projection-delivery-v2-cutover.md"));
         string envelope = File.ReadAllText(Path.Combine(_root, "docs", "concepts", "event-envelope.md"));
@@ -18,7 +18,6 @@ public sealed class ProjectionDeliveryDocumentationTests {
         concept.ShouldContain("ReservationLease");
         concept.ShouldContain("delivery-reconciliation");
         concept.ShouldContain("projection-delivery-v2-cutover.md");
-        concept.ShouldContain("projection-delivery-v2-evidence.md");
         cutover.ShouldContain("not a rolling upgrade");
         cutover.ShouldContain("rolling downgrade is forbidden");
         envelope.ShouldContain("persisted EventStore `messageId`");

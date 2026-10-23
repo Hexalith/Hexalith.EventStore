@@ -1,9 +1,0 @@
-{
-  "historicalPacket": "qualification-20261017-live-release-full.json",
-  "historicalHead": "77d9af18a54d92506e310fe5a45021a395e66f60",
-  "currentHead": "7842a1fb81aa329ecac6271d885b959b40522767",
-  "historicalSourceFiles": 9643,
-  "currentSourceFiles": 9643,
-  "changedInputs": [],
-  "scope": "Source-input equality at runtime-correction entry only; no relabeling of historical execution or formal acceptance."
-}

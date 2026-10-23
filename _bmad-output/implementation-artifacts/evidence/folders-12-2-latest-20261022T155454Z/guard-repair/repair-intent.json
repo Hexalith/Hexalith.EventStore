@@ -1,7 +1,0 @@
-{
-  "utc": "2026-10-22T17:15:36.637629+00:00",
-  "origin_path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Security/SecretsProtectionTests.cs",
-  "origin_before_sha256": "5679c4995b5019aa02b3fa2decc77c1d38c5d5ff6c42eca97a2a715fdf17233a",
-  "selected_initial_sha256": "452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e",
-  "scope": "Only two cursor-advance assignments will be changed; preserve all other current origin edits. Snapshot2 is based on the selected initial snapshot, with only this test-only repair and its new regressions."
-}

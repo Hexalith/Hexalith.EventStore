@@ -49,7 +49,7 @@ Automatic reconnect and internal group rejoin restore future notification delive
 
 ## Smoke-Test Evidence Pattern
 
-For future sample UI stories, record smoke-test evidence in the story's Dev Agent Record or under `_bmad-output/test-artifacts/{story-id}/`.
+For future sample UI stories, record smoke-test results in the story's Dev Agent Record. Screenshots, traces and logs stay local scratch or CI artifacts; they are not committed.
 
 Use this minimum evidence block:
 

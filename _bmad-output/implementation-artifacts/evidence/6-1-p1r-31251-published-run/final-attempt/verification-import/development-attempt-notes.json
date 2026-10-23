@@ -1,5 +1,0 @@
-{
-  "readiness-red.json": "Initial invocation named a nonexistent class; no implementation result. Literal command and loader error retained.",
-  "readiness-red-attempt2.json": "Both new positive canonical GET tests exercised the original finite grammar and refused as expected.",
-  "readiness-green.json": "25-test class import via dotted package lacked tools/tests on sys.path; five isolation-fixture imports failed. New readiness controls themselves passed. Discovery grammar and explicit PYTHONPATH correction are recorded separately."
-}

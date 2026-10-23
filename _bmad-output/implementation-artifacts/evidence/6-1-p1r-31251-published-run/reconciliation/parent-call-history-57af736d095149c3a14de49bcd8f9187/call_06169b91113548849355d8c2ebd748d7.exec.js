@@ -1,2 +1,0 @@
-text(await tools.write_stdin({session_id:87220,chars:"",yield_time_ms:1000,max_output_tokens:3000}));
-text(await tools.exec_command({cmd:"python3 - <<'PY'\nimport json\nfrom pathlib import Path\nr=Path('/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run')\nv=json.loads((r/'canonical-v4-index.json').read_text())\nprint(json.dumps(v,indent=2)[:5000])\nPY",max_output_tokens:2500}));

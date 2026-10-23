@@ -1,7 +1,0 @@
-{
-  "original": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-31251.py",
-  "original_sha256": "f10a24e70879068c5c32c7a4d9f8d2b3b374077c11b154669a5af499f797d2bf",
-  "successor": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-31251-v2.py",
-  "successor_sha256": "83d631c878692272c55b39434ded30521eab69efc23f4a20f36adec6500182d1",
-  "change": "Persist each actual case before independent validation so refused imports retain their measured checks too."
-}

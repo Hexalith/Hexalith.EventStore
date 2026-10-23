@@ -1,7 +1,0 @@
-{
-  "captured_at_utc": "2026-10-15T21:13:02.130341+00:00",
-  "owned_apphost_stopped": true,
-  "new_owned_dapr_control_plane_started": false,
-  "remaining_test_or_build_processes": [],
-  "status": "No owned test/build processes remain."
-}

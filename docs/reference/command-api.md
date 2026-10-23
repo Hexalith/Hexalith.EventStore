@@ -582,13 +582,9 @@ $ curl "${EVENTSTORE_URL}/api/v1/commands/status/01HKQXYZ0000000000000000F6" \
 
 ## Next Steps
 
-<!-- OQ8-SOURCE-ONLY-HANDOFF -->
-
 ### OQ8 consumption status
 
-Story 4.15 records the reviewed source-only handoff for EventStore source commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`. The final packet binds the Stories 4.9-4.14 invariant crosswalk, immutable multi-host PostgreSQL evidence, exact landed Git identities, limitations, the test source, the pre-review execution record, and fresh content-bound architecture, security, and test receipts. EventStore platform completion and the source-only handoff are recorded; the closure validator remains the required fail-closed consumer gate.
-
-The bound limitations disclose that the approved Folders design bytes are not tracked here, the capture used test-only deterministic-time, intent-adapter, and boundary-counter seams, raw PostgreSQL values and diagnostics were replaced by sanitized structural projections, and the original dirty candidate capture is independently rebound to the 26-path landed source. The reviewed handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. From the repository root, clean consumers must first run `python3 -m venv .oq8-python` and `.oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt`. They may rely on this EventStore source-only handoff only while `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py` passes against unchanged bound source, and they must obtain the approved design bytes from Folders.
+Story 4.15 recorded the reviewed source-only OQ8 handoff for EventStore source commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4`; the [Story 4.15 spec](../../_bmad-output/implementation-artifacts/spec-4-15-oq8-platform-closure-and-handoff.md) keeps that record. The handoff grants no release approval, Folders final closure, package or registry authority, deployment authority, runtime-pin authority, consumer-migration authority, external-repository authority, or final-consumer authority. Consumers obtain the approved design bytes from Folders; current behaviour is proven by this repository's tests and CI.
 
 **Next:** [Query & Projection API Reference](query-api.md) — query execution, ETag validation, and real-time projection refresh
 

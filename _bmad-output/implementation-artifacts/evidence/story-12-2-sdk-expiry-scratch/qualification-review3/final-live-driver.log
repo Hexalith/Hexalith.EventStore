@@ -1,6 +1,0 @@
-live-build 0 {}
-live-review3 0 {'total': 5, 'passed': 5, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
-live-expiry-scratch 0 {'total': 42, 'passed': 42, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
-live-read-model-batch 0 {'total': 6, 'passed': 6, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
-live-shared-epoch 0 {'total': 8, 'passed': 8, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
-FINAL_COMMANDS_COMPLETE

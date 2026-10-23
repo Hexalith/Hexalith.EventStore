@@ -1,6 +1,0 @@
-{
-  "observedUtc": "2026-10-21T06:25:42.568922+00:00",
-  "testProcessId": 83550,
-  "signal": "SIGINT",
-  "reason": "Repeated sidecar readiness startup failure without completed scenario; narrow to one case for diagnosis. Shared dependencies and unrelated workloads unchanged."
-}

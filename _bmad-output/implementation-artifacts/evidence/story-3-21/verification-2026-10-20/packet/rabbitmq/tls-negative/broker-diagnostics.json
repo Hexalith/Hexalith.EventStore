@@ -1,6 +1,0 @@
-{
-  "commandReceipt": 166,
-  "exitCode": 0,
-  "kind": "broker-administration-diagnostic",
-  "output": "[\n{\"name\":\"qualification-consumer-qualification.events\",\"type\":\"quorum\",\"messages_unacknowledged\":0,\"durable\":true,\"messages_ready\":0}\n,{\"name\":\"qualification-consumer-qualification.expiry\",\"type\":\"quorum\",\"messages_unacknowledged\":0,\"durable\":true,\"messages_ready\":0}\n,{\"name\":\"qualification-consumer-qualification.failed-diversion\",\"type\":\"quorum\",\"messages_unacknowledged\":1,\"durable\":true,\"messages_ready\":0}\n,{\"name\":\"qualification-consumer-qualification.quarantine\",\"type\":\"quorum\",\"messages_unacknowledged\":0,\"durable\":true,\"messages_ready\":0}\n,{\"name\":\"qualification-consumer-qualification.poison\",\"type\":\"quorum\",\"messages_unacknowledged\":0,\"durable\":true,\"messages_ready\":0}\n,{\"name\":\"qualification-consumer-qualification.backpressure\",\"type\":\"quorum\",\"messages_unacknowledged\":0,\"durable\":true,\"messages_ready\":0}\n]\n"
-}

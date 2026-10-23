@@ -1,6 +1,0 @@
-{
-  "diff_file": "/tmp/p1r-repair-review-1yokuf7_.diff",
-  "owner_baseline": "5c10a3c73f381abb75016125192401f516818797",
-  "starting_owner_baseline": "21b34c01ec919769cfba9cfe0d47e50886b57ded",
-  "scope": "Repair delta plus independent verification drivers and successor proposal. Starting user changes were externally committed as baseline; preserved tooling-before snapshot and diff-before.patch retain prior state. Historical binaries/evidence excluded from textual review and independently hash-compared."
-}

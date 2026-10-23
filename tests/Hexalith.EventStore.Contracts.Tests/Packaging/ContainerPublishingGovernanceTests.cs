@@ -671,7 +671,7 @@ public sealed class ContainerPublishingGovernanceTests
         workflow.ShouldContain("refs/heads/main");
         workflow.ShouldContain("git/ref/heads/main");
         workflow.ShouldContain("source_ci_workflow=\"ci.yml\"");
-        workflow.ShouldContain("for required_workflow in ci.yml p1r-qualification.yml commitlint.yml");
+        workflow.ShouldContain("for required_workflow in ci.yml commitlint.yml; do");
         workflow.ShouldContain("actions/workflows/${required_workflow}/runs");
         workflow.ShouldContain(".head_sha == $sha");
         workflow.ShouldContain(".event == \"push\"");
@@ -887,7 +887,6 @@ public sealed class ContainerPublishingGovernanceTests
         ci.ShouldContain("linux/amd64");
         ci.ShouldContain("linux/arm64");
         ci.ShouldContain("environment/emulation-setup-failure");
-        ci.ShouldContain("Story 1.20");
         ci.ShouldContain("Semantic Release selects the version");
         ci.ShouldContain("`commitlint.yml`");
         ci.ShouldContain("gh workflow run release.yml --ref main");
@@ -901,56 +900,10 @@ public sealed class ContainerPublishingGovernanceTests
         // and it drifted two rotations behind. Bind it to the workflow it describes.
         secrets.ShouldContain(ApprovedBuildsReleaseSha);
         ci.ShouldContain(ApprovedBuildsReleaseSha);
-        if (ci.Contains("release_evidence_handlers", StringComparison.Ordinal))
-        {
-            ci.ShouldContain("release_evidence_handlers");
-            ci.ShouldContain("v4");
-            ci.ShouldContain("HANDLER_FILE_SHA256");
-            ci.ShouldContain("Category=HeavyweightContainerPublish");
-        }
         targets.ShouldContain("mcr.microsoft.com/dotnet/aspnet:10.0-alpine");
         targets.ShouldContain("<ContainerUser>app</ContainerUser>");
         targets.ShouldContain("<ContainerPort Include=\"8080\"");
         project.ShouldContain("<ContainerRepository>eventstore</ContainerRepository>");
-    }
-
-    /// <summary>
-    /// Verifies every tracked digest-bearing raw OCI object cannot be rewritten by text
-    /// normalization. The tracked set is enumerated rather than hand-listed: git check-attr answers
-    /// for any path string, so a hand-listed path that no longer exists passes vacuously while the
-    /// real evidence goes unchecked, and a newly added packet is silently left uncovered.
-    /// </summary>
-    [Fact]
-    public void DigestBearingRawOciEvidenceIsBinary()
-    {
-        string root = FindRepositoryRoot();
-        string[] tracked =
-        [
-            .. new[] { "*.raw", "*.nupkg" }
-                .SelectMany(pattern => RunGit(root, "ls-files", "-z", pattern)
-                    .Split('\0', StringSplitOptions.RemoveEmptyEntries)),
-        ];
-
-        // Coverage control: an empty enumeration would make every assertion below vacuous, and both
-        // extensions must actually be present -- .nupkg bytes are hash-bound exactly as .raw are.
-        tracked.Length.ShouldBeGreaterThan(0);
-        tracked.ShouldContain(path => path.EndsWith(".raw", StringComparison.Ordinal));
-        tracked.ShouldContain(path => path.EndsWith(".nupkg", StringComparison.Ordinal));
-
-        List<string> normalizable = [];
-        foreach (string path in tracked)
-        {
-            File.Exists(Path.Combine(root, path)).ShouldBeTrue(path);
-            if (RunGit(root, "check-attr", "text", "--", path) != $"{path}: text: unset")
-            {
-                normalizable.Add(path);
-            }
-        }
-
-        normalizable.ShouldBeEmpty(
-            "these tracked digest-bearing raw objects are not marked binary in .gitattributes, so a "
-            + "core.autocrlf checkout would rewrite them and break their recorded SHA-256:\n"
-            + string.Join('\n', normalizable));
     }
 
     /// <summary>

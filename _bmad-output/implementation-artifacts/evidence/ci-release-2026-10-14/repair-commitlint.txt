@@ -1,9 +1,0 @@
-⧗   --- input ---
-fix(ci): restore projection fixtures and guarded release evidence
-
-Enable ordinary delivery on named projection substitutes.
-Generate authority credentials at runtime and compare the complete encoded form.
-Restore guarded sprint comments while preserving current YAML values.
-
-Affected projects compile cleanly; local tests were not run as requested.
-✔   found 0 problems, 0 warnings

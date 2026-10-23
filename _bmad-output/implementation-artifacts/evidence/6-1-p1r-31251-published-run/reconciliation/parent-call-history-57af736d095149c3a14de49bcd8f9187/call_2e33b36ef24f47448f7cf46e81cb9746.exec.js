@@ -1,2 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n -B 28 -A 20 'final isolation runner ownership' tools/p1r_published_qualification.py",workdir:load("p1r_31251_run_state").integration_root,max_output_tokens:3500}));
-text(await tools.exec_command({cmd:"rg -n -B 24 -A 14 'final isolation runner ownership' tools/p1r_published_qualification.py",workdir:load("p1r_31251_run_state").verifier_v4,max_output_tokens:3000}));

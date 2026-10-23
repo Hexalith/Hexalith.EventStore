@@ -101,6 +101,46 @@ public sealed partial class SecretsProtectionTests
             "A four MiB journal must not reparse unrelated quoted values for each field.");
     }
 
+    private static void WithEvidenceRepository(Action<string> exercise)
+    {
+        string root = Directory.CreateTempSubdirectory("secrets-scan-").FullName;
+        try
+        {
+            exercise(root);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void WriteEvidenceFile(string root, string path, byte[] bytes)
+    {
+        string fullPath = Path.Combine(root, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        File.WriteAllBytes(fullPath, bytes);
+    }
+
+    private static byte[] EncodeEvidenceText(string content, string encoding)
+    {
+        Encoding codec = encoding switch
+        {
+            "utf8-bom" => new UTF8Encoding(encoderShouldEmitUTF8Identifier: true),
+            "utf16-le" => new UnicodeEncoding(bigEndian: false, byteOrderMark: true),
+            "utf16-be" => new UnicodeEncoding(bigEndian: true, byteOrderMark: true),
+            "utf16-le-no-bom" => new UnicodeEncoding(bigEndian: false, byteOrderMark: false),
+            "utf16-be-no-bom" => new UnicodeEncoding(bigEndian: true, byteOrderMark: false),
+            _ => new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+        };
+        byte[] bytes = [.. codec.GetPreamble(), .. codec.GetBytes(content)];
+        return encoding switch
+        {
+            "malformed-utf8" => [0xff, .. bytes],
+            "control-prefix" => [0x00, 0x01, 0x02, .. bytes],
+            _ => bytes,
+        };
+    }
+
     private static IEnumerable<Match> FindCredentialAssignments(string content)
     {
         foreach (Match candidate in SecretAssignmentStartPattern().Matches(content))

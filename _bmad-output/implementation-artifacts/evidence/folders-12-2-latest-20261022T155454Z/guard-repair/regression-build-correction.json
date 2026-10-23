@@ -1,7 +1,0 @@
-{
-  "failed_build": "guardfix-server-build-command.json",
-  "failure": "CA1062 on the new public theory parameter; retained0warnings/1error",
-  "correction": "Validate the test parameter with ArgumentNullException.ThrowIfNull; no analyzer setting, assertion, deadline or scanner rule changed.",
-  "before_sha256": "d2da413d9cd1a2898eb675bd793edef0565256d83359b12e17ceb0c81c90e4e8",
-  "after_sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555"
-}

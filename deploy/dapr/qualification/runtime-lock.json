@@ -30,7 +30,7 @@
       "version": "1.18.7",
       "reference": "ghcr.io/dapr/daprd@sha256:5da0d379de20830846616d56d07af1594e6ba30cdca8e3ba9de25d18a7624ece",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-daprd-1.18.7.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/dapr-daprd-1.18.7.manifest.json",
         "sha256": "5da0d379de20830846616d56d07af1594e6ba30cdca8e3ba9de25d18a7624ece"
       }
     },
@@ -38,7 +38,7 @@
       "version": "1.18.7",
       "reference": "ghcr.io/dapr/operator@sha256:42192d91b0942afd694740336e4bd047d55235ebfb3b9cbd4ec0e05ae4026cae",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-operator-1.18.7.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/dapr-operator-1.18.7.manifest.json",
         "sha256": "42192d91b0942afd694740336e4bd047d55235ebfb3b9cbd4ec0e05ae4026cae"
       }
     },
@@ -46,7 +46,7 @@
       "version": "1.18.7",
       "reference": "ghcr.io/dapr/injector@sha256:4a7b491b2ac5d27c92f0c4192fedd54319452c0dd7d6ae30cda6a4266f751943",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-injector-1.18.7.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/dapr-injector-1.18.7.manifest.json",
         "sha256": "4a7b491b2ac5d27c92f0c4192fedd54319452c0dd7d6ae30cda6a4266f751943"
       }
     },
@@ -54,7 +54,7 @@
       "version": "1.18.7",
       "reference": "ghcr.io/dapr/sentry@sha256:b9fc166085289661f516150dc1c47ac3495b9e6d1e666079cb71cd2374ca7256",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-sentry-1.18.7.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/dapr-sentry-1.18.7.manifest.json",
         "sha256": "b9fc166085289661f516150dc1c47ac3495b9e6d1e666079cb71cd2374ca7256"
       }
     },
@@ -62,7 +62,7 @@
       "version": "1.18.7",
       "reference": "ghcr.io/dapr/placement@sha256:c9da106eddcbb625c94baea31af4ed576d32750741b442c99f51518c420e76cc",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-placement-1.18.7.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/dapr-placement-1.18.7.manifest.json",
         "sha256": "c9da106eddcbb625c94baea31af4ed576d32750741b442c99f51518c420e76cc"
       }
     },
@@ -70,7 +70,7 @@
       "version": "1.18.7",
       "reference": "ghcr.io/dapr/scheduler@sha256:2cc2da2f7c4ece604041e6a420de04a297afb24cea8b3c9394bd0e126a334444",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-scheduler-1.18.7.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/dapr-scheduler-1.18.7.manifest.json",
         "sha256": "2cc2da2f7c4ece604041e6a420de04a297afb24cea8b3c9394bd0e126a334444"
       }
     },
@@ -78,7 +78,7 @@
       "version": "4.3.6-management",
       "reference": "docker.io/library/rabbitmq@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/library-rabbitmq-4.3.6-management.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/library-rabbitmq-4.3.6-management.manifest.json",
         "sha256": "54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58"
       }
     },
@@ -86,7 +86,7 @@
       "version": "4.3.1",
       "reference": "docker.io/apache/kafka@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837",
       "manifest": {
-        "path": "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/apache-kafka-4.3.1.manifest.json",
+        "path": "deploy/dapr/qualification/public-identities/apache-kafka-4.3.1.manifest.json",
         "sha256": "77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837"
       }
     }
@@ -122,22 +122,22 @@
   "inputs": {
     "tools/qualify-dapr-brokers.py": "555356b51cec8e8572fc823c7239f5a8d93af1571a17fa960afb12b6ceb3055f",
     "deploy/dapr/qualification/rabbitmq.yaml": "c5ffe100825ceb25fe10b1b1192dab2e150b9c88b2a3450f612168b4b95d90cf",
-    "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-1.18.7.tgz": "bd540acd198dc8efa4314208325d8e7eaf89f54accdbd1fad62b484fcf9cabf2",
+    "deploy/dapr/qualification/public-identities/dapr-1.18.7.tgz": "bd540acd198dc8efa4314208325d8e7eaf89f54accdbd1fad62b484fcf9cabf2",
     ".github/workflows/dapr-broker-qualification.yml": "6cfdd8f2af8a312de9a7d4226a8ded4bec92f66cdbbf772f662577f458c9aa84",
-    "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go": "a2a006ba222a6839edf1a4e564400f0d080ed7cd4663d863a73483ca9c4d9f31",
+    "deploy/dapr/qualification/public-identities/dapr-components-contrib-secretstores-hashicorp-vault-vault.go": "a2a006ba222a6839edf1a4e564400f0d080ed7cd4663d863a73483ca9c4d9f31",
     "tools/validate-dapr-broker-qualification.py": "f96ca8374850a639d1566c326fec34bc2102ab7f1254118e6043a5386961dbd2",
-    "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-common-component-kafka-consumer.go": "9b63c436f73f0812d94d460a40a93da6d197afe75cbbef090fe96c4bc7f27ea7",
+    "deploy/dapr/qualification/public-identities/dapr-components-contrib-common-component-kafka-consumer.go": "9b63c436f73f0812d94d460a40a93da6d197afe75cbbef090fe96c4bc7f27ea7",
     "tools/dapr_broker_qualification.py": "7357c189c12ce284196b84ceba47a435f21003d898f65ef6a9b272030fd80afa",
     "deploy/dapr/qualification/README.md": "63c99f77315d0a3f7034597bf7f87491372624b3b67199e864840ba8a2c6933d",
     "deploy/dapr/qualification/kafka.yaml": "1fd1e9b139f40b15c1684be588a65ededfb7c245b8698b61325c14f60ae560e6",
-    "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-dapr-go.mod": "d218290004fa0583025e5a21d6478e6c1dfa07953102eb0288a0cdf433ae50d8",
+    "deploy/dapr/qualification/public-identities/dapr-dapr-go.mod": "d218290004fa0583025e5a21d6478e6c1dfa07953102eb0288a0cdf433ae50d8",
     "tests/Hexalith.EventStore.IntegrationTests/Fixtures/DurableBrokerQualificationFixture.cs": "8b1fc71282324076e2d0e250d4135052f1936aae4a13d1307bddb2069b814a21",
     "deploy/dapr/qualification/subscriptions.yaml": "55981fed2d78738ae730a9a1845a5070b415e4fe46b2cc43534357b8306ac971",
-    "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-pubsub-rabbitmq-rabbitmq.go": "75f17b59b41c4b21173ffccfdbdbc24d62b256ffb18514ae5b85b35e56763f40",
+    "deploy/dapr/qualification/public-identities/dapr-components-contrib-pubsub-rabbitmq-rabbitmq.go": "75f17b59b41c4b21173ffccfdbdbc24d62b256ffb18514ae5b85b35e56763f40",
     "tools/tests/test_dapr_broker_qualification.py": "5f9c481cddc441b7b2ddb58726c9980ebba5594c4489079ba4fed852d1e1e865",
     "tests/Hexalith.EventStore.IntegrationTests/ContractTests/DurableBrokerQualificationTests.cs": "a023ed542fa2beb3f83a57bbeb364bcb1da59489a0bb318ad74472464bcc9ad5",
     "tools/dapr_broker_probe.py": "6d39e455aae2f9d570a429d6abef3b3c78dbc21d4b5aa19f4e9243bad9002996",
-    "_bmad-output/implementation-artifacts/evidence/story-3-21/qualification-2026-10-20/public-identities/dapr-components-contrib-pubsub-rabbitmq-metadata.go": "db6f8cf1df0112a3bd0432a4f7889e355112c42ec6756f9e3710dfefbe720f91",
+    "deploy/dapr/qualification/public-identities/dapr-components-contrib-pubsub-rabbitmq-metadata.go": "db6f8cf1df0112a3bd0432a4f7889e355112c42ec6756f9e3710dfefbe720f91",
     "tools/dapr_qualification_tcp_proxy.py": "6a81efb39e2977cfecbb211d803274ef3ddc6c3b1ab6e5230700a41c1de9f6b4"
   },
   "authority": {

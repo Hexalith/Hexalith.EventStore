@@ -1,6 +1,0 @@
-testRemoteEndpointsRefuseBeforeProvisioningAndDoNotRetainCredentials (test_p1r_isolation_hardening.LocalStartupTests.testRemoteEndpointsRefuseBeforeProvisioningAndDoNotRetainCredentials) ... ok
-
-----------------------------------------------------------------------
-Ran 1 test in 0.009s
-
-OK

@@ -1,8 +1,0 @@
-{
-  "remaining_processes": [],
-  "component_directories_absent": {
-    "/tmp/dapr-components-c633ea8c4b2a4ec69d93c01a77542392": true
-  },
-  "coverage_present": false,
-  "passed": false
-}

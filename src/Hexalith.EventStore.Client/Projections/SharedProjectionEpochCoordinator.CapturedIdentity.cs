@@ -77,6 +77,9 @@ public sealed partial class SharedProjectionEpochCoordinator
         if (inline is not null && inline.LongLength != checked(lastSequenceNumber * 32))
             throw new ArgumentException("Captured event identities must cover the complete owner history.", nameof(inline));
         string key = scope.CheckpointKey(sourceStream);
+        // The promotion's own cleanup recovers any pending epoch envelope it observes; overlapping
+        // it would co-execute this fenced handoff batch and leave its outcome indeterminate.
+        await WaitForPromotedCleanupAsync(scope, token).ConfigureAwait(false);
         for (int attempt = 0; attempt < MaxRetries; attempt++)
         {
             // Recovery can change both original participants; always reread after it settles.

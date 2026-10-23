@@ -1,3 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n -A 68 '^    def observe_inputs' tools/p1r_published_executor.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:6500}));
-text(await tools.exec_command({cmd:"sed -n '24,93p' tools/p1r_isolation_evidence.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:4500}));
-text(await tools.exec_command({cmd:"rg -n 'candidate_source|runtime_source|source_root|source_builds_root' tools/p1r_published_qualification.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:4000}));

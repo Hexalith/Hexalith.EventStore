@@ -1,9 +1,0 @@
-{
-  "command": "PYTHONPATH=tools:tools/tests python3 -m unittest test_p1r_published_executor.MeasurementTests.testSuccessorSnapshotSeedUsesNineManualCreationAndThreeActualAppends test_p1r_published_executor.MeasurementTests.testUnqualifiedOrMissingSuccessorSnapshotRemainsFailedWithoutSqlSynthesis test_p1r_published_executor.MeasurementTests.testHistoricalSnapshotSeedPreservesSeparateDiagnosticFixture test_p1r_published_executor.MeasurementTests.testRestoreReceiptAttributesBackupAndDatabaseCreationToTheirCommands test_p1r_published_executor.CorrectionTests.testSupportedMetadataAppendRestartsActualSelectedWriterAndReplaysThirteen",
-  "exit_code": 1,
-  "tests": 5,
-  "errors": 2,
-  "elapsed_seconds": 3.17,
-  "blocker": "TypeError: Object of type bytes is not JSON serializable, from fresh-restore-original-bytes-and-proof-identical predicate operands; corrected to compare bound SHA-256 maps.",
-  "output_retention": "Exact terminal output retained in agent tool history; no prior logfile was produced."
-}

@@ -1,6 +1,0 @@
-testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup (test_p1r_isolation_hardening.TaggedSourceLifecycleTests.testControllerRechecksSelectedSourceBeforeProvisioningAndAfterOuterCleanup) ... ok
-
-----------------------------------------------------------------------
-Ran 1 test in 0.372s
-
-OK

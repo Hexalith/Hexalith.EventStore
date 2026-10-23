@@ -1,2 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n -C 3 'source_consumer|source_evaluations|candidate_source|runtime_source|explicit_source_root|check_sources' tools/p1r_published_executor.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:6500}));
-text(await tools.exec_command({cmd:"rg -n -C 3 'source_consumer|source_evaluations|candidate_source|runtime_source|explicit_source_root|check_sources' tools/p1r_published_executor.py",workdir:"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",max_output_tokens:5200}));

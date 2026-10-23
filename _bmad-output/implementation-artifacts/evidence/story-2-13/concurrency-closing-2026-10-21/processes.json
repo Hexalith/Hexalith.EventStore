@@ -1,9 +1,0 @@
-{
-  "observedUtc": "2026-10-21T12:55:39.966613+00:00",
-  "matchingCandidateOrRecordedHostProcesses": [],
-  "recordedProcessIdsStillPresent": [],
-  "recordedPortsCurrentlyListening": [],
-  "matchingFixtureComponentDirectories": [],
-  "pidReuseAndPortReuseCaveat": "Presence alone does not establish fixture ownership. No unrelated process, directory or listener is changed.",
-  "runtimeSourceAndExecutableDirectoriesRetained": true
-}

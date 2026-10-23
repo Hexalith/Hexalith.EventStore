@@ -1,1 +1,0 @@
-{"candidate": "3.121.0", "case_count": 163, "out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/review-round-1/successor-support-boundary.json", "p1r_usable": false, "status": "measured-pending-disposition"}

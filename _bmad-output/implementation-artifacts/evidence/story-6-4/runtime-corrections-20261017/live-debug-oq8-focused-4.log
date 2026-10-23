@@ -1,2 +1,0 @@
-   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 1, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 40.983s
-{"lane": "live-debug-oq8-focused-4", "testExitCode": 0, "wrapperFailureClass": null, "liveChildrenAfterNative": 0, "controls": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-6-4/runtime-corrections-20261017/live-debug-oq8-focused-4-controls.json"}

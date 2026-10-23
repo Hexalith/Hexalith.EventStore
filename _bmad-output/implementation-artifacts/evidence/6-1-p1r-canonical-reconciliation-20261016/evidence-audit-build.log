@@ -1,9 +1,0 @@
-  Determining projects to restore...
-  Restored /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/evidence-audit/EvidenceAudit.csproj (in 147 ms).
-  EvidenceAudit -> /home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-canonical-reconciliation-20261016/evidence-audit/bin/Debug/net10.0/EvidenceAudit.dll
-
-Build succeeded.
-    0 Warning(s)
-    0 Error(s)
-
-Time Elapsed 00:00:01.55

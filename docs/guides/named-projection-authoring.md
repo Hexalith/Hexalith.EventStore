@@ -293,10 +293,7 @@ cannot safely interpret paged checkpoints. Rollback after the first paged checkp
 a compatible reader or a coordinated restore of the complete pre-upgrade epoch/checkpoint/proof state
 with writers drained. Removing reference fields or deleting proof is not a rollback procedure.
 
-Run `python3 tools/qualify-bounded-owner-identity.py` from this repository to capture source-mode
-Debug builds, complete affected unit suites and the opted-in Dapr process lane. The packet under
-`_bmad-output/implementation-artifacts/evidence/folders-12-2-bounded-owner-identity/` binds exact source
-hashes, PE/PDB hashes, loaded module identities, PDB document checksums, commands/results, physical value
-sizes, canonical batch sizes and distinct PIDs across interrupted staging and promoted handoff.
-Each build graph is recorded separately. This is EventStore source qualification; package/release
-qualification, Folders acceptance, pin changes, publishing and deployment remain separate work.
+Qualify a change with source-mode Debug builds, the complete affected unit suites and the opted-in
+Dapr process lane, then record the commands, pass/fail counts, commit SHA and CI run link in the story
+or spec. This is EventStore source qualification; package/release qualification, Folders acceptance,
+pin changes, publishing and deployment remain separate work.

@@ -51,6 +51,8 @@ context:
 
 **Execution:**
 
+**2026-10-23 evidence policy:** do not write under `evidence/`; record commands, pass/fail counts, commit SHA and CI run link in this story (architecture AD-12).
+
 - [x] `tools/qualify-dapr-brokers.py` — orchestrate only owned disposable infrastructure, capture exact inputs/commands/times/exit codes and cleanup; reject production contexts/endpoints and missing requested scenarios.
 - [x] `deploy/dapr/qualification/{runtime-lock.json,rabbitmq.yaml,kafka.yaml,subscriptions.yaml}` — bind retained immutable candidates, OpenBao references, explicit scopes, verified TLS, durable queues/topics and pre-enrolled exact topic catalogs. These are candidate inputs, never `production-profile.yaml`.
 - [ ] `tests/Hexalith.EventStore.IntegrationTests/Fixtures/DurableBrokerQualificationFixture.cs` and `ContractTests/DurableBrokerQualificationTests.cs` — exercise each candidate through real Dapr hosts: crash/redelivery, broker restart, durable quarantine and failed diversion, retention/expiry, stable IDs, scopes, TLS/secrets/rotation, cancellation/backpressure and missing bindings. Require persisted application readback and broker diagnostics as separate evidence.

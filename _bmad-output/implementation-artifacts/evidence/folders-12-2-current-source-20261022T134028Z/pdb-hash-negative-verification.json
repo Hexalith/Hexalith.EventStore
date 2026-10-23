@@ -1,9 +1,0 @@
-{
-  "passed": true,
-  "expected_exit": 1,
-  "observed_exit": 1,
-  "errors": [
-    "Frozen PDB hash mismatch: /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.pdb",
-    "Frozen PE hash mismatch or missing: /home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore/bin/Debug/net10.0/Hexalith.Commons.UniqueIds.dll"
-  ]
-}

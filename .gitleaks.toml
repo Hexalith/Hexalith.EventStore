@@ -6,10 +6,9 @@
 useDefault = true
 
 [allowlist]
-description = "Known false positives: BMAD plugin training content, synthetic operational-evidence validator fixtures, and integration-test fixtures using literal 'invalid.signature' JWTs to exercise auth-failure paths."
+description = "Known false positives: BMAD plugin training content and integration-test fixtures using literal 'invalid.signature' JWTs to exercise auth-failure paths."
 paths = [
   '''^_bmad/.*''',
-  '''^_bmad-output/test-artifacts/operational-evidence-validator/fixtures/.*raw-secret-marker\.md$''',
   '''^\.agents/skills/bmad-testarch-.*/resources/knowledge/api-testing-patterns\.md$''',
   '''^\.claude/skills/bmad-(tea|testarch-.+)/resources/knowledge/api-testing-patterns\.md$''',
   '''^tests/.*JwtAuthenticationIntegrationTests\.cs$''',

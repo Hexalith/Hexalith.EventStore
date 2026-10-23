@@ -1,6 +1,0 @@
-{
-  "source": "/tmp/p1r-31251-verifier-38d60cf41afc4f2d99b4b377c016f95c/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/observation-a87fc7cc50e3447aae60a23491db9773/owner-inputs.json",
-  "copy": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/smoke-owner-inputs.json",
-  "sha256": "9f6c25369f601e4a6ddd72edc6750c269af39487d33d3934dce82db494517cd1",
-  "kind": "input byte copy; no relocated execution validation claimed"
-}

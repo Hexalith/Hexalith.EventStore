@@ -2,7 +2,7 @@
 title: 'Story 9.1 live authorization bootstrap for ES-DIAG'
 type: 'test'
 created: '2026-10-20'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 baseline_commit: '54261aeccb1d8d8c5c99beb2437e2e8a5ad69eaa'
 context:
@@ -10,6 +10,8 @@ context:
   - '/home/administrator/projects/hexalith/eventstore/references/Hexalith.AI.Tools/hexalith-llm-instructions.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-3-21-local-broker-failure-diagnosis.md'
 ---
+
+> **Superseded 2026-10-23** by [spec-evidence-storage-simplification](spec-evidence-storage-simplification.md): the corrective-work authorization validator, schema, workflow, tests, fixtures and evidence records were removed; this spec is closed and kept as history.
 
 <frozen-after-approval reason="bootstrap preparation explicitly authorized in the 2026-10-20 user request">
 

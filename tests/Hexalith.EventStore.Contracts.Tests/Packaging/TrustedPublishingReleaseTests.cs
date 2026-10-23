@@ -49,7 +49,7 @@ public sealed class TrustedPublishingReleaseTests
         workflow.ShouldContain("22a578b576a515d2af214fe81859447fffc97981");
         workflow.ShouldContain("uses: ./.hexalith/builds-execution/Github/publish-containers");
         workflow.ShouldContain("source_ci_workflow=\"ci.yml\"");
-        workflow.ShouldContain("for required_workflow in ci.yml p1r-qualification.yml commitlint.yml");
+        workflow.ShouldContain("for required_workflow in ci.yml commitlint.yml; do");
         workflow.ShouldContain("HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: '14'");
         workflow.ShouldContain("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'");
         workflow.ShouldNotContain("inputs.release-version");

@@ -1,1 +1,0 @@
-python3 -m unittest discover -s tools/tests -p 'test_p1r_qualification.py' > /tmp/p1r-31251-verifier-preparation-tests.log 2>&1

@@ -234,7 +234,9 @@ collision / collision found and resolved by changing prefix to `<new>`).
 
 ## Runtime Evidence
 
-Future runtime proofs involving the SignalR Redis backplane MUST record:
+Future runtime proofs involving the SignalR Redis backplane MUST record the
+following in their story or spec (raw captures stay local scratch or CI
+artifacts; they are not committed):
 
 - Redacted Redis endpoint identity and whether the endpoint is dedicated or
   shared.
@@ -292,4 +294,3 @@ pub/sub, or security abstraction.
 
 - [Microsoft Learn: Redis backplane for ASP.NET Core SignalR scale-out](https://learn.microsoft.com/aspnet/core/signalr/redis-backplane?view=aspnetcore-10.0)
 - [StackExchange.Redis configuration options](https://stackexchange.github.io/StackExchange.Redis/Configuration.html)
-- [SignalR operational evidence pattern](signalr-operational-evidence.md)

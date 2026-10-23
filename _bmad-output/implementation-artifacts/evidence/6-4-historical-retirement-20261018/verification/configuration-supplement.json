@@ -1,9 +1,0 @@
-{
-  "changedDuringFinalClassRun": [
-    ".gitattributes"
-  ],
-  "reason": "Independent follow-up extended exact Git-byte preservation to all overlay references; no reader, test assembly or approval binding changed.",
-  "finalConfigurationCanonicalScanPassed": true,
-  "canonicalScanInputCount": 8,
-  "all83WindowsCheckoutControlsPassed": true
-}
