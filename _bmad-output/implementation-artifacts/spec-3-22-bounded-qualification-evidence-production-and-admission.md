@@ -2,7 +2,7 @@
 title: 'Story 3.22: Bounded qualification evidence production and admission'
 type: 'refactor'
 created: '2026-10-21'
-status: 'in-review'
+status: 'done'
 approved: '2026-10-21'
 approval: 'approve and stop'
 route: 'dispatch'
@@ -219,6 +219,37 @@ Scope: only the uncommitted delta that applied the six B+C patches, against `175
 | Edge 13: `N+<entropy>` versions pass as NuGet build metadata | low / reject | Accepting valid SemVer is existing scanner design. A credential deliberately shaped as version metadata is not an accidental leak. |
 
 Grouped patches: (1) trim around `=` at both assignment sites, with a regression; (2) a marker boundary/occurrence route; (3) an escaped-marker route; (4) the backstop comment; (5) the NuGet comments. No intent_gap or bad_spec entries, and nothing deferred.
+
+### Chunk A2 patch-application review triage (2026-10-23)
+
+Scope: only this build's delta, `2361e7b67..22515b1ef` over `.gitignore` and `tools/` (10 files, 437 diff lines). The diff since `baseline_commit` spans 24,611 files, mostly other stories' evidence, and earlier review rounds covered the rest of this story. All three layers were launched before collection, and all three returned. The parent first reproduced all ten Python suites under a short `TMPDIR`: 591 executions, zero failures or skips. A real `git add` in a scratch repository confirmed the version-named directory fix.
+
+| Finding | Verdict / route | Verified evidence and correction |
+| --- | --- | --- |
+| Edge 1 + Edge claim 6: the directory negations also override the earlier `**/[Pp]ackages/*` and `**/[Bb]in/*` child rules inside evidence | low / patch | Reproduced with `git add -A` in scratch repositories. `…/evidence/story-x/packages/Hexalith.EventStore.Server.3.125.100/lib/x.dll` is ignored under the `2361e7b67` rules and admitted now. The NuGet global-folder layout (`packages/<id>/<version>/`) stays ignored because its parent stays excluded. No current producer emits the `<Id>.<version>/` layout, but the comment "generated evidence packages stay ignored" no longer holds. Fix: re-exclude version-named directories directly under evidence `packages/` and `bin/` right after the negations, before the final Story 3.13 negations, and add admission cases. |
+| Edge 2 + Blind 1: split mode discards the constructor roots and never checks that the command suffix equals them; `isolation.json` no longer records `source_root` | low / reject | Both CLIs build the runner from the same selection they forward (`p1r-published-executor.py:83-92`; `p1r_isolation.py:907-914` derives the roots from the command itself). A mismatch needs a library caller. Leaving `source_root` unrecorded in split mode matches the baseline, where the executor CLI withheld it (`d01c6756c:tools/p1r-published-executor.py:54-56`). The validator rebuilds the launch without it (`p1r_isolation_evidence.py:72-77,287`). |
+| Edge 3 + Edge claim 7: a non-executor split-mode command gets no controller or inner runtime binding | low / reject | Pre-existing: at `d01c6756c` the split-mode runner also had no `source_root`, and `command_source_binding` binds runtime paths only for the published executor (`p1r_isolation.py:305-325`). The documented split workflow is the executor, which binds its tooling-pinned selection. |
+| Edge 4 + Blind 3: hash-only cache reads have no aggregate budget and buffer up to 256 MiB per file | low / reject | Per-file reads are bounded by `READ_BYTES`, and the entry count by the 65,536-entry enumeration budget. Real consumer caches are on the order of hundreds of MiB, with no single member near 256 MiB. Streaming hashing plus a new aggregate cap would add a budget and refusal path for no observed case. |
+| Edge 5 + Blind 8: the standalone isolated-runner CLI accepts a summary inside the wrapped executor's `--out` | low / reject | carried: chunk A2 item 12 chose to document what each CLI checks (`README.md:378-384`) instead of adding a check. The case needs an explicit misconfiguration. |
+| Blind 2 (direct `_inner` assertion) | false / reject | Removing `self.source_root = None` fails `testSeparateRuntimeRootsSurviveProducerFinalizerAndIndependentImport` with the original `isolation literal lifecycle command substituted` (Verification Gap mutation check), so the fix is pinned. |
+| Verification Gap 1 + Blind 2 (standalone split-mode case): the standalone `isolation.main` split-mode path is untested | low / patch | Arrives pre-verified: changing `paths[1] if paths else None` to `None` at `p1r_isolation.py:914` passes all 49 isolation tests, and no test calls `main` with a two-root child. Fix: add a `SeparateSourceMountTests` case asserting that `initialize` receives both roots, plus a mismatched controller `--source-root` subcase. |
+| Blind 4: complete-index and summary schema versions are unchanged although row shapes differ | low / reject | Nothing reads the complete index (only `export_attempt` writes it), and `disposition` distinguishes hash-only rows. A future reader will be written against this shape. |
+| Blind 5: the `packages.lock.json` negative control cannot fail, and real copied members are missing | low / patch | `consumers/candidate/packages.lock.json` has three path parts, so the `len(parts) >= 4` gate excludes it whatever the name check says. Fix: add the real `consumers/<role>/<project>/packages.lock.json` member and near-miss `packages-old/` and `objects/` names to the copied set. |
+| Verification Gap other 1: the regenerable-cache test margin depends on the temp path length | low / patch | Reproduced: with a 123-character `TMPDIR` the test errors with `attempt export exceeds byte budget`, and it passes under a short one. The index and manifests embed absolute paths. Fix: make the cap and margin independent of path length. |
+| Blind 6: the retry test reaches only the `target.exists()` path | low / patch | The `os.link` → `FileExistsError` branch (`p1r_evidence_storage.py:226-227`) could stop calling `read_published` and no test would fail. Fix: add one case that forces that branch with a read that fails once. |
+| Blind 7: an interrupt during the run phase exports `exit_code` 2 while `isolation.json` records 130 | low / reject | Pre-existing runner contract: `_run` returns `0 if passed else 2` (`p1r_isolation.py:722`). The exported isolation proof keeps `command_exit_code: 130` and `interrupted_signal`, and the summary reports the CLI's actual exit code. Changing the exit contract adds a branch. |
+| Blind 9: the README clean-binding sentence is ambiguous | low / patch | `executable_input` and the untracked-directory check refuse untracked code and configuration inputs (including `.json`) and untracked directories only outside `_bmad-output/` (`p1r_qualification.py:227-234,284-289`). Fix: reword. The "commit candidates" sub-claim is false: bounded summaries are admitted by design. |
+| Blind 10: the README hash-only paragraph leaves out the limits that still apply | low / patch | Cache rows still count toward the enumeration, complete-index and per-file read limits. The summary reports them under `regenerable_hash_only`. The same layout under `<out>-isolation/` is copied. Fix: add one sentence. |
+
+Grouped patches: (1) re-exclude version-named directories directly under evidence `packages/` and `bin/`; (2) a standalone split-mode `main` test; (3) path-length-independent margin plus real and near-miss copied members in the cache test; (4) a `FileExistsError` retry case; (5) README wording. No intent_gap or bad_spec entries, and nothing deferred.
+
+All five patches were applied, and the parent reran the checks after them.
+- The ten Python suites (`TMPDIR=~/.cache/s322v/tmp`) give 592 executions with zero failures or skips: storage 48 plus 48 under `-O`, executor 227, published qualification 73, isolation 50, hardening 29 plus 29 under `-O`, qualification 54, verifier corrections 31, snapshot registration 3.
+- The cache test passes under a 123-character `TMPDIR`.
+- `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method '*GitignoreLastPatternsReincludeEvidencePackageArchivesAndExcludeGenericNupkgs'` passes 1 of 1. The DLL was built after the test source last changed, and the test reads `.gitignore` at runtime.
+- A real `git add -A` in a scratch repository admits only the two version-named summaries. It ignores both package layouts, `bin/Release.100/` and the split archive.
+
+The implementer's red checks caught 8 of 8 changes, each run in a scratch copy of `tools/`. The full secrets gate was not rerun, and its red state from the Story 12.2 evidence stays unresolved.
 
 ## Resumed verification work
 

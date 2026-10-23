@@ -471,7 +471,9 @@ class EvidenceAdmissionTests(unittest.TestCase):
             prefix = "_bmad-output/implementation-artifacts/evidence/story-3-22/attempt/"
             ignored = ["run.log", "Logs/capture.log", "packages/fixture.nupkg", "report.json", "results.json", "result.trx", "capture.zip", "capture.tar.gz", "payload.part", "capture.webm", "trace.dat", "commands.json", "reports/result.json", "results/TestResults.xml", "screenshots/home.png", "playwright-report/index.html",
                 "capture.xz", "capture.bz2", "capture.zst", "capture.rar", "capture.001", "capture.z01", "capture.dmp", "capture.gcdump", "capture.etl", "capture.mkv", "trace/arbitrary-name",
-                "sdk-10.0.400/capture.001", "candidate-3.125.100/capture.z01", "sdk-10.0.400/run.log"]
+                "sdk-10.0.400/capture.001", "candidate-3.125.100/capture.z01", "sdk-10.0.400/run.log",
+                "packages/Hexalith.EventStore.Server.3.125.100/lib/x.dll", "Packages/archive.z01/x.dll",
+                "bin/Release.100/x.dll", "Bin/output.z02/x.dll"]
             allowed = ["summary.json", "verification.json", "source-baseline.json", "snapshot-baseline.cs", "snapshots/source.cs", "baseline.png", "snapshots/source.jpg",
                 "sdk-10.0.400/summary.json", "candidate-3.125.100/summary.json", "archive.z01/summary.json", "sdk-10.0.400/nested.001/summary.json"]
             for name, expected in [(name, True) for name in ignored] + [(name, False) for name in allowed]:
@@ -502,25 +504,33 @@ class ReviewedStorageTests(unittest.TestCase):
 
     def testRegenerableConsumerCachesAreIndexedByHashWithoutStoredCopies(self):
         packet = self.root / "consumer-packet"
-        cached = {"consumers/candidate/packages/hexalith.eventstore.server/3.125.1/package.nupkg": os.urandom(4096),
-                  "consumers/candidate/probe/bin/Release/net10.0/Probe.dll": os.urandom(4096),
-                  "consumers/source/host/obj/project.assets.json": os.urandom(4096)}
+        member = 1024 * 1024
+        cached = {"consumers/candidate/packages/hexalith.eventstore.server/3.125.1/package.nupkg": os.urandom(member),
+                  "consumers/candidate/probe/bin/Release/net10.0/Probe.dll": os.urandom(member),
+                  "consumers/source/host/obj/project.assets.json": os.urandom(member)}
+        # Real copied members and near-miss names beside the cache directories.
         copied = {"consumers/candidate/probe-binary.json": b'{"role":"candidate"}',
                   "consumers/candidate/probe/Probe.csproj": b"<Project />",
-                  "consumers/candidate/packages.lock.json": b"{}", "execution.json": b'{"finished_utc":"done","errors":[]}'}
+                  "consumers/candidate/packages.lock.json": b"{}", "consumers/candidate/probe/packages.lock.json": b"{}",
+                  "consumers/candidate/packages-old/x": b"near-miss packages", "consumers/candidate/probe/objects/x": b"near-miss obj",
+                  "execution.json": b'{"finished_utc":"done","errors":[]}'}
         for name, data in {**cached, **copied}.items():
             (packet / name).parent.mkdir(parents=True, exist_ok=True)
             (packet / name).write_bytes(data)
         copied_bytes = sum(len(data) + len(self.store._reference(data, {"kind": "packet-file", "path": name}, "raw-bytes")[1])
                            for name, data in copied.items())
-        # Copying any cache member would exceed this cap; the complete index still fits.
-        with mock.patch.object(storage, "EXPORT_BYTES", copied_bytes + 8192):
+        # The margin covers the complete index and its manifest, which embed absolute
+        # paths, at any realistic temp-path length; copying one cache member exceeds it.
+        margin = member // 4
+        with mock.patch.object(storage, "EXPORT_BYTES", copied_bytes + margin):
             summary = storage.export_attempt(packet, self.repository / "consumer-summary", self.store, exit_code=0)
+        encoded_index = storage.resolve(summary["complete_index"], self.context, {"kind": "complete-index"})
+        index_manifest = self.store._reference(encoded_index, {"kind": "complete-index"}, "canonical-json")[1]
+        self.assertLess(4 * (len(encoded_index) + len(index_manifest)), margin)
         self.assertEqual(summary["files"], len(cached) + len(copied))
         self.assertEqual(summary["regenerable_hash_only"], {"files": len(cached), "bytes": sum(map(len, cached.values()))})
         self.assertEqual(summary["bytes"], sum(map(len, {**cached, **copied}.values())))
-        index = {row["path"]: row for row in json.loads(storage.resolve(summary["complete_index"], self.context,
-                                                                       {"kind": "complete-index"}))["files"]}
+        index = {row["path"]: row for row in json.loads(encoded_index)["files"]}
         stored = {path.name for path in (self.store.root / "objects").iterdir()}
         for name, data in cached.items():
             self.assertEqual(index[name], {"path": name, "bytes": len(data), "sha256": digest(data),
@@ -562,6 +572,22 @@ class ReviewedStorageTests(unittest.TestCase):
             with self.assertRaisesRegex(InvalidPacket, "^artifact size or type differs$"):
                 self.store.retain(payload, {"kind": "retry"})
         self.assertEqual(len(calls), 1)
+        # A peer publishes first: the exclusive link loses, and the read of the
+        # peer's object retries the same race before accepting identical bytes.
+        raced = b"published by a peer"
+        expected = self.store._reference(raced, {"kind": "race"}, "raw-bytes")[0]
+        target = Path(expected["artifact"]["locator"])
+        self.assertFalse(target.exists())
+        real_link = os.link
+        def peer_wins(*args, **kwargs):
+            real_link(*args, **kwargs)
+            raise FileExistsError
+        read, calls = flaky(1)
+        with mock.patch.object(storage.os, "link", side_effect=peer_wins), \
+                mock.patch.object(storage, "bounded_file", side_effect=read):
+            self.assertEqual(self.store.retain(raced, {"kind": "race"}), expected)
+        self.assertEqual(calls[:2], [target] * 2)
+        self.assertEqual(storage.resolve(expected, self.context, {"kind": "race"}), raced)
 
     def testCompletedAttemptSummaryKeepsZeroExitAndPassingReceipts(self):
         packet = self.root / "completed";(packet / "receipts").mkdir(parents=True)

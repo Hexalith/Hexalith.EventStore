@@ -140,6 +140,34 @@ class SeparateSourceMountTests(unittest.TestCase):
                 self.assertFalse(output.parent.exists())
                 self.assertFalse((root/'summary').exists())
 
+    def testStandaloneSplitModePassesBothChildRootsAndRefusesADifferentControllerRoot(self):
+        for controller in (None,'same','other'):
+            with self.subTest(controller=controller),tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary)
+                source,builds,other=root/'source',root/'builds',root/'other-source'
+                for path in (source,builds,other):path.mkdir()
+                output=root/'attempt/isolation'
+                command=['python3',str(isolation.ROOT/'tools/p1r-published-executor.py'),'run','--out',str(output.with_name('packet')),
+                    '--inputs',str(root/'inputs.json'),'--source-root',str(source),'--source-builds-root',str(builds)]
+                args=['--out',str(output)]
+                if controller:args+=['--source-root',str(source if controller=='same' else other)]
+                with mock.patch.object(isolation.IsolatedRunner,'initialize') as initialized, \
+                        mock.patch.object(isolation.IsolatedRunner,'run',return_value=0) as ran, \
+                        mock.patch.object(subprocess,'run') as docker,mock.patch.object(subprocess,'check_output') as context, \
+                        contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()) as errors:
+                    code=isolation.main([*args,'--',*command])
+                docker.assert_not_called();context.assert_not_called()
+                if controller=='other':
+                    self.assertEqual(code,2)
+                    self.assertEqual(json.loads(errors.getvalue().splitlines()[0])['error'],
+                                     'controller and child selected source roots differ')
+                    initialized.assert_not_called();ran.assert_not_called()
+                else:
+                    self.assertEqual(code,0)
+                    initialized.assert_called_once_with(output,None,None,source,builds)
+                    ran.assert_called_once_with(command)
+                self.assertFalse(output.parent.exists())
+
     def testSelectedSourceAndBuildsDestinationsRefuseBeforeAttemptAdmission(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)

@@ -367,8 +367,11 @@ reports, videos, traces, archives and screenshot trees are excluded from new Git
 admission; existing tracked historical packets remain inputs.
 
 For an existing owner-selected input document in the mounted workspace, keep the
-input and summary under the story's evidence directory. A clean tooling-pinned
-binding refuses untracked `.json` inputs and directories outside `_bmad-output`:
+input and summary under the story's evidence directory. Outside `_bmad-output/`,
+a clean tooling-pinned binding refuses untracked code and configuration inputs,
+including `.json` files, and untracked directories (generated `bin/`, `obj/`,
+`node_modules/` and `__pycache__/` paths excepted); neither rule applies inside
+`_bmad-output/`:
 
 ```sh
 python3 tools/p1r-published-executor.py run \
@@ -407,7 +410,10 @@ bounded at 256 MiB per export. Identical packet members reuse one stored payload
 Regenerable consumer caches, `consumers/<role>/packages/` and each consumer
 project's `bin/` and `obj/`, are indexed by path, size and SHA-256 only. They are
 not copied, do not count toward that byte cap, and are marked
-`regenerable-hash-only` in the complete index.
+`regenerable-hash-only` in the complete index. They still count toward the
+enumeration, complete-index and per-file read limits and toward the summary's
+`files`/`bytes` totals, which also report them under `regenerable_hash_only`;
+the same layout under `<out>-isolation/` is copied like any other member.
 Exceeding a capture or reader budget refuses the operation.
 
 For materialization, use `p1r_evidence_storage.command_text(row, enclosing)` for

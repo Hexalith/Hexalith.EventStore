@@ -526,6 +526,10 @@ _bmad-output/**/evidence/**/*.z[0-9][0-9]
 # sdk-10.0.400/; re-include directories only, so split archive files stay ignored.
 !_bmad-output/**/evidence/**/*.[0-9][0-9][0-9]/
 !_bmad-output/**/evidence/**/*.z[0-9][0-9]/
+# Those negations would also override the **/[Pp]ackages/* and **/[Bb]in/* child
+# rules, so re-exclude version-named directories directly under them.
+_bmad-output/**/evidence/**/[Pp]ackages/*.[0-9z][0-9][0-9]/
+_bmad-output/**/evidence/**/[Bb]in/*.[0-9z][0-9][0-9]/
 _bmad-output/**/evidence/**/*.nupkg
 _bmad-output/**/evidence/**/*.part
 _bmad-output/**/evidence/**/*.part.*
