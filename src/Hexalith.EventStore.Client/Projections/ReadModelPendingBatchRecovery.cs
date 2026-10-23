@@ -9,7 +9,7 @@ internal static partial class ReadModelPendingBatchRecovery
     /// <summary>Validates original scope and operation evidence before resuming the existing protocol.</summary>
     internal static async Task<ReadModelPendingBatchRecoveryResult> RecoverAsync(IReadModelBatchStateAccessor accessor,
         ReadModelBatchOptions options, ILogger logger, ReadModelBatchScope expected, string key,
-        IReadModelBatchFaultInjector? injector, CancellationToken token)
+        IReadModelBatchFaultInjector? injector, CancellationToken token, bool nonExpiringLegacy = false)
     {
         ArgumentNullException.ThrowIfNull(expected);
         expected.Validate();
@@ -109,6 +109,9 @@ internal static partial class ReadModelPendingBatchRecovery
             }
             if (manifest.IsEmpty)
             {
+                if (nonExpiringLegacy && marker.Status == ReadModelBatchMarkerStatus.Committed && marker.ScratchCompensationKey is null)
+                    return await CompactLegacyCommittedAsync(accessor, options, expected, marker, row, key,
+                        envelope, knownMarker, injector, token).ConfigureAwait(false);
                 // A terminal receipt needs no replay. Legacy compensation keeps its original key
                 // list and provenance until the owning private protocol conditionally reclaims it.
                 if (knownMarker && marker.Status is ReadModelBatchMarkerStatus.Completed or ReadModelBatchMarkerStatus.Aborted

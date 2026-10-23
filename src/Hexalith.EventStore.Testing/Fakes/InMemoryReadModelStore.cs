@@ -257,6 +257,15 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     }
 
     /// <inheritdoc/>
+    public Task<ReadModelPendingBatchRecoveryResult> RecoverNonExpiringPendingAsync(ReadModelBatchScope scope, string key,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelPendingBatchRecovery.RecoverAsync(new InMemoryBatchAccessor(this, scope.StoreName), BatchOptions,
+            NullLogger.Instance, scope, key, BatchFaultHook is null ? null : new DelegateFaultInjector(BatchFaultHook), cancellationToken, nonExpiringLegacy: true);
+    }
+
+    /// <inheritdoc/>
     public Task<ReadModelBatchStagingResult> StageAsync(
         ReadModelBatch batch,
         CancellationToken cancellationToken = default)

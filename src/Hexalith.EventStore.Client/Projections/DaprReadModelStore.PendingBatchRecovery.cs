@@ -10,4 +10,12 @@ public sealed partial class DaprReadModelStore : IReadModelPendingBatchRecoveryS
         return ReadModelPendingBatchRecovery.RecoverAsync(new DaprReadModelBatchStateAccessor(_daprClient, scope.StoreName),
             _options, _logger, scope, key, null, cancellationToken);
     }
+    /// <inheritdoc/>
+    public Task<ReadModelPendingBatchRecoveryResult> RecoverNonExpiringPendingAsync(ReadModelBatchScope scope, string key,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelPendingBatchRecovery.RecoverAsync(new DaprReadModelBatchStateAccessor(_daprClient, scope.StoreName),
+            _options, _logger, scope, key, null, cancellationToken, nonExpiringLegacy: true);
+    }
 }
