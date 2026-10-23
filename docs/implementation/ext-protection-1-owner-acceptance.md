@@ -2,6 +2,32 @@
 
 **Disposition: incomplete delivery; do not accept as Committed.** The partial implementation contains occurrence-aware interaction field protection, safe actor completion and idle recovery wiring, sealed distribution, default-provider refusal, typed erased aggregate replay, and an owner-verifier harness with actual capability-signature and native-original correlation. It does not contain the complete production artifact required by the Agents register. The missing custody/authority implementations are source delivery gaps, not merely missing environment variables. No Live verification ran; no Agents consumer was enabled; no register/status was changed by this continuation.
 
+## Owner observation — 2026-10-23: immutable target remains unbound
+
+This is the latest disposition. The 2026-10-22 component review below stays historical evidence. This observation changed no protection source. EventStore full `HEAD` is `af2c0d56744f97d69e20803b42f3abea18c7169e` on `main`, and `git merge-base --is-ancestor HEAD origin/main` exits 0. That hash is an observation. `TargetVersionOrCommit` stays null. Proposed date `2026-11-02` stays unaccepted. `AcceptedStatus` stays `Uncommitted` in the Agents register, whose SHA-256 is still `5bf35ac2857664c0589966a10944cd66278af85242c7c1f08e31ae29aa40e8a2`. Local component tests and Source mode do not establish `Available`.
+
+Evidence is `/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261023T051052Z-observation/`. `commitment-packet.blocked.json` is a **BlockedNotSubmitted** packet with `completeImmutableOwnerTarget: null`. `verification-summary.json` and `SHA256SUMS` bind these checks, all run from the EventStore root:
+
+| Command | Result |
+| --- | --- |
+| `dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1` | Exit 0; 0 warnings; 0 errors |
+| Direct xUnit v3 `PublishedTrustReplacementAuthorityTests` | 98 passed; 0 failed, skipped, or not run |
+| Direct xUnit v3 `PublishedTrustDeletionConsumptionAuthorityTests` and `DeletionConsumptionActorTests` | 100 passed; 0 failed, skipped, or not run |
+| `python3 -m unittest tools.tests.test_ext_protection_1 tools.tests.test_ext_protection_1_cross_language` | 56 tests, OK |
+| `python3 tools/verify-ext-protection-1.py --mode Source` | Exit 0; 41 cases; plan SHA-256 `c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c`; `liveExecuted: false` |
+
+The Live command was not run:
+
+```bash
+python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts
+```
+
+`accepted-profile.json` is absent, so `ProtectionProfileSha256` is null. The installed secrets runtime reference still hashes to `31c28a9d1dd21eed8ca4d0c421088cb946b262c624ba461d0795cab92cd1feb3` and still names `runtime.providerBinding` `ext-secrets-1-hmac`. The mappings file still hashes to `f4e650995f0b35882377e01fb4f30b3944b018aec136e16496b6d349dd595ffe`, with `lifecycleOrAllCopyQualified` false and `ordinarySnapshotSemantics` true. The retained OpenBao result still hashes to `6efa381bc70b3de57a24142e5e679f53781c7f89d5ab6740fb7664966f30888e` and still records `ObservedRevival` with `g1Qualified` false. It was not rerun. HMAC, that revival result, and a restored actor snapshot are not current erasure authority.
+
+These runtime members were read again and are still null: `acceptedReplacementCommit`, `actorRoleAuthorityReference`, `allCopyInventoryReference`, `allCopyLifecycleAuthorityReference`, `audience`, `authenticatedRequesterTransport`, `compromiseGuardMirrorReference`, `compromisePublisherReference`, `compromiseSubscriberCredentialReference`, `compromiseSubscriptionReference`, `currentInventoryAuthorityReference`, `currentRevocationReference`, `independentSignerAccount`, `independentSignerCredentialReference`, `issuer`, `migrationAuthorityReference`, `nonrollbackJournalReference`, `profileNotBefore`, `profileReference`, `profileValidUntil`, `profileVersion`, `protectionOwnerReference`, `publicAnchorRetentionReference`, `publicTrustReference`, `replayExactScope`, `replayRegistrarCredentialReference`, and `restoreTarget`. The profile also still lacks `executor`, `observer`, and `enrollment` executables, anchors, credential references, and manifests, plus `capabilityTrust` and `engineBinary`.
+
+Platform HEAD `81dd98f2ecadaba63bfae0ee79a3489284dfa2c6` still has `spec-ext-secrets-1-semantic-custody-provider.md` `in-progress`. `CustodyBindingDaprInvoker` still returns `Refused` for `wrap` and `unwrap`. EventStore `ValidateStateAsync` still rejects owner revision 0 and still compares that revision with the separate guard revision. Absent or restored local state stays unauthorized genesis. The next Platform prompt is unchanged at SHA-256 `0fd73e261a5587d179e66f1c0e05a8e8143004a26e5a90304146401611f9b4b3`. G1–G7 and the host Live pass path stay open, so this packet has no immutable target to accept.
+
 ## Delivery continuation — 2026-10-22: reviewed components, full contract blocked
 
 This is the latest disposition; older discovery and source-status statements below are historical. The run began at full commit `995117f9b899a2994e99257091b0ea35cfbe5090`. Concurrent owner work advanced HEAD to `cb414530223f77cc845450a4877a4472559de2ad` and captured the planning continuation among unrelated Folders work. This run did not stage, commit, push, branch, update a dependency or change a register. Neither observed commit is a complete protection target.
