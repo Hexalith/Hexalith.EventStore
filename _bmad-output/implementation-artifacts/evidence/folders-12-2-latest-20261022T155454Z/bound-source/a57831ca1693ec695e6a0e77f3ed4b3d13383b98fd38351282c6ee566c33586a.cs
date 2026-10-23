@@ -1,1 +1,0 @@
-global using VerifiedEffectiveCommandEvent = Hexalith.EventStore.Contracts.Events.VerifiedEffectiveCommandEvent;

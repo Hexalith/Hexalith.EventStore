@@ -2,11 +2,6 @@ name: Payload Protection
 
 # Blocking gate for the pdenc-v2 core engine (Story 8.3).
 #
-# This lane deliberately lives outside .github/workflows/ci.yml. That file is a Story 4.15 v3
-# OQ8 gate input hashed from the working tree by tools/validate-oq8-platform-evidence.py
-# (see V3_GATE_INPUT_PATHS at :272 and the assertion at :3005), so adding a job there breaks
-# the sealed manifest. Workflow files outside that literal set are unconstrained.
-#
 # Hexalith.EventStore.PayloadProtection and its test project are deliberately absent from
 # Hexalith.EventStore.slnx and from the 14-package release inventory, so they are restored,
 # built and tested as direct projects. This mirrors scripts/ci-local.sh.

@@ -22,9 +22,9 @@ dotnet run --project tests/Hexalith.EventStore.ProviderVerification/Hexalith.Eve
   --pact-directory "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact" \
   --manifest "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json" \
   --provider-state-catalog "$frontcomposer_root/tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" \
-  --report-output "$frontcomposer_root/_bmad-output/implementation-artifacts/evidence/pact-provider-reconciliation/provider-verification.json"
+  --report-output "${TMPDIR:-/tmp}/eventstore-provider-verification.json"
 ```
 
 Live compatibility records the current EventStore source SHA, Release package version, Builds SHA, and release-inventory hash without claiming migration approval. It succeeds only when provenance is internally consistent, all interactions pass, and Kestrel is stopped with its port closed.
 
-Omit `--verification-mode` (or pass `historical-authorization`) and provide `--identity-record` plus `--identity-evidence-directory` to replay the immutable Story 11.24 authorization lane. That historical mode retains its exact approval, hash, and runtime-drift checks independently of current Pact compatibility.
+The in-repository Story 11.24 authorization packet was removed on 2026-10-23 (evidence is no longer committed; see architecture AD-12). The default `historical-authorization` mode (also selected by omitting `--verification-mode`) therefore needs `--identity-record` plus an external `--identity-evidence-directory` holding that packet; it retains its exact approval, hash, and runtime-drift checks independently of current Pact compatibility. Write reports to a temporary or other non-evidence path, as above.

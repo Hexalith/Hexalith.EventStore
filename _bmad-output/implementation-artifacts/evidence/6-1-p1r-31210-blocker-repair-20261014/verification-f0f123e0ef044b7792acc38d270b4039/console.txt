@@ -1,1 +1,0 @@
-{"out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-f0f123e0ef044b7792acc38d270b4039/isolation", "passed": false, "p1r_usable": false}

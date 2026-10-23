@@ -1,6 +1,0 @@
-{
-  "event": "initial final-manifest attempt refused after canonical main advanced from0b38a562cd4fb6191a0c3c78a44b4c48d1f05390 to a2016e88f4d0da9b953fe6f4394f8b8fd4e27f72",
-  "result": "no manifest was written; initial verify-delivery failed missing manifest; no successful delivery claimed",
-  "resolution": "refresh source with canonical test-helper fix, retain prior generation, repeat verification/bindings/observations and generate a fresh final manifest",
-  "no_original_checkout_or_gitlink_movement": true
-}

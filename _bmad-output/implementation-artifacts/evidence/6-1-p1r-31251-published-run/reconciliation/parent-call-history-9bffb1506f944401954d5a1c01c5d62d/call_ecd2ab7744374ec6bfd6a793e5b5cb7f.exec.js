@@ -1,2 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n 'bin|obj|packages|nupkg|evidence|p1r|\\.dll' .gitignore .gitattributes",max_output_tokens:3000}));
-text(await tools.exec_command({cmd:"cat _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/verification-import/readiness-green-attempt2.json",workdir:"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",max_output_tokens:2000}));

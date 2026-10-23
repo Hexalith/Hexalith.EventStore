@@ -1,6 +1,0 @@
-{
-  "command": "import retained construct_v4_controls.py with only BASE redirected to this new attempt directory; call main using final verifier",
-  "exit_code": 1,
-  "script_sha256": "25c11441e3a7a99a73de7773831f09adeb527b9115377c15268f28f437bc34af",
-  "byte_comparisons": []
-}

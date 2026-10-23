@@ -1,9 +1,0 @@
-The '-xml' switch has been deprecated in favor of '-result-xml' and will be removed in the next major version
-
-xUnit.net v3 In-Process Runner v4.0.2+0c7aa4991f (64-bit .NET 10.0.12)
-  Discovering: Hexalith.EventStore.Server.LiveSidecar.Tests
-  Discovered:  Hexalith.EventStore.Server.LiveSidecar.Tests
-  Starting:    Hexalith.EventStore.Server.LiveSidecar.Tests
-  Finished:    Hexalith.EventStore.Server.LiveSidecar.Tests (ID = 'c929bbbfdb9fb5c64afc6af44b98c3d339daa5307c96509b5cfdc4895a2fb300')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.Server.LiveSidecar.Tests  Total: 10, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.287s

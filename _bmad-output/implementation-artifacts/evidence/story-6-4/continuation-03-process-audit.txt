@@ -1,2 +1,0 @@
-No sidecars were started in this continuation.
-No EventStore test assembly processes remained after the final runners.

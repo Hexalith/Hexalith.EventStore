@@ -3,10 +3,7 @@
 This is the canonical inventory of GitHub Actions secrets and trusted publishing inputs used by the Hexalith.EventStore CI/CD pipeline. Use this list when bootstrapping a fork, rotating credentials, or onboarding a new maintainer.
 
 The current `docs/ci.md` and this checklist describe the EventStore-owned
-trusted publishing workflow. The previous `docs/ci.md` bytes remain bound in
-the archived OQ8 v4 source; the active v4 current-source gate intentionally
-fails closed on the revised documentation until a freshly reviewed v5
-successor is selected.
+trusted publishing workflow.
 
 ## Where secrets live
 

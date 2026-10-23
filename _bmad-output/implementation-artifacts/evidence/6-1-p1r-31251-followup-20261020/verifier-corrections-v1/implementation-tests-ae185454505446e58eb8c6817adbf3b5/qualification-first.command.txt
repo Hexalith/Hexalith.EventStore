@@ -1,1 +1,0 @@
-python3 -m unittest discover -s tools/tests -p 'test_p1r_published_qualification.py'

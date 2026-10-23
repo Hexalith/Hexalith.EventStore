@@ -470,100 +470,13 @@ _bmad-output/implementation-artifacts/*-fresh-review.diff
 .bmad-loop/cache/
 .bmad-loop/policy.toml
 
-# Historical story evidence logs are durable inputs. The `[Ll]ogs/` and `*.log`
-# rules above silently excluded them, so evidence receipts bound maintainer acceptance to files that
-# were never committed and would vanish on `git clean -xdf` (found in the Story 2.12 code review,
-# 2026-07-28). These negations must stay after the `[Ll]ogs/` and `*.log` rules they override —
-# the last matching pattern wins, and git cannot re-include a file whose parent directory is still
-# excluded, so the directory is re-included first. Only the selected Story 3.13
-# packet negations are final, so generated evidence packages stay ignored.
-#
-# Corrected 2026-07-28 (delta code review). The first version was both too narrow and too broad:
-#   too narrow — it matched only a lowercase `logs/` directory under `implementation-artifacts`, so
-#                `evidence/<sha>/run.log` (a log beside the receipt rather than inside `logs/`),
-#                `evidence/<sha>/Logs/run.log`, and anything under `planning-artifacts/evidence/`
-#                were all still silently excluded. That is the same defect class this fix exists to
-#                close.
-#   too broad  — `!…/logs/**` re-included *everything* beneath an evidence `logs/` directory,
-#                including `.dll` and `.nupkg` build output, which `git add -A` would then track.
-# Re-include the directory first (git cannot re-include a file whose parent directory is excluded),
-# then re-include only the log files themselves.
-!_bmad-output/**/evidence/**/[Ll]ogs/
-!_bmad-output/**/evidence/**/*.log
 _bmad/render/
 
-
-# OQ8 consumer validation virtualenv created by the documented source-only
-# handoff bootstrap (python3 -m venv .oq8-python).
+# Legacy local OQ8 virtualenv (tooling removed 2026-10-23); kept ignored so existing checkouts stay clean.
 .oq8-python/
 
-# Story 3.13 selected-packet archives are tracked evidence, not restore output.
-# ValidatePackageBytes rehashes the 14 on-disk *.nupkg files. The *.nupkg rule
-# ignores the archives themselves. **/[Pp]ackages/* ignores children of a
-# packages/ directory, not the directory. Still re-include the directory first,
-# then the archives, because git cannot re-include a file whose parent directory
-# is excluded. Do not use !…/logs/** — that re-included build nupkgs in
-# 2026-07-28. Generated evidence packages stay ignored. The selected Story 3.13
-# packet is re-included after these rules.
-
-# Story 3.22: new generated evidence belongs in external storage. These rules
-# follow the legacy log negations. Final match ignores generated evidence
-# packages. The selected Story 3.13 packet negations come last.
-# Existing tracked evidence and source/snapshot baselines remain historical input.
-_bmad-output/**/evidence/**/*.zip
-_bmad-output/**/evidence/**/*.tar
-_bmad-output/**/evidence/**/*.tar.gz
-_bmad-output/**/evidence/**/*.tgz
-_bmad-output/**/evidence/**/*.7z
-_bmad-output/**/evidence/**/*.gz
-_bmad-output/**/evidence/**/*.xz
-_bmad-output/**/evidence/**/*.bz2
-_bmad-output/**/evidence/**/*.zst
-_bmad-output/**/evidence/**/*.rar
-_bmad-output/**/evidence/**/*.[0-9][0-9][0-9]
-_bmad-output/**/evidence/**/*.z[0-9][0-9]
-# The split-volume patterns also match version-named directories such as
-# sdk-10.0.400/; re-include directories only, so split archive files stay ignored.
-!_bmad-output/**/evidence/**/*.[0-9][0-9][0-9]/
-!_bmad-output/**/evidence/**/*.z[0-9][0-9]/
-# Those negations would also override the **/[Pp]ackages/* and **/[Bb]in/* child
-# rules, so re-exclude version-named directories directly under them.
-_bmad-output/**/evidence/**/[Pp]ackages/*.[0-9z][0-9][0-9]/
-_bmad-output/**/evidence/**/[Bb]in/*.[0-9z][0-9][0-9]/
-_bmad-output/**/evidence/**/*.nupkg
-_bmad-output/**/evidence/**/*.part
-_bmad-output/**/evidence/**/*.part.*
-_bmad-output/**/evidence/**/*.webm
-_bmad-output/**/evidence/**/*.mp4
-_bmad-output/**/evidence/**/*.mov
-_bmad-output/**/evidence/**/*.avi
-_bmad-output/**/evidence/**/*.mkv
-_bmad-output/**/evidence/**/*.dmp
-_bmad-output/**/evidence/**/*.gcdump
-_bmad-output/**/evidence/**/*.etl
-_bmad-output/**/evidence/**/*.trace
-_bmad-output/**/evidence/**/*.nettrace
-_bmad-output/**/evidence/**/*.har
-_bmad-output/**/evidence/**/trace.dat
-_bmad-output/**/evidence/**/trace.json
-_bmad-output/**/evidence/**/traces/
-_bmad-output/**/evidence/**/trace/
-_bmad-output/**/evidence/**/commands.json
-_bmad-output/**/evidence/**/command-journal*.json
-_bmad-output/**/evidence/**/reports/
-_bmad-output/**/evidence/**/results/
-_bmad-output/**/evidence/**/TestResults/
-_bmad-output/**/evidence/**/playwright-report/
-_bmad-output/**/evidence/**/test-results/
-_bmad-output/**/evidence/**/screenshots/
-_bmad-output/**/evidence/**/*.log
-_bmad-output/**/evidence/**/*.trx
-_bmad-output/**/evidence/**/*.trx.xml
-_bmad-output/**/evidence/**/*.junit.xml
-_bmad-output/**/evidence/**/report.json
-_bmad-output/**/evidence/**/result.json
-_bmad-output/**/evidence/**/results.json
-_bmad-output/**/evidence/**/*-report.json
-_bmad-output/**/evidence/**/*-results.json
-!_bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/packages/
-!_bmad-output/implementation-artifacts/evidence/story-3-13/80d12ef5eee71a9fe3ea7be51171da4a71b69a28/ab8784c8c9c67229ee178e9d6dd809df9554b3cdafb43ffb7bfd38c792e2afcd/packages/*.nupkg
+# Evidence is ignored local scratch. Proof is the repository's tests plus CI: a story or
+# spec records the commands run, pass/fail counts, commit SHA and CI run link.
+# scripts/check-committed-files.sh (pre-commit hook and CI) also rejects force-added paths.
+_bmad-output/**/evidence/
+docs/evidence/

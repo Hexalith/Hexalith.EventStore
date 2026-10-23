@@ -3,8 +3,8 @@ name: Release
 # Publication is an explicit operator action with no dispatch inputs.
 # Semantic Release selects the version from main history. The unprotected
 # preflight proves the dispatch selected the current main tip and that exact
-# source already has successful push runs of ci.yml, p1r-qualification.yml,
-# and commitlint.yml before the protected production job starts.
+# source already has successful push runs of ci.yml and commitlint.yml before
+# the protected production job starts.
 on:
   workflow_dispatch:
 
@@ -56,7 +56,7 @@ jobs:
             exit 1
           fi
 
-          for required_workflow in ci.yml p1r-qualification.yml commitlint.yml; do
+          for required_workflow in ci.yml commitlint.yml; do
             source_runs="$(gh api --method GET \
               "repos/${REPOSITORY}/actions/workflows/${required_workflow}/runs" \
               -f branch=main \
@@ -173,7 +173,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
           test "$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')" = "$DISPATCH_SHA"
-          for required_workflow in ci.yml p1r-qualification.yml commitlint.yml; do
+          for required_workflow in ci.yml commitlint.yml; do
             source_runs="$(gh api --method GET \
               "repos/${REPOSITORY}/actions/workflows/${required_workflow}/runs" \
               -f branch=main -f event=push -f head_sha="$DISPATCH_SHA" \

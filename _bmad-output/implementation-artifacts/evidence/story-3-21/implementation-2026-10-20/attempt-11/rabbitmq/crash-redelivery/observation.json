@@ -1,9 +1,0 @@
-{
-  "broker": "rabbitmq",
-  "crashExitCode": 86,
-  "effectCount": 1,
-  "messageId": "15b84ae183ce04fbe30726e0",
-  "receiptCount": 3,
-  "sameId": true,
-  "scenario": "crash-redelivery"
-}

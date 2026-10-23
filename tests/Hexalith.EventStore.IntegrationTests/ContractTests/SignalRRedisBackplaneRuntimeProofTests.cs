@@ -602,6 +602,7 @@ public sealed class SignalRRedisBackplaneRuntimeProofTests {
                     EventStoreProofProcess.RepoRoot,
                     "_bmad-output",
                     "test-artifacts",
+                    "evidence",
                     "post-epic-10-r10a2-redis-backplane-runtime-proof")
                 : Path.GetFullPath(configuredOutputDirectory);
             _ = Directory.CreateDirectory(outputDirectory);

@@ -4,7 +4,7 @@ user_name: 'Administrator'
 date: '2026-06-29'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'identity_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 status: 'complete'
-rule_count: 54
+rule_count: 56
 optimized_for_llm: true
 ---
 
@@ -65,6 +65,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **`Hexalith.EventStore.Server.Tests` has a known build failure** (CA2007-as-error) — excluded from baseline; don't treat its red as a regression you caused
 - **Integration tests MUST assert state-store end-state** (Redis key contents, persisted CloudEvent body) — not just 202/mock call counts. "Returned 202" is a smoke test, not an integration test (Epic 2 retro R2-A6)
 - All configured tests must pass before a story is complete
+- **Proof = the repo's tests + CI.** A story/spec records the commands run, pass/fail counts, commit SHA and CI run link — nothing else. `_bmad-output/**/evidence/` and `docs/evidence/` are ignored local scratch; `scripts/check-committed-files.sh` (Husky `pre-commit`/`pre-merge-commit` with `--staged`, the required `live-sidecar` CI job over the full tree) rejects any path there and any file over 1 MiB outside its allowlist. Policy: `_bmad-output/planning-artifacts/architecture.md` (Evidence storage)
 
 ### Code Quality & Style Rules
 
@@ -91,6 +92,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Never** add copyright headers (this repo doesn't use them)
 - **Never** recurse into nested submodules or modify submodule files unsolicited
 - **Never** publish packages with `UseHexalithProjectReferences=true`
+- **Never** commit evidence packets, captures, or files over 1 MiB — record results in the story/spec; keep raw output local or in CI artifacts
 - **Always** `ConfigureAwait(false)` on awaits
 - **Always** assert persisted state in Tier 2/3 tests, not just status codes
 - **Always** keep aggregates pure — events in, state rebuilt, no in-place mutation
@@ -112,4 +114,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Update when the technology stack or analyzer policy changes
 - Remove rules that become obvious over time
 
-Last Updated: 2026-06-02
+Last Updated: 2026-10-23

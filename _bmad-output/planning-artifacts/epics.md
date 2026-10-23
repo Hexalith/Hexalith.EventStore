@@ -21,6 +21,8 @@ inputDocumentDigests:
 
 # eventstore - Epic Breakdown
 
+**Evidence policy (2026-10-23).** Per the [evidence-storage simplification spec](../implementation-artifacts/spec-evidence-storage-simplification.md) and architecture AD-12, any acceptance criterion or task below that names a committed record under `_bmad-output/**/evidence/` or a tool that spec deleted is satisfied by the owning story or spec Verification section (commands run, pass/fail counts, commit SHA, CI run link) plus its CI run, and the owning story re-specifies any deleted validator when it is scheduled.
+
 **Approved McpCli course correction (2026-09-27).** Stories 5.4 and 7.5 retain their Admin CLI security and typed-client evidence as compatibility requirements. `Hexalith.EventStore.Admin.Cli` and `.Admin.Mcp` are obsolete migration sources. McpCli Epic 5 inventories stream, subscription, cluster, and destructive operations and requires an approved generic admin contract, authorization, and parity proof before removal.
 
 
@@ -340,6 +342,7 @@ Maintainers can build, test, package, publish, and verify EventStore independent
 **FRs covered:** FR17-FR22, FR25, FR36 deployed-runtime parity (FR36-C2) and the FR36-C3 to FR36-C5 publication and consumer-removal authority slices
 **Story set:** 3.1–3.23; backlog 3.17 supports FR5/FR8/FR32/FR34, NFR12/NFR17 and PRD §8.4 through evaluated boundary inventory/enforcement. Backlog 3.18 owns G-COMPAT and NFR12's public-surface inventory slice; 3.19 owns FR36-C3 and G-PUBLICATION-AUTH; 3.20 owns FR36-C4, FR36-C5, and G-CONSUMER (`sprint-change-proposal-2026-10-07.md`). Backlog 3.21 qualifies the DAPR runtime pin and durable-broker candidates for the AD-26 profile (`sprint-change-proposal-2026-10-07-architecture-routing.md`).
 **Evidence-storage correction (2026-10-21):** Backlog 3.22 bounds qualification output and Git admission; 3.23 retires selected bulky evidence after consumer migration and verified durable retrieval. Hexalith.AI.Tools owns the shared `/pushall` prerequisite; these stories do not reopen completed runtime stories.
+**Evidence-storage simplification (2026-10-23):** The owner replaced that plan with one rule — proof is the repository's tests plus CI, recorded in the story or spec — and the [evidence-storage simplification spec](../implementation-artifacts/spec-evidence-storage-simplification.md) removed all committed evidence and its machinery. Stories 3.22 and 3.23 are closed `done` as superseded; no external store, manifest or materialization lane is built.
 **Cross-cutting coverage:** NFR9-NFR11, NFR16-NFR17; supporting NFR12 for 3.17 boundary compatibility
 **Implementation notes:** Repository and release reliability delivers value independently of later runtime work. `v3.94.1` remains immutable rejected evidence; only the separately authorized corrective release plus independent Story 3.15 verification may establish positive deployed-runtime parity. Planning, implementation, approval of this epic, and story completion never authorize an external publication; each external release mutation requires its separately bound durable authority record.
 
@@ -3310,6 +3313,8 @@ So that repeatable proof does not make every source checkout grow with raw run v
 
 **Current reconciliation (2026-10-21):** Backlog. Administrator approved the complete proposal with “approve” in the course-correction conversation. Approval establishes this storage work package and its budgets; it is not a runtime qualification, evidence seal, readiness verdict or external publication authority. Story 3.23 follows consumer migration and verified artifact availability.
 
+**Current reconciliation (2026-10-23):** Done — superseded by the [evidence-storage simplification spec](../implementation-artifacts/spec-evidence-storage-simplification.md). Evidence folders are ignored local scratch and `scripts/check-committed-files.sh` rejects committed evidence and files over 1 MiB in the pre-commit hook and CI; the bounded producer/reader contract, external output and metadata budgets above are not built.
+
 ### Story 3.23: Retire Bulky Qualification Evidence
 
 As a maintainer,
@@ -3332,6 +3337,8 @@ So that updated checkouts shrink while historical proof and regression behavior 
 6. Re-run the affected tests and evidence validators on the post-removal candidate in a clean checkout using the approved external retrieval path. Report pre/post tracked bytes, remaining oversized files, removed duplicate checkout bytes, and unresolved consumers. Update owner-approved root-declared submodule pointers in a later owning-repository change; never sweep other workspaces recursively.
 
 **Current reconciliation (2026-10-21):** Backlog. Approved as the second EventStore storage work package. No file deletion, fixture migration or artifact upload is claimed by this planning update. Git history remains intact; report measured current-tree savings only after the enumerated removals pass their dependent checks.
+
+**Current reconciliation (2026-10-23):** Done — superseded by the [evidence-storage simplification spec](../implementation-artifacts/spec-evidence-storage-simplification.md), which removed all committed evidence together with the validators, seals and closure tests that only re-verified it, instead of a manifest-driven migration. Rewriting `main` history to reclaim the stored bytes is a separate, explicitly confirmed owner step.
 
 ## Epic 4: Operators Can Trust Command and Event Integrity
 
@@ -7680,6 +7687,8 @@ So that no failed gate is "fixed" by an unauthorized, overbroad, or out-of-path 
 **When** CI runs on `main`
 **Then** it runs as a blocking check from a new workflow file
 **And** `docs/ci.md` is not edited unless a Story 4.15 reseal is planned.
+
+**Current reconciliation (2026-10-23):** Superseded by the [evidence-storage simplification spec](../implementation-artifacts/spec-evidence-storage-simplification.md), which deleted this story's validator, schema, workflow, tests and fixtures; the row is closed `done`. A future corrective-work exception is re-specified by its owning story when scheduled.
 
 ### Story 9.2: Phase 4 High-Risk Gate Matrix And Assurance Control
 

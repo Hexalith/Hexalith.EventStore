@@ -1,6 +1,0 @@
-parallel other owner = True
-attempt 0 = False
-attempt 1 = False
-attempt 2 = False
-attempt 3 = False
-private = 

@@ -109,12 +109,6 @@ jobs:
       - name: Run generated API smoke preflight regression
         run: bash scripts/tests/generated-api-smoke-preflight.test.sh
 
-      - name: Install pinned OQ8 validator dependency
-        run: |
-          python3 -m venv "${RUNNER_TEMP}/oq8-python"
-          "${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt
-          echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"
-
       - name: Restore Contracts tests
         run: >-
           dotnet restore tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj
@@ -175,6 +169,21 @@ jobs:
 
       - name: Verify semantic-release GitHub success lifecycle
         run: node tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs
+
+      - name: Checkout exact approved publication engine for regression controls
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: 22a578b576a515d2af214fe81859447fffc97981
+          fetch-depth: 1
+          path: .hexalith/builds-publication-tests
+          submodules: false
+          persist-credentials: false
+
+      - name: Verify one-use publication authority and same-run source controls
+        env:
+          HEXALITH_BUILDS_SOURCE: ${{ github.workspace }}/.hexalith/builds-publication-tests
+        run: python3 -m unittest discover -s tools/tests -p 'test_release_publication_authority.py'
 
   tenants-source-mode:
     name: ci / tenants-source-mode

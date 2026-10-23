@@ -1,6 +1,0 @@
-{
-  "recorded_utc": "2026-10-18T19:17:31.874922+00:00",
-  "attempt": "published_executor-attempt3",
-  "status": "development attempt; superseded by complete final suite run",
-  "note": "Parent identified missing inner Dapr callback status assertion while this test process was already running. Status assertion, consistency validator and controls were added before it finished. This attempt is retained and cannot establish final source verification."
-}

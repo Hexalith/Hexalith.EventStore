@@ -1,2 +1,0 @@
-interrupt=False; result=Completed/; recovered=False/invalid-recovery-evidence; marker_bytes=19002
-interrupt=True; result=Indeterminate/dispatch-failure; recovered=False/invalid-recovery-evidence; marker_bytes=19002

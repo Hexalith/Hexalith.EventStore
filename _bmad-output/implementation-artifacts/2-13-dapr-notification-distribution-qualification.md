@@ -90,6 +90,8 @@ For each candidate record connection/negotiation ownership, transport compatibil
 
 ## Implementation Tasks
 
+**2026-10-23 evidence policy:** do not write under `evidence/`; record commands, pass/fail counts, commit SHA and CI run link in this story (architecture AD-12).
+
 - [ ] Evaluate `src/Hexalith.EventStore/Hexalith.EventStore.csproj` and `src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj`, inspect linked `src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs`, `SignalROptions.cs`, `ProjectionChangedHub.cs`, and `IProjectionChangedClient.cs`, and record the graph/contract/authorization baseline in new `_bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md`.
 - [ ] Add the two-candidate operation/profile matrix to `_bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md`, including negotiation/group/replica semantics, credentials, versions, supported envelope, gaps, and unresolved rows.
 - [ ] Inspect `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRRedisBackplaneRuntimeProofTests.cs` and add a design-specific two-host/independent-sidecar proof at `tests/Hexalith.EventStore.IntegrationTests/ContractTests/SignalRDaprDistributionRuntimeProofTests.cs`; record the selected fixture/component paths before implementation and retain logical projection evidence in the qualification packet. Do not rewrite the existing Redis baseline as replacement proof.

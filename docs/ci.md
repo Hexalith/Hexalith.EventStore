@@ -9,7 +9,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | Workflow | File | Triggers | Purpose |
 |----------|------|----------|---------|
 | **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Runs the required shared `domain-ci.yml@main` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
-| **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser/governance/evidence scaffolding suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
+| **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Shared CodeQL workflow using `@main`, with the module configuration excluding archived `_bmad-output` source copies. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
@@ -50,16 +50,30 @@ CodeQL keeps C# analysis without builds and the default security queries. Its
 [configuration](../.github/codeql/codeql-config.yml) excludes only `_bmad-output/**`,
 which contains historical project and source copies rather than active build
 inputs. Application, test, sample, tool, and documentation source remains in the
-scan. The separate secret-protection gate continues scanning historical evidence.
+scan.
+
+## Evidence Policy
+
+Proof is the repository's tests plus CI, as decided in the
+[architecture document](../_bmad-output/planning-artifacts/architecture.md)
+(AD-12, evidence storage). In CI terms, `scripts/check-committed-files.sh` is
+the single enforcement point: the Husky `pre-commit` and `pre-merge-commit`
+hooks run it with `--staged`, and the required `live-sidecar` job in
+`integration.yml` runs it over the full tree right after checkout, together with
+`tools/tests/test_check_committed_files.py` and the Dapr broker qualification
+input tests. It lives there because the required `ci / build-and-test` job is
+the shared Hexalith.Builds reusable workflow, which accepts no caller-defined
+steps. Workflow artifact uploads (test results, release evidence) remain the
+place for run output.
 
 ## Test Lanes
 
 | Lane | Projects | Workflow behavior |
 |------|----------|-------------------|
 | Deterministic release gate | Contracts, Client, Testing, SignalR, Admin, AppHost, DomainService, QueryRouting, Sample, Testing.Integration, RestApi.Generators, and `tests/Hexalith.EventStore.Server.Tests` | Blocking in the required shared `domain-ci.yml@main` job through `unit-test-projects`. The serial Server.Tests assembly remains unfiltered; the job has a 180-minute limit to complete the full suite. |
-| Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. |
-| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests` | Dedicated `Integration Tests` workflow after `dapr init`. This lane is visible but not part of the semantic-release gate. After the live suite, Integration Tests includes Story 4.14 OQ8 evidence capture: `dotnet build` of `Server.Tests`, pinned `-method` support oracles, and capture-aware validation with `--support-ctrf`. It does not rerun committed historical-evidence closure, and it is not a full `dotnet test` of `Server.Tests` as the live lane. |
-| Advisory browser/governance/evidence scaffolds | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests`, `tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
+| Semantic-release governance | `tests/Hexalith.EventStore.Contracts.Tests/Packaging/Fixtures/semantic-release-github-success.mjs`, `tools/tests/test_release_publication_authority.py` | Blocking EventStore-owned CI job. It provisions Node 22, installs exactly `package-lock.json` with `npm ci`, and exercises both release-history cases against an Undici-guarded loopback-only fake GitHub boundary. It also runs the publication-authority regressions against the exact approved Builds publication engine. |
+| Live-sidecar DAPR lane | `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`, plus `scripts/check-committed-files.sh`, `tools/tests/test_check_committed_files.py` and `tools/tests/test_dapr_broker_qualification.py` | Dedicated `Integration Tests` workflow after `dapr init`; its required `live-sidecar` job first runs the committed-file guard and the two Python suites. This lane is visible but not part of the semantic-release gate. It is not a `dotnet test` of `Server.Tests`. |
+| Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
 
 `integration.yml` pins `DAPR_CLI_VERSION` (`1.18.0`) and `DAPR_RUNTIME_VERSION`
@@ -68,17 +82,11 @@ action uses the CLI pin for `dapr/setup-dapr` and the runtime pin for
 `dapr init --runtime-version`; older callers that omit `runtime-version` retain
 the legacy behavior by falling back to `version`. Neither pin is the Dapr NuGet
 `PackageVersion` (owned separately in `references/Hexalith.Builds/Props/Directory.Packages.props`,
-currently `1.18.5`). Fresh OQ8 validation receives the same runtime pin explicitly,
-while committed Story 4.14 evidence remains bound to its observed runtime `1.18.1`.
+currently `1.18.5`).
 
-The Integration Tests checkout uses explicit `fetch-depth: 1` because fresh OQ8
-capture needs only the checked-out commit. Committed OQ8 historical-evidence
-closure is owned by the blocking Tier-1 `Oq8PlatformClosureTests`; Integration
-Tests does not duplicate that current-checkout validation. Depth 1 is valid only
-while that job stays in capture mode: the committed-closure validator resolves
-`git show <pinned-commit>:<path>` for the v1, SDK, and v2 snapshots and proves
-`merge-base --is-ancestor 5e8f175b… HEAD` for the active v3 lineage, so any lane
-that runs it needs a full-history checkout (`fetch-depth: 0`).
+The Integration Tests checkout uses explicit `fetch-depth: 1` because its test
+steps need only the checked-out commit. A step that reads Git history must also
+change that checkout to `fetch-depth: 0`.
 
 Do not reintroduce a `Category!=LiveSidecar` filter to make `Server.Tests`
 deterministic. Live-sidecar coverage belongs in the live-sidecar project and
@@ -91,8 +99,7 @@ The live-sidecar workflow and `Oq8PostgresqlFixture` use the same reviewed
 multi-platform PostgreSQL index:
 `postgres@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636`.
 The immutable index digest is the registry pin; a platform child manifest or
-the Docker image/config ID captured in historical OQ8 evidence is not a valid
-replacement.
+a local Docker image/config ID is not a valid replacement.
 
 Rotate this identity only as one reviewed change:
 
@@ -103,15 +110,9 @@ Rotate this identity only as one reviewed change:
    `amd64` or `arm64` child digest.
 3. Replace the literal together in `.github/workflows/integration.yml`,
    `Oq8PostgresqlFixture.PostgresImage`, and
-   `tools/validate-oq8-platform-evidence.py`, and
-   `PostgreSqlImageGovernanceTests.ReviewedPostgresImage`; then issue the
-   required additive, content-bound Story 4.15 successor evidence without
-   rewriting historical v1 bytes.
-4. Build the Contracts test project, run `PostgreSqlImageGovernanceTests`, run
-   `actionlint .github/workflows/ci.yml .github/workflows/integration.yml`, and run the validator from
-   the pinned environment the v3 handoff mandates:
-   `python3 -m venv .oq8-python && .oq8-python/bin/python -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt`
-   then `.oq8-python/bin/python tools/validate-oq8-platform-evidence.py`.
+   `PostgreSqlImageGovernanceTests.ReviewedPostgresImage`.
+4. Build the Contracts test project, run `PostgreSqlImageGovernanceTests`, and run
+   `actionlint .github/workflows/ci.yml .github/workflows/integration.yml`.
 5. Pull the digest-pinned index and run the complete live-sidecar project. The
    fixture must retain its fail-closed `docker image inspect` prerequisite and
    bounded readiness checks.
@@ -120,55 +121,10 @@ Tag-only, malformed, architecture-specific, mismatched, missing, or duplicated
 image declarations fail governance and must not be hidden behind generated
 source, MSBuild properties, `PATH`, or local Docker tags.
 
-Story 4.15 successor timestamps use exact UTC seconds in
-`YYYY-MM-DDTHH:MM:SSZ` form. Validation parses that format generically, captures
-current UTC once per run, rejects timestamps later than that instant, and keeps
-the strict execution → subject freeze → receipts → handoff order. Tests that
-exercise future-time rejection derive their mutation from runtime UTC; do not
-renew them by hard-coding another calendar date.
-
-The v1 closure, the SDK 10.0.400 successor
-(`story-4-15/successors/sdk-10.0.400-xunit4-mtp`), and the v2 successor packets
-remain immutable historical evidence. V2 is validated against completed closure
-commit `83b32fcfad7bb608098aebccdc15002636ffb431`, and the SDK successor against
-its own snapshot commit, not against later working-tree bytes. The additive
-`story-4-15-successors/v3` packet is immutable historical evidence, and
-`story-4-15-successors/v4` remains the active lineage selected by
-`4-15-oq8-platform-closure-successor.json` (selector schema `v3`). The trusted
-publishing change updates this document, the release manifest test, the OQ8
-historical fixture test, and the validator, so the active v4 current-source gate correctly fails closed until a
-fresh v5 successor is reviewed and selected. `tools/prepare-oq8-v5-candidate.py`
-and `tools/validate-oq8-platform-evidence.py --v5-candidate <outside-repo-json>`
-verify an explicitly unapproved draft against archived v1–v4 evidence and the
-current candidate hashes; they grant no current-source or release authority.
-The historical v4 packet and its archived source bytes remain unchanged. V3
-additionally
-binds the landed commit `5e8f175b2ced4715f7c6f765386812cc1001dbb4` and its tree,
-requires current `HEAD` to descend from that commit, and hashes every SDK and v2
-gate input (workflows, `global.json`, `tests/Directory.Build.props`, the
-LiveSidecar fixtures, and the governance tests) as regular non-symlink current
-files.
-
-Prepare and check the receipt-independent v5 subject packet outside the
-repository after the implementation source is committed on the review branch.
-Regenerate it after any further source edit so its source hashes and
-`sourceHead` identify that exact candidate:
-
-```bash
-python3 tools/oq8-v5-packet.py --prepare-draft /tmp/eventstore-oq8-v5-subject.json
-python3 tools/validate-oq8-platform-evidence.py --v5-subject-draft /tmp/eventstore-oq8-v5-subject.json
-```
-
-The draft records architecture, security, and test reviews as pending. Only a
-new frozen subject, independent receipts, v5 packet, selector, and lifecycle
-binding can authorize the revised current source. The
-[v5 activation guide](oq8-v5-activation.md) describes the packet schema,
-receipt fields, and final validation commands.
-
 Story 4.5's append-durability race and generic ETag control remain in this
-dedicated LiveSidecar lane. Their hash-bound capture is an architecture evidence
-artifact, not a reason to add the project to `unit-test-projects` or the release
-workflow. See the [Story 4.5 evidence report](../_bmad-output/implementation-artifacts/4-5-append-durability-race-evidence.md).
+dedicated LiveSidecar lane; they are not a reason to add the project to
+`unit-test-projects` or the release workflow. See the
+[Story 4.5 report](../_bmad-output/implementation-artifacts/4-5-append-durability-race-evidence.md).
 
 ## Package Validation
 
@@ -243,8 +199,8 @@ manual workflow fails closed unless all of these are true:
 
 - the dispatch ref is exactly `refs/heads/main`;
 - the dispatch SHA still equals the live `main` ref returned by GitHub;
-- the exact SHA has a completed, successful push run of `ci.yml`,
-  `p1r-qualification.yml`, and `commitlint.yml`.
+- the exact SHA has a completed, successful push run of `ci.yml` and
+  `commitlint.yml`.
 
 The release concurrency group is `release-production` with cancellation
 disabled, so a later request cannot silently replace an approved publication.
@@ -266,7 +222,7 @@ publishing is enabled only for the approved EventStore host mapping. Before any
 NuGet package is pushed, semantic-release validates the temporary
 `NUGET_TRUSTED_PUBLISHING_KEY`, the
 container publisher helper, and the required Zot registry credentials so a
-missing container secret cannot create a partial NuGet-only release. Immediately before Semantic Release, the publish job re-proves those three
+missing container secret cannot create a partial NuGet-only release. Immediately before Semantic Release, the publish job re-proves those two
 push runs. The semantic-release `verifyRelease` phase then freezes exact repository,
 version, source proof, environment, workflow run, approved Builds, helper
 hashes, normalized package IDs, canonical manifest hash, container, and
@@ -393,193 +349,7 @@ The EventStore release job uploads the complete hidden evidence directory with
 Any successful write followed by a later failure permanently quarantines that
 version as immutable non-authorizing evidence. A retry resolves a new version
 newer than every live NuGet, registry, tag, and release destination and requires
-a new authority. `tools/validate-corrective-release-evidence.py` verifies the
-canonical Story 3.14 handoff directly from retained bytes: exactly 14 manifest
-packages and their nuspec source commits, one two-platform `eventstore` index,
-raw index/child/config hashes and descriptors, exact child labels, both
-digest-pinned bounded Development liveness smokes, and one source/run/Builds/authority
-lineage. The packet records the selected codec and verifier content hashes and
-must itself use that codec's canonical UTF-8 form. Its output explicitly selects
-no deployed identity and grants no mutation authority; Story 3.15 owns that
-decision.
-
-Story 3.12 supplies historical corrective-release evidence to Story 3.13. After the
-Story 1.20 proof archives were declared nonexistent, Story 3.13's selected exact
-identity is source `80d12ef5eee71a9fe3ea7be51171da4a71b69a28`, release `v3.94.1`,
-and the 14 manifest packages at version `3.94.1`. Those 14 `v3.94.1` archives under
-the selected packet `packages/` are tracked evidence, not restore output, because
-`ValidatePackageBytes` rehashes them when `byte_verification.result` is `pass`. The
-`fa2d1c99` packet remains historical fail-closed evidence and is not the selected
-candidate. Story 1.20 remains complete and authoritative for source/package parity
-only; Story 3.13 cannot rewrite either predecessor, infer identity across lineages,
-or authorize a consumer migration, deployment, publication, or registry mutation.
-Story 1.20 retains sole authority over its approval fields and consumer-migration
-decision. The checked-in GitHub approval-role allowlist remains historical
-proof-packet evidence; the release workflow does not consume it.
-
-Story 3.13 owns the `v3.94.1` rejection only. Its content-bound disposition envelope
-lives under `_bmad-output/implementation-artifacts/evidence/story-3-13/disposition/`
-and is addressed by the immutable review-subject digest recorded in the selected packet
-`6cee8dad34c1233c6184404b409fb65d1a4dd0bccdd0d0ee54e8869120970a97`, which an operator
-reproduces with `sha256sum review-subject.json`. The envelope records
-`candidate_disposition: rejected-non-authorizing`, `deployed_runtime_parity:
-unavailable-for-v3.94.1`, `selected_deployed_identity: null`, and
-`deployment_authorized: false`. It lives outside both content-addressed evidence trees
-because the frozen crosswalk pins `receipt_count` to `0`. The malformed `https` values
-for `org.opencontainers.image.source`, `.url`, and `.documentation`, the absent
-`.revision` label, and the withheld deployment authority are retained verbatim and are
-never reinterpreted as passing. Story 3.13 reached `done` on 2026-08-24, when the EventStore owner, Release owner and
-Test Architect each accepted the unchanged envelope
-`a7ecd45524ca3ebd6f2c9a23143e2786f31d705f6a4a741be8f35cfc1c1851ec`; the approved
-2026-08-16 correct-course decision was planning authority, not a receipt, and was not
-counted. Both owner receipts are GitHub-minted issue comments on #351 whose bodies are
-the acceptance JSON; the Test Architect receipt is a bmad record. Because the roster maps
-both owner roles to one account, that acceptance is a self-attestation rather than
-independent three-party review.
-
-Story 3.14 owns the corrective release; Story 3.15 owns positive deployed-runtime parity
-for it. A complete Story 3.13 disposition therefore still selects no image and authorizes
-no release, registry, deployment, consumer, or predecessor mutation, and it creates no
-dependency on Story 3.14.
-
-The Story 3.13 tracker key stays `3-13-v3-94-1-deployed-runtime-evidence-disposition`
-and only its display title changed. Proposal §4.9 allows the rename only when the story
-filename, spec key, and every repository reference move atomically; both Story 3.13
-proof-packet filenames are pinned by SHA-256 inside the frozen review subjects and the
-focused verifier, so they cannot be renamed and that condition cannot be met.
-
-### Story 3.15 corrected deployed-runtime parity
-
-Story 3.15 independently revalidates the canonical Story 3.14 identity digest
-`4d1a0c336397e971bf10001095d5e427dd03c499ee428a3121a913926da8c4a9`, downloads and rehashes all
-14 NuGet.org packages containing one `.signature.p7s` entry, and maps those public bytes to the distinct GitHub
-release-asset bytes retained by Story 3.14. It also rereads the raw immutable OCI index, both child
-manifests, and both configs, then runs bounded digest-pinned `/alive` smokes under the Production
-hosting environment for `linux/amd64` and `linux/arm64`.
-
-`tools/validate-corrected-deployed-runtime-parity.py` dispatches only to the exact allowlisted v1
-handler. Every file on the import path — the v1 handler, its package initializer, the v3 predecessor
-handler, and *its* package initializer — is pinned before execution. The source-only loader compiles
-those verified bytes directly, so stale timestamp-valid bytecode cannot stand in for reviewed
-source and importlib never resolves these modules at all -- provenance is established before
-execution rather than re-checked afterwards. The handler
-never executes packet-supplied code: it parses and rehashes retained bytes, rejects symlinks and
-nuspec DTD/entity declarations, checks the closed technical inventory, recomputes the canonical
-subject, and validates exactly three subject-addressed receipts.
-
-The closure's `dispatch` block binds the v1 handler, the v3 predecessor handler, and the v3
-package initializer directly; the v1 package initializer is pinned in the dispatcher's
-`IMPORT_PATH_FILE_SHA256`, whose own bytes are bound by `dispatch.verifier`, so the trust chain
-closes transitively over all four. This closes a gap found in the
-2026-08-25 review: previously only `v1.py` and its dispatcher were bound, so a tampered `v3.py` —
-which performs predecessor validation, nuspec identity parsing, and the release-manifest check —
-produced the identical subject and selected identity with all three receipts still valid, contrary
-to the closure's own rerun trigger. Binding those bytes changed `v1.py` and therefore the canonical
-subject, which by that same rerun trigger **rejected every receipt collected for the superseded
-subject**. Those three receipts are retained, unbound, under
-`_bmad-output/implementation-artifacts/evidence/story-3-15/superseded-acceptances/`.
-
-A second 2026-08-25 review loop hardened the verifier further, and by the same rerun trigger
-re-minted the subject again. That loop made the acceptance-source checks bind what they claimed to:
-the retained comment's `id`, `url`, `html_url` anchor, and `issue_url` must now all resolve to one
-comment on one issue (previously each was prefix-matched independently, so a receipt could splice a
-comment id from one thread onto an anchor from another), and each rostered role is bound to exactly
-one source kind. It also closed a disclaimer bypass — `authorizes nothing beyond deployment role identity`
-satisfied the previous substring markers while asserting the opposite — normalized CRLF comment
-bodies, made a date-only timestamp fail closed instead of crashing the verifier, and made the
-assembler run the pinned verifier over its own output rather than always exiting zero. The
-superseded `bb58d691` receipts were themselves anchored on issue `#346`, so they are now rejected
-on lineage as well as on subject.
-
-A third 2026-08-25 review loop bound the Test Architect source's lack of independent external
-authentication as an exact limitation every receipt must repeat, made the owner GitHub account one
-shared named identity, replaced the disclaimer regex with the retained exact non-authority sentence,
-made every recomputed semantic check mutation-reachable, and added an explicit manifest override and
-rerun trigger to failure output. Those verifier changes re-minted the subject once more.
-
-The authorized completion pass then created dedicated Story 3.15 issue `#352`, retained its
-Story-3.15-scoped MEMBER-authenticated roster comment, replaced the two-issue denylist with a single
-positive issue allowlist, and required both owner receipts to resolve to that exact thread. Binding
-the new handler and registry bytes re-minted the subject again.
-
-A subsequent trusted-verifier review made both dispatchers execute only verified source bytes
-under sanitized import resolution, rejected non-UTF-8 nuspec XML and non-integer smoke facts,
-bounded all smoke-capture work by one per-platform monotonic deadline, and corrected the rerun
-trigger to bind receipt-source **policy** changes. Those trusted-byte changes re-minted the subject
-again and superseded every `dab64f5f...` receipt.
-
-A sixth review loop landed as one authorized batch and re-minted the subject. It made
-both packet producers -- the bounded smoke capture tool and the packet assembler -- bound decision
-inputs in the closure `dispatch` block, so a producer edit can no longer change what a passing
-Production smoke means while every receipt stays valid; it closed the schema of the retained GitHub
-comment envelopes, so a stray unreviewed field can no longer persist inside the packet's only
-external authentication artifacts with the subject unchanged; and it bound a fourth limitation
-disclosing that every acceptance receipt is composed by repository tooling and posted with the
-rostered role holder's credential rather than typed by hand. The same batch made cleanup bounded
-rather than skipped when a platform budget is exhausted, made the capture refuse to overwrite a
-populated `smokes/` directory without `--force`, restricted the nuspec DTD scan to the XML prolog,
-and removed a post-import path assertion that was true by construction.
-
-A seventh review loop landed at zero receipts, where a re-mint costs nothing, and re-minted the
-subject once more. It closed a **fail-open regression the sixth loop introduced**: narrowing the
-nuspec DTD scan to the XML prolog also made that scan return silently when the prolog did not begin
-with `<`, and because `utf-8-sig` strips exactly one byte-order mark, a doubled BOM left a residual
-U+FEFF that skipped the scan entirely -- a nuspec carrying `<!DOCTYPE ... <!ENTITY smuggle ...>` was
-then accepted with the smuggled entity resolving into the package id. Every prolog exit is now
-either "reached the document element" or a fail-closed reason, and a residual BOM is rejected.
-The same loop closed a second regression in both dispatchers: adding `TypeError` to the
-path-resolution catch had silenced a crash by making a bytes repository path answer "not
-repository-local", so such a module escaped both displacement and the post-execution shadow check.
-Paths are now decoded with `os.fsdecode` first. It also made the roster-configuration guard able to
-fail (it had compared the identity table against strings interpolated from that same table), widened
-the per-platform smoke window bound to the platform budget plus the cleanup allowance so the capture
-tool can no longer emit records this verifier rejects, and bound the assembler to the bytes actually
-executing rather than the pristine repository file.
-
-The 2026-08-30 verifier and producer hardening re-minted the subject at zero receipts,
-where no acceptance was burned. The 2026-09-23 DW-508 trust-path correction re-minted it again.
-The 2026-09-26 curl configuration isolation first re-minted the subject to `c98fdef2...`.
-A fresh two-platform Production capture with that `curl -q` producer, followed by correction of
-the subject-bound fourth limitation, re-minted it to
-`66be1b4a23d377db6af3cdae3972bc94fbd2fa8e44d180be1a1ff86a222ea9b6`.
-The packet now **validates at three of three roster-bound receipts** for that subject:
-EventStore-owner issue `#352` comment `5844573563`, Release-owner comment `5844574016`, and the
-self-attested `bmad:murat` Test Architect record. Reassembly reports `receipts=3 verifier_exit=0`.
-The receipt-free `c98fdef2...` packet is preserved under `superseded-packets/`. The three earlier
-`7d64f87e...` receipts, including their issue `#352` owner comments and Test Architect record, are
-retained byte-for-byte in the superseded audit area and authorize nothing for the current subject.
-The README there explains how an auditor can re-pair each historical receipt with its source.
-Subjects with no collected receipts require no retained receipt set.
-
-`closure.json` and `subject.json` carry `deployed_runtime_parity: "available"` and
-`selected_deployed_identity`. Those fields are the packet's **claim**; the retained verifier
-validates the claim because all three subject-bound receipts validate. `acceptances.directory`
-names the current receipt address. The packet supplies parity evidence only and grants no deployment,
-publication, registry mutation, consumer removal, or predecessor change authority.
-
-The roster maps both owner roles to one authenticated human, `github:jpiquot`, while the Test
-Architect record is explicitly self-attested without independent external authentication. Owner
-comments `5409140199` and `5409147909` had timestamp mismatches, were immediately marked visibly
-superseded, and are not retained in the packet.
-
-Two facts are recorded rather than corrected. The retained roster comment names the ratified
-artifact `reviewer-roster.json` -- wording copy-carried from Story 3.13 -- while the packet retains
-`registry/owner-role-registry.json`; the reference is understood to mean that file, and correcting
-it would need a new owner comment plus another re-mint. And the `linux/arm64` Production smoke
-depends on QEMU user-mode emulation registered from
-`tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0`; that
-registration is host state, not an input byte the packet can hash, so it is documented as an
-environmental prerequisite in the capture script rather than bound into the subject.
-
-The subject cannot bind each post-subject receipt-source instance without a hash cycle. It binds
-the source policy instead: replacing one retained source invalidates that source's receipt and any
-complete 3/3 verdict, while a source-policy change re-mints the subject and rejects all receipts.
-
-The only identity the closure may ever select is
-`registry.hexalith.com/eventstore@sha256:4b1410852b11be3bcaebf8f2e6277c1d30ce13a19f48cf0df86ed93646d709c3`,
-and it is selected for bounded parity evidence now that all three receipts validate. That verdict
-is evidence, not operational authority: deployment, package publication, registry mutation, consumer removal, and predecessor
-mutation remain separately prohibited.
+a new authority.
 
 ## Submodules
 
@@ -641,9 +411,7 @@ release-caller guard additionally requires an explicit checkout's HEAD to equal
 the EventStore Builds gitlink. The Builds object store must contain the exact
 historical commits used by the release and tool-hash assertions, including the
 reviewed release pin; checkout layout does not relax commit, ancestry, or tool-byte
-checks. EventStore also needs its recorded historical OQ8 commits. The OQ8 tests
-reproduce sealed historical source and checkout bytes only in temporary fixtures;
-the current-source evidence validator continues to reject live source drift.
+checks.
 
 For package validation, run the same shared-CI entry points locally:
 

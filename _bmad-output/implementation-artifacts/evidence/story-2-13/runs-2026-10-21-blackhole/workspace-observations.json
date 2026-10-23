@@ -1,7 +1,0 @@
-{
-  "runStartRevision": "7217b5bf740b80ae92858378785b496e6b564285",
-  "frozenSpecBaseline": "f2b480b68a8bd5369b3cdf550340e0fadfb2332b",
-  "observedRevision": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
-  "observedUtc": "2026-10-21T06:26:47.766519+00:00",
-  "description": "Other workspace activity committed the pre-existing root gitlink changes and merged ES-DIAG authorization bootstrap. This agent performed no Git mutation. Command receipts independently bind their own revision start/end and exact source/binary hashes."
-}

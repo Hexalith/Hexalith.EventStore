@@ -1,5 +1,0 @@
-{
-  "historical_driver": "_bmad-output/implementation-artifacts/evidence/6-1-p1r-recovery-20261015/verify-compiler-enrollment.py",
-  "historical_sha256": "45c2db389e27c4631fe8b5a93786d2d29a6bfd7098b009c4d06d27f4cef5d99e",
-  "changes": "Only ROOT and fresh output basename; profiles and checks unchanged. Historical proposal is not reserved/selected."
-}

@@ -1,7 +1,0 @@
-{
-  "observedUtc": "2026-10-21T06:53:13.089903+00:00",
-  "newPacketExecutableMsBuildSurfaces": [],
-  "guardSource": "references/Hexalith.Builds/Tools/validate-consumer-package-authority.ps1",
-  "guardSourceSha256": "b20e45e3800e7d5e08770993192b646887097b8187e70f3f629adc741a0441fe",
-  "inspection": "The existing consumer authority guard enumerates tracked .csproj/.props/.targets. This new packet contains no files with those extensions; .source data retains original bytes and path mappings. The separate full Contracts guard still fails on historical tracked evidence."
-}

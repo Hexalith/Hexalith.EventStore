@@ -1,1 +1,0 @@
-text(await tools.exec_command({cmd:"cat _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/diagnostic-7d9c2147a13a4903b5b6193859d7cbb4/summary.json",workdir:"/tmp/p1r-31251-verifier-import-c237110a4d04422f85ed2794536848d4",max_output_tokens:4000}));

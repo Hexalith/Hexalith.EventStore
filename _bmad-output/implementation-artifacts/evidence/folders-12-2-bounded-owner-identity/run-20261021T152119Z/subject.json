@@ -1,8 +1,0 @@
-{
-  "authority": "EventStore source qualification only; package/release and Folders acceptance are separate",
-  "baselineCommit": "ae917d3e4dbab20b8982c5222a13611c3e3faf35",
-  "buildGraph": "Debug;UseHexalithProjectReferences=true;net10.0",
-  "focusedOnly": false,
-  "liveRequested": true,
-  "qualificationScriptSha256": "863308B37F41A4486A7C4672E99E8F7B644D80463CE18ECC7D80EC1C8BBD876A"
-}

@@ -1,6 +1,0 @@
-@namespace Hexalith.EventStore.Admin.UI.Components.Shared
-
-<div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;" aria-hidden="true">
-    <FluentSkeleton Style="width: 80px; height: 14px;" />
-    <FluentSkeleton Style="width: 120px; height: 32px;" />
-</div>

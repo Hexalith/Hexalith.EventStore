@@ -29,7 +29,12 @@ Thank you for your interest in contributing to Hexalith.EventStore! Whether you'
 ### Commit Messages
 
 Install the repository-pinned Node.js tools after cloning. `npm ci` runs the
-Husky `prepare` script and installs the tracked `commit-msg` hook:
+Husky `prepare` script and installs the tracked `commit-msg`, `pre-commit`
+and `pre-merge-commit` hooks. The `pre-commit` and `pre-merge-commit` hooks run
+`scripts/check-committed-files.sh --staged`, which rejects staged paths under
+`_bmad-output/**/evidence/` or `docs/evidence/` and files over 1 MiB, including
+those brought in by a merge; record proof (commands, pass/fail counts, commit
+SHA, CI run link) in the story or spec instead:
 
 ```bash
 npm ci

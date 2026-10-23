@@ -1,7 +1,0 @@
-{
-  "source": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251.py",
-  "source_sha256": "78d90d1afb8cd1bfbea0301f45845ab4c3f4c3a07a19f6031e033d75b94c4aad",
-  "successor": "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/audit-31251-v2.py",
-  "successor_sha256": "8e4cc5a5fb4d5080af431229928d4852f61865947b462437769e2e38ff4fcb97",
-  "reason": "Retain failed first audit; convert UTC audit interval to datetime objects for package/process validation APIs. No executor or receipt changes."
-}

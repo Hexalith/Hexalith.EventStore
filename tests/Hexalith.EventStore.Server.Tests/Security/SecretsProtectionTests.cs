@@ -3,8 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Xml;
-using System.Xml.Linq;
 
 using Shouldly;
 
@@ -17,23 +15,6 @@ public sealed partial class SecretsProtectionTests
 {
     private static readonly string RepoRoot = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-    private const string RetiredEvidenceManifest =
-        "_bmad-output/implementation-artifacts/evidence/story-5-3-retired-captures.json";
-    private const string SealedP1RRemediationSourceCapture =
-        "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/source-candidate.diff";
-    private const string SealedP1RRemediationSourceCaptureSha256 =
-        "220af5d8dbe27386311c7bc1cef1900a65d06db7c6eb9fcc27250913ae2056aa";
-    // Existing Story 5.3 approvals from df3828740c244d8add3c40ce2bbfd0d2da680b30.
-    // The mutable registry cannot approve new content by re-pinning its digest.
-    private static readonly IReadOnlyDictionary<string, string> ApprovedRetirementHashes =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["_bmad-output/implementation-artifacts/evidence/story-3-14/f343bb0153e9cdcb8b12ec10153813072f5ad38d/successful/builds/eadddc7b5d8e9392e5931758ffb608b57b5fdc6c/Github/publish-containers/smoke_container_platforms.py"] =
-                "7f1161d6f477c77ddf6a1e2f381df03451168565dd8cabc28010ab23db443491",
-            ["_bmad-output/implementation-artifacts/1-20-owner-approved-parity-closure-proof-packet.md"] =
-                "cb1ccde9d5cc5ca6cb52cbeab30fb9cd59bd89771e14f4b489e20bd5e3d46743",
-        };
-
     /// <summary>
     /// Verifies Git-tracked text, including root/build configuration and workflows. Generated output,
     /// VCS data, and submodule contents are excluded by Git's tracked-file model rather than by path.
@@ -50,46 +31,6 @@ public sealed partial class SecretsProtectionTests
             0,
             "Tracked reusable content contains secret material. Only path and line are reported: "
             + string.Join(", ", violations.Take(200)));
-    }
-
-    [Fact]
-    public void SealedPublishedExecutorReceipt_ChangedSourceOrAdjacentCredentialIsScanned()
-    {
-        const string path = "_bmad-output/implementation-artifacts/evidence/6-1-p1r-31150-published-run/execution-b944559fd0f3413696db48bcfc585f52/packet/receipts/021f9acf3ca347368311bd8f332064df.json";
-        string receipt = File.ReadAllText(Path.Combine(RepoRoot, path));
-        FindViolations(path, receipt).ShouldBeEmpty();
-        FindViolations(path, receipt.Replace("self.app_token = uuid.uuid4().hex",
-            "self.app_token = 'literal-credential'", StringComparison.Ordinal)).ShouldNotBeEmpty();
-        FindViolations(path, receipt.Insert(1, "\"password\":\"literal-credential\","))
-            .ShouldNotBeEmpty();
-    }
-
-    [Theory]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-31190-published-run/execution-19b767f156174fb2ae1b19d28ae819a6/receipts/00402af679c14171b325272d166f24a0.json", "b6703a7ddd9af170139c8211bdeb7c97d429ed7efec42517b6faa799b2ead211")]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-current-source-2026-10-09/packet/receipts/21aa8408fff249f3920955bbecc804cf.json", "af7b4a380334e7f438928d395232c36a97fc5c526507f9ae4d0208cd88d37a48")]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-source-repair-2026-10-10/predicate-sources.json", "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc")]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/verification-b7bf447465214da1b9857655ae61ddf7/attempt/measurement/receipts/13110834ba9a4e58ad2c5ea34ebc28a4.json", "53d9ab6e4d673e937a01a3c45f14d2da52d019bcf4903f43cbc4e1fc771371b7")]
-    public void HistoricalExecutorSource_RequiresExactSealAndScansAdjacentCredentials(string path, string seal)
-    {
-        ArgumentNullException.ThrowIfNull(path);
-        ArgumentNullException.ThrowIfNull(seal);
-        string receipt = File.ReadAllText(Path.Combine(RepoRoot, path));
-        FindViolations(path, receipt).ShouldBeEmpty();
-        FindViolations(path, receipt.Replace(seal, new string('0', seal.Length), StringComparison.Ordinal))
-            .ShouldNotBeEmpty();
-        FindViolations(path, receipt + "\npassword='literal-credential'").ShouldNotBeEmpty();
-    }
-
-    [Fact]
-    public void CaptureVerifierHeaderName_DoesNotExemptAHeaderValue()
-    {
-        const string path = "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/verify-capture-remediation.py";
-        string line = File.ReadLines(Path.Combine(RepoRoot, path)).ElementAt(13).Trim();
-        FindViolations(path, line).ShouldBeEmpty();
-        string headerName = "x-otlp-api-" + "key=";
-        FindViolations(path, line.Replace(headerName, headerName + RandomSecret(), StringComparison.Ordinal))
-            .ShouldNotBeEmpty();
-        FindViolations(path, File.ReadAllText(Path.Combine(RepoRoot, path))).ShouldBeEmpty();
     }
 
     [Theory]
@@ -204,16 +145,6 @@ public sealed partial class SecretsProtectionTests
             "@@ -1 +1 @@",
             "+            [\"Authentication:JwtBearer:Signing" + "Key\"] = \"" + RandomSecret() + "\",");
         FindViolations("evidence/example.patch", patch).ShouldNotBeEmpty();
-    }
-
-    /// <summary>
-    /// Verifies a content-addressed C# snapshot is scanned as C# source.
-    /// </summary>
-    [Fact]
-    public void BoundSourceSnapshot_RecognizesRuntimeTokenFactory()
-    {
-        const string path = "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/bound-source/0061cf8da6a685406cc0d821da4bb93be45ce3caf39525a2d207e92523879ec3.source";
-        FindViolations(path).ShouldBeEmpty();
     }
 
     /// <summary>
@@ -653,95 +584,14 @@ public sealed partial class SecretsProtectionTests
     }
 
     [Fact]
-    public void RetirementAndGeneratedExemptions_AreConstrainedToGovernedPaths()
+    public void GeneratedExemption_IsConstrainedToUiTestArtifacts()
     {
-        IsGovernedRetirementPath(
-            "_bmad-output/implementation-artifacts/evidence/story-3-14/"
-            + new string('a', 40)
-            + "/successful/builds/"
-            + new string('b', 40)
-            + "/Github/capture.py").ShouldBeTrue();
-        IsGovernedRetirementPath("tools/credential-capture.py").ShouldBeFalse();
-        IsGovernedRetirementPath("_bmad-output/implementation-artifacts/evidence/arbitrary.txt").ShouldBeFalse();
-
         IsExplicitGeneratedPath(
             "src/Hexalith.EventStore.Admin.UI/.artifacts/ui-test-obj/project.assets.json")
             .ShouldBeTrue();
         IsExplicitGeneratedPath("tools/bin/credential-generator.cs").ShouldBeFalse();
         IsExplicitGeneratedPath("tools/obj/credential-generator.cs").ShouldBeFalse();
         IsExplicitGeneratedPath("tools/.artifacts/credential-generator.cs").ShouldBeFalse();
-    }
-
-    /// <summary>
-    /// Verifies the sealed 6.1-P1R remediation exemption covers only its source capture, whose captured C# lines are
-    /// classified as literals outside a <c>.cs</c> path. Every other tracked remediation or qualification packet file
-    /// stays eligible for scanning, and near-miss paths are not exempt.
-    /// </summary>
-    [Fact]
-    public void SealedP1RRemediationExemption_IsLimitedToTheSourceCapture()
-    {
-        string[] packetFiles = GetTrackedFiles()
-            .Where(static path => path.StartsWith(
-                    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/",
-                    StringComparison.Ordinal)
-                || path.StartsWith(
-                    "_bmad-output/implementation-artifacts/evidence/6-1-p1r-qualification/",
-                    StringComparison.Ordinal))
-            .ToArray();
-
-        packetFiles.ShouldContain(SealedP1RRemediationSourceCapture);
-        packetFiles.Where(IsExplicitGeneratedPath).ShouldBe([SealedP1RRemediationSourceCapture]);
-
-        string[] nearMisses =
-        [
-            SealedP1RRemediationSourceCapture + ".orig",
-            "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation-2/source-candidate.diff",
-            "tools/source-candidate.diff",
-        ];
-        foreach (string path in nearMisses)
-        {
-            IsExplicitGeneratedPath(path).ShouldBeFalse(path);
-        }
-    }
-
-    /// <summary>
-    /// Verifies the exemption is bound to the packet seal inside the scan path: the pinned hash is the packet's
-    /// SHA256SUMS entry, the tracked capture matches it, a CRLF checkout keeps the same content, and altered content
-    /// fails the scan instead of being skipped.
-    /// </summary>
-    [Fact]
-    public void SealedP1RRemediationSourceCapture_ExemptionRequiresItsSealedContent()
-    {
-        string seal = File.ReadAllLines(Path.Combine(
-                RepoRoot,
-                "_bmad-output/implementation-artifacts/evidence/6-1-p1r-remediation/SHA256SUMS"))
-            .Single(static line => line.EndsWith("  source-candidate.diff", StringComparison.Ordinal));
-        seal.ShouldBe(SealedP1RRemediationSourceCaptureSha256 + "  source-candidate.diff");
-
-        byte[] sealedBytes = File.ReadAllBytes(Path.Combine(RepoRoot, SealedP1RRemediationSourceCapture));
-        ReadTrackedText(SealedP1RRemediationSourceCapture).ShouldBeNull();
-        VerifySealedP1RRemediationSourceCapture(
-            [.. sealedBytes.SelectMany(static value => value == (byte)'\n' ? new[] { (byte)'\r', value } : [value])]);
-
-        Should.Throw<ShouldAssertException>(
-            () => VerifySealedP1RRemediationSourceCapture([.. sealedBytes, (byte)'\n']));
-    }
-
-    /// <summary>
-    /// Verifies direct source-aware scanning agrees with tracked scanning for the sealed runtime assignment,
-    /// while a substituted literal credential remains detected.
-    /// </summary>
-    [Fact]
-    public void SealedP1RRemediationSourceCapture_UsesSourceLanguageAndRejectsLiteralSubstitution()
-    {
-        string capture = File.ReadAllText(Path.Combine(RepoRoot, SealedP1RRemediationSourceCapture));
-        FindViolations(SealedP1RRemediationSourceCapture, capture).ShouldBeEmpty();
-        ScanTrackedFile(SealedP1RRemediationSourceCapture).ShouldBeEmpty();
-        string runtime = "new CancellationToken(true)";
-        capture.ShouldContain(runtime);
-        FindViolations(SealedP1RRemediationSourceCapture,
-            capture.Replace(runtime, JsonSerializer.Serialize(RandomSecret()), StringComparison.Ordinal))
-            .ShouldNotBeEmpty();
     }
 
     /// <summary>Only empty framework cancellation sources in executable C# are noncredential expressions.</summary>
@@ -806,163 +656,19 @@ public sealed partial class SecretsProtectionTests
         FindViolations(path, line + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldBe([path + ":2"]);
     }
 
-    /// <summary>Only the exact known synthetic name in valid TRX test metadata is recognized.</summary>
-    [Theory]
-    [InlineData("result", false, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("definition", false, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("outside-path", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("other-attribute", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("other-element", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("mutated-name", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("extra-secret", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("malformed", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("wrong-namespace", true, "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e")]
-    [InlineData("result", false, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("definition", false, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("outside-path", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("other-attribute", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("other-element", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("mutated-name", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("extra-secret", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("malformed", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("wrong-namespace", true, "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b")]
-    [InlineData("result", false, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("definition", false, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("outside-path", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("other-attribute", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("other-element", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("mutated-name", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("extra-secret", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("malformed", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("wrong-namespace", true, "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd")]
-    [InlineData("result", false, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("definition", false, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("outside-path", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("other-attribute", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("other-element", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("mutated-name", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("extra-secret", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("malformed", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("wrong-namespace", true, "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218")]
-    [InlineData("result", false, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("definition", false, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("outside-path", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("other-attribute", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("other-element", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("mutated-name", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("extra-secret", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("malformed", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("wrong-namespace", true, "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a")]
-    [InlineData("result", false, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("definition", false, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("outside-path", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("other-attribute", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("other-element", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("mutated-name", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("extra-secret", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("malformed", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("wrong-namespace", true, "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47")]
-    [InlineData("result", false, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("definition", false, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("outside-path", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("other-attribute", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("other-element", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("mutated-name", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("extra-secret", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("malformed", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("wrong-namespace", true, "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e")]
-    [InlineData("result", false, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("definition", false, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("outside-path", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("other-attribute", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("other-element", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("mutated-name", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("extra-secret", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("malformed", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("wrong-namespace", true, "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812")]
-    [InlineData("result", false, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("definition", false, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("outside-path", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("other-attribute", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("other-element", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("mutated-name", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("extra-secret", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("malformed", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    [InlineData("wrong-namespace", true, "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4")]
-    public void SyntheticTrxRecognition_RequiresExactTestMetadata(string mutation, bool rejected, string fixtureHash)
-    {
-        const string directory = "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/";
-        const string trxNamespace = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
-        string receipt = fixtureHash is "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e" or "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b" ? "contracts-results.trx.xml" : "server-results.trx.xml";
-        XDocument original = XDocument.Load(Path.Combine(RepoRoot, directory + receipt));
-        string name = original.Descendants(XName.Get("UnitTestResult", trxNamespace))
-            .Select(element => element.Attribute("testName")!.Value)
-            .Single(value => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant() == fixtureHash);
-        if (mutation == "mutated-name")
-        {
-            name += RandomSecret();
-        }
-
-        string escaped = System.Security.SecurityElement.Escape(name)!;
-        string body = mutation switch
-        {
-            "definition" => "<TestDefinitions><UnitTest name=\"" + escaped + "\" /></TestDefinitions>",
-            "other-attribute" => "<Results><UnitTestResult outcome=\"" + escaped + "\" /></Results>",
-            "other-element" => "<Results><Message testName=\"" + escaped + "\" /></Results>",
-            _ => "<Results><UnitTestResult testName=\"" + escaped + "\" /></Results>",
-        };
-        if (mutation == "extra-secret")
-        {
-            body += "<Message>" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"") + "</Message>";
-        }
-
-        string content = "<TestRun xmlns=\"" + (mutation == "wrong-namespace" ? "urn:other" : trxNamespace) + "\">" + body + "</TestRun>";
-        if (mutation == "malformed")
-        {
-            content += "<";
-        }
-
-        string path = mutation == "outside-path" ? "tools/candidate.trx.xml" : directory + "candidate.trx.xml";
-        FindViolations(path, content).Any().ShouldBe(rejected);
-        IsExplicitGeneratedPath(path).ShouldBeFalse();
-    }
-
-    /// <summary>Frozen binding metadata requires exact reviewed bytes and path.</summary>
-    [Theory]
-    [InlineData("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/before-authorized-remediation-binding.json")]
-    public void SyntheticBindingRecognition_RequiresExactSealedContent(string path)
-    {
-        ArgumentNullException.ThrowIfNull(path);
-        string content = File.ReadAllText(Path.Combine(RepoRoot, path));
-        FindViolations(path, content).ShouldBeEmpty();
-        FindViolations("tools/binding.json", content).ShouldNotBeEmpty();
-        FindViolations(path, content + " ").ShouldNotBeEmpty();
-        FindViolations(path, content + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\"")).ShouldNotBeEmpty();
-    }
-
-    /// <summary>Candidate receipts are scanned even before Git tracks them.</summary>
+    /// <summary>
+    /// Verifies catalog counts and JSON structure are not usable secrets, while real literals remain violations.
+    /// </summary>
     [Fact]
-    public void DatedCandidateReports_AreScannedDirectly()
+    public void QualifiedCountAndStructuralJsonValues_AreNotUsableSecrets()
     {
-        string receipts = Path.Combine(RepoRoot, "_bmad-output/implementation-artifacts/evidence/story-8-3");
-        string[] reports = Directory.GetFiles(receipts, "*.trx.xml", SearchOption.AllDirectories);
-        reports.ShouldNotBeEmpty();
-        string[] datedDirectories = [Path.Combine(receipts, "closure-2026-10-09")];
-        IEnumerable<string> metadata = datedDirectories.Where(Directory.Exists).SelectMany(directory =>
-            Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
-                .Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                    || path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)));
-        foreach (string path in reports.Concat(metadata).Select(path => Path.GetRelativePath(RepoRoot, path).Replace('\\', '/')).Distinct(StringComparer.Ordinal))
-        {
-            if (File.Exists(Path.Combine(RepoRoot, path)))
-            {
-                FindViolations(path).ShouldBeEmpty("Candidate content is scanned directly: " + path);
-            }
-            else
-            {
-                GetTrackedFiles().ShouldNotContain(path);
-            }
-        }
+        const string path = "evidence/catalog.json";
+        FindViolations(
+            path,
+            "\"Hexalith.Tests.RequiresCredentials\": 128,\n\"oci_credentials\": {\n")
+            .ShouldBeEmpty();
+        FindViolations(path, "api.token: " + new string('9', 9)).ShouldNotBeEmpty();
+        FindViolations(path, Assignment("password", RandomSecret())).ShouldNotBeEmpty();
     }
 
     [Theory]
@@ -1035,10 +741,29 @@ public sealed partial class SecretsProtectionTests
         FindViolations(path, Assignment(name, "new AccessToken(false, value: true)")).ShouldBe([path + ":1"]);
     }
 
+    /// <summary>A runtime JSON read has no literal credential; affixes, fallbacks and literal operands still fail.</summary>
+    [Theory]
+    [InlineData("accessToken.GetString()")]
+    [InlineData("accessToken.GetString()!")]
+    [InlineData("document.AccessToken.GetString()!")]
+    public void CSharpJsonStringRead_RequiresRuntimeSourceWithoutLiteralOperands(string expression)
+    {
+        ArgumentNullException.ThrowIfNull(expression);
+        const string path = "tests/runtime-read.cs";
+        FindViolations(path, Assignment("to" + "ken", expression)).ShouldBeEmpty();
+        FindViolations("capture.log", Assignment("to" + "ken", expression)).ShouldNotBeEmpty();
+        foreach (string changed in new[] { expression + " + \"" + RandomSecret() + "\"",
+            expression + " ?? \"" + RandomSecret() + "\"", expression.Replace("()", "(\"" + RandomSecret() + "\")", StringComparison.Ordinal) })
+        {
+            FindViolations(path, Assignment("to" + "ken", changed)).ShouldNotBeEmpty();
+        }
+        FindViolations(path, Assignment("to" + "ken", expression) + "\n" + Assignment("pass" + "word", "\"" + RandomSecret() + "\""))
+            .ShouldBe([path + ":2"]);
+    }
+
     [Theory]
     [InlineData("lock")]
     [InlineData("assets")]
-    [InlineData("capture")]
     public void NuGetDependencyMetadata_ExemptsOnlySchemaBoundPackageNames(string shape)
     {
         string packageName = "Microsoft.IdentityModel." + "Tokens";
@@ -1049,13 +774,9 @@ public sealed partial class SecretsProtectionTests
             + packageName + "\":\"8.14.0\"}}}}";
         string libraries = "{\"Sample.Package/1.0.0\":{\"type\":\"package\"},\"" + packageName
             + "/8.14.0\":{\"type\":\"package\",\"sha512\":\"" + digest + "\"}}";
-        string content = shape switch
-        {
-            "lock" => "{\"version\":1,\"dependencies\":{\"net10.0\":{\"" + packageName + "\":" + package + "}}}",
-            "assets" => "{\"targets\":" + target + ",\"libraries\":" + libraries + "}",
-            _ => "{\"localReleaseArtifacts\":[{\"depsDeclarations\":[{\"declaredTargets\":"
-                + target + ",\"libraries\":" + libraries + ",\"runtimeTarget\":{}}]}]}",
-        };
+        string content = shape == "lock"
+            ? "{\"version\":1,\"dependencies\":{\"net10.0\":{\"" + packageName + "\":" + package + "}}}"
+            : "{\"targets\":" + target + ",\"libraries\":" + libraries + "}";
         FindViolations("capture.json", content).ShouldBeEmpty();
         FindViolations("capture.json", content + " trailing-text").ShouldNotBeEmpty();
         FindViolations("capture.json", "{\"" + packageName + "\":\"8.14.0\"}").ShouldNotBeEmpty();
@@ -1155,15 +876,10 @@ public sealed partial class SecretsProtectionTests
     }
 
     private static IEnumerable<string> FindViolations(string relativePath, string content)
-        => FindDecodedEvidenceViolations(relativePath, content);
+        => FindDecodedViolations(relativePath, content);
 
     private static IEnumerable<string> FindViolationsCore(string relativePath, string content)
     {
-        content = MaskBoundedPythonSecurityProbes(relativePath, content);
-        content = MaskSealedPublishedExecutorSource(relativePath, content);
-        content = MaskKnownSyntheticBindingTestNames(relativePath, content);
-        content = MaskKnownSyntheticTrxTestNames(relativePath, content);
-        content = MaskKnownSyntheticXunitTestNames(content);
         var violationLines = new SortedSet<int>();
         (HashSet<int> nullValues, HashSet<int> dependencyNames) = GetJsonNonSecretMetadata(content);
         void Record(int index, string _) => violationLines.Add(LineNumber(content, index));
@@ -1292,7 +1008,6 @@ public sealed partial class SecretsProtectionTests
             if (dependencyNames.Contains(match.Groups["name"].Index)
                 || match.Groups["bare"].Success && nullValues.Contains(match.Groups["value"].Index)
                 || IsArgparseMetavar(content, match.Groups["name"].Index)
-                || IsCheckoutPersistenceControl(relativePath, content, match)
                 || IsJavaScriptDestructuringAlias(effectivePath, content, match.Groups["name"].Index)
                 || IsPackageDependencyMetadata(
                     effectivePath,
@@ -1397,10 +1112,8 @@ public sealed partial class SecretsProtectionTests
                 isBare = false;
             }
 
-            if (!IsBoundedPythonSourceAssignment(effectivePath, content, match)
-                && !IsBoundedPythonCallOrDictionary(effectivePath, content, match)
+            if (!IsBoundedPythonCallOrDictionary(effectivePath, content, match)
                 && !IsBoundedGoRuntimeValue(effectivePath, content, match)
-                && !IsBoundedWrongSecretNegativeTest(effectivePath, content, match)
                 && !IsNonCredentialFixtureAssignment(effectivePath, content, match)
                 && IsUsableLiteral(
                 effectivePath,
@@ -1441,258 +1154,8 @@ public sealed partial class SecretsProtectionTests
         return (path, assignment.Groups["name"].Value, lineHash) switch
         {
             ("tests/Hexalith.EventStore.Server.Tests/Security/GovernanceGuardFixture.cs", "token", "f26481a946a1ce2f8b4dc68ded2466a055e5abf0466bea4ead8f5bb5c0a3cb03") => true,
-            ("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/verify-capture-remediation.py", "x-otlp-api-key", "fd4e2d904eb97a1506217c532153b3c9bb7af829ced5ff1e2075d91c15c3eb47") => true,
             _ => false,
         };
-    }
-
-    private static string MaskSealedPublishedExecutorSource(string path, string content)
-    {
-        const string evidenceRoot = "_bmad-output/implementation-artifacts/evidence/";
-        const string sourceRepair = evidenceRoot + "6-1-p1r-source-repair-2026-10-10/predicate-sources.json";
-        bool knownPath = path.StartsWith(evidenceRoot + "6-1-p1r-31150-published-run/", StringComparison.Ordinal)
-            || path.StartsWith(evidenceRoot + "6-1-p1r-31190-published-run/", StringComparison.Ordinal)
-            || path.StartsWith(evidenceRoot + "6-1-p1r-current-source-2026-10-09/", StringComparison.Ordinal)
-            || path.StartsWith(evidenceRoot + "6-1-p1r-31210-blocker-repair-20261014/", StringComparison.Ordinal)
-            || path.StartsWith(evidenceRoot + "6-1-p1r-31210-published-run/", StringComparison.Ordinal)
-            || string.Equals(path, sourceRepair, StringComparison.Ordinal);
-        if (!knownPath || !path.EndsWith(".json", StringComparison.Ordinal)
-            || !string.Equals(path, sourceRepair, StringComparison.Ordinal)
-            && !content.Contains("\"predicate_sources\"", StringComparison.Ordinal))
-        {
-            return content;
-        }
-
-        JsonDocument parsed;
-        try
-        {
-            parsed = JsonDocument.Parse(content);
-        }
-        catch (JsonException)
-        {
-            return content;
-        }
-
-        using JsonDocument document = parsed;
-        JsonElement root = document.RootElement;
-        JsonElement sources;
-        if (root.ValueKind == JsonValueKind.Array && string.Equals(path, sourceRepair, StringComparison.Ordinal))
-        {
-            sources = root;
-        }
-        else if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty("predicate_sources", out sources)
-            && (!root.TryGetProperty("execution_evidence", out JsonElement execution)
-                || execution.ValueKind != JsonValueKind.Object
-                || !execution.TryGetProperty("predicate_sources", out sources)))
-        {
-            return content;
-        }
-
-        if (sources.ValueKind != JsonValueKind.Array)
-        {
-            return content;
-        }
-
-        var sealedSources = new HashSet<string>(StringComparer.Ordinal);
-        foreach (JsonElement source in sources.EnumerateArray())
-        {
-            if (source.ValueKind != JsonValueKind.Object
-                || !source.TryGetProperty("path", out JsonElement sourcePath)
-                || !source.TryGetProperty("sha256", out JsonElement seal)
-                || !source.TryGetProperty("content", out JsonElement sourceContent)
-                || sourcePath.GetString() is not { } sourceName
-                || !sourceName.EndsWith("/tools/p1r_published_executor.py", StringComparison.Ordinal)
-                || seal.GetString() is not { } expected
-                || expected is not ("af7b4a380334e7f438928d395232c36a97fc5c526507f9ae4d0208cd88d37a48"
-                    or "ccfe755af557cbbcccd6c33732253368edb1c70187e94c4fe55f4e561f58fc6c"
-                    or "b6703a7ddd9af170139c8211bdeb7c97d429ed7efec42517b6faa799b2ead211"
-                    or "0bab9ca3a7395ad160d432f8133eb8544f6d2442971bb72a3b4e49d137fc1b20"
-                    or "94311fbc6ad369a3c61d254fcc1ff224c5897b552862c0d506197808f37b7a55"
-                    or "9a0990a82566c2b281305572fd318ba036b9ab68bcaa7813b9d40ea2265ea699"
-                    or "45a3b00081690058ce1f644c6152e6f6b7ab4277ff0b3d6368918f72aa986768"
-                    or "f47728d611db4fefaf38c68836d1520d1fca5fe9d2f9684fd72bd25709630174"
-                    or "d57c3939414da9831bd957bb00ce44dfb4bbed6745b06d9edfb85e984fbbfddc"
-                    or "53d9ab6e4d673e937a01a3c45f14d2da52d019bcf4903f43cbc4e1fc771371b7"
-                    or "595d93550dd150bd592f857827ba2bf4fecfb15a0dc40e454fb7192c7afdec51"
-                    or "f70c0a63db50dae1593f6bac1f8f96be56b3acb6874dded5c3df1f2213f6ff25")
-                || sourceContent.GetString() is not { } text
-                || !string.Equals(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))),
-                    expected, StringComparison.OrdinalIgnoreCase))
-            {
-                return content;
-            }
-
-            sealedSources.Add(text);
-        }
-
-        char[] masked = content.ToCharArray();
-        foreach (Match match in SealedPredicateSourceContentPattern().Matches(content))
-        {
-            Group value = match.Groups["value"];
-            if (JsonSerializer.Deserialize<string>(value.Value) is { } source && sealedSources.Contains(source))
-            {
-                Array.Fill(masked, ' ', value.Index + 1, value.Length - 2);
-            }
-        }
-
-        return new string(masked);
-    }
-
-    [GeneratedRegex("\"content\"\\s*:\\s*(?<value>\"(?:\\\\.|[^\"\\\\])*\")")]
-    private static partial Regex SealedPredicateSourceContentPattern();
-
-    private static bool IsKnownSyntheticTestNameHash(string hash)
-        => hash is "d0047b8113e592d3e3ade8137e8f45e7c0753f27d9171aca0b5d9073b922b71e"
-            or "55e36b209d7e3df100a62f76fd8c707a7019005ad0f84ebc353517cdef9e174b"
-            or "411f2812dd2931fcf20be8d4985bad37487c7cabb23be39fcec70337fc5917dd"
-            or "fa0f36160bd613ec2296a72e0eeff07a7d3df029508e02b733f524e647365218"
-            or "95cc55e5c362a0b76c4cda11a1d66b6799f459cf7bc46978e99b25add2844f1a"
-            or "708f75f3c51d38e3e826a1a68580073fc969a6629cd0ae27c961a62c56065d47"
-            or "8cdc24d9b328aace2cd1dc0f68033b32631060cd1a8a0a3db9feea804ffd7b7e"
-            or "607fac6462e42415e0b3749b93cd1db04a5feaa6ab58c662fccb2934270db812"
-            or "d85963155dbfecf30616f7010a79c975a5747b005ea709ef54baefde579794a4";
-
-    private static string MaskKnownSyntheticBindingTestNames(string path, string content)
-    {
-        if (!string.Equals(path, "_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/before-authorized-remediation-binding.json", StringComparison.Ordinal))
-        {
-            return content;
-        }
-        string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(content))).ToLowerInvariant();
-        bool reviewedBinding = (path, hash) switch
-        {
-            ("_bmad-output/implementation-artifacts/evidence/story-8-3/closure-2026-10-09/before-authorized-remediation-binding.json", "2d9f6bb7e4f2006249fe249e081902b7015d3d3802393b62796650aad9eb6bb6") => true,
-            _ => false,
-        };
-        if (!reviewedBinding)
-        {
-            return content;
-        }
-
-        char[] masked = content.ToCharArray();
-        foreach (Match match in SyntheticBindingTestNamePattern().Matches(content))
-        {
-            Group value = match.Groups["value"];
-            string name = JsonSerializer.Deserialize<string>(value.Value)!;
-            string nameHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(name))).ToLowerInvariant();
-            if (IsKnownSyntheticTestNameHash(nameHash))
-            {
-                Array.Fill(masked, ' ', value.Index + 1, value.Length - 2);
-            }
-        }
-        return new string(masked);
-    }
-
-    [GeneratedRegex("\"testName\"\\s*:\\s*(?<value>\"(?:\\\\.|[^\"\\\\])*\")")]
-    private static partial Regex SyntheticBindingTestNamePattern();
-
-    private static string MaskKnownSyntheticTrxTestNames(string path, string content)
-    {
-        if (!SyntheticTrxReceiptPathPattern().IsMatch(path))
-        {
-            return content;
-        }
-
-        const string trxNamespace = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
-        var ranges = new List<(int Start, int Length)>();
-        var lineStarts = new List<int> { 0 };
-        for (int index = 0; index < content.Length; index++)
-        {
-            if (content[index] == '\n')
-            {
-                lineStarts.Add(index + 1);
-            }
-        }
-
-        try
-        {
-            using var text = new StringReader(content);
-            using XmlReader reader = XmlReader.Create(text, new XmlReaderSettings
-            {
-                DtdProcessing = DtdProcessing.Prohibit,
-                XmlResolver = null,
-            });
-            bool isTrx = false;
-            string? container = null;
-            while (reader.Read())
-            {
-                if (reader.NodeType != XmlNodeType.Element)
-                {
-                    continue;
-                }
-
-                if (reader.Depth == 0)
-                {
-                    isTrx = reader.LocalName == "TestRun" && reader.NamespaceURI == trxNamespace;
-                }
-
-                if (reader.Depth == 1)
-                {
-                    container = reader.NamespaceURI == trxNamespace ? reader.LocalName : null;
-                }
-
-                string? attribute = reader.LocalName switch
-                {
-                    "UnitTestResult" when reader.Depth == 2 && container == "Results" => "testName",
-                    "UnitTest" when reader.Depth == 2 && container == "TestDefinitions" => "name",
-                    _ => null,
-                };
-                if (!isTrx || reader.NamespaceURI != trxNamespace || attribute is null
-                    || !reader.MoveToAttribute(attribute))
-                {
-                    continue;
-                }
-
-                // Exact reviewed negative-fixture display name only; never arbitrary theory arguments.
-                string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(reader.Value))).ToLowerInvariant();
-                if (IsKnownSyntheticTestNameHash(hash))
-                {
-                    var info = (IXmlLineInfo)reader;
-                    int start = lineStarts[info.LineNumber - 1] + info.LinePosition - 1;
-                    int equals = content.IndexOf('=', start);
-                    int quote = equals + 1;
-                    while (quote < content.Length && char.IsWhiteSpace(content[quote]))
-                    {
-                        quote++;
-                    }
-
-                    if (quote >= content.Length || content[quote] is not ('\"' or '\''))
-                    {
-                        return content;
-                    }
-
-                    int end = content.IndexOf(content[quote], quote + 1);
-                    if (end < 0)
-                    {
-                        return content;
-                    }
-
-                    ranges.Add((quote + 1, end - quote - 1));
-                }
-
-                reader.MoveToElement();
-            }
-        }
-        catch (XmlException)
-        {
-            // Malformed reports receive the complete ordinary credential scan.
-            return content;
-        }
-
-        char[] masked = content.ToCharArray();
-        foreach ((int start, int length) in ranges)
-        {
-            for (int index = start; index < start + length; index++)
-            {
-                if (masked[index] is not ('\r' or '\n'))
-                {
-                    masked[index] = ' ';
-                }
-            }
-        }
-
-        return new string(masked);
     }
 
     private static string[] GetTrackedFiles()
@@ -1727,22 +1190,17 @@ public sealed partial class SecretsProtectionTests
             return [];
         }
 
-        return SuppressSealedHistoricalSecretLines(path, content, repositoryRoot, FindViolations(path, content));
+        return FindViolations(path, content);
     }
 
     private static string? ReadTrackedText(string path, string? repositoryRoot = null)
     {
-        string root = repositoryRoot ?? RepoRoot;
-        if (IsRetiredEvidenceCapture(path, root) || IsExplicitGeneratedPath(path))
+        if (IsExplicitGeneratedPath(path))
         {
-            if (string.Equals(path, SealedP1RRemediationSourceCapture, StringComparison.Ordinal))
-            {
-                VerifySealedP1RRemediationSourceCapture(File.ReadAllBytes(Path.Combine(root, path)));
-            }
             return null;
         }
 
-        string fullPath = Path.Combine(root, path);
+        string fullPath = Path.Combine(repositoryRoot ?? RepoRoot, path);
         if (!File.Exists(fullPath))
         {
             return null;
@@ -1802,60 +1260,6 @@ public sealed partial class SecretsProtectionTests
         }
     }
 
-    private static bool IsRetiredEvidenceCapture(string path, string root)
-    {
-        string manifestPath = Path.Combine(root, RetiredEvidenceManifest);
-        using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(manifestPath));
-        document.RootElement.GetProperty("schema").GetString().ShouldBe("hexalith.eventstore.retired-evidence.v1");
-        JsonElement[] matches = document.RootElement.GetProperty("retired").EnumerateArray()
-            .Where(retired => string.Equals(retired.GetProperty("path").GetString(), path, StringComparison.Ordinal))
-            .ToArray();
-        matches.Length.ShouldBeLessThanOrEqualTo(1, "Duplicate retirement records cannot establish unambiguous approval.");
-        foreach (JsonElement retired in matches)
-        {
-            IsGovernedRetirementPath(path).ShouldBeTrue(
-                "Only governed historical evidence or explicitly owner-approved proof packets may be retired from scanning.");
-            retired.GetProperty("status").GetString().ShouldBe("retired");
-            retired.GetProperty("authoritative").GetBoolean().ShouldBeFalse();
-            retired.GetProperty("reason").GetString().ShouldNotBeNullOrWhiteSpace();
-            string expectedHash = retired.GetProperty("sha256").GetString()!;
-            expectedHash.ShouldMatch("^[0-9a-f]{64}$");
-            bool establishedApproval = ApprovedRetirementHashes.TryGetValue(path, out string? approvedHash);
-            bool story64Approval = ApprovedStory64RetirementHashes.TryGetValue(path, out string? story64Hash);
-            (establishedApproval || story64Approval).ShouldBeTrue(
-                "Retirement requires an existing verified approval; a registry entry alone is not approval.");
-            if (story64Approval)
-            {
-                VerifyStory64RetirementApproval(root, document.RootElement, retired);
-                approvedHash = story64Hash;
-            }
-            expectedHash.ShouldBe(approvedHash, "A registry edit cannot re-pin approved retired content.");
-            string actualHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(root, path))))
-                .ToLowerInvariant();
-            actualHash.ShouldBe(expectedHash, "Retired evidence must remain byte-preserved.");
-            return true;
-        }
-
-        return false;
-    }
-
-    private static void VerifySealedP1RRemediationSourceCapture(byte[] bytes)
-    {
-        // The sealed capture is LF-only and its packet has no eol rule, so only CRLF pairs are normalized.
-        byte[] lineFeedOnly = bytes
-            .Where((value, index) => value != (byte)'\r' || index + 1 >= bytes.Length || bytes[index + 1] != (byte)'\n')
-            .ToArray();
-        Convert.ToHexString(SHA256.HashData(lineFeedOnly)).ToLowerInvariant().ShouldBe(
-            SealedP1RRemediationSourceCaptureSha256,
-            "The sealed 6-1-p1r-remediation source capture changed, so its scan exemption no longer applies. Restore "
-            + "the sealed content; never re-pin this hash without rescanning the changed capture.");
-    }
-
-    private static bool IsGovernedRetirementPath(string path)
-        => GovernedEvidenceCapturePathPattern().IsMatch(path)
-            || OwnerApprovedProofPacketPathPattern().IsMatch(path)
-            || ApprovedStory64RetirementHashes.ContainsKey(path);
-
     private static bool HasKnownBinarySignature(ReadOnlySpan<byte> bytes)
     {
         return bytes.StartsWith("MZ"u8)
@@ -1875,8 +1279,7 @@ public sealed partial class SecretsProtectionTests
     }
 
     private static bool IsExplicitGeneratedPath(string path)
-        => ExplicitUiTestArtifactPathPattern().IsMatch(path)
-            || string.Equals(path, SealedP1RRemediationSourceCapture, StringComparison.Ordinal);
+        => ExplicitUiTestArtifactPathPattern().IsMatch(path);
 
     private static bool TryDecodeBomlessUtf16(byte[] bytes, out string text)
     {
@@ -2248,7 +1651,7 @@ public sealed partial class SecretsProtectionTests
         }
 
         if (ancestors.Count < 5
-            || ancestors[^4].Name is not ("targets" or "declaredTargets")
+            || ancestors[^4].Name != "targets"
             || ancestors[^2].Name is not { } parentName
             || parentName.LastIndexOf('/') <= 0
             || !ancestors[^5].Element.TryGetProperty("libraries", out JsonElement libraries)
@@ -3079,18 +2482,6 @@ public sealed partial class SecretsProtectionTests
 
     private static string GetEffectiveSourcePath(string relativePath, string content, int index)
     {
-        if (relativePath.EndsWith(".cs.source", StringComparison.OrdinalIgnoreCase))
-        {
-            return relativePath[..^".source".Length];
-        }
-
-        if (relativePath.EndsWith(".source", StringComparison.OrdinalIgnoreCase))
-        {
-            string trimmed = content.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
-            string extension = trimmed.StartsWith('@') ? ".razor" : ".cs";
-            return relativePath[..^".source".Length] + extension;
-        }
-
         if (relativePath.EndsWith(".patch", StringComparison.OrdinalIgnoreCase)
             || relativePath.EndsWith(".diff", StringComparison.OrdinalIgnoreCase))
         {
@@ -3145,7 +2536,6 @@ public sealed partial class SecretsProtectionTests
         {
             "c#" or "csharp" or "cs" => relativePath + ".cs",
             "python" or "py" => relativePath + ".py",
-            "p1r-python-fragment" => relativePath + ".pyfrag",
             "javascript" or "js" or "typescript" or "ts" or "tsx" or "jsx" => relativePath + ".js",
             "bash" or "shell" or "sh" => IsInClosedMarkdownPythonHereDocument(content, index)
                 ? relativePath + ".py" : relativePath + ".sh",
@@ -3800,9 +3190,6 @@ public sealed partial class SecretsProtectionTests
         RegexOptions.CultureInvariant)]
     private static partial Regex CredentialConstructorPattern();
 
-    [GeneratedRegex(@"\A_bmad-output/implementation-artifacts/evidence/story-8-3/(?:closure|verification)-[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-postreview)?/[^/]+\.trx\.xml\z", RegexOptions.CultureInvariant)]
-    private static partial Regex SyntheticTrxReceiptPathPattern();
-
     [GeneratedRegex(@"\Anew\s+(?:CancellationTokenSource|(?:global::)?System\.Threading\.CancellationTokenSource)\s*\(\s*\)\z", RegexOptions.CultureInvariant)]
     private static partial Regex CancellationTokenSourceEmptyConstructorPattern();
 
@@ -3956,12 +3343,6 @@ public sealed partial class SecretsProtectionTests
 
     [GeneratedRegex(@"\$\{[A-Za-z_][A-Za-z0-9_]*:[-+?](?<fallback>[^}\r\n]*)\}", RegexOptions.CultureInvariant)]
     private static partial Regex ShellDefaultValuePattern();
-
-    [GeneratedRegex(@"^_bmad-output/implementation-artifacts/evidence/story-\d+-\d+/[0-9a-f]{40}/successful/builds/[0-9a-f]{40}/.+$", RegexOptions.CultureInvariant)]
-    private static partial Regex GovernedEvidenceCapturePathPattern();
-
-    [GeneratedRegex(@"^_bmad-output/implementation-artifacts/\d+-\d+-owner-approved-[A-Za-z0-9-]*proof-packet\.md$", RegexOptions.CultureInvariant)]
-    private static partial Regex OwnerApprovedProofPacketPathPattern();
 
     [GeneratedRegex(@"^(?:src|tests)/[^/]+/\.artifacts/ui-test-obj/(?:project\.assets\.json|[^/]+\.csproj\.nuget\.(?:dgspec\.json|g\.props|g\.targets))$", RegexOptions.CultureInvariant)]
     private static partial Regex ExplicitUiTestArtifactPathPattern();

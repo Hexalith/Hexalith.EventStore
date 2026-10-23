@@ -1,5 +1,0 @@
-client-build 0 {}
-client-focused 0 {'total': 291, 'passed': 291, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}
-client-full 0 {'total': 1813, 'passed': 1811, 'failed': 0, 'skipped': 2, 'errors': 0, 'not-run': 0}
-domain-build 0 {}
-domain-focused 0 {'total': 64, 'passed': 64, 'failed': 0, 'skipped': 0, 'errors': 0, 'not-run': 0}

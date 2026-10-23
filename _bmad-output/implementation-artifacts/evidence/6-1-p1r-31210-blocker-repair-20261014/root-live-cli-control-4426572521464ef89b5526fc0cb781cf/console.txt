@@ -1,1 +1,0 @@
-{"error": "'candidate_proposed'", "isolation_errors": [], "isolation_out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-blocker-repair-20261014/root-live-cli-control-4426572521464ef89b5526fc0cb781cf/observation-isolation", "isolation_passed": false, "p1r_usable": false}

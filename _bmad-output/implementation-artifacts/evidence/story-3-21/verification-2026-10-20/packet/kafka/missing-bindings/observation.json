@@ -1,9 +1,0 @@
-{
-  "allowedEffects": 1,
-  "bindingAbsent": true,
-  "broker": "kafka",
-  "messageId": "f2631f22574484936ab2f1c0",
-  "scenario": "missing-bindings",
-  "unboundMessageId": "2284d1be6c8f1cb13990f234",
-  "unboundPublishStatus": 500
-}

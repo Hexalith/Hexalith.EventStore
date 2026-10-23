@@ -3,7 +3,7 @@
 .SYNOPSIS
     Local documentation validation — mirrors docs-validation.yml CI pipeline.
 .DESCRIPTION
-    Runs markdownlint, lychee link checking, operational evidence fixture validation, deferred-work governance reporting, and sample build/test locally.
+    Runs markdownlint, lychee link checking, deferred-work governance reporting, and sample build/test locally.
 .EXAMPLE
     .\scripts\validate-docs.ps1
 #>
@@ -34,25 +34,19 @@ if (-not $pythonFound) {
 }
 
 # --- Stage 1: Markdown Linting ---
-Write-Host "`n=== Stage 1/5: Markdown Linting ===" -ForegroundColor Cyan
+Write-Host "`n=== Stage 1/4: Markdown Linting ===" -ForegroundColor Cyan
 npx markdownlint-cli2 @docsGlob
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Markdown linting"; exit 1 }
 Write-Host "PASSED: Markdown linting" -ForegroundColor Green
 
 # --- Stage 2: Link Checking ---
-Write-Host "`n=== Stage 2/5: Link Checking ===" -ForegroundColor Cyan
+Write-Host "`n=== Stage 2/4: Link Checking ===" -ForegroundColor Cyan
 lychee --config lychee.toml @docsGlob
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Link checking"; exit 1 }
 Write-Host "PASSED: Link checking" -ForegroundColor Green
 
-# --- Stage 3: Operational Evidence Validator Fixtures ---
-Write-Host "`n=== Stage 3/5: Operational Evidence Validator Fixtures ===" -ForegroundColor Cyan
-.\scripts\validate-evidence.ps1 --self-test
-if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Operational evidence validator fixtures"; exit 1 }
-Write-Host "PASSED: Operational evidence validator fixtures" -ForegroundColor Green
-
-# --- Stage 4: Deferred-Work Governance Report (advisory) ---
-Write-Host "`n=== Stage 4/5: Deferred-Work Governance Report (advisory) ===" -ForegroundColor Cyan
+# --- Stage 3: Deferred-Work Governance Report (advisory) ---
+Write-Host "`n=== Stage 3/4: Deferred-Work Governance Report (advisory) ===" -ForegroundColor Cyan
 .\scripts\check-deferred-work.ps1 _bmad-output/implementation-artifacts/deferred-work.md
 $deferredExitCode = $LASTEXITCODE
 switch ($deferredExitCode) {
@@ -76,8 +70,8 @@ switch ($deferredExitCode) {
     }
 }
 
-# --- Stage 5: Sample Build & Test ---
-Write-Host "`n=== Stage 5/5: Sample Build & Test ===" -ForegroundColor Cyan
+# --- Stage 4: Sample Build & Test ---
+Write-Host "`n=== Stage 4/4: Sample Build & Test ===" -ForegroundColor Cyan
 dotnet restore samples/Hexalith.EventStore.Sample.Tests/
 if ($LASTEXITCODE -ne 0) { Write-Error "FAILED: Sample restore (samples)"; exit 1 }
 dotnet restore tests/Hexalith.EventStore.Sample.Tests/

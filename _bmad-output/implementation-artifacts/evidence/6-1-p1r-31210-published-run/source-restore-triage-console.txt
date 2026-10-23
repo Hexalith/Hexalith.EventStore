@@ -1,1 +1,0 @@
-{"out": "/home/administrator/projects/hexalith/projects/references/Hexalith.EventStore/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31210-published-run/source-restore-triage-8f938d71e07144bba014f94dc70ba253", "exit_code": 0}

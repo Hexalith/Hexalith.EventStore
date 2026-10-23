@@ -2,7 +2,7 @@
 title: '9.1 Corrective-work authorization record and validator'
 type: 'feature'
 created: '2026-10-17'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 story_key: '9-1-corrective-work-authorization-record-and-validator'
 review_loop_iteration: 1
@@ -12,6 +12,8 @@ baseline_commit: 'bb986902d3c1b2f3b1c209fe8eb0ffa0292153d9'
 context:
   - '{project-root}/_bmad-output/project-context.md'
 ---
+
+> **Superseded 2026-10-23** by [spec-evidence-storage-simplification](spec-evidence-storage-simplification.md): the corrective-work authorization validator, schema, workflow, tests, fixtures and evidence records were removed; this spec is closed and kept as history.
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 

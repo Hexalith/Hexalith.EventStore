@@ -1,7 +1,0 @@
-{
-  "decision": "use latest",
-  "source": "Explicit user reply after external commit/input drift",
-  "origin": "/home/administrator/projects/hexalith/eventstore",
-  "snapshot": "/tmp/eventstore-folders-12-2-latest-20261022T155454Z",
-  "utc": "2026-10-22T16:00:06.459942+00:00"
-}

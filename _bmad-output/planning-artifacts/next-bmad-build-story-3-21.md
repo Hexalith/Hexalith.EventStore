@@ -1,5 +1,7 @@
 # Next bmad-build prompt: Story 3.21 local failure diagnosis
 
+**2026-10-23 evidence policy:** do not write under `evidence/`; record commands, pass/fail counts, commit SHA and CI run link in the story (architecture AD-12).
+
 The conversation user approved the proposal and this slice's exact intent on
 2026-10-20; see the [exact-subject planning receipt](../implementation-artifacts/evidence/story-3-21-platform-host-reconciliation-2026-10-20/approval/approval.json).
 The user also explicitly authorized ES-DIAG implementation (`I authorize`),

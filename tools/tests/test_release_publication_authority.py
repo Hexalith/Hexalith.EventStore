@@ -49,7 +49,7 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
                "status": "completed", "conclusion": "success"}
         self.state = {"source_sha": self.sha, "live_sha": self.sha, "version": "99.0.0",
                       "comments": [], "requests": [],
-                      "runs": {name: [run.copy()] for name in ("ci.yml", "p1r-qualification.yml", "commitlint.yml")}}
+                      "runs": {name: [run.copy()] for name in ("ci.yml", "commitlint.yml")}}
         self.save()
         self.env = {key: value for key, value in os.environ.items()
                     if not key.startswith(("GITHUB_", "HEXALITH_RELEASE_", "HEXALITH_PUBLICATION_"))}
@@ -120,10 +120,10 @@ class ReleasePublicationAuthorityTests(unittest.TestCase):
         self.save()
         self.assertIn("source-no-longer-current", self.invoke("verify", False).stderr)
 
-    def test_workflow_has_no_dispatch_inputs_and_requires_three_push_proofs(self):
+    def test_workflow_has_no_dispatch_inputs_and_requires_two_push_proofs(self):
         workflow = (ROOT / ".github/workflows/release.yml").read_text()
         self.assertNotIn("inputs:", workflow)
-        self.assertIn("for required_workflow in ci.yml p1r-qualification.yml commitlint.yml", workflow)
+        self.assertIn("for required_workflow in ci.yml commitlint.yml", workflow)
         self.assertIn("HEXALITH_RELEASE_REQUIRE_AUTHORITY: 'false'", workflow)
         self.assertNotIn("release-version", workflow)
         self.assertIn("environment: production", workflow)

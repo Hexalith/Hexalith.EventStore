@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 namespace Hexalith.EventStore.Contracts.Tests.Packaging;
 
 /// <summary>
-/// Verifies the PostgreSQL image used by integration preparation, the OQ8 runtime fixture,
-/// and the OQ8 evidence validator remains synchronized.
+/// Verifies the PostgreSQL image used by integration preparation and the OQ8 runtime fixture
+/// remains synchronized.
 /// </summary>
 public sealed class PostgreSqlImageGovernanceTests
 {
@@ -13,7 +13,6 @@ public sealed class PostgreSqlImageGovernanceTests
     private const string WorkflowRelativePath = ".github/workflows/integration.yml";
     private const string FixtureRelativePath =
         "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/Fixtures/Oq8PostgresqlFixture.cs";
-    private const string ValidatorRelativePath = "tools/validate-oq8-platform-evidence.py";
     private static readonly TimeSpan _regexTimeout = TimeSpan.FromSeconds(1);
     private static readonly Regex _workflowStepPattern = new(
         """(?ms)^(?<indent>[ \t]*)-[ \t]+name:[ \t]*(?:"|')?Pull PostgreSQL container image(?:"|')?[ \t]*(?:#[^\r\n]*)?\r?\n(?<body>.*?)(?=^\k<indent>-[ \t]+|\z)""",
@@ -27,17 +26,13 @@ public sealed class PostgreSqlImageGovernanceTests
         """(?m)^[ \t]*private[ \t]+const[ \t]+string[ \t]+PostgresImage[ \t]*=[ \t]*"(?<image>[^"\r\n]+)"[ \t]*;[ \t]*(?://[^\r\n]*)?\r?$""",
         RegexOptions.CultureInvariant,
         _regexTimeout);
-    private static readonly Regex _validatorImagePattern = new(
-        """(?m)^[ \t]*POSTGRES_IMAGE[ \t]*=[ \t]*(?<quote>["'])(?<image>[^"'\r\n]+)\k<quote>[ \t]*(?:#[^\r\n]*)?\r?$""",
-        RegexOptions.CultureInvariant,
-        _regexTimeout);
     private static readonly Regex _digestPinnedImagePattern = new(
         """^postgres@sha256:[0-9a-f]{64}$""",
         RegexOptions.CultureInvariant,
         _regexTimeout);
 
     /// <summary>
-    /// Verifies all three authoritative repository surfaces declare the reviewed digest-pinned PostgreSQL index.
+    /// Verifies both authoritative repository surfaces declare the reviewed digest-pinned PostgreSQL index.
     /// </summary>
     [Fact]
     public void PostgreSqlImageAuthoritiesRemainSynchronizedAndDigestPinned()
@@ -45,9 +40,8 @@ public sealed class PostgreSqlImageGovernanceTests
         string root = FindRepositoryRoot();
         string workflowImage = ExtractWorkflowImage(File.ReadAllText(Path.Combine(root, WorkflowRelativePath)));
         string fixtureImage = ExtractFixtureImage(File.ReadAllText(Path.Combine(root, FixtureRelativePath)));
-        string validatorImage = ExtractValidatorImage(File.ReadAllText(Path.Combine(root, ValidatorRelativePath)));
 
-        AssertImagesSynchronized(workflowImage, fixtureImage, validatorImage);
+        AssertImagesSynchronized(workflowImage, fixtureImage);
     }
 
     /// <summary>
@@ -63,7 +57,7 @@ public sealed class PostgreSqlImageGovernanceTests
     public void MutableMalformedOrUnreviewedImagesFailClosed(string image, string expected)
     {
         Shouldly.ShouldAssertException exception = Should.Throw<Shouldly.ShouldAssertException>(
-            () => AssertImagesSynchronized(image, image, image));
+            () => AssertImagesSynchronized(image, image));
 
         exception.Message.ShouldContain(expected);
         exception.Message.ShouldContain(image);
@@ -84,9 +78,6 @@ public sealed class PostgreSqlImageGovernanceTests
     [InlineData("fixture", "missing")]
     [InlineData("fixture", "malformed")]
     [InlineData("fixture", "duplicated")]
-    [InlineData("validator", "missing")]
-    [InlineData("validator", "malformed")]
-    [InlineData("validator", "duplicated")]
     public void InvalidAuthorityDeclarationsFailClosed(string authority, string mutation)
     {
         string image = nameof(PostgreSqlImageGovernanceTests);
@@ -98,7 +89,6 @@ public sealed class PostgreSqlImageGovernanceTests
             {
                 "workflow-step" or "workflow-pull" => ExtractWorkflowImage(source),
                 "fixture" => ExtractFixtureImage(source),
-                "validator" => ExtractValidatorImage(source),
                 _ => throw new ArgumentOutOfRangeException(nameof(authority), authority, "Unknown authority."),
             };
         });
@@ -108,7 +98,6 @@ public sealed class PostgreSqlImageGovernanceTests
             "workflow-step" => "integration workflow named step",
             "workflow-pull" => "integration workflow pull command",
             "fixture" => "OQ8 fixture PostgresImage declaration",
-            "validator" => "OQ8 evidence validator POSTGRES_IMAGE declaration",
             _ => throw new ArgumentOutOfRangeException(nameof(authority), authority, "Unknown authority."),
         };
         exception.Message.ShouldContain(diagnostic);
@@ -123,14 +112,12 @@ public sealed class PostgreSqlImageGovernanceTests
     {
         string workflowImage = nameof(PostgreSqlImageGovernanceTests);
         string fixtureImage = workflowImage + "-fixture-drift";
-        string validatorImage = workflowImage + "-validator-drift";
 
         Shouldly.ShouldAssertException exception = Should.Throw<Shouldly.ShouldAssertException>(
-            () => AssertImagesSynchronized(workflowImage, fixtureImage, validatorImage));
+            () => AssertImagesSynchronized(workflowImage, fixtureImage));
 
         exception.Message.ShouldContain($"integration workflow='{workflowImage}'");
         exception.Message.ShouldContain($"OQ8 fixture='{fixtureImage}'");
-        exception.Message.ShouldContain($"OQ8 evidence validator='{validatorImage}'");
     }
 
     private static string ExtractWorkflowImage(string source)
@@ -156,22 +143,12 @@ public sealed class PostgreSqlImageGovernanceTests
         return declarations[0].Groups["image"].Value;
     }
 
-    private static string ExtractValidatorImage(string source)
+    private static void AssertImagesSynchronized(string workflowImage, string fixtureImage)
     {
-        MatchCollection declarations = _validatorImagePattern.Matches(source);
-        declarations.Count.ShouldBe(
-            1,
-            $"The OQ8 evidence validator POSTGRES_IMAGE declaration must occur exactly once; found {declarations.Count}.");
-        return declarations[0].Groups["image"].Value;
-    }
-
-    private static void AssertImagesSynchronized(string workflowImage, string fixtureImage, string validatorImage)
-    {
-        (workflowImage == fixtureImage && workflowImage == validatorImage).ShouldBeTrue(
+        (workflowImage == fixtureImage).ShouldBeTrue(
             "PostgreSQL image authorities differ: " +
             $"integration workflow='{workflowImage}', " +
-            $"OQ8 fixture='{fixtureImage}', " +
-            $"OQ8 evidence validator='{validatorImage}'.");
+            $"OQ8 fixture='{fixtureImage}'.");
         _digestPinnedImagePattern.IsMatch(workflowImage).ShouldBeTrue(
             $"The PostgreSQL image must use postgres@sha256:<64 lowercase hex>; found '{workflowImage}'.");
         workflowImage.ShouldBe(
@@ -197,12 +174,6 @@ public sealed class PostgreSqlImageGovernanceTests
                 private const string PostgresImage = "{{image}}";
             }
             """;
-        string validator = $$"""
-            PROFILE = "candidate"
-            POSTGRES_IMAGE = "{{image}}"
-            VERSION = "candidate"
-            """;
-
         return (authority, mutation) switch
         {
             ("workflow-step", "missing") => workflow.Replace(
@@ -231,15 +202,6 @@ public sealed class PostgreSqlImageGovernanceTests
             ("fixture", "duplicated") => fixture.Replace(
                 $"    private const string PostgresImage = \"{image}\";",
                 $"    private const string PostgresImage = \"{image}\";{Environment.NewLine}    private const string PostgresImage = \"{image}\";",
-                StringComparison.Ordinal),
-            ("validator", "missing") => validator.Replace(
-                $"POSTGRES_IMAGE = \"{image}\"",
-                $"ALTERNATE_IMAGE = \"{image}\"",
-                StringComparison.Ordinal),
-            ("validator", "malformed") => validator.Replace("POSTGRES_IMAGE =", "POSTGRES_IMAGE :=", StringComparison.Ordinal),
-            ("validator", "duplicated") => validator.Replace(
-                $"POSTGRES_IMAGE = \"{image}\"",
-                $"POSTGRES_IMAGE = \"{image}\"{Environment.NewLine}POSTGRES_IMAGE = \"{image}\"",
                 StringComparison.Ordinal),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(mutation),

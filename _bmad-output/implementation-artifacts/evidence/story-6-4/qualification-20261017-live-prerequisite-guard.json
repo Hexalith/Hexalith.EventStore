@@ -1,6 +1,0 @@
-{
-  "at": "2026-10-17T07:21:31.186331+00:00",
-  "runnerSha256": "d413097013c3d5e66a78833ce5ad19b2b6e4f5d990b365945458a2923c2a8b45",
-  "change": "Before full or Release Live, require a successful explicitly identified coherent Release producer and exact current consumed Release output hashes. Missing/failed/changed prerequisites produce a pre-native blocked receipt without starting controls or native tests.",
-  "priorFocusedPacketPreserved": true
-}

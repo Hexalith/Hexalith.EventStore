@@ -1,3 +1,0 @@
-const s=load("p1r_31251_run_state"); text(await tools.exec_command({cmd:"sed -n '4310,4409p' /tmp/p1r-31251-source-review-25b88ad716364526aa0f547f052a9246.patch",max_output_tokens:6500}));
-text(await tools.exec_command({cmd:"cat _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/reconciliation/verification-34825a9564d245df8fab3bb8a28ec74a/index.json",workdir:s.integration_root,max_output_tokens:4000}));
-text(await tools.exec_command({cmd:"cat /home/administrator/projects/hexalith/eventstore/_bmad/render/bmad-build/eventstore-5ec6a32020fe/70d85eb25b5f587c9387/steps/step-03-build.md",max_output_tokens:6000}));

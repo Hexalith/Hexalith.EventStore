@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf/_bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/progress-final.py", line 12, in <module>
-    receipt=json.loads(Path(name).read_bytes());lane=receipt['lane'];row={'lane':lane,'assertions':receipt['assertions'],'cases':len(receipt.get('cases',[]))}
-                                                     ~~~~~~~^^^^^^^^
-KeyError: 'lane'

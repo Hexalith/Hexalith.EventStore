@@ -1,1 +1,0 @@
-text(await tools.exec_command({cmd:"cat _bmad-output/implementation-artifacts/evidence/6-1-p1r-31251-published-run/retained-initial-development/index.json",workdir:"/tmp/p1r-31251-verifier-final-78617511ec9c4208b1267e1cde6e21bf",max_output_tokens:4500}));

@@ -1,7 +1,0 @@
-{
-  "reviewed_patch_body_unchanged": true,
-  "before_sha256": "396b80abbf05cd56a86b065910919c69e5fb73d1cf63221860c216a66123915e",
-  "after_sha256": "006a4bfee5d3e3e9a0eeef8f4a2f23eadf81a567bf99ca9541f5e5517b84b603",
-  "difference": "canonical baseline preamble only; all34 delivered source bytes and all diff hunks unchanged",
-  "new_canonical_actor_helper_sha256": "810a95b33aad22463a23d5484d5f8538f4474d1e67a4a94a1b47e65eff45f997"
-}

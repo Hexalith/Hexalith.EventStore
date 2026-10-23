@@ -1,9 +1,0 @@
-{
-  "allowedEffects": 1,
-  "bindingAbsent": true,
-  "broker": "rabbitmq",
-  "messageId": "354c34c1f28803a91465bf24",
-  "scenario": "missing-bindings",
-  "unboundMessageId": "86ac6a8686fd504a0a48d0d9",
-  "unboundPublishStatus": 204
-}

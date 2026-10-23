@@ -48,7 +48,7 @@ project-reference edges if reused with `--no-restore` in package mode.
 | 1 | `SignalR.Tests` | + NSubstitute | |
 | 1 | `AppHost.Tests` | | app-model config |
 | 1 | `Admin.Abstractions.Tests`, `Admin.Cli.Tests`, `Admin.Mcp.Tests`, `Admin.Server.Tests`, `Admin.Server.Host.Tests` | + NSubstitute | |
-| 1 | `DeferredWorkGovernance.Tests`, `OperationalEvidence.Validator.Tests` | | |
+| 1 | `DeferredWorkGovernance.Tests` | | |
 | 2 (server) | `Server.Tests` | + AspNetCore.Mvc.Testing | Included in the Release package-mode build and maintained test lanes |
 | 2 (component) | `Admin.UI.Tests` | bunit | Blazor components |
 | 3 (integration) | `IntegrationTests` | Aspire.Hosting.Testing, Mvc.Testing, StackExchange.Redis, Testcontainers | needs Docker + Aspire |

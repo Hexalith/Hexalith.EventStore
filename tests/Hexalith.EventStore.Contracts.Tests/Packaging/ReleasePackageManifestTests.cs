@@ -673,36 +673,13 @@ public sealed class ReleasePackageManifestTests
     }
 
     [Fact]
-    public void Oq8WorkflowHasOneCaptureAwareValidatorAndBlockingCommittedClosureOwner()
+    public void Contracts_and_live_sidecar_workflow_jobs_remain_blocking()
     {
         string root = FindRepositoryRoot();
         string integration = File.ReadAllText(Path.Combine(root, ".github", "workflows", "integration.yml"))
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n');
         string ci = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
-
-        MatchCollection validatorReferences = Regex.Matches(
-            integration,
-            Regex.Escape("validate-oq8-platform-evidence.py"));
-        validatorReferences.Count.ShouldBe(
-            1,
-            "Integration Tests must invoke the OQ8 validator exactly once for the fresh capture.");
-        Match validatorInvocation = Regex.Match(
-            integration,
-            @"(?m)^[ \t]*python3 tools/validate-oq8-platform-evidence\.py(?=[ \t]|$)");
-        validatorInvocation.Success.ShouldBeTrue("The one OQ8 validator reference must be the canonical Python invocation.");
-        int followingStep = integration.IndexOf("\n\n", validatorInvocation.Index, StringComparison.Ordinal);
-        string validatorBlock = integration[
-            validatorInvocation.Index..(followingStep < 0 ? integration.Length : followingStep)];
-
-        validatorBlock.ShouldContain("--capture-directory \"$HEXALITH_OQ8_EVIDENCE_DIRECTORY\"");
-        validatorBlock.ShouldContain("--ctrf \"${RUNNER_TEMP}/oq8-results.json\"");
-        validatorBlock.ShouldContain("--support-ctrf \"${RUNNER_TEMP}/oq8-support-results.json\"");
-        validatorBlock.ShouldContain("--expected-runtime-version \"$DAPR_RUNTIME_VERSION\"");
-
-        Regex.Matches(integration, @"(?m)^[ \t]*-result-ctrf ""\$\{RUNNER_TEMP\}/oq8-(?:results|support-results)\.json""$")
-            .Count.ShouldBe(2, "Both direct xUnit 4 runner invocations must use the hosted -result-ctrf switch.");
-        integration.ShouldNotContain("\n            -ctrf \"${RUNNER_TEMP}/oq8-");
 
         string liveSidecarJob = ExtractTopLevelWorkflowJobBlock(integration, "live-sidecar");
         liveSidecarJob.ShouldNotContain("continue-on-error");
@@ -717,15 +694,9 @@ public sealed class ReleasePackageManifestTests
 
         string contractsJob = ExtractTopLevelWorkflowJobBlock(ci, "contracts");
         const string allRootSubmodules = "git -c submodule.recurse=false submodule update --init";
-        const string createEnvironment = "python3 -m venv \"${RUNNER_TEMP}/oq8-python\"";
-        const string installDependency = "\"${RUNNER_TEMP}/oq8-python/bin/python\" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt";
-        const string publishEnvironment = "echo \"${RUNNER_TEMP}/oq8-python/bin\" >> \"$GITHUB_PATH\"";
         contractsJob.ShouldContain("- name: Initialize root-declared submodules");
         contractsJob.ShouldContain(allRootSubmodules);
         contractsJob.ShouldNotContain("submodule update --init references/");
-        contractsJob.ShouldContain(createEnvironment);
-        contractsJob.ShouldContain(installDependency);
-        contractsJob.ShouldContain(publishEnvironment);
         contractsJob.ShouldContain("dotnet test tests/Hexalith.EventStore.Contracts.Tests/Hexalith.EventStore.Contracts.Tests.csproj");
         contractsJob.ShouldContain("--filter-not-trait \"Category=HeavyweightContainerPublish\"");
         contractsJob.ShouldContain("--report-xunit-trx");
@@ -733,12 +704,6 @@ public sealed class ReleasePackageManifestTests
         contractsJob.ShouldNotContain("--collect:");
         contractsJob.ShouldNotContain("--logger ");
         contractsJob.ShouldNotContain("continue-on-error");
-        contractsJob.IndexOf(createEnvironment, StringComparison.Ordinal)
-            .ShouldBeLessThan(contractsJob.IndexOf(installDependency, StringComparison.Ordinal));
-        contractsJob.IndexOf(installDependency, StringComparison.Ordinal)
-            .ShouldBeLessThan(contractsJob.IndexOf(publishEnvironment, StringComparison.Ordinal));
-        contractsJob.IndexOf(publishEnvironment, StringComparison.Ordinal)
-            .ShouldBeLessThan(contractsJob.IndexOf("dotnet test tests/Hexalith.EventStore.Contracts.Tests", StringComparison.Ordinal));
 
         string correctiveReleaseTests = File.ReadAllText(
             Path.Combine(
@@ -756,49 +721,6 @@ public sealed class ReleasePackageManifestTests
         AssertNoHeavyweightTraitBeforeMethod(
             correctiveReleaseTests,
             "ContainerPublicationRejectsMalformedProvenanceInputs");
-
-        liveSidecarJob.ShouldContain(createEnvironment);
-        liveSidecarJob.ShouldContain(installDependency);
-        liveSidecarJob.ShouldContain(publishEnvironment);
-        liveSidecarJob.IndexOf(createEnvironment, StringComparison.Ordinal)
-            .ShouldBeLessThan(liveSidecarJob.IndexOf(installDependency, StringComparison.Ordinal));
-        liveSidecarJob.IndexOf(installDependency, StringComparison.Ordinal)
-            .ShouldBeLessThan(liveSidecarJob.IndexOf(publishEnvironment, StringComparison.Ordinal));
-        liveSidecarJob.IndexOf(publishEnvironment, StringComparison.Ordinal)
-            .ShouldBeLessThan(liveSidecarJob.IndexOf("python3 tools/validate-oq8-platform-evidence.py", StringComparison.Ordinal));
-
-        string[] requirementLines = File.ReadAllText(Path.Combine(root, "requirements-oq8.txt"))
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        requirementLines[0].ShouldBe("PyYAML==6.0.3 \\");
-        requirementLines.Length.ShouldBe(8);
-        requirementLines[1..^1].ShouldAllBe(line => Regex.IsMatch(
-            line,
-            @"^    --hash=sha256:[0-9a-f]{64} \\$",
-            RegexOptions.CultureInvariant,
-            TimeSpan.FromSeconds(1)));
-        Regex.IsMatch(
-            requirementLines[^1],
-            @"^    --hash=sha256:[0-9a-f]{64}$",
-            RegexOptions.CultureInvariant,
-            TimeSpan.FromSeconds(1)).ShouldBeTrue();
-        requirementLines[1..]
-            .Select(line => line.Trim().TrimEnd('\\'))
-            .Distinct(StringComparer.Ordinal)
-            .Count()
-            .ShouldBe(7);
-        string validator = File.ReadAllText(Path.Combine(root, "tools", "validate-oq8-platform-evidence.py"));
-        validator.ShouldContain("PINNED_PYYAML_VERSION = \"6.0.3\"");
-        validator.ShouldContain("PINNED_PYYAML_REQUIREMENT = f\"PyYAML=={PINNED_PYYAML_VERSION}\"");
-        validator.ShouldContain("test.get(\"labels\") == FOCUSED_LABELS");
-        validator.ShouldContain("test.get(\"tags\") == [\"LiveSidecar\"]");
-        validator.ShouldContain("-result-ctrf raw-runner-temp");
-        validator.ShouldNotContain("test.get(\"extra\", {}).get(\"traits\")");
-
-        System.Reflection.MethodInfo? committedClosure = typeof(Oq8PlatformClosureTests).GetMethod(
-            nameof(Oq8PlatformClosureTests.ApprovedSourceOnlyHandoffPasses));
-        committedClosure.ShouldNotBeNull();
-        committedClosure!.GetCustomAttributes(typeof(FactAttribute), inherit: false).Length.ShouldBe(1);
     }
 
     [Theory]
@@ -851,8 +773,8 @@ public sealed class ReleasePackageManifestTests
                     "          fetch-depth: 1\n          path: ~/.nuget/packages\n",
                     StringComparison.Ordinal),
             "checkout-env-shallow-depth" => integration.Replace(
-                "        with:\n          # This capture-only lane does not read historical OQ8 Git objects. Any committed-closure\n          # validation added here must also change this checkout to fetch-depth: 0.\n          fetch-depth: 1\n          submodules: false",
-                "        env:\n          fetch-depth: 1\n        with:\n          # This capture-only lane does not read historical OQ8 Git objects. Any committed-closure\n          # validation added here must also change this checkout to fetch-depth: 0.\n          submodules: false",
+                "        with:\n          # This test-only lane does not read Git history. Any history-reading step added\n          # here must also change this checkout to fetch-depth: 0.\n          fetch-depth: 1\n          submodules: false",
+                "        env:\n          fetch-depth: 1\n        with:\n          # This test-only lane does not read Git history. Any history-reading step added\n          # here must also change this checkout to fetch-depth: 0.\n          submodules: false",
                 StringComparison.Ordinal),
             "release-coupling-workflow" => integration,
             "release-coupling-project" => integration,
@@ -965,7 +887,6 @@ public sealed class ReleasePackageManifestTests
         workflow.ShouldContain("playwright.ps1 install --with-deps chromium");
         workflow.ShouldContain("tests/Hexalith.EventStore.Admin.UI.E2E");
         workflow.ShouldContain("tests/Hexalith.EventStore.DeferredWorkGovernance.Tests");
-        workflow.ShouldContain("tests/Hexalith.EventStore.OperationalEvidence.Validator.Tests");
         release.ShouldNotContain("Advisory Tests");
         release.ShouldNotContain("advisory-tests");
     }
@@ -2013,12 +1934,7 @@ public sealed class ReleasePackageManifestTests
         integration.ShouldNotContain("--collect:");
         integration.ShouldNotContain("--logger ");
 
-        // Story 4.14 OQ8 support capture builds Server.Tests and invokes pinned -method
-        // support oracles for --support-ctrf. Forbid any `dotnet test` of Server.Tests as
-        // the live suite (build/-method paths remain allowed).
-        integration.ShouldContain("dotnet build tests/Hexalith.EventStore.Server.Tests/");
-        integration.ShouldContain("-method Hexalith.EventStore.Server.Tests.");
-        integration.ShouldContain("--support-ctrf");
+        // Forbid any `dotnet test` of Server.Tests as the live suite.
         integration.ShouldNotContain("dotnet test tests/Hexalith.EventStore.Server.Tests/");
         integration.ShouldNotContain("--filter \"Category=LiveSidecar\"");
         integration.ShouldNotContain("--filter \"Category!=LiveSidecar\"");
@@ -2076,7 +1992,7 @@ public sealed class ReleasePackageManifestTests
             "The pinned repository checkout step's with mapping must declare exactly one checkout history depth.");
         repositoryCheckoutFetchDepths[0].Groups["depth"].Value.ShouldBe(
             "1",
-            "Fresh OQ8 capture requires only the explicitly shallow checked-out commit.");
+            "The test-only live-sidecar lane requires only the explicitly shallow checked-out commit.");
 
         MatchCollection daprCliVersions = Regex.Matches(
             integration,
@@ -2092,11 +2008,10 @@ public sealed class ReleasePackageManifestTests
         daprRuntimeVersions.Count.ShouldBe(1, "integration.yml must declare exactly one Dapr runtime pin.");
         daprRuntimeVersions[0].Groups["version"].Value.ShouldBe(
             "1.18.2",
-            "The fresh live-sidecar and OQ8 runtime must remain independently pinned to Dapr runtime 1.18.2.");
+            "The live-sidecar runtime must remain independently pinned to Dapr runtime 1.18.2.");
 
         integration.ShouldContain("version: ${{ env.DAPR_CLI_VERSION }}");
         integration.ShouldContain("runtime-version: ${{ env.DAPR_RUNTIME_VERSION }}");
-        integration.ShouldContain("--expected-runtime-version \"$DAPR_RUNTIME_VERSION\"");
         daprInit.ShouldContain("version: ${{ inputs.version }}");
         daprInit.ShouldContain("DAPR_RUNTIME_VERSION: ${{ inputs.runtime-version || inputs.version }}");
         daprInit.ShouldContain("dapr init --runtime-version \"$runtime_version\"");

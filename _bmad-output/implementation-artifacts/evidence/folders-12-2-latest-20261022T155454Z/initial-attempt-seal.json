@@ -1,7 +1,0 @@
-{
-  "path": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z",
-  "sealed_files": 5031,
-  "sha256": "eeff5272baa8ab53fb1fef872aca9db1f7fd0fb1a094d6e71a12c263778df1ec",
-  "disposition": "interrupted-not-qualified",
-  "fresh_result_reuse": "No initial-attempt behavioral result is promoted to final-snapshot acceptance. Prior failures remain retained."
-}

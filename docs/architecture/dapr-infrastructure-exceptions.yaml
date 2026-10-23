@@ -23,11 +23,7 @@ unresolved:
     candidate_interfaces:
       - Dapr pub/sub fan-out to local hubs
       - Dapr bindings.azure.signalr output binding
-    qualification_packet: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification.md
-    qualification_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20.md
-    historical_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-19.md
-    network_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-20-network.md
-    blackhole_continuation: _bmad-output/implementation-artifacts/evidence/story-2-13/qualification-2026-10-21-blackhole.md
+    qualification_record: _bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md
     observed_gap: >-
       Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
       but the shipped *.*.projection-changed wildcard subscribed to a literal Redis

@@ -1,5 +1,0 @@
-{
-  "Replace": {
-    "/tmp/eventstore-2-13-concurrency-waq49g1u/dapr-b32a815fa2260983e181b95272ea555fe17d3895/pkg/actors/router/local_reset_churn_test.go": "/home/administrator/projects/hexalith/eventstore/_bmad-output/implementation-artifacts/evidence/story-2-13/runs-2026-10-21-concurrency-safety/local_reset_churn_test.go.source"
-  }
-}

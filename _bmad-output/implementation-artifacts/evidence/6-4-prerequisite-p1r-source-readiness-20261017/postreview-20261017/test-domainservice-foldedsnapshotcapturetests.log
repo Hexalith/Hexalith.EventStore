@@ -1,6 +1,0 @@
-  Discovering: Hexalith.EventStore.DomainService.Tests
-  Discovered:  Hexalith.EventStore.DomainService.Tests
-  Starting:    Hexalith.EventStore.DomainService.Tests
-  Finished:    Hexalith.EventStore.DomainService.Tests (ID = '4afdd49d339279d5778a32ed9f69e8213d26f35b9c8b654f86d624cc9e40077a')
-=== TEST EXECUTION SUMMARY ===
-   Hexalith.EventStore.DomainService.Tests  Total: 28, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0.292s

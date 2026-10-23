@@ -1,6 +1,0 @@
-{
-  "containerId": "d45bf574db3e3dd334e50e89508a35a609a5384912313d47b248e43ac58fd4f4",
-  "imageId": "sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58",
-  "kind": "disposable-broker-container",
-  "requestedImage": "docker.io/library/rabbitmq@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58"
-}

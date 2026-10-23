@@ -1,3 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n -A 65 '^    def execute' tools/p1r_published_executor.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:4800}));
-text(await tools.exec_command({cmd:"rg -n -A 35 '^    def case' tools/p1r_published_executor.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:3000}));
-text(await tools.exec_command({cmd:"rg -n -B 10 -A 7 'self.result\\[\"finished_utc\"\\] = stamp' tools/p1r_published_executor.py",workdir:"/tmp/p1r-31251-integration-86e5a7710e44434f915076eb2751ab31",max_output_tokens:2500}));

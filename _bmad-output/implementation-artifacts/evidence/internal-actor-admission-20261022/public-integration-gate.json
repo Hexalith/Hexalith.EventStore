@@ -1,8 +1,0 @@
-{
-  "command": "dotnet tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests.dll -class Hexalith.EventStore.IntegrationTests.EventStore.RateLimitingIntegrationTests -class Hexalith.EventStore.IntegrationTests.EventStore.PerTenantRateLimitingTests -class Hexalith.EventStore.IntegrationTests.EventStore.PerConsumerRateLimitingTests -result-xml _bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/public-throttling.xml",
-  "exit_code": 1,
-  "passed": 30,
-  "failed": 3,
-  "failure_scope": "Health /ready and /health expect200 but receive503; retained logs show absent external Dapr/domain health dependencies at localhost:3500. Public throttle assertions pass. No fixture/readiness weakening applied.",
-  "claims": "This broader gate is not green. Independent real process tenant and consumer throttle controls pass."
-}

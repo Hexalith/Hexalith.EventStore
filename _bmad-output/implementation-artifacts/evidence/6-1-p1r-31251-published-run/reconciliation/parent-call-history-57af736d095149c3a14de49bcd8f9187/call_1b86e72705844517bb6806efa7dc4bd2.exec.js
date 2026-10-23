@@ -1,2 +1,0 @@
-text(await tools.exec_command({cmd:"rg -n -A 70 'class IsolatedRunner' tools/p1r_isolation.py; sed -n '285,320p' tools/tests/test_p1r_published_executor.py",workdir:load("p1r_31251_run_state").integration_root,max_output_tokens:4000}));
-text(await tools.exec_command({cmd:"rg -n 'workspace =|self.workspace' tools/p1r_isolation.py",workdir:load("p1r_31251_run_state").integration_root,max_output_tokens:2000}));

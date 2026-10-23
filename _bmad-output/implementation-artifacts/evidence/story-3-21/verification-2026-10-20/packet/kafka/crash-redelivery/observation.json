@@ -1,9 +1,0 @@
-{
-  "broker": "kafka",
-  "crashExitCode": 86,
-  "effectCount": 1,
-  "messageId": "dbf525bcef27ef1c9f360c8e",
-  "receiptCount": 2,
-  "sameId": true,
-  "scenario": "crash-redelivery"
-}

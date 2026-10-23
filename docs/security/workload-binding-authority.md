@@ -183,20 +183,17 @@ checkpoint, legacy fold, empty receipt or maintenance result is fabricated here.
 A newly isolated, never-used installation may use its actual initial state only
 after the broader installation/history coverage is established separately.
 
-## Validation and evidence
+## Validation
 
-On 2026-10-18 the user selected option **1**, approving retirement of exactly
-three preserved `WorkloadBindingAuthorityTests.cs` snapshots and two historical
-Server reports. The [authority overlay](../../_bmad-output/implementation-artifacts/evidence/6-4-historical-retirement-20261018/authority-overlay.json)
-withdraws present qualification authority from the dependent preparation and
-review results (187/187 and the two 83-case runs). Their original source bytes,
-receipts and dated outcomes remain preserved. Those runs do not establish
-current-source validation, replacement evidence or deployed acceptance.
+Earlier Story 3.6 preparation and review runs (187/187 and two 83-case runs)
+carry no present qualification authority: on 2026-10-18 the user approved
+retiring the source snapshots and reports they depended on. Those runs do not
+establish current-source validation or deployed acceptance; proof is the
+current tests and CI.
 
 Production-mode tests use a temporary self-signed synthetic certificate and an
 in-memory HTTP transport. They exercise the actual broker, outbound client,
 cryptographic validation and mapped endpoint boundaries. They are local software
 validation only, not real TLS/client identity, current operational grants or
 runtime acceptance. Story 3.6 remains incomplete until its deployed acceptance
-records pass. Current bounded native rights checks are retained separately under
-`docs/evidence/story-3-6/20261017t142649z-production-authority-preparation/`.
+records pass.

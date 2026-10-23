@@ -74,6 +74,8 @@ Classifications must distinguish shipped runtime, public client transport, telem
 
 ## Implementation Tasks
 
+**2026-10-23 evidence policy:** do not write under `evidence/`; record commands, pass/fail counts, commit SHA and CI run link in this story (architecture AD-12).
+
 - [ ] Use `Hexalith.EventStore.slnx`, `tools/release-packages.json`, production/sample `.csproj` files, and `tests/Hexalith.EventStore.Contracts.Tests/Packaging/DependencyModeEvaluationTests.cs` to enumerate/evaluate the closed project/package/generated-host and mode/configuration universe; retain exact graph/input identities and gaps in new `_bmad-output/implementation-artifacts/evidence/story-3-17/evaluated-inputs.json`.
 - [ ] Inspect effective/linked/generated inputs from `src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj`, generator inputs under `src/Hexalith.EventStore.RestApi.Generators/`, host/sample configuration, and each evaluated transitive graph; record provider HTTP/client/credential call-site paths in `docs/concepts/dapr-infrastructure-boundary.md` and new `docs/architecture/dapr-infrastructure-inventory.yaml`.
 - [ ] Refine `docs/concepts/dapr-infrastructure-boundary.md`, `docs/architecture/dapr-infrastructure-inventory.yaml`, and `docs/architecture/dapr-infrastructure-exceptions.yaml` to the final operation/evidence/owner/disposition schema, preserving unresolved 2.13/8.6 rows and accepting no exception without its separate exact-content decision.

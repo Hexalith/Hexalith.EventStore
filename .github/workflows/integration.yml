@@ -29,18 +29,31 @@ jobs:
   live-sidecar:
     runs-on: ubuntu-latest
     # The six serial owner-replacement cases add substantial work to the live
-    # suite. Allow the complete suite and OQ8 capture to finish while retaining
-    # every test and each process phase's existing twenty-minute bound.
+    # suite. Allow the complete suite to finish while retaining every test and
+    # each process phase's existing twenty-minute bound.
     timeout-minutes: 90
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          # This capture-only lane does not read historical OQ8 Git objects. Any committed-closure
-          # validation added here must also change this checkout to fetch-depth: 0.
+          # This test-only lane does not read Git history. Any history-reading step added
+          # here must also change this checkout to fetch-depth: 0.
           fetch-depth: 1
           submodules: false
           persist-credentials: false
+
+      # Proof is the repository's tests plus CI; evidence folders are ignored local scratch.
+      # These repository checks run in this required job because the required
+      # ci / build-and-test job is the shared Hexalith.Builds reusable workflow,
+      # which accepts no caller-defined steps.
+      - name: Reject committed evidence and oversized files
+        run: bash scripts/check-committed-files.sh
+
+      - name: Verify committed-file guard regressions
+        run: python3 -m unittest discover -s tools/tests -p 'test_check_committed_files.py'
+
+      - name: Verify Dapr broker qualification inputs
+        run: python3 -m unittest discover -s tools/tests -p 'test_dapr_broker_qualification.py'
 
       - name: Initialize Hexalith.Builds submodule
         run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
@@ -49,12 +62,6 @@ jobs:
         uses: ./references/Hexalith.Builds/Github/initialize-dotnet
         with:
           global-json-file: global.json
-
-      - name: Install pinned OQ8 validator dependency
-        run: |
-          python3 -m venv "${RUNNER_TEMP}/oq8-python"
-          "${RUNNER_TEMP}/oq8-python/bin/python" -m pip install --require-hashes --no-deps --only-binary=:all: --requirement requirements-oq8.txt
-          echo "${RUNNER_TEMP}/oq8-python/bin" >> "$GITHUB_PATH"
 
       - name: Cache NuGet packages
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -107,58 +114,6 @@ jobs:
             --report-xunit-trx \
             --report-xunit-trx-filename integration-parallelization-results.trx \
             -p:UseHexalithProjectReferences=false
-
-      - name: Capture and validate OQ8 production evidence
-        env:
-          HEXALITH_OQ8_EVIDENCE_DIRECTORY: ${{ runner.temp }}/oq8-story-4-14
-        run: |
-          mkdir -p "$HEXALITH_OQ8_EVIDENCE_DIRECTORY"
-          dotnet tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.LiveSidecar.Tests.dll \
-            -method Hexalith.EventStore.Server.LiveSidecar.Tests.Actors.IdempotencyAdmissionOq8PostgresqlTests.ProductionMatrix_IndependentProcessesPreserveAuthorityReplayExpiryAndLeakageInvariants \
-            -noColor \
-            -result-ctrf "${RUNNER_TEMP}/oq8-results.json"
-          dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj \
-            --configuration Release \
-            --no-restore \
-            -m:1 \
-            -p:UseHexalithProjectReferences=false
-          dotnet tests/Hexalith.EventStore.Server.Tests/bin/Release/net10.0/Hexalith.EventStore.Server.Tests.dll \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_PendingEquivalent_ReturnsFirstWriterTaskEvidenceWithoutDownstreamWork \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_Conflict_DeniesBeforeAggregateAndAdvisoryStores \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_AdmissionStoreUnavailableFailsClosedBeforeRoute \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_UnverifiableAdmission_ReturnsStableFailClosedOutcome \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_UnknownOutcome_ReconcilesReadOnlyAndFinalizesExactAggregateResult \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_UnknownOutcomeWithoutAuthoritativeResult_RemainsFailClosed \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.Coordinator_UnsafeLegacyInventoryDoesNoLifecycleAdmissionDirectoryOrMigrationWork \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.AdmitAsync_StateStoreUnavailableFailsClosedWithoutReservation \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.AdmitAsync_UnknownSchema_FailsClosedAsCorrupt \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.AdmitAsync_VerificationTagMismatchFailsClosedAsCollision \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyTenantLifecycleActorTests.MigrateLegacyAsync_RestartFromEveryDurablePhaseFinishesPinnedTarget \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyTenantLifecycleActorTests.MigrateLegacyAsync_UnsafeSourceEvidenceNeverPreparesTarget \
-            -method Hexalith.EventStore.Server.Tests.Actors.PublicationRecoveryActivationTests.OnActivate_MissingCheckpointPruned_ReleasesTheRecoverableIdempotencyRecord \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_RouteFailure_MarksUnknownOutcomeUnderSameFence \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_WriteAheadFailureAfterFenceMarksUnknownOutcome \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionExpiryTests.ValidateAuthorityAsync_PendingAcceptsOnlyExactExecuteAuthorityWithoutMutation \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionExpiryTests.ValidateAuthorityAsync_UnknownOutcomeAcceptsOnlyExactReconciliationAuthorityWithoutMutation \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_TamperedCapabilityLeavesAdmissionUnchangedBeforeBegin \
-            -method Hexalith.EventStore.Server.Tests.Pipeline.SubmitCommandHandlerIdempotencyAdmissionTests.Handle_ContextThatLostDurableAuthorityPerformsZeroDownstreamWork \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionDirectoryActorTests.AdvanceAsync_PromotionOrder_KeepsSourceCanonicalUntilDirectoryFlip \
-            -method Hexalith.EventStore.Server.Tests.Actors.IdempotencyAdmissionActorTests.Coordinator_OrdinaryActivationResponseLossReprovesExactTargetBeforeAdvance \
-            -noColor \
-            -result-ctrf "${RUNNER_TEMP}/oq8-support-results.json"
-          python3 tools/validate-oq8-platform-evidence.py \
-            --capture-directory "$HEXALITH_OQ8_EVIDENCE_DIRECTORY" \
-            --ctrf "${RUNNER_TEMP}/oq8-results.json" \
-            --support-ctrf "${RUNNER_TEMP}/oq8-support-results.json" \
-            --expected-runtime-version "$DAPR_RUNTIME_VERSION"
-
-      - name: Upload fresh validated OQ8 capture
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: oq8-story-4-14-fresh-validated-capture
-          path: ${{ runner.temp }}/oq8-story-4-14
-          if-no-files-found: error
-          retention-days: 7
 
       - name: Upload live-sidecar test results
         if: always()
