@@ -2,7 +2,7 @@
 title: 'Story 3.22: Bounded qualification evidence production and admission'
 type: 'refactor'
 created: '2026-10-21'
-status: 'in-progress'
+status: 'done'
 approved: '2026-10-21'
 approval: 'approve and stop'
 route: 'dispatch'
@@ -619,3 +619,47 @@ Rejected:
 - low: the index-stage export test does not assert summary absence or the retain count (blind). The index `retain` follows the `require`, and the file stage asserts both.
 - low, maybe-false: one of nine unmodified storage-suite runs errored on 44 of 45 tests (verification-gap). The other eight passed. It matches the recorded long-`TMPDIR` AF_UNIX failure (:579) or concurrent reviewer runs, and nothing in this diff touches suite setup.
 - reject (spec edit): the `measure-boundary` guard (rejected in chunk A, :412), the timeout raises and the read retry have no spec records (auditor). The fix would edit the spec under review, and the guard fails closed.
+
+## Chunk A2 patch application (2026-10-23)
+
+All 13 chunk A2 patch items above are implemented; nothing new is deferred. This session did not commit them. A concurrent session committed and pushed the uncommitted tooling edits and checkboxes as `22515b1ef` at 07:04, during verification. All ten delivered files at HEAD are byte-identical to the verified versions. Logs, the delta patch and the mutation scripts are outside the checkout in `/home/administrator/.cache/story322-a2-patches-20261023/` (`SHA256SUMS` binds them).
+
+- **Hash-only consumer caches.** `export_attempt` indexes `consumers/<role>/packages/` and each consumer project's `bin/`/`obj/` members by path, size and SHA-256, marked `regenerable-hash-only`, with no stored copy and no charge against `EXPORT_BYTES`. Every other packet member is still copied. The summary reports `regenerable_hash_only` totals. The same layout under the isolation sibling is still copied.
+- **Split source/Builds forwarding.** `IsolatedRunner` keeps both selected roots for output placement, then leaves `source_root` unset when a Builds root is given, so `_inner` binds from the command's tooling-pinned suffix again. `run_controller` now builds the runner as both CLIs do, and the CLI test asserts the constructor kwargs. With only this fix reverted, the separate-roots hardening test fails with `isolation literal lifecycle command substituted`.
+- **`.gitignore`.** Two directory-only negations follow the split-volume patterns. The admission test covers version-named directories holding a summary, plus split archives and logs inside them. Under the old and new rules the checkout's untracked set under `_bmad-output` is identical (empty).
+- **Tests.** The conflicting-roots output now sits outside both roots and asserts the mismatch message. There is a new executor-CLI interrupted-initialization 130 control. The hold control is split into a writable exact-bytes case and a read-only same-length changed-bytes case. New controls cover the `place_hold` foreign-store and unlinked-object refusals (no `holds/` written), the read retry (one change then success, three failures, other error), and per-subtest placement errors.
+- **`materialize_wrapper`.** Every external isolation row now needs complete output markers. The test is inverted, including a hash-only `command_stdout_command`.
+- **README.** The example uses `_bmad-output/implementation-artifacts/evidence/<story>/` paths. It names what each CLI's overlap check covers and documents hash-only caches.
+- **Blank lines.** The four-line runs before the moved test classes are reduced to two. Two older three-line runs (`6902748f6`, `27ac3c628`) are unchanged.
+
+Red checks ran in a detached scratch worktree, so the shared checkout never held a mutated file. Each new or changed control fails when only its fix is reverted, 14 of 14 (`mutations-first-pass.log`, `mutations-rerun.log`). Two first-pass survivors were not real gaps. One reused stale bytecode after a same-length mutation, so the rerun disables `__pycache__`. The other dropped `packet != self.output`, which is an equivalent mutant because the runner's own output always exists. The rerun targets the existence term instead, which the old stale-error assertion could not catch.
+
+| Exact command (shared checkout, `TMPDIR=/home/administrator/.cache/s322a2`) | Passed |
+| --- | ---: |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_evidence_storage.py` | 48 |
+| `python3 -O -m unittest discover -s tools/tests -p test_p1r_evidence_storage.py` | 48 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_published_executor.py` | 227 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_published_qualification.py` | 73 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_isolation.py` | 49 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_isolation_hardening.py` | 29 |
+| `python3 -O -m unittest discover -s tools/tests -p test_p1r_isolation_hardening.py` | 29 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_qualification.py` | 54 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_verifier_corrections.py` | 31 |
+| `python3 -m unittest discover -s tools/tests -p test_p1r_snapshot_registration.py` | 3 |
+
+That is **591 executions**, zero failures or skips (`python-suites/summary.json`). The C# checks ran in a detached worktree at `2361e7b67` carrying exactly this delta. Its submodules are `git clone --shared` copies at their gitlinks, with `origin` set to the `.gitmodules` URLs, and the main `.git/config` hash was unchanged. Both test projects build in Debug with `-p:UseHexalithProjectReferences=true -p:UseNuGetDeps=false -nr:false -m:1`, with zero warnings and errors.
+
+| Exact command (worktree) | Result |
+| --- | --- |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -method '*CanonicalReconciliationDelivery*'` | 1 passed; all ten changed files are enrolled |
+| `dotnet tests/Hexalith.EventStore.Contracts.Tests/bin/Debug/net10.0/Hexalith.EventStore.Contracts.Tests.dll -method '*GitignoreLastPatternsReincludeEvidencePackageArchivesAndExcludeGenericNupkgs'` | 1 passed |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SecretsProtectionTests*'` | 1,007 run, 1,005 passed, 2 failed, 982.6 s |
+
+Neither secrets failure comes from this delta.
+
+- `TrackedReusableContent_DoesNotContainUsableSecrets` reports 81 locations, all in other stories' committed evidence (`folders-12-2-*`, `internal-actor-admission-20261022`). None is in a file this delta changes.
+- `SealedP1RRemediationSourceCapture_HidesOnlyTheKnownFalsePositive` expects one finding at `6-1-p1r-remediation/source-candidate.diff:2590` and gets none.
+  - It fails the same way at clean `2361e7b67` with this delta removed, and the evidence bytes match the shared checkout.
+  - It passes when only the four scanner files are restored to this story's `00e43ee5e`, so the regression comes from the concurrent Story 12.2 scanner changes in `2361e7b67`, which are left to that story.
+
+The full secrets gate stays red until 12.2 resolves both. The full Contracts class was not re-run: this delta changes no C# or MSBuild input, and `.gitignore` is covered by the test above. No commit, push, dependency, submodule, historical-evidence or authority change was made. The live-validator-host deferral and the two pre-existing JSON-key scanner gaps remain deferred. These checks confer no qualification, readiness or publication authority.
