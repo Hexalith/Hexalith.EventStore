@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Production HTTP/Dapr/Redis regression; owns every process/container it removes.
 
-Build LiveSidecar.Tests in Debug first. No application persistence is replaced.
+Build LiveSidecar.Tests in the selected configuration first (Debug by default).
+No application persistence is replaced.
 The existing OQ8 hosting startup adds only the Counter intent adapter, clock and
 boundary counter. Redis reads below are diagnostics, never application writes.
 """
@@ -66,7 +67,11 @@ class Qualification:
         self.digest_key = secrets.token_bytes(32)
         self.tenant = "tenant-admission"
         self.started = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        self.test_output = self.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0"
+        self.test_output = self.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin" / args.configuration / "net10.0"
+        self.sample_output = (Path(args.runtime) / "sample" if args.runtime else
+                              self.root / "samples/Hexalith.EventStore.Sample/bin" / args.configuration / "net10.0")
+        self.eventstore_output = (Path(args.runtime) / "eventstore" if args.runtime else
+                                  self.root / "src/Hexalith.EventStore/bin" / args.configuration / "net10.0")
 
     def save(self, name, value):
         (self.out / name).write_text(json.dumps(value, indent=2) + "\n")
@@ -172,16 +177,14 @@ class Qualification:
                   "daprd_sha256": sha(Path.home() / ".dapr/bin/daprd"),
                   "components": {p.name: p.read_text() for p in components.iterdir()}, "discovery": config.read_text()})
         for label, source, dll in [
-            ("sample", Path(self.args.runtime) / "sample" if self.args.runtime else self.root / "samples/Hexalith.EventStore.Sample/bin/Debug/net10.0", "Hexalith.EventStore.Sample.dll"),
-            ("eventstore", Path(self.args.runtime) / "eventstore" if self.args.runtime else self.root / "src/Hexalith.EventStore/bin/Debug/net10.0", "Hexalith.EventStore.dll")]:
+            ("sample", self.sample_output, "Hexalith.EventStore.Sample.dll"),
+            ("eventstore", self.eventstore_output, "Hexalith.EventStore.dll")]:
             dest = self.runtime / label
             shutil.copytree(source, dest)
             if label == "sample":
                 # Separate source-reference build graphs can leave stale SDK images
                 # in Sample output. Qualify one exact graph across both processes.
-                selected = (Path(self.args.runtime) / "eventstore" if self.args.runtime else
-                            self.root / "src/Hexalith.EventStore/bin/Debug/net10.0")
-                for image in selected.glob("Hexalith.EventStore.*"):
+                for image in self.eventstore_output.glob("Hexalith.EventStore.*"):
                     if image.suffix in (".dll", ".pdb") and (dest / image.name).exists():
                         shutil.copy2(image, dest / image.name)
             for file in self.test_output.glob("*.dll"):
@@ -531,12 +534,18 @@ class Qualification:
         return outcomes["passed"]
 
 
-def main():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence", required=True)
+    parser.add_argument("--configuration", choices=("Debug", "Release"), default="Debug",
+                        help="Build configuration shared by test, Sample and EventStore outputs (default: Debug)")
     parser.add_argument("--runtime", help="Frozen baseline runtime root containing eventstore/ and sample/")
     parser.add_argument("--owner-pid", type=int, help="Test runner PID; loss of this owner triggers graceful cleanup")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def main():
+    args = parse_args()
     run = Qualification(args)
     qualification_passed = False
     cleanup_passed = False

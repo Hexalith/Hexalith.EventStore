@@ -1,0 +1,820 @@
+{
+  "schema": "hexalith.security.false-positive-review.v1",
+  "ci_run": "39842637463",
+  "reviewed_utc": "2026-10-23T05:07:32.155083+00:00",
+  "finding_count": 81,
+  "file_count": 53,
+  "constraints": [
+    "Do not modify any evidence packet bytes.",
+    "Bind any suppression to exact path, full-file SHA256 and listed line SHA256.",
+    "Changing any file byte must revoke suppression.",
+    "Adding adjacent or same-line credential text must remain detectable.",
+    "Copied fixed authentication test fixtures are classified explicitly; never generalize them to a literal or path-prefix exemption."
+  ],
+  "files": [
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-abstractions-full.xml",
+      "sha256": "24ff8682147684ef179ca36e1e94a42e860aba919a05ea3c36e5e16630fcc9e5",
+      "lines": [
+        {
+          "line": 1,
+          "sha256": "24ff8682147684ef179ca36e1e94a42e860aba919a05ea3c36e5e16630fcc9e5",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-cli-full.xml",
+      "sha256": "b20227b89170b006af32facf434c5f8326e1cd36aa1db4fb52d2a9139c97b0bb",
+      "lines": [
+        {
+          "line": 1,
+          "sha256": "b20227b89170b006af32facf434c5f8326e1cd36aa1db4fb52d2a9139c97b0bb",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-mcp-full.xml",
+      "sha256": "dff2b7695950172d4bbc72b4dea384ffd5d6c8d5b99ad50e83620688ca7d2dd5",
+      "lines": [
+        {
+          "line": 1,
+          "sha256": "dff2b7695950172d4bbc72b4dea384ffd5d6c8d5b99ad50e83620688ca7d2dd5",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/admin-ui-full.xml",
+      "sha256": "a960b8da4f535be75ac626e1fcada3a91dcafa42a3c8c90d58ed7c2671ba27d9",
+      "lines": [
+        {
+          "line": 1,
+          "sha256": "a960b8da4f535be75ac626e1fcada3a91dcafa42a3c8c90d58ed7c2671ba27d9",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/affected-server-regressions.json",
+      "sha256": "f75eadaa03e4aa5689d470c206426575e14569a9b167180e0ed9cc711b302012",
+      "lines": [
+        {
+          "line": 1052,
+          "sha256": "092f4b97aeadfe91213762ee5a21c845b9952903787882e12558df190e9ff47e",
+          "classification": "captured-test-display-name",
+          "reason": "Regression inventory name field captures a WorkloadBindingAuthorityTests issuer-validation theory display identity, including its synthetic invalid URI input."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/apphost-full.xml",
+      "sha256": "9e3a502f4e8062b205ad9d3b776382a5a7dd9bd48614f09dca458282a5cb9f87",
+      "lines": [
+        {
+          "line": 1,
+          "sha256": "9e3a502f4e8062b205ad9d3b776382a5a7dd9bd48614f09dca458282a5cb9f87",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/bound-source/3952489c051d7b10820ab765c9de1692d239885288a96b0b5d4728bea678ea54.source",
+      "sha256": "3952489c051d7b10820ab765c9de1692d239885288a96b0b5d4728bea678ea54",
+      "lines": [
+        {
+          "line": 36,
+          "sha256": "e0bca6a316885d9cc8efe45f6a805236f55d93caf8d95e6da4268ed8503ffb27",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/bound-source/8f109f47db9be0915b2d38dec31f4f2326e4b4449e86bbbf3247f5f5ba9c3e50.source",
+      "sha256": "8f109f47db9be0915b2d38dec31f4f2326e4b4449e86bbbf3247f5f5ba9c3e50",
+      "lines": [
+        {
+          "line": 116,
+          "sha256": "6f32033f44a8af99c3eacabbff6eab4c7d9afa8471177fd9345c73df621636ed",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical ActorCallbackRateLimitPipelineTests test-host configuration has an explicitly test-labelled Dapr application-channel key; immutable source snapshot only."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/bound-source/c9b0b22524975ebf28a88fb0acffa669bd0ded22f1e00199663a7515304ab656.source",
+      "sha256": "c9b0b22524975ebf28a88fb0acffa669bd0ded22f1e00199663a7515304ab656",
+      "lines": [
+        {
+          "line": 42,
+          "sha256": "1e9da006eae451aed04bf56dfe8e194b39b84e1a896a6aafacd8610b8088320d",
+          "classification": "noncredential-governance-protocol-fixture",
+          "reason": "Copy of GovernanceGuardFixture default protocol/state token; original source already uses exact line-hash noncredential recognition, but the captured path does not inherit it."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/sample-full.xml",
+      "sha256": "e67851df06f3db6405d72a9baab222f2ee5e7a44eedb4ec6de661d99c5a3330b",
+      "lines": [
+        {
+          "line": 1,
+          "sha256": "e67851df06f3db6405d72a9baab222f2ee5e7a44eedb4ec6de661d99c5a3330b",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-current-source-20261022T134028Z/server-full.xml",
+      "sha256": "9ea5fa7e36d61d32d298343c2e5f217e043fd01e898530d5e3424db2a31be326",
+      "lines": [
+        {
+          "line": 62,
+          "sha256": "7b6ca06ef8806fbfd1808da8fe1b5394931b6369ab449dfeea3685baf2721729",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/affected-server-regressions.json",
+      "sha256": "13a7eba218fce610f80268827cdebeea80dabca0d98256911d2d541197031a9f",
+      "lines": [
+        {
+          "line": 1053,
+          "sha256": "092f4b97aeadfe91213762ee5a21c845b9952903787882e12558df190e9ff47e",
+          "classification": "captured-test-display-name",
+          "reason": "Regression inventory name field captures a WorkloadBindingAuthorityTests issuer-validation theory display identity, including its synthetic invalid URI input."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/bound-source/c9b0b22524975ebf28a88fb0acffa669bd0ded22f1e00199663a7515304ab656.cs",
+      "sha256": "c9b0b22524975ebf28a88fb0acffa669bd0ded22f1e00199663a7515304ab656",
+      "lines": [
+        {
+          "line": 42,
+          "sha256": "1e9da006eae451aed04bf56dfe8e194b39b84e1a896a6aafacd8610b8088320d",
+          "classification": "noncredential-governance-protocol-fixture",
+          "reason": "Copy of GovernanceGuardFixture default protocol/state token; original source already uses exact line-hash noncredential recognition, but the captured path does not inherit it."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-gates-20261022T151209Z/server-full.xml",
+      "sha256": "7fa37a7a2556d8dc69f8aaa4761383b5f8f5d0fa59f9e5b33b834e7ab3668e31",
+      "lines": [
+        {
+          "line": 62,
+          "sha256": "56ff88519b0829cb747c916607c8d6e6e87368fc21aa46cd6d5c02977bce5649",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/affected-server-regressions.json",
+      "sha256": "ddf506ec23035e85e91277d639d3dc85ca7a432bae73038058b52698e32370c7",
+      "lines": [
+        {
+          "line": 1054,
+          "sha256": "092f4b97aeadfe91213762ee5a21c845b9952903787882e12558df190e9ff47e",
+          "classification": "captured-test-display-name",
+          "reason": "Regression inventory name field captures a WorkloadBindingAuthorityTests issuer-validation theory display identity, including its synthetic invalid URI input."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bound-source/452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e.cs",
+      "sha256": "452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/bound-source/c9b0b22524975ebf28a88fb0acffa669bd0ded22f1e00199663a7515304ab656.cs",
+      "sha256": "c9b0b22524975ebf28a88fb0acffa669bd0ded22f1e00199663a7515304ab656",
+      "lines": [
+        {
+          "line": 42,
+          "sha256": "1e9da006eae451aed04bf56dfe8e194b39b84e1a896a6aafacd8610b8088320d",
+          "classification": "noncredential-governance-protocol-fixture",
+          "reason": "Copy of GovernanceGuardFixture default protocol/state token; original source already uses exact line-hash noncredential recognition, but the captured path does not inherit it."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/input-identity-audit.json",
+      "sha256": "284e3b83bc2c58f5cf611077fe7e73e9c35ff055d83051694cdd68e77df34299",
+      "lines": [
+        {
+          "line": 116,
+          "sha256": "b0fa40b9c5025097fb4d9291b1d34a075491008792ddf9e1f5af37f87838942c",
+          "classification": "captured-scanner-regression-diff",
+          "reason": "Audit JSON field embeds the exact source diff repairing scanner test fixtures; source strings contain ParameterResource runtime assignment or historical test-only configuration fixture."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/origin-before-SecretsProtectionTests.UnifiedDiffCursor.cs.source",
+      "sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/origin-change-SecretsProtectionTests.UnifiedDiffCursor.cs.patch",
+      "sha256": "efaa9fec5d8b54474415ed7d0a19335b6f2e12fcf11b6e8ef95790c2f4254c99",
+      "lines": [
+        {
+          "line": 7,
+          "sha256": "df7b46116f896d631610185b4527f74a5f7602afbceb21f7a6cc8726a9e1214e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/snapshot-before-SecretsProtectionTests.UnifiedDiffCursor.cs.source",
+      "sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-final/snapshot-change-SecretsProtectionTests.UnifiedDiffCursor.cs.patch",
+      "sha256": "eaa83daa23628e697087ee603f8c2488d4dc3b361208ec5a324bd791f88df4c1",
+      "lines": [
+        {
+          "line": 7,
+          "sha256": "df7b46116f896d631610185b4527f74a5f7602afbceb21f7a6cc8726a9e1214e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/input-identity-audit.json",
+      "sha256": "ee18aaa3fba5ab5fec2ce670e27a0a5edb1bf872e1e7c24d55c75ab20b6ae447",
+      "lines": [
+        {
+          "line": 59,
+          "sha256": "24330120599f44354712979eb302dd9bba7868435fa15e3dc096019364fda617",
+          "classification": "captured-scanner-regression-diff",
+          "reason": "Audit JSON field embeds the exact source diff repairing scanner test fixtures; source strings contain ParameterResource runtime assignment or historical test-only configuration fixture."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/origin-before.cs.source",
+      "sha256": "1307cd9a0b5702c3c42f0eadd3b251b70cc1b3a0a4427165040a0ed84551cf40",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/origin-change.patch",
+      "sha256": "283160e4bbc32129ded433c6b561dcbc9cdfa5517cbf875b8a925afc479ae94a",
+      "lines": [
+        {
+          "line": 7,
+          "sha256": "fd079742df96ee469b7ef333797d27098ba98ac303ddbed737a10e1eec97dbbf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 22,
+          "sha256": "93ed0cd31cb1287404755b6a80ae01d490f4bf9698bd2bd0a63fd49a621a2758",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/runtime/SecretsProtectionTests.UnifiedDiffCursor.cs.source",
+      "sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/snapshot-before.cs.source",
+      "sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-fixtures/snapshot-change.patch",
+      "sha256": "6ad8f57fc4850632bee583697214df34db12f4ac867545eae47aa51912ca34d4",
+      "lines": [
+        {
+          "line": 7,
+          "sha256": "fd079742df96ee469b7ef333797d27098ba98ac303ddbed737a10e1eec97dbbf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 22,
+          "sha256": "93ed0cd31cb1287404755b6a80ae01d490f4bf9698bd2bd0a63fd49a621a2758",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/new-regressions-v2.cs.source",
+      "sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/new-regressions.cs.source",
+      "sha256": "d2da413d9cd1a2898eb675bd793edef0565256d83359b12e17ceb0c81c90e4e8",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/origin-after.cs.source",
+      "sha256": "301fde6e37c56a499138dc6ba7dd753038d39d39f718872bd2325d2c846be180",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/origin-before.cs.source",
+      "sha256": "5679c4995b5019aa02b3fa2decc77c1d38c5d5ff6c42eca97a2a715fdf17233a",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/runtime/SecretsProtectionTests.UnifiedDiffCursor.cs.source",
+      "sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/runtime/SecretsProtectionTests.cs.source",
+      "sha256": "22230ab29679672082431dba0160c6caaa265fc50a32c1f2884f3def25d86ef8",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/snapshot-after.cs.source",
+      "sha256": "22230ab29679672082431dba0160c6caaa265fc50a32c1f2884f3def25d86ef8",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-repair/snapshot-before.cs.source",
+      "sha256": "452c23b865a4f28a9f2bf9ac66f307881fb2882a49b9be20db91ce875b35eb9e",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/input-identity-audit.json",
+      "sha256": "e2c4378636d7760c2c8891993baf8427e42d9e98aef169ae7c8a3e5d02d27457",
+      "lines": [
+        {
+          "line": 35,
+          "sha256": "5a00ecd5ac42a7523acd6d8691bfb4a92f21e9dc4327b5aa6ad072c0841d3c0e",
+          "classification": "captured-scanner-regression-diff",
+          "reason": "Audit JSON field embeds the exact source diff repairing scanner test fixtures; source strings contain ParameterResource runtime assignment or historical test-only configuration fixture."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/origin-after.cs.source",
+      "sha256": "ad1671b2e00671f73cabec07ea3e8fa7482809f39629e23210ce5454f584be4c",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/origin-before.cs.source",
+      "sha256": "31defd41157f833beffb87e196211b1b21478ae4ab64f6f84c202bd48e2e1119",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/origin-final.cs.source",
+      "sha256": "1307cd9a0b5702c3c42f0eadd3b251b70cc1b3a0a4427165040a0ed84551cf40",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/origin-fixture-change.patch",
+      "sha256": "49155783cefad4957b5e264570ae9eda2f4d7a9ee7261239d3cc7131438126b9",
+      "lines": [
+        {
+          "line": 12,
+          "sha256": "0bbdfa417b5f44d47f1d7bccff8c11011ec9e783a72144177ab609a6a541877f",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/SecretsProtectionTests.UnifiedDiffCursor.cs.source",
+      "sha256": "1fe49de76f60460f3ada1ddd4436f5cbf142a1c1ec92b230289e1ae0dc289555",
+      "lines": [
+        {
+          "line": 21,
+          "sha256": "d403f07d7cc30189e26dbef1c88143fea6907b978ea2a6870f9f0ff856f34b17",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/runtime/SecretsProtectionTests.cs.source",
+      "sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/snapshot-after.cs.source",
+      "sha256": "58caa124c32e194224d216c8d8fe90c80d0e139619e0252a1e3b354f131e5aa5",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/snapshot-before.cs.source",
+      "sha256": "22230ab29679672082431dba0160c6caaa265fc50a32c1f2884f3def25d86ef8",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 204,
+          "sha256": "d239c8fd3d2c3222f5a66756b8cbcfd9caf38b53c35af4a646912ef150d40019",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/snapshot-final.cs.source",
+      "sha256": "0b64b237a633d87eb95dea5b727b2c24ffff51929c906080082d5fabbbfb8c68",
+      "lines": [
+        {
+          "line": 173,
+          "sha256": "970be605359b9e62a344f6b60767a42d0f52f6095b13b5c37d84bd8fff42297e",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        },
+        {
+          "line": 188,
+          "sha256": "59770f1ddbd76a6cc6be248617f5d826a7d5817eb1e57787a395fc02038130bf",
+          "classification": "captured-scanner-runtime-expression-fixture",
+          "reason": "C# scanner regression fixture text contains a ParameterResource variable assigned from builder.Resources.OfType, including literal and raw-string diff variants; no authentication token value is present."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guard-tightening/snapshot-fixture-change.patch",
+      "sha256": "901af5fe4c8da6b1472874f102db8a2cbd6a2fbc9f4907fdcf967a41ba0a18a4",
+      "lines": [
+        {
+          "line": 12,
+          "sha256": "0bbdfa417b5f44d47f1d7bccff8c11011ec9e783a72144177ab609a6a541877f",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardfinal-server-full.xml",
+      "sha256": "1e57af202caa98af3cc7a36c67645e4384ab6a81fb02a78ef9185c892b9b1e8c",
+      "lines": [
+        {
+          "line": 125,
+          "sha256": "1810db8346456d025e638f4d2f39706058397bff78b9db990740663d78c2c6ef",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardfix-server-full.xml",
+      "sha256": "e69d11db5eae61432181b4df36e9c4807ee308f50a9d552ff3581f6c40522f3b",
+      "lines": [
+        {
+          "line": 181,
+          "sha256": "0cc78c3316c6d213c73de2844c27dc60b2ce536918119ec6c480dfdbb63f0bfb",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardfixtures-server-full.xml",
+      "sha256": "75edd766adf9497495af0aa7fd81baa73bb911a7e544db13c34cecd476d83d89",
+      "lines": [
+        {
+          "line": 129,
+          "sha256": "29f29f7695b2e42fda10de6d5ae659684e853423e11a8c511bbc3392f9dcd436",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/folders-12-2-latest-20261022T155454Z/guardtight-server-full.xml",
+      "sha256": "3280648528953b1937fbc0cff465f52a5b6b2c707af322f366de50b1e901df9d",
+      "lines": [
+        {
+          "line": 124,
+          "sha256": "0467ceb8d7c5dc1e3ce664be18262b11d78defa4995fc7afcfd1d9e6b4f757f9",
+          "classification": "captured-xunit-fixture-metadata",
+          "reason": "Immutable xUnit report captures synthetic credential-shape and invalid-input theory display names; every byte outside the exact reviewed report and line remains scanned."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/final-source.patch",
+      "sha256": "cab06008db1f71bcd601f330d61582bb111a10c252e20f9d998f596d7d0c257c",
+      "lines": [
+        {
+          "line": 660,
+          "sha256": "8de4f803eb5d639eabda92072f97b0afcbfa939e0c3d96b404914138d72c3a50",
+          "classification": "runtime-generated-python-signing-key",
+          "reason": "Python source generates bytes with secrets.token_bytes and encodes them at runtime; the line has no committed key material. Diff source context was misclassified."
+        },
+        {
+          "line": 1300,
+          "sha256": "c5db449074b7eeed89deef4b2ba8bc05327abf570d28576ccaf817d54936039e",
+          "classification": "captured-test-authentication-fixture",
+          "reason": "Historical C# test-host configuration uses a fixed, explicitly test-labelled signing/app-channel credential; live source now generates fresh test material. Captured packet bytes are preserved."
+        }
+      ]
+    },
+    {
+      "path": "_bmad-output/implementation-artifacts/evidence/internal-actor-admission-20261022/review-source.patch",
+      "sha256": "e0ef530005303f8c4729afeecadc70491462254a547fd6d612c66e58f1d6891b",
+      "lines": [
+        {
+          "line": 562,
+          "sha256": "8de4f803eb5d639eabda92072f97b0afcbfa939e0c3d96b404914138d72c3a50",
+          "classification": "runtime-generated-python-signing-key",
+          "reason": "Python source generates bytes with secrets.token_bytes and encodes them at runtime; the line has no committed key material. Diff source context was misclassified."
+        }
+      ]
+    }
+  ]
+}

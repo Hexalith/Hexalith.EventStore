@@ -224,7 +224,7 @@ public sealed partial class SecretsProtectionTests
     {
         const string uri = "https://user:&lt;password&gt;@identity.example.com";
         FindViolations("evidence/report.xml", uri).ShouldBeEmpty();
-        FindViolations("evidence/report.xml", "https://user:" + RandomSecret() + "@identity.example.com")
+        FindViolations("evidence/report.xml", "https://user:" + Uri.EscapeDataString(RandomSecret()) + "@identity.example.com")
             .ShouldNotBeEmpty();
     }
 
@@ -728,13 +728,21 @@ public sealed partial class SecretsProtectionTests
     }
 
     /// <summary>
-    /// Verifies the exemption hides only the known extension-classification false positive. A scanner change or a new
-    /// real finding alters this result and requires revisiting the exemption.
+    /// Verifies direct source-aware scanning agrees with tracked scanning for the sealed runtime assignment,
+    /// while a substituted literal credential remains detected.
     /// </summary>
     [Fact]
-    public void SealedP1RRemediationSourceCapture_HidesOnlyTheKnownFalsePositive()
-        => FindViolations(SealedP1RRemediationSourceCapture)
-            .ShouldBe([SealedP1RRemediationSourceCapture + ":2590"]);
+    public void SealedP1RRemediationSourceCapture_UsesSourceLanguageAndRejectsLiteralSubstitution()
+    {
+        string capture = File.ReadAllText(Path.Combine(RepoRoot, SealedP1RRemediationSourceCapture));
+        FindViolations(SealedP1RRemediationSourceCapture, capture).ShouldBeEmpty();
+        ScanTrackedFile(SealedP1RRemediationSourceCapture).ShouldBeEmpty();
+        string runtime = "new CancellationToken(true)";
+        capture.ShouldContain(runtime);
+        FindViolations(SealedP1RRemediationSourceCapture,
+            capture.Replace(runtime, JsonSerializer.Serialize(RandomSecret()), StringComparison.Ordinal))
+            .ShouldNotBeEmpty();
+    }
 
     /// <summary>Only empty framework cancellation sources in executable C# are noncredential expressions.</summary>
     [Theory]

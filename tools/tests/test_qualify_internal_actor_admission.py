@@ -1,5 +1,4 @@
 """Focused failure-injection controls for the owned process qualifier; no shared infrastructure is used."""
-import argparse
 import importlib.util
 import json
 import os
@@ -22,11 +21,52 @@ class ActorAdmissionRunnerTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
-        self.run = RUNNER.Qualification(argparse.Namespace(evidence=str(self.root / "evidence"), runtime=None))
+        self.run = RUNNER.Qualification(RUNNER.parse_args(["--evidence", str(self.root / "evidence")]))
 
     def tearDown(self):
         shutil.rmtree(self.run.runtime, ignore_errors=True)
         self.directory.cleanup()
+
+    def test_default_configuration_remains_debug(self):
+        self.assertEqual("Debug", self.run.args.configuration)
+        self.assertEqual(self.run.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Debug/net10.0",
+                         self.run.test_output)
+
+    def test_selected_configuration_applies_to_every_binary_source(self):
+        for configuration in ("Debug", "Release"):
+            with self.subTest(configuration=configuration):
+                args = RUNNER.parse_args(["--evidence", str(self.root / configuration),
+                                          "--configuration", configuration])
+                run = RUNNER.Qualification(args)
+                try:
+                    for actual, project in (
+                            (run.test_output, "tests/Hexalith.EventStore.Server.LiveSidecar.Tests"),
+                            (run.sample_output, "samples/Hexalith.EventStore.Sample"),
+                            (run.eventstore_output, "src/Hexalith.EventStore")):
+                        self.assertEqual(run.root / project / "bin" / configuration / "net10.0", actual)
+                finally:
+                    shutil.rmtree(run.runtime)
+
+    def test_frozen_runtime_keeps_selected_test_configuration(self):
+        frozen = self.root / "frozen"
+        args = RUNNER.parse_args(["--evidence", str(self.root / "frozen-evidence"),
+                                  "--runtime", str(frozen), "--configuration", "Release"])
+        run = RUNNER.Qualification(args)
+        try:
+            self.assertEqual(frozen / "sample", run.sample_output)
+            self.assertEqual(frozen / "eventstore", run.eventstore_output)
+            self.assertEqual(run.root / "tests/Hexalith.EventStore.Server.LiveSidecar.Tests/bin/Release/net10.0",
+                             run.test_output)
+        finally:
+            shutil.rmtree(run.runtime)
+
+    def test_unsupported_configuration_fails_before_creating_evidence(self):
+        evidence = self.root / "unsupported"
+        result = subprocess.run([sys.executable, str(SCRIPT), "--evidence", str(evidence),
+                                 "--configuration", "Profile"], text=True, capture_output=True)
+        self.assertEqual(2, result.returncode)
+        self.assertIn("invalid choice", result.stderr)
+        self.assertFalse(evidence.exists())
 
     def fake_docker(self, *, absent=None, failed_remove=None):
         calls = []

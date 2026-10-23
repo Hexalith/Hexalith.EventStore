@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.Text.Json;
 
 using Shouldly;
@@ -32,6 +33,15 @@ public sealed class ActorCallbackAdmissionProcessTests
         start.ArgumentList.Add(Path.Combine(repository, "tools", "qualify-internal-actor-admission.py"));
         start.ArgumentList.Add("--evidence");
         start.ArgumentList.Add(evidence);
+        string? configuration = typeof(ActorCallbackAdmissionProcessTests).Assembly
+            .GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration;
+        if (configuration is not ("Debug" or "Release"))
+        {
+            throw new InvalidOperationException("The owned qualification requires a Debug or Release test assembly.");
+        }
+
+        start.ArgumentList.Add("--configuration");
+        start.ArgumentList.Add(configuration);
         start.ArgumentList.Add("--owner-pid");
         start.ArgumentList.Add(Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
         using Process process = Process.Start(start) ?? throw new InvalidOperationException("Cannot launch the owned process qualification.");

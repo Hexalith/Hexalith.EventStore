@@ -11,8 +11,8 @@ Evidence is `/home/administrator/hexalith-protection-evidence/ext-protection-1/d
 | Command | Result |
 | --- | --- |
 | `dotnet build tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj --configuration Debug -p:UseHexalithProjectReferences=true -m:1` | Exit 0; 0 warnings; 0 errors |
-| Direct xUnit v3 `PublishedTrustReplacementAuthorityTests` | 98 passed; 0 failed, skipped, or not run |
-| Direct xUnit v3 `PublishedTrustDeletionConsumptionAuthorityTests` and `DeletionConsumptionActorTests` | 100 passed; 0 failed, skipped, or not run |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.PublishedTrustReplacementAuthorityTests` | 98 passed; 0 failed, skipped, or not run |
+| `dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class Hexalith.EventStore.Server.Tests.Security.PublishedTrustDeletionConsumptionAuthorityTests -class Hexalith.EventStore.Server.Tests.Security.DeletionConsumptionActorTests` | 100 passed; 0 failed, skipped, or not run |
 | `python3 -m unittest tools.tests.test_ext_protection_1 tools.tests.test_ext_protection_1_cross_language` | 56 tests, OK |
 | `python3 tools/verify-ext-protection-1.py --mode Source` | Exit 0; 41 cases; plan SHA-256 `c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c`; `liveExecuted: false` |
 

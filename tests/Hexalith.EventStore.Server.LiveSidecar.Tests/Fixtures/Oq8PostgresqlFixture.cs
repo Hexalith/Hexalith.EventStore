@@ -1074,8 +1074,10 @@ public sealed class Oq8PostgresqlFixture : IAsyncLifetime
                 using HttpResponseMessage metadataResponse = await client
                     .GetAsync($"{node.DaprHttpEndpoint}/v1.0/metadata", cancellation.Token)
                     .ConfigureAwait(false);
+                using var configRequest = new HttpRequestMessage(HttpMethod.Get, $"{node.ApplicationEndpoint}/dapr/config");
+                configRequest.Headers.Add("dapr-api-token", node.AppChannelToken);
                 using HttpResponseMessage configResponse = await client
-                    .GetAsync($"{node.ApplicationEndpoint}/dapr/config", cancellation.Token)
+                    .SendAsync(configRequest, cancellation.Token)
                     .ConfigureAwait(false);
                 if (metadataResponse.IsSuccessStatusCode && configResponse.IsSuccessStatusCode)
                 {
