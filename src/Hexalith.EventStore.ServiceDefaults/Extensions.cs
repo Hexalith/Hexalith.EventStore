@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
@@ -57,6 +58,11 @@ public static class Extensions {
         });
         _ = builder.Logging.AddJsonConsole(static console => console.UseUtcTimestamp = true);
 
+        // Hosting request-start/finish Information records include the raw query string.
+        // Enforce the floor after all post-configuration so Console/OTel
+        // overrides cannot accidentally export capability tokens or other query values.
+        builder.Services.Replace(ServiceDescriptor.Transient<IOptionsFactory<LoggerFilterOptions>, RequestLogPrivacyOptionsFactory>());
+
         IOpenTelemetryBuilder telemetry = builder.Services.AddOpenTelemetry();
         _ = telemetry
             .WithMetrics(static metrics => {
@@ -90,6 +96,26 @@ public static class Extensions {
 
         return builder;
     }
+
+    /// <summary>Applies the request diagnostic floor after caller configuration and before options validation.</summary>
+    /// <param name="options">The fully configured filter rules.</param>
+    internal static void GuardRequestDiagnostics(LoggerFilterOptions options)
+    {
+        for (int index = 0; index < options.Rules.Count; index++) {
+            LoggerFilterRule rule = options.Rules[index];
+            options.Rules[index] = new LoggerFilterRule(rule.ProviderName, rule.CategoryName, rule.LogLevel,
+                (provider, category, level) =>
+                    AllowsRequestDiagnostic(category, level)
+                    && (rule.Filter?.Invoke(provider, category, level) ?? true));
+        }
+        // Lowest precedence preserves stricter thresholds and existing global predicates.
+        options.Rules.Insert(0, new LoggerFilterRule(null, null, options.MinLevel,
+            static (_, category, level) => AllowsRequestDiagnostic(category, level)));
+    }
+
+    private static bool AllowsRequestDiagnostic(string? category, LogLevel level)
+        => level >= LogLevel.Warning
+            || category?.StartsWith("Microsoft.AspNetCore.Hosting.Diagnostics", StringComparison.OrdinalIgnoreCase) != true;
 
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
         ArgumentNullException.ThrowIfNull(builder);

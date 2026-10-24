@@ -907,6 +907,116 @@ public sealed class EventStoreDomainServiceExtensionsTests {
         body.ShouldContain("catalogFingerprint");
     }
 
+    /// <summary>Legacy metadata recognizes both server-registered processor forms without granting v2 capabilities.</summary>
+    /// <param name="asynchronous">Whether the domain uses an asynchronous keyed processor.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyMetadataIncludesOnlyRegisteredKeyedDomainsAndPreservesNamedCatalog(bool asynchronous) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Configuration["EventStore:DomainService:AppId"] = "sample";
+        builder.Configuration["EventStore:DomainService:ServiceVersion"] = "v1";
+        _ = builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
+        if (asynchronous)
+            _ = builder.Services.AddKeyedScoped<IAsyncDomainProcessor>("keyed-only", static (_, _) => Substitute.For<IAsyncDomainProcessor>());
+        else
+            _ = builder.Services.AddKeyedScoped<IDomainProcessor>("keyed-only", static (_, _) => Substitute.For<IDomainProcessor>());
+        _ = builder.Services.AddScoped(_ => CreateNamedProjectionHandler("keyed-only", "keyed-index"));
+        _ = builder.Services.AddScoped(_ => CreateNamedProjectionHandler("orphan", "orphan-index"));
+        await using WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        var namedRequest = new AdminOperationalIndexMetadata.Request(["keyed-only"]) { AppId = "sample", ServiceVersion = "v1" };
+        (int namedStatus, string namedBefore) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata", namedRequest);
+        namedStatus.ShouldBe(StatusCodes.Status200OK, namedBefore);
+
+        (int status, string body) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata",
+            new AdminOperationalIndexMetadata.Request(["keyed-only", "widget", "orphan", "unknown"]));
+        status.ShouldBe(StatusCodes.Status200OK, body);
+        AdminOperationalIndexMetadata.Response legacy = JsonSerializer.Deserialize<AdminOperationalIndexMetadata.Response>(body,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        legacy.Domains.Select(domain => domain.Domain).ShouldBe(["keyed-only", "widget"]);
+        AdminOperationalIndexMetadata.DomainMetadata keyed = legacy.Domains.Single(domain => domain.Domain == "keyed-only");
+        keyed.AggregateTypes.ShouldBeEmpty(); keyed.CommandTypes.ShouldBeEmpty(); keyed.EventTypes.ShouldBeEmpty();
+        keyed.NamedProjectionTypes.ShouldBeNull(); keyed.OrdinaryProjectionTypes.ShouldBeNull();
+        legacy.Domains.Single(domain => domain.Domain == "widget").AggregateTypes.ShouldNotBeEmpty();
+        legacy.DispatchVersion.ShouldBeNull(); legacy.DispatchCapability.ShouldBeNull(); legacy.CatalogFingerprint.ShouldBeNull();
+        body.ShouldNotContain("dispatchVersion"); body.ShouldNotContain("catalogFingerprint");
+
+        (int repeatedStatus, string namedAfter) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata", namedRequest);
+        repeatedStatus.ShouldBe(StatusCodes.Status200OK, namedAfter);
+        namedAfter.ShouldBe(namedBefore);
+        AdminOperationalIndexMetadata.Response named = JsonSerializer.Deserialize<AdminOperationalIndexMetadata.Response>(namedAfter,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        named.CatalogFingerprint.ShouldBe(ProjectionRouteCatalogFingerprint.Compute("sample", "v1",
+            [new ProjectionDispatchRoute("keyed-only", "keyed-index")]));
+        named.DispatchCapability.ShouldBe(ProjectionDispatchProtocol.Capability);
+        named.Domains.ShouldHaveSingleItem().NamedProjectionTypes.ShouldBe(["keyed-index"]);
+    }
+
+    /// <summary>Legacy casing aliases retain one query-bearing domain without changing named dispatch metadata.</summary>
+    [Fact]
+    public void LegacyMetadataKeyedDomainCasingRetainsQueryMetadataWithoutChangingNamedCatalog()
+    {
+        DiscoveryResult discovery = new([], []);
+        IDomainQueryHandler query = Substitute.For<IDomainQueryHandler>();
+        query.Domain.Returns("sample"); query.QueryType.Returns("get-sample");
+        IAsyncDomainProjectionHandler projection = CreateNamedProjectionHandler("sample", "sample-index");
+        var namedBefore = AdminOperationalIndexMetadata.Create(discovery, ["sample"], [query], [projection],
+            "sample-app", "v1", new(), keyedProcessorDomains: ["sample"]);
+
+        var legacy = AdminOperationalIndexMetadata.Create(discovery, ["SAMPLE", "sample"], [query], ["SAMPLE", "sample"]);
+        AdminOperationalIndexMetadata.DomainMetadata domain = legacy.Domains.ShouldHaveSingleItem();
+        domain.Domain.ShouldBe("sample"); domain.QueryTypes.ShouldBe(["get-sample"]);
+        domain.NamedProjectionTypes.ShouldBeNull(); legacy.DispatchCapability.ShouldBeNull();
+        legacy.CatalogFingerprint.ShouldBeNull();
+
+        var namedAfter = AdminOperationalIndexMetadata.Create(discovery, ["sample"], [query], [projection],
+            "sample-app", "v1", new(), keyedProcessorDomains: ["sample"]);
+        JsonSerializer.Serialize(namedAfter).ShouldBe(JsonSerializer.Serialize(namedBefore));
+        namedAfter.Domains.ShouldHaveSingleItem().NamedProjectionTypes.ShouldBe(["sample-index"]);
+        namedAfter.CatalogFingerprint.ShouldBe(ProjectionRouteCatalogFingerprint.Compute("sample-app", "v1",
+            [new ProjectionDispatchRoute("sample", "sample-index")]));
+    }
+
+    /// <summary>Null and empty legacy domain lists retain aggregate discovery without fabricating keyed routes.</summary>
+    /// <param name="nullDomains">Whether the legacy request omits its domain list.</param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyMetadataNullOrEmptyDomainsRetainAggregateDiscovery(bool nullDomains) {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
+        _ = builder.Services.AddKeyedScoped<IDomainProcessor>("keyed-only", static (_, _) => Substitute.For<IDomainProcessor>());
+        await using WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        (int status, string body) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata",
+            new AdminOperationalIndexMetadata.Request(nullDomains ? null! : []));
+        status.ShouldBe(StatusCodes.Status200OK, body);
+        AdminOperationalIndexMetadata.Response response = JsonSerializer.Deserialize<AdminOperationalIndexMetadata.Response>(body,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        response.Domains.Select(domain => domain.Domain).ShouldContain("widget");
+        response.Domains.Select(domain => domain.Domain).ShouldNotContain("keyed-only");
+        response.DispatchVersion.ShouldBeNull();
+        response.CatalogFingerprint.ShouldBeNull();
+    }
+
+    /// <summary>Invalid requested names cannot turn an unkeyed processor into a discovered domain.</summary>
+    [Fact]
+    public async Task LegacyMetadataInvalidNamesCannotUseUnkeyedProcessor() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.AddEventStoreDomainService(typeof(WidgetAggregate).Assembly);
+        _ = builder.Services.AddScoped(_ => Substitute.For<IDomainProcessor>());
+        await using WebApplication app = builder.Build();
+        _ = app.UseEventStoreDomainService();
+        (int status, string body) = await InvokeEndpointAsync(app, "/admin/operational-index-metadata",
+            new AdminOperationalIndexMetadata.Request([null!, "", " ", "unknown"]));
+        status.ShouldBe(StatusCodes.Status200OK, body);
+        AdminOperationalIndexMetadata.Response response = JsonSerializer.Deserialize<AdminOperationalIndexMetadata.Response>(body,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        response.Domains.ShouldBeEmpty();
+        response.DispatchVersion.ShouldBeNull();
+    }
+
     /// <summary>
     /// Proves <c>IDomainQueryHandler</c> implementations in the domain assembly are discovered and registered.
     /// </summary>
