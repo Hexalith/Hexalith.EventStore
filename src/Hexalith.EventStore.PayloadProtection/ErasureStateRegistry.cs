@@ -12,8 +12,12 @@ internal sealed class ErasureStateRegistry
     private readonly object _gate = new();
 
     /// <summary>Freezes one explicitly keyed provider per protected domain without wildcard or default ownership.</summary>
-    internal ErasureStateRegistry(IEnumerable<KeyValuePair<string, IErasureStateProvider>> registrations)
+    internal ErasureStateRegistry(PayloadProtectionScopeRegistry protectedScopes,
+        IEnumerable<KeyValuePair<string, IErasureStateProvider>> registrations)
     {
+        ArgumentNullException.ThrowIfNull(protectedScopes);
+        ArgumentNullException.ThrowIfNull(registrations);
+        var domains = protectedScopes.Roots.Select(scope => scope.Domain).ToHashSet(StringComparer.Ordinal);
         foreach ((string domain, IErasureStateProvider provider) in registrations)
         {
             _ = CanonicalText.GetByteCount(domain, 1, 128);
@@ -22,11 +26,15 @@ internal sealed class ErasureStateRegistry
                 if (new AggregateIdentity("enrollment", domain, "enrollment").Domain != domain) { throw new PayloadProtectionFormatException(); }
             }
             catch (ArgumentException) { throw new PayloadProtectionFormatException(); }
-            if (domain == "*" || provider is null || provider.ContractVersion != 1 || !_providers.TryAdd(domain, provider))
+            int contractVersion;
+            try { contractVersion = provider?.ContractVersion ?? 0; }
+            catch { throw new PayloadProtectionFormatException(); }
+            if (domain == "*" || !domains.Contains(domain) || provider is null || contractVersion != 1 || !_providers.TryAdd(domain, provider))
             {
                 throw new PayloadProtectionFormatException();
             }
         }
+        if (!domains.SetEquals(_providers.Keys)) { throw new PayloadProtectionFormatException(); }
     }
 
     /// <summary>Queries the domain owner on every admission and retains only monotonic scope state.</summary>

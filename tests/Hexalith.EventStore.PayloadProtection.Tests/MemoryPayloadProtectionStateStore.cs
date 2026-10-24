@@ -15,11 +15,18 @@ internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvid
     internal bool LoseNextAcknowledgement { get; set; }
     /// <summary>Gets the number of atomic requests.</summary>
     internal int Commits { get; private set; }
+    /// <summary>Gets the committed constructive audit records for fault/no-leak assertions.</summary>
+    internal List<PayloadProtectionAuditRecord> Audits { get; } = [];
+    /// <summary>Gets or sets a deterministic per-read boundary hook.</summary>
+    internal Action<string>? Reading { get; set; }
+    /// <summary>Gets or sets a mutation-aware fault hook, without changing the atomic fixture semantics.</summary>
+    internal Action<IReadOnlyList<PayloadProtectionStateMutation>>? Committing { get; set; }
 
     /// <summary>Reads one closed exact record with a copied byte array.</summary>
     public ValueTask<PayloadProtectionStateValue<T>?> ReadAsync<T>(string key, CancellationToken cancellationToken = default) where T : class
     {
         cancellationToken.ThrowIfCancellationRequested();
+        Reading?.Invoke(key);
         lock (_gate)
         {
             Expire();
@@ -34,6 +41,7 @@ internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvid
     public ValueTask<PayloadStateCommitResult> CommitAsync(IReadOnlyList<PayloadProtectionStateMutation> mutations, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        Committing?.Invoke(mutations);
         Action? hook = BeforeCommit;
         BeforeCommit = null;
         hook?.Invoke();
@@ -49,6 +57,7 @@ internal sealed class MemoryPayloadProtectionStateStore(TimeProvider? timeProvid
             }
             foreach (PayloadProtectionStateMutation mutation in mutations)
             {
+                if (mutation.Bytes is not null && mutation.Key.StartsWith("eventstore:pp:v2:audit:", StringComparison.Ordinal)) { Audits.Add(PayloadProtectionStateCodec.Decode<PayloadProtectionAuditRecord>(mutation.Bytes)); }
                 if (mutation.Bytes is null) { _values.Remove(mutation.Key); }
                 else { _values[mutation.Key] = (mutation.Bytes.ToArray(), (++_version).ToString(CultureInfo.InvariantCulture),
                     mutation.TtlSeconds.HasValue ? _clock.GetUtcNow().AddSeconds(mutation.TtlSeconds.Value) : null); }

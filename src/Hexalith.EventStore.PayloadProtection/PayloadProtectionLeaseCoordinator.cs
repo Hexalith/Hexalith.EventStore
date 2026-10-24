@@ -12,18 +12,21 @@ internal sealed class PayloadProtectionLeaseCoordinator
     private readonly PayloadProtectionInstanceProfile _profile;
     private readonly TimeProvider _clock;
     private readonly PayloadProtectionCatalogs _catalogs;
+    private readonly Func<TimeSpan, CancellationToken, ValueTask>? _delay;
     private readonly Dictionary<string, long> _renewed = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
     /// <summary>Creates a fresh process-incarnation identity. Restarted coordinators never inherit another process's membership.</summary>
     internal PayloadProtectionLeaseCoordinator(IPayloadProtectionStateStore store, PayloadProtectionScopeRegistry roots,
-        PayloadProtectionInstanceProfile profile, TimeProvider? timeProvider = null, IPayloadProtectionEntropy? entropy = null)
+        PayloadProtectionInstanceProfile profile, TimeProvider? timeProvider = null, IPayloadProtectionEntropy? entropy = null,
+        Func<TimeSpan, CancellationToken, ValueTask>? delay = null)
     {
         _store = store;
         _roots = roots;
         _profile = profile with { ReadFormats = profile.ReadFormats.ToArray(), WriteModes = profile.WriteModes.ToArray() };
         _clock = timeProvider ?? TimeProvider.System;
         _catalogs = new(store, _clock);
+        _delay = delay;
         InstanceId = (entropy ?? new CryptographicPayloadProtectionEntropy()).CreateKeyReference();
         if (!CanonicalUlid.IsValid(InstanceId)) { throw Mismatch(); }
     }
@@ -31,9 +34,13 @@ internal sealed class PayloadProtectionLeaseCoordinator
     /// <summary>Gets the fresh per-incarnation canonical member identity, confined to state coordination.</summary>
     internal string InstanceId { get; }
 
+    /// <summary>Gets the common process-local operation lifetime used by drains, reads and writes.</summary>
+    internal PayloadLocalOperations LocalOperations { get; } = new();
+
     /// <summary>Atomically appends permanent membership and creates its exact 60-second capability.</summary>
     internal async ValueTask RegisterAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         string root = _roots.Require(identity);
         long started = _clock.GetTimestamp();
         PayloadProtectionStateValue<DeploymentGenerationV1> generation = await DeploymentAsync(identity, cancellationToken).ConfigureAwait(false);
@@ -49,7 +56,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
         {
             members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
             existing = members.Pages.SelectMany(p => p.Value.Entries).SingleOrDefault(e => e.InstanceId == InstanceId);
-            PayloadProtectionStateValue<CapabilityLeaseV1>? found = await _store.ReadAsync<CapabilityLeaseV1>(PayloadProtectionStateCodec.KeyFor(capability), cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<CapabilityLeaseV1>? found = await PayloadOperationBudget.ReadAsync<CapabilityLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(capability), cancellationToken).ConfigureAwait(false);
             if (existing?.State != "Serving" || existing.Generation != generation.Value.Generation || found is null
                 || !PayloadProtectionStateCodec.Encode(found.Value).AsSpan().SequenceEqual(PayloadProtectionStateCodec.Encode(capability))) { throw Unavailable(); }
         }
@@ -61,6 +68,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
     /// <summary>Renews only an unchanged open generation and serving member; no closed or draining authority can revive.</summary>
     internal async ValueTask RenewAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         string root = _roots.Require(identity);
         long started = _clock.GetTimestamp();
         PayloadProtectionStateValue<DeploymentGenerationV1> generation = await DeploymentAsync(identity, cancellationToken).ConfigureAwait(false);
@@ -79,8 +87,10 @@ internal sealed class PayloadProtectionLeaseCoordinator
     internal async ValueTask<IReadOnlyList<PayloadProtectionStateMutation>> AdmissionAsync(AggregateIdentity identity,
         LifecycleV1 lifecycle, bool writing, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         string root = _roots.Require(identity);
         AssertTraffic(root);
+        LocalOperations.AssertAllowed(identity);
         if (lifecycle.ScopeDigest != PayloadProtectionStateKeys.ScopeDigest(identity) || lifecycle.TenantId != identity.TenantId
             || lifecycle.Domain != identity.Domain || lifecycle.AggregateId != identity.AggregateId) { throw Mismatch(); }
         if (lifecycle.State is not ("Active" or "Pending") || (writing && lifecycle.State != "Active"))
@@ -129,7 +139,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
     }
 
     /// <summary>Begins graceful retirement before the full 60-second wait and explicit local clearing.</summary>
-    internal async ValueTask RetireAsync(AggregateIdentity identity, Func<CancellationToken, ValueTask> clearLocal,
+    internal async ValueTask RetireAsync(AggregateIdentity identity, PayloadKeyCache cache,
         CancellationToken cancellationToken = default)
     {
         string root = _roots.Require(identity);
@@ -143,16 +153,17 @@ internal sealed class PayloadProtectionLeaseCoordinator
         lock (_gate) { _renewed.Remove(root); }
         // Restart/uncertainty never reuses an old wall-clock timestamp to shorten the confirmed wait.
         long confirmed = _clock.GetTimestamp();
-        await Task.Delay(TimeSpan.FromSeconds(60), _clock, cancellationToken).ConfigureAwait(false);
+        await PayloadMonotonicDrain.WaitAsync(_clock, _delay, cancellationToken).ConfigureAwait(false);
         if (_clock.GetElapsedTime(confirmed) < TimeSpan.FromSeconds(60)) { throw Unavailable(); }
-        await clearLocal(cancellationToken).ConfigureAwait(false);
+        await LocalOperations.DrainRootAsync(root, cancellationToken).ConfigureAwait(false);
+        await cache.ClearRootAsync(root, cancellationToken).ConfigureAwait(false);
         members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
         RequireCommit(await _store.CommitAsync(_catalogs.TransitionMember(members, InstanceId, "Cleared"), cancellationToken).ConfigureAwait(false));
     }
 
     private async ValueTask ReleaseReadAsync(ReadLeaseV1 lease)
     {
-        PayloadProtectionStateValue<ReadLeaseV1>? current = await _store.ReadAsync<ReadLeaseV1>(PayloadProtectionStateCodec.KeyFor(lease)).ConfigureAwait(false);
+        PayloadProtectionStateValue<ReadLeaseV1>? current = await PayloadOperationBudget.ReadAsync<ReadLeaseV1>(_store, PayloadProtectionStateCodec.KeyFor(lease)).ConfigureAwait(false);
         if (current is null) { return; }
         if (current.Value != lease) { throw Mismatch(); }
         // A failed release cannot prove erasure; the unconditional full drain still covers the maximum lease lifetime.
@@ -196,7 +207,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
         }
     }
     private async ValueTask<PayloadProtectionStateValue<T>> RequiredAsync<T>(string key, CancellationToken cancellationToken) where T : class
-        => await _store.ReadAsync<T>(key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
+        => await PayloadOperationBudget.ReadAsync<T>(_store, key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
     private static void RequireCommit(PayloadStateCommitResult result)
     {
         if (result != PayloadStateCommitResult.Committed) { throw new PayloadProtectionStateException(result == PayloadStateCommitResult.Denied

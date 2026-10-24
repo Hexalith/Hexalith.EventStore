@@ -16,16 +16,20 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
     internal async ValueTask<PayloadKeyResolution> ResolveAsync(AggregateIdentity identity, string keyRef, uint version,
         string operationId, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         PayloadProtectionLease? lease = null;
         PayloadKeyResolution? copy = null;
+        PayloadLocalOperation? local = null;
         try
         {
             _ = roots.Require(identity);
+            local = leases.LocalOperations.Begin(identity, cancellationToken);
+            cancellationToken = local.Token;
             PayloadProtectionStateValue<LifecycleV1> lifecycle = await ObserveAsync(identity, keyRef, version, cancellationToken).ConfigureAwait(false);
             lease = await leases.AcquireReadAsync(identity, keyRef, version, operationId, lifecycle, cancellationToken).ConfigureAwait(false);
             lease.AssertCurrent(cancellationToken);
             string scope = PayloadProtectionStateKeys.ScopeDigest(identity);
-            PayloadProtectionStateValue<WrappedDekV1>? key = await store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(scope, keyRef, version), cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<WrappedDekV1>? key = await PayloadOperationBudget.ReadAsync<WrappedDekV1>(store, PayloadProtectionStateKeys.Key(scope, keyRef, version), cancellationToken).ConfigureAwait(false);
             if (key is null) { return PayloadKeyResolution.Failure(UnreadableProtectedDataReason.MissingKey); }
             if (key.Value.TenantId != identity.TenantId || key.Value.Domain != identity.Domain || key.Value.AggregateId != identity.AggregateId
                 || key.Value.ScopeDigest != scope || key.Value.KeyRef != keyRef || key.Value.DekVersion != version
@@ -36,13 +40,14 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
                 await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(backend.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false));
             lease.AssertCurrent(cancellationToken);
             copy = await cache.GetAsync(new(scope, keyRef, version, lifecycle.Value.Epoch, key.Value.ProviderKeyVersionId),
-                token => UnwrapAsync(operationId, key.Value, token), cancellationToken).ConfigureAwait(false);
+                token => UnwrapAsync(operationId, key.Value, token), cancellationToken, roots.Require(identity)).ConfigureAwait(false);
             if (copy.Reason is UnreadableProtectedDataReason failure) { return PayloadKeyResolution.Failure(failure); }
             lease.AssertCurrent(cancellationToken);
             PayloadKeyResolution ownedCopy = copy;
             PayloadProtectionLease ownedLease = lease;
+            PayloadLocalOperation ownedLocal = local;
             byte[] bytes = copy.TakeBytes();
-            PayloadKeyResolution result = PayloadKeyResolution.Success(bytes, assertCurrent: ownedLease.AssertCurrent,
+            PayloadKeyResolution result = PayloadKeyResolution.Success(bytes, assertCurrent: token => { ownedLocal.AssertCurrent(token); ownedLease.AssertCurrent(token); },
                 authenticated: async token =>
                 {
                     PayloadProtectionStateValue<LifecycleV1> current = await ObserveAsync(identity, keyRef, version, token).ConfigureAwait(false);
@@ -53,12 +58,17 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
                     try { await ownedCopy.DisposeAsync().ConfigureAwait(false); }
                     finally
                     {
-                        await ownedLease.DisposeAsync().ConfigureAwait(false);
-                        ownedLease.AssertDeadline(cancellationToken);
+                        try
+                        {
+                            await ownedLease.DisposeAsync().ConfigureAwait(false);
+                            ownedLease.AssertDeadline(cancellationToken);
+                        }
+                        finally { ownedLocal.Dispose(); }
                     }
                 });
             copy = null;
             lease = null;
+            local = null;
             return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
@@ -67,17 +77,24 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
         finally
         {
             try { if (copy is not null) { await copy.DisposeAsync().ConfigureAwait(false); } }
-            finally { if (lease is not null) { await lease.DisposeAsync().ConfigureAwait(false); } }
+            finally
+            {
+                try { if (lease is not null) { await lease.DisposeAsync().ConfigureAwait(false); } }
+                finally { local?.Dispose(); }
+            }
         }
     }
 
     private async ValueTask<PayloadKeyResolution> UnwrapAsync(string operation, WrappedDekV1 key, CancellationToken cancellationToken)
     {
+        using PayloadLocalOperation local = leases.LocalOperations.Begin(new(key.TenantId, key.Domain, key.AggregateId), cancellationToken);
+        cancellationToken = local.Token;
         byte[] wrapped = Base64UrlCodec.Decode(key.WrappedDek);
         try
         {
             using PayloadBackendResult response = await executor.ExecuteAsync(backend,
-                token => backend.UnwrapAsync(operation, key.ProviderKeyVersionId, wrapped, token), cancellationToken).ConfigureAwait(false);
+                token => backend.UnwrapAsync(operation, key.ProviderKeyVersionId, wrapped, token), cancellationToken,
+                retainAbandoned: local.RetainUntil, operation: PayloadProtectionOperation.Unwrap).ConfigureAwait(false);
             if (response.Failure != PayloadBackendFailure.None) { return PayloadKeyResolution.Failure(response.Failure switch
             {
                 PayloadBackendFailure.Denied => UnreadableProtectedDataReason.ProviderDenied,
@@ -97,7 +114,7 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
         {
             throw new PayloadProtectionStateException(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted);
         }
-        PayloadProtectionStateValue<LifecycleV1> lifecycle = await store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(PayloadProtectionStateKeys.ScopeDigest(identity)), cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
+        PayloadProtectionStateValue<LifecycleV1> lifecycle = await PayloadOperationBudget.ReadAsync<LifecycleV1>(store, PayloadProtectionStateKeys.Lifecycle(PayloadProtectionStateKeys.ScopeDigest(identity)), cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
         if (lifecycle.Value.TenantId != identity.TenantId || lifecycle.Value.Domain != identity.Domain || lifecycle.Value.AggregateId != identity.AggregateId) { throw Mismatch(); }
         if (lifecycle.Value.State is "Invalidating" or "Invalidated" or "Deleted") { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.KeyInvalidatedOrDeleted); }
         if (lifecycle.Value.Epoch != observed.LifecycleEpoch || lifecycle.Value.State != observed.State.ToString()) { throw Mismatch(); }
@@ -107,13 +124,13 @@ internal sealed class PayloadKeyResolver(IPayloadProtectionStateStore store, Pay
     private async ValueTask EnlistReservedReadAsync(AggregateIdentity identity, WrappedDekV1 key,
         PayloadProtectionStateValue<LifecycleV1> lifecycle, CancellationToken cancellationToken)
     {
-        PayloadProtectionStateValue<ReconciliationV1> reconciliation = await store.ReadAsync<ReconciliationV1>(PayloadProtectionStateKeys.Reconciliation(key.CreatingOperationId), cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
+        PayloadProtectionStateValue<ReconciliationV1> reconciliation = await PayloadOperationBudget.ReadAsync<ReconciliationV1>(store, PayloadProtectionStateKeys.Reconciliation(key.CreatingOperationId), cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
         if (reconciliation.Value.ScopeDigest != key.ScopeDigest || reconciliation.Value.KeyRef != key.KeyRef || reconciliation.Value.DekVersion != key.DekVersion) { throw Mismatch(); }
         if (reconciliation.Value.Status is "Pending" or "Running") { return; }
         if (reconciliation.Value.Status != "Quarantined") { throw Mismatch(); }
         var catalogs = new PayloadProtectionCatalogs(store, _clock);
         WorkCatalogSnapshot work = await catalogs.ReadWorkAsync(roots.Require(identity), cancellationToken).ConfigureAwait(false);
-        PayloadProtectionStateValue<WrappedDekV1> current = await store.ReadAsync<WrappedDekV1>(PayloadProtectionStateCodec.KeyFor(key), cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
+        PayloadProtectionStateValue<WrappedDekV1> current = await PayloadOperationBudget.ReadAsync<WrappedDekV1>(store, PayloadProtectionStateCodec.KeyFor(key), cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
         if (current.Value != key) { throw Mismatch(); }
         string now = PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow());
         PayloadStateCommitResult result = await store.CommitAsync([PayloadProtectionStateMutation.Compare(lifecycle), PayloadProtectionStateMutation.Compare(current),

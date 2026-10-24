@@ -14,14 +14,14 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
         _ = PayloadProtectionStateKeys.Sha(root);
         string now = PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow());
         var mutations = new List<PayloadProtectionStateMutation>();
-        if (await store.ReadAsync<MemberHeadV1>(PayloadProtectionStateKeys.MemberHead(root), cancellationToken).ConfigureAwait(false) is null)
+        if (await PayloadOperationBudget.ReadAsync<MemberHeadV1>(store, PayloadProtectionStateKeys.MemberHead(root), cancellationToken).ConfigureAwait(false) is null)
         {
-            if (await store.ReadAsync<MemberPageV1>(PayloadProtectionStateKeys.MemberPage(root, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
+            if (await PayloadOperationBudget.ReadAsync<MemberPageV1>(store, PayloadProtectionStateKeys.MemberPage(root, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
             mutations.Add(PayloadProtectionStateMutation.Put(new MemberHeadV1(root, 0, 0, 0, now)));
         }
-        if (await store.ReadAsync<WorkHeadV1>(PayloadProtectionStateKeys.WorkHead(root), cancellationToken).ConfigureAwait(false) is null)
+        if (await PayloadOperationBudget.ReadAsync<WorkHeadV1>(store, PayloadProtectionStateKeys.WorkHead(root), cancellationToken).ConfigureAwait(false) is null)
         {
-            if (await store.ReadAsync<WorkPageV1>(PayloadProtectionStateKeys.WorkPage(root, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
+            if (await PayloadOperationBudget.ReadAsync<WorkPageV1>(store, PayloadProtectionStateKeys.WorkPage(root, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
             mutations.Add(PayloadProtectionStateMutation.Put(new WorkHeadV1(root, 0, 0, 0, now)));
         }
         return mutations.Count == 0 ? PayloadStateCommitResult.Committed
@@ -31,6 +31,7 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
     /// <summary>Reads head, all pages and head again within a bounded monotonic operation budget.</summary>
     internal async ValueTask<MemberCatalogSnapshot> ReadMembersAsync(string root, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         long started = _clock.GetTimestamp();
         for (int attempt = 0; attempt < 3 && _clock.GetElapsedTime(started) < TimeSpan.FromSeconds(10); attempt++)
         {
@@ -63,6 +64,7 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
     /// <summary>Reads a complete work catalog; no scan or missing-head-as-empty shortcut exists.</summary>
     internal async ValueTask<WorkCatalogSnapshot> ReadWorkAsync(string root, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         long started = _clock.GetTimestamp();
         for (int attempt = 0; attempt < 3 && _clock.GetElapsedTime(started) < TimeSpan.FromSeconds(10); attempt++)
         {
@@ -153,7 +155,7 @@ internal sealed class PayloadProtectionCatalogs(IPayloadProtectionStateStore sto
     }
 
     private async ValueTask<PayloadProtectionStateValue<T>> RequiredAsync<T>(string key, CancellationToken cancellationToken) where T : class
-        => await store.ReadAsync<T>(key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
+        => await PayloadOperationBudget.ReadAsync<T>(store, key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
     private string Now() => PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow());
     private static PayloadProtectionStateException Mismatch() => new(UnreadableProtectedDataReason.ConsistencyMismatch);
 }

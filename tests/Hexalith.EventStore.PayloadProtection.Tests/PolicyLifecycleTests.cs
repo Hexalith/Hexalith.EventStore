@@ -106,7 +106,7 @@ public sealed class PolicyLifecycleTests
     {
         IErasureStateProvider provider = Substitute.For<IErasureStateProvider>();
         provider.ContractVersion.Returns(1);
-        var registry = new ErasureStateRegistry([new("parties", provider)]);
+        var registry = new ErasureStateRegistry(new([new("tenant-a", "parties")]), [new("parties", provider)]);
         PayloadErasureStateResult State(PayloadErasureState state, ulong epoch, PayloadErasureReasonCode reason) => new(state, epoch, reason, DateTimeOffset.UtcNow);
         provider.GetStateAsync(Arg.Any<PayloadErasureStateRequest>(), Arg.Any<CancellationToken>()).Returns(State(PayloadErasureState.Active, 3, PayloadErasureReasonCode.None));
         (await registry.ObserveAsync(Identity)).LifecycleEpoch.ShouldBe(3UL);
@@ -114,8 +114,23 @@ public sealed class PolicyLifecycleTests
         (await Should.ThrowAsync<PayloadProtectionStateException>(async () => await registry.ObserveAsync(Identity))).Reason.ShouldBe(UnreadableProtectedDataReason.ConsistencyMismatch);
         provider.GetStateAsync(Arg.Any<PayloadErasureStateRequest>(), Arg.Any<CancellationToken>()).Returns(State(PayloadErasureState.Pending, 3, PayloadErasureReasonCode.DomainPending));
         await Should.ThrowAsync<PayloadProtectionStateException>(async () => await registry.ObserveAsync(Identity));
-        Should.Throw<PayloadProtectionFormatException>(() => new ErasureStateRegistry([new("parties", provider), new("parties", provider)]));
+        Should.Throw<PayloadProtectionFormatException>(() => new ErasureStateRegistry(new([new("tenant-a", "parties")]), [new("parties", provider), new("parties", provider)]));
         await Should.ThrowAsync<PayloadProtectionStateException>(async () => await registry.ObserveAsync(new("tenant-a", "other", "party-01")));
+    }
+
+    [Fact]
+    public void ErasureEnrollmentRequiresExactlyTheProtectedDomainsAndBoundsProviderMetadataFaults()
+    {
+        var roots = new PayloadProtectionScopeRegistry([new("tenant-a", "parties"), new("tenant-b", "parties")]);
+        IErasureStateProvider provider = Substitute.For<IErasureStateProvider>();
+        provider.ContractVersion.Returns(1);
+        _ = new ErasureStateRegistry(roots, [new("parties", provider)]);
+        Should.Throw<PayloadProtectionFormatException>(() => new ErasureStateRegistry(roots, []));
+        Should.Throw<PayloadProtectionFormatException>(() => new ErasureStateRegistry(roots, [new("parties", provider), new("unprotected", provider)]));
+        provider.ContractVersion.Returns(_ => throw new InvalidOperationException("private-provider-metadata-canary"));
+        PayloadProtectionFormatException failure = Should.Throw<PayloadProtectionFormatException>(() => new ErasureStateRegistry(roots, [new("parties", provider)]));
+        failure.InnerException.ShouldBeNull();
+        failure.ToString().ShouldNotContain("private-provider-metadata-canary");
     }
 
     [Fact]
@@ -124,7 +139,7 @@ public sealed class PolicyLifecycleTests
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         Should.Throw<OperationCanceledException>(() => Discovery().Select(Identity, new PolicyLifecyclePayload(),
             PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event, cancellationToken: cancelled.Token));
-        await Should.ThrowAsync<OperationCanceledException>(async () => await new ErasureStateRegistry([]).ObserveAsync(Identity, cancellationToken: cancelled.Token));
+        await Should.ThrowAsync<OperationCanceledException>(async () => await new ErasureStateRegistry(new([new("tenant-a", "parties")]), [new("parties", new LifecycleTestErasureProvider())]).ObserveAsync(Identity, cancellationToken: cancelled.Token));
     }
 
     private static PersonalDataDiscovery Discovery(IPersonalDataPolicy[]? policies = null, ICanonicalPersonalDataPathPolicy[]? paths = null)

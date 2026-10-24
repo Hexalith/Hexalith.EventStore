@@ -9,6 +9,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string storeName = "statestore") : IPayloadProtectionStateStore
 {
     private bool _qualified;
+    private readonly PayloadStateReadExecutor _reads = new();
 
     /// <summary>Gets the selected component name; no partition override is silently introduced.</summary>
     internal string StoreName { get; } = !string.IsNullOrWhiteSpace(storeName) ? storeName : throw new PayloadProtectionFormatException();
@@ -17,7 +18,7 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
     public async ValueTask<PayloadProtectionStateValue<T>?> ReadAsync<T>(string key, CancellationToken cancellationToken = default) where T : class
     {
         RequireQualification();
-        return await ReadQualifiedAsync<T>(key, cancellationToken).ConfigureAwait(false);
+        return await _reads.ExecuteAsync(token => ReadQualifiedAsync<T>(key, token), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Submits the exact transaction once and conservatively distinguishes an unobserved result.</summary>

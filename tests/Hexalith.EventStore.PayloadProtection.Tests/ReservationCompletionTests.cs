@@ -132,7 +132,8 @@ public sealed class ReservationCompletionTests
             CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context()).AsTask());
         observed.ToArray().ShouldAllBe(b => b == 0);
         OperationV1 intent = (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(operation!)))!.Value;
-        intent.Phase.ShouldBe("Started");
+        intent.Phase.ShouldBe("Failed");
+        intent.ReasonCode.ShouldBe("consistency-mismatch");
         (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, intent.KeyRef, 1))).ShouldBeNull();
         (await new PayloadProtectionCatalogs(fixture.Store).ReadWorkAsync(fixture.Root)).Head.Value.EntryCount.ShouldBe(1u);
     }

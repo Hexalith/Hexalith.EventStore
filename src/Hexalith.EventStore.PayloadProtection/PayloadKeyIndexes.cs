@@ -11,14 +11,15 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
     /// <summary>Reads only exact scope head/page keys and confirms an unchanged head after enumeration.</summary>
     internal async ValueTask<ScopeKeyIndexSnapshot> ReadScopeAsync(string scope, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         long started = _clock.GetTimestamp();
         for (int attempt = 0; attempt < 3; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            PayloadProtectionStateValue<ScopeIndexHeadV1>? head = await store.ReadAsync<ScopeIndexHeadV1>(PayloadProtectionStateKeys.IndexHead(scope), cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<ScopeIndexHeadV1>? head = await PayloadOperationBudget.ReadAsync<ScopeIndexHeadV1>(store, PayloadProtectionStateKeys.IndexHead(scope), cancellationToken).ConfigureAwait(false);
             if (head is null)
             {
-                if (await store.ReadAsync<ScopeIndexPageV1>(PayloadProtectionStateKeys.IndexPage(scope, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
+                if (await PayloadOperationBudget.ReadAsync<ScopeIndexPageV1>(store, PayloadProtectionStateKeys.IndexPage(scope, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
                 return new(scope, null, []);
             }
             var pages = new List<PayloadProtectionStateValue<ScopeIndexPageV1>>();
@@ -48,14 +49,15 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
     /// <summary>Reads only exact environment-wide KEK inventory keys; display fingerprints never address records.</summary>
     internal async ValueTask<KekKeyIndexSnapshot> ReadKekAsync(string backendDigest, string providerDigest, CancellationToken cancellationToken = default)
     {
+        using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         long started = _clock.GetTimestamp();
         for (int attempt = 0; attempt < 3; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            PayloadProtectionStateValue<KekInventoryHeadV1>? head = await store.ReadAsync<KekInventoryHeadV1>(PayloadProtectionStateKeys.KekHead(backendDigest, providerDigest), cancellationToken).ConfigureAwait(false);
+            PayloadProtectionStateValue<KekInventoryHeadV1>? head = await PayloadOperationBudget.ReadAsync<KekInventoryHeadV1>(store, PayloadProtectionStateKeys.KekHead(backendDigest, providerDigest), cancellationToken).ConfigureAwait(false);
             if (head is null)
             {
-                if (await store.ReadAsync<KekInventoryPageV1>(PayloadProtectionStateKeys.KekPage(backendDigest, providerDigest, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
+                if (await PayloadOperationBudget.ReadAsync<KekInventoryPageV1>(store, PayloadProtectionStateKeys.KekPage(backendDigest, providerDigest, 0), cancellationToken).ConfigureAwait(false) is not null) { throw Mismatch(); }
                 return new(backendDigest, providerDigest, null, []);
             }
             var pages = new List<PayloadProtectionStateValue<KekInventoryPageV1>>();
@@ -139,8 +141,26 @@ internal sealed class PayloadKeyIndexes(IPayloadProtectionStateStore store, Time
         return mutations.AsReadOnly();
     }
 
+    /// <summary>Removes an exact scope entry only with the key deletion transaction; empty pages retain their addresses.</summary>
+    internal IReadOnlyList<PayloadProtectionStateMutation> RemoveScopeEntry(ScopeKeyIndexSnapshot current, ScopeIndexEntryV1 entry)
+    {
+        var entries = current.Pages.SelectMany(p => p.Value.Entries).ToList();
+        if (current.Head is null || !entries.Remove(entry)) { throw Mismatch(); }
+        ulong generation = checked(current.Head.Value.Generation + 1);
+        var mutations = new List<PayloadProtectionStateMutation>
+        {
+            PayloadProtectionStateMutation.Put(current.Head.Value with { Generation = generation, EntryCount = checked((uint)entries.Count), UpdatedAtUtc = Now() }, current.Head.ETag),
+        };
+        for (uint page = 0; page < current.Head.Value.PageCount; page++)
+        {
+            mutations.Add(PayloadProtectionStateMutation.Put(new ScopeIndexPageV1(current.ScopeDigest, generation, page,
+                entries.Skip(checked((int)page * 256)).Take(256).ToArray()), current.Pages[(int)page].ETag));
+        }
+        return mutations;
+    }
+
     private async ValueTask<PayloadProtectionStateValue<T>> RequiredAsync<T>(string key, CancellationToken cancellationToken) where T : class
-        => await store.ReadAsync<T>(key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
+        => await PayloadOperationBudget.ReadAsync<T>(store, key, cancellationToken).ConfigureAwait(false) ?? throw Mismatch();
     private string Now() => PayloadProtectionStateCodec.Timestamp(_clock.GetUtcNow());
     private void CheckBudget(long started, CancellationToken cancellationToken)
     {

@@ -160,7 +160,7 @@ PF-02 must prove all required catalog/authority/lease/key/index operations are s
 
 ## Verification and disposition
 
-Python and Node independently reproduce both frontmatter digests. Base full-file identity, unique markers/canonical encoding, independent digest agreement, the 17-field table/header and recorded decision state pass five document checks. Both existing golden verifiers pass V001–V003; no runtime lifecycle behavior has been tested. `git diff --check` passes. Source baseline is the full canonical revision in frontmatter; no CI run exists for these local edits.
+Python and Node independently reproduce both frontmatter digests. Base full-file identity, unique markers/canonical encoding, independent digest agreement, the 17-field table/header and recorded decision state pass five document checks. Both existing golden verifiers pass V001–V003. This paragraph records the amendment-only checkpoint; subsequent runtime lifecycle qualification is recorded in the owning Story 8.5 spec. `git diff --check` passes. Source baseline is the full canonical revision in frontmatter; no CI run exists for these local edits.
 
 Recompute the normative and effective digests from the repository root:
 
