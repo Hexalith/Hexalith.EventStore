@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 9-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
 using System.Collections;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -10,7 +10,7 @@ using Hexalith.EventStore.Contracts.Security;
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Discovers paths against one exact serialization, with bounded metadata-driven correlation.</summary>
-internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies, PayloadTypeRegistry types)
+internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies, PayloadTypeRegistry types, ISensitiveBufferObserver? observer = null)
 {
     /// <summary>Serializes once and returns only validated canonical, non-null selected pointers.</summary>
     /// <remarks>The optional supplied JSON must agree with that typed serialization. All owned bytes are cleared.</remarks>
@@ -28,7 +28,23 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
 
             AadCodec.ValidateContext(new(identity, payloadType, kind, 0), kind);
 
-            serialized = JsonSerializer.SerializeToUtf8Bytes(root, typeInfo);
+            using (var destination = new PayloadSerializationBuffer(observer, cancellationToken))
+            {
+                using (var writer = new Utf8JsonWriter(destination, new JsonWriterOptions
+                {
+                    Encoder = typeInfo.Options.Encoder,
+                    Indented = typeInfo.Options.WriteIndented,
+                    IndentCharacter = typeInfo.Options.IndentCharacter,
+                    IndentSize = typeInfo.Options.IndentSize,
+                    NewLine = typeInfo.Options.NewLine,
+                    MaxDepth = Math.Min(PayloadProtectionLimits.JsonDepth, typeInfo.Options.MaxDepth == 0 ? PayloadProtectionLimits.JsonDepth : typeInfo.Options.MaxDepth),
+                }))
+                {
+                    JsonSerializer.Serialize(writer, root, typeInfo);
+                    writer.Flush();
+                }
+                serialized = destination.ToArray();
+            }
             using BoundedJsonDocument bounded = BoundedJsonDocument.Parse(serialized, cancellationToken);
             if (bounded.ContainsProtectedMember)
             {
@@ -47,38 +63,41 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
             }
 
             var selected = new List<string>();
-            bool hasCanonicalPolicy = false;
+            bool hasCanonicalPolicy = policies.Entries.Any(e => e.PathPolicy is not null);
+            var ancestors = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            int visited = 0;
             foreach (PersonalDataPolicyRegistration registration in policies.Entries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (registration.PathPolicy is not { } policy)
+                if (registration.PathPolicy is { } policy)
                 {
-                    continue;
-                }
-
-                hasCanonicalPolicy = true;
-                IReadOnlyList<string> pointers = policy.SelectCanonicalJsonPointers(identity, json.RootElement, typeInfo, kind)
-                    ?? throw new PayloadProtectionFormatException();
-                if (pointers.Count > PayloadProtectionLimits.JsonNodes) { throw new PayloadProtectionFormatException(); }
-                foreach (string pointer in pointers)
-                {
-                    if (bounded.Resolve(pointer, allowRoot: kind == PayloadProtectionPayloadKind.Snapshot, cancellationToken: cancellationToken).ValueKind != JsonValueKind.Null)
+                    IReadOnlyList<string> pointers = policy.SelectCanonicalJsonPointers(identity, json.RootElement, typeInfo, kind)
+                        ?? throw new PayloadProtectionFormatException();
+                    if (pointers.Count > PayloadProtectionLimits.JsonNodes) { throw new PayloadProtectionFormatException(); }
+                    foreach (string pointer in pointers)
                     {
-                        selected.Add(pointer);
-                        if (selected.Count > 4096) { throw new PayloadProtectionFormatException(); }
+                        if (bounded.Resolve(pointer, allowRoot: kind == PayloadProtectionPayloadKind.Snapshot, cancellationToken: cancellationToken).ValueKind != JsonValueKind.Null)
+                        {
+                            selected.Add(pointer);
+                            if (selected.Count > 4096) { throw new PayloadProtectionFormatException(); }
+                        }
                     }
+                    // Explicit conflicting selections remain invalid, even within one canonical callback.
+                    _ = ProtectedPathManifestCodec.Create(selected, snapshot: selected.Count == 1 && selected[0].Length == 0,
+                        allowEmpty: true, cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    visited = 0;
+                    Walk(root, typeInfo, json.RootElement, string.Empty, registration);
                 }
             }
-
-            var ancestors = new HashSet<object>(ReferenceEqualityComparer.Instance);
-            int visited = 0;
-            Walk(root, typeInfo, json.RootElement, string.Empty);
             _ = ProtectedPathManifestCodec.Create(selected, snapshot: selected.Count == 1 && selected[0].Length == 0,
                 allowEmpty: true, cancellationToken: cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             return selected.OrderBy(p => Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(p)), StringComparer.Ordinal).ToArray();
 
-            void Walk(object? owner, JsonTypeInfo metadata, JsonElement value, string pointer)
+            void Walk(object? owner, JsonTypeInfo metadata, JsonElement value, string pointer, PersonalDataPolicyRegistration registration)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (++visited > PayloadProtectionLimits.JsonNodes || pointer.Count(c => c == '/') > PayloadProtectionLimits.JsonDepth)
@@ -86,10 +105,9 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
                     throw new PayloadProtectionFormatException();
                 }
 
-                if (owner is null || value.ValueKind == JsonValueKind.Null)
-                {
-                    return;
-                }
+                if (value.ValueKind == JsonValueKind.Null) { return; }
+                if (owner is null) { throw new PayloadProtectionFormatException(); }
+                if (selected.Contains(pointer, StringComparer.Ordinal)) { return; }
 
                 if (metadata.Kind == JsonTypeInfoKind.None)
                 {
@@ -125,46 +143,40 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
 
                             if (correlated.CustomConverter is not null)
                             {
-                                if (!hasCanonicalPolicy)
-                                {
-                                    throw new PayloadProtectionFormatException();
-                                }
-
+                                RequireCanonicalAuthority();
                                 continue;
                             }
 
                             PropertyInfo? clr = types.Property(correlated);
-                            object? child = correlated.Get is null ? throw new PayloadProtectionFormatException() : correlated.Get(owner);
+                            if (clr is null) { RequireCanonicalAuthority(); continue; }
                             int selectionCount = 0;
-                            foreach (PersonalDataPolicyRegistration registration in policies.Entries)
+                            if (registration.PolicyId == PersonalDataPolicyRegistry.AttributePolicyId)
                             {
-                                cancellationToken.ThrowIfCancellationRequested();
-                                if (registration.PolicyId == PersonalDataPolicyRegistry.AttributePolicyId)
-                                {
-                                    if (clr?.IsDefined(typeof(PersonalDataAttribute), inherit: true) == true) { selectionCount++; }
-                                }
-                                else if (registration.Policy is { } policy)
-                                {
-                                    PersonalDataPolicyDecision decision = policy.Evaluate(new(identity, root, json.RootElement,
-                                        typeInfo, owner, clr, property.Value, path, payloadType, kind));
-                                    if (!Enum.IsDefined(decision))
-                                    {
-                                        throw new PayloadProtectionFormatException();
-                                    }
-
-                                    if (decision == PersonalDataPolicyDecision.Protect) { selectionCount++; }
-                                }
+                                if (clr.IsDefined(typeof(PersonalDataAttribute), inherit: true)) { selectionCount++; }
                             }
-
+                            else if (registration.Policy is { } ordinary)
+                            {
+                                PersonalDataPolicyDecision decision = ordinary.Evaluate(new(identity, root, json.RootElement,
+                                    typeInfo, owner, clr, property.Value, path, payloadType, kind));
+                                if (!Enum.IsDefined(decision)) { throw new PayloadProtectionFormatException(); }
+                                if (decision == PersonalDataPolicyDecision.Protect) { selectionCount++; }
+                            }
                             if (selectionCount > 1) { throw new PayloadProtectionFormatException(); }
                             if (selectionCount == 1)
                             {
                                 selected.Add(path);
                                 if (selected.Count > 4096) { throw new PayloadProtectionFormatException(); }
                             }
-                            else if (child is not null)
+                            else
                             {
-                                Walk(child, types.Resolve(child.GetType()), property.Value, path);
+                                object? child = correlated.Get is null ? throw new PayloadProtectionFormatException() : correlated.Get(owner);
+                                if (child is null) { throw new PayloadProtectionFormatException(); }
+                                // A later getter cannot substitute runtime metadata for the serializer's declared shape.
+                                // Whole-property selection above needs no descendant CLR provenance.
+                                if (child.GetType() != correlated.PropertyType || correlated.PropertyType == typeof(object)
+                                    || types.Resolve(correlated.PropertyType).PolymorphismOptions is not null)
+                                { RequireCanonicalAuthority(); continue; }
+                                Walk(child, types.Resolve(correlated.PropertyType), property.Value, path, registration);
                             }
                         }
                     }
@@ -182,9 +194,14 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
                                 }
 
                                 object? child = enumerator.Current;
+                                if (child is null && item.ValueKind != JsonValueKind.Null) { throw new PayloadProtectionFormatException(); }
                                 if (child is not null)
                                 {
-                                    Walk(child, types.Resolve(child.GetType()), item, pointer + "/" + index.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                                    Type? element = metadata.Type.IsArray ? metadata.Type.GetElementType() : metadata.Type.IsGenericType && metadata.Type.GetGenericTypeDefinition() == typeof(List<>)
+                                        ? metadata.Type.GenericTypeArguments[0] : null;
+                                    string path = pointer + "/" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                    if (element is null || element != child.GetType() || element == typeof(object)) { RequireCanonicalAuthority(); }
+                                    else { Walk(child, types.Resolve(element), item, path, registration); }
                                 }
 
                                 index++;
@@ -212,6 +229,13 @@ internal sealed class PersonalDataDiscovery(PersonalDataPolicyRegistry policies,
                         ancestors.Remove(owner);
                     }
                 }
+            }
+
+            void RequireCanonicalAuthority()
+            {
+                // This contract supplies the complete sensitive-path set for the exact serialized root,
+                // including opaque shapes; public siblings need no selection or CLR traversal.
+                if (!hasCanonicalPolicy) { throw new PayloadProtectionFormatException(); }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

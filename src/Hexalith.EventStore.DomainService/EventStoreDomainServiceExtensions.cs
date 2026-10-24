@@ -525,7 +525,12 @@ public static class EventStoreDomainServiceExtensions {
                 DomainProjectionIdentityOptions identity = projectionIdentityOptions.Value;
                 AdminOperationalIndexMetadata.Response response;
                 if (string.IsNullOrWhiteSpace(request.AppId) || string.IsNullOrWhiteSpace(request.ServiceVersion)) {
-                    response = AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers);
+                    response = AdminOperationalIndexMetadata.Create(discovery, request.Domains, queryHandlers,
+                        (request.Domains ?? [])
+                            .Where(domain => !string.IsNullOrWhiteSpace(domain)
+                                && (keyedServices.IsKeyedService(typeof(IDomainProcessor), domain)
+                                    || keyedServices.IsKeyedService(typeof(IAsyncDomainProcessor), domain)))
+                            .ToArray());
                 }
                 else {
                     if (!string.Equals(request.AppId, identity.AppId, StringComparison.Ordinal)

@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 9-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -12,8 +12,12 @@ internal sealed class ErasureStateRegistry
     private readonly object _gate = new();
 
     /// <summary>Freezes one explicitly keyed provider per protected domain without wildcard or default ownership.</summary>
-    internal ErasureStateRegistry(IEnumerable<KeyValuePair<string, IErasureStateProvider>> registrations)
+    internal ErasureStateRegistry(PayloadProtectionScopeRegistry protectedScopes,
+        IEnumerable<KeyValuePair<string, IErasureStateProvider>> registrations)
     {
+        ArgumentNullException.ThrowIfNull(protectedScopes);
+        ArgumentNullException.ThrowIfNull(registrations);
+        var domains = protectedScopes.Roots.Select(scope => scope.Domain).ToHashSet(StringComparer.Ordinal);
         foreach ((string domain, IErasureStateProvider provider) in registrations)
         {
             _ = CanonicalText.GetByteCount(domain, 1, 128);
@@ -22,17 +26,22 @@ internal sealed class ErasureStateRegistry
                 if (new AggregateIdentity("enrollment", domain, "enrollment").Domain != domain) { throw new PayloadProtectionFormatException(); }
             }
             catch (ArgumentException) { throw new PayloadProtectionFormatException(); }
-            if (domain == "*" || provider is null || provider.ContractVersion != 1 || !_providers.TryAdd(domain, provider))
+            int contractVersion;
+            try { contractVersion = provider?.ContractVersion ?? 0; }
+            catch { throw new PayloadProtectionFormatException(); }
+            if (domain == "*" || !domains.Contains(domain) || provider is null || contractVersion != 1 || !_providers.TryAdd(domain, provider))
             {
                 throw new PayloadProtectionFormatException();
             }
         }
+        if (!domains.SetEquals(_providers.Keys)) { throw new PayloadProtectionFormatException(); }
     }
 
     /// <summary>Queries the domain owner on every admission and retains only monotonic scope state.</summary>
     internal async ValueTask<PayloadErasureStateResult> ObserveAsync(AggregateIdentity identity, string? keyRef = null,
         uint? version = null, CancellationToken cancellationToken = default)
     {
+        using var budget = new PayloadOperationBudget(TimeProvider.System, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (!_providers.TryGetValue(identity.Domain, out IErasureStateProvider? provider))
         {
@@ -42,7 +51,7 @@ internal sealed class ErasureStateRegistry
         PayloadErasureStateResult result;
         try
         {
-            result = await provider.GetStateAsync(new(identity, keyRef, version), cancellationToken).ConfigureAwait(false);
+            result = await PayloadOperationBudget.AwaitAsync(ct => provider.GetStateAsync(new(identity, keyRef, version), ct), cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch { cancellationToken.ThrowIfCancellationRequested(); throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }

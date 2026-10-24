@@ -39,6 +39,19 @@ public static class AdminOperationalIndexMetadata {
             options: null,
             keyedProcessorDomains: null);
 
+    /// <summary>Creates legacy metadata including domains confirmed by server-side keyed registration.</summary>
+    /// <param name="discovery">The discovery result for the hosted domains.</param>
+    /// <param name="requestedDomains">The requested domains.</param>
+    /// <param name="queryHandlers">Registered query handlers.</param>
+    /// <param name="keyedProcessorDomains">Domains confirmed by the host's keyed service registry.</param>
+    /// <returns>Legacy metadata without named-dispatch capabilities.</returns>
+    public static Response Create(
+        DiscoveryResult discovery,
+        IReadOnlyList<string>? requestedDomains,
+        IEnumerable<IDomainQueryHandler>? queryHandlers,
+        IReadOnlyCollection<string> keyedProcessorDomains)
+        => CreateCore(discovery, requestedDomains, queryHandlers, null, null, null, null, keyedProcessorDomains);
+
     /// <summary>
     /// Creates capability-bound operational metadata including exact named projection routes.
     /// </summary>
@@ -188,6 +201,17 @@ public static class AdminOperationalIndexMetadata {
             if (domains.All(item => !string.Equals(item.Domain, domain, StringComparison.OrdinalIgnoreCase)))
                 domains.Add(new DomainMetadata(domain, [], [], [], [], [],
                     [.. queryTypesByDomain[domain].Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)]));
+        }
+        // Legacy callers still need to discover keyed-processor domains. Registration is
+        // server-confirmed; neither a requested name nor an orphan projection is sufficient.
+        // Add these after named capability shaping so legacy responses retain their old shape.
+        if (appId is null && keyedProcessorDomains is not null) {
+            foreach (string domain in keyedProcessorDomains.Where(static domain => !string.IsNullOrWhiteSpace(domain))
+                .Where(requested.Contains)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal)) {
+                if (domains.All(item => !string.Equals(item.Domain, domain, StringComparison.OrdinalIgnoreCase)))
+                    domains.Add(new DomainMetadata(domain, [], [], [], [], [], []));
+            }
         }
         domains = [.. domains.OrderBy(static domain => domain.Domain, StringComparer.OrdinalIgnoreCase)];
 

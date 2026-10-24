@@ -11,6 +11,10 @@ internal sealed class LifecycleTestBackend : PayloadProtectionBackend
     internal Func<string, string, ReadOnlyMemory<byte>, CancellationToken, ValueTask<PayloadBackendResult>>? Unwrap { get; set; }
     /// <summary>Gets the number of exact-version unwraps.</summary>
     internal int UnwrapCalls { get; private set; }
+    /// <summary>Gets or sets stable operation reconciliation at the provider boundary.</summary>
+    internal Func<string, CancellationToken, ValueTask<PayloadBackendResult>>? Reconcile { get; set; }
+    /// <summary>Gets the reconciliation request count.</summary>
+    internal int ReconcileCalls { get; private set; }
     /// <summary>Gets the fixture backend identity.</summary>
     internal override string BackendId => "lifecycle-test";
     /// <summary>Gets a full fixture endpoint fingerprint.</summary>
@@ -22,11 +26,20 @@ internal sealed class LifecycleTestBackend : PayloadProtectionBackend
         return Wrap?.Invoke(operationId, dek, cancellationToken) ?? ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], "fixture:version-01"));
     }
     /// <summary>Rejects accidental use outside explicitly injected requests.</summary>
+    internal override ValueTask<PayloadBackendResult> WrapExactAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)
+        => WrapExact?.Invoke(operationId, providerKeyVersionId, dek, cancellationToken) ?? WrapAsync(operationId, dek, cancellationToken);
+    /// <summary>Gets or sets an exact target wrap boundary hook.</summary>
+    internal Func<string, string, ReadOnlyMemory<byte>, CancellationToken, ValueTask<PayloadBackendResult>>? WrapExact { get; set; }
+    /// <summary>Unwraps the recorded fixture version.</summary>
     internal override ValueTask<PayloadBackendResult> UnwrapAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> wrappedDek, CancellationToken cancellationToken)
     {
         UnwrapCalls++;
         return Unwrap?.Invoke(operationId, providerKeyVersionId, wrappedDek, cancellationToken) ?? throw new NotSupportedException();
     }
     /// <summary>Preserves ambiguous state by default.</summary>
-    internal override ValueTask<PayloadBackendResult> ReconcileAsync(string operationId, CancellationToken cancellationToken) => ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous));
+    internal override ValueTask<PayloadBackendResult> ReconcileAsync(string operationId, CancellationToken cancellationToken)
+    {
+        ReconcileCalls++;
+        return Reconcile?.Invoke(operationId, cancellationToken) ?? ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous));
+    }
 }

@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10.2 and 13; amendment sections 1-2.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.2 and 13; amendment sections 1-2.
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal static class PayloadProtectionStateKeys
 {
     /// <summary>Gets the approved effective authority digest.</summary>
-    internal const string AuthorityDigest = "08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6";
+    internal const string AuthorityDigest = "eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9";
     private const string Prefix = "eventstore:pp:v2:";
 
     /// <summary>Computes the injectively framed full scope digest.</summary>
@@ -19,7 +19,7 @@ internal static class PayloadProtectionStateKeys
     /// <summary>Computes the injectively framed tenant/domain digest.</summary>
     internal static string TenantDomainDigest(string tenant, string domain) => IdentityDigest("HXTD", tenant, domain);
     /// <summary>Computes a backend/provider address digest.</summary>
-    internal static string Digest(string value) => Convert.ToHexStringLower(SHA256.HashData(CanonicalText.Encode(value, 1, 4096)));
+    internal static string Digest(string value) => Convert.ToHexStringLower(SHA256.HashData(CanonicalText.Encode(value, 1, PayloadProtectionStateCodec.MaximumBytes)));
     /// <summary>Builds a wrapped-key address.</summary>
     internal static string Key(string scope, string keyRef, uint version) => Prefix + "key:" + Sha(scope) + ":" + Ulid(keyRef) + ":" + Version(version);
     /// <summary>Builds a scope index head address.</summary>

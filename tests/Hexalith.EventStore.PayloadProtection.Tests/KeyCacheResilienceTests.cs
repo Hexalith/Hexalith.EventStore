@@ -206,6 +206,31 @@ public sealed class KeyCacheResilienceTests
         calls.ShouldBe(10);
     }
 
+    [Theory]
+    [InlineData(PayloadBackendFailure.Denied)]
+    [InlineData(PayloadBackendFailure.Missing)]
+    [InlineData(PayloadBackendFailure.Invalidated)]
+    [InlineData(PayloadBackendFailure.ConsistencyMismatch)]
+    [InlineData(PayloadBackendFailure.Ambiguous)]
+    [InlineData(PayloadBackendFailure.Unavailable)]
+    public async Task EveryFailedHalfOpenProbeDoublesItsIntervalEvenForAPermanentFailure(int failureValue)
+    {
+        var clock = new LifecycleTestClock(); var backend = new LifecycleTestBackend(); var executor = new PayloadBackendExecutor(clock);
+        int calls = 0;
+        ValueTask<PayloadBackendResult> Fail(PayloadBackendFailure reason) { calls++; return ValueTask.FromResult(new PayloadBackendResult(reason)); }
+        for (int i = 0; i < 5; i++) { using var result = await executor.ExecuteAsync(backend, _ => Fail(PayloadBackendFailure.Unavailable), allowRetry: false); }
+        clock.Advance(TimeSpan.FromSeconds(30));
+        using var probe = await executor.ExecuteAsync(backend, _ => Fail((PayloadBackendFailure)failureValue), allowRetry: false);
+        foreach (int interval in new[] { 60, 120, 240, 300 })
+        {
+            int before = calls; clock.Advance(TimeSpan.FromSeconds(interval) - TimeSpan.FromTicks(1));
+            using var rejected = await executor.ExecuteAsync(backend, _ => Fail((PayloadBackendFailure)failureValue), allowRetry: false);
+            calls.ShouldBe(before); clock.Advance(TimeSpan.FromTicks(1));
+            using var failed = await executor.ExecuteAsync(backend, _ => Fail((PayloadBackendFailure)failureValue), allowRetry: false);
+            calls.ShouldBe(before + 1);
+        }
+    }
+
     [Fact]
     public async Task V089_CallerCancellationIsImmediateAndLateBackendOutputIsCleared()
     {

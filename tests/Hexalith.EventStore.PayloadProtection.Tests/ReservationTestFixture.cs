@@ -40,7 +40,7 @@ internal sealed class ReservationTestFixture
                 PayloadProtectionStateKeys.AuthorityDigest, 1, "Legacy", 0, now))]);
         fixture.Leases = new(fixture.Store, roots, profile, fixture.Clock);
         await fixture.Leases.RegisterAsync(fixture.Identity);
-        fixture.Reservations = new(fixture.Store, roots, fixture.Leases, new([new("parties", fixture.Erasure)]), fixture.Backend,
+        fixture.Reservations = new(fixture.Store, roots, fixture.Leases, new(roots, [new("parties", fixture.Erasure)]), fixture.Backend,
             new(fixture.Clock), _ => allowAudit, "fixture-actor", timeProvider: fixture.Clock);
         return fixture;
     }

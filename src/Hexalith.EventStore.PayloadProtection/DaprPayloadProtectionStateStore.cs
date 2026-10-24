@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base section 10; amendment sections 1-4 and 7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10; amendment sections 1-4 and 7.
 using Dapr.Client;
 using Grpc.Core;
 using Hexalith.EventStore.Contracts.Security;
@@ -9,15 +9,17 @@ namespace Hexalith.EventStore.PayloadProtection;
 internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string storeName = "statestore") : IPayloadProtectionStateStore
 {
     private bool _qualified;
+    private readonly PayloadStateReadExecutor _reads = new();
 
     /// <summary>Gets the selected component name; no partition override is silently introduced.</summary>
-    internal string StoreName { get; } = !string.IsNullOrWhiteSpace(storeName) ? storeName : throw new PayloadProtectionFormatException();
+    internal string StoreName { get; } = !string.IsNullOrWhiteSpace(storeName) && System.Text.Encoding.UTF8.GetByteCount(storeName) <= 128 ? storeName : throw new PayloadProtectionFormatException();
 
     /// <summary>Reads one closed value under strong consistency after qualification.</summary>
     public async ValueTask<PayloadProtectionStateValue<T>?> ReadAsync<T>(string key, CancellationToken cancellationToken = default) where T : class
     {
         RequireQualification();
-        return await ReadQualifiedAsync<T>(key, cancellationToken).ConfigureAwait(false);
+        using var budget = new PayloadOperationBudget(TimeProvider.System, cancellationToken);
+        return await _reads.ExecuteAsync(token => ReadQualifiedAsync<T>(key, token), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Submits the exact transaction once and conservatively distinguishes an unobserved result.</summary>
@@ -38,9 +40,12 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
+            PayloadOperationBudget.ChargeRead(PayloadProtectionStateCodec.MaximumBytes, operation: true);
             (ReadOnlyMemory<byte> bytes, string etag) = await client.GetByteStateAndETagAsync(
                 StoreName, key, ConsistencyMode.Strong, cancellationToken: cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
+            PayloadOperationBudget.ChargeRead(bytes.Length - PayloadProtectionStateCodec.MaximumBytes);
+            if (bytes.Length > PayloadProtectionStateCodec.MaximumBytes) { throw new PayloadProtectionFormatException(); }
             if (bytes.IsEmpty && string.IsNullOrEmpty(etag)) { return null; }
             if (bytes.IsEmpty || string.IsNullOrWhiteSpace(etag)) { throw new PayloadProtectionFormatException(); }
             T record = PayloadProtectionStateCodec.Decode<T>(bytes);
@@ -61,7 +66,8 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
     internal async ValueTask<PayloadStateCommitResult> CommitQualifiedAsync(IReadOnlyList<PayloadProtectionStateMutation> mutations, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (mutations.Count == 0 || mutations.Select(m => m.Key).Distinct(StringComparer.Ordinal).Count() != mutations.Count)
+        if (mutations.Count is 0 or > PayloadProtectionOperationalLimits.TransactionOperations ||
+            mutations.Sum(m => (long)PayloadProtectionOperationalLimits.Charge(m)) + 1024 > PayloadProtectionOperationalLimits.TransactionBytes || mutations.Select(m => m.Key).Distinct(StringComparer.Ordinal).Count() != mutations.Count)
         {
             throw new PayloadProtectionFormatException();
         }
@@ -87,11 +93,17 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
 
         try
         {
-            await client.ExecuteStateTransactionAsync(StoreName, requests, cancellationToken: cancellationToken).ConfigureAwait(false);
+            using var budget = new PayloadOperationBudget(TimeProvider.System, cancellationToken);
+            _ = await PayloadOperationBudget.AwaitAsync(async ct =>
+            {
+                await client.ExecuteStateTransactionAsync(StoreName, requests, cancellationToken: ct).ConfigureAwait(false);
+                return true;
+            }, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             return PayloadStateCommitResult.Committed;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (PayloadProtectionStateException exception) when (exception.Reason == UnreadableProtectedDataReason.ProviderUnavailable) { return PayloadStateCommitResult.Unknown; }
         catch (Exception exception)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -179,6 +191,7 @@ internal sealed class DaprPayloadProtectionStateStore(DaprClient client, string 
             "clear-ack" => PayloadProtectionStateCodec.Decode<CacheClearAckV1>(mutation.Bytes),
             _ => throw new PayloadProtectionFormatException(),
         };
+        if (value is CacheClearAckV1 && mutation.ExpectedETag is not null) { throw new PayloadProtectionFormatException(); }
         if (PayloadProtectionStateCodec.KeyFor(value) != mutation.Key) { throw new PayloadProtectionFormatException(); }
         int? expectedTtl = value switch
         {

@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10.6-10.7 and 15.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.6-10.7 and 15; approved review correction section 8.
 using System.Security.Cryptography;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -14,8 +14,9 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
     /// <summary>Runs at most three confirmed-absent transient attempts; ambiguous mutations are returned for reconciliation.</summary>
     internal async ValueTask<PayloadBackendResult> ExecuteAsync(PayloadProtectionBackend backend,
         Func<CancellationToken, ValueTask<PayloadBackendResult>> request, CancellationToken cancellationToken = default,
-        bool allowRetry = true)
+        bool allowRetry = true, Action<Task>? retainAbandoned = null, PayloadProtectionOperation operation = PayloadProtectionOperation.Wrap, Action<int>? attempted = null)
     {
+        using var diagnostic = new PayloadProtectionDiagnosticScope(operation);
         cancellationToken.ThrowIfCancellationRequested();
         _ = PayloadProtectionStateKeys.Sha(backend.EndpointFingerprint);
         _ = CanonicalText.GetByteCount(backend.BackendId, 1, 64);
@@ -31,19 +32,22 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
             Task<PayloadBackendResult>? pending = null;
             try
             {
+                attempted?.Invoke(attempt + 1);
                 pending = request(linked.Token).AsTask();
                 result = await pending.WaitAsync(linked.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                Abandon(pending);
+                Abandon(pending, retainAbandoned);
                 ReleaseCancelledProbe(backend, probe);
+                diagnostic.Complete(PayloadProtectionDiagnosticResult.Cancelled);
                 throw;
             }
             catch
             {
-                Abandon(pending);
-                result = Unavailable();
+                Abandon(pending, retainAbandoned);
+                // An unobserved wrap may have succeeded. Only a typed confirmed-transient response permits another attempt.
+                result = operation == PayloadProtectionOperation.Wrap ? new(PayloadBackendFailure.Ambiguous) : Unavailable();
             }
             if (cancellationToken.IsCancellationRequested)
             {
@@ -55,10 +59,16 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
             {
                 result.Dispose();
                 Observe(backend, PayloadBackendFailure.Unavailable, probe);
-                return Unavailable();
+                return operation == PayloadProtectionOperation.Wrap ? new(PayloadBackendFailure.Ambiguous) : Unavailable();
             }
             Observe(backend, result.Failure, probe);
-            if (result.Failure != PayloadBackendFailure.Unavailable || attempt == 2 || !allowRetry || probe) { return result; }
+            if (result.Failure != PayloadBackendFailure.None) { PayloadProtectionDiagnostics.ProviderFailure(backend.BackendId, result.Failure); }
+            if (result.Failure != PayloadBackendFailure.Unavailable || attempt == 2 || !allowRetry || probe)
+            {
+                diagnostic.Complete(result.Failure == PayloadBackendFailure.None ? PayloadProtectionDiagnosticResult.Success
+                    : result.Failure == PayloadBackendFailure.Denied ? PayloadProtectionDiagnosticResult.Denied : PayloadProtectionDiagnosticResult.Unavailable);
+                return result;
+            }
             TimeSpan pause = RetryDelay(attempt, result.RetryAfter, TimeSpan.FromSeconds(10) - _clock.GetElapsedTime(started));
             result.Dispose();
             if (pause < TimeSpan.Zero) { return Unavailable(); }
@@ -103,10 +113,7 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
                 }
                 else
                 {
-                    if (failure is PayloadBackendFailure.Unavailable or PayloadBackendFailure.Ambiguous)
-                    {
-                        state.OpenInterval = TimeSpan.FromSeconds(Math.Min(300, state.OpenInterval.TotalSeconds * 2));
-                    }
+                    state.OpenInterval = TimeSpan.FromSeconds(Math.Min(300, state.OpenInterval.TotalSeconds * 2));
                     state.OpenedAt = _clock.GetTimestamp();
                 }
                 return;
@@ -139,9 +146,13 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
         if (retryAfter is TimeSpan requested && requested >= TimeSpan.Zero && requested <= TimeSpan.FromSeconds(2) && requested < remaining) { pause = requested; }
         return pause < remaining ? pause : TimeSpan.FromTicks(-1);
     }
-    private static void Abandon(Task<PayloadBackendResult>? task)
+    private static void Abandon(Task<PayloadBackendResult>? task, Action<Task>? retain)
     {
-        if (task is not null) { _ = DrainAbandonedAsync(task); }
+        if (task is not null)
+        {
+            Task clearing = DrainAbandonedAsync(task);
+            retain?.Invoke(clearing);
+        }
     }
     private static async Task DrainAbandonedAsync(Task<PayloadBackendResult> task)
     {

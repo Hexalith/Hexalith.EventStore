@@ -835,14 +835,14 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 Clear(dek, SensitiveBufferKind.DataEncryptionKey);
             }
-            if (resolution is not null) { await resolution.DisposeAsync().ConfigureAwait(false); }
-
             if (wrappers is not null)
             {
                 ClearWrappers(wrappers);
             }
 
             ClearManifest(manifest);
+
+            await ReleaseFailedResolutionAsync(resolution).ConfigureAwait(false);
 
             PayloadProtectionDiagnostics.Stop(activity, diagnosticResult, ambientActivity);
             PayloadProtectionDiagnostics.Record(
@@ -1078,8 +1078,6 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
             {
                 Clear(dek, SensitiveBufferKind.DataEncryptionKey);
             }
-            if (resolution is not null) { await resolution.DisposeAsync().ConfigureAwait(false); }
-
             if (envelope is not null)
             {
                 ClearEnvelope(envelope);
@@ -1087,12 +1085,22 @@ internal sealed class PayloadProtectionCore(ISensitiveBufferObserver? observer =
 
             ClearManifest(manifest);
 
+            await ReleaseFailedResolutionAsync(resolution).ConfigureAwait(false);
+
             PayloadProtectionDiagnostics.Stop(activity, diagnosticResult, ambientActivity);
             PayloadProtectionDiagnostics.Record(
                 PayloadProtectionOperation.Unprotect,
                 diagnosticResult,
                 stopwatch.Elapsed.TotalMilliseconds);
         }
+    }
+
+    private static async ValueTask ReleaseFailedResolutionAsync(PayloadKeyResolution? resolution)
+    {
+        // Successful leased reads release inside the guarded body before transferring plaintext.
+        // Cleanup failures must preserve the original bounded unreadability or caller cancellation.
+        try { if (resolution is not null) { await resolution.DisposeAsync().ConfigureAwait(false); } }
+        catch { /* The durable lease remains subject to its original TTL; no plaintext is released here. */ }
     }
 
     private async ValueTask<PayloadProtectionMaterial?> InvokeMaterialFactoryAsync(

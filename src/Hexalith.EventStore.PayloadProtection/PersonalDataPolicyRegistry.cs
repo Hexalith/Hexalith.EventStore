@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 9-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -16,27 +16,31 @@ internal sealed class PersonalDataPolicyRegistry
         ArgumentNullException.ThrowIfNull(pathPolicies);
         var identities = new HashSet<string>(StringComparer.Ordinal) { AttributePolicyId };
         var entries = new List<PersonalDataPolicyRegistration> { new(0, AttributePolicyId, null, null) };
-        foreach (IPersonalDataPolicy policy in policies)
+        try
         {
-            if (policy is null || policy.ContractVersion != 1 || policy.PolicyVersion < 1)
+            foreach (IPersonalDataPolicy policy in policies)
             {
-                throw new PayloadProtectionFormatException();
+                if (policy is null || policy.ContractVersion != 1 || policy.PolicyVersion < 1)
+                {
+                    throw new PayloadProtectionFormatException();
+                }
+
+                Add(policy.Order, policy.PolicyId, policy, null);
             }
 
-            Add(policy.Order, policy.PolicyId, policy, null);
-        }
-
-        foreach (ICanonicalPersonalDataPathPolicy policy in pathPolicies)
-        {
-            if (policy is null || policy.ContractVersion != 1 || policy.PolicyVersion < 1)
+            foreach (ICanonicalPersonalDataPathPolicy policy in pathPolicies)
             {
-                throw new PayloadProtectionFormatException();
+                if (policy is null || policy.ContractVersion != 1 || policy.PolicyVersion < 1)
+                {
+                    throw new PayloadProtectionFormatException();
+                }
+
+                Add(policy.Order, policy.PolicyId, null, policy);
             }
 
-            Add(policy.Order, policy.PolicyId, null, policy);
+            Entries = Array.AsReadOnly(entries.OrderBy(e => e.Order).ThenBy(e => e.PolicyId, StringComparer.Ordinal).ToArray());
         }
-
-        Entries = Array.AsReadOnly(entries.OrderBy(e => e.Order).ThenBy(e => e.PolicyId, StringComparer.Ordinal).ToArray());
+        catch (Exception exception) when (exception is not OutOfMemoryException) { throw new PayloadProtectionFormatException(); }
 
         void Add(int order, string id, IPersonalDataPolicy? policy, ICanonicalPersonalDataPathPolicy? paths)
         {

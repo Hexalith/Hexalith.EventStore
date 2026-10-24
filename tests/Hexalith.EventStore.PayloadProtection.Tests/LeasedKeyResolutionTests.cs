@@ -100,6 +100,6 @@ public sealed class LeasedKeyResolutionTests
     }
 
     private static PayloadKeyResolver Resolver(ReservationTestFixture fixture, PayloadKeyCache cache)
-        => new(fixture.Store, new([new("tenant-a", "parties")]), new([new("parties", fixture.Erasure)]), fixture.Leases,
+        => new(fixture.Store, new([new("tenant-a", "parties")]), new(new([new("tenant-a", "parties")]), [new("parties", fixture.Erasure)]), fixture.Leases,
             fixture.Backend, new(fixture.Clock), cache, fixture.Clock);
 }

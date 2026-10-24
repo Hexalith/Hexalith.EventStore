@@ -115,6 +115,27 @@ public sealed class ReservationCompletionTests
     }
 
     [Fact]
+    public async Task SnapshotCoordinatorReservesBothIndexesBindsOccurrenceAndActivatesBeforeAuthenticatedRead()
+    {
+        var f = await ReservationTestFixture.CreateAsync(); byte[]? retained = null;
+        f.Backend.Wrap = (_, bytes, _) => { retained = bytes.ToArray(); return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], "fixture:version-01")); };
+        byte[] plain = "{\"name\":\"snapshot-private-canary\"}"u8.ToArray();
+        var context = new PayloadProtectionContext(f.Identity, "hx-snapshot-v1:fixture-state", PayloadProtectionPayloadKind.Snapshot, 27);
+        var write = await f.Reservations.ProtectSnapshotAsync(plain, context);
+        write.Completion.Occurrence.RecordSequence.ShouldBe(27ul); write.Completion.Occurrence.PayloadKind.ShouldBe(PayloadProtectionPayloadKind.Snapshot);
+        var key = (await f.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(f.Scope, write.Completion.KeyReference, 1)))!.Value;
+        key.State.ShouldBe("Reserved"); var indexes = new PayloadKeyIndexes(f.Store, f.Clock);
+        PayloadKeyIndexes.VerifyMembership(key, await indexes.ReadScopeAsync(f.Scope), await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.BackendId), PayloadProtectionStateKeys.Digest(key.ProviderKeyVersionId)));
+        await Should.ThrowAsync<PayloadProtectionStateException>(() => f.Reservations.AcquireCompletionAsync(write.Completion with { Occurrence = write.Completion.Occurrence with { RecordSequence = 28 } }).AsTask());
+        await f.Reservations.AcquireCompletionAsync(write.Completion);
+        await f.Reservations.CompleteAsync(write.Completion, PayloadProtectionPersistenceOutcome.Persisted);
+        (await f.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(f.Scope, key.KeyRef, 1)))!.Value.State.ShouldBe("Active");
+        var read = await new PayloadProtectionCore().TryUnprotectSnapshotAsync(write.Result, context, (_, _, _) => ValueTask.FromResult<byte[]?>(retained!.ToArray()));
+        try { read.PayloadBytes.ShouldBe(plain); read.UnreadableReason.ShouldBeNull(); }
+        finally { if (read.PayloadBytes is not null) { CryptographicOperations.ZeroMemory(read.PayloadBytes); } CryptographicOperations.ZeroMemory(retained!); CryptographicOperations.ZeroMemory(plain); }
+    }
+
+    [Fact]
     public async Task V049_V122_ChangedApprovalAfterWrapWithholdsKeyAndPayloadButRetainsIndexedIntent()
     {
         ReservationTestFixture fixture = await ReservationTestFixture.CreateAsync();
@@ -132,7 +153,8 @@ public sealed class ReservationCompletionTests
             CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context()).AsTask());
         observed.ToArray().ShouldAllBe(b => b == 0);
         OperationV1 intent = (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(operation!)))!.Value;
-        intent.Phase.ShouldBe("Started");
+        intent.Phase.ShouldBe("Failed");
+        intent.ReasonCode.ShouldBe("consistency-mismatch");
         (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, intent.KeyRef, 1))).ShouldBeNull();
         (await new PayloadProtectionCatalogs(fixture.Store).ReadWorkAsync(fixture.Root)).Head.Value.EntryCount.ShouldBe(1u);
     }

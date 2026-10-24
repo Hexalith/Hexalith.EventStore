@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 9-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
 using System.Collections.Frozen;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -23,14 +23,14 @@ internal static class PayloadProtectionStateSchema
         [typeof(OperationV1)] = "operationId:ulid operation:Create|Activate|Rewrap|Invalidate|Delete|Reconcile scopeDigest:sha keyRef:ulidOrEmpty dekVersion:u32 phase:Started|Reserved|PayloadReturned|Persisted|Completed|Ambiguous|Failed attempt:u32 createdAtUtc:timestamp updatedAtUtc:timestamp result:Pending|Succeeded|Failed reasonCode:reason",
         [typeof(ReadLeaseV1)] = "operationId:ulid scopeDigest:sha keyRef:ulidOrEmpty dekVersion:u32 instanceId:ulid lifecycleEpoch:u64 issuedAtUtc:timestamp expiresAtUtc:timestamp",
         [typeof(CompletionLeaseV1)] = "operationId:ulid scopeDigest:sha keyRef:ulidOrEmpty dekVersion:u32 instanceId:ulid lifecycleEpoch:u64 issuedAtUtc:timestamp expiresAtUtc:timestamp",
-        [typeof(ReconciliationV1)] = "operationId:ulid scopeDigest:sha keyRef:ulidOrEmpty dekVersion:u32 kind:Create|Activate|Rewrap|Invalidate|Delete notBeforeUtc:timestamp attempt:u32 status:Pending|Running|Quarantined|Completed reasonCode:reason updatedAtUtc:timestamp",
+        [typeof(ReconciliationV1)] = "operationId:ulid scopeDigest:sha keyRef:ulidOrEmpty dekVersion:u32 kind:Create|Activate|Rewrap|Invalidate|Delete notBeforeUtc:timestamp attempt:u32 status:Pending|Running|Quarantined|Completed reasonCode:reason updatedAtUtc:timestamp targetProviderVersionDigest:shaOrEmpty",
         [typeof(MemberHeadV1)] = "tenantDomainDigest:sha revision:u64 pageCount:u32 entryCount:u32 updatedAtUtc:timestamp",
         [typeof(MemberPageV1)] = "tenantDomainDigest:sha page:u32 entries:[MemberEntryV1]",
         [typeof(MemberEntryV1)] = "ordinal:u32 generation:u64 instanceId:ulid state:Serving|Draining|Cleared",
         [typeof(WorkHeadV1)] = "tenantDomainDigest:sha revision:u64 pageCount:u32 entryCount:u32 updatedAtUtc:timestamp",
         [typeof(WorkPageV1)] = "tenantDomainDigest:sha page:u32 entries:[WorkEntryV1]",
         [typeof(WorkEntryV1)] = "operationId:ulid scopeDigest:sha",
-        [typeof(InvalidationDrainV1)] = "tenantDomainDigest:sha scopeDigest:sha operationId:ulid lifecycleEpoch:u64 memberCutoff:u32",
+        [typeof(InvalidationDrainV1)] = "tenantDomainDigest:sha scopeDigest:sha operationId:ulid lifecycleEpoch:u64 memberCutoff:u32 workflowId:ulid",
         [typeof(CacheClearAckV1)] = "scopeDigest:sha operationId:ulid lifecycleEpoch:u64 instanceId:ulid acknowledgedAtUtc:timestamp",
         [typeof(PayloadProtectionAuditRecord)] = "auditId:ulid operationId:ulid workflowId:ulid? correlationId:ulid? tenantId:tenant domain:domain aggregateId:aggregate? operation:Create|Activate|Rewrap|Invalidate|Delete|Reconcile fromState:Reserved|Active|RewrapPending|Invalidating|Invalidated|Deleted|Pending? toState:Reserved|Active|RewrapPending|Invalidating|Invalidated|Deleted|Pending? lifecycleEpoch:u64 fenceApprovalEpoch:u64 backendId:id formatVersion:v2 keyFingerprint:fingerprint? providerFingerprint:fingerprint? attemptCount:u32 durationMilliseconds:u64 result:Pending|Succeeded|Failed reasonCode:reason decisionActorId:actor decidedAtUtc:timestamp",
     }.ToFrozenDictionary();
