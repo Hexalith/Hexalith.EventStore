@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base section 13.1; amendment section 3.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 13.1; amendment section 3.
 namespace Hexalith.EventStore.PayloadProtection;
 
 /// <summary>Trusted immutable host identity bound to the approved deployment; host wiring belongs to Story 8.7.</summary>

@@ -1,12 +1,14 @@
 ---
 title: 'Story 8.5 review correction proposal'
-status: pending-user-approval
+status: approved-authorized
+approval_date: '2026-10-24'
+approval_source: 'Interactive user: approve'
 current_amendment_sha256: aed1eb3f6cd438ff0691db5d449dab4d9e5186e3a0dc4d2d7c0eecc56b9fbe7a
 proposed_amendment_sha256: a853201a6df1e8e88730a40a582b87e20c5e5cf7a223f01ca905e9c9ee7df94d
 proposed_effective_authority_sha256: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9
 ---
 
-This is the exact proposed addition before the owning amendment's normative end marker, with one final blank line. Current approved bytes are unchanged. Approval permits applying this addition, rebinding implementation authority hashes, and re-deriving the implementation to address the recorded review findings. It grants no release, Azure, Server-integration or G5 approval.
+This is the exact proposed addition before the owning amendment's normative end marker, with one final blank line. The user approved these exact bytes on 2026-10-24; the owning amendment now includes them. This approval permits applying this addition, rebinding implementation authority hashes, and re-deriving the implementation to address the recorded review findings. It grants no release, Azure, Server-integration or G5 approval.
 
 The pragmatic correction keeps two catalogs and one bounded worker. It adds two durable bindings, reuses notBeforeUtc for claim ownership, resolves confirmed outcomes without crossing the invalidation barrier, and makes existing restore-workflow persistence compare its supporting authority atomically.
 

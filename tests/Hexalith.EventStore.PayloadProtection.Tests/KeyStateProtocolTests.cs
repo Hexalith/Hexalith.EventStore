@@ -148,6 +148,28 @@ public sealed class KeyStateProtocolTests
     }
 
     [Fact]
+    public async Task ExactMaximumRecordProviderIdWorksThroughDigestIndexesAndCache()
+    {
+        WrappedDekV1 key = Wrapped(); int current = PayloadProtectionStateCodec.Encode(key).Length;
+        string provider = new('a', PayloadProtectionStateCodec.MaximumBytes - current + key.ProviderKeyVersionId.Length);
+        key = PayloadProtectionStateCodec.Seal(key with { ProviderKeyVersionId = provider });
+        PayloadProtectionStateCodec.Encode(key).Length.ShouldBe(65536);
+        PayloadProtectionStateKeys.Digest(provider).Length.ShouldBe(64);
+        var store = new MemoryPayloadProtectionStateStore(); var indexes = new PayloadKeyIndexes(store);
+        string backendDigest = PayloadProtectionStateKeys.Digest(key.BackendId); string providerDigest = PayloadProtectionStateKeys.Digest(provider);
+        (await store.CommitAsync([PayloadProtectionStateMutation.Put(key),
+            .. indexes.SetScopeEntry(await indexes.ReadScopeAsync(Scope), new(key.KeyRef, 1, providerDigest, key.State), true),
+            .. indexes.SetInventoryEntry(await indexes.ReadKekAsync(backendDigest, providerDigest), new(Scope, key.KeyRef, 1), true)])).ShouldBe(PayloadStateCommitResult.Committed);
+        PayloadKeyIndexes.VerifyMembership(key, await indexes.ReadScopeAsync(Scope), await indexes.ReadKekAsync(backendDigest, providerDigest));
+        await using var cache = new PayloadKeyCache();
+        await using var first = await cache.GetAsync(new(Scope, key.KeyRef, 1, 1, provider), _ => ValueTask.FromResult(PayloadKeyResolution.Success(new byte[32])));
+        first.Reason.ShouldBeNull();
+        await using var hit = await cache.GetAsync(new(Scope, key.KeyRef, 1, 1, provider), _ => throw new InvalidOperationException());
+        hit.Reason.ShouldBeNull();
+        Should.Throw<PayloadProtectionFormatException>(() => PayloadProtectionStateKeys.Digest(new('a', 65537)));
+    }
+
+    [Fact]
     public void ReconciliationUsesOnlyTheApprovedScopeWideOrPositivePerKeyForms()
     {
         var work = new ReconciliationV1(Operation, Scope, "", 0, "Invalidate", Timestamp, 0, "Pending", "domain-invalidating", Timestamp);

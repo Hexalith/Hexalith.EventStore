@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10.3-10.8 and 15; amendment sections 1-4 and 7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.3-10.8 and 15; amendment sections 1-4 and 7; approved review correction section 8.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 using Microsoft.Extensions.Hosting;
@@ -69,12 +69,16 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
                     var identity = new AggregateIdentity(lifecycle.Value.TenantId, lifecycle.Value.Domain, lifecycle.Value.AggregateId);
                     if (_roots.Require(identity) != root || lifecycle.Value.ScopeDigest != entry.ScopeDigest) { throw Mismatch(); }
                     PayloadProtectionAuditAdmission.Require(_allowAudit, identity);
+                    // Clearing is a responsibility of every registered incarnation, independent of mutation ownership/due time.
+                    if (lifecycle.Value.State is "Invalidating" or "Invalidated")
+                    {
+                        await _lifecycle.AcknowledgeAsync(identity, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
+                    }
                     PayloadProtectionStateValue<ReconciliationV1>? claim = await _claims.TryClaimAsync(entry, cancellationToken).ConfigureAwait(false);
                     if (claim is null) { continue; }
                     processed++;
                     if (claim.Value.KeyRef == "")
                     {
-                        await _lifecycle.AcknowledgeAsync(identity, entry.OperationId, cancellationToken).ConfigureAwait(false);
                         _ = await _lifecycle.ResumeAsync(identity, claim.Value, cancellationToken).ConfigureAwait(false);
                     }
                     else if (claim.Value.Kind is "Create" or "Activate")
@@ -87,7 +91,6 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
                     }
                     else if (claim.Value.Kind is "Invalidate" or "Delete")
                     {
-                        await _lifecycle.AcknowledgeAsync(identity, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
                         _ = await _lifecycle.ResumeAsync(identity, claim.Value, cancellationToken).ConfigureAwait(false);
                     }
                 }
@@ -138,7 +141,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
         try
         {
             evidence = _persistence is null ? PayloadProtectionPersistenceOutcome.Unknown
-                : await _persistence.ObserveAsync(identity, operation.Value, token).ConfigureAwait(false);
+                : await PayloadOperationBudget.AwaitAsync(ct => _persistence.ObserveAsync(identity, operation.Value, ct), token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
@@ -194,7 +197,7 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
             || key.Value.TenantId != identity.TenantId || key.Value.Domain != identity.Domain || key.Value.AggregateId != identity.AggregateId) { throw Mismatch(); }
         PayloadProtectionStateValue<LifecycleV1> lifecycle = await RequiredAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(claim.ScopeDigest), token).ConfigureAwait(false);
         PayloadProtectionStateValue<FenceV1> fence = await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), token).ConfigureAwait(false);
-        if (lifecycle.Value.State is not ("Active" or "Pending") || lifecycle.Value.Epoch < key.Value.LifecycleEpoch
+        if (lifecycle.Value.State is not ("Active" or "Pending" or "Invalidating") || lifecycle.Value.Epoch < key.Value.LifecycleEpoch
             || fence.Value.TenantId != identity.TenantId || fence.Value.Domain != identity.Domain
             || fence.Value.ApprovalEpoch < key.Value.FenceApprovalEpoch || fence.Value.HighestWrittenEpoch < key.Value.HighestWrittenEpoch
             || fence.Value.HighestWrittenFormat != "V2" || fence.Value.ApprovedSpecDigest != PayloadProtectionStateKeys.AuthorityDigest) { throw Mismatch(); }
@@ -206,15 +209,23 @@ internal sealed class PayloadProtectionReconciler : BackgroundService
         WorkCatalogSnapshot work = await _catalogs.ReadWorkAsync(root, token).ConfigureAwait(false);
         string leaseKey = PayloadProtectionStateKeys.Completion(claim.ScopeDigest, claim.KeyRef, claim.DekVersion, claim.OperationId);
         PayloadProtectionStateValue<CompletionLeaseV1>? lease = await PayloadOperationBudget.ReadAsync<CompletionLeaseV1>(_store, leaseKey, token).ConfigureAwait(false);
+        bool invalidating = lifecycle.Value.State == "Invalidating";
+        string destination = invalidating ? "Reserved" : "Active";
         string now = Now();
         var audit = new PayloadProtectionAuditRecord(new CryptographicPayloadProtectionEntropy().CreateKeyReference(), claim.OperationId, null, null,
-            identity.TenantId, identity.Domain, null, "Activate", "Reserved", "Active", lifecycle.Value.Epoch, fence.Value.ApprovalEpoch,
+            identity.TenantId, identity.Domain, null, "Activate", "Reserved", destination, lifecycle.Value.Epoch, fence.Value.ApprovalEpoch,
             _backend, "v2", null, null, claim.Attempt, checked((ulong)Math.Max(0, Math.Floor(_clock.GetElapsedTime(started).TotalMilliseconds))), "Succeeded", "none", _actor, now);
         List<PayloadProtectionStateMutation> mutations = [PayloadProtectionStateMutation.Compare(lifecycle), PayloadProtectionStateMutation.Compare(fence),
-            PayloadProtectionStateMutation.Compare(inventory.Head!), PayloadProtectionStateMutation.Put(PayloadProtectionStateCodec.Seal(key.Value with { State = "Active", UpdatedAtUtc = now }), key.ETag),
-            .. indexes.SetScopeEntry(scope, new(claim.KeyRef, claim.DekVersion, inventory.ProviderDigest, "Active"), false),
-            PayloadProtectionStateMutation.Put(operation.Value with { Phase = "Completed", Result = "Succeeded", ReasonCode = "none", UpdatedAtUtc = now }, operation.ETag),
+            PayloadProtectionStateMutation.Compare(inventory.Head!), invalidating ? PayloadProtectionStateMutation.Compare(key) : PayloadProtectionStateMutation.Put(PayloadProtectionStateCodec.Seal(key.Value with { State = "Active", UpdatedAtUtc = now }), key.ETag),
+            PayloadProtectionStateMutation.Put(operation.Value with { Phase = invalidating ? "Persisted" : "Completed", Result = "Succeeded", ReasonCode = "none", UpdatedAtUtc = now }, operation.ETag),
             .. _catalogs.CompleteWork(work, current, claim with { Status = "Completed", ReasonCode = "none", UpdatedAtUtc = now }), PayloadProtectionStateMutation.Put(audit)];
+        if (invalidating)
+        {
+            mutations.Add(PayloadProtectionStateMutation.Compare(scope.Head!));
+            mutations.AddRange(scope.Pages.Select(PayloadProtectionStateMutation.Compare));
+            mutations.AddRange(inventory.Pages.Select(PayloadProtectionStateMutation.Compare));
+        }
+        else { mutations.AddRange(indexes.SetScopeEntry(scope, new(claim.KeyRef, claim.DekVersion, inventory.ProviderDigest, "Active"), false)); }
         if (lease is not null) { mutations.Add(new(leaseKey, null, lease.ETag)); }
         PayloadStateCommitResult result = await _store.CommitAsync(mutations, token).ConfigureAwait(false);
         if (result != PayloadStateCommitResult.Committed) { throw new PayloadProtectionStateException(result == PayloadStateCommitResult.Denied ? UnreadableProtectedDataReason.ProviderDenied : UnreadableProtectedDataReason.ProviderUnavailable); }

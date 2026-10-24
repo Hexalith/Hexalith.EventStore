@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10, 13-15; amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10, 13-15; amendment sections 1-8.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -55,7 +55,7 @@ internal sealed class KeyLifecycleCoordinator
         {
             if (previous.Value.ScopeDigest != scope || previous.Value.Operation != kind || previous.Value.KeyRef != "" || previous.Value.DekVersion != 0) { throw Mismatch(); }
             InvalidationDrainV1 priorDrain = (await RequiredAsync<InvalidationDrainV1>(PayloadProtectionStateKeys.Drain(scope, operationId), cancellationToken).ConfigureAwait(false)).Value;
-            if (priorDrain.LifecycleEpoch != epoch || priorDrain.TenantDomainDigest != root) { throw Mismatch(); }
+            if (priorDrain.LifecycleEpoch != epoch || priorDrain.TenantDomainDigest != root || priorDrain.WorkflowId != approval.Identity.WorkflowId) { throw Mismatch(); }
             return priorDrain;
         }
         PayloadProtectionStateValue<LifecycleV1> lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
@@ -64,7 +64,7 @@ internal sealed class KeyLifecycleCoordinator
         if ((lifecycle.Value.State is not ("Active" or "Pending") && !(delete && lifecycle.Value.State == "Invalidated")) || epoch <= lifecycle.Value.Epoch) { throw Mismatch(); }
         MemberCatalogSnapshot members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
         WorkCatalogSnapshot work = await _catalogs.ReadWorkAsync(root, cancellationToken).ConfigureAwait(false);
-        var drain = new InvalidationDrainV1(root, scope, operationId, epoch, members.Head.Value.EntryCount);
+        var drain = new InvalidationDrainV1(root, scope, operationId, epoch, members.Head.Value.EntryCount, approval.Identity.WorkflowId);
         string now = Now();
         var operation = new OperationV1(operationId, kind, scope, "", 0, "Started", 1, now, now, "Pending", "domain-invalidating");
         var reconcile = new ReconciliationV1(operationId, scope, "", 0, kind, now, 0, "Pending", "domain-invalidating", now);
@@ -94,8 +94,8 @@ internal sealed class KeyLifecycleCoordinator
         string root = Admit(identity);
         PayloadProtectionStateValue<LifecycleV1> lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
         PayloadProtectionStateValue<InvalidationDrainV1> drain = await DrainAsync(root, lifecycle, operationId, cancellationToken).ConfigureAwait(false);
-        await _leases.LocalOperations.DrainScopeAsync(lifecycle.Value.ScopeDigest, cancellationToken).ConfigureAwait(false);
-        await _cache.ClearScopeAsync(lifecycle.Value.ScopeDigest, cancellationToken).ConfigureAwait(false);
+        await PayloadOperationBudget.AwaitAsync(async ct => { await _leases.LocalOperations.DrainScopeAsync(lifecycle.Value.ScopeDigest, ct).ConfigureAwait(false); return true; }, cancellationToken).ConfigureAwait(false);
+        await PayloadOperationBudget.AwaitAsync(async ct => { await _cache.ClearScopeAsync(lifecycle.Value.ScopeDigest, ct).ConfigureAwait(false); return true; }, cancellationToken).ConfigureAwait(false);
         MemberCatalogSnapshot members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
         PayloadProtectionStateValue<MemberPageV1> page = members.Pages.SingleOrDefault(p => p.Value.Entries.Any(e => e.InstanceId == _leases.InstanceId)) ?? throw Mismatch();
         MemberEntryV1 member = page.Value.Entries.Single(e => e.InstanceId == _leases.InstanceId);
@@ -130,8 +130,11 @@ internal sealed class KeyLifecycleCoordinator
         using var operationBudget = new PayloadOperationBudget(_clock, cancellationToken);
         lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
         PayloadProtectionStateValue<InvalidationDrainV1> drain = await DrainAsync(root, lifecycle, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<PayloadProtectionStateMutation>? proof = await ClearingProofAsync(drain.Value, cancellationToken).ConfigureAwait(false);
-        if (proof is null || await HasUnresolvedPersistenceAsync(root, claim.ScopeDigest, claim.OperationId, claim.KeyRef == "", cancellationToken).ConfigureAwait(false)) { return false; }
+        LifecycleV1 provedLifecycle = lifecycle.Value;
+        InvalidationDrainV1 provedDrain = drain.Value;
+        if (claim.KeyRef == "" && provedDrain.OperationId != claim.OperationId) { throw Mismatch(); }
+        bool cleared = await HasClearingProofAsync(drain.Value, cancellationToken).ConfigureAwait(false);
+        if (!cleared || await HasUnresolvedPersistenceAsync(root, claim.ScopeDigest, claim.OperationId, claim.KeyRef == "", cancellationToken).ConfigureAwait(false)) { return false; }
         ScopeKeyIndexSnapshot scope = await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false);
         ScopeIndexEntryV1[] entries = scope.Pages.SelectMany(p => p.Value.Entries).Where(e => claim.KeyRef == "" || (e.KeyRef == claim.KeyRef && e.DekVersion == claim.DekVersion)).ToArray();
         if (claim.KeyRef != "" && entries.Length == 0 && claim.Kind != "Delete") { throw Mismatch(); }
@@ -142,16 +145,17 @@ internal sealed class KeyLifecycleCoordinator
             if (changed == 256) { return false; }
             PayloadProtectionStateValue<ReconciliationV1> currentClaim = await _claims.RequireAsync(claim, cancellationToken).ConfigureAwait(false);
             lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
-            _ = await DrainAsync(root, lifecycle, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
+            drain = await DrainAsync(root, lifecycle, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
+            if (lifecycle.Value != provedLifecycle || drain.Value != provedDrain) { throw Mismatch(); }
             PayloadProtectionStateValue<WrappedDekV1> key = await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(claim.ScopeDigest, entry.KeyRef, entry.DekVersion), cancellationToken).ConfigureAwait(false);
             ValidateKey(identity, key.Value);
             scope = await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false);
             KekKeyIndexSnapshot inventory = await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.Value.BackendId), PayloadProtectionStateKeys.Digest(key.Value.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false);
             PayloadKeyIndexes.VerifyMembership(key.Value, scope, inventory);
-            proof = await ClearingProofAsync(drain.Value, cancellationToken).ConfigureAwait(false);
-            if (proof is null) { return false; }
+            // Exact acknowledgements are immutable and Cleared tombstones are monotonic. The
+            // already confirmed cutoff proof remains valid under this unchanged lifecycle/drain.
             List<PayloadProtectionStateMutation> mutations = [PayloadProtectionStateMutation.Compare(currentClaim), PayloadProtectionStateMutation.Compare(lifecycle),
-                PayloadProtectionStateMutation.Compare(drain), .. proof];
+                PayloadProtectionStateMutation.Compare(drain)];
             if (claim.Kind == "Delete")
             {
                 mutations.Add(new(PayloadProtectionStateCodec.KeyFor(key.Value), null, key.ETag));
@@ -169,18 +173,25 @@ internal sealed class KeyLifecycleCoordinator
         }
         // Re-enumerate both the scope and all applicable inventories before publishing an irreversible online result.
         scope = await _indexes.ReadScopeAsync(claim.ScopeDigest, cancellationToken).ConfigureAwait(false);
+        var finalInventories = new Dictionary<(string Backend, string Provider), KekKeyIndexSnapshot>();
         foreach (ScopeIndexEntryV1 entry in scope.Pages.SelectMany(p => p.Value.Entries).Where(e => claim.KeyRef == "" || (e.KeyRef == claim.KeyRef && e.DekVersion == claim.DekVersion)))
         {
             if (claim.Kind == "Delete" || entry.State != "Invalidated") { throw Mismatch(); }
             WrappedDekV1 key = (await RequiredAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(claim.ScopeDigest, entry.KeyRef, entry.DekVersion), cancellationToken).ConfigureAwait(false)).Value;
             ValidateKey(identity, key);
-            PayloadKeyIndexes.VerifyMembership(key, scope, await _indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.BackendId), PayloadProtectionStateKeys.Digest(key.ProviderKeyVersionId), cancellationToken).ConfigureAwait(false));
+            var address = (PayloadProtectionStateKeys.Digest(key.BackendId), PayloadProtectionStateKeys.Digest(key.ProviderKeyVersionId));
+            if (!finalInventories.TryGetValue(address, out KekKeyIndexSnapshot? inventory))
+            {
+                inventory = await _indexes.ReadKekAsync(address.Item1, address.Item2, cancellationToken).ConfigureAwait(false);
+                finalInventories.Add(address, inventory);
+            }
+            PayloadKeyIndexes.VerifyMembership(key, scope, inventory);
         }
         PayloadProtectionStateValue<ReconciliationV1> finalClaim = await _claims.RequireAsync(claim, cancellationToken).ConfigureAwait(false);
         lifecycle = await LifecycleAsync(identity, cancellationToken).ConfigureAwait(false);
         drain = await DrainAsync(root, lifecycle, lifecycle.Value.OperationId, cancellationToken).ConfigureAwait(false);
-        proof = await ClearingProofAsync(drain.Value, cancellationToken).ConfigureAwait(false);
-        if (proof is null || await HasUnresolvedPersistenceAsync(root, claim.ScopeDigest, claim.OperationId, claim.KeyRef == "", cancellationToken).ConfigureAwait(false)) { return false; }
+        if (lifecycle.Value != provedLifecycle || drain.Value != provedDrain) { throw Mismatch(); }
+        if (await HasUnresolvedPersistenceAsync(root, claim.ScopeDigest, claim.OperationId, claim.KeyRef == "", cancellationToken).ConfigureAwait(false)) { return false; }
         WorkCatalogSnapshot work = await _catalogs.ReadWorkAsync(root, cancellationToken).ConfigureAwait(false);
         PayloadProtectionStateValue<OperationV1> operation = await RequiredAsync<OperationV1>(PayloadProtectionStateKeys.Operation(claim.OperationId), cancellationToken).ConfigureAwait(false);
         if (operation.Value.ScopeDigest != claim.ScopeDigest || operation.Value.Operation != claim.Kind || operation.Value.KeyRef != claim.KeyRef || operation.Value.DekVersion != claim.DekVersion) { throw Mismatch(); }
@@ -188,38 +199,37 @@ internal sealed class KeyLifecycleCoordinator
         string terminal = scopeWide ? (claim.Kind == "Delete" ? "Deleted" : "Invalidated") : lifecycle.Value.State;
         PayloadProtectionStateValue<FenceV1> fence = await RequiredAsync<FenceV1>(PayloadProtectionStateKeys.Fence(root), cancellationToken).ConfigureAwait(false);
         if (fence.Value.TenantId != identity.TenantId || fence.Value.Domain != identity.Domain) { throw Mismatch(); }
-        List<PayloadProtectionStateMutation> final = [.. proof, PayloadProtectionStateMutation.Compare(drain),
+        List<PayloadProtectionStateMutation> final = [PayloadProtectionStateMutation.Compare(drain),
             PayloadProtectionStateMutation.Compare(fence),
             scopeWide ? PayloadProtectionStateMutation.Put(lifecycle.Value with { State = terminal, Epoch = checked(lifecycle.Value.Epoch + 1), ReasonCode = claim.Kind == "Delete" ? "domain-deleted" : "domain-invalidated", ObservedAtUtc = Now() }, lifecycle.ETag) : PayloadProtectionStateMutation.Compare(lifecycle),
             PayloadProtectionStateMutation.Put(operation.Value with { Phase = "Completed", Result = "Succeeded", ReasonCode = "none", UpdatedAtUtc = Now() }, operation.ETag),
             .. _catalogs.CompleteWork(work, finalClaim, claim with { Status = "Completed", ReasonCode = "none", UpdatedAtUtc = Now() }),
-            PayloadProtectionStateMutation.Put(Audit(identity, claim.OperationId, claim.Kind, lifecycle.Value.State, terminal, scopeWide ? checked(lifecycle.Value.Epoch + 1) : lifecycle.Value.Epoch, "Succeeded", "none", claim.Attempt, Elapsed(started), fenceEpoch: fence.Value.ApprovalEpoch))];
+            PayloadProtectionStateMutation.Put(Audit(identity, claim.OperationId, claim.Kind, lifecycle.Value.State, terminal, scopeWide ? checked(lifecycle.Value.Epoch + 1) : lifecycle.Value.Epoch, "Succeeded", "none", claim.Attempt, Elapsed(started), drain.Value.WorkflowId, fenceEpoch: fence.Value.ApprovalEpoch))];
         if (scope.Head is not null) { final.Add(PayloadProtectionStateMutation.Compare(scope.Head)); }
+        final.AddRange(finalInventories.Values.Select(inventory => PayloadProtectionStateMutation.Compare(inventory.Head!)));
         RequireCommit(await _store.CommitAsync(final, cancellationToken).ConfigureAwait(false));
         PayloadProtectionDiagnostics.LifecycleTransition();
         diagnostic.Complete();
         return true;
     }
 
-    private async ValueTask<IReadOnlyList<PayloadProtectionStateMutation>?> ClearingProofAsync(InvalidationDrainV1 drain, CancellationToken token)
+    private async ValueTask<bool> HasClearingProofAsync(InvalidationDrainV1 drain, CancellationToken token)
     {
         MemberCatalogSnapshot members = await _catalogs.ReadMembersAsync(drain.TenantDomainDigest, token).ConfigureAwait(false);
         if (members.Head.Value.EntryCount < drain.MemberCutoff) { throw Mismatch(); }
-        var proof = new List<PayloadProtectionStateMutation>();
+        // Permanent immutable acknowledgements and monotonic tombstones need no unchanged-value
+        // rewrites. Rewriting them would grow every indexed mutation and invalidate other readers.
         foreach (PayloadProtectionStateValue<MemberPageV1> page in members.Pages)
         {
-            bool compared = false;
             foreach (MemberEntryV1 member in page.Value.Entries.Where(e => e.Ordinal <= drain.MemberCutoff))
             {
-                if (!compared) { proof.Add(PayloadProtectionStateMutation.Compare(page)); compared = true; }
                 if (member.State == "Cleared") { continue; }
                 PayloadProtectionStateValue<CacheClearAckV1>? ack = await PayloadOperationBudget.ReadAsync<CacheClearAckV1>(_store, PayloadProtectionStateKeys.ClearAck(drain.ScopeDigest, drain.LifecycleEpoch, member.InstanceId), token).ConfigureAwait(false);
-                if (ack is null) { return null; }
+                if (ack is null) { return false; }
                 if (ack.Value.ScopeDigest != drain.ScopeDigest || ack.Value.OperationId != drain.OperationId || ack.Value.LifecycleEpoch != drain.LifecycleEpoch || ack.Value.InstanceId != member.InstanceId) { throw Mismatch(); }
-                proof.Add(PayloadProtectionStateMutation.Compare(ack));
             }
         }
-        return proof;
+        return true;
     }
     private async ValueTask<bool> HasUnresolvedPersistenceAsync(string root, string scope, string ownOperation, bool scopeWide, CancellationToken token)
     {

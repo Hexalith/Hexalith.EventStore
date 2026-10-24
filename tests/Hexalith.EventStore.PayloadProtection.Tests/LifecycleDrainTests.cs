@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 8-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 8-10, 13-15; lifecycle amendment sections 1-8.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -24,6 +24,8 @@ public sealed class LifecycleDrainTests
         waits.ShouldBe(1);
         (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)))!.Value.State.ShouldBe("Invalidating");
         await lifecycle.AcknowledgeAsync(fixture.Identity, Operation);
+        fixture.Clock.Advance(TimeSpan.FromSeconds(30));
+        claim = (await claims.TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeTrue();
         waits.ShouldBe(2); // A resumed drain never reuses an earlier wait or a wall-clock timestamp.
         LifecycleV1 terminal = (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)))!.Value;
@@ -76,6 +78,8 @@ public sealed class LifecycleDrainTests
         await lifecycle.AcknowledgeAsync(fixture.Identity, Operation);
         var claims = new PayloadReconciliationClaims(fixture.Store, fixture.Clock);
         ReconciliationV1 stale = (await claims.TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
+        (await claims.TryClaimAsync(new(Operation, fixture.Scope))).ShouldBeNull();
+        fixture.Clock.Advance(TimeSpan.FromSeconds(90));
         ReconciliationV1 replacement = (await claims.TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
         replacement.Attempt.ShouldBe(stale.Attempt + 1);
         await Should.ThrowAsync<PayloadProtectionStateException>(() => lifecycle.ResumeAsync(fixture.Identity, stale).AsTask());
@@ -144,6 +148,30 @@ public sealed class LifecycleDrainTests
         await lifecycle.AcknowledgeAsync(fixture.Identity, Operation);
         ReconciliationV1 claim = (await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeFalse();
+        (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, write.Completion!.KeyReference, 1)))!.Value.State.ShouldBe("Reserved");
+    }
+
+    [Fact]
+    public async Task ReusedImmutableClearingProofCannotOutliveItsExactLifecycleObservation()
+    {
+        var fixture = await ReservationTestFixture.CreateAsync();
+        var write = await fixture.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
+        await fixture.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.NotPersisted);
+        await using var cache = new PayloadKeyCache(timeProvider: fixture.Clock); var lifecycle = Coordinator(fixture, cache);
+        await lifecycle.BeginAsync(fixture.Identity, Approval(fixture.Identity), Operation, 2);
+        await lifecycle.AcknowledgeAsync(fixture.Identity, Operation);
+        var claim = (await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(Operation, fixture.Scope)))!.Value;
+        bool proofRead = false; bool raced = false;
+        fixture.Store.Reading = key =>
+        {
+            if (key == PayloadProtectionStateKeys.ClearAck(fixture.Scope, 2, fixture.Leases.InstanceId)) { proofRead = true; }
+            if (!proofRead || key != PayloadProtectionStateKeys.IndexHead(fixture.Scope)) { return; }
+            fixture.Store.Reading = null; raced = true;
+            var current = fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)).GetAwaiter().GetResult()!;
+            fixture.Store.CommitAsync([PayloadProtectionStateMutation.Put(current.Value with { ObservedAtUtc = PayloadProtectionStateCodec.Timestamp(fixture.Clock.GetUtcNow().AddSeconds(1)) }, current.ETag)]).GetAwaiter().GetResult().ShouldBe(PayloadStateCommitResult.Committed);
+        };
+        await Should.ThrowAsync<PayloadProtectionStateException>(() => lifecycle.ResumeAsync(fixture.Identity, claim).AsTask());
+        raced.ShouldBeTrue();
         (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, write.Completion!.KeyReference, 1)))!.Value.State.ShouldBe("Reserved");
     }
 

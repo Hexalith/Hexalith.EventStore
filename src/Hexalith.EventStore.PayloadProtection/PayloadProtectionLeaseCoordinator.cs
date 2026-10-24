@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 9-10, 13 and 15; amendment sections 1-4.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13 and 15; amendment sections 1-4.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -45,6 +45,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
         long started = _clock.GetTimestamp();
         PayloadProtectionStateValue<DeploymentGenerationV1> generation = await DeploymentAsync(identity, cancellationToken).ConfigureAwait(false);
         MemberCatalogSnapshot members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
+        if (_store is DaprPayloadProtectionStateStore) { PayloadProtectionOperationalLimits.RequireClearingCapacity(members, InstanceId, append: true); }
         MemberEntryV1? existing = members.Pages.SelectMany(p => p.Value.Entries).SingleOrDefault(e => e.InstanceId == InstanceId);
         if (existing is not null) { throw Mismatch(); }
         CapabilityLeaseV1 capability = Capability(root, generation.Value.Generation);
@@ -181,6 +182,7 @@ internal sealed class PayloadProtectionLeaseCoordinator
     private async ValueTask<PayloadProtectionStateValue<MemberPageV1>> ServingMemberAsync(string root, ulong generation, CancellationToken cancellationToken)
     {
         MemberCatalogSnapshot members = await _catalogs.ReadMembersAsync(root, cancellationToken).ConfigureAwait(false);
+        if (_store is DaprPayloadProtectionStateStore) { PayloadProtectionOperationalLimits.RequireClearingCapacity(members, InstanceId, append: false); }
         PayloadProtectionStateValue<MemberPageV1> page = members.Pages.SingleOrDefault(p => p.Value.Entries.Any(e => e.InstanceId == InstanceId)) ?? throw Mismatch();
         MemberEntryV1 member = page.Value.Entries.Single(e => e.InstanceId == InstanceId);
         if (member.State != "Serving" || member.Generation != generation) { throw Mismatch(); }

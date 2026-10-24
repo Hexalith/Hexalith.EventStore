@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10 and 15; amendment sections 1-4.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10 and 15; amendment sections 1-4.
 namespace Hexalith.EventStore.PayloadProtection.Tests;
 
 /// <summary>Exact catalog/cache bounds prevent silent eviction of durable member or work authority.</summary>
@@ -28,6 +28,16 @@ public sealed class LifecycleCapacityTests
         Should.Throw<PayloadProtectionStateException>(() => catalogs.AddWork(workSnapshot, new(65537.ToString("D26"), scope)));
         memberPages.Sum(p => p.Value.Entries.Length).ShouldBe(65536); workPages.Sum(p => p.Value.Entries.Length).ShouldBe(65536);
         membersSnapshot.Head.Value.Revision.ShouldBe(1ul); workSnapshot.Head.Value.Revision.ShouldBe(1ul);
+        // Permanent Cleared tombstones add catalog bytes, without one acknowledgement read per incarnation.
+        PayloadProtectionOperationalLimits.RequireClearingCapacity(membersSnapshot, "01J00000000000000000000999", append: false);
+        var unclearedHead = membersHead with { PageCount = 16, EntryCount = 4096 };
+        var unclearedPages = memberPages.Take(16).Select(page =>
+        {
+            var value = page.Value with { Entries = page.Value.Entries.Select(member => member with { State = "Serving" }).ToArray() };
+            return new PayloadProtectionStateValue<MemberPageV1>(value, page.ETag, PayloadProtectionStateCodec.Encode(value));
+        }).ToArray();
+        var uncleared = new MemberCatalogSnapshot(new(unclearedHead, "1", PayloadProtectionStateCodec.Encode(unclearedHead)), unclearedPages);
+        Should.Throw<PayloadProtectionStateException>(() => PayloadProtectionOperationalLimits.RequireClearingCapacity(uncleared, "01J00000000000000000000999", append: false));
     }
 
     [Fact]

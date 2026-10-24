@@ -6,4 +6,10 @@ namespace Hexalith.EventStore.PayloadProtection.Tests;
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(PolicyLifecyclePayload))]
 [JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(ChangingGetterPayload))]
+[JsonSerializable(typeof(RuntimeSubstitutionPayload))]
+[JsonSerializable(typeof(WholeObjectSelectionPayload))]
+[JsonSerializable(typeof(OversizedPolicyPayload))]
+[JsonSerializable(typeof(OversizedScalarPayload))]
+[JsonSerializable(typeof(PartySnapshotState))]
 internal partial class PolicyLifecycleJsonContext : JsonSerializerContext;

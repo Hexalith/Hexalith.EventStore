@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10.6 and 15; amendment sections 2-4.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.6 and 15; amendment sections 2-4; approved review correction section 8.
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -8,20 +8,24 @@ internal sealed class PayloadOperationBudget : IDisposable
 {
     private static readonly AsyncLocal<PayloadOperationBudget?> Current = new();
     private readonly PayloadOperationBudget? _previous;
+    private readonly PayloadOperationBudget? _parent;
     private readonly TimeProvider _clock;
     private readonly long _started;
     private readonly TimeSpan _duration;
     private readonly CancellationTokenSource _deadline;
     private readonly CancellationTokenSource _linked;
+    private long _readBytes;
+    private int _readOperations;
 
-    /// <summary>Starts a bounded phase, inheriting its enclosing deadline when present.</summary>
-    internal PayloadOperationBudget(TimeProvider clock, CancellationToken token, TimeSpan? duration = null)
+    /// <summary>Starts a bounded phase, inheriting its enclosing deadline unless explicitly isolated for failure cleanup.</summary>
+    internal PayloadOperationBudget(TimeProvider clock, CancellationToken token, TimeSpan? duration = null, bool independent = false)
     {
         _previous = Current.Value;
+        _parent = independent ? null : _previous;
         _clock = clock; _started = clock.GetTimestamp(); _duration = duration ?? TimeSpan.FromSeconds(10);
         _deadline = new(_duration, clock);
-        _linked = _previous is null ? CancellationTokenSource.CreateLinkedTokenSource(token, _deadline.Token)
-            : CancellationTokenSource.CreateLinkedTokenSource(token, _deadline.Token, _previous.Token);
+        _linked = _parent is null ? CancellationTokenSource.CreateLinkedTokenSource(token, _deadline.Token)
+            : CancellationTokenSource.CreateLinkedTokenSource(token, _deadline.Token, _parent.Token);
         Current.Value = this;
     }
     /// <summary>Gets the cancellation token shared by nested I/O.</summary>
@@ -46,10 +50,39 @@ internal sealed class PayloadOperationBudget : IDisposable
             throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable);
         }
     }
+    /// <summary>Bounds trusted evidence callbacks that may ignore cancellation and observes abandoned completion.</summary>
+    internal static async ValueTask<T> AwaitAsync<T>(Func<CancellationToken, ValueTask<T>> request, CancellationToken token)
+    {
+        RequireCurrent();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, Current.Value?.Token ?? token);
+        Task<T> pending = request(linked.Token).AsTask();
+        try
+        {
+            T value = await pending.WaitAsync(linked.Token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested(); RequireCurrent();
+            return value;
+        }
+        catch (OperationCanceledException)
+        {
+            _ = ObserveAsync(pending);
+            token.ThrowIfCancellationRequested();
+            throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable);
+        }
+    }
+    /// <summary>Charges cumulative qualified transport reads to every enclosing phase.</summary>
+    internal static void ChargeRead(int bytes, bool operation = false)
+    {
+        for (PayloadOperationBudget? budget = Current.Value; budget is not null; budget = budget._parent)
+        {
+            if (Interlocked.Add(ref budget._readBytes, bytes) > PayloadProtectionOperationalLimits.ReadBytes
+                || (operation ? Interlocked.Increment(ref budget._readOperations) : budget._readOperations) > PayloadProtectionOperationalLimits.ReadOperations)
+            { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }
+        }
+    }
     /// <summary>Rejects a result returned after any enclosing monotonic deadline, even when a dependency ignored cancellation.</summary>
     internal static void RequireCurrent()
     {
-        for (PayloadOperationBudget? budget = Current.Value; budget is not null; budget = budget._previous)
+        for (PayloadOperationBudget? budget = Current.Value; budget is not null; budget = budget._parent)
         {
             if (budget._deadline.IsCancellationRequested || budget._clock.GetElapsedTime(budget._started) >= budget._duration)
             { throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }

@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10.6-10.7 and 15.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10.6-10.7 and 15; approved review correction section 8.
 using System.Security.Cryptography;
 
 namespace Hexalith.EventStore.PayloadProtection;
@@ -113,10 +113,7 @@ internal sealed class PayloadBackendExecutor(TimeProvider? timeProvider = null,
                 }
                 else
                 {
-                    if (failure is PayloadBackendFailure.Unavailable or PayloadBackendFailure.Ambiguous)
-                    {
-                        state.OpenInterval = TimeSpan.FromSeconds(Math.Min(300, state.OpenInterval.TotalSeconds * 2));
-                    }
+                    state.OpenInterval = TimeSpan.FromSeconds(Math.Min(300, state.OpenInterval.TotalSeconds * 2));
                     state.OpenedAt = _clock.GetTimestamp();
                 }
                 return;

@@ -6119,3 +6119,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-folders-12-2-remaining-gates.md`
   summary: Resolve Domain historical-candidate setup timing sensitivity under the existing100ms control-read deadline.
   evidence: Latest isolated-snapshot domain-full.xml failed RegistrationCostDoesNotGrowWithHistoricalPages during pre-registration of520 historical candidates at ProcessPublicationTests.cs:741, via ProcessCheckpointStore ReadPageAsync and ProcessReadDeadline.cs:58. The measured read-cost assertion was never reached; unchanged focused execution passed. Scheduling delay versus slow read execution remains unproven and no limit or assertion was changed.
+
+- source_spec: `spec-8-5-policy-and-key-lifecycle-mechanics.md`
+  summary: Preserve warning-free source compatibility for the concurrent query failure-reason aliases or obtain explicit compatibility-change authorization.
+  evidence: Review pass 2 P2-B9; QueryAdapterFailureReason adds Obsolete to the historical constants, so existing callers with warnings as errors fail with CS0618. The source last changed in external commit f26ecc6d215da0d86325343371cf76a5c74483e2 and is outside the payload-protection implementation.

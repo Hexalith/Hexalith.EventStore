@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; PF-02; amendment sections 2-4 and 7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; PF-02; amendment sections 2-4 and 7.
 using System.Diagnostics;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
@@ -53,6 +53,7 @@ public sealed class PayloadProtectionDrainLiveTests(PayloadProtectionDaprFixture
         (await fixture.Store.ReadAsync<InvalidationDrainV1>(PayloadProtectionStateKeys.Drain(scope, operation), token))!.Value.ShouldBe(drain);
         var claims = new PayloadReconciliationClaims(fixture.Store);
         ReconciliationV1 first = (await claims.TryClaimAsync(new(operation, scope), token))!.Value;
+        (await claims.TryClaimAsync(new(operation, scope), token)).ShouldBeNull();
         long started = Stopwatch.GetTimestamp();
         (await lifecycle.ResumeAsync(identity, first, token)).ShouldBeFalse();
         Stopwatch.GetElapsedTime(started).ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(60));
@@ -62,6 +63,9 @@ public sealed class PayloadProtectionDrainLiveTests(PayloadProtectionDaprFixture
         (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateCodec.KeyFor(key), token))!.Value.State.ShouldBe("Active");
         (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(scope), token))!.Value.State.ShouldBe("Invalidating");
         (await catalogs.ReadWorkAsync(root, token)).Head.Value.EntryCount.ShouldBe(1u);
+        (await claims.TryClaimAsync(new(operation, scope), token)).ShouldBeNull();
+        DateTimeOffset due = PayloadProtectionStateCodec.ParseTimestamp(first.NotBeforeUtc);
+        while (due > DateTimeOffset.UtcNow) { await Task.Delay(due - DateTimeOffset.UtcNow, token); }
         ReconciliationV1 replacement = (await claims.TryClaimAsync(new(operation, scope), token))!.Value;
         replacement.Attempt.ShouldBe(first.Attempt + 1);
         await Should.ThrowAsync<PayloadProtectionStateException>(() => lifecycle.ResumeAsync(identity, first, token).AsTask());

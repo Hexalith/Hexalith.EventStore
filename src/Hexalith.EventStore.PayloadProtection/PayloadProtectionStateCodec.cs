@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base section 10.2; amendment sections 1-2 and 5-6.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base section 10.2; amendment sections 1-2 and 5-6; approved review correction section 8.
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -219,6 +219,7 @@ internal static class PayloadProtectionStateCodec
 
         switch (profile)
         {
+            case "shaOrEmpty": if (textValue.Length == 0) { break; } goto case "sha";
             case "sha": _ = PayloadProtectionStateKeys.Sha(textValue); break;
             case "sha1": if (!PayloadProtectionStateKeys.IsHex(textValue, 40)) { throw new PayloadProtectionFormatException(); } break;
             case "fingerprint": if (!PayloadProtectionStateKeys.IsHex(textValue, 16)) { throw new PayloadProtectionFormatException(); } break;
@@ -278,6 +279,7 @@ internal static class PayloadProtectionStateCodec
                 if (lease.SpecDigest != PayloadProtectionStateKeys.AuthorityDigest || lease.ReadFormats.Length == 0 || lease.WriteModes.Length == 0) { throw new PayloadProtectionFormatException(); }
                 break;
             case ReconciliationV1 work:
+                if ((work.Kind == "Rewrap") != (work.TargetProviderVersionDigest.Length != 0)) { throw new PayloadProtectionFormatException(); }
                 if ((work.KeyRef.Length == 0) != (work.DekVersion == 0)
                     || (work.KeyRef.Length == 0 && work.Kind is not ("Invalidate" or "Delete"))) { throw new PayloadProtectionFormatException(); }
                 break;

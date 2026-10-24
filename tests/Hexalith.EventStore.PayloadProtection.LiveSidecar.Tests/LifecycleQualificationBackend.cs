@@ -6,6 +6,8 @@ namespace Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests;
 internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, IDisposable
 {
     private readonly Dictionary<string, byte[]> _keys;
+    /// <summary>Gets or sets a deliberately incorrect provider selection for negative tests only.</summary>
+    internal string? WrapVersionOverride { get; set; }
     /// <summary>Creates independent test key identities, preserving environment-wide inventory ownership.</summary>
     internal LifecycleQualificationBackend(string qualifier)
     {
@@ -24,6 +26,8 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
     internal string CurrentVersion { get; set; }
     /// <summary>Gets or sets an unobserved successful wrap response.</summary>
     internal bool AmbiguousNextWrap { get; set; }
+    /// <summary>Gets or sets an injected provider-verification boundary, including a cancellation-ignoring response.</summary>
+    internal Func<string, CancellationToken, ValueTask>? Unwrapping { get; set; }
     /// <summary>Gets the wrap count, proving recovery never blindly repeats the mutation.</summary>
     internal int WrapCount { get; private set; }
     /// <inheritdoc/>
@@ -33,34 +37,43 @@ internal sealed class LifecycleQualificationBackend : PayloadProtectionBackend, 
     /// <inheritdoc/>
     internal override ValueTask<PayloadBackendResult> WrapAsync(string operationId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested(); WrapCount++;
-        if (_outcomes.Count >= 256) { throw new InvalidOperationException("Test backend capacity exceeded."); }
-        byte[] wrapped = new byte[60]; RandomNumberGenerator.Fill(wrapped.AsSpan(0, 12));
-        using (var aes = new AesGcm(_keys[CurrentVersion], 16)) { aes.Encrypt(wrapped.AsSpan(0, 12), dek.Span, wrapped.AsSpan(28), wrapped.AsSpan(12, 16)); }
-        _outcomes.Add(operationId, (CurrentVersion, wrapped.ToArray()));
-        if (AmbiguousNextWrap) { AmbiguousNextWrap = false; CryptographicOperations.ZeroMemory(wrapped); return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous)); }
-        Outputs.Add(wrapped);
-        return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, wrapped, CurrentVersion));
+        return WrapExactAsync(operationId, CurrentVersion, dek, cancellationToken);
     }
     /// <inheritdoc/>
-    internal override ValueTask<PayloadBackendResult> UnwrapAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> wrappedDek, CancellationToken cancellationToken)
+    internal override ValueTask<PayloadBackendResult> WrapExactAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested(); WrapCount++;
+        providerKeyVersionId = WrapVersionOverride ?? providerKeyVersionId;
+        if (_outcomes.Count >= 1024) { throw new InvalidOperationException("Test backend capacity exceeded."); }
+        byte[] wrapped = new byte[60]; RandomNumberGenerator.Fill(wrapped.AsSpan(0, 12));
+        using (var aes = new AesGcm(_keys[providerKeyVersionId], 16)) { aes.Encrypt(wrapped.AsSpan(0, 12), dek.Span, wrapped.AsSpan(28), wrapped.AsSpan(12, 16)); }
+        _outcomes.Add(operationId, (providerKeyVersionId, wrapped.ToArray()));
+        if (AmbiguousNextWrap) { AmbiguousNextWrap = false; CryptographicOperations.ZeroMemory(wrapped); return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous)); }
+        Outputs.Add(wrapped);
+        return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, wrapped, providerKeyVersionId));
+    }
+    /// <inheritdoc/>
+    internal override async ValueTask<PayloadBackendResult> UnwrapAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> wrappedDek, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         byte[] dek = new byte[32];
+        byte[] ownedWrapped = wrappedDek.ToArray();
         try
         {
+            if (Unwrapping is not null) { await Unwrapping(operationId, cancellationToken); }
             using var aes = new AesGcm(_keys[providerKeyVersionId], 16);
-            aes.Decrypt(wrappedDek.Span[..12], wrappedDek.Span[28..], wrappedDek.Span.Slice(12, 16), dek);
+            aes.Decrypt(ownedWrapped.AsSpan(0, 12), ownedWrapped.AsSpan(28), ownedWrapped.AsSpan(12, 16), dek);
             Outputs.Add(dek);
-            return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, dek, providerKeyVersionId));
+            return new PayloadBackendResult(PayloadBackendFailure.None, dek, providerKeyVersionId);
         }
         catch { CryptographicOperations.ZeroMemory(dek); throw; }
+        finally { CryptographicOperations.ZeroMemory(ownedWrapped); }
     }
     /// <inheritdoc/>
     internal override ValueTask<PayloadBackendResult> ReconcileAsync(string operationId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_outcomes.TryGetValue(operationId, out var outcome)) { return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Ambiguous)); }
+        if (!_outcomes.TryGetValue(operationId, out var outcome)) { return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.Missing)); }
         byte[] output = outcome.Wrapped.ToArray(); Outputs.Add(output);
         return ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, output, outcome.Provider));
     }

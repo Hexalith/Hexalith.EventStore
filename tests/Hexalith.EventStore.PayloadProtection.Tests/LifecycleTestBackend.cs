@@ -26,6 +26,11 @@ internal sealed class LifecycleTestBackend : PayloadProtectionBackend
         return Wrap?.Invoke(operationId, dek, cancellationToken) ?? ValueTask.FromResult(new PayloadBackendResult(PayloadBackendFailure.None, new byte[32], "fixture:version-01"));
     }
     /// <summary>Rejects accidental use outside explicitly injected requests.</summary>
+    internal override ValueTask<PayloadBackendResult> WrapExactAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> dek, CancellationToken cancellationToken)
+        => WrapExact?.Invoke(operationId, providerKeyVersionId, dek, cancellationToken) ?? WrapAsync(operationId, dek, cancellationToken);
+    /// <summary>Gets or sets an exact target wrap boundary hook.</summary>
+    internal Func<string, string, ReadOnlyMemory<byte>, CancellationToken, ValueTask<PayloadBackendResult>>? WrapExact { get; set; }
+    /// <summary>Unwraps the recorded fixture version.</summary>
     internal override ValueTask<PayloadBackendResult> UnwrapAsync(string operationId, string providerKeyVersionId, ReadOnlyMemory<byte> wrappedDek, CancellationToken cancellationToken)
     {
         UnwrapCalls++;

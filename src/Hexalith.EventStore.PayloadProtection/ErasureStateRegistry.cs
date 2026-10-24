@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 9-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 9-10, 13-15; lifecycle amendment sections 1-8.
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -41,6 +41,7 @@ internal sealed class ErasureStateRegistry
     internal async ValueTask<PayloadErasureStateResult> ObserveAsync(AggregateIdentity identity, string? keyRef = null,
         uint? version = null, CancellationToken cancellationToken = default)
     {
+        using var budget = new PayloadOperationBudget(TimeProvider.System, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (!_providers.TryGetValue(identity.Domain, out IErasureStateProvider? provider))
         {
@@ -50,7 +51,7 @@ internal sealed class ErasureStateRegistry
         PayloadErasureStateResult result;
         try
         {
-            result = await provider.GetStateAsync(new(identity, keyRef, version), cancellationToken).ConfigureAwait(false);
+            result = await PayloadOperationBudget.AwaitAsync(ct => provider.GetStateAsync(new(identity, keyRef, version), ct), cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch { cancellationToken.ThrowIfCancellationRequested(); throw new PayloadProtectionStateException(UnreadableProtectedDataReason.ProviderUnavailable); }

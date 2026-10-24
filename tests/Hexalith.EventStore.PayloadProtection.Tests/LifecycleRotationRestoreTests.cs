@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 8-10, 13-15; lifecycle amendment sections 1-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 8-10, 13-15; lifecycle amendment sections 1-8.
 using System.Security.Cryptography;
 using Hexalith.EventStore.Contracts.Security;
 
@@ -63,8 +63,8 @@ public sealed class LifecycleRotationRestoreTests
         WrappedDekV1 backup = (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, write.Completion!.KeyReference, 1)))!.Value;
         await fixture.Store.CommitAsync([PayloadProtectionStateMutation.Put(before.Value with { State = "Deleted", Epoch = 2, ReasonCode = "domain-deleted" }, before.ETag)]);
         RestoredBackupAdmissionResult? recorded = null;
-        var admission = new PayloadRestoreAdmission(fixture.Store, new([new("tenant-a", "parties")]), fixture.Backend, new(fixture.Clock), _ => true,
-            (result, _) => { recorded = result; return ValueTask.FromResult(result); }, fixture.Clock);
+        var admission = new PayloadRestoreAdmission(fixture.Store, new([new("tenant-a", "parties")]), fixture.Backend, new(fixture.Clock), fixture.Leases, _ => true,
+            async (result, conditions, ct) => { conditions.ShouldBeEmpty(); recorded = result; await ValueTask.CompletedTask; return result; }, fixture.Clock);
         var request = new RestoredBackupAdmissionRequest("01J00000000000000000000302", "tenant-a", "parties", "party-01", null, null,
             "01J00000000000000000000303", fixture.Clock.GetUtcNow(), fixture.Clock.GetUtcNow(), 1, KeyReferencePolicy.NoKeyReference, null, null, null, "fixture-actor");
         RestoredBackupAdmissionResult result = await admission.AdmitAsync(request, backupFence, before.Value, [backup]);

@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base PF-02/sections 10 and 13-15; amendment sections 3-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base PF-02/sections 10 and 13-15; amendment sections 3-7.
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -54,7 +54,13 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         WrappedDekV1 before = await KeyAsync(env, write.Completion!, token);
         before.State.ShouldBe("Reserved");
         (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(write.Completion!.OperationId), token))!.Value.Phase.ShouldBe("Ambiguous");
-        using var worker = new PayloadProtectionReconciler(fixture.Store, env.Roots, env.Lifecycle, env.Backend.BackendId, _ => true,
+        // Simulated engine restart: fresh incarnation, registration, cache, coordinators and worker; only durable Dapr/provider-service state survives.
+        var restartedLeases = new PayloadProtectionLeaseCoordinator(fixture.Store, env.Roots, env.Profile);
+        restartedLeases.InstanceId.ShouldNotBe(env.Leases.InstanceId);
+        await restartedLeases.RegisterAsync(env.Identity, token);
+        await using var restartedCache = new PayloadKeyCache();
+        var restartedLifecycle = new KeyLifecycleCoordinator(fixture.Store, env.Roots, restartedLeases, restartedCache, env.Backend.BackendId, _ => true, "qualification-actor");
+        using var worker = new PayloadProtectionReconciler(fixture.Store, env.Roots, restartedLifecycle, env.Backend.BackendId, _ => true,
             "qualification-actor", persistence: new LifecycleQualificationEvidence(write.Completion.OperationId));
         (await worker.RunPassAsync(token)).ShouldBe(1);
         WrappedDekV1 active = await KeyAsync(env, write.Completion, token); active.State.ShouldBe("Active");
@@ -65,7 +71,7 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         (await fixture.Store.ReadAsync<ReconciliationV1>(PayloadProtectionStateKeys.Reconciliation(active.CreatingOperationId), token))!.Value.Status.ShouldBe("Completed");
         (await worker.RunPassAsync(token)).ShouldBe(0);
         env.Backend.WrapCount.ShouldBe(1);
-        await AssertReadableAsync(env, write.Result.PayloadBytes, token);
+        await AssertReadableAsync(env, write.Result.PayloadBytes, token, restartedLeases, restartedCache);
         foreach (byte[] output in env.Backend.Outputs) { output.ShouldAllBe(b => b == 0); }
     }
 
@@ -86,8 +92,13 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         (await KeyAsync(env, write.Completion, token)).State.ShouldBe("RewrapPending");
         (await new PayloadProtectionCatalogs(fixture.Store).ReadWorkAsync(env.Root, token)).Head.Value.EntryCount.ShouldBe(1u);
         // A new worker reconstructs the stable operation from its durable catalog and increasing claim.
-        using var worker = new PayloadProtectionReconciler(fixture.Store, env.Roots, env.Lifecycle, env.Backend.BackendId, _ => true,
-            "qualification-actor", rotation: new(fixture.Store, env.Roots, env.Leases, env.Backend, new(), _ => true, "qualification-actor"));
+        var restartedLeases = new PayloadProtectionLeaseCoordinator(fixture.Store, env.Roots, env.Profile);
+        await restartedLeases.RegisterAsync(env.Identity, token);
+        restartedLeases.InstanceId.ShouldNotBe(env.Leases.InstanceId);
+        await using var restartedCache = new PayloadKeyCache();
+        var restartedLifecycle = new KeyLifecycleCoordinator(fixture.Store, env.Roots, restartedLeases, restartedCache, env.Backend.BackendId, _ => true, "qualification-actor");
+        using var worker = new PayloadProtectionReconciler(fixture.Store, env.Roots, restartedLifecycle, env.Backend.BackendId, _ => true,
+            "qualification-actor", rotation: new(fixture.Store, env.Roots, restartedLeases, env.Backend, new(), _ => true, "qualification-actor"));
         (await worker.RunPassAsync(token)).ShouldBe(1);
         WrappedDekV1 rotated = await KeyAsync(env, write.Completion, token);
         rotated.State.ShouldBe("Active"); rotated.ProviderKeyVersionId.ShouldBe(env.Backend.CurrentVersion);
@@ -96,7 +107,7 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         (await rotation.VerifyInventoryAsync(env.Backend.NewVersion, token)).Head!.Value.EntryCount.ShouldBe(1ul);
         (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(rewrap), token))!.Value.Phase.ShouldBe("Completed");
         env.Backend.WrapCount.ShouldBe(2); write.Result.PayloadBytes.ShouldBe(immutable);
-        await AssertReadableAsync(env, immutable, token);
+        await AssertReadableAsync(env, immutable, token, restartedLeases, restartedCache);
         foreach (byte[] output in env.Backend.Outputs) { output.ShouldAllBe(b => b == 0); }
     }
 
@@ -106,6 +117,9 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         CancellationToken token = timeout.Token;
         await using var env = await LifecycleQualificationEnvironment.CreateAsync(fixture.Store, "tenant-generation", token);
+        var protectedWrite = await env.Reservations.ProtectEventAsync(Plain(), ["/secret"], Context(env), token);
+        await env.Reservations.AcquireCompletionAsync(protectedWrite.Completion!, token);
+        await env.Reservations.CompleteAsync(protectedWrite.Completion!, PayloadProtectionPersistenceOutcome.Persisted, token);
         var deployments = new PayloadProtectionDeploymentCoordinator(fixture.Store, env.Roots);
         await deployments.CloseAsync(env.Identity, 1, token);
         await Should.ThrowAsync<PayloadProtectionStateException>(() => env.Leases.RenewAsync(env.Identity, token).AsTask());
@@ -119,6 +133,12 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         await Should.ThrowAsync<PayloadProtectionStateException>(() => deployments.AdvanceFenceAsync(env.Identity, successor, token).AsTask());
         var newProcess = new PayloadProtectionLeaseCoordinator(fixture.Store, env.Roots, env.Profile);
         await newProcess.RegisterAsync(env.Identity, token);
+        original.HighestWrittenFormat.ShouldBe("V2"); original.HighestWrittenEpoch.ShouldBeGreaterThan(0ul);
+        foreach (FenceV1 regressed in new[] { successor with { HighestWrittenEpoch = original.HighestWrittenEpoch - 1 }, successor with { HighestWrittenFormat = "V1" } })
+        {
+            await Should.ThrowAsync<PayloadProtectionStateException>(() => deployments.AdvanceFenceAsync(env.Identity, regressed, token).AsTask());
+            (await fixture.Store.ReadAsync<FenceV1>(PayloadProtectionStateKeys.Fence(env.Root), token))!.Value.ShouldBe(original);
+        }
         await deployments.AdvanceFenceAsync(env.Identity, successor, token);
         FenceV1 current = (await fixture.Store.ReadAsync<FenceV1>(PayloadProtectionStateKeys.Fence(env.Root), token))!.Value;
         current.ShouldBe(successor); current.HighestWrittenEpoch.ShouldBe(original.HighestWrittenEpoch);
@@ -140,17 +160,40 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         FenceV1 fence = (await fixture.Store.ReadAsync<FenceV1>(PayloadProtectionStateKeys.Fence(env.Root), token))!.Value;
         PayloadProtectionStateValue<LifecycleV1> lifecycle = (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(env.Scope), token))!;
         var decisions = new List<RestoredBackupAdmissionResult>();
-        var admission = new PayloadRestoreAdmission(fixture.Store, env.Roots, env.Backend, new(), _ => true,
-            (decision, _) => { decisions.Add(decision); return ValueTask.FromResult(decision); });
+        var admission = new PayloadRestoreAdmission(fixture.Store, env.Roots, env.Backend, new(), env.Leases, _ => true,
+            async (decision, conditions, ct) =>
+            {
+                var audit = new PayloadProtectionAuditRecord(decision.AdmissionId, decision.AdmissionId, decision.AdmissionId, null,
+                    env.Identity.TenantId, env.Identity.Domain, null, "Reconcile", null, null, lifecycle.Value.Epoch, fence.ApprovalEpoch,
+                    env.Backend.BackendId, "v2", null, null, 1, 0, decision.State == RestoredBackupAdmissionState.Accepted ? "Succeeded" : "Failed",
+                    decision.State == RestoredBackupAdmissionState.Accepted ? "none" : "consistency-mismatch", "qualification-actor", PayloadProtectionStateCodec.Timestamp(DateTimeOffset.UtcNow));
+                (await fixture.Store.CommitAsync([.. conditions, PayloadProtectionStateMutation.Put(audit)], ct)).ShouldBe(PayloadStateCommitResult.Committed);
+                decisions.Add(decision); return decision;
+            });
         var request = new RestoredBackupAdmissionRequest("01J00000000000000000000504", env.Identity.TenantId, env.Identity.Domain, env.Identity.AggregateId,
             null, null, "01J00000000000000000000505", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 1, KeyReferencePolicy.NoKeyReference, null, null, null, "qualification-actor");
         (await admission.AdmitAsync(request, fence, lifecycle.Value, [backup], token)).State.ShouldBe(RestoredBackupAdmissionState.Accepted);
         (await admission.AdmitAsync(request with { AdmissionId = "01J00000000000000000000506" }, fence, lifecycle.Value, [], token)).State.ShouldBe(RestoredBackupAdmissionState.Quarantined);
+        lifecycle = (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(env.Scope), token))!;
         (await fixture.Store.CommitAsync([PayloadProtectionStateMutation.Put(lifecycle.Value with { State = "Deleted", Epoch = 2, ReasonCode = "domain-deleted" }, lifecycle.ETag)], token)).ShouldBe(PayloadStateCommitResult.Committed);
         (await admission.AdmitAsync(request with { AdmissionId = "01J00000000000000000000507" }, fence, lifecycle.Value, [backup], token)).State.ShouldBe(RestoredBackupAdmissionState.Quarantined);
         (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(env.Scope), token))!.Value.State.ShouldBe("Deleted");
         (await KeyAsync(env, write.Completion!, token)).ShouldBe(backup); decisions.Count.ShouldBe(3);
         foreach (byte[] output in env.Backend.Outputs) { output.ShouldAllBe(b => b == 0); }
+    }
+
+    [Fact]
+    public async Task ExactRewrapTargetSurvivesAProviderCurrentVersionChangeAfterIntent()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(40)); var token = timeout.Token;
+        await using var env = await LifecycleQualificationEnvironment.CreateAsync(fixture.Store, "tenant-exact-target-race", token);
+        var write = await env.Reservations.ProtectEventAsync(Plain(), ["/secret"], Context(env), token);
+        env.Backend.CurrentVersion = env.Backend.NewVersion;
+        env.Backend.Unwrapping = (_, _) => { env.Backend.CurrentVersion = env.Backend.OldVersion; return ValueTask.CompletedTask; };
+        var rotation = new PayloadKeyRotationCoordinator(fixture.Store, env.Roots, env.Leases, env.Backend, new(), _ => true, "qualification-actor");
+        (await rotation.RewrapAsync(env.Identity, write.Completion!.KeyReference, 1, new CryptographicPayloadProtectionEntropy().CreateKeyReference(), env.Backend.NewVersion, token)).ShouldBeTrue();
+        (await KeyAsync(env, write.Completion, token)).ProviderKeyVersionId.ShouldBe(env.Backend.NewVersion);
+        env.Backend.CurrentVersion.ShouldBe(env.Backend.OldVersion);
     }
 
     private static byte[] Plain() => Encoding.UTF8.GetBytes("{\"secret\":\"pf02-sensitive-canary-8z63\"}");
@@ -163,13 +206,14 @@ public sealed class PayloadProtectionRecoveryLiveTests(PayloadProtectionDaprFixt
         PayloadKeyIndexes.VerifyMembership(key, await indexes.ReadScopeAsync(env.Scope, token),
             await indexes.ReadKekAsync(PayloadProtectionStateKeys.Digest(key.BackendId), PayloadProtectionStateKeys.Digest(key.ProviderKeyVersionId), token));
     }
-    private static async ValueTask AssertReadableAsync(LifecycleQualificationEnvironment env, byte[] payload, CancellationToken token)
+    private static async ValueTask AssertReadableAsync(LifecycleQualificationEnvironment env, byte[] payload, CancellationToken token,
+        PayloadProtectionLeaseCoordinator? process = null, PayloadKeyCache? cache = null)
     {
-        var resolver = new PayloadKeyResolver(env.Store, env.Roots, new(env.Roots, [new("qualification", new LifecycleQualificationErasure())]), env.Leases, env.Backend, new(), env.Cache);
+        var resolver = new PayloadKeyResolver(env.Store, env.Roots, new(env.Roots, [new("qualification", new LifecycleQualificationErasure())]), process ?? env.Leases, env.Backend, new(), cache ?? env.Cache);
         CoreUnprotectionResult result = await new PayloadProtectionCore().TryUnprotectEventAsync(payload, Context(env),
             (key, version, ct) => resolver.ResolveAsync(env.Identity, key, version, new CryptographicPayloadProtectionEntropy().CreateKeyReference(), ct), token);
         try { result.PayloadBytes.ShouldBe(Plain()); }
         finally { if (result.PayloadBytes is not null) { CryptographicOperations.ZeroMemory(result.PayloadBytes); } }
-        await env.Cache.ClearScopeAsync(env.Scope, token);
+        await (cache ?? env.Cache).ClearScopeAsync(env.Scope, token);
     }
 }

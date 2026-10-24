@@ -1,4 +1,4 @@
-// Effective authority: 08bfd5855998a276999db38447c409b2231f3d4e253d4e371d4d8bfe369462d6; base sections 10, 13-15; amendment sections 3-7.
+// Effective authority: eb45653553efe53ba83e6dd6c9796b47dfb6fb0bba0628ff95f6bc1b96b054c9; base sections 10, 13-15; amendment sections 3-7.
 using Hexalith.EventStore.Contracts.Security;
 
 namespace Hexalith.EventStore.PayloadProtection.Tests;
@@ -39,10 +39,11 @@ public sealed class LifecycleContinuationTests
         ReservationTestFixture fixture = await ReservationTestFixture.CreateAsync();
         var write = await fixture.Reservations.ProtectEventAsync(CompatibilityTestData.PlainJson(), ["/email"], TestFixture.Context());
         await using var cache = new PayloadKeyCache(timeProvider: fixture.Clock);
+        await fixture.Reservations.CompleteAsync(write.Completion!, PayloadProtectionPersistenceOutcome.Unknown);
         var evidence = new LifecyclePersistenceEvidence(PayloadProtectionPersistenceOutcome.Persisted);
         evidence.Observed = async (operation, cancellation) =>
         {
-            if (replaceClaim) { _ = await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(operation.OperationId, fixture.Scope)); }
+            if (replaceClaim) { fixture.Clock.Advance(TimeSpan.FromSeconds(90)); _ = await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(operation.OperationId, fixture.Scope)); }
             else
             {
                 PayloadProtectionStateValue<LifecycleV1> state = (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)))!;
@@ -52,7 +53,7 @@ public sealed class LifecycleContinuationTests
         using var worker = new PayloadProtectionReconciler(fixture.Store, new([new("tenant-a", "parties")]), Coordinator(fixture, cache), fixture.Backend.BackendId, _ => true, "fixture-actor", fixture.Clock, persistence: evidence);
         await worker.RunPassAsync();
         (await fixture.Store.ReadAsync<WrappedDekV1>(PayloadProtectionStateKeys.Key(fixture.Scope, write.Completion!.KeyReference, 1)))!.Value.State.ShouldBe("Reserved");
-        (await new PayloadProtectionCatalogs(fixture.Store, fixture.Clock).ReadWorkAsync(fixture.Root)).Head.Value.EntryCount.ShouldBe(1u);
+        (await new PayloadProtectionCatalogs(fixture.Store, fixture.Clock).ReadWorkAsync(fixture.Root)).Head.Value.EntryCount.ShouldBe(replaceClaim ? 1u : 0u);
     }
 
     [Fact]
@@ -101,8 +102,11 @@ public sealed class LifecycleContinuationTests
         ReconciliationV1 claim = (await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(child, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeFalse();
         await lifecycle.AcknowledgeAsync(fixture.Identity, barrierId);
+        fixture.Clock.Advance(TimeSpan.FromSeconds(30));
+        claim = (await new PayloadReconciliationClaims(fixture.Store, fixture.Clock).TryClaimAsync(new(child, fixture.Scope)))!.Value;
         (await lifecycle.ResumeAsync(fixture.Identity, claim)).ShouldBeTrue();
         (await fixture.Store.ReadAsync<OperationV1>(PayloadProtectionStateKeys.Operation(child)))!.Value.Phase.ShouldBe("Completed");
+        fixture.Store.Audits.Where(a => a.OperationId == child).ShouldAllBe(a => a.WorkflowId == LifecycleDrainTests.Approval(fixture.Identity).Identity.WorkflowId);
         (await fixture.Store.ReadAsync<LifecycleV1>(PayloadProtectionStateKeys.Lifecycle(fixture.Scope)))!.Value.State.ShouldBe("Invalidating");
     }
 

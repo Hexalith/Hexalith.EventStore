@@ -11,7 +11,7 @@ Hexalith CI/CD standards and reusable workflow guidance live in
 | **CI** | `.github/workflows/ci.yml` | `push` and `pull_request` to `main` | Runs the required shared `domain-ci.yml@main` job for the solution and deterministic tests, plus the EventStore-owned governance and compatibility checks. |
 | **Advisory Tests** | `.github/workflows/advisory-tests.yml` | `push`, `pull_request` to `main`, manual dispatch | Visible non-release-blocking browser and governance suites. It installs Chromium before Playwright E2E tests, runs with `continue-on-error`, and release does not listen to this workflow. |
 | **Integration Tests** | `.github/workflows/integration.yml` | `push`, `pull_request` to `main`, manual dispatch | Dedicated DAPR lane for `tests/Hexalith.EventStore.Server.LiveSidecar.Tests`. It is intentionally separate from the release trigger. |
-| **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least eight executed tests with zero skips. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
+| **Payload Protection Lifecycle** | `.github/workflows/payload-protection-lifecycle.yml` | `push`, `pull_request` to `main`, manual dispatch | Isolated Dapr 1.18.7/PostgreSQL v2 capability, catalog, lease, drain, recovery, rotation, generation and restore tests. Requires at least twenty-six executed tests with zero skips, including cumulative transport limits, writer capacity, conditional restore decisions and authority races. Local qualification and its limits are recorded in the Story 8.5 spec; a CI run is separate evidence. |
 | **CodeQL** | `.github/workflows/codeql.yml` | `push`, `pull_request` to `main`, weekly schedule | Shared CodeQL workflow using `@main`, with the module configuration excluding archived `_bmad-output` source copies. |
 | **Dependency Review** | `.github/workflows/dependency-review.yml` | `pull_request` to `main` | Thin caller to the shared dependency-review gate using `@main`. |
 | **Commitlint** | `.github/workflows/commitlint.yml` | `push` and `pull_request` to `main` | Thin caller to the shared Conventional Commits gate using `@main`. |
@@ -77,6 +77,25 @@ place for run output.
 | Payload-protection lifecycle | `tests/Hexalith.EventStore.PayloadProtection.LiveSidecar.Tests` | Dedicated `Payload Protection Lifecycle` workflow; isolated processes and digest-pinned PostgreSQL v2 state, persisted assertions and zero skips. The existing `Payload Protection` core workflow runs independently. |
 | Advisory browser/governance suites | `tests/Hexalith.EventStore.Admin.UI.E2E`, `tests/Hexalith.EventStore.DeferredWorkGovernance.Tests` | Separate `Advisory Tests` workflow. It installs Playwright Chromium for the browser suite and runs with `continue-on-error`, preserving push/PR signal without making semantic-release depend on these suites. |
 | Full Aspire E2E | `tests/Hexalith.EventStore.IntegrationTests` | Deferred until a reliable Aspire-in-CI topology exists. |
+
+The qualified lifecycle profile keeps Dapr's default 4 MiB gRPC request limit.
+Each transaction admits at most 512 operations and 2 MiB of charged data: value,
+UTF-8 key and ETag bytes, plus 1024 bytes per operation and 1024 bytes per
+transaction for conservative framing/metadata allowance. Each enclosing engine
+phase admits at most 4096 strong reads and 16 MiB of cumulative returned values;
+it reserves a full 64 KiB response before each call. Registration and traffic
+admission also calculate the member-catalog and future clearing-proof working
+set, reserving 1 MiB and 512 reads for authority/index work. Immutable clearing
+acknowledgements are read once per resume; permanent Cleared members require no
+acknowledgement read. The existing structural schema bounds remain unchanged.
+Real Dapr qualification demonstrates the exact charged transaction boundary and
+257 completed writer reservations with both indexes spanning two pages, plus
+257 retained registered process incarnations. This is the measured supported
+case; it does not qualify every structural maximum or a production throughput.
+Transactions above the operational limit are rejected with output/completion
+withheld. Read-budget exhaustion retains discoverable indexed work for a later
+phase. Structurally valid workloads above this profile's limits remain
+unsupported; the engine never blindly retries a mutation.
 
 `integration.yml` pins `DAPR_CLI_VERSION` (`1.18.0`) and `DAPR_RUNTIME_VERSION`
 (`1.18.2`) independently. The shared `references/Hexalith.Builds/Github/dapr-init`
