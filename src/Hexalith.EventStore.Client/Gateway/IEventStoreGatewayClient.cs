@@ -13,6 +13,11 @@ public interface IEventStoreGatewayClient {
         SubmitCommandRequest request, CancellationToken cancellationToken = default)
         => Task.FromException<SubmitCommandResponse>(new InvalidOperationException("Workload command transport is unavailable."));
 
+    /// <summary>Submits an exact workload command with its signed represented principal and metadata.</summary>
+    Task<SubmitCommandResponse> SubmitBoundWorkloadCommandAsync(
+        BoundWorkloadCommandRequest request, string proof, CancellationToken cancellationToken = default)
+        => Task.FromException<SubmitCommandResponse>(new InvalidOperationException("Bound workload command transport is unavailable."));
+
     /// <summary>Reads one message-primary status through the workload-only channel.</summary>
     Task<CommandStatusQueryResponse?> GetWorkloadCommandStatusAsync(
         string tenant, string messageId, CancellationToken cancellationToken = default)

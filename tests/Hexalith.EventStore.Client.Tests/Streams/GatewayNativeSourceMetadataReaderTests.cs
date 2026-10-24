@@ -42,7 +42,7 @@ public sealed class GatewayNativeSourceMetadataReaderTests
         });
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://gateway.test/") };
         var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
-        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, Identity.TenantId, Arg.Any<CancellationToken>())
+        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, Identity.TenantId, Identity.Domain, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("test-workload-assertion"));
         var gateway = new EventStoreGatewayClient(http,
             Options.Create(new EventStoreGatewayClientOptions { UseWorkloadTransport = true }), assertions);
@@ -55,6 +55,26 @@ public sealed class GatewayNativeSourceMetadataReaderTests
         assertion.ShouldBe("test-workload-assertion");
         submitted.ShouldBe(new StreamReadRequest(Identity.TenantId, Identity.Domain, Identity.AggregateId,
             FromSequence: 0, ToSequence: 0, PageSize: 1) { RequireNativeProof = true });
+    }
+
+    [Fact]
+    public async Task ExistingThreeArgumentAssertionImplementerRetainsDomainAwareClientCompatibility()
+    {
+        using var handler = new AdminOperationalIndexHttpMessageHandler(request =>
+        {
+            request.Headers.GetValues("X-Hexalith-Workload-Assertion").Single().ShouldBe("legacy-fixed-domain-assertion");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Page(0)) };
+        });
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://gateway.test/") };
+        var gateway = new EventStoreGatewayClient(http, Options.Create(new EventStoreGatewayClientOptions { UseWorkloadTransport = true }), new LegacyAssertionSource());
+        (await new GatewayNativeSourceMetadataReader(gateway, TimeProvider.System).ReadAsync(Identity, TestContext.Current.CancellationToken))
+            .ShouldNotBeNull();
+    }
+
+    private sealed class LegacyAssertionSource : IEventStoreGatewayWorkloadAssertionSource
+    {
+        public ValueTask<string?> IssueAsync(string operation, string tenant, CancellationToken cancellationToken)
+            => ValueTask.FromResult<string?>("legacy-fixed-domain-assertion");
     }
 
     [Theory]
@@ -76,7 +96,7 @@ public sealed class GatewayNativeSourceMetadataReaderTests
         });
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://gateway.test/") };
         var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
-        assertions.IssueAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        assertions.IssueAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>("test-workload-assertion"));
         var gateway = new EventStoreGatewayClient(http,
             Options.Create(new EventStoreGatewayClientOptions { UseWorkloadTransport = true }), assertions);

@@ -107,6 +107,26 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     }
 
     /// <inheritdoc />
+    public async Task<SubmitCommandResponse> SubmitBoundWorkloadCommandAsync(
+        BoundWorkloadCommandRequest request, string proof, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Command);
+        ArgumentException.ThrowIfNullOrWhiteSpace(proof);
+        if (proof.Length > 8192) { throw new ArgumentOutOfRangeException(nameof(proof)); }
+        using HttpResponseMessage response = await SendWorkloadAsync(
+            HttpMethod.Post, _options.BoundWorkloadCommandPath, request,
+            EventStoreGatewayWorkloadOperations.CommandSubmit, request.Command.Tenant, cancellationToken,
+            boundCommandProof: proof).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) {
+            await ThrowGatewayExceptionAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+        SubmitCommandResponse? result = await response.Content.ReadFromJsonAsync<SubmitCommandResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
+        return result is { CorrelationId.Length: > 0, MessageId.Length: > 0 }
+            && string.Equals(result.MessageId, request.Command.MessageId, StringComparison.Ordinal)
+            ? result : throw new EventStoreGatewayException((int)response.StatusCode, "Invalid bound workload command receipt");
+    }
+
+    /// <inheritdoc />
     public async Task<CommandStatusQueryResponse?> GetWorkloadCommandStatusAsync(
         string tenant, string messageId, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
@@ -161,10 +181,15 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
 
     private async Task<HttpResponseMessage> SendWorkloadAsync(
         HttpMethod method, string path, object? body, string operation, string tenant,
-        CancellationToken cancellationToken, string? streamReadProof = null) {
+        CancellationToken cancellationToken, string? streamReadProof = null, string? boundCommandProof = null) {
         string? assertion = _workloadAssertions is null
             ? null
-            : await _workloadAssertions.IssueAsync(operation, tenant, cancellationToken).ConfigureAwait(false);
+            : body switch {
+                BoundWorkloadCommandRequest bound => await _workloadAssertions.IssueAsync(operation, tenant, bound.Command.Domain, cancellationToken).ConfigureAwait(false),
+                SubmitCommandRequest command => await _workloadAssertions.IssueAsync(operation, tenant, command.Domain, cancellationToken).ConfigureAwait(false),
+                StreamReadRequest stream => await _workloadAssertions.IssueAsync(operation, tenant, stream.Domain, cancellationToken).ConfigureAwait(false),
+                _ => await _workloadAssertions.IssueAsync(operation, tenant, cancellationToken).ConfigureAwait(false),
+            };
         if (string.IsNullOrWhiteSpace(assertion)) {
             throw new InvalidOperationException("EventStore workload credentials are unavailable.");
         }
@@ -173,6 +198,9 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
         request.Headers.TryAddWithoutValidation("X-Hexalith-Workload-Assertion", assertion);
         if (streamReadProof is not null) {
             request.Headers.TryAddWithoutValidation("X-Hexalith-Bound-Stream-Read-Proof", streamReadProof);
+        }
+        if (boundCommandProof is not null) {
+            request.Headers.TryAddWithoutValidation(BoundWorkloadCommandProof.HeaderName, boundCommandProof);
         }
         if (body is not null) {
             request.Content = JsonContent.Create(body, options: JsonOptions);

@@ -23,6 +23,9 @@ public sealed class EventStoreGatewayClientOptions {
     /// <summary>Gets or sets the workload-only command submission path.</summary>
     public string WorkloadCommandPath { get; set; } = "api/v1/commands/workload";
 
+    /// <summary>Gets or sets the workload command path requiring a signed principal and exact command proof.</summary>
+    public string BoundWorkloadCommandPath { get; set; } = "api/v1/commands/bound/workload";
+
     /// <summary>
     /// Gets or sets the relative query endpoint path.
     /// </summary>
