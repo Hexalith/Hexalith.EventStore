@@ -41,10 +41,12 @@ public static class DomainServiceRequestRouter {
         }
 
         CompleteCommandSource? completeSource = null;
-        if (request.CompleteSource is not null)
+        var completeOptions = serviceProvider.GetService<CompleteCommandSourceVerificationOptions>();
+        if (request.CompleteSource is not null || completeOptions?.RequiredDomains.Contains(request.Command.Domain, StringComparer.Ordinal) == true)
         {
             var http = serviceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()?.HttpContext;
-            string? platform = serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>()?["EventStore:CompleteCommandSource:PlatformWorkloadId"];
+            string? platform = completeOptions?.PlatformWorkloadId
+                ?? serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>()?["EventStore:CompleteCommandSource:PlatformWorkloadId"];
             if (http is null || string.IsNullOrWhiteSpace(platform)) throw new UnauthorizedAccessException("CompleteCommandSourceDenied");
             completeSource = new CompleteCommandSourceVerifier(serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System)
                 .Verify(request, http.User, platform);

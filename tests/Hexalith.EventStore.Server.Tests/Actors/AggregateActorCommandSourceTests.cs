@@ -14,6 +14,34 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public sealed class AggregateActorCommandSourceTests
 {
+    [Fact]
+    public async Task LostCommandReplyAndActorRestartReuseOriginalAndNextTurnCapturesConsecutiveHead()
+    {
+        var backend = new InMemoryStateManager(); var command = CreateTestEnvelope();
+        var authority = Substitute.For<ICompleteCommandSourceAuthority>(); authority.Requires(command.AggregateIdentity).Returns(true);
+        authority.AuthorizeAsync(command.AggregateIdentity, Arg.Any<CancellationToken>()).Returns(
+            new CompleteCommandSourceAuthorization(command.AggregateIdentity, "epoch-1", DateTimeOffset.UtcNow.AddMinutes(2)));
+        using var services = new ServiceCollection().AddSingleton(authority).BuildServiceProvider();
+        var observed = new List<CompleteCommandSource>();
+        ActorTestContext Create()
+        {
+            var context = CreateActor(stateManager: backend, serviceProvider: services);
+            context.Invoker.InvokeCompleteSourceAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object>(), Arg.Any<CompleteCommandSource>(),
+                Arg.Any<string?>(), Arg.Any<TrustedEffectOrigin?>(), Arg.Any<CancellationToken>()).Returns(call =>
+                { observed.Add(call.Arg<CompleteCommandSource>()); return DomainResult.Success([new TestEvent()]); });
+            return context;
+        }
+        var first = await Create().Actor.ProcessCommandAsync(command); first.Accepted.ShouldBeTrue();
+        var restarted = Create(); var duplicate = await restarted.Actor.ProcessCommandAsync(command);
+        duplicate.ShouldBe(first);
+        observed.Count.ShouldBe(1);
+        (await restarted.Actor.ProcessCommandAsync(command with { MessageId = "second-command", CorrelationId = "second-correlation" })).Accepted.ShouldBeTrue();
+        observed.Select(item => item.Proof.HeadSequence).ShouldBe(new long[] { 0, 1 });
+        observed[1].Events.Single().SequenceNumber.ShouldBe(1);
+        observed[0].Proof.SourceIncarnation.ShouldBe(observed[1].Proof.SourceIncarnation);
+        backend.CommittedState.Values.OfType<EventEnvelope>().Count().ShouldBe(2);
+        backend.CommittedState[command.AggregateIdentity.MetadataKey].ShouldBeOfType<AggregateMetadata>().SourceProof!.HeadSequence.ShouldBe(2);
+    }
     [Theory]
     [InlineData("current")]
     [InlineData("revoked")]

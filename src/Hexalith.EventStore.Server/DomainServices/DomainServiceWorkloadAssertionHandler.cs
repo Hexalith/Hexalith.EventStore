@@ -72,7 +72,7 @@ public sealed partial class DomainServiceWorkloadAssertionHandler(IServiceProvid
                 && request.Options.TryGetValue(QueryCallerAuthorityBinding.RequestBindings, out var queryBindings) ? queryBindings
                 : route.Operation == EventStoreWorkloadOperations.DomainServiceProcess
                 && request.Options.TryGetValue(CommandSourceAuthorityBinding.RequestBindings, out var sourceBindings) ? sourceBindings : null;
-            if (bindings is not null && issuer?.CanBindResources != true)
+            if (route.Operation == EventStoreWorkloadOperations.DomainServiceProcess && bindings is not null && issuer?.CanBindResources != true)
                 throw new InvalidOperationException("CompleteCommandSourceUnavailable: the workload issuer cannot bind the exact request.");
             string? assertion = issuer is null
                 ? null

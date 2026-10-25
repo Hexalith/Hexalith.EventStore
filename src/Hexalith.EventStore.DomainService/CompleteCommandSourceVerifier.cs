@@ -44,12 +44,12 @@ public sealed class CompleteCommandSourceVerifier(TimeProvider clock)
             rebuilt = NativeSourceProofCodec.ExtendDigest(rebuilt, supplied.Identity, item.SequenceNumber, item.MessageId, item.NativeEventDigest);
             events.Add(owned);
         }
-        if (rebuilt != supplied.Proof || !MatchesState(request.CurrentState, events))
+        if (rebuilt != supplied.Proof || !MatchesState(request.CurrentState, supplied.Identity, events))
             throw new UnauthorizedAccessException("CompleteCommandSourceDenied");
         return supplied with { Events = events.AsReadOnly() };
     }
 
-    private static bool MatchesState(object? current, IReadOnlyList<StreamReadEvent> events)
+    private static bool MatchesState(object? current, Hexalith.EventStore.Contracts.Identity.AggregateIdentity identity, IReadOnlyList<StreamReadEvent> events)
     {
         DomainServiceCurrentState? state = current switch
         {
@@ -64,6 +64,8 @@ public sealed class CompleteCommandSourceVerifier(TimeProvider clock)
             var expected = events[index]; var actual = state.Events[index];
             if (actual is null || actual.Metadata is not { } metadata || actual.Payload is null || !actual.Payload.AsSpan().SequenceEqual(expected.Payload)
                 || metadata.SequenceNumber != expected.SequenceNumber || metadata.MessageId != expected.MessageId
+                || metadata.TenantId != identity.TenantId || metadata.Domain != identity.Domain || metadata.AggregateId != identity.AggregateId
+                || metadata.EventContractType is not null || metadata.PayloadVersion is < 1 or > 1
                 || metadata.EventTypeName != expected.EventTypeName || metadata.MetadataVersion != expected.MetadataVersion
                 || metadata.SerializationFormat != expected.SerializationFormat) return false;
         }

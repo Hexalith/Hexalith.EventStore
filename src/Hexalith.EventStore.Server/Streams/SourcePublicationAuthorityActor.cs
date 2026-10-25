@@ -133,7 +133,7 @@ public sealed class SourcePublicationAuthorityActor(ActorHost host, SourcePublic
                 || proof.Receipts.Where((receipt, index) => receipt.Entry.Offset != proof.ExpectedPrefix + index + 1
                     || receipt.ProtectedDeletionRevision <= 0 || string.IsNullOrWhiteSpace(receipt.ReceiptId)).Any()
                 || (proof.ExpectedPrefix == 0 ? proof.PredecessorReceiptId is not null
-                    : proof.PredecessorReceiptId != prior?.ReceiptId || proof.ExpectedPrefix != prior.AcknowledgedPrefix)
+                    : prior is null || proof.PredecessorReceiptId != prior.ReceiptId || proof.ExpectedPrefix != prior.AcknowledgedPrefix)
                 || progress.DeliveryTarget != enrollment.DeliveryTarget || progress.DeliveryAuthorityRevision != enrollment.DeliveryAuthorityRevision) return null;
             if (!Append(records, "dispatch-proof:" + progress.ReceiptId, call.Body)
                 || !Append(records, "dispatch:" + progress.ReceiptId, JsonSerializer.SerializeToUtf8Bytes(progress))) return null;

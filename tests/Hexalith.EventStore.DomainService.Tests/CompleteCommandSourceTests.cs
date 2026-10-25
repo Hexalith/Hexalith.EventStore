@@ -6,12 +6,22 @@ using Hexalith.EventStore.Contracts.Events;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Http;
 using Shouldly;
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
 public sealed class CompleteCommandSourceTests
 {
+    [Fact]
+    public async Task EnrolledDomainRejectsMissingSourceBeforeResolvingDomainProcessor()
+    {
+        var request = Request(0) with { CompleteSource = null };
+        using var services = new ServiceCollection().AddEventStoreCompleteCommandSourceVerification("eventstore", ["conversation"])
+            .AddSingleton<IHttpContextAccessor>(new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = Principal(request) } }).BuildServiceProvider();
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => DomainServiceRequestRouter.ProcessAsync(services, request, TestContext.Current.CancellationToken));
+    }
     [Theory]
     [InlineData(0)]
     [InlineData(2)]
