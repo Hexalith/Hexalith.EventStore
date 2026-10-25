@@ -1,4 +1,6 @@
 
+using System.Reflection;
+
 using Dapr.Actors;
 using Dapr.Actors.Runtime;
 
@@ -730,5 +732,53 @@ public class AggregateActorGetEventsTests {
         result[0].SequenceNumber.ShouldBe(1);
         result[1].SequenceNumber.ShouldBe(2);
         result[2].SequenceNumber.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task GetEventsAsync_CountAboveLegacyArrayBudget_ThrowsBeforeReadingEvents()
+    {
+        (AggregateActor actor, IActorStateManager stateManager) = CreateActor();
+        long countLimit = LegacyArrayCountLimit();
+        ConfigureMetadata(stateManager, countLimit + 1);
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.GetEventsAsync(0));
+
+        exception.Message.ShouldContain("LegacyArrayLimit");
+        _ = stateManager.DidNotReceive().TryGetStateAsync<EventEnvelope>(
+            $"{EventKeyPrefix}1",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetEventsAsync_PayloadAboveLegacyArrayBudget_ThrowsFromArrayBudgetAdd()
+    {
+        (AggregateActor actor, IActorStateManager stateManager) = CreateActor();
+        ConfigureMetadata(stateManager, 1);
+        EventEnvelope overLimit = CreateEvent(1) with { Payload = new byte[LegacyArrayPayloadLimit() + 1] };
+        _ = stateManager.TryGetStateAsync<EventEnvelope>($"{EventKeyPrefix}1", Arg.Any<CancellationToken>())
+            .Returns(new ConditionalValue<EventEnvelope>(true, overLimit));
+
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(
+            () => actor.GetEventsAsync(0));
+
+        exception.Message.ShouldContain("LegacyArrayLimit");
+    }
+
+    private static long LegacyArrayCountLimit()
+    {
+        Type budget = typeof(AggregateActor).Assembly.GetType(
+            "Hexalith.EventStore.Server.Events.LegacyEventArrayBudget")!;
+        int maximumEvents = (int)budget.GetField("MaximumEvents", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+        long maximumAccounted = (long)budget.GetField("MaximumAccountedBytes", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+        int perEvent = (int)budget.GetField("PerEventCharge", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+        return Math.Min(maximumEvents, maximumAccounted / perEvent);
+    }
+
+    private static long LegacyArrayPayloadLimit()
+    {
+        Type budget = typeof(AggregateActor).Assembly.GetType(
+            "Hexalith.EventStore.Server.Events.LegacyEventArrayBudget")!;
+        return (long)budget.GetField("MaximumPayloadBytes", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
     }
 }
