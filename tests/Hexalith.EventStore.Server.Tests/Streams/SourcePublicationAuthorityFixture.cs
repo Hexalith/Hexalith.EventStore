@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Dapr.Actors;
@@ -15,6 +16,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
+
+using static Hexalith.EventStore.ServiceDefaults.Authentication.ConfigureWorkloadJwtBearerOptions;
 
 namespace Hexalith.EventStore.Server.Tests.Streams;
 
@@ -46,7 +49,7 @@ internal sealed class SourcePublicationAuthorityFixture
     internal string? LoseJournalResponse { get; set; }
     private readonly WorkloadAssertionValidator _validator;
     private readonly SourcePublicationAuthorityCredentials _credentials;
-    private const string SigningKey = "independent-component-test-key-at-least-thirty-two-bytes";
+    private static readonly string _signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
     internal SourcePublicationAuthorityFixture()
     {
@@ -57,10 +60,10 @@ internal sealed class SourcePublicationAuthorityFixture
         var bearer = new JwtBearerOptions { TokenValidationParameters = new()
         {
             ValidIssuer = WorkloadAssertionTestTokens.Issuer, ValidAudience = Installation.Audience, ValidateIssuer = true,
-            ValidateAudience = true, ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
+            ValidateAudience = true, ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey)),
             ValidAlgorithms = [SecurityAlgorithms.HmacSha256], ValidateLifetime = true, RequireExpirationTime = true,
             RequireSignedTokens = true, ClockSkew = TimeSpan.Zero,
-            PropertyBag = new Dictionary<string, object> { [ConfigureWorkloadJwtBearerOptions.ConfiguredMarkerKey] = true },
+            PropertyBag = new Dictionary<string, object> { [ConfiguredMarkerKey] = true },
         } };
         var bearerOptions = Substitute.For<IOptionsMonitor<JwtBearerOptions>>(); bearerOptions.Get(Arg.Any<string>()).Returns(bearer);
         var workload = Substitute.For<IOptionsMonitor<WorkloadAuthenticationOptions>>();
@@ -110,7 +113,7 @@ internal sealed class SourcePublicationAuthorityFixture
     {
         var call = new SourcePublicationAuthorityCall(method, Scope, Enrollment.Epoch, JsonSerializer.SerializeToUtf8Bytes(body, body.GetType()), "");
         return call with { Assertion = WorkloadAssertionTestTokens.Create(Installation.PrimaryAudience, caller,
-            [SourcePublicationWorkloadBinding.PrimaryOperation], bindings: SourcePublicationWorkloadBinding.Bind(call), signingKey: SigningKey) };
+            [SourcePublicationWorkloadBinding.PrimaryOperation], bindings: SourcePublicationWorkloadBinding.Bind(call), signingKey: _signingKey) };
     }
     internal static T Clone<T>(T item) => JsonSerializer.Deserialize<T>(JsonSerializer.SerializeToUtf8Bytes(item))!;
     private static IWorkloadAssertionIssuer Issuer(string caller)
@@ -119,7 +122,7 @@ internal sealed class SourcePublicationAuthorityFixture
         issuer.IssueAsync(Arg.Any<WorkloadAssertionRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var request = call.Arg<WorkloadAssertionRequest>();
-            return ValueTask.FromResult<string?>(WorkloadAssertionTestTokens.Create(request.Audience, caller, [request.Operation], bindings: request.Bindings, signingKey: SigningKey));
+            return ValueTask.FromResult<string?>(WorkloadAssertionTestTokens.Create(request.Audience, caller, [request.Operation], bindings: request.Bindings, signingKey: _signingKey));
         });
         return issuer;
     }

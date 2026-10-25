@@ -93,6 +93,36 @@ public sealed class SourcePublicationAuthorityTests
         journal.Records.Count(item => item.Key.StartsWith("enrollment-successor:", StringComparison.Ordinal)).ShouldBe(2);
     }
 
+    /// <summary>
+    /// Verifies post-commit admission accepts only the exact independently anchored successor.
+    /// </summary>
+    /// <param name="change">The conflicting part of the already committed state.</param>
+    [Theory]
+    [InlineData("authority")]
+    [InlineData("poison")]
+    public async Task IndexWriteVerifiesCommittedSuccessorWithoutAdmittingChangedState(string change)
+    {
+        var fixture = new SourcePublicationAuthorityFixture();
+        (await fixture.Journal.EnrollAsync(fixture.Enrollment)).ShouldBeTrue();
+        (await fixture.InstallAsync()).ShouldBeTrue();
+        var state = new SourcePublicationIndexState(fixture.Scope, 1, fixture.Enrollment.Epoch + ":1", [], []);
+        var write = new SourcePublicationIndexWrite(0, state);
+
+        (await fixture.Primary.InvokeAsync<bool>(fixture.Scope, "write-index", write)).ShouldBeTrue();
+        var original = (await fixture.ReadIndexAsync()).ShouldNotBeNull();
+        RecoverableAnchoredState.Digest(original).ShouldBe(RecoverableAnchoredState.Digest(state));
+        string journalBefore = RecoverableAnchoredState.Digest(fixture.JournalBackend.CommittedState);
+        (await RecheckIndexWriteAsync(fixture, write)).ShouldBeTrue();
+        var changed = change == "authority"
+            ? state with { AuthorityRevision = "foreign-epoch:1" }
+            : state with { PoisonCode = "publication-source-regressed" };
+
+        (await RecheckIndexWriteAsync(fixture, write with { State = changed })).ShouldBeFalse();
+        (await fixture.Primary.InvokeAsync<bool>(fixture.Scope, "write-index", write with { State = changed })).ShouldBeFalse();
+        RecoverableAnchoredState.Digest(await fixture.ReadIndexAsync()).ShouldBe(RecoverableAnchoredState.Digest(original));
+        RecoverableAnchoredState.Digest(fixture.JournalBackend.CommittedState).ShouldBe(journalBefore);
+    }
+
     [Fact]
     public async Task CompleteInventoryIncludesZeroAgentSourcesAndOnlyIndependentConsecutiveReceiptsAdvance()
     {
@@ -174,6 +204,21 @@ public sealed class SourcePublicationAuthorityTests
         poisoned.Entries.ShouldBe(original.Entries); poisoned.DispatchProgress.ShouldBeNull();
         (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldBeNull();
         (await fixture.ReadIndexAsync()).ShouldNotBeNull().Revision.ShouldBe(poisoned.Revision);
+    }
+
+    private static async Task<bool> RecheckIndexWriteAsync(SourcePublicationAuthorityFixture fixture, SourcePublicationIndexWrite write)
+    {
+        var call = fixture.SignedCall("write-index", write, "producer");
+        (await fixture.Authority.AuthenticateAsync(call)).ShouldBeTrue();
+        var previous = SourcePublicationOperationContext.Set(call);
+        try
+        {
+            return await fixture.Authority.WriteIndexAsync(write);
+        }
+        finally
+        {
+            SourcePublicationOperationContext.Set(previous);
+        }
     }
 
     private static async Task<SourcePublicationAuthorityFixture> PreparedAsync()

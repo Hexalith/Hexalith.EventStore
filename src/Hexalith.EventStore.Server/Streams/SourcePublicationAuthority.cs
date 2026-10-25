@@ -91,7 +91,12 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     private async Task<bool> VerifyIndexMutationAsync(SourcePublicationIndexWrite request, SourcePublicationAuthorityState state)
     {
         var next = request.State; var previous = LatestIndex(state); var roster = LatestNamespace(state);
-        if (roster is null || request.ExpectedRevision != (previous?.Revision ?? 0) || next.Revision != request.ExpectedRevision + 1) return false;
+        if (roster is null || next.Revision != request.ExpectedRevision + 1) return false;
+        // The actor repeats admission after committing its transition. Only the exact
+        // independently anchored successor can satisfy that post-commit verification.
+        if (previous is not null && previous.Revision == next.Revision
+            && RecoverableAnchoredState.Digest(previous) == RecoverableAnchoredState.Digest(next)) return true;
+        if (request.ExpectedRevision != (previous?.Revision ?? 0)) return false;
         bool preservesData = previous is not null && next.AuthorityRevision == previous.AuthorityRevision
             && next.Sources.SequenceEqual(previous.Sources) && next.Entries.SequenceEqual(previous.Entries);
         if (next.PoisonCode is not null)
