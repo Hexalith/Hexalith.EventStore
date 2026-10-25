@@ -460,6 +460,31 @@ it is outside the tested revision and this continuation's reviewed changes.
 Review logging is the only change to this spec. Local passes supply no CI result,
 historical failure resolution, production qualification or approval.
 
+### October 25 2696cf21 continuation review
+
+Review covers this continuation's Verification append in the original story,
+against run-start `2696cf21b3ed243f75c74feab5b947697e876d74`. The five test
+commands ran at `12784fde729a4756564ae388fb6c2217c7323446`; this does not
+establish build/source correspondence to that revision. Frozen intent, baseline,
+statuses and whole-story gates remain unchanged. Edge-case and verification-gap
+reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| 2696cf21 Blind 1: Platform cohort identity | medium | patch | Build receipts name `c4fad9cd10491547a2b3e94c108442eff38a6edd`; every test receipt names `5fa798f7d860a021feb8cccc35331271e3c9c802`. Distinguished these cohorts in the story. |
+| 2696cf21 Blind 2: build-to-test source drift | medium | patch | Comparing build-after with first-test-before finds 13 changed source files and unchanged outputs. Recorded that boundary and denied correspondence of the reused binaries to the later source revision. |
+| 2696cf21 Blind 3: auxiliary host exit omitted | low | patch | Both support describes report EventStore Finished with exit 134 and its sidecar exit 0. Retained those codes without inferring their cause from successful stop commands. |
+| 2696cf21 Blind 4: process scan coverage | low | patch | The temporary observer matches EventStore paths and Dapr, excluding Tenants application hosts. Narrowed the absence claim to the inspected process families. |
+| 2696cf21 Blind 5: catalog outcomes omitted | low | patch | Before/after manifests retain absent new-tenant delivery, two added exact subscriptions, unchanged host identities and both readbacks at version/ETag 2. Added these observations to the story. |
+
+These are documentation corrections from existing receipts and source, requiring
+no runtime rerun or behavioral change. Stable test-boundary identities do not
+resolve build-to-test drift, historical failures or production/disposition gates.
+All five corrections were checked against existing receipts; no new finding was
+deferred. Final parent policy checks passed (9,096 tracked entries), as did
+`git diff --check`. The original story prefix, frozen intent, spec baseline/status,
+sprint file and exception register were preserved.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations
