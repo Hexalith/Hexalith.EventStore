@@ -30,7 +30,7 @@ namespace Hexalith.EventStore.Testing.Fakes;
 /// protocol phase.
 /// </para>
 /// </remarks>
-public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser, IReadModelPendingBatchRecoveryStore {
+public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiringStore, IReadModelBulkStore, IReadModelBatchStore, IReadModelBatchStagingStore, IReadModelConditionalEraser, IReadModelPendingBatchRecoveryStore, IReadModelRecoveryScopeStore, IReadModelOwnerProofStore {
     private static readonly JsonSerializerOptions s_json = new(JsonSerializerDefaults.Web);
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.Ordinal);
@@ -234,6 +234,9 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     }
 
     /// <inheritdoc/>
+    public void ValidateBatch(ReadModelBatch batch) => ReadModelBatchValidation.Validate(batch, BatchOptions);
+
+    /// <inheritdoc/>
     public async Task<ReadModelBatchResult> ExecuteAsync(
         ReadModelBatch batch,
         CancellationToken cancellationToken = default) {
@@ -263,6 +266,53 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
         ArgumentNullException.ThrowIfNull(scope);
         return ReadModelPendingBatchRecovery.RecoverAsync(new InMemoryBatchAccessor(this, scope.StoreName), BatchOptions,
             NullLogger.Instance, scope, key, BatchFaultHook is null ? null : new DelegateFaultInjector(BatchFaultHook), cancellationToken, nonExpiringLegacy: true);
+    }
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatchStagingResult> PrepareRecoveryManifestAsync(ReadModelBatch batch, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+        return new ReadModelBatchProtocol(new InMemoryBatchAccessor(this, batch.Scope.StoreName), BatchOptions, NullLogger.Instance)
+            .PrepareRecoveryManifestAsync(batch, BatchFaultHook is null ? null : new DelegateFaultInjector(BatchFaultHook), cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatch?> ReadPreparedRecoveryBatchAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelBatchProtocol.ReadPreparedRecoveryBatchAsync(new InMemoryBatchAccessor(this, scope.StoreName), scope, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ReadModelBatchStagingResult> ReadRecoveryDecisionAsync(ReadModelBatchScope scope, string fingerprint, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelBatchProtocol.ReadRecoveryDecisionAsync(new InMemoryBatchAccessor(this, scope.StoreName), scope, fingerprint, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<ReadModelPendingBatchRecoveryResult> RetireRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelRecoveryDiscovery.RetireAsync(new InMemoryBatchAccessor(this, scope.StoreName), BatchOptions,
+            NullLogger.Instance, scope, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task ReleaseRecoveryScopeAsync(ReadModelBatchScope scope, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return ReadModelRecoveryDiscovery.ReleaseAsync(new InMemoryBatchAccessor(this, scope.StoreName), scope, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<Hexalith.EventStore.Contracts.Projections.ProjectionOwnerProofResult> ReadOwnerProofAsync(
+        Hexalith.EventStore.Contracts.Projections.ProjectionOwnerProofRequest request, ReadModelOwnerProofBinding binding,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(binding);
+        return ReadModelOwnerProofReader.ReadAsync(new InMemoryBatchAccessor(this, binding.StoreName), BatchOptions, request, binding, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -340,6 +390,17 @@ public sealed class InMemoryReadModelStore : IReadModelStore, IReadModelExpiring
     /// <summary>Copies physical persisted bytes for protocol assertions, including deadline wrappers and pending envelopes.</summary>
     public byte[]? SnapshotRaw(string storeName, string key)
         => _entries.TryGetValue(Compose(storeName, key), out Entry? entry) ? entry.Bytes.ToArray() : null;
+
+    /// <summary>Copies every physical value in one store for persisted-content qualification.</summary>
+    /// <param name="storeName">The exact store component.</param>
+    /// <returns>A defensive logical-key-to-byte snapshot, including SDK private preparation state.</returns>
+    public IReadOnlyDictionary<string, byte[]> SnapshotRawEntries(string storeName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
+        string prefix = storeName + "\0";
+        return _entries.Where(pair => pair.Key.StartsWith(prefix, StringComparison.Ordinal))
+            .ToDictionary(pair => pair.Key[prefix.Length..], pair => pair.Value.Bytes.ToArray(), StringComparer.Ordinal);
+    }
 
     /// <summary>Returns whether the raw stored bytes at a key are a pending batch envelope.</summary>
     /// <param name="storeName">The store name.</param>

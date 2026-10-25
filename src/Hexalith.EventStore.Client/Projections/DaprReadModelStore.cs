@@ -228,6 +228,9 @@ public sealed partial class DaprReadModelStore : IReadModelStore, IReadModelExpi
     }
 
     /// <inheritdoc/>
+    public void ValidateBatch(ReadModelBatch batch) => ReadModelBatchValidation.Validate(batch, _options);
+
+    /// <inheritdoc/>
     public async Task<ReadModelBatchResult> ExecuteAsync(
         ReadModelBatch batch,
         CancellationToken cancellationToken = default) {

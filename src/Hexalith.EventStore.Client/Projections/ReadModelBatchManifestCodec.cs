@@ -66,7 +66,9 @@ internal static class ReadModelBatchManifestCodec
             };
             operations.Add(operation);
         }
-        var result = new ReadModelBatch(scope, operations) { OwnerSelection = selection, OwnerSelections = selections, RetainManifestForRecovery = retainManifestForRecovery };
+        var result = new ReadModelBatch(scope, operations) { OwnerSelection = selection, OwnerSelections = selections, RetainManifestForRecovery = retainManifestForRecovery,
+            DiscoverableRecovery = root.TryGetProperty("discoverable", out JsonElement discoverable) && discoverable.GetBoolean(),
+            RecoveryRequestDigest = root.TryGetProperty("recoveryRequest", out JsonElement requestDigest) ? requestDigest.GetString() : null };
         if (!ReadModelBatchFingerprint.BuildCanonicalManifest(result).AsSpan().SequenceEqual(manifest.Span)
             || ReadModelOwnerSelectionMetadata.FromBatch(result) != selection
             || !(ReadModelOwnerSelectionMetadata.FromCoordinatedBatch(result) ?? []).SequenceEqual(selections ?? []))

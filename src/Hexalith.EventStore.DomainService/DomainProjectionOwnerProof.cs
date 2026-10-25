@@ -41,7 +41,8 @@ public static class DomainProjectionOwnerProof
                 || !ProjectionReplayTransportContext.MatchesOwners(request.Request, selections)
                 || batch.Operations.Any(static operation => operation.Concurrency.Mode != ReadModelBatchConcurrencyMode.ExpectedETag)))
             throw new ArgumentException("A guarded replay must preserve its admitted generation and conditional ownership.");
-        var bound = new ReadModelBatch(batch.Scope, batch.Operations) { OwnerSelections = selections };
+        var bound = new ReadModelBatch(batch.Scope, batch.Operations) { OwnerSelections = selections,
+            DiscoverableRecovery = batch.DiscoverableRecovery, RecoveryRequestDigest = batch.RecoveryRequestDigest };
         _ = ReadModelOwnerSelectionMetadata.FromCoordinatedBatch(bound);
         // Ordinary operator rebuilds retain their configured wider manifest profile.
         // Such output remains unqualified for guarded completion without a bounded receipt.

@@ -85,6 +85,19 @@ internal static class DomainProjectionGuardedReplay
             DomainProjectionRebuildTransport.Key(request, -3), cancellationToken).ConfigureAwait(false)).Value;
         if (reference is null)
         {
+            if (store is IReadModelRecoveryScopeStore discoverable)
+            {
+                ReadModelBatch? prepared = await discoverable.ReadPreparedRecoveryBatchAsync(
+                    new(storeName, request.Request.TenantId, request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId), cancellationToken).ConfigureAwait(false);
+                if (prepared is not null)
+                {
+                    if (prepared.OwnerSelections is not { Count: > 0 } selected
+                        || prepared.RecoveryRequestDigest != RequestDigest(request)
+                        || !ProjectionReplayTransportContext.MatchesOwners(request.Request, selected))
+                        throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+                    return await SaveAsync(services, request, prepared, storeName, cancellationToken).ConfigureAwait(false);
+                }
+            }
             byte[]? orphan = (await store.GetAsync<byte[]>(storeName, DomainProjectionRebuildTransport.Key(request, -2),
                 cancellationToken).ConfigureAwait(false)).Value;
             if (orphan is null) return null;
@@ -109,11 +122,23 @@ internal static class DomainProjectionGuardedReplay
         }
         if (reference.Owners is not { Length: > 0 }
             || JsonSerializer.SerializeToUtf8Bytes(reference, JsonSerializerOptions.Web).Length > 16_384
-            || reference.Version is not (1 or 2)
+            || reference.Version is not (1 or 2 or 3)
             || ProjectionReplayTransportContext.HasOwners(request.Request)
                 && !ProjectionReplayTransportContext.MatchesOwners(request.Request, reference.Owners)
             || reference.RequestDigest != (reference.Version == 1 ? LegacyRequestDigest(request, reference.Owners) : RequestDigest(request)))
             throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+        if (reference.Version == 3)
+        {
+            ReadModelBatch? prepared = store is IReadModelRecoveryScopeStore discoverable
+                ? await discoverable.ReadPreparedRecoveryBatchAsync(new(storeName, request.Request.TenantId,
+                    request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId), cancellationToken).ConfigureAwait(false) : null;
+            if (prepared is null) throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
+            if (!prepared.DiscoverableRecovery || prepared.RecoveryRequestDigest != reference.RequestDigest
+                || ReadModelBatchFingerprint.ComputeFromManifest(ReadModelBatchFingerprint.BuildCanonicalManifest(prepared)) != reference.Fingerprint
+                || !(prepared.OwnerSelections ?? []).SequenceEqual(reference.Owners))
+                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryIdentityConflict);
+            return prepared;
+        }
         byte[]? bytes = (await store.GetAsync<byte[]>(storeName, DomainProjectionRebuildTransport.Key(request, -2),
             cancellationToken).ConfigureAwait(false)).Value;
         if (bytes is null) throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
@@ -132,11 +157,24 @@ internal static class DomainProjectionGuardedReplay
         byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
         if (manifest.Length > 1_048_576)
             throw new ProjectionDispatchValidationException("delivery_proof_limit_exceeded");
-        var reference = new DomainProjectionReplayManifest(2, RequestDigest(request),
+        var reference = new DomainProjectionReplayManifest(batch.DiscoverableRecovery ? 3 : 2, RequestDigest(request),
             ReadModelBatchFingerprint.ComputeFromManifest(manifest), [.. owners]);
         if (JsonSerializer.SerializeToUtf8Bytes(reference, JsonSerializerOptions.Web).Length > 16_384)
             throw new ProjectionDispatchValidationException("delivery_proof_limit_exceeded");
         IReadModelStore store = services.GetRequiredService<IReadModelStore>();
+        if (batch.DiscoverableRecovery)
+        {
+            if (store is not IReadModelRecoveryScopeStore discoverable || batch.RecoveryRequestDigest != reference.RequestDigest)
+                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.UnsupportedCapability);
+            ReadModelBatchStagingResult prepared = await discoverable.PrepareRecoveryManifestAsync(batch, cancellationToken).ConfigureAwait(false);
+            if (prepared.Status != ReadModelBatchStagingStatus.Prepared)
+                throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
+            if (!await store.TrySaveAsync(storeName, DomainProjectionRebuildTransport.Key(request, -3), reference,
+                string.Empty, cancellationToken).ConfigureAwait(false))
+                return await ReadAsync(services, request, storeName, cancellationToken).ConfigureAwait(false)
+                    ?? throw new ProjectionDispatchValidationException(ProjectionDispatchReasonCodes.DeliveryReconciliationRequired);
+            return batch;
+        }
         string manifestKey = DomainProjectionRebuildTransport.Key(request, -2);
         byte[] boundManifest = BindManifest(manifest, reference.RequestDigest);
         if (!await store.TrySaveAsync(storeName, manifestKey, boundManifest, string.Empty, cancellationToken).ConfigureAwait(false))
@@ -152,7 +190,7 @@ internal static class DomainProjectionGuardedReplay
         return batch;
     }
 
-    private static string RequestDigest(ProjectionDispatchRequest request)
+    internal static string RequestDigest(ProjectionDispatchRequest request)
     {
         using var hash = new DomainProjectionRequestDigestStream();
         JsonSerializer.Serialize(hash, request, JsonSerializerOptions.Web);
@@ -182,6 +220,31 @@ internal static class DomainProjectionGuardedReplay
         return hash.Digest.ToUpperInvariant();
     }
 
+    internal static async Task<bool> IsDiscoverableCompletedAsync(IServiceProvider services, ProjectionDispatchRequest request,
+        string storeName, CancellationToken token)
+    {
+        IReadModelStore store = services.GetRequiredService<IReadModelStore>();
+        DomainProjectionReplayManifest? reference = (await store.GetAsync<DomainProjectionReplayManifest>(storeName,
+            DomainProjectionRebuildTransport.Key(request, -3), token).ConfigureAwait(false)).Value;
+        if (reference is not { Version: 3, Owners.Length: > 0 } || reference.RequestDigest != RequestDigest(request)
+            || !ProjectionReplayTransportContext.MatchesOwners(request.Request, reference.Owners)
+            || store is not IReadModelRecoveryScopeStore recovery || store is not IReadModelOwnerProofStore proofs)
+            return false;
+        var scope = new ReadModelBatchScope(storeName, request.Request.TenantId, request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId);
+        if ((await recovery.ReadRecoveryDecisionAsync(scope, reference.Fingerprint, token).ConfigureAwait(false)).Status != ReadModelBatchStagingStatus.Committed)
+            return false;
+        foreach (ProjectionOwnerSelection owner in reference.Owners)
+        {
+            DomainProjectionOwnerProofRegistration? registration = services.GetServices<DomainProjectionOwnerProofRegistration>()
+                .SingleOrDefault(item => item.Domain == request.Request.Domain && item.ProjectionType == owner.ProjectionName);
+            if (registration is null || !request.ProjectionTypes.Contains(owner.ProjectionName)) return false;
+            ProjectionOwnerProofResult selected = await proofs.ReadOwnerProofAsync(new(request.Request.TenantId, request.Request.Domain,
+                request.Request.AggregateId, owner.ProjectionName, request.CatalogFingerprint), registration.Binding, token).ConfigureAwait(false);
+            if (selected.Proof?.Selection != owner || selected.Proof.ReceiptFingerprint != reference.Fingerprint) return false;
+        }
+        return reference.Owners.Length == request.ProjectionTypes.Count;
+    }
+
     /// <summary>Reclaims the original manifest after terminal proof, retaining the bounded no-reprepare reference.</summary>
     internal static async Task<bool> ReclaimAsync(IServiceProvider services, ProjectionDispatchRequest completed,
         ProjectionDispatchOptions options, DomainProjectionIdentityOptions identity, CancellationToken cancellationToken)
@@ -200,7 +263,7 @@ internal static class DomainProjectionGuardedReplay
         if (reference.Value is null)
             return (await store.GetAsync<byte[]>(guarded.Value.Store, manifestKey, cancellationToken).ConfigureAwait(false)).Value is null;
         DomainProjectionReplayManifest original = reference.Value;
-        if (original.Version is not (1 or 2) || original.Owners.Length != completed.ProjectionTypes.Count
+        if (original.Version is not (1 or 2 or 3) || original.Owners.Length != completed.ProjectionTypes.Count
             || original.Owners.Select(static owner => owner.ProjectionName).Distinct(StringComparer.Ordinal).Count() != original.Owners.Length)
             return false;
         if (!ProjectionReplayTransportContext.MatchesOwners(completed.Request, original.Owners)) return false;
@@ -220,6 +283,13 @@ internal static class DomainProjectionGuardedReplay
         // for a terminal retry whose guarded replay manifest was already removed.
         var batchScope = new ReadModelBatchScope(guarded.Value.Store, completed.Request.TenantId,
             completed.Request.Domain, completed.Request.AggregateId, "rebuild", completed.DispatchId);
+        if (original.Version == 3)
+        {
+            // The SDK owns and retires the only private manifest. Its same-key terminal
+            // barrier must remain durable; a controller never deletes it as legacy scratch.
+            return store is IReadModelRecoveryScopeStore recovery
+                && (await recovery.ReadRecoveryDecisionAsync(batchScope, original.Fingerprint, cancellationToken).ConfigureAwait(false)).Status == ReadModelBatchStagingStatus.Committed;
+        }
         string batchManifestKey = ReadModelBatchKeys.ManifestKey(batchScope.ComputeScopeHash());
         ReadModelEntry<JsonDocument> batchManifest = await store.GetAsync<JsonDocument>(guarded.Value.Store,
             batchManifestKey, cancellationToken).ConfigureAwait(false);
