@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using Hexalith.EventStore.Client.Handlers;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
@@ -76,13 +77,14 @@ public sealed partial class CompleteCommandSourceTests
             return DomainResult.NoOp();
         });
         const string key = "component-process-authentication-key-at-least-thirty-two-bytes";
+        string appChannelToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development }); builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Authentication:JwtBearer:Authority"] = "", ["Authentication:JwtBearer:Issuer"] = "component-issuer",
             ["Authentication:JwtBearer:Audience"] = "receiver", ["Authentication:JwtBearer:SigningKey"] = key,
             ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false", ["Authentication:Workload:Audience"] = "receiver",
-            ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = "component-channel",
+            ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = appChannelToken,
         });
         builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
         builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", ["conversation"]);
@@ -103,7 +105,7 @@ public sealed partial class CompleteCommandSourceTests
             SigningCredentials = new(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256),
         });
         client.DefaultRequestHeaders.Add(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName, assertion);
-        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, "component-channel");
+        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, appChannelToken);
         using var response = await client.PostAsJsonAsync("/process", request, TestContext.Current.CancellationToken);
         response.StatusCode.ShouldBe(HttpStatusCode.OK); observed.ShouldBeTrue();
         await administrator.Received(1).IsCurrentGlobalAdministratorAsync(Arg.Is<DomainServiceAdministratorClaim>(claim => claim.UserId == request.Command.UserId), Arg.Any<CancellationToken>());

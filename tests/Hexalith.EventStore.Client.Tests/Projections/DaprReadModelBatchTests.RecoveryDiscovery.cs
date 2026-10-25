@@ -19,7 +19,8 @@ public partial class DaprReadModelBatchTests
         var scope = Scope();
         var selection = retained ? null : new Hexalith.EventStore.Contracts.Projections.ProjectionOwnerSelection(1,
             scope.TenantId, scope.Domain, scope.AggregateId, scope.ProjectionType, "owner", "generation", 2, scope.BatchId, scope.BatchId, "2");
-        var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("detail", new { Secret = "private-value", ProjectionOwner = selection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
+        string privateValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(7))[..13];
+        var batch = new ReadModelBatch(scope, [ReadModelBatchOperation.Write("detail", new { Secret = privateValue, ProjectionOwner = selection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
             { RetainManifestForRecovery = retained, DiscoverableRecovery = true, OwnerSelection = selection };
         var store = CreateStore(client, profile);
         (await store.ExecuteAsync(batch)).IsSuccess.ShouldBeTrue();
@@ -28,19 +29,21 @@ public partial class DaprReadModelBatchTests
         (await recovery.ReadRecoveryDecisionAsync(scope, ReadModelBatchFingerprint.Compute(batch))).Status.ShouldBe(ReadModelBatchStagingStatus.Committed);
         string manifestKey = ReadModelBatchKeys.ManifestKey(scope.ComputeScopeHash());
         Encoding.UTF8.GetString(client.ByteStoreValue(manifestKey)).ShouldBe("{\"retiredRecoveryManifest\":true}");
-        Encoding.UTF8.GetString(client.ByteStoreValue(scope.ComputeMarkerKey())).ShouldNotContain("private-value");
+        Encoding.UTF8.GetString(client.ByteStoreValue(scope.ComputeMarkerKey())).ShouldNotContain(privateValue);
         (await recovery.SettleRecoveryScopeAsync(scope)).IsResolved.ShouldBeTrue();
         (await recovery.ReadRecoveryDecisionAsync(scope, ReadModelBatchFingerprint.Compute(batch))).Status.ShouldBe(ReadModelBatchStagingStatus.Committed);
         // A different snapshot's create-only refusal has the same complete terminal contract.
         var conflictScope = scope with { BatchId = "conflict" };
         var conflictSelection = selection is null ? null : selection with { BatchId = "conflict", MessageId = "conflict" };
-        var conflict = new ReadModelBatch(conflictScope, [ReadModelBatchOperation.Write("detail", new { Secret = "rejected-private", ProjectionOwner = conflictSelection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
+        string rejectedPrivateValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
+        var conflict = new ReadModelBatch(conflictScope, [ReadModelBatchOperation.Write("detail", new { Secret = rejectedPrivateValue, ProjectionOwner = conflictSelection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
             { RetainManifestForRecovery = retained, DiscoverableRecovery = true, OwnerSelection = conflictSelection };
         (await store.ExecuteAsync(conflict)).IsSuccess.ShouldBeFalse();
         var raceScope = scope with { BatchId = "prepared-conflict" };
         var raceSelection = selection is null ? null : selection with { BatchId = raceScope.BatchId, MessageId = raceScope.BatchId };
+        string losingPrivateValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(7));
         var race = new ReadModelBatch(raceScope, [ReadModelBatchOperation.Write("raced", new
-            { Secret = "losing-private", ProjectionOwner = raceSelection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
+            { Secret = losingPrivateValue, ProjectionOwner = raceSelection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
             { RetainManifestForRecovery = retained, DiscoverableRecovery = true, OwnerSelection = raceSelection };
         (await recovery.PrepareRecoveryManifestAsync(race)).Status.ShouldBe(ReadModelBatchStagingStatus.Prepared);
         client.SeedByteStore("raced", "{\"winner\":true}"u8.ToArray());
@@ -52,7 +55,8 @@ public partial class DaprReadModelBatchTests
         // and retire it to prove aborted terminal evidence on both profiles and retention policies.
         var retiredScope = scope with { BatchId = "retired" };
         var retiredSelection = selection is null ? null : selection with { BatchId = "retired", MessageId = "retired" };
-        var retired = new ReadModelBatch(retiredScope, [ReadModelBatchOperation.Write("unused", new { Secret = "prepared-private", ProjectionOwner = retiredSelection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
+        string preparedPrivateValue = Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
+        var retired = new ReadModelBatch(retiredScope, [ReadModelBatchOperation.Write("unused", new { Secret = preparedPrivateValue, ProjectionOwner = retiredSelection, ProjectionVersion = "2" }, ReadModelBatchConcurrency.CreateOnly)])
             { RetainManifestForRecovery = retained, DiscoverableRecovery = true, OwnerSelection = retiredSelection };
         (await recovery.PrepareRecoveryManifestAsync(retired)).Status.ShouldBe(ReadModelBatchStagingStatus.Prepared);
         // Settlement leaves guarded and ordinary Prepared work unchanged.
