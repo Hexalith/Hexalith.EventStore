@@ -19,7 +19,12 @@ public sealed class SourcePublicationNamespaceActor(ActorHost host, ISourcePubli
     {
         ArgumentNullException.ThrowIfNull(call);
         call = call with { Body = call.Body.ToArray() };
-        if (operations is not SourcePublicationAuthority authority || !await authority.AuthenticateAsync(call).ConfigureAwait(false)) return null;
+        if (operations is not SourcePublicationAuthority authority) return null;
+        using var budget = authority.CreateObservationDeadline();
+        var previousBudget = SourcePublicationOperationContext.SetDeadline(budget);
+        try
+        {
+        if (!await authority.AuthenticateAsync(call).ConfigureAwait(false)) return null;
         var previous = SourcePublicationOperationContext.Set(call);
         try
         {
@@ -33,6 +38,8 @@ public sealed class SourcePublicationNamespaceActor(ActorHost host, ISourcePubli
             return result is null ? null : JsonSerializer.SerializeToUtf8Bytes(result, result.GetType());
         }
         finally { SourcePublicationOperationContext.Set(previous); }
+        }
+        finally { SourcePublicationOperationContext.SetDeadline(previousBudget); }
     }
     private Task<bool> RegisterAuthenticatedAsync(byte[] body)
     {

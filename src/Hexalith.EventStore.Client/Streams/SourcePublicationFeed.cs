@@ -82,7 +82,8 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
                 }
                 else { retained = null; } // Completed original work must not hide new publications from the next reconciliation.
             }
-            if (retained is null && prior?.ReconciliationProgress?.MatchesCut(initial) == true)
+            if (retained is null && prior?.ReconciliationProgress?.MatchesCut(initial) == true
+                && (prior.ReconciliationProgress.OriginalCut is not { } expired || expired.ValidUntil > timeProvider.GetUtcNow()))
             { return new(null, "publication-reconciliation-proof-unavailable"); }
             var projected = retained?.Publications.ToList() ?? [];
             int verified = retained?.VerifiedSources ?? 0;
@@ -155,7 +156,7 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
             if (final is null || !SameCut(initial, final) && (retained is null || !await ConfirmReconciliationAsync(final, prior!, deadline).ConfigureAwait(false)))
             { return new(null, "publication-namespace-changed"); }
             long revision = prior?.Revision ?? 0;
-            var updated = new SourcePublicationIndexState(scope, checked(revision + 1), initial.AuthorityRevision,
+            var updated = new SourcePublicationIndexState(scope, checked(revision + 1), conflict is not null && prior is not null ? prior.AuthorityRevision : initial.AuthorityRevision,
                 conflict is not null && prior is not null ? prior.Sources : initial.Sources,
                 conflict is not null ? prior?.Entries ?? Array.Empty<SourcePublicationIndexEntry>() : entries.AsReadOnly(), conflict) { DispatchProgress = prior?.DispatchProgress,
                     ReconciliationProgress = conflict is not null ? prior?.ReconciliationProgress : retained };

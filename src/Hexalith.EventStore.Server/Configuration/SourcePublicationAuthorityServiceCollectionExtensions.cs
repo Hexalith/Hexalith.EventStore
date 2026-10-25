@@ -34,7 +34,8 @@ public static class SourcePublicationAuthorityServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(projector); ArgumentNullException.ThrowIfNull(acknowledgements);
         ValidateInstallation(installation);
         if (services.Any(item => item.ServiceType == typeof(ISourcePublicationWriterRegistration)) || enrollments.Count is < 1 or > 1000
-            || enrollments.Any(item => item is null || item.Scope is null || !evidence.IsCurrent(item) || item.StorageIdentity != installation.StorageIdentity
+            || enrollments.Any(item => item is null || item.Scope is null || !SourcePublicationAuthorityActor.Valid(item, item.Scope)
+                || !evidence.IsCurrent(item) || item.StorageIdentity != installation.StorageIdentity
                 || item.RegistrarWorkload != installation.RegistrarWorkload || item.ValidUntil <= DateTimeOffset.UtcNow)
             || enrollments.Select(item => item.Scope).Distinct().Count() != enrollments.Count
             || enrollments.SelectMany(item => item.CommandSources).Distinct().Count() != enrollments.Sum(item => item.CommandSources.Count)
@@ -43,6 +44,7 @@ public static class SourcePublicationAuthorityServiceCollectionExtensions
             throw new ArgumentException("Explicit current independently qualified scopes and resource-capable role issuers are required.", nameof(enrollments));
         IReadOnlyList<SourcePublicationAuthorityEnrollment> captured = Array.AsReadOnly(
             JsonSerializer.Deserialize<SourcePublicationAuthorityEnrollment[]>(JsonSerializer.SerializeToUtf8Bytes(enrollments))!);
+        services.AddHttpContextAccessor();
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton(installation); services.AddSingleton(captured); services.AddSingleton(evidence); services.AddSingleton(credentials);
         services.AddSingleton(sourceReader); services.AddSingleton(projector); services.AddSingleton(acknowledgements);

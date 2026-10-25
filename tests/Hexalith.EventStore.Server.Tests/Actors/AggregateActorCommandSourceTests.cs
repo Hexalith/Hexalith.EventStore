@@ -2,6 +2,11 @@ using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Identity;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Effects;
+using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.PayloadProtection.Tests;
+using Hexalith.EventStore.PayloadProtection;
+using IEventPayload = Hexalith.EventStore.Contracts.Events.IEventPayload;
+using Microsoft.Extensions.Time.Testing;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Streams;
 using Hexalith.EventStore.Testing.Fakes;
@@ -14,6 +19,47 @@ namespace Hexalith.EventStore.Server.Tests.Actors;
 
 public sealed class AggregateActorCommandSourceTests
 {
+    [Theory]
+    [InlineData("protection", "revoked")]
+    [InlineData("protection", "expired")]
+    [InlineData("position", "revoked")]
+    [InlineData("position", "expired")]
+    [InlineData("lease", "revoked")]
+    [InlineData("lease", "expired")]
+    [InlineData("lease", "current")]
+    public async Task LastSaveFenceRechecksAfterAwaitedPreparationWithoutCommittingStagedEvents(string step, string change)
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow); bool current = true;
+        var fixture = new InteractionPayloadProtectionHookFixture(); var identity = fixture.Binding.Identity.Owner;
+        var command = new CommandEnvelope("command", identity.TenantId, identity.Domain, identity.AggregateId, "Create", "{}"u8.ToArray(), "correlation", null, "worker", null);
+        var authority = Substitute.For<ICompleteCommandSourceAuthority>(); authority.Requires(identity).Returns(true);
+        var expires = clock.GetUtcNow().AddMinutes(1);
+        authority.AuthorizeAsync(identity, Arg.Any<CancellationToken>()).Returns(_ => current ? new CompleteCommandSourceAuthorization(identity, "epoch-1", expires) : null);
+        async Task ChangeAsync()
+        {
+            await Task.Yield();
+            if (change == "revoked") current = false;
+            if (change == "expired") clock.Advance(TimeSpan.FromMinutes(2));
+        }
+        var protector = Substitute.For<IEventPayloadProtectionService>();
+        protector.ProtectEventPayloadAsync(Arg.Any<AggregateIdentity>(), Arg.Any<IEventPayload>(), Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(async call => { if (step == "protection") await ChangeAsync(); return new PayloadProtectionResult(call.Arg<byte[]>(), "json"); });
+        var allocator = Substitute.For<IGlobalPositionAllocator>(); allocator.AllocateAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(async _ => { if (step == "position") await ChangeAsync(); return 1L; });
+        fixture.Bindings.AcquireCompletionLeaseAsync(Arg.Any<InteractionProtectionBinding>(), Arg.Any<CancellationToken>())
+            .Returns(async _ => { await ChangeAsync(); return true; });
+        using var services = new ServiceCollection().AddSingleton(authority).BuildServiceProvider();
+        var backend = new InMemoryStateManager();
+        var context = CreateActor(stateManager: backend, serviceProvider: services, actorId: identity.ActorId, timeProvider: clock,
+            payloadProtectionService: step == "lease" ? fixture.Service : protector, globalPositionAllocator: allocator);
+        context.Invoker.InvokeCompleteSourceAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object>(), Arg.Any<CompleteCommandSource>(), Arg.Any<string?>(), Arg.Any<TrustedEffectOrigin?>(), Arg.Any<CancellationToken>())
+            .Returns(DomainResult.Success(step == "lease"
+                ? [new SerializedDomainEventPayload(fixture.Binding.Identity.PayloadTypeId, InteractionPayloadProtectionHookFixture.Payload(), "json", null, null, null)] : [new TestEvent()]));
+        var result = await context.Actor.ProcessCommandAsync(command); result.Accepted.ShouldBe(change == "current");
+        backend.CommittedState.Values.OfType<Hexalith.EventStore.Server.Events.EventEnvelope>().Count().ShouldBe(change == "current" ? 1 : 0);
+        backend.CommittedState[identity.MetadataKey].ShouldBeOfType<AggregateMetadata>().CurrentSequence.ShouldBe(change == "current" ? 1 : 0);
+        if (step == "lease") fixture.Occurrences.Record.ShouldNotBeNull().WriterState.ShouldBe(change == "current" ? InteractionOccurrenceWriterState.Active : InteractionOccurrenceWriterState.SealedPending);
+    }
     [Fact]
     public async Task LostCommandReplyAndActorRestartReuseOriginalAndNextTurnCapturesConsecutiveHead()
     {

@@ -5,11 +5,65 @@ using Hexalith.EventStore.Contracts.Streams;
 using Hexalith.EventStore.Server.Streams;
 using NSubstitute;
 using Shouldly;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Hexalith.EventStore.Server.Tests.Streams;
 
-public sealed class SourcePublicationAuthorityTests
+public sealed partial class SourcePublicationAuthorityTests
 {
+    [Fact]
+    public async Task ExpiredUnmirroredLostIssuanceCannotStrandTheFreshPrimaryGeneration()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow); var fixture = await PreparedAsync(clock);
+        fixture.LoseJournalResponse = "reconciliation";
+        (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldBeNull();
+        fixture.IndexBackend.CommittedState.ShouldBeEmpty();
+        var abandoned = (await fixture.Journal.LookupAsync<SourcePublicationReconciliationProgress>(fixture.Enrollment, "reconciliation-head")).ShouldNotBeNull();
+        clock.Advance(TimeSpan.FromMinutes(61));
+        var old = fixture.Enrollment; fixture.Enrollment = old with { ValidUntil = clock.GetUtcNow().AddHours(1) };
+        (await fixture.Journal.RenewEnrollmentAsync(new(old.Epoch, RecoverableAnchoredState.Digest(old), fixture.Enrollment))).ShouldBeTrue();
+        fixture.Recreate();
+        var page = (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldNotBeNull(); page.Entries.Single().Publication.PublicationId.ShouldBe("signal-1");
+        var current = (await fixture.ReadIndexAsync()).ShouldNotBeNull(); current.Entries.Count.ShouldBe(1);
+        current.ReconciliationProgress!.Version.ShouldBe(4);
+        var retained = (await fixture.Journal.LookupAsync<SourcePublicationReconciliationProgress>(fixture.Enrollment, "reconciliation:" + abandoned.ReceiptId)).ShouldNotBeNull();
+        RecoverableAnchoredState.Digest(retained).ShouldBe(RecoverableAnchoredState.Digest(abandoned));
+        (await fixture.Authority.VerifyReconciliationProgressAsync(abandoned)).ShouldBeFalse();
+    }
+    [Fact]
+    public async Task ExpiredOriginalCutRequiresFreshGenerationAndNeverReusesExpiredProof()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var fixture = await PreparedAsync(clock); (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldNotBeNull();
+        var original = (await fixture.ReadIndexAsync()).ShouldNotBeNull().ReconciliationProgress.ShouldNotBeNull();
+        clock.Advance(TimeSpan.FromMinutes(61));
+        (await fixture.Authority.VerifyReconciliationProgressAsync(original)).ShouldBeFalse();
+        var old = fixture.Enrollment; fixture.Enrollment = old with { ValidUntil = clock.GetUtcNow().AddHours(1) };
+        (await fixture.Journal.RenewEnrollmentAsync(new(old.Epoch, RecoverableAnchoredState.Digest(old), fixture.Enrollment))).ShouldBeTrue();
+        fixture.Recreate();
+        (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldNotBeNull();
+        var successor = (await fixture.ReadIndexAsync()).ShouldNotBeNull().ReconciliationProgress.ShouldNotBeNull();
+        successor.Version.ShouldBeGreaterThan(original.Version); successor.ReceiptId.ShouldNotBe(original.ReceiptId);
+        successor.OriginalCut!.ValidUntil.ShouldBeGreaterThan(clock.GetUtcNow());
+        (await fixture.Authority.VerifyReconciliationProgressAsync(original)).ShouldBeFalse();
+    }
+    [Fact]
+    public async Task CompetingRegistrationsSerializeAndExactRetryNeverDuplicatesTheRoster()
+    {
+        var fixture = new SourcePublicationAuthorityFixture();
+        (await fixture.Journal.EnrollAsync(fixture.Enrollment)).ShouldBeTrue(); (await fixture.InstallAsync()).ShouldBeTrue();
+        var first = new AggregateIdentity(fixture.Scope.Tenant, fixture.Scope.Domain, "first");
+        var second = new AggregateIdentity(fixture.Scope.Tenant, fixture.Scope.Domain, "second");
+        var outcomes = await Task.WhenAll(new[] { first, second }.Select(identity => fixture.Primary.InvokeAsync<bool>(fixture.Scope,
+            "register-source", new SourcePublicationSourceRegistration(fixture.Scope, 1, identity))));
+        outcomes.Count(value => value).ShouldBe(1);
+        var roster = (await fixture.ReadNamespaceAsync()).ShouldNotBeNull(); roster.Revision.ShouldBe(2); roster.Sources.Count.ShouldBe(1);
+        var losing = roster.Sources.Contains(first) ? second : first;
+        (await fixture.Primary.InvokeAsync<bool>(fixture.Scope, "register-source", new SourcePublicationSourceRegistration(fixture.Scope, 2, losing))).ShouldBeTrue();
+        fixture.Recreate();
+        (await fixture.Primary.InvokeAsync<bool>(fixture.Scope, "register-source", new SourcePublicationSourceRegistration(fixture.Scope, 1, first))).ShouldBeTrue();
+        roster = (await fixture.ReadNamespaceAsync()).ShouldNotBeNull(); roster.Revision.ShouldBe(3); roster.Sources.ShouldBe(new[] { first, second });
+    }
     [Theory]
     [InlineData("body")]
     [InlineData("method")]
@@ -128,7 +182,8 @@ public sealed class SourcePublicationAuthorityTests
     {
         var fixture = await PreparedAsync(); var feed = Feed(fixture);
         var page = (await feed.ReadAsync(fixture.Scope)).Page.ShouldNotBeNull();
-        page.Checkpoint.Sources.Count.ShouldBe(2); page.Checkpoint.Sources.ShouldContain(item => item.Head == 0);
+        page.Checkpoint.Sources.Count.ShouldBe(3); page.Checkpoint.Sources.ShouldContain(item => item.Head == 0);
+        page.Checkpoint.Sources.ShouldContain(item => item.Identity.AggregateId == "b-created-zero-agent" && item.Head == 1);
         page.Entries.Count.ShouldBe(1);
         var entry = page.Entries.Single();
         var receipt = new SourcePublicationAcknowledgement(entry, fixture.Enrollment.DeliveryTarget, fixture.Enrollment.DeliveryAuthorityRevision, 9, "original-receipt");
@@ -137,7 +192,8 @@ public sealed class SourcePublicationAuthorityTests
         (await fixture.Primary.InvokeAsync<SourcePublicationDispatchProgress>(fixture.Scope, "advance-dispatch", advance)).ShouldBeNull();
         (await fixture.ReadIndexAsync()).ShouldNotBeNull().DispatchProgress.ShouldBeNull();
         fixture.ReceiverReceipts[1] = receipt;
-        var progress = (await fixture.Primary.InvokeAsync<SourcePublicationDispatchProgress>(fixture.Scope, "advance-dispatch", advance)).ShouldNotBeNull();
+        var issuedProgress = await fixture.Primary.InvokeAsync<SourcePublicationDispatchProgress>(fixture.Scope, "advance-dispatch", advance);
+        var progress = issuedProgress.ShouldNotBeNull("Journal: " + string.Join(",", fixture.JournalBackend.CommittedState.Values.OfType<SourcePublicationAuthorityState>().Single().Records.Select(item => item.Key)));
         progress.AcknowledgedPrefix.ShouldBe(1);
         fixture.Recreate();
         var recovered = (await fixture.Primary.InvokeAsync<SourcePublicationDispatchProgress>(fixture.Scope, "read-dispatch", page.Checkpoint)).ShouldNotBeNull();
@@ -161,7 +217,26 @@ public sealed class SourcePublicationAuthorityTests
         (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldNotBeNull();
         var retained = (await fixture.Journal.LookupAsync<SourcePublicationReconciliationProgress>(fixture.Enrollment, "reconciliation:" + original.ReceiptId)).ShouldNotBeNull();
         RecoverableAnchoredState.Digest(retained).ShouldBe(RecoverableAnchoredState.Digest(original));
-        var state = (await fixture.ReadIndexAsync()).ShouldNotBeNull(); state.Entries.Count.ShouldBe(1); state.ReconciliationProgress!.Version.ShouldBe(2);
+        var state = (await fixture.ReadIndexAsync()).ShouldNotBeNull(); state.Entries.Count.ShouldBe(1); state.ReconciliationProgress!.Version.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task LostAcknowledgementProofResponseRecoversTheSameReceiptAndProtectedRevision()
+    {
+        var fixture = await PreparedAsync(); var page = (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldNotBeNull();
+        var entry = page.Entries.Single();
+        var receipt = new SourcePublicationAcknowledgement(entry, fixture.Enrollment.DeliveryTarget, fixture.Enrollment.DeliveryAuthorityRevision, 9, "original-receipt");
+        fixture.SourceReceipts[1] = receipt; fixture.ReceiverReceipts[1] = receipt;
+        fixture.LoseJournalResponse = "dispatch";
+        var advance = new SourcePublicationDispatchAdvance(page.Checkpoint, 0, [entry]);
+        await Should.ThrowAsync<HttpRequestException>(() => fixture.Primary.InvokeAsync<SourcePublicationDispatchProgress>(fixture.Scope, "advance-dispatch", advance));
+        var original = (await fixture.Journal.LookupAsync<SourcePublicationDispatchProgress>(fixture.Enrollment, "dispatch-head")).ShouldNotBeNull();
+        (await fixture.ReadIndexAsync()).ShouldNotBeNull().DispatchProgress.ShouldBeNull();
+        fixture.Recreate();
+        (await fixture.Primary.InvokeAsync<SourcePublicationDispatchProgress>(fixture.Scope, "advance-dispatch", advance)).ShouldBe(original);
+        var proof = (await fixture.Journal.LookupAsync<SourcePublicationDispatchProof>(fixture.Enrollment, "dispatch-proof:" + original.ReceiptId)).ShouldNotBeNull();
+        proof.Receipts.Single().ShouldBe(receipt); proof.Receipts.Single().ProtectedDeletionRevision.ShouldBe(9);
+        (await fixture.ReadIndexAsync()).ShouldNotBeNull().DispatchProgress.ShouldBe(original);
     }
 
     [Fact]
@@ -184,7 +259,7 @@ public sealed class SourcePublicationAuthorityTests
         var original = (await fixture.ReadIndexAsync()).ShouldNotBeNull();
         if (change == "incarnation")
         {
-            var source = fixture.Sources.Values.Single(item => item.Head == 1);
+            var source = fixture.Sources.Values.Single(item => item.Identity.AggregateId == "a-with-signal");
             var proof = NativeSourceProofCodec.CreateSeed(source.Identity, "01ARZ3NDEKTSV4RRFFQ69G5FAX");
             proof = NativeSourceProofCodec.ExtendDigest(proof, source.Identity, 1, source.Events[0].MessageId, source.Events[0].NativeEventDigest!);
             fixture.Sources[source.Identity.ActorId] = source with { NativeProof = proof };
@@ -221,17 +296,22 @@ public sealed class SourcePublicationAuthorityTests
         }
     }
 
-    private static async Task<SourcePublicationAuthorityFixture> PreparedAsync()
+    private static async Task<SourcePublicationAuthorityFixture> PreparedAsync(TimeProvider? clock = null)
     {
-        var fixture = new SourcePublicationAuthorityFixture();
+        var fixture = new SourcePublicationAuthorityFixture(clock);
         var first = new AggregateIdentity(fixture.Scope.Tenant, fixture.Scope.Domain, "a-with-signal");
-        var zero = new AggregateIdentity(fixture.Scope.Tenant, fixture.Scope.Domain, "z-zero-agent");
-        fixture.Enrollment = fixture.Enrollment with { InitialSources = [first, zero], CommandSources = [first, zero] };
+        var created = new AggregateIdentity(fixture.Scope.Tenant, fixture.Scope.Domain, "b-created-zero-agent");
+        var zero = new AggregateIdentity(fixture.Scope.Tenant, fixture.Scope.Domain, "z-provisional-empty");
+        fixture.Enrollment = fixture.Enrollment with { InitialSources = [first, created, zero], CommandSources = [first, created, zero] };
         var native = NativeSourceProofCodec.CreateSeed(first, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
         var item = new StreamReadEvent(1, "DeletionApproved", "{}"u8.ToArray(), "json", 1, "event-1", "correlation", "cause", DateTimeOffset.UtcNow, "worker") { NativeEventDigest = new string('a', 64) };
         native = NativeSourceProofCodec.ExtendDigest(native, first, 1, item.MessageId, item.NativeEventDigest);
-        fixture.Sources[first.ActorId] = new(first, 1, DateTimeOffset.UtcNow, [item], "source-observation") { NativeProof = native };
-        fixture.Sources[zero.ActorId] = new(zero, 0, DateTimeOffset.UtcNow, [], "empty-observation") { NativeProof = NativeSourceProofCodec.CreateSeed(zero, "01ARZ3NDEKTSV4RRFFQ69G5FAW") };
+        fixture.Sources[first.ActorId] = new(first, 1, fixture.Clock.GetUtcNow(), [item], "source-observation") { NativeProof = native };
+        var createdItem = item with { EventTypeName = "ConversationCreated", MessageId = "created-without-agent" };
+        var createdProof = NativeSourceProofCodec.CreateSeed(created, "01ARZ3NDEKTSV4RRFFQ69G5FAY");
+        createdProof = NativeSourceProofCodec.ExtendDigest(createdProof, created, 1, createdItem.MessageId, createdItem.NativeEventDigest!);
+        fixture.Sources[created.ActorId] = new(created, 1, fixture.Clock.GetUtcNow(), [createdItem], "created-zero-agent-observation") { NativeProof = createdProof };
+        fixture.Sources[zero.ActorId] = new(zero, 0, fixture.Clock.GetUtcNow(), [], "empty-observation") { NativeProof = NativeSourceProofCodec.CreateSeed(zero, "01ARZ3NDEKTSV4RRFFQ69G5FAW") };
         fixture.Publications = [new("signal-1", first, 1, item.MessageId, new string('A', 64))];
         fixture.Recreate();
         (await fixture.Journal.EnrollAsync(fixture.Enrollment)).ShouldBeTrue(); (await fixture.InstallAsync()).ShouldBeTrue(); return fixture;
@@ -244,9 +324,9 @@ public sealed class SourcePublicationAuthorityTests
             var roster = await fixture.ReadNamespaceAsync(); if (roster is null) return null;
             var grant = await fixture.Authority.AuthorizeAsync(roster); if (grant is null) return null;
             return new SourcePublicationCut(fixture.Scope, grant.AuthorityRevision + ":" + roster.Revision,
-                DateTimeOffset.UtcNow, grant.ValidUntil, roster.Sources.Select(identity => new SourcePublicationHead(identity, fixture.Sources[identity.ActorId].Head)
+                fixture.Clock.GetUtcNow(), grant.ValidUntil, roster.Sources.Select(identity => new SourcePublicationHead(identity, fixture.Sources[identity.ActorId].Head)
                     { NativeProof = fixture.Sources[identity.ActorId].NativeProof }).ToArray(), true);
         });
-        return new(source, fixture.Streams, fixture.Projector, new DaprSourcePublicationIndexStore(fixture.Proxies, fixture.Primary), TimeProvider.System);
+        return new(source, fixture.Streams, fixture.Projector, new DaprSourcePublicationIndexStore(fixture.Proxies, fixture.Primary), fixture.Clock);
     }
 }

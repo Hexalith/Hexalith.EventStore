@@ -25,7 +25,7 @@ using Shouldly;
 
 namespace Hexalith.EventStore.Server.Tests.DomainServices;
 
-public class DaprDomainServiceInvokerTests {
+public partial class DaprDomainServiceInvokerTests {
     private readonly IDomainServiceResolver _resolver = Substitute.For<IDomainServiceResolver>();
     private readonly IOptions<DomainServiceOptions> _options = Options.Create(new DomainServiceOptions());
     private readonly ILogger<DaprDomainServiceInvoker> _logger = NullLogger<DaprDomainServiceInvoker>.Instance;

@@ -13,12 +13,17 @@ public static class CompleteCommandSourceServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services); ArgumentException.ThrowIfNullOrWhiteSpace(platformWorkloadId);
         ArgumentNullException.ThrowIfNull(requiredDomains);
         if (platformWorkloadId.Length > 200 || requiredDomains.Count is < 1 or > 1000
-            || requiredDomains.Any(domain => string.IsNullOrWhiteSpace(domain) || domain.Length > 128)
+            || requiredDomains.Any(domain => !IsCanonicalDomain(domain))
             || requiredDomains.Distinct(StringComparer.Ordinal).Count() != requiredDomains.Count
             || services.Any(item => item.ServiceType == typeof(CompleteCommandSourceVerificationOptions)))
             throw new ArgumentException("Explicit unique bounded complete-source domains are required.", nameof(requiredDomains));
         services.AddSingleton(new CompleteCommandSourceVerificationOptions(platformWorkloadId, Array.AsReadOnly(requiredDomains.ToArray())));
         services.TryAddSingleton(TimeProvider.System); services.TryAddSingleton<CompleteCommandSourceVerifier>();
         return services;
+    }
+    private static bool IsCanonicalDomain(string domain)
+    {
+        try { return new Hexalith.EventStore.Contracts.Identity.AggregateIdentity("tenant", domain, "source").Domain == domain; }
+        catch (ArgumentException) { return false; }
     }
 }

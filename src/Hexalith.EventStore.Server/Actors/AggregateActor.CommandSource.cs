@@ -74,5 +74,17 @@ public partial class AggregateActor
             || metadata.Value.CurrentSequence != source.Proof.HeadSequence || metadata.Value.SourceProof is not { } proof
             || SourceProofCodec.ToNative(proof) != source.Proof)
             throw new InvalidOperationException("CompleteCommandSourceChanged");
+        await ValidateCompleteCommandSourceAuthorityAsync(source, authority, cancellationToken).ConfigureAwait(false);
+    }
+
+    // This final commit fence must preserve all staged events, checkpoints, witnesses and protection work.
+    private async Task ValidateCompleteCommandSourceAuthorityAsync(CompleteCommandSource? source,
+        ICompleteCommandSourceAuthority? authority, CancellationToken cancellationToken)
+    {
+        if (source is null) return;
+        var finalGrant = authority is null ? null : await authority.AuthorizeAsync(source.Identity, cancellationToken).ConfigureAwait(false);
+        if (finalGrant is null || finalGrant.Identity != source.Identity || finalGrant.AuthorityRevision != source.AuthorityRevision
+            || finalGrant.ValidUntil <= IdempotencyTimeProvider.GetUtcNow() || source.ValidUntil <= IdempotencyTimeProvider.GetUtcNow())
+            throw new InvalidOperationException("CompleteCommandSourceChanged");
     }
 }

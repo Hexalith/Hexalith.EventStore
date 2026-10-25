@@ -20,11 +20,15 @@ public sealed class CommandSourceAuthorityTests
 {
     [Theory]
     [InlineData("command")]
+    [InlineData("command-longest")]
     [InlineData("primary")]
     [InlineData("journal")]
     public async Task ExplicitDynamicDigestGrantsSignRsaAndVerifyExactRequests(string family)
     {
-        var identity = new AggregateIdentity("tenant-a", "conversation", "source-1");
+        ArgumentNullException.ThrowIfNull(family);
+        bool commandFamily = family.StartsWith("command", StringComparison.Ordinal);
+        var identity = family == "command-longest" ? new AggregateIdentity(new string('t', 64), new string('d', 64), new string('a', 256))
+            : new AggregateIdentity("tenant-a", "conversation", "source-1");
         var scope = new SourcePublicationScope(identity.TenantId, identity.Domain, "deletion", "installation-1");
         const string incarnation = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
         // An explicit empty seed; no source I/O is needed to authenticate an exact request.
@@ -33,10 +37,10 @@ public sealed class CommandSourceAuthorityTests
         var request = new DomainServiceRequest(new("message-1", identity.TenantId, identity.Domain, identity.AggregateId,
             "Create", "{}"u8.ToArray(), "correlation-1", null, "worker", null), new DomainServiceCurrentState(null, [], 0, 0)) { CompleteSource = source };
         var call = new SourcePublicationAuthorityCall(family == "journal" ? "transition-admit" : "write-index", scope, "epoch-1", "{}"u8.ToArray(), "");
-        var bindings = family == "command" ? CommandSourceAuthorityBinding.Bind(request) : SourcePublicationWorkloadBinding.Bind(call);
-        string operation = family == "command" ? EventStoreWorkloadOperations.DomainServiceProcess
+        var bindings = commandFamily ? CommandSourceAuthorityBinding.Bind(request) : SourcePublicationWorkloadBinding.Bind(call);
+        string operation = commandFamily ? EventStoreWorkloadOperations.DomainServiceProcess
             : family == "journal" ? SourcePublicationWorkloadBinding.AuthorityOperation : SourcePublicationWorkloadBinding.PrimaryOperation;
-        string dynamicClaim = family == "command" ? CommandSourceAuthorityBinding.DigestClaim : SourcePublicationWorkloadBinding.DigestClaim;
+        string dynamicClaim = commandFamily ? CommandSourceAuthorityBinding.DigestClaim : SourcePublicationWorkloadBinding.DigestClaim;
         string directory = Path.Combine(Path.GetTempPath(), "command-source-rsa-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
@@ -61,7 +65,7 @@ public sealed class CommandSourceAuthorityTests
             var details = WorkloadAuthorizationDetails.Decode(WorkloadAuthorizationDetails.Encode(new("receiver", operation, bindings)))!;
             string oauthScope = new WorkloadAssertionIssuerOptions().BuildScope("receiver", operation);
             authority.Issue("producer", secret, oauthScope, details).ShouldBeNull();
-            grant.AllowCompleteCommandSourceDigest = family == "command"; grant.AllowSourcePublicationDigest = family != "command";
+            grant.AllowCompleteCommandSourceDigest = commandFamily; grant.AllowSourcePublicationDigest = !commandFamily;
             string assertion = authority.Issue("producer", secret, oauthScope, details).ShouldNotBeNull();
             var bearer = new JwtBearerOptions { TokenValidationParameters = new()
             {
@@ -76,9 +80,11 @@ public sealed class CommandSourceAuthorityTests
             var validator = new WorkloadAssertionValidator(bearerMonitor, workloadMonitor, WorkloadSecurityClock.System);
             var verified = await validator.ValidateLocallyAsync(EventStoreWorkloadAuthenticationDefaults.WorkloadScheme, assertion, operation, ["producer"], "receiver", TestContext.Current.CancellationToken);
             verified.Succeeded.ShouldBeTrue(); verified.Bindings.ShouldBe(bindings);
-            if (family == "command")
+            if (commandFamily)
             {
                 CommandSourceAuthorityBinding.Verify(request, verified.Principal!, "producer").ShouldBeTrue();
+                bindings[CommandSourceAuthorityBinding.SourceClaim].Length.ShouldBeLessThanOrEqualTo(256);
+                CommandSourceAuthorityBinding.Verify(request with { Command = request.Command with { TenantId = "foreign" } }, verified.Principal!, "producer").ShouldBeFalse();
                 request.Command.Payload[0] ^= 1;
                 CommandSourceAuthorityBinding.Verify(request, verified.Principal!, "producer").ShouldBeFalse();
             }

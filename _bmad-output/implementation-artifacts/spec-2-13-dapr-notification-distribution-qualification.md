@@ -413,6 +413,30 @@ append-only story history. Concurrent HEAD
 the tested revision and this continuation's reviewed changes. No runtime tests
 were repeated for documentation corrections.
 
+### October 25 6ca1b4cb continuation review
+
+Review covers only this continuation's Verification append in the original story,
+against run-start `6ca1b4cb9d422017138541036b3c23397265de98`. The frozen baseline,
+intent, statuses and whole-story gates remain unchanged. Edge-case and
+verification-gap reviewers found no additional issues. Command counts, timestamps,
+output hashes and failure descriptions matched the local receipts.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| 6ca1b4cb Blind 1: outage publication outcomes omitted | medium | patch | Reset and blackhole manifests retain `DaprException` after 70.4399 ms and cancellation after 1,999.8448 ms, respectively. Add these measurements beside read cancellation bounds so publication failure can be assessed independently. |
+| 6ca1b4cb Blind 2: catalog restart requirement compressed | low | patch | `ReloadSidecarsAsync` stops both sidecars and then starts both. Name that sequence explicitly rather than implying live subscription refresh. |
+| 6ca1b4cb Blind 3: fresh-endpoint comparison identities omitted | low | patch | The fresh-endpoint manifest records original host/sidecar PIDs 63452/63565, replacements 64827/80045 and internal port 34867 to 44529. Retain them beside the reused-endpoint rows without claiming that comparison resolves reused-endpoint failures. |
+| 6ca1b4cb Blind 4: client dependency versions omitted | medium | patch | The integration dependency manifest's recorded hash still matches current bytes and names Dapr.Client 1.18.10 and Microsoft.AspNetCore.SignalR.Client 10.0.13. Add those exercised client identities without claiming complete dependency coherence. |
+| 6ca1b4cb Blind 5: final documentation check results implicit | low | patch | The implementation handoff reports both post-append checks passed. State those outcomes explicitly and run the narrow policy/whitespace checks again after review corrections. |
+
+These corrections use existing receipts and source; no runtime rerun or behavioral
+change is required. The stable real-projection failures, both Redis failures and
+all historical/production gates remain open. This local documentation review
+advances no completion/review status or approval. Final parent policy checks
+passed (9,091 tracked entries), as did `git diff --check`. Parent preservation
+checks confirmed the original story prefix, frozen intent, spec baseline/status,
+sprint row and exception register; run-start HEAD remained unchanged.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations

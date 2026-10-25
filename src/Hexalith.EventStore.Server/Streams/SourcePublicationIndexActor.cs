@@ -20,7 +20,12 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
     {
         ArgumentNullException.ThrowIfNull(call);
         call = call with { Body = call.Body.ToArray() };
-        if (operations is not SourcePublicationAuthority authority || !await authority.AuthenticateAsync(call).ConfigureAwait(false)) return null;
+        if (operations is not SourcePublicationAuthority authority) return null;
+        using var budget = authority.CreateObservationDeadline();
+        var previousBudget = SourcePublicationOperationContext.SetDeadline(budget);
+        try
+        {
+        if (!await authority.AuthenticateAsync(call).ConfigureAwait(false)) return null;
         var previous = SourcePublicationOperationContext.Set(call);
         try
         {
@@ -37,6 +42,8 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
             return result is null ? null : JsonSerializer.SerializeToUtf8Bytes(result, result.GetType());
         }
         finally { SourcePublicationOperationContext.Set(previous); }
+        }
+        finally { SourcePublicationOperationContext.SetDeadline(previousBudget); }
     }
 
     /// <inheritdoc/>
@@ -164,7 +171,9 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
         var approved = await operations.AuthorizeReconciliationAdvanceAsync(ownedAdvance, state).ConfigureAwait(false);
         if (approved is null) { return null; }
         approved = SourcePublicationReconciliationProgress.Capture(approved);
-        if (approved.Version != expected.Version || approved.VerifiedSources != expected.VerifiedSources || !approved.MatchesCut(cut)
+        if ((approved.Version != expected.Version && (approved.Version < expected.Version
+                || approved.ExpectedPredecessorVersion != (original?.Version ?? 0)))
+            || approved.VerifiedSources != expected.VerifiedSources || !approved.MatchesCut(cut)
             || !approved.Publications.SequenceEqual(expected.Publications) || approved.OriginalCut is null || expected.OriginalCut is null
                 || !SameReconciliationCut(approved.OriginalCut, expected.OriginalCut)
             || !await CurrentReconciliationAsync(approved, currentCut).ConfigureAwait(false)) { return null; }

@@ -9,6 +9,10 @@ public sealed record SourcePublicationReconciliationProgress(SourcePublicationSc
 {
     /// <summary>Gets the independently retained original complete cut, including its unchanged observation and authority expiry. Missing legacy carriers cannot authorize changed-cut continuation.</summary>
     public SourcePublicationCut? OriginalCut { get; init; }
+    /// <summary>Gets the independently anchored primary proof version from which this issuance was authorized.
+    /// An unmirrored expired issuance may consume a journal generation without advancing the primary prefix.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public long? ExpectedPredecessorVersion { get; init; }
 
     /// <summary>Checks structural monotonic preservation only; it never authenticates a larger head or current permission.</summary>
     public bool CanContinueUnder(SourcePublicationCut current)
@@ -34,7 +38,8 @@ public sealed record SourcePublicationReconciliationProgress(SourcePublicationSc
         if (progress.Scope is null || progress.Version <= 0 || string.IsNullOrWhiteSpace(progress.SourceAuthorityRevision)
             || progress.SourceAuthorityRevision.Length > 256 || string.IsNullOrWhiteSpace(progress.ReceiptId) || progress.ReceiptId.Length > 256
             || progress.Sources is null || progress.Sources.Count is < 0 or > 1000 || progress.VerifiedSources <= 0
-            || progress.VerifiedSources > progress.Sources.Count || progress.Publications is null || progress.Publications.Count is < 0 or > 10000)
+            || progress.VerifiedSources > progress.Sources.Count || progress.Publications is null || progress.Publications.Count is < 0 or > 10000
+            || progress.ExpectedPredecessorVersion is < 0 || progress.ExpectedPredecessorVersion >= progress.Version)
         { throw new InvalidOperationException("Malformed source reconciliation proof."); }
         var heads = new List<SourcePublicationHead>();
         foreach (var head in progress.Sources)

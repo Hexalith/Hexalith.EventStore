@@ -15,9 +15,20 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     IReadOnlyList<SourcePublicationAuthorityEnrollment> enrollments, SourcePublicationAuthorityInstallation installation,
     ISourcePublicationAuthorityInstallationEvidence evidence, WorkloadAssertionValidator validator,
     IAuthoritativeEventStreamReader streams, ISourcePublicationProjector projector,
-    ISourcePublicationAcknowledgementObserver acknowledgements, TimeProvider clock)
+    ISourcePublicationAcknowledgementObserver acknowledgements, TimeProvider clock,
+    Microsoft.AspNetCore.Http.IHttpContextAccessor? httpContextAccessor = null)
     : ISourcePublicationNamespaceAuthority, ISourcePublicationOperationAuthority, ICompleteCommandSourceAuthority
 {
+    internal AuthoritativeStreamReadDeadline CreateObservationDeadline(CancellationToken cancellationToken = default)
+        => new(TimeSpan.FromSeconds(30), clock, cancellationToken.CanBeCanceled ? cancellationToken
+            : httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None, clock.GetTimestamp());
+
+    private async Task<T> ReadExternalAsync<T>(Func<CancellationToken, Task<T>> read, CancellationToken cancellationToken = default)
+    {
+        if (SourcePublicationOperationContext.Deadline is { } current) return await current.ReadWithAdmissionAsync(read).ConfigureAwait(false);
+        using var deadline = CreateObservationDeadline(cancellationToken);
+        return await deadline.ReadWithAdmissionAsync(read).ConfigureAwait(false);
+    }
     /// <inheritdoc/>
     public bool Requires(AggregateIdentity identity) => enrollments.Any(enrollment => enrollment.CommandSources.Contains(identity));
     /// <inheritdoc/>
@@ -85,6 +96,9 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
                 && request.State.DispatchProgress == original.DispatchProgress;
         }
         if (request.State.ReconciliationProgress is { } progress && !await VerifyReconciliationProgressAsync(progress).ConfigureAwait(false)) return false;
+        // Retaining an already anchored historical acknowledgement is not a claim that it
+        // authorizes the new cut. Current-cut reuse/advance is authenticated separately.
+        if (request.State.DispatchProgress == LatestIndex(journalState)?.DispatchProgress) return true;
         return request.State.DispatchProgress is null || await VerifyDispatchProgressAsync(
             new(request.State.Scope, request.ExpectedRevision, request.State.AuthorityRevision, request.State.Sources, request.State.Entries.Count), request.State.DispatchProgress).ConfigureAwait(false);
     }
@@ -105,22 +119,23 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
             string? poison = previous.Sources.Any(head => !roster.Sources.Contains(head.Identity)) ? "publication-source-disappeared" : null;
             foreach (var head in previous.Sources)
             {
-                var read = await streams.ReadAsync(head.Identity).ConfigureAwait(false);
+                var read = await ReadExternalAsync(token => streams.ReadAsync(head.Identity, token)).ConfigureAwait(false);
                 if (!read.IsAuthoritative || read.Stream is not { } source || source.NativeProof is null) return false;
                 if (source.Head < head.Head) { poison ??= "publication-source-regressed"; continue; }
                 if (source.NativeProof.SourceIncarnation != head.NativeProof?.SourceIncarnation
                     || source.Head == head.Head && source.NativeProof != head.NativeProof) { poison ??= "publication-source-incompatible"; continue; }
                 var projected = await ObserveAsync(head).ConfigureAwait(false);
-                if (projected is null || previous.Entries.Any(entry => entry.Publication.Identity == head.Identity && !projected.Contains(entry.Publication)))
+                if (projected is null) return false;
+                if (previous.Entries.Any(entry => entry.Publication.Identity == head.Identity && !projected.Contains(entry.Publication)))
                     poison ??= "publication-reference-conflict";
             }
             var projectedCurrent = new List<SourcePublicationDescriptor>();
             foreach (var identity in roster.Sources)
             {
-                var read = await streams.ReadAsync(identity).ConfigureAwait(false);
+                var read = await ReadExternalAsync(token => streams.ReadAsync(identity, token)).ConfigureAwait(false);
                 if (!read.IsAuthoritative || read.Stream is not { NativeProof: { } proof } current) return false;
                 IReadOnlyList<SourcePublicationDescriptor>? projected;
-                try { projected = projector.Project(current); }
+                try { projected = await ReadExternalAsync(token => Task.FromResult(projector.Project(current, token))).ConfigureAwait(false); }
                 catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or JsonException)
                 { poison ??= "publication-source-incompatible"; continue; }
                 if (projected is null) return false;
@@ -188,13 +203,15 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
         if ((reusable ? prior!.VerifiedSources : 0) != advance.ExpectedVerifiedSources) return null;
         var projected = await ObserveAsync(advance.Source).ConfigureAwait(false);
         if (projected is null || !projected.SequenceEqual(advance.Publications)) return null;
-        var proposed = SourcePublicationReconciliationProgress.Capture(new(advance.Cut.Scope, (prior?.Version ?? 0) + 1,
+        var issued = SourcePublicationAuthorityActor.Value<SourcePublicationReconciliationProgress>(state.Records, "reconciliation-head");
+        long primaryVersion = prior?.Version ?? 0;
+        var proposed = SourcePublicationReconciliationProgress.Capture(new(advance.Cut.Scope, Math.Max(primaryVersion, issued?.Version ?? 0) + 1,
             advance.Cut.AuthorityRevision, advance.Cut.Sources, advance.ExpectedVerifiedSources + 1,
-            (reusable ? prior!.Publications : []).Concat(projected).ToArray(), "pending") { OriginalCut = reusable ? prior!.OriginalCut ?? advance.Cut : advance.Cut });
+            (reusable ? prior!.Publications : []).Concat(projected).ToArray(), "pending")
+            { OriginalCut = reusable ? prior!.OriginalCut ?? advance.Cut : advance.Cut, ExpectedPredecessorVersion = primaryVersion });
         proposed = proposed with { ReceiptId = RecoverableAnchoredState.Digest(proposed) };
         // A lost issuance response must recover the independently retained original, including its original expiry.
-        var issued = SourcePublicationAuthorityActor.Value<SourcePublicationReconciliationProgress>(state.Records, "reconciliation-head");
-        if (issued is not null && issued.Version == proposed.Version && issued.VerifiedSources == proposed.VerifiedSources
+        if (issued is not null && issued.Version > primaryVersion && issued.ExpectedPredecessorVersion == primaryVersion && issued.VerifiedSources == proposed.VerifiedSources
             && issued.MatchesCut(advance.Cut) && issued.Publications.SequenceEqual(proposed.Publications)
             && await VerifyReconciliationProgressAsync(issued).ConfigureAwait(false)) return issued;
         if (await CurrentAsync(advance.Cut.Scope).ConfigureAwait(false) is null) return null;
@@ -287,8 +304,8 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     }
     private async Task<SourcePublicationAcknowledgement?> ObserveAcknowledgementAsync(SourcePublicationIndexEntry entry, SourcePublicationAuthorityState state)
     {
-        var source = await acknowledgements.ReadSourceAsync(entry).ConfigureAwait(false);
-        var receiver = await acknowledgements.ReadReceiverAsync(entry).ConfigureAwait(false);
+        var source = await ReadExternalAsync(token => acknowledgements.ReadSourceAsync(entry, token)).ConfigureAwait(false);
+        var receiver = await ReadExternalAsync(token => acknowledgements.ReadReceiverAsync(entry, token)).ConfigureAwait(false);
         return source is not null && source == receiver && source.Entry == entry && source.ProtectedDeletionRevision > 0
             && !string.IsNullOrWhiteSpace(source.ReceiptId) && source.ReceiptId.Length <= 256
             && KnownDeliveryBinding(state, source.DeliveryTarget, source.DeliveryAuthorityRevision) ? source : null;
@@ -303,13 +320,13 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     {
         if (head.NativeProof is not { Erased: false, RetainedFloor: 1 } || head.Head is < 0 or > 10000) return null;
         using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, CancellationToken.None, clock.GetTimestamp());
-        var read = await streams.ReadAsync(head.Identity).ConfigureAwait(false);
+        var read = await ReadExternalAsync(token => streams.ReadAsync(head.Identity, token)).ConfigureAwait(false);
         if (!read.IsAuthoritative || read.Stream is not { } source || source.Identity != head.Identity || source.Head < head.Head
             || source.Head > 10000 || source.ObservedAt > clock.GetUtcNow() || source.ObservedAt == default
             || !NativeSourcePrefix.Matches(source, head, deadline)) return null;
         var prefix = source.Events.Take(checked((int)head.Head)).Select(item => item with { Payload = item.Payload.ToArray() }).ToArray();
         if (prefix.Sum(item => (long)item.Payload.Length) > CompleteCommandSource.MaximumPayloadBytes) return null;
-        var projected = projector.Project(source with { Head = head.Head, Events = prefix, NativeProof = head.NativeProof });
+        var projected = await ReadExternalAsync(token => Task.FromResult(projector.Project(source with { Head = head.Head, Events = prefix, NativeProof = head.NativeProof }, token))).ConfigureAwait(false);
         if (projected is null || projected.Count > 10000 || projected.Any(item => item.Identity != head.Identity || item.SourceRevision <= 0
             || item.SourceRevision > head.Head || prefix[checked((int)item.SourceRevision - 1)].MessageId != item.SourceMessageId)) return null;
         return projected.OrderBy(item => item.SourceRevision).ToArray();
@@ -323,7 +340,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
             || !cut.Sources.Select(item => item.Identity).SequenceEqual(roster.Sources)) return false;
         foreach (var head in cut.Sources)
         {
-            var read = await streams.ReadAsync(head.Identity).ConfigureAwait(false);
+            var read = await ReadExternalAsync(token => streams.ReadAsync(head.Identity, token)).ConfigureAwait(false);
             if (!read.IsAuthoritative || read.Stream is not { } source || source.Identity != head.Identity || head.NativeProof is null
                 || !allowGrowth && source.Head != head.Head) return false;
             using var deadline = new AuthoritativeStreamReadDeadline(TimeSpan.FromSeconds(30), clock, CancellationToken.None, clock.GetTimestamp());
@@ -365,7 +382,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     {
         var enrollment = enrollments.SingleOrDefault(item => item.Scope == scope);
         if (enrollment is null || enrollment.ValidUntil <= clock.GetUtcNow() || !evidence.IsCurrent(enrollment)) return null;
-        var state = await journal.ReadAsync(enrollment, cancellationToken).ConfigureAwait(false);
+        var state = await ReadExternalAsync(token => journal.ReadAsync(enrollment, token), cancellationToken).ConfigureAwait(false);
         return state is not null && RecoverableAnchoredState.Digest(state.Enrollment) == RecoverableAnchoredState.Digest(enrollment)
             && evidence.IsCurrent(state.Enrollment) && state.Enrollment.ValidUntil > clock.GetUtcNow() ? state : null;
     }

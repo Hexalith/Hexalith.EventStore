@@ -1775,6 +1775,7 @@ public partial class AggregateActor(
                                 await payloadProtectionService.AcquirePayloadProtectionCompletionLeaseAsync(completion,
                                     cancellationToken).ConfigureAwait(false);
                             }
+                            await ValidateCompleteCommandSourceAuthorityAsync(completeSource, completeSourceAuthority, cancellationToken).ConfigureAwait(false);
                             cancellationToken.ThrowIfCancellationRequested();
                             eventBatchSaveAttempted = true;
                             await StateManager.SaveStateAsync().ConfigureAwait(false);

@@ -13,6 +13,7 @@ using Hexalith.EventStore.Server.Tests.TestUtilities;
 using Hexalith.EventStore.ServiceDefaults.Authentication;
 using Hexalith.EventStore.Testing.Fakes;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
@@ -46,14 +47,20 @@ internal sealed class SourcePublicationAuthorityFixture
     internal SourcePublicationAuthorityActor JournalActor { get; private set; } = null!;
     internal IActorProxyFactory Proxies { get; } = Substitute.For<IActorProxyFactory>();
     internal bool Current { get; set; } = true;
+    internal TimeProvider Clock { get; }
+    internal IHttpContextAccessor HttpContexts { get; } = new HttpContextAccessor();
     internal string? LoseJournalResponse { get; set; }
     private readonly WorkloadAssertionValidator _validator;
     private readonly SourcePublicationAuthorityCredentials _credentials;
     private static readonly string _signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+    private readonly SemaphoreSlim _journalTurns = new(1);
+    private readonly SemaphoreSlim _namespaceTurns = new(1);
+    private readonly SemaphoreSlim _indexTurns = new(1);
 
-    internal SourcePublicationAuthorityFixture()
+    internal SourcePublicationAuthorityFixture(TimeProvider? clock = null)
     {
-        Enrollment = new(Scope, "epoch-1", Installation.StorageIdentity, DateTimeOffset.UtcNow.AddHours(1), [], [],
+        Clock = clock ?? TimeProvider.System;
+        Enrollment = new(Scope, "epoch-1", Installation.StorageIdentity, Clock.GetUtcNow().AddHours(1), [], [],
             "qualified-inventory", "qualified-all-writer-enforcement", "producer", "observer", "registrar", "reader", "recovery", "receiver-v1", "delivery-1");
         Evidence.IsCurrent(Arg.Any<SourcePublicationAuthorityEnrollment>()).Returns(call => Current
             && RecoverableAnchoredState.Digest(call.Arg<SourcePublicationAuthorityEnrollment>()) == RecoverableAnchoredState.Digest(Enrollment));
@@ -80,26 +87,41 @@ internal sealed class SourcePublicationAuthorityFixture
         var journalProxy = Substitute.For<ISourcePublicationAuthorityActor>();
         journalProxy.CallAsync(Arg.Any<SourcePublicationAuthorityCall>()).Returns(async call =>
         {
+            await _journalTurns.WaitAsync();
+            try
+            {
             var request = Clone(call.Arg<SourcePublicationAuthorityCall>());
             byte[]? result = await JournalActor.CallAsync(request);
             if (LoseJournalResponse == request.Method) { LoseJournalResponse = null; throw new HttpRequestException("Controlled lost journal response."); }
             return result;
+            }
+            finally { _journalTurns.Release(); }
         });
         Proxies.CreateActorProxy<ISourcePublicationAuthorityActor>(Arg.Any<ActorId>(), SourcePublicationAuthorityActor.ActorTypeName).Returns(journalProxy);
         var namespaceProxy = Substitute.For<ISourcePublicationNamespaceActor>();
-        namespaceProxy.InvokeAuthenticatedAsync(Arg.Any<SourcePublicationAuthorityCall>()).Returns(call => Namespace.InvokeAuthenticatedAsync(Clone(call.Arg<SourcePublicationAuthorityCall>())));
+        namespaceProxy.InvokeAuthenticatedAsync(Arg.Any<SourcePublicationAuthorityCall>()).Returns(async call =>
+        {
+            await _namespaceTurns.WaitAsync();
+            try { return await Namespace.InvokeAuthenticatedAsync(Clone(call.Arg<SourcePublicationAuthorityCall>())); }
+            finally { _namespaceTurns.Release(); }
+        });
         Proxies.CreateActorProxy<ISourcePublicationNamespaceActor>(Arg.Any<ActorId>(), SourcePublicationNamespaceActor.ActorTypeName).Returns(namespaceProxy);
         var indexProxy = Substitute.For<ISourcePublicationIndexActor>();
-        indexProxy.InvokeAuthenticatedAsync(Arg.Any<SourcePublicationAuthorityCall>()).Returns(call => Index.InvokeAuthenticatedAsync(Clone(call.Arg<SourcePublicationAuthorityCall>())));
+        indexProxy.InvokeAuthenticatedAsync(Arg.Any<SourcePublicationAuthorityCall>()).Returns(async call =>
+        {
+            await _indexTurns.WaitAsync();
+            try { return await Index.InvokeAuthenticatedAsync(Clone(call.Arg<SourcePublicationAuthorityCall>())); }
+            finally { _indexTurns.Release(); }
+        });
         Proxies.CreateActorProxy<ISourcePublicationIndexActor>(Arg.Any<ActorId>(), SourcePublicationIndexActor.ActorTypeName).Returns(indexProxy);
         Recreate();
     }
     internal void Recreate()
     {
-        JournalActor = new(ActorHost.CreateForTest<SourcePublicationAuthorityActor>(new ActorTestOptions { ActorId = new(Scope.ActorId) }), Installation, Evidence, _validator, TimeProvider.System);
+        JournalActor = new(ActorHost.CreateForTest<SourcePublicationAuthorityActor>(new ActorTestOptions { ActorId = new(Scope.ActorId) }), Installation, Evidence, _validator, Clock);
         ActorStateManagerTestHelper.SetStateManager(JournalActor, JournalBackend);
         Journal = new(Proxies, Installation, _credentials); Primary = new(Proxies, [Clone(Enrollment)], Installation, _credentials);
-        Authority = new(Journal, [Clone(Enrollment)], Installation, Evidence, _validator, Streams, Projector, Acknowledgements, TimeProvider.System);
+        Authority = new(Journal, [Clone(Enrollment)], Installation, Evidence, _validator, Streams, Projector, Acknowledgements, Clock, HttpContexts);
         Namespace = new(ActorHost.CreateForTest<SourcePublicationNamespaceActor>(new ActorTestOptions { ActorId = new(Scope.ActorId) }), Authority);
         ActorStateManagerTestHelper.SetStateManager(Namespace, NamespaceBackend);
         Index = new(ActorHost.CreateForTest<SourcePublicationIndexActor>(new ActorTestOptions { ActorId = new(Scope.ActorId) }), Authority);
