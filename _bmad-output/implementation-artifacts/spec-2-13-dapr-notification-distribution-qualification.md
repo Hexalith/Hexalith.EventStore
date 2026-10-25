@@ -328,6 +328,25 @@ a local documentation review, not a whole-story qualification or owner approval.
 | October 25 Blind 3: auxiliary topology commands | medium | patch | Added the exact start, readiness and resource-stop sequence, process/resource names, and the retained in-run state observation. Missing separate wait/stop receipts are explicit. |
 | October 25 Blind 4: support service identities | medium | patch | Added Redis, placement, scheduler and Aspire CLI identities. The story labels their inspection as retrospective and states that absent pre-run captures cannot be supplied retroactively. |
 
+### October 25 current-workspace requalification review
+
+Review covers the new Verification section in the original story, measured against
+run-start `aa46e2526ab33b2f4b220478c8acc097f7ad01b0` and its recorded checkouts.
+The frozen baseline and all prior findings remain unchanged. The edge-case and
+verification-gap reviewers found no additional issues. This local documentation
+review advances no whole-story status, production qualification or approval.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| Current-workspace Blind 1: logical readback observations omitted | medium | patch | The real-projection manifest retains both counts, equal ETags, host/sidecar PIDs, connection ownership and tenant-denial results. Added a compact summary to the story so logical readback remains assessable after temporary output expires. |
+| Current-workspace Blind 2: generated component identities omitted | medium | patch | Component kinds alone do not bind tested configuration bytes. Added the real-projection manifest's pub/sub, state-store and subscription hashes, explicitly limited to that scenario. |
+| Current-workspace Blind 3: focused test runner hashes omitted | low | patch | The 102-test command uses a separate executable. Added its DLL and dependency-manifest hashes from matching before/after entries in `focused-server.json`. |
+| Current-workspace Blind 4: Redis command template differs | low | patch | The generated Redis report contains a static `dotnet test` template. Clarified that it was not executed and that the captured direct executable invocation is authoritative; retained report bytes remain unchanged. |
+
+All four corrections are documentation additions sourced from existing receipts;
+no runtime tests were repeated. The production/disposition gates and missing Go
+requalification remain open. Review logging is the only change to this spec.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations
