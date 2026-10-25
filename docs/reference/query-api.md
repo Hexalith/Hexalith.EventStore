@@ -144,9 +144,9 @@ If the query pipeline returns a `200 OK` envelope with `"success": false`, the .
 
 ### Conditional Requests with ETag
 
-`POST /api/v1/queries` supports the `If-None-Match` header. The query is routed first. Only when the selected route is `ProjectionBacked` does the gateway fetch and compare the current representation ETag; a match may then return `304 Not Modified`. A matching projection validator on a handler-computed or unknown route never short-circuits execution and is never returned on that response.
+`POST /api/v1/queries` supports the `If-None-Match` header. Authentication, tenant/RBAC authorization, and query routing execute before comparison. Only when the selected route is `ProjectionBacked` does the gateway compare the current representation ETag; a match may then return `304 Not Modified`. The producer's ETag takes precedence over a later validator-service lookup. A strong opaque ETag can match only when that producer supplied it for the routed representation. Legacy service-only opaque validators remain cache misses. A matching projection validator on a handler-computed or unknown route never short-circuits execution and is never returned on that response.
 
-HTTP examples show quoted ETags because HTTP headers require quoted entity tags. The .NET gateway client exposes response ETags as normalized unquoted strong tokens. When calling `SubmitQueryAsync`, pass either the normalized token (`etag-value-from-previous-response`) or the quoted header form (`"etag-value-from-previous-response"`); the client sends the quoted HTTP header. Empty values omit the header. Weak or malformed ETags are unsupported and rejected before the request is sent.
+HTTP examples show quoted ETags because HTTP headers require quoted entity tags. The .NET gateway client exposes response ETags as normalized unquoted strong tokens. When calling `SubmitQueryAsync`, pass either the normalized token (`etag-value-from-previous-response`) or the quoted header form (`"etag-value-from-previous-response"`); the client sends the quoted HTTP header. This includes normalized opaque tokens containing commas: the API treats an unquoted token as one validator, so a returned `opaque,validator` can be reused directly. Empty values omit the header. Unsupported weak, wildcard, quoted tag-list, or malformed input falls back to an unconditional request. The server validates the entire list and its ten-value limit before decoding or comparing candidates, rejects wildcard/weak or malformed list members, and skips comparison when encoded validators name mixed projection types. Commas inside quoted opaque tags remain part of one validator.
 
 ```bash
 $ curl -X POST https://localhost:5001/api/v1/queries \
@@ -168,9 +168,15 @@ HTTP/1.1 304 Not Modified
 ETag: "etag-value-from-previous-response"
 X-Hexalith-Query-Provenance: ProjectionBacked
 X-Hexalith-Projection-Lifecycle: Current
+X-Hexalith-Projection-Version: model-v42
+X-Hexalith-Served-At: 2026-10-25T08:30:00.0000000+00:00
+X-Hexalith-Is-Stale: false
+X-Hexalith-Warning-Codes: degraded_search
 ```
 
-If the projection changed, the API returns `200 OK` with a new response body and an updated opaque `ETag` header. Conditional comparison is skipped for requests that carry explicit query policy inputs or a non-empty `payload`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If provenance is not `ProjectionBacked`, or producer freshness is otherwise unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
+The bodyless response retains available metadata in the existing `X-Hexalith-Projection-Version`, `X-Hexalith-Served-At`, `X-Hexalith-Is-Stale`, `X-Hexalith-Is-Degraded`, and `X-Hexalith-Warning-Codes` headers alongside provenance and lifecycle. Projection version is opaque and independent of ETag; it is never inferred from the validator. A single version value can contain commas. The server emits only wire-safe ASCII version values, bounded to 4096 characters with no controls; omitted header values remain unchanged in JSON metadata on `200` responses. Served-at uses the invariant round-trip timestamp format. The .NET gateway client preserves these fields for both typed and untyped results. It ignores missing, malformed, actual multiple header values, oversized (over 4096 characters), or control-containing metadata values; it does not split a version's contents to infer duplicates. Warning codes use the existing comma-separated carrier, at most sixteen non-empty ASCII letter/digit/`-`/`_`/`.` tokens within 4096 characters. When producer warnings cannot fit that carrier, the server retains `200` with the JSON evidence. Canonical lifecycle controls the compatibility flags; legacy flags do not establish a lifecycle when lifecycle evidence is absent.
+
+If the projection changed, the API returns `200 OK` with a new response body and an updated opaque `ETag` header. Conditional comparison is skipped for requests that carry explicit query policy inputs or a non-empty `payload` other than an exact entity `id`, so a cached validator for one query shape cannot produce a false `304` for a different filter/search/order/page/freshness or payload identity. ETag lookup failures fail open and the query still executes. If provenance is not `ProjectionBacked`, or producer freshness is otherwise unknown and the request explicitly requires freshness, the response fails closed with `query_projection_stale`.
 
 ### Error Responses
 

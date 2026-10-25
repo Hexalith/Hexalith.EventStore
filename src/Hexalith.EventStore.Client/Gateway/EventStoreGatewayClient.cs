@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -18,6 +19,9 @@ namespace Hexalith.EventStore.Client.Gateway;
 /// HTTP implementation of <see cref="IEventStoreGatewayClient"/>.
 /// </summary>
 public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
+    private const int MaxMetadataHeaderValueLength = 4096;
+    private const int MaxWarningCodeCount = 16;
+
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Converters = {
@@ -353,8 +357,11 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
                 Metadata = new QueryResponseMetadata(
                     ETag: notModifiedETag,
                     IsNotModified: true,
-                    IsStale: ProjectionLifecyclePolicy.ProjectIsStale(lifecycle),
-                    IsDegraded: ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle)) {
+                    IsStale: ProjectionLifecyclePolicy.ProjectIsStale(lifecycle, GetBooleanHeader(response, "X-Hexalith-Is-Stale")),
+                    IsDegraded: ProjectionLifecyclePolicy.ProjectIsDegraded(lifecycle, GetBooleanHeader(response, "X-Hexalith-Is-Degraded")),
+                    ProjectionVersion: GetBoundedSingleHeaderValue(response, "X-Hexalith-Projection-Version"),
+                    ServedAt: GetServedAtHeader(response),
+                    WarningCodes: GetWarningCodesHeader(response)) {
                     Provenance = QueryResponseProvenance.ProjectionBacked,
                     Lifecycle = lifecycle,
                 },
@@ -550,16 +557,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     }
 
     private static QueryResponseProvenance GetProvenanceHeader(HttpResponseMessage response) {
-        if (!response.Headers.TryGetValues("X-Hexalith-Query-Provenance", out IEnumerable<string>? values)) {
-            return QueryResponseProvenance.Unknown;
-        }
-
-        string[] provenanceValues = values.ToArray();
-        if (provenanceValues.Length != 1) {
-            return QueryResponseProvenance.Unknown;
-        }
-
-        return provenanceValues[0] switch {
+        return GetBoundedSingleHeaderValue(response, "X-Hexalith-Query-Provenance") switch {
             nameof(QueryResponseProvenance.ProjectionBacked) => QueryResponseProvenance.ProjectionBacked,
             nameof(QueryResponseProvenance.HandlerComputed) => QueryResponseProvenance.HandlerComputed,
             _ => QueryResponseProvenance.Unknown,
@@ -567,16 +565,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
     }
 
     private static ProjectionLifecycleState GetLifecycleHeader(HttpResponseMessage response) {
-        if (!response.Headers.TryGetValues(ProjectionLifecyclePolicy.HeaderName, out IEnumerable<string>? values)) {
-            return ProjectionLifecycleState.Unknown;
-        }
-
-        string[] lifecycleValues = values.ToArray();
-        if (lifecycleValues.Length != 1) {
-            return ProjectionLifecycleState.Unknown;
-        }
-
-        return lifecycleValues[0] switch {
+        return GetBoundedSingleHeaderValue(response, ProjectionLifecyclePolicy.HeaderName) switch {
             nameof(ProjectionLifecycleState.Current) => ProjectionLifecycleState.Current,
             nameof(ProjectionLifecycleState.Stale) => ProjectionLifecycleState.Stale,
             nameof(ProjectionLifecycleState.Rebuilding) => ProjectionLifecycleState.Rebuilding,
@@ -585,6 +574,57 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             nameof(ProjectionLifecycleState.LocalOnly) => ProjectionLifecycleState.LocalOnly,
             _ => ProjectionLifecycleState.Unknown,
         };
+    }
+
+    private static string? GetBoundedSingleHeaderValue(HttpResponseMessage response, string name) {
+        if (!response.Headers.TryGetValues(name, out IEnumerable<string>? values)) {
+            return null;
+        }
+
+        using IEnumerator<string> enumerator = values.GetEnumerator();
+        if (!enumerator.MoveNext()) {
+            return null;
+        }
+
+        string value = enumerator.Current;
+        return !enumerator.MoveNext()
+            && !string.IsNullOrWhiteSpace(value)
+            && value.Length <= MaxMetadataHeaderValueLength
+            && !value.Any(char.IsControl)
+                ? value
+                : null;
+    }
+
+    private static bool? GetBooleanHeader(HttpResponseMessage response, string name)
+        => GetBoundedSingleHeaderValue(response, name) switch {
+            "true" => true,
+            "false" => false,
+            _ => null,
+        };
+
+    private static DateTimeOffset? GetServedAtHeader(HttpResponseMessage response)
+        => DateTimeOffset.TryParseExact(
+            GetBoundedSingleHeaderValue(response, "X-Hexalith-Served-At"),
+            "O",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out DateTimeOffset servedAt)
+                ? servedAt
+                : null;
+
+    private static IReadOnlyList<string>? GetWarningCodesHeader(HttpResponseMessage response) {
+        string? value = GetBoundedSingleHeaderValue(response, "X-Hexalith-Warning-Codes");
+        if (value is null) {
+            return null;
+        }
+
+        string[] codes = value.Split(',');
+        return codes.Length <= MaxWarningCodeCount
+            && codes.All(static code => code.Length > 0
+                && code.All(static character => character is >= 'A' and <= 'Z' or >= 'a' and <= 'z'
+                    or >= '0' and <= '9' or '-' or '_' or '.'))
+                ? codes
+                : null;
     }
 
     private static Uri CreateRelativeUri(string path) {
@@ -642,7 +682,7 @@ public sealed class EventStoreGatewayClient : IEventStoreGatewayClient {
             return parsed.Tag;
         }
 
-        if (value.Any(static c => char.IsWhiteSpace(c) || char.IsControl(c) || c is '"' or ',')) {
+        if (value.Any(static c => char.IsWhiteSpace(c) || char.IsControl(c) || c == '"')) {
             return null;
         }
 

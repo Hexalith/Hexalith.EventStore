@@ -1,4 +1,6 @@
 
+using System.Globalization;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -40,6 +42,8 @@ public partial class QueriesController(
     WorkloadAssertionValidator? assertionValidator = null,
     IOptionsMonitor<WorkloadAuthenticationOptions>? workloadOptions = null) : ControllerBase {
     private const int MaxIfNoneMatchValues = 10;
+    private const int MaxMetadataHeaderValueLength = 4096;
+    private const int MaxWarningCodeCount = 16;
 
     private readonly record struct HeaderProjectionTypeAnalysis(string? ProjectionType, bool HasMixedProjectionTypes);
 
@@ -220,7 +224,8 @@ public partial class QueriesController(
 
         QueryResponseMetadata producerMetadata = NormalizeProducerMetadata(result.Metadata);
         bool projectionBacked = producerMetadata.Provenance == QueryResponseProvenance.ProjectionBacked;
-        string? currentETag = projectionBacked && !string.IsNullOrWhiteSpace(producerMetadata.ETag)
+        bool hasProducerETag = projectionBacked && !string.IsNullOrWhiteSpace(producerMetadata.ETag);
+        string? currentETag = hasProducerETag
             ? producerMetadata.ETag
             : null;
         if (currentETag is null && projectionBacked && !string.IsNullOrWhiteSpace(result.ProjectionType)) {
@@ -243,14 +248,38 @@ public partial class QueriesController(
             servedAt);
         EnforceFreshnessPolicy(request, correlationId, producerMetadata, metadata, servedAt);
 
-        bool conditionalMatch = ShouldEvaluateConditionalRequest(request, ifNoneMatch, correlationId)
+        string? warningCodes = FormatWarningCodes(metadata.WarningCodes);
+        bool conditionalMatch = (metadata.WarningCodes is not { Count: > 0 } || warningCodes is not null)
+            && ShouldEvaluateConditionalRequest(request, ifNoneMatch, correlationId, hasProducerETag)
             && currentETag is not null
-            && ETagMatches(ifNoneMatch, currentETag);
+            && ETagMatches(ifNoneMatch, currentETag, hasProducerETag);
 
         Response.Headers["X-Hexalith-Query-Provenance"] = metadata.Provenance.ToString();
         _ = Response.Headers.Remove(ProjectionLifecyclePolicy.HeaderName);
         if (metadata.Lifecycle != ProjectionLifecycleState.Unknown) {
             Response.Headers[ProjectionLifecyclePolicy.HeaderName] = metadata.Lifecycle.ToString();
+        }
+
+        if (projectionBacked && !string.IsNullOrWhiteSpace(metadata.ProjectionVersion)
+            && metadata.ProjectionVersion.Length <= MaxMetadataHeaderValueLength
+            && !metadata.ProjectionVersion.Any(static character => char.IsControl(character) || character > 0x7e)) {
+            Response.Headers["X-Hexalith-Projection-Version"] = metadata.ProjectionVersion;
+        }
+
+        if (metadata.ServedAt is { } metadataServedAt) {
+            Response.Headers["X-Hexalith-Served-At"] = metadataServedAt.ToString("O", CultureInfo.InvariantCulture);
+        }
+
+        if (projectionBacked && metadata.IsStale is { } isStale) {
+            Response.Headers["X-Hexalith-Is-Stale"] = isStale ? "true" : "false";
+        }
+
+        if (metadata.IsDegraded is { } isDegraded) {
+            Response.Headers["X-Hexalith-Is-Degraded"] = isDegraded ? "true" : "false";
+        }
+
+        if (warningCodes is not null) {
+            Response.Headers["X-Hexalith-Warning-Codes"] = warningCodes;
         }
 
         if (currentETag is not null) {
@@ -268,7 +297,8 @@ public partial class QueriesController(
     private bool ShouldEvaluateConditionalRequest(
         SubmitQueryRequest request,
         string? ifNoneMatch,
-        string correlationId) {
+        string correlationId,
+        bool hasProducerETag) {
         if (string.IsNullOrWhiteSpace(ifNoneMatch)) {
             return false;
         }
@@ -289,7 +319,7 @@ public partial class QueriesController(
             return false;
         }
 
-        if (analysis.ProjectionType is null) {
+        if (analysis.ProjectionType is null && !hasProducerETag) {
             Log.ETagDecodeSkipped(logger, correlationId);
             return false;
         }
@@ -452,21 +482,13 @@ public partial class QueriesController(
     /// If multiple decodable projection types are present, Gate 1 should be skipped for safety.
     /// </summary>
     private static HeaderProjectionTypeAnalysis AnalyzeHeaderProjectionTypes(string ifNoneMatch) {
-        ReadOnlySpan<char> header = ifNoneMatch.AsSpan().Trim();
-        int start = 0;
+        if (!TryGetConditionalValidators(ifNoneMatch, out List<string> validators)) {
+            return new HeaderProjectionTypeAnalysis(null, false);
+        }
+
         string? firstProjectionType = null;
-
-        for (int i = 0; i <= header.Length; i++) {
-            if (i < header.Length && header[i] != ',') {
-                continue;
-            }
-
-            ReadOnlySpan<char> candidate = header[start..i].Trim();
-            if (candidate.Length >= 2 && candidate[0] == '"' && candidate[^1] == '"') {
-                candidate = candidate[1..^1];
-            }
-
-            if (SelfRoutingETag.TryDecode(candidate.ToString(), out string? projectionType, out _)) {
+        foreach (string validator in validators) {
+            if (SelfRoutingETag.TryDecode(validator.Trim('"'), out string? projectionType, out _)) {
                 if (firstProjectionType is null) {
                     firstProjectionType = projectionType;
                 }
@@ -474,55 +496,79 @@ public partial class QueriesController(
                     return new HeaderProjectionTypeAnalysis(null, true);
                 }
             }
-
-            start = i + 1;
         }
 
         return new HeaderProjectionTypeAnalysis(firstProjectionType, false);
     }
 
-    private bool ETagMatches(string? ifNoneMatch, string currentETag) {
-        if (string.IsNullOrWhiteSpace(ifNoneMatch)) {
+    private static bool ETagMatches(string? ifNoneMatch, string currentETag, bool hasProducerETag) {
+        if (ifNoneMatch is null || !TryGetConditionalValidators(ifNoneMatch, out List<string> validators)) {
             return false;
         }
 
-        ReadOnlySpan<char> header = ifNoneMatch.AsSpan().Trim();
-        if (header.SequenceEqual("*".AsSpan())) {
-            return true;
-        }
-
-        int valueCount = 1;
-        for (int i = 0; i < header.Length; i++) {
-            if (header[i] == ',') {
-                valueCount++;
-                if (valueCount > MaxIfNoneMatchValues) {
-                    Log.TooManyIfNoneMatchValues(logger, valueCount, MaxIfNoneMatchValues);
-                    return false;
-                }
-            }
-        }
-
-        int start = 0;
-        for (int i = 0; i <= header.Length; i++) {
-            if (i < header.Length && header[i] != ',') {
-                continue;
-            }
-
-            ReadOnlySpan<char> candidate = header[start..i].Trim();
-            if (candidate.Length >= 2 && candidate[0] == '"' && candidate[^1] == '"') {
-                candidate = candidate[1..^1];
-            }
-
-            string candidateValue = candidate.ToString();
-            if (SelfRoutingETag.TryDecode(candidateValue, out _, out _)
-                && candidate.SequenceEqual(currentETag.AsSpan())) {
+        foreach (string validator in validators) {
+            string candidate = validator.Trim('"');
+            if ((hasProducerETag && validator.StartsWith('"') || SelfRoutingETag.TryDecode(candidate, out _, out _))
+                && string.Equals(candidate, currentETag, StringComparison.Ordinal)) {
                 return true;
             }
-
-            start = i + 1;
         }
 
         return false;
+    }
+
+    private static bool TryGetConditionalValidators(string ifNoneMatch, out List<string> validators) {
+        validators = [];
+        ReadOnlySpan<char> header = ifNoneMatch.AsSpan().Trim();
+        int start = 0;
+        bool inQuotes = false;
+        for (int i = 0; i <= header.Length; i++) {
+            if (i < header.Length) {
+                if (header[i] == '"') {
+                    inQuotes = !inQuotes;
+                }
+
+                if (header[i] != ',' || inQuotes) {
+                    continue;
+                }
+            }
+
+            string candidate = header[start..i].Trim().ToString();
+            if (validators.Count == MaxIfNoneMatchValues || candidate.Length == 0 || inQuotes) {
+                return false;
+            }
+
+            if (candidate.StartsWith('"')) {
+                if (!EntityTagHeaderValue.TryParse(candidate, out EntityTagHeaderValue? parsed)
+                    || parsed.IsWeak || parsed.Tag == "*") {
+                    return false;
+                }
+            }
+            else if (candidate == "*" || candidate.StartsWith("W/", StringComparison.OrdinalIgnoreCase)
+                || candidate.Any(static character => character == '"' || char.IsWhiteSpace(character) || char.IsControl(character))) {
+                return false;
+            }
+
+            validators.Add(candidate);
+            start = i + 1;
+        }
+
+        // Validate the entire bounded list before decoding any projection or matching a candidate.
+        return validators.All(static validator => validator.StartsWith('"')
+            || SelfRoutingETag.TryDecode(validator, out _, out _));
+    }
+
+    private static string? FormatWarningCodes(IReadOnlyList<string>? warningCodes) {
+        if (warningCodes is null || warningCodes.Count == 0 || warningCodes.Count > MaxWarningCodeCount
+            || warningCodes.Any(static code => string.IsNullOrWhiteSpace(code)
+                || code.Length > MaxMetadataHeaderValueLength
+                || code.Any(static character => !(character is >= 'A' and <= 'Z' or >= 'a' and <= 'z'
+                    or >= '0' and <= '9' or '-' or '_' or '.')))) {
+            return null;
+        }
+
+        string value = string.Join(",", warningCodes);
+        return value.Length <= MaxMetadataHeaderValueLength ? value : null;
     }
 
     private static bool HasExplicitPolicyInputs(SubmitQueryRequest request)

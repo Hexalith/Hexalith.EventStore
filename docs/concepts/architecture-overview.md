@@ -268,8 +268,8 @@ The flow begins when a client submits IncrementCounter. Authentication, current 
 The same topology also supports a lightweight read path for projections:
 
 1. A client calls `POST /api/v1/queries` with tenant, domain, aggregate ID, and query type.
-2. The Command API authenticates the user and optionally short-circuits the request with `304 Not Modified` when the `If-None-Match` header already matches the current projection ETag.
-3. A projection handler resolves the current read model and returns the payload.
+2. The Command API authenticates and authorizes the user, then dispatches the query to the selected route.
+3. A projection handler resolves the current read model and returns its payload and metadata. The API can then return `304 Not Modified` when `If-None-Match` matches the routed projection's validator; otherwise it returns the payload.
 4. When new events update that projection, downstream handlers publish a `ProjectionChangedNotification`.
 5. The Command API receives `POST /projections/changed`, regenerates the ETag, and can broadcast a SignalR `ProjectionChanged` signal to subscribed clients.
 

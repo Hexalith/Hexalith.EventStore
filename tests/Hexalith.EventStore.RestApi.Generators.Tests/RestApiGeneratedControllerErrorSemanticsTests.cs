@@ -300,7 +300,9 @@ public sealed class RestApiGeneratedControllerErrorSemanticsTests
                     WarningCodes: Enumerable
                         .Range(0, 17)
                         .Select(static value => "warning_" + value.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                        .ToArray()),
+                        .ToArray()) {
+                    Provenance = QueryResponseProvenance.ProjectionBacked,
+                },
             });
         };
 
