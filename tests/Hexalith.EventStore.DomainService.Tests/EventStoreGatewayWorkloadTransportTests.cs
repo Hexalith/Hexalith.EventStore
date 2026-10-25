@@ -160,6 +160,45 @@ public sealed class EventStoreGatewayWorkloadTransportTests
             .SubmitBoundWorkloadCommandAsync(request, proof, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>Status assertions carry only the requested declared domain and never an allowlist grant.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StatusGrantsUseTheRealIssuerAndOneDeclaredDomain(bool multipleDomains)
+    {
+        var capture = new CapturingHandler();
+        await using ServiceProvider services = Build(capture, domains: multipleDomains ? ["work", "other-work"] : null);
+        IEventStoreGatewayWorkloadAssertionSource source = services.GetRequiredService<IEventStoreGatewayWorkloadAssertionSource>();
+        string assertion = (await source.IssueAsync(EventStoreGatewayWorkloadOperations.CommandStatus,
+            "tenant-a", "work", TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        var token = new JsonWebToken(assertion);
+        token.Audiences.ShouldBe(["eventstore"]);
+        token.GetClaim(EventStoreWorkloadAuthenticationDefaults.CallerClaimType).Value.ShouldBe("works-reader");
+        token.GetClaim(EventStoreWorkloadAuthenticationDefaults.OperationClaimType).Value.ShouldBe(EventStoreGatewayWorkloadOperations.CommandStatus);
+        token.GetClaim(EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType).Value.ShouldBe("tenant-a");
+        token.GetClaim(EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType).Value.ShouldBe("work");
+        token.TryGetClaim("global_admin", out _).ShouldBeFalse();
+        (await source.IssueAsync(EventStoreGatewayWorkloadOperations.CommandStatus, "tenant-a", "undeclared",
+            TestContext.Current.CancellationToken)).ShouldBeNull();
+        (await source.IssueAsync(EventStoreWorkloadOperations.TrustedEffect, "tenant-a", "work",
+            TestContext.Current.CancellationToken)).ShouldBeNull();
+        if (multipleDomains)
+        {
+            (await source.IssueAsync(EventStoreGatewayWorkloadOperations.CommandStatus, "tenant-a",
+                TestContext.Current.CancellationToken)).ShouldBeNull();
+        }
+    }
+
+    /// <summary>A status operation has no credentials when the issuer is unconfigured.</summary>
+    [Fact]
+    public async Task StatusGrantsRequireIndependentIssuerCredentials()
+    {
+        await using ServiceProvider services = Build(new CapturingHandler(), configured: false);
+        (await services.GetRequiredService<IEventStoreGatewayWorkloadAssertionSource>().IssueAsync(
+            EventStoreGatewayWorkloadOperations.CommandStatus, "tenant-a", "work",
+            TestContext.Current.CancellationToken)).ShouldBeNull();
+    }
+
     private static ServiceProvider Build(CapturingHandler capture, bool configured = true, IReadOnlyCollection<string>? domains = null, string singleDomain = "work", string? proofKey = null)
     {
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
