@@ -6,13 +6,14 @@ namespace Hexalith.EventStore.Admin.UI.Tests.Services;
 
 /// <summary>Observes the actual UI bearer and SDK invocation headers.</summary>
 /// <param name="target">The expected Dapr application identity.</param>
-internal sealed class AdminUiDaprTargetHandler(string target) : HttpMessageHandler
+/// <param name="channelToken">The generated token configured for this test.</param>
+internal sealed class AdminUiDaprTargetHandler(string target, string channelToken) : HttpMessageHandler
 {
     /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         request.Headers.GetValues("dapr-app-id").ShouldBe([target]);
-        request.Headers.GetValues("dapr-api-token").ShouldBe(["synthetic-sidecar-token"]);
+        request.Headers.GetValues("dapr-api-token").ShouldBe([channelToken]);
         request.Headers.Authorization!.Scheme.ShouldBe("Bearer");
         request.Headers.Authorization.Parameter.ShouldNotBeNullOrWhiteSpace();
         return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));

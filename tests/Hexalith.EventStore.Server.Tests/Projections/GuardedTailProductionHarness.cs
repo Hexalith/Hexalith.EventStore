@@ -79,7 +79,8 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
     {
         ReceiptLimit = receiptLimit;
         TransitionAttempts = transitionAttempts;
-        Models = new(Backend, Options.Create(new ReadModelBatchOptions { MaxCanonicalManifestBytes = manifestLimit }));
+        var batchOptions = Options.Create(new ReadModelBatchOptions { MaxCanonicalManifestBytes = manifestLimit });
+        Models = new(Backend, batchOptions);
         DateTimeOffset now = DateTimeOffset.Parse("2026-10-15T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
         Clock = new(now);
         SourceProof seed = SourceProofCodec.CreateSeed(Identity, "01ARZ3NDEKTSV4RRFFQ69G5FAV");
@@ -112,6 +113,7 @@ internal sealed partial class GuardedTailProductionHarness : IDisposable
             incrementalReplayProjectionTypes: mapped ? routes.Where(route => CapabilityFor(route).HandlerSemantics == "mapped-incremental-replay-v1") : [])
         { SourceGuardCapabilities = routes.Where(Guarded).ToDictionary(static route => route, CapabilityFor, StringComparer.Ordinal) };
         var services = new ServiceCollection();
+        services.AddSingleton(batchOptions);
         var nativeGateway = Substitute.For<Hexalith.EventStore.Client.Gateway.IEventStoreGatewayClient>();
         nativeGateway.ReadStreamAsync(Arg.Any<Hexalith.EventStore.Contracts.Streams.StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
         {

@@ -25,7 +25,7 @@ public sealed class PolicyLifecycleTests
     public void V036_V037_CanonicalOverlapAndDuplicateSelectionFailBeforeMaterial()
     {
         ICanonicalPersonalDataPathPolicy canonical = Canonical(["/child", "/child/a~1b~0"]);
-        var payload = new PolicyLifecyclePayload { Child = new() { Secret = "fixture-canary" } };
+        var payload = new PolicyLifecyclePayload { Child = new() { Secret = RandomSecret(), } };
         Should.Throw<PayloadProtectionFormatException>(() => Discovery(paths: [canonical]).Select(Identity, payload,
             PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event));
         canonical.SelectCanonicalJsonPointers(Arg.Any<AggregateIdentity>(), Arg.Any<JsonElement>(), Arg.Any<JsonTypeInfo>(), Arg.Any<PayloadProtectionPayloadKind>())
@@ -46,7 +46,7 @@ public sealed class PolicyLifecycleTests
         PayloadProtectionFormatException failure = Should.Throw<PayloadProtectionFormatException>(() => Discovery([policy]).Select(Identity,
             new PolicyLifecyclePayload { Name = "fixture" }, PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event));
         failure.ToString().ShouldNotContain("private-canary");
-        Should.Throw<PayloadProtectionFormatException>(() => Discovery().Select(Identity, new PolicyLifecyclePayload { Secret = "typed" },
+        Should.Throw<PayloadProtectionFormatException>(() => Discovery().Select(Identity, new PolicyLifecyclePayload { Secret = RandomSecret(), },
             PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event, "{\"a/b~\":\"different\"}"u8.ToArray()));
     }
 
@@ -68,7 +68,7 @@ public sealed class PolicyLifecycleTests
         var options = new JsonSerializerOptions(); options.Converters.Add(converter);
         var context = new PolicyLifecycleJsonContext(options);
         var types = new PayloadTypeRegistry([context.PolicyLifecyclePayload]);
-        var payload = new PolicyLifecyclePayload { Secret = "fixture" };
+        var payload = new PolicyLifecyclePayload { Secret = RandomSecret(), };
         Should.Throw<PayloadProtectionFormatException>(() => new PersonalDataDiscovery(new([], []), types).Select(Identity,
             payload, context.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event));
         converter.WriteCount.ShouldBe(1);
@@ -81,10 +81,10 @@ public sealed class PolicyLifecycleTests
     public void V039_UndefinedDecisionFailsAndAbstainCannotOverrideAttribute()
     {
         IPersonalDataPolicy policy = Policy("ordinary-policy", 1);
-        Discovery([policy]).Select(Identity, new PolicyLifecyclePayload { Secret = "fixture" },
+        Discovery([policy]).Select(Identity, new PolicyLifecyclePayload { Secret = RandomSecret(), },
             PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/a~1b~0"]);
         policy.Evaluate(Arg.Any<PersonalDataPolicyContext>()).Returns((PersonalDataPolicyDecision)99);
-        Should.Throw<PayloadProtectionFormatException>(() => Discovery([policy]).Select(Identity, new PolicyLifecyclePayload { Secret = "fixture" },
+        Should.Throw<PayloadProtectionFormatException>(() => Discovery([policy]).Select(Identity, new PolicyLifecyclePayload { Secret = RandomSecret(), },
             PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event));
     }
 
@@ -145,11 +145,12 @@ public sealed class PolicyLifecycleTests
     [Fact]
     public void E1_ChangingTypedGetterFailsBeforeASelectionCanBeOmitted()
     {
+        string canary = RandomSecret();
         var metadata = PolicyLifecycleJsonContext.Default;
         var discovery = new PersonalDataDiscovery(new([], []), new([metadata.ChangingGetterPayload, metadata.PolicyLifecyclePayload, metadata.String]));
         PayloadProtectionFormatException failure = Should.Throw<PayloadProtectionFormatException>(() => discovery.Select(Identity,
-            new ChangingGetterPayload(), metadata.ChangingGetterPayload, "fixture", PayloadProtectionPayloadKind.Event));
-        failure.InnerException.ShouldBeNull(); failure.ToString().ShouldNotContain("changing-getter-private-canary");
+            new ChangingGetterPayload(canary), metadata.ChangingGetterPayload, "fixture", PayloadProtectionPayloadKind.Event));
+        failure.InnerException.ShouldBeNull(); failure.ToString().ShouldNotContain(canary);
     }
 
     [Fact]
@@ -174,7 +175,7 @@ public sealed class PolicyLifecycleTests
             return PersonalDataPolicyDecision.Abstain;
         });
         // The early policy visits the child before its selection; the attribute policy and late policy suppress it afterwards.
-        Discovery([ordinary, late], [canonical]).Select(Identity, new PolicyLifecyclePayload { Name = "fixture", Child = new() { Secret = "fixture" } },
+        Discovery([ordinary, late], [canonical]).Select(Identity, new PolicyLifecyclePayload { Name = "fixture", Child = new() { Secret = RandomSecret(), } },
             PolicyLifecycleJsonContext.Default.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/child"]);
         calls.ShouldBe(["ordinary", "canonical"]);
     }
@@ -183,13 +184,14 @@ public sealed class PolicyLifecycleTests
     public void NonNullRuntimeSubstitutionCannotOmitSerializedPersonalDataMarkers()
     {
         var context = PolicyLifecycleJsonContext.Default;
-        var payload = new RuntimeSubstitutionPayload();
+        string canary = RandomSecret();
+        var payload = new RuntimeSubstitutionPayload(canary);
         var mapping = new PayloadPropertyRegistration(typeof(RuntimeSubstitutionPayload), context.RuntimeSubstitutionPayload.Properties.Single(p => p.Name == "child"), typeof(RuntimeSubstitutionPayload).GetProperty(nameof(RuntimeSubstitutionPayload.Child))!);
         var discovery = new PersonalDataDiscovery(new([], []), new([context.RuntimeSubstitutionPayload, context.PolicyLifecyclePayload, context.PartySnapshotState, context.String], [mapping]));
         var failure = Should.Throw<PayloadProtectionFormatException>(() => discovery.Select(Identity, payload, context.RuntimeSubstitutionPayload, "fixture", PayloadProtectionPayloadKind.Event));
-        payload.Reads.ShouldBe(2); failure.InnerException.ShouldBeNull(); failure.ToString().ShouldNotContain("substitution-private-canary");
+        payload.Reads.ShouldBe(2); failure.InnerException.ShouldBeNull(); failure.ToString().ShouldNotContain(canary);
         var safe = new PersonalDataDiscovery(new([], [Canonical(["/child"])]), new([context.RuntimeSubstitutionPayload, context.PolicyLifecyclePayload, context.PartySnapshotState, context.String]));
-        safe.Select(Identity, new RuntimeSubstitutionPayload(), context.RuntimeSubstitutionPayload, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/child"]);
+        safe.Select(Identity, new RuntimeSubstitutionPayload(canary), context.RuntimeSubstitutionPayload, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/child"]);
     }
 
     [Fact]
@@ -202,7 +204,7 @@ public sealed class PolicyLifecycleTests
         JsonTypeInfo metadata = options.GetTypeInfo(typeof(PolicyLifecyclePayload));
         metadata.Properties.ShouldAllBe(property => property.AttributeProvider == null);
         var discovery = new PersonalDataDiscovery(new([], [Canonical(["/a~1b~0"])]), new([metadata]));
-        discovery.Select(Identity, new PolicyLifecyclePayload { Name = "public-sibling", Secret = "private-leaf" }, metadata,
+        discovery.Select(Identity, new PolicyLifecyclePayload { Name = "public-sibling", Secret = RandomSecret(), }, metadata,
             "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/a~1b~0"]);
     }
 
@@ -218,6 +220,7 @@ public sealed class PolicyLifecycleTests
     [Fact]
     public void CanonicalPolicyReceivesTheOneSerializationWithConfiguredEscapingAndFormatting()
     {
+        string canary = "<" + RandomSecret() + ">";
         var converter = new FormattingPolicyConverter();
         var options = new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true, IndentCharacter = '\t', IndentSize = 1, NewLine = "\r\n" };
@@ -225,11 +228,11 @@ public sealed class PolicyLifecycleTests
         var canonical = Canonical(["/secret"]);
         canonical.SelectCanonicalJsonPointers(Arg.Any<AggregateIdentity>(), Arg.Any<JsonElement>(), Arg.Any<JsonTypeInfo>(), Arg.Any<PayloadProtectionPayloadKind>()).Returns(call =>
         {
-            call.Arg<JsonElement>().GetRawText().ShouldBe("{\r\n\t\"secret\": \"<private>\",\r\n\t\"public\": [\r\n\t\t1\r\n\t]\r\n}");
+            call.Arg<JsonElement>().GetRawText().ShouldBe("{\r\n\t\"secret\": \"" + canary + "\",\r\n\t\"public\": [\r\n\t\t1\r\n\t]\r\n}");
             return new[] { "/secret" };
         });
         var discovery = new PersonalDataDiscovery(new([], [canonical]), new([context.PolicyLifecyclePayload]));
-        discovery.Select(Identity, new PolicyLifecyclePayload { Secret = "<private>" }, context.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/secret"]);
+        discovery.Select(Identity, new PolicyLifecyclePayload { Secret = canary, }, context.PolicyLifecyclePayload, "fixture", PayloadProtectionPayloadKind.Event).ShouldBe(["/secret"]);
         converter.Writes.ShouldBe(1);
     }
 
@@ -281,6 +284,10 @@ public sealed class PolicyLifecycleTests
         var failure = Should.Throw<PayloadProtectionFormatException>(() => new PersonalDataPolicyRegistry(canonical ? [] : [ordinary], canonical ? [paths] : []));
         failure.InnerException.ShouldBeNull(); failure.Data.Count.ShouldBe(0); failure.ToString().ShouldNotContain("registration-private-canary");
     }
+
+    /// <summary>Creates fixture data without retaining reusable secret literals.</summary>
+    /// <returns>A fresh per-test value.</returns>
+    private static string RandomSecret() => Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
     private static PersonalDataDiscovery Discovery(IPersonalDataPolicy[]? policies = null, ICanonicalPersonalDataPathPolicy[]? paths = null)
     {

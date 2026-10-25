@@ -22,7 +22,7 @@ public sealed class SampleUiDaprTargetTests
     public async Task RegisteredSampleClientUsesConfiguredTargetAndBearer(string? configured, string expected)
     {
         WebApplicationBuilder builder = Builder(configured);
-        builder.Services.AddSampleUiGatewayClient(builder.Configuration).ConfigurePrimaryHttpMessageHandler(() => new SampleUiDaprTargetHandler(expected));
+        builder.Services.AddSampleUiGatewayClient(builder.Configuration).ConfigurePrimaryHttpMessageHandler(() => new SampleUiDaprTargetHandler(expected, builder.Configuration["DAPR_API_TOKEN"]!));
         await using WebApplication app = builder.Build();
         IEventStoreGatewayClient client = app.Services.GetRequiredService<IEventStoreGatewayClient>();
         (await client.GetCommandStatusAsync("synthetic-command", TestContext.Current.CancellationToken)).ShouldBeNull();
@@ -46,9 +46,9 @@ public sealed class SampleUiDaprTargetTests
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["EventStore:GatewayAppId"] = target,
-            ["DAPR_HTTP_ENDPOINT"] = "http://127.0.0.1:3500", ["DAPR_API_TOKEN"] = "synthetic-sidecar-token",
+            ["DAPR_HTTP_ENDPOINT"] = "http://127.0.0.1:3500", ["DAPR_API_TOKEN"] = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
             ["EventStore:Authentication:Issuer"] = "synthetic-issuer", ["EventStore:Authentication:Audience"] = "synthetic-audience",
-            ["EventStore:Authentication:SigningKey"] = "synthetic-development-signing-key-32-bytes",
+            ["EventStore:Authentication:SigningKey"] = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)),
             ["EventStore:Authentication:Subject"] = "synthetic-user", ["EventStore:Authentication:Tenants:0"] = "tenant-a",
             ["EventStore:Authentication:Domains:0"] = "counter", ["EventStore:Authentication:Permissions:0"] = "admin:read",
         });

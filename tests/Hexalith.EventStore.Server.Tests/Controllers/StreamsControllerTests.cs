@@ -106,7 +106,7 @@ public class StreamsControllerTests {
         string assertion = WorkloadAssertionTestTokens.Create(DaprInternalAuthenticationOptions.DefaultAudience, "projects",
             [EventStoreWorkloadOperations.GatewayStreamRead], bindings: bindings);
         var assertions = Substitute.For<IEventStoreGatewayWorkloadAssertionSource>();
-        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, Tenant, Arg.Any<CancellationToken>())
+        assertions.IssueAsync(EventStoreGatewayWorkloadOperations.StreamRead, Tenant, Domain, Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<string?>(assertion));
         var proofs = Substitute.For<IEventStoreGatewayStreamReadProofSource>();
         proofs.IssueAsync(Arg.Any<StreamReadRequest>(), Arg.Any<CancellationToken>()).Returns(call => ValueTask.FromResult<string?>(

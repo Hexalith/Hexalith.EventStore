@@ -7,5 +7,5 @@ internal sealed class WholeObjectSelectionPayload
 {
     /// <summary>Gets a whole selected value with intentionally opaque declared shape.</summary>
     [PersonalData]
-    public object Child { get; } = new PolicyLifecyclePayload { Secret = "whole-selection-private-canary" };
+    public object Child { get; } = new PolicyLifecyclePayload { Secret = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)) };
 }
