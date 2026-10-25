@@ -1,0 +1,2502 @@
+{
+  "schema": "ext-protection-1-owner-delivery-audit/v1",
+  "observedAt": "2026-10-25T11:34:41.340266+00:00",
+  "disposition": "BlockedNotSubmitted",
+  "dependencyId": "EXT-PROTECTION-1",
+  "acceptedStatus": "Uncommitted",
+  "dependencyAvailable": false,
+  "liveReady": false,
+  "qualificationPassed": false,
+  "liveExecuted": false,
+  "cohortExecuted": false,
+  "nativeExecuted": false,
+  "attemptReserved": false,
+  "completeImmutableOwnerTarget": null,
+  "acceptedIntegrationDate": null,
+  "proposedIntegrationDate": "2026-11-02",
+  "proposedDateAccepted": false,
+  "currentRegisterRecord": {
+    "Owner": "EventStore Maintainer",
+    "Repository": "Hexalith.EventStore",
+    "RequiredArtifact": "A production payload-protection engine behind the existing EventStore hooks, applied field-level to a `ProtectedContent` envelope so every other event field stays plaintext and a destroyed-key field unprotects as the typed value `Erased` without breaking replay: one data-encryption key per `AgentInteraction`, plus an explicit provider-neutral `TargetProtectionKeyAlias` that lets a target-limited creation-outbox `ProtectedContent` field owned by `ConversationAgentState` select that exact interaction DEK without deriving it from the directory aggregate identity, wrapped by a per-tenant key-encryption key custodied through `EXT-SECRETS-1`. The custodian exposes `WrapDek`, `UnwrapDek`, `PinDek`, `UnpinDek`, per-key `DestroyDek`, and an atomic `DestroyDekManifest(BatchId, ManifestDigest, SortedTenantInteractionAliasTargets, GuardCapability)` operation. The batch identity and signed capability are deterministic and target-bound. The capability is non-expiring and revocable, carries its signing-key version, and that version remains verifiable for the full retention of the batch identity and terminal outcome, including exact retry/lookup after consumption or revocation; there is no expiry or renewal path and restore reuses the same identity. Consumption is single-use and all-or-none, returns an ordered irreversible per-target receipt vector, exact retry/lookup returns that vector, a changed target/digest conflicts, and `BlockDeletionBatchConsumption` races `ReserveAndConsumeDeletionBatch` at the same protection owner so exactly one wins. Each first previously uncovered complete protection target `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)` uses one guard-issued batch for its ProtectionFence-assigned monotonic containment ordinal and immutable singleton target manifest; later violation resources for that same target receive coverage links only, no ProtectionFence event alone is a guard capability, and distinct uncovered targets receive distinct ordinals/batches. Hold pinning rejects both per-key and manifest destruction; sealed envelopes remain sealed on broker/read models, `PayloadUnprotectionOutcome` is unreadable after erasure, and snapshot/replay caches inherit the DEK (AD-22, AD-27). The shipped no-op default is not acceptable for content-bearing workflows (AD-14).",
+    "TargetVersionOrCommit": "TBD",
+    "TargetIntegrationDate": "TBD",
+    "CompatibilityContractAndVerificationCommand": "Contract: an owner-supplied executable command must prove at minimum (1) seal with plaintext-absence proof, (2) unseal with payload equality, (3) irreversible erase with typed `Erased` replay, (4) hold pin rejecting erase until authorized unpin, and (5) engine identity/version reporting equal to the exact committed target, with per-tenant isolation and restore-cannot-revive behavior. It must seal the directory creation-outbox field through the target alias and exercise a multi-interaction `DestroyDekManifest`: deterministic single-use batch identity, exact sorted target binding, all targets destroyed or none, ordered per-key receipts, byte-identical retry and lost-result lookup, changed-manifest conflict, duplicate-consumption denial with exact prior result, hold-pin rejection, and a protection-owner `BlockDeletionBatchConsumption`-versus-`ReserveAndConsumeDeletionBatch` race with exactly one winner, plus capability non-expiry across delayed dispatch/restore and signing-key verification until terminal batch state. A containment batch is accepted only with the exact guard-issued capability for its ProtectionFence-assigned singleton ordinal/manifest; response loss uses exact issuance and protection lookup, exact duplicates reuse it, concurrent distinct targets remain distinct, and containment ordinals cannot reuse the accepted-set batch. Replay must yield typed `Erased` from both source outbox and target events. Negative fixtures cover cross-tenant alias substitution, changed payload/manifest, partial-provider failure, snapshot/cache replay, backup, restore, and stale or revoked guard capability. Command: `TBD`.",
+    "RequiredEvidenceLevel": "Levels 4 and 5",
+    "AcceptedStatus": "Uncommitted",
+    "ConsumingStories": "5.6, 5.8, 6.1–6.4, 6.8, 7.1–7.4, 7.7, 8.1–8.3, 8.8; `RQ-1`"
+  },
+  "authorities": {
+    "register": {
+      "path": "/home/administrator/projects/hexalith/agents/_bmad-output/planning-artifacts/external-dependency-register.md",
+      "exists": true,
+      "sha256": "5bf35ac2857664c0589966a10944cd66278af85242c7c1f08e31ae29aa40e8a2"
+    },
+    "reconciliation20261025": {
+      "path": "/home/administrator/projects/hexalith/agents/_bmad-output/implementation-artifacts/story-5-4-dependency-reconciliation-2026-10-25.md",
+      "exists": true,
+      "sha256": "509c32f6111a0b9e454ed9cac0ba990be79e35476e3acc8f7f15f568b5dede9a"
+    },
+    "protectionReconciliation20261025": {
+      "path": "/home/administrator/projects/hexalith/agents/_bmad-output/implementation-artifacts/tests/story-5-4-reconciliation-2026-10-25/protection-owner-packets.md",
+      "exists": true,
+      "sha256": "85d35ffc6f5d7237c5701e2f2828c13079a75ce951e805312f43c54e42273b00"
+    },
+    "platformReviewedDelivery20261025": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/REVIEWED-DELIVERY.md",
+      "exists": true,
+      "sha256": "6f4ef82aa571bfeb56dade2c3510c620bec37548f4d29ab3d91681424e4bd5e6"
+    }
+  },
+  "observedSourceOnly": {
+    "eventstore": {
+      "path": "/home/administrator/projects/hexalith/eventstore",
+      "head": "7012502bc094484eb2d4687badb98cb3b5e52b73",
+      "localOriginMain": "7012502bc094484eb2d4687badb98cb3b5e52b73",
+      "branch": "main",
+      "clean": false,
+      "status": {
+        "stdout": "M _bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md\n M docs/implementation/ext-protection-1-owner-acceptance.md\n M src/Hexalith.EventStore.PayloadProtection/InteractionPayloadProtectionService.cs\n M tests/Hexalith.EventStore.Server.Tests/Security/InteractionProtectionPersistenceTests.cs\n?? docs/implementation/ext-protection-1-delivery-2026-10-25-resumed.md\n?? src/Hexalith.EventStore.PayloadProtection/SnapshotProtectionTargetReader.cs\n?? tests/Hexalith.EventStore.PayloadProtection.Tests/InteractionSnapshotProtectionTests.cs",
+        "stderr": "",
+        "exitCode": 0
+      },
+      "reachableFromLocalOriginMain": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    },
+    "platformSibling": {
+      "path": "/home/administrator/projects/hexalith/platform",
+      "head": "2a4c7facee4d3198319ed9104f4a49b96cbabb56",
+      "localOriginMain": "8b712a05cdae8880ccd9c7f7dd355ec2ffe6952b",
+      "branch": "main",
+      "clean": false,
+      "status": {
+        "stdout": "m references/Hexalith.Builds\n M src/Hexalith.Platform.Secrets.Qualification.Enrollment/Program.cs\n M src/Hexalith.Platform.Secrets.Qualification.Executor/Program.cs\n M src/Hexalith.Platform.Secrets.Qualification.Observer/Program.cs\n?? src/Hexalith.Platform.Secrets.Runtime/AgentsOwningProcessComposition.cs\n?? src/Hexalith.Platform.Secrets.Runtime/DaprFr34Protection.cs\n?? src/Hexalith.Platform.Secrets.Runtime/DaprSecurityObservationServices.cs\n?? src/Hexalith.Platform.Secrets.Runtime/IndependentDaprAuthority.cs\n?? src/Hexalith.Platform.Secrets.Runtime/InstalledCustodyLifecycle.cs\n?? src/Hexalith.Platform.Secrets.Runtime/InstalledQualificationComposition.cs",
+        "stderr": "warning: unable to find all commit-graph files\nwarning: unable to find all commit-graph files\nwarning: unable to find all commit-graph files",
+        "exitCode": 0
+      },
+      "reachableFromLocalOriginMain": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 1
+      }
+    },
+    "platformRootReference": {
+      "path": "/home/administrator/projects/hexalith/eventstore/references/Hexalith.Platform",
+      "head": "7c56ad6352a74edec62450668e106ec8d6011e40",
+      "localOriginMain": "7c56ad6352a74edec62450668e106ec8d6011e40",
+      "branch": "main",
+      "clean": true,
+      "status": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      },
+      "reachableFromLocalOriginMain": {
+        "stdout": "",
+        "stderr": "",
+        "exitCode": 0
+      }
+    }
+  },
+  "candidateVerification": {
+    "workingDirectory": "/home/administrator/projects/hexalith/agents",
+    "command": "python3 ../eventstore/tools/verify-ext-protection-1.py --mode Live --profile /home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json --evidence-root /home/administrator/hexalith-protection-evidence/ext-protection-1/attempts",
+    "executed": false,
+    "requiredAcceptedProtectionProfileSha256": null
+  },
+  "observedPlan": {
+    "path": "/home/administrator/projects/hexalith/eventstore/tools/ext-protection-1/plan.json",
+    "exists": true,
+    "sha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c",
+    "planSha256": "c1e7759a2687c122dd182aa48f1828e531166c0157a04b2ae0eba35e9ac4d10c",
+    "pinSemantics": "SHA-256 of raw plan file bytes",
+    "cases": 41,
+    "qualified": false
+  },
+  "installedBindings": {
+    "protectionProfile": {
+      "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/accepted-profile.json",
+      "exists": false,
+      "sha256": null
+    },
+    "engineBinary": null,
+    "roles": {
+      "executor": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      },
+      "observer": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      },
+      "enrollment": {
+        "executable": null,
+        "executableSha256": null,
+        "publicAnchorFile": null,
+        "publicAnchorSha256": null,
+        "credentialReference": null,
+        "identity": null,
+        "installationManifest": null,
+        "installationManifestSha256": null
+      }
+    },
+    "capabilityTrust": null,
+    "missingCapabilityTrustEntryFields": [
+      "audience",
+      "issuer",
+      "keyFamily",
+      "keyVersion",
+      "publicAnchorFile",
+      "publicAnchorId",
+      "publicAnchorSha256",
+      "publicAnchorVersion",
+      "tenantId",
+      "trustProfileRevision"
+    ],
+    "runtimeReference": {
+      "path": "/home/administrator/hexalith-secrets-evidence/ext-secrets-1/provider-key-installation-20261017T100804405564Z/runtime-reference.json",
+      "exists": true,
+      "sha256": "31c28a9d1dd21eed8ca4d0c421088cb946b262c624ba461d0795cab92cd1feb3",
+      "providerBinding": "ext-secrets-1-hmac",
+      "nullFields": [
+        "qualification.daprApiCredentialReference",
+        "qualification.enrollment.appChannelCredentialReference",
+        "qualification.enrollment.appId",
+        "qualification.enrollment.callerAuthenticatorReference",
+        "qualification.enrollment.callerScopeAuthorityReference",
+        "qualification.enrollment.identity",
+        "qualification.enrollment.publicAnchorFile",
+        "qualification.enrollment.version",
+        "qualification.enrollmentCredentialReference",
+        "qualification.executor.appChannelCredentialReference",
+        "qualification.executor.appId",
+        "qualification.executor.callerAuthenticatorReference",
+        "qualification.executor.callerScopeAuthorityReference",
+        "qualification.executor.identity",
+        "qualification.executor.publicAnchorFile",
+        "qualification.executor.version",
+        "qualification.isolatedTargetId",
+        "qualification.observer.appChannelCredentialReference",
+        "qualification.observer.appId",
+        "qualification.observer.callerAuthenticatorReference",
+        "qualification.observer.callerScopeAuthorityReference",
+        "qualification.observer.identity",
+        "qualification.observer.publicAnchorFile",
+        "qualification.observer.version",
+        "runtime.acceptedReplacementCommit",
+        "runtime.actorRoleAuthorityReference",
+        "runtime.allCopyInventoryReference",
+        "runtime.allCopyLifecycleAuthorityReference",
+        "runtime.audience",
+        "runtime.authenticatedRequesterTransport",
+        "runtime.compromiseGuardMirrorReference",
+        "runtime.compromisePublisherReference",
+        "runtime.compromiseSubscriberCredentialReference",
+        "runtime.compromiseSubscriptionReference",
+        "runtime.currentInventoryAuthorityReference",
+        "runtime.currentRevocationReference",
+        "runtime.independentSignerAccount",
+        "runtime.independentSignerCredentialReference",
+        "runtime.issuer",
+        "runtime.migrationAuthorityReference",
+        "runtime.nonrollbackJournalReference",
+        "runtime.profileNotBefore",
+        "runtime.profileReference",
+        "runtime.profileValidUntil",
+        "runtime.profileVersion",
+        "runtime.protectionOwnerReference",
+        "runtime.publicAnchorRetentionReference",
+        "runtime.publicTrustReference",
+        "runtime.replayExactScope",
+        "runtime.replayRegistrarCredentialReference",
+        "runtime.restoreTarget"
+      ]
+    },
+    "keyMappings": {
+      "path": "/home/administrator/hexalith-secrets-evidence/ext-secrets-1/provider-key-installation-20261017T100804405564Z/provider-key-mappings.json",
+      "exists": true,
+      "sha256": "f4e650995f0b35882377e01fb4f30b3944b018aec136e16496b6d349dd595ffe",
+      "lifecycleOrAllCopyQualified": false,
+      "ordinarySnapshotSemantics": true
+    },
+    "semanticInstallationInputSource": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/ext-secrets-1-semantic-provider-2026-10-22/final-installation-gaps.json",
+      "exists": true,
+      "sha256": "b1084315e00c7da47ad31bb6c8a4f8db73e8098702afff913b6158dff6a95292"
+    },
+    "semanticInstallationInputs": {
+      "awsAccountId": null,
+      "region": null,
+      "authorityTableArn": null,
+      "authorityTableId": null,
+      "checkpointBucketOwnerAndEnrollmentVersion": null,
+      "originalBucketOwnerAndEnrollmentVersion": null,
+      "epochKeyArnsAndIds": null,
+      "kekProtectorArnsAndIds": null,
+      "independentPlacementAndRestoreCut": null,
+      "executorIdentityAndCredentialReference": null,
+      "observerIdentityAndCredentialReference": null,
+      "enrollmentIdentityAndCredentialReference": null,
+      "publishedPublicTrustAndCurrentRevocation": null,
+      "installedComponentArtifactDigest": null,
+      "installedDaprTransportProfileDigest": null,
+      "installedClosureAndTerminationVerifierDigests": null,
+      "measuredCompletionReserveBytes": null,
+      "approvedRetentionSchedule": null,
+      "itemizedCurrentProviderQuote": null,
+      "explicitNativeApproval": null
+    },
+    "reviewedLifecycleInstallationLedger": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/installation-input-ledger-after-review.json",
+      "exists": true,
+      "sha256": "36f0b4862233365128fdc93539fac4bb00f2d10cf9fa07aa3c47752a5c353192",
+      "nullFields": [],
+      "status": "Blocked",
+      "installedProvider": false,
+      "physicalQualification": false,
+      "missingInputCount": 68,
+      "missingInputs": [
+        {
+          "input": "images.component",
+          "reason": "not installed or supplied",
+          "owner": "Platform release owner",
+          "action": "Build and pin the reviewed artifact by immutable image digest"
+        },
+        {
+          "input": "images.custodyApplication",
+          "reason": "not installed or supplied",
+          "owner": "Platform release owner",
+          "action": "Build and pin the reviewed artifact by immutable image digest"
+        },
+        {
+          "input": "images.dapr",
+          "reason": "not installed or supplied",
+          "owner": "Platform release owner",
+          "action": "Build and pin the reviewed artifact by immutable image digest"
+        },
+        {
+          "input": "images.dotnetSdk",
+          "reason": "not installed or supplied",
+          "owner": "Platform release owner",
+          "action": "Build and pin the reviewed artifact by immutable image digest"
+        },
+        {
+          "input": "images.dotnetAspnet",
+          "reason": "not installed or supplied",
+          "owner": "Platform release owner",
+          "action": "Build and pin the reviewed artifact by immutable image digest"
+        },
+        {
+          "input": "artifacts.custodyApplicationComposition",
+          "reason": "not installed or supplied",
+          "owner": "Platform host composition owner",
+          "action": "Integrate the public adapters into the owning authenticated custody application; no production DI is activated here"
+        },
+        {
+          "input": "artifacts.componentProfile",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.enrollment",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.componentVerifier",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.transportProfile",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.holderClosureProfile",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.capacityMeasurement",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.independentPlacement",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.authorityEnrollment",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.originalArchiveEnrollment",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.privateAuthorizerImplementation",
+          "reason": "not installed or supplied",
+          "owner": "Independent private-authority service maintainer",
+          "action": "Implement authenticated exact-intent/current-permission authorization; install separately after source review"
+        },
+        {
+          "input": "artifacts.controlIssuerImplementation",
+          "reason": "not installed or supplied",
+          "owner": "Governance/guard and protection-owner maintainers",
+          "action": "Implement durable hold/dispatch/reservation handoff and original lookup; install separately after source review"
+        },
+        {
+          "input": "artifacts.independentObserverImplementation",
+          "reason": "not installed or supplied",
+          "owner": "Independent infrastructure/security observer",
+          "action": "Implement native evidence, copy/buffer/termination and survivor-recovery verification; install separately after source review"
+        },
+        {
+          "input": "artifacts.eventStoreIntegration",
+          "reason": "not installed or supplied",
+          "owner": "EventStore Maintainer",
+          "action": "Complete owning-source adapter/owner-state integration and return an exact published source/package target"
+        },
+        {
+          "input": "artifacts.physicalQualification",
+          "reason": "not installed or supplied",
+          "owner": "Platform infrastructure owner",
+          "action": "Supply retained exact artifact bytes, owner implementation and accepted profile pin"
+        },
+        {
+          "input": "artifacts.g1Evidence",
+          "reason": "not installed or supplied",
+          "owner": "Protection owner and independent erasure observer",
+          "action": "Return retained accepted physical non-revival/shared-cut proof; the OpenBao negative control remains unqualified"
+        },
+        {
+          "input": "artifacts.registrationOriginalLocatorImplementation",
+          "reason": "not installed or supplied",
+          "owner": "Platform custody application maintainer",
+          "action": "Implement and install ICustodyKeyRegistrationSource under its exact scoped original lookup binding"
+        },
+        {
+          "input": "artifacts.reservedManifestOriginalLocatorImplementation",
+          "reason": "not installed or supplied",
+          "owner": "EventStore Maintainer with Platform custody host integration owner",
+          "action": "Implement and install ICustodyReservedManifestSource with restricted authenticated protection-original lookup"
+        },
+        {
+          "input": "artifacts.registrationOriginalMapping",
+          "reason": "not installed or supplied",
+          "owner": "Platform custody application maintainer",
+          "action": "Retain full key identity to exact original registration/actor revision/KEK/opaque root/wrap receipt mappings, verified independently before authority use"
+        },
+        {
+          "input": "artifacts.reservedManifestOriginalMapping",
+          "reason": "not installed or supplied",
+          "owner": "EventStore Maintainer",
+          "action": "Retain exact ConsumptionReserved receipt to complete immutable signed request, issued/dispatch guard facts and sorted manifest vector"
+        },
+        {
+          "input": "credentialReferences.component",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "credentialReferences.worker",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "credentialReferences.privateAuthorizer",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "credentialReferences.controlIssuer",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "credentialReferences.independentObserver",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "credentialReferences.recoveryAdministrator",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "credentialReferences.recoveryDeputy",
+          "reason": "not installed or supplied",
+          "owner": "Security installation owner",
+          "action": "Install the least-privilege opaque credential reference; never put credential values in this ledger"
+        },
+        {
+          "input": "placement.applicationRecoveryClass",
+          "reason": "not installed or supplied",
+          "owner": "Recovery administrator and deputy",
+          "action": "Enroll independent failure/recovery placement outside application backups"
+        },
+        {
+          "input": "placement.authorityRecoveryClass",
+          "reason": "not installed or supplied",
+          "owner": "Recovery administrator and deputy",
+          "action": "Enroll independent failure/recovery placement outside application backups"
+        },
+        {
+          "input": "placement.originalRecoveryClass",
+          "reason": "not installed or supplied",
+          "owner": "Recovery administrator and deputy",
+          "action": "Enroll independent failure/recovery placement outside application backups"
+        },
+        {
+          "input": "placement.authorityFailureDomain",
+          "reason": "not installed or supplied; authority must survive the entire application restore/failure cut",
+          "owner": "Recovery administrator and deputy",
+          "action": "Enroll independent failure/recovery placement outside application backups"
+        },
+        {
+          "input": "placement.applicationFailureDomain",
+          "reason": "not installed or supplied",
+          "owner": "Recovery administrator and deputy",
+          "action": "Enroll independent failure/recovery placement outside application backups"
+        },
+        {
+          "input": "logicalRoles.interaction-custody",
+          "reason": "not installed or supplied",
+          "owner": "Platform composition owner",
+          "action": "Bind the logical role to its authenticated installed Dapr service/component"
+        },
+        {
+          "input": "logicalRoles.custody-authorizer",
+          "reason": "not installed or supplied",
+          "owner": "Platform composition owner",
+          "action": "Bind the logical role to its authenticated installed Dapr service/component"
+        },
+        {
+          "input": "kubernetes.appPort",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.appProtocol",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.controlPlaneAddress",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.controlPlaneNamespace",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.controlPlaneTrustDomain",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.sentryAddress",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.sentryTokenAudience",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.sentryTokenExpirationSeconds",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.trustAnchorSecret",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.trustAnchorKey",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.apiTokenSecret",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.apiTokenKey",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.appApiTokenSecret",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.appApiTokenKey",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.workerGroupId",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.workerOutputOwnershipEvidence",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "kubernetes.internalGrpcPort",
+          "reason": "not installed or supplied",
+          "owner": "Platform Kubernetes identity/host owner",
+          "action": "Install exact Dapr workload token/trust/control-plane/API-channel and receiving-host inputs; retain owner/volume proof"
+        },
+        {
+          "input": "referenceCredentials.componentSecret",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "referenceCredentials.componentKey",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "referenceCredentials.componentProfile",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "referenceCredentials.workerSecret",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "referenceCredentials.workerKey",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "referenceCredentials.workerProfile",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "referenceCredentials.mountedFile",
+          "reason": "not installed or supplied",
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install the exact secret/key and shared-credential profile at the declared protected file; no metadata/default-chain fallback"
+        },
+        {
+          "input": "profiles.kubernetesNativeSidecars",
+          "reason": "not installed or supplied; exact supported installed profile required",
+          "owner": "Independent transport/closure observer",
+          "action": "Measure and attest the complete installed transport, buffer and host profile"
+        },
+        {
+          "input": "profiles.swapDisabled",
+          "reason": "not installed or supplied; exact supported installed profile required",
+          "owner": "Independent transport/closure observer",
+          "action": "Measure and attest the complete installed transport, buffer and host profile"
+        },
+        {
+          "input": "profiles.coreDumpsDisabled",
+          "reason": "not installed or supplied; exact supported installed profile required",
+          "owner": "Independent transport/closure observer",
+          "action": "Measure and attest the complete installed transport, buffer and host profile"
+        },
+        {
+          "input": "profiles.memoryCaptureDisabled",
+          "reason": "not installed or supplied; exact supported installed profile required",
+          "owner": "Independent transport/closure observer",
+          "action": "Measure and attest the complete installed transport, buffer and host profile"
+        },
+        {
+          "input": "g1Qualified",
+          "reason": "physical G1 proof absent; ObservedRevival remains unqualified",
+          "owner": "Platform and protection owners",
+          "action": "Return independently accepted installation/proof"
+        }
+      ]
+    },
+    "requiredReferenceProfileMembers": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/reference-profile-inputs.json",
+      "exists": true,
+      "sha256": "1e968b75c9932ae7912ce67e91582e45b23dbf7b8fceb84d05e1c684475ec6a5",
+      "nullFields": [
+        "entries[0].value",
+        "entries[1].value",
+        "entries[2].value",
+        "entries[3].value",
+        "entries[4].value",
+        "entries[5].value",
+        "entries[6].value",
+        "entries[7].value",
+        "entries[8].value",
+        "entries[9].value",
+        "entries[10].value",
+        "entries[11].value",
+        "entries[12].value",
+        "entries[13].value",
+        "entries[14].value",
+        "entries[15].value",
+        "entries[16].value",
+        "entries[17].value",
+        "entries[18].value",
+        "entries[19].value",
+        "entries[20].value",
+        "entries[21].value",
+        "entries[22].value",
+        "entries[23].value",
+        "entries[24].value",
+        "entries[25].value",
+        "entries[26].value",
+        "entries[27].value",
+        "entries[28].value",
+        "entries[29].value",
+        "entries[30].value",
+        "entries[31].value",
+        "entries[32].value",
+        "entries[33].value",
+        "entries[34].value",
+        "entries[35].value",
+        "entries[36].value",
+        "entries[37].value",
+        "entries[38].value",
+        "entries[39].value",
+        "entries[40].value",
+        "entries[41].value",
+        "entries[42].value",
+        "entries[43].value",
+        "entries[44].value",
+        "entries[45].value",
+        "entries[46].value",
+        "entries[47].value",
+        "entries[48].value",
+        "entries[49].value",
+        "entries[50].value",
+        "entries[51].value",
+        "entries[52].value",
+        "entries[53].value",
+        "entries[54].value",
+        "entries[55].value",
+        "entries[56].value",
+        "entries[57].value",
+        "entries[58].value",
+        "entries[59].value",
+        "entries[60].value",
+        "entries[61].value",
+        "entries[62].value",
+        "entries[63].value",
+        "entries[64].value",
+        "entries[65].value",
+        "entries[66].value",
+        "entries[67].value",
+        "entries[68].value",
+        "entries[69].value",
+        "entries[70].value",
+        "entries[71].value",
+        "entries[72].value",
+        "entries[73].value",
+        "entries[74].value",
+        "entries[75].value",
+        "entries[76].value",
+        "entries[77].value",
+        "entries[78].value",
+        "entries[79].value",
+        "entries[80].value",
+        "entries[81].value",
+        "entries[82].value",
+        "entries[83].value",
+        "entries[84].value",
+        "entries[85].value",
+        "entries[86].value",
+        "entries[87].value",
+        "entries[88].value",
+        "entries[89].value",
+        "entries[90].value",
+        "entries[91].value",
+        "entries[92].value",
+        "entries[93].value",
+        "entries[94].value",
+        "entries[95].value",
+        "entries[96].value",
+        "entries[97].value",
+        "entries[98].value",
+        "entries[99].value",
+        "entries[100].value",
+        "entries[101].value",
+        "entries[102].value",
+        "entries[103].value",
+        "entries[104].value",
+        "entries[105].value",
+        "entries[106].value",
+        "entries[107].value",
+        "entries[108].value",
+        "entries[109].value",
+        "entries[110].value",
+        "entries[111].value",
+        "entries[112].value",
+        "entries[113].value",
+        "entries[114].value",
+        "entries[115].value",
+        "entries[116].value",
+        "entries[117].value",
+        "entries[118].value",
+        "entries[119].value",
+        "entries[120].value",
+        "entries[121].value",
+        "entries[122].value",
+        "entries[123].value",
+        "entries[124].value",
+        "entries[125].value",
+        "entries[126].value",
+        "entries[127].value",
+        "entries[128].value",
+        "entries[129].value",
+        "entries[130].value",
+        "entries[131].value",
+        "entries[132].value"
+      ],
+      "requiredEntries": [
+        {
+          "input": "ComponentProfile.Enrollment.AuthorityId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ComponentProfile.Enrollment.AuthorityIncarnation",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ComponentProfile.Enrollment.StoreTarget",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ComponentProfile.Enrollment.ProviderProfileId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ComponentProfile.Enrollment.TrustProfileRevision",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ComponentProfile.Enrollment.PublishedAnchorSetId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ComponentProfile.Enrollment.ArtifactProfileDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment owner",
+          "action": "Independently enroll the exact opaque identity/trust/artifact binding outside application backups; no startup bootstrap or first-release rollover"
+        },
+        {
+          "input": "ReferenceBackend.NativeExecutionAccountId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Infrastructure installation owner",
+          "action": "Return the actual reference-backend account/region/resource identity and least-privilege credential scope; native IDs stay inside infrastructure"
+        },
+        {
+          "input": "ReferenceBackend.Region",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Infrastructure installation owner",
+          "action": "Return the actual reference-backend account/region/resource identity and least-privilege credential scope; native IDs stay inside infrastructure"
+        },
+        {
+          "input": "ReferenceBackend.TableArn",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Infrastructure installation owner",
+          "action": "Return the actual reference-backend account/region/resource identity and least-privilege credential scope; native IDs stay inside infrastructure"
+        },
+        {
+          "input": "ReferenceBackend.TableId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Infrastructure installation owner",
+          "action": "Return the actual reference-backend account/region/resource identity and least-privilege credential scope; native IDs stay inside infrastructure"
+        },
+        {
+          "input": "ComponentProfile.Checkpoints.Name",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Checkpoints.OwnerAccountId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Checkpoints.EnrollmentKey",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Checkpoints.EnrollmentVersion",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Checkpoints.EnrollmentSha256",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ReferenceBackend.Checkpoints.ObjectLockRetentionAndExtensionEvidence",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Archive retention owner and Governance",
+          "action": "Return actual immutable object versions, numeric retention deadline and extension authority that retain every referenced original/trust entry through its full lifetime"
+        },
+        {
+          "input": "ComponentProfile.Originals.Name",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Originals.OwnerAccountId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Originals.EnrollmentKey",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Originals.EnrollmentVersion",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ComponentProfile.Originals.EnrollmentSha256",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority/archive owner",
+          "action": "Return exact enrolled bucket ownership and immutable enrollment object version/hash; prove retained read-back and restore independence"
+        },
+        {
+          "input": "ReferenceBackend.Originals.ObjectLockRetentionAndExtensionEvidence",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Archive retention owner and Governance",
+          "action": "Return actual immutable object versions, numeric retention deadline and extension authority that retain every referenced original/trust entry through its full lifetime"
+        },
+        {
+          "input": "ComponentProfile.RetainUntil",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Capacity/retention owner and independent observer",
+          "action": "Accept the exact numerical limit/deadline from measurement, preserve 1,000 registrations/10,000 operations and the 32 MiB index/pending cap, and reserve completion capacity before admission"
+        },
+        {
+          "input": "ComponentProfile.CompletionReserveBytes",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Capacity/retention owner and independent observer",
+          "action": "Accept the exact numerical limit/deadline from measurement, preserve 1,000 registrations/10,000 operations and the 32 MiB index/pending cap, and reserve completion capacity before admission"
+        },
+        {
+          "input": "ComponentProfile.SocketPath",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Platform infrastructure/security installation owner",
+          "action": "Supply protected exact file/socket references and public verifier only; private signer value is never evidence. Socket must be /var/run/custody/private/hexalithcustody.sock"
+        },
+        {
+          "input": "ComponentProfile.ComponentSigningKeyPath",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Platform infrastructure/security installation owner",
+          "action": "Supply protected exact file/socket references and public verifier only; private signer value is never evidence. Socket must be /var/run/custody/private/hexalithcustody.sock"
+        },
+        {
+          "input": "ComponentProfile.ComponentPublicKeyPem",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Platform infrastructure/security installation owner",
+          "action": "Supply protected exact file/socket references and public verifier only; private signer value is never evidence. Socket must be /var/run/custody/private/hexalithcustody.sock"
+        },
+        {
+          "input": "ComponentProfile.QualificationStatementPath",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Platform infrastructure/security installation owner",
+          "action": "Supply protected exact file/socket references and public verifier only; private signer value is never evidence. Socket must be /var/run/custody/private/hexalithcustody.sock"
+        },
+        {
+          "input": "ComponentProfile.Tenants[]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Epoch allocation/custody owner",
+          "action": "Independently enroll exactly two tenant lanes, source/successor epochs and at most five total reference epochs, including any tainted candidate; prove all native identities are disjoint and allocation exclusions permanent"
+        },
+        {
+          "input": "ComponentProfile.Epochs[].OpaqueId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Epoch allocation/custody owner",
+          "action": "Independently enroll exactly two tenant lanes, source/successor epochs and at most five total reference epochs, including any tainted candidate; prove all native identities are disjoint and allocation exclusions permanent"
+        },
+        {
+          "input": "ComponentProfile.Epochs[].KeyArn",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Epoch allocation/custody owner",
+          "action": "Independently enroll exactly two tenant lanes, source/successor epochs and at most five total reference epochs, including any tainted candidate; prove all native identities are disjoint and allocation exclusions permanent"
+        },
+        {
+          "input": "ComponentProfile.Epochs[].KeyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Epoch allocation/custody owner",
+          "action": "Independently enroll exactly two tenant lanes, source/successor epochs and at most five total reference epochs, including any tainted candidate; prove all native identities are disjoint and allocation exclusions permanent"
+        },
+        {
+          "input": "ComponentProfile.Epochs[].TenantId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Epoch allocation/custody owner",
+          "action": "Independently enroll exactly two tenant lanes, source/successor epochs and at most five total reference epochs, including any tainted candidate; prove all native identities are disjoint and allocation exclusions permanent"
+        },
+        {
+          "input": "ComponentProfile.Keks[].TenantId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Tenant KEK custody owner",
+          "action": "Supply one exact original encrypted tenant KEK mapping per tenant in the protected component profile; preserve original version/context/AAD bytes, disjoint protectors and no plaintext KEK evidence"
+        },
+        {
+          "input": "ComponentProfile.Keks[].Version",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Tenant KEK custody owner",
+          "action": "Supply one exact original encrypted tenant KEK mapping per tenant in the protected component profile; preserve original version/context/AAD bytes, disjoint protectors and no plaintext KEK evidence"
+        },
+        {
+          "input": "ComponentProfile.Keks[].ProtectorArn",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Tenant KEK custody owner",
+          "action": "Supply one exact original encrypted tenant KEK mapping per tenant in the protected component profile; preserve original version/context/AAD bytes, disjoint protectors and no plaintext KEK evidence"
+        },
+        {
+          "input": "ComponentProfile.Keks[].ProtectorKeyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Tenant KEK custody owner",
+          "action": "Supply one exact original encrypted tenant KEK mapping per tenant in the protected component profile; preserve original version/context/AAD bytes, disjoint protectors and no plaintext KEK evidence"
+        },
+        {
+          "input": "ComponentProfile.Keks[].EncryptedKey",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Tenant KEK custody owner",
+          "action": "Supply one exact original encrypted tenant KEK mapping per tenant in the protected component profile; preserve original version/context/AAD bytes, disjoint protectors and no plaintext KEK evidence"
+        },
+        {
+          "input": "ComponentProfile.Trust[private-operation].KeyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent private-operation trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[private-operation].Purpose",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent private-operation trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[private-operation].PublicKeyPem",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent private-operation trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[control].KeyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent control trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[control].Purpose",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent control trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[control].PublicKeyPem",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent control trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[independent-observer].KeyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent independent-observer trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[independent-observer].Purpose",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent independent-observer trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "ComponentProfile.Trust[independent-observer].PublicKeyPem",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent independent-observer trust owner",
+          "action": "Enroll distinct P-256 public trust and current revocation/retention evidence; no local signing fallback or shared private role"
+        },
+        {
+          "input": "IndependentEnrollment.ExactOwnerScope",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "IndependentEnrollment.RevisionZeroGenesisBytesAndDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "IndependentEnrollment.SurvivingHeadAndCheckpointAncestry",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "IndependentEnrollment.PermanentOriginalIndexesAndAllocationExclusions",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "IndependentEnrollment.CurrentSignerRevocationState",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "IndependentEnrollment.AdministratorAndDeputyRecoveryPlacement",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "IndependentEnrollment.OldWriterFenceEvidence",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent authority enrollment and recovery owners",
+          "action": "Supply authenticated installation/current/restore evidence outside the complete app/EventStore/provider-backup cut; absence or total authority loss fails closed"
+        },
+        {
+          "input": "QualificationClaim.TransportProfileDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent infrastructure/security observer",
+          "action": "Return exact installed measurement/evidence and a fresh challenge/current-head-bound signed qualification statement; synthetic fixtures grant no capability"
+        },
+        {
+          "input": "QualificationClaim.ClosureProfileDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent infrastructure/security observer",
+          "action": "Return exact installed measurement/evidence and a fresh challenge/current-head-bound signed qualification statement; synthetic fixtures grant no capability"
+        },
+        {
+          "input": "QualificationClaim.CapacityMeasurementDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent infrastructure/security observer",
+          "action": "Return exact installed measurement/evidence and a fresh challenge/current-head-bound signed qualification statement; synthetic fixtures grant no capability"
+        },
+        {
+          "input": "QualificationClaim.IndependentPlacementEvidenceDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent infrastructure/security observer",
+          "action": "Return exact installed measurement/evidence and a fresh challenge/current-head-bound signed qualification statement; synthetic fixtures grant no capability"
+        },
+        {
+          "input": "QualificationClaim.NativeAuthorizationDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent infrastructure/security observer",
+          "action": "Return exact installed measurement/evidence and a fresh challenge/current-head-bound signed qualification statement; synthetic fixtures grant no capability"
+        },
+        {
+          "input": "ClosureInventory.Copies[].CopyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].Class",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].OwnerId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].LocationId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].ProducerIncarnation",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].ParentCopyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].Epoch",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].TargetReference",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].OutcomeOriginalDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].ClosureEvidenceDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Copies[].Disposition",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual copy owner and independent closure observer",
+          "action": "Inventory every actual copy before effect with exact owner/location/lineage/retention and immutable outcome; prove gated ciphertext, zeroing, independent termination or permanent deletion as applicable"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Source]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Source copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Target]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Target copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Snapshot]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Snapshot copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Cache]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Cache copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Workflow]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Workflow copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Broker]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Broker copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Export]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Export copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Partial]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Partial copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Backup]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Backup copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[DatabaseLog]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual DatabaseLog copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[ObjectVersion]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual ObjectVersion copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[KmsGeneration]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual KmsGeneration copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[SdkBuffer]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual SdkBuffer copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[SidecarBuffer]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual SidecarBuffer copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[UdsBuffer]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual UdsBuffer copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[GrpcBuffer]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual GrpcBuffer copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[TlsBuffer]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual TlsBuffer copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[ComponentBuffer]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual ComponentBuffer copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[HostMemory]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual HostMemory copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Coverage[Diagnostics]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual Diagnostics copy owner",
+          "action": "Return complete observed copy IDs and independently authenticated class-coverage evidence, including evidence of an empty class; an unqualified export branch blocks affected all-copy closure"
+        },
+        {
+          "input": "ClosureInventory.Queues[].QueueId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual producer/queue owner and independent termination observer",
+          "action": "Freeze admission, drain every admitted native intent/producer incarnation or independently terminate it, and retain exact queue-seal/completion originals; lease expiry is not erasure"
+        },
+        {
+          "input": "ClosureInventory.Queues[].ProducerIncarnation",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual producer/queue owner and independent termination observer",
+          "action": "Freeze admission, drain every admitted native intent/producer incarnation or independently terminate it, and retain exact queue-seal/completion originals; lease expiry is not erasure"
+        },
+        {
+          "input": "ClosureInventory.Queues[].LastAdmittedSequence",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual producer/queue owner and independent termination observer",
+          "action": "Freeze admission, drain every admitted native intent/producer incarnation or independently terminate it, and retain exact queue-seal/completion originals; lease expiry is not erasure"
+        },
+        {
+          "input": "ClosureInventory.Queues[].LastCompletedSequence",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual producer/queue owner and independent termination observer",
+          "action": "Freeze admission, drain every admitted native intent/producer incarnation or independently terminate it, and retain exact queue-seal/completion originals; lease expiry is not erasure"
+        },
+        {
+          "input": "ClosureInventory.Queues[].SealEvidenceDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual producer/queue owner and independent termination observer",
+          "action": "Freeze admission, drain every admitted native intent/producer incarnation or independently terminate it, and retain exact queue-seal/completion originals; lease expiry is not erasure"
+        },
+        {
+          "input": "ClosureInventory.Queues[].TerminationEvidenceDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual producer/queue owner and independent termination observer",
+          "action": "Freeze admission, drain every admitted native intent/producer incarnation or independently terminate it, and retain exact queue-seal/completion originals; lease expiry is not erasure"
+        },
+        {
+          "input": "ClosureInventory.ManifestDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Lifecycle inventory owner and independent observer",
+          "action": "Bind complete exact manifest/source/successor and every producer/native intent; no omitted producer, split manifest or alternate decrypting epoch"
+        },
+        {
+          "input": "ClosureInventory.SourceEpoch",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Lifecycle inventory owner and independent observer",
+          "action": "Bind complete exact manifest/source/successor and every producer/native intent; no omitted producer, split manifest or alternate decrypting epoch"
+        },
+        {
+          "input": "ClosureInventory.SuccessorEpoch",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Lifecycle inventory owner and independent observer",
+          "action": "Bind complete exact manifest/source/successor and every producer/native intent; no omitted producer, split manifest or alternate decrypting epoch"
+        },
+        {
+          "input": "ClosureInventory.ProducerIncarnations[]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Lifecycle inventory owner and independent observer",
+          "action": "Bind complete exact manifest/source/successor and every producer/native intent; no omitted producer, split manifest or alternate decrypting epoch"
+        },
+        {
+          "input": "ClosureInventory.NativeIntentIds[]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Lifecycle inventory owner and independent observer",
+          "action": "Bind complete exact manifest/source/successor and every producer/native intent; no omitted producer, split manifest or alternate decrypting epoch"
+        },
+        {
+          "input": "KeyAdmission.Holders[caller]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual caller buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[sdk]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual sdk buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[sidecar]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual sidecar buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[uds]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual uds buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[grpc]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual grpc buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[tls]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual tls buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[component]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual component buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyAdmission.Holders[native]",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Actual native buffer/holder owner",
+          "action": "Before release supply CopyId, Role, ProcessIncarnation, TransportIncarnation, OwnerId and AdmissionOriginalDigest bound to exact KeyUseLeaseId/DeliveryAttemptId/recipient/transport/root reference"
+        },
+        {
+          "input": "KeyCompletion.AdmissionOriginalSha256",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "KeyCompletion.Holders[].CopyId",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "KeyCompletion.Holders[].ProcessIncarnation",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "KeyCompletion.Holders[].TransportIncarnation",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "KeyCompletion.Holders[].IoEvidenceDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "KeyCompletion.Holders[].SanitationEvidenceDigest",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "KeyCompletion.Holders[].Disposition",
+          "status": "MissingInstallationInput",
+          "value": null,
+          "owner": "Independent I/O/sanitation or termination observer",
+          "action": "Authenticate exact completion of every originally admitted holder; local Dispose, timeout, missing key or process replacement supplies no completion proof"
+        },
+        {
+          "input": "PhysicalQualification.PermanentSourceEpochDeletion",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "PhysicalQualification.PermanentAlternateAndTaintedEpochDeletion",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "PhysicalQualification.CompleteNativeIntegrityTrustMaterial",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "PhysicalQualification.IndependentSurvivorRecovery",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "PhysicalQualification.RestoreBarrierReceiptId",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "PhysicalQualification.OldCopyNonRevival",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "PhysicalQualification.AllCopyInventoryAndHolderClosure",
+          "status": "MissingPhysicalProof",
+          "value": null,
+          "owner": "Protection owner and independent infrastructure/security observer",
+          "action": "Supply retained actual physical shared-cut/non-revival evidence under separate authorization; scheduled deletion, tombstones, wrappers and local doubles remain insufficient"
+        },
+        {
+          "input": "ICustodyKeyRegistrationSource.ImplementationAndScopedLookupBinding",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Platform custody application maintainer",
+          "action": "Implement and install the locator; an interface, actor snapshot or connection reference alone does not supply owning source."
+        },
+        {
+          "input": "ICustodyKeyRegistrationSource.CompleteIdentityToRetainedRegistration",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Platform custody application maintainer",
+          "action": "Retain exact full identity -> original wrap operation/actor ExpectedRevision/KEK version/opaque root reference/wrap receipt, with restore-safe retention and independent original verification."
+        },
+        {
+          "input": "ICustodyReservedManifestSource.ImplementationAndAuthenticatedOriginalLookup",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "EventStore Maintainer with Platform custody host integration owner",
+          "action": "Implement and install exact protection-reservation original lookup under a non-general scoped credential; never regenerate the original after uncertainty."
+        },
+        {
+          "input": "ICustodyReservedManifestSource.ProtectionReservationToCompleteOriginal",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "EventStore Maintainer",
+          "action": "Retain exact ConsumptionReserved receipt -> full signed capability, JWS/canonical bytes, issued/dispatch guard facts and complete sorted target vector, with immutable identity and original-only recovery."
+        },
+        {
+          "input": "Kubernetes.DaprWorkloadIdentityAndControlPlane",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Platform Kubernetes identity owner",
+          "action": "Supply scoped service-account name, projected Sentry audience/lifetime/token file, trust-anchor secret/key, control-plane/Sentry addresses, namespace/trust domain and matching mTLS identity. API tokens are secret/key references only."
+        },
+        {
+          "input": "Kubernetes.CustodyHostAppPortProtocolAndDiscovery",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Platform custody host composition owner",
+          "action": "Supply actual receiving-host port/protocol and app ID; wire the appId-dapr selector and pinned internal mTLS gRPC port 50002. Host must enforce APP_API_TOKEN; local HTTP/API ports remain unexposed."
+        },
+        {
+          "input": "Kubernetes.WorkerRetainedOutputGroupOwnership",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Platform storage owner and recovery administrator",
+          "action": "Supply worker group ID and storage-driver fsGroup ownership evidence; signed prepare-original output must use an exact writable retained path beneath /retained, with no original overwrite."
+        },
+        {
+          "input": "ReferenceBackend.ConsumedCredentialFileKeyAndProfile",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Infrastructure reference-backend credential owner",
+          "action": "Install exact component/worker secret names and keys, each scoped shared-credential profile, mounted at /credentials/credentials. Explicit infrastructure credentials exclude metadata/default-chain fallback; retain no credential values in evidence."
+        },
+        {
+          "input": "ImageContext.ReviewedRuntimeImageDigest",
+          "status": "MissingSourceOrInstallationInput",
+          "value": null,
+          "owner": "Platform release owner",
+          "action": "Supply and review the actual immutable ASP.NET runtime image digest in the hash-bound publish inventory. The real 41-file context is now Blocked until that pin exists; synthetic pins are regression fixtures only."
+        }
+      ]
+    },
+    "remainingOwningSourceDispositions": {
+      "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/source-dispositions.json",
+      "exists": true,
+      "sha256": "8761e56d73261585457de1a46a8b0122d6cef21c4dc182a47318579b3fbf2c73",
+      "nullFields": [],
+      "sourceDispositions": [
+        {
+          "id": "independent-private-authorizer",
+          "status": "MissingOwningServiceImplementationAndInstallation",
+          "owner": "Independent private-authority service maintainer",
+          "action": "Implement authenticated prepare/authorize and owner-call permission issuance from fresh independent current state, exact body hashes, original controls and retained revocation. DaprCustodyAuthorizerClient is transport only; caller hashes grant no permission."
+        },
+        {
+          "id": "durable-control-issuer",
+          "status": "MissingOwningServiceImplementationAndInstallation",
+          "owner": "Governance/guard and protection-owner maintainers",
+          "action": "Implement durable RegisteredDispatchBlocked hold reservations, release ordering, guard dispatch versus protection ConsumptionReserved original handoff and exact loss lookup. No snapshot/read-then-effect issuer is provided."
+        },
+        {
+          "id": "independent-closure-observer",
+          "status": "MissingOwningServiceImplementationAndInstallation",
+          "owner": "Independent infrastructure/security observer",
+          "action": "Implement actual native final-evidence verification, complete inventory, I/O/sanitation/termination, restore non-revival and independent survivor recovery. Signed disposable test statements are not implementation or trust."
+        },
+        {
+          "id": "eventstore-owning-source-integration",
+          "status": "MissingAcceptedOwningSourcePackageAndProductionIntegration",
+          "owner": "EventStore Maintainer",
+          "action": "Review/commit/publish the owner-state port and actual transition bridge, integrate exact original state/genesis/custody adapters into owning source, and return accepted source/package/profile pins. The local build explicitly used current sibling source, including work not in its installed package; no sibling was edited or activated."
+        },
+        {
+          "id": "custody-application-composition",
+          "status": "MissingOwningHostCompositionAndInstallation",
+          "owner": "Platform host composition owner",
+          "action": "Compose the public clients behind the authenticated custody application API with its local daprd/component, public enrollment/trust, mounted scoped credentials and actual holder/copy integration. No receiving API host or production DI is activated by these libraries/templates."
+        },
+        {
+          "id": "history-custody",
+          "status": "OutsideThisInteractionFoundation",
+          "owner": "Parties/EventStore history owners and Platform history custodian",
+          "action": "Preserve the existing accepted exclusive expiry/history policy and open source/owner/qualification obligations. This interaction epoch component does not implement exact history expiry or resolve Q1-Q7."
+        },
+        {
+          "id": "export-lifecycle",
+          "status": "OpenPolicyAndUnqualifiedClosureUnchanged",
+          "owner": "Product/Governance/Security and export store owner",
+          "action": "Retain Open export disposition and separately accepted all-copy obligations; an export-affected B5 remains blocked. No policy or date was changed."
+        },
+        {
+          "id": "complete-key-registration-original-locator",
+          "status": "MissingOwningSourceImplementationAndInstallation",
+          "owner": "Platform custody application maintainer",
+          "action": "Implement ICustodyKeyRegistrationSource.FindAsync for the complete tenant/object/purpose/alias/key/lifecycle/store/contract identity. Retain the exact original CustodyKeyRegistration (wrap operation, actor ExpectedRevision, original KEK version, opaque wrapped-key reference and wrap receipt). The locator is a durable hint only: every use must still authenticate the independent custody original. Install its scoped store/Dapr lookup binding and preserve mappings across restore without root reallocation."
+        },
+        {
+          "id": "reserved-complete-manifest-original-locator",
+          "status": "MissingOwningSourceImplementationAndInstallation",
+          "owner": "EventStore Maintainer with Platform custody host integration owner",
+          "action": "Implement ICustodyReservedManifestSource.FindAsync from the exact protection ConsumptionReserved receipt to its retained immutable complete DeletionBatchConsumptionRequest: capability/JWS/canonical identity, issued guard revision, dispatch receipt/revision and full sorted target vector. Exact duplicate/loss/restore uses that original; no singleton derivation, batch-only alias, newly signed request or reconstructed manifest. Install authenticated restricted original lookup and wire it into the custody lifecycle provider."
+        }
+      ]
+    }
+  },
+  "retainedNegativeControl": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/option-a-feasibility-20261018T113800Z-1dbe62f55af0434684a9602a3824bfe9/raft-probe-attempt-6.result.json",
+    "exists": true,
+    "sha256": "6efa381bc70b3de57a24142e5e679f53781c7f89d5ab6740fb7664966f30888e",
+    "g1Qualified": false,
+    "nativeRerun": false,
+    "disposition": "ObservedRevival",
+    "rerun": false
+  },
+  "gapDisposition": {
+    "G1": {
+      "status": "Open",
+      "remainingRequirement": "Public Dapr lifecycle and atomic manifest adapters now exist in Platform. Actual installed six-operation custody, complete atomic native destruction, effective hold pins, independent authorization and exact authenticated original vectors remain unqualified."
+    },
+    "G2": {
+      "status": "Open",
+      "remainingRequirement": "Owner-currentness/genesis/actual-transition source bridge is present. Independent private/recovery and lifecycle authorizer services, durable RegisteredDispatchBlocked hold/dispatch reservation issuer, installed guard/trust/revocation/registrar/enrollment and exact online currentness remain unresolved."
+    },
+    "G3": {
+      "status": "Open",
+      "remainingRequirement": "Actual copy, holder and producer inventories, independently surviving authority and restore cut, native retirement/destruction, sanitation/termination and survivor/non-revival evidence remain unqualified. Required profile-member names and local key disposal cannot supply these facts."
+    },
+    "G4": {
+      "status": "Open",
+      "remainingRequirement": "Source now constrains supported whole snapshots to one explicit complete target before binding and rejects foreign/mixed targets; decrypted historical target ownership is checked. Mixed-root representation/selective replay remains unsupported and denied. Installed writer/anchor/scheduler, source-plus-target snapshot/cache and restore/replay qualification remain missing."
+    },
+    "G5": {
+      "status": "Open",
+      "remainingRequirement": "Independent executor, read-only persisted-state observer and enrollment programs/ACLs, same enrolled store/deployment, installed engine and complete role/inventory pins, actual fixture drivers and one-attempt authority remain absent from the named accepted profile."
+    },
+    "G6": {
+      "status": "Open",
+      "remainingRequirement": "Native ES256/signing/no-issue/intent/receipt consistency and original journal recovery are implemented offline. Installed authenticated append inventory/current online authority, exact native physical originals, independent observation and restore provenance remain unproved."
+    },
+    "G7": {
+      "status": "Open",
+      "remainingRequirement": "No complete coordinated immutable source/package and installed profile/engine/role/trust target or accepted integration date exists. Current source observations and component binaries are not a canonical installed delivery. Earlier package locked-restore NU1102 remains retained historical evidence, not a freshly repeated package-availability claim."
+    }
+  },
+  "evidenceDirectory": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34",
+  "verificationManifest": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/verification-manifest.json",
+  "sourceInventory": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/source-inventory-final.json",
+  "priorAttemptsPreserved": true,
+  "fullProtectionContract": "### EXT-PROTECTION-1 — EventStore Payload-Protection Engine\n\n| Commitment field | Value |\n| --- | --- |\n| `Owner` | EventStore Maintainer |\n| `Repository` | `Hexalith.EventStore` |\n| `RequiredArtifact` | A production payload-protection engine behind the existing EventStore hooks, applied field-level to a `ProtectedContent` envelope so every other event field stays plaintext and a destroyed-key field unprotects as the typed value `Erased` without breaking replay: one data-encryption key per `AgentInteraction`, plus an explicit provider-neutral `TargetProtectionKeyAlias` that lets a target-limited creation-outbox `ProtectedContent` field owned by `ConversationAgentState` select that exact interaction DEK without deriving it from the directory aggregate identity, wrapped by a per-tenant key-encryption key custodied through `EXT-SECRETS-1`. The custodian exposes `WrapDek`, `UnwrapDek`, `PinDek`, `UnpinDek`, per-key `DestroyDek`, and an atomic `DestroyDekManifest(BatchId, ManifestDigest, SortedTenantInteractionAliasTargets, GuardCapability)` operation. The batch identity and signed capability are deterministic and target-bound. The capability is non-expiring and revocable, carries its signing-key version, and that version remains verifiable for the full retention of the batch identity and terminal outcome, including exact retry/lookup after consumption or revocation; there is no expiry or renewal path and restore reuses the same identity. Consumption is single-use and all-or-none, returns an ordered irreversible per-target receipt vector, exact retry/lookup returns that vector, a changed target/digest conflicts, and `BlockDeletionBatchConsumption` races `ReserveAndConsumeDeletionBatch` at the same protection owner so exactly one wins. Each first previously uncovered complete protection target `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)` uses one guard-issued batch for its ProtectionFence-assigned monotonic containment ordinal and immutable singleton target manifest; later violation resources for that same target receive coverage links only, no ProtectionFence event alone is a guard capability, and distinct uncovered targets receive distinct ordinals/batches. Hold pinning rejects both per-key and manifest destruction; sealed envelopes remain sealed on broker/read models, `PayloadUnprotectionOutcome` is unreadable after erasure, and snapshot/replay caches inherit the DEK (AD-22, AD-27). The shipped no-op default is not acceptable for content-bearing workflows (AD-14). |\n| `TargetVersionOrCommit` | `TBD` |\n| `TargetIntegrationDate` | `TBD` |\n| `CompatibilityContractAndVerificationCommand` | Contract: an owner-supplied executable command must prove at minimum (1) seal with plaintext-absence proof, (2) unseal with payload equality, (3) irreversible erase with typed `Erased` replay, (4) hold pin rejecting erase until authorized unpin, and (5) engine identity/version reporting equal to the exact committed target, with per-tenant isolation and restore-cannot-revive behavior. It must seal the directory creation-outbox field through the target alias and exercise a multi-interaction `DestroyDekManifest`: deterministic single-use batch identity, exact sorted target binding, all targets destroyed or none, ordered per-key receipts, byte-identical retry and lost-result lookup, changed-manifest conflict, duplicate-consumption denial with exact prior result, hold-pin rejection, and a protection-owner `BlockDeletionBatchConsumption`-versus-`ReserveAndConsumeDeletionBatch` race with exactly one winner, plus capability non-expiry across delayed dispatch/restore and signing-key verification until terminal batch state. A containment batch is accepted only with the exact guard-issued capability for its ProtectionFence-assigned singleton ordinal/manifest; response loss uses exact issuance and protection lookup, exact duplicates reuse it, concurrent distinct targets remain distinct, and containment ordinals cannot reuse the accepted-set batch. Replay must yield typed `Erased` from both source outbox and target events. Negative fixtures cover cross-tenant alias substitution, changed payload/manifest, partial-provider failure, snapshot/cache replay, backup, restore, and stale or revoked guard capability. Command: `TBD`. |\n| `RequiredEvidenceLevel` | Levels 4 and 5 |\n| `AcceptedStatus` | `Uncommitted` |\n| `ConsumingStories` | 5.6, 5.8, 6.1–6.4, 6.8, 7.1–7.4, 7.7, 8.1–8.3, 8.8; `RQ-1` |\n\n**Required v21 manifest-destruction extension:** The engine verifies the complete `DeletionBatchCapabilityV1` JWS against the committed anchor/audience and performs a linearizable exact `GovernanceScopeGuard` lookup at consumption; signature-only or batch-issue-only acceptance is forbidden. The lookup must confirm the same batch/manifest, one active unrevoked attestation, and an exact `DeletionBatchDispatchAuthorized` receipt whose conditional guard commit ordered every earlier post-start hold or compromise before dispatch. Open/missing/mismatched/hold-allowed evidence that preceded dispatch, a stale dispatch, unavailable lookup, or compromised/replaced attestation performs no destruction. A later hold ordered after successful dispatch cannot cancel the possibly begun batch but remains restrictive for other batches, purge, and completion. Emergency key revocation blocks the old attestation before consume; same-batch re-attestation is accepted only after the guard atomically makes it the sole active credential and records a successor dispatch authorization. The protection owner indexes terminal destruction by complete `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)`: a later different BatchId for the exact already-destroyed target returns authenticated `AlreadyDestroyedByBatch(OriginalBatchId, OriginalPerTargetReceipt)`, while changed/cross-tenant targets conflict. Same-alias distinct-resource tests before/after original consumption, hold/dispatch/consume ordering, online-lookup races, compromise/re-attestation, lost acknowledgement, and restore are mandatory.\n\n**Required v23 protection-owner extension:** The engine owns the only post-dispatch cancel-versus-consume state machine. It atomically orders `BlockDeletionBatchConsumption` (admission-integrity or registrar-authenticated per-tenant/key-version compromise) against `ReserveAndConsumeDeletionBatch`; only `Unconsumed` may become `ConsumptionReserved`, and that reservation is the irreversible instant for those cancellation reasons. The owner returns authenticated blocked/reserved/consumed/revoked outcomes and exact lookup after loss; a pending/unknown block performs no new effect. `ConsumptionReserved` recovery completes the same all-or-none batch or returns its terminal vector, never a new authorization. Re-attestation begins only from the exact capability-compromise block, remains blocked while the guard replaces the attestation and issues a successor dispatch, and reopens only when `ActivateReattestedDeletionBatch` conditionally consumes those receipts at the same owner while atomically requiring absence of a replacement-key block at the activation identity's expected tenant-key block-set revision. If that key block exists or wins the compare, activation returns `ActivationBlockedByReplacementKeyCompromise(NewKeyVersion, NewRevocationRevision, NewBlockReceiptId)` and leaves/places the batch in that exact new-key `ConsumptionBlocked` state for another same-batch re-attestation; it never clears a global tenant-key block. Admission-integrity blocks never reopen. The target index is complete `(TenantId, AgentInteractionId, TargetProtectionKeyAlias)`: later violation resources use coverage links and never receive another ordinal/batch; `AlreadyDestroyedByBatch` is exact-target defense in depth, not successor authority. Fixtures cover registration arriving before/at/after reserve; a second compromise before replacement, before dispatch, before/at activation, and after activation before reserve; block delivery/mirror loss; exact activation lookup; no false replacement; restore; and tenant/key/attestation/dispatch/revision substitution.\n\n*Added 2026-09-09 by the architecture update: the 2026-09-09 verified-current review found that the EventStore checkout carries only the protection hooks and a no-op default, so the AD-22 key hierarchy has no owner without this record.*\n",
+  "installedIntegrationSchedule": {
+    "status": "NotSchedulable",
+    "date": null,
+    "reason": "Independent services, installed inputs, all-copy/restore evidence and complete owner acceptance are unresolved."
+  },
+  "exactMissingOriginalLookupSeams": [
+    {
+      "api": "ICustodyKeyRegistrationSource.FindAsync(CustodyKeyObjectIdentity, CancellationToken)",
+      "requiredOriginal": "Exact complete tenant/object/purpose/alias/key/lifecycle/store/contract identity -> original CustodyKeyRegistration, wrap operation, actor ExpectedRevision, original KEK version, opaque wrapped-key reference and wrap receipt; independently authenticate every use."
+    },
+    {
+      "api": "ICustodyReservedManifestSource.FindAsync(reservationReceiptId, CancellationToken)",
+      "requiredOriginal": "Exact original ConsumptionReserved receipt -> unchanged complete DeletionBatchConsumptionRequest including capability/JWS/signing identity, committed issue and dispatch facts, full sorted target vector; no reconstruction or new batch/signature.",
+      "existingOwnerLookupLimit": "IDeletionConsumptionActor.LookupAsync returns an outcome and may complete reserved recovery. It does not expose the complete reserved request and is not a read-only observer/manifest-original locator."
+    }
+  ],
+  "eventstoreProductionCompositionAssessment": {
+    "status": "BlockedNotSubmitted",
+    "scope": "Read-only assessment of current public source contracts; no installation or physical qualification",
+    "missingLocators": [
+      {
+        "api": "ICustodyKeyRegistrationSource.FindAsync(CustodyKeyObjectIdentity, CancellationToken)",
+        "requiredIdentity": [
+          "TenantId",
+          "ObjectId",
+          "Purpose",
+          "KeyAlias",
+          "KeyVersion",
+          "LifecycleVersion",
+          "StoreTarget",
+          "ContractVersion"
+        ],
+        "requiredOriginal": [
+          "OperationId",
+          "ExpectedRevision",
+          "KekVersion",
+          "OpaqueWrappedKeyReference",
+          "WrapReceiptId"
+        ]
+      },
+      {
+        "api": "ICustodyReservedManifestSource.FindAsync(string reservationReceiptId, CancellationToken)",
+        "requiredOriginal": [
+          "Capability",
+          "DetachedJws",
+          "CommittedIssuedGuardRevision",
+          "DispatchReceiptId",
+          "DispatchGuardRevision",
+          "Targets"
+        ],
+        "limitation": "IDeletionProtectionOwner.LookupAsync(tenantId,batchId) returns DeletionConsumptionOutcome, not the complete signed original or authenticated receipt-to-original mapping"
+      }
+    ],
+    "unimplementedComposition": [
+      "IInteractionOccurrenceKeyDelivery delivery and holder lifecycle composition",
+      "IInteractionProtectionBindingSource retained occurrence, completion-lease and erasure-witness composition",
+      "Independent private lifecycle authorizer and owner-call permission service",
+      "Durable guard hold/dispatch reservation and protection ConsumptionReserved original handoff",
+      "Independent closure observer and physical restore/survivor qualification",
+      "Authenticated receiving custody API/host, scoped enrollment/trust and original locators"
+    ],
+    "deferredG4": "Single explicit complete target snapshots are supported; differing target snapshots deny before binding/key/registry effects. A multi-root format, completion representation and installed source/target restore/replay evidence remain absent.",
+    "observedSourceFiles": [
+      {
+        "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/source-dispositions.json",
+        "sha256": "8761e56d73261585457de1a46a8b0122d6cef21c4dc182a47318579b3fbf2c73"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/installation-input-ledger-after-review.json",
+        "sha256": "36f0b4862233365128fdc93539fac4bb00f2d10cf9fa07aa3c47752a5c353192"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/platform/src/Hexalith.Platform.Secrets.Runtime/DaprCustodyKeyLifecycleAuthority.cs",
+        "sha256": "6db2e39127a326e4ff7514cf1b2c2d55fcd6a736319a8716907def4294099350"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/platform/src/Hexalith.Platform.Secrets.Runtime/DaprCustodyKeyLifecycleProvider.cs",
+        "sha256": "658da8970e959ec783c70e57ed21549c1f28970f232c2134ae547ef4b7de63a9"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/platform/src/Hexalith.Platform.Secrets.Runtime/CustodyLifecycleClient.cs",
+        "sha256": "4787830925f06853827eeef7551a8b144a300237c4e737ee3f4fc69bffb86a1d"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/platform/src/Hexalith.Platform.Protection/DaprAtomicDeletionManifestProvider.cs",
+        "sha256": "1fecc811d9581c087f465ae6498f2d32df3ed105db28359cd090a92a50189fef"
+      },
+      {
+        "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs",
+        "sha256": "014b799b807f136a9d3d4c76a8fff7df292e82f4171c701bf11999fc3e718ae5"
+      }
+    ]
+  },
+  "priorDeliveryPacket": {
+    "path": "/home/administrator/projects/hexalith/eventstore/docs/implementation/ext-protection-1-delivery-2026-10-25.json",
+    "exists": true,
+    "sha256": "839d22de1a6ecde5e7bb302689f404d22819ab014d175977aeb3ae61dfbfde99"
+  },
+  "priorVerificationManifest": {
+    "path": "/home/administrator/hexalith-protection-evidence/ext-protection-1/delivery-20261025T065854Z-9c732cee/verification-manifest-final.json",
+    "exists": true,
+    "sha256": "d7f339eea2d1044435fe0fad1d6c06e55531c5a99e854a7a393ce18fe93cea55"
+  },
+  "namedInputSurveyScope": "Public named local references only. No remote survey, credential read, deployment, enrollment or physical experiment.",
+  "localAspireBaseline": {
+    "classification": "LocalDevelopmentOnly",
+    "startExitCode": 0,
+    "observedApplicationState": "EventStore and its Dapr/application consumers Waiting",
+    "stopExitCode": 0,
+    "qualified": false,
+    "logs": [
+      "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/aspire-baseline.log",
+      "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/aspire-describe.log",
+      "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/aspire-stop.log"
+    ]
+  },
+  "latestCorrectionSources": [
+    {
+      "correctionCommit": "d80cbf4d1f7948f4ef39d06b3846fd221bc0ef8a",
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Aspire/EventStoreAppChannelTokenBindingAnnotation.cs",
+      "sha256": "8b09a0e080389196be485a86f783ddfe337d9d11535e3ab650ad0b7baaf34cc4"
+    },
+    {
+      "correctionCommit": "d80cbf4d1f7948f4ef39d06b3846fd221bc0ef8a",
+      "path": "/home/administrator/projects/hexalith/eventstore/src/Hexalith.EventStore.Aspire/HexalithEventStoreAppChannelExtensions.cs",
+      "sha256": "e6ae25a72bded40677cb8ab62ed09faa756cf7265e4649525acd83c338486daf"
+    },
+    {
+      "correctionCommit": "d80cbf4d1f7948f4ef39d06b3846fd221bc0ef8a",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.AppHost.Tests/Configuration/AppChannelTokenAspireExtensionTests.cs",
+      "sha256": "975ff75c0d3f26f5a9b65e05bc5b1bd0a42bea0e1ddab4e39802ab75e541761f"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminUiDaprTargetHandler.cs",
+      "sha256": "cc955295a336971cff187c5a69e10ad69f11adaaae272a67485934afda370ed7"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Admin.UI.Tests/Services/AdminUiDaprTargetTests.cs",
+      "sha256": "103763034c7d8334da48dd687b1a0da427bd3a1134f21f08628fcc4439c93fed"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/ChangingGetterPayload.cs",
+      "sha256": "ec8b3607b63c8a2c6714c3103ebd54c51a14d2438f0236acd8a241119a958606"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/PolicyLifecycleTests.cs",
+      "sha256": "1f5ef562417537b74b9debef429391d7d9a34b50761c611c8c28e26cb974670b"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/RuntimeSubstitutionPayload.cs",
+      "sha256": "47fb3f43cc4e868b59b955681382e730dde7d1bf417bb57dc708d2ffe557cc98"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.PayloadProtection.Tests/WholeObjectSelectionPayload.cs",
+      "sha256": "6921ed3278e0466908da464ee22ef4f3428c83873020359db168e4644bffca03"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Sample.Tests/BlazorUI/SampleUiDaprTargetHandler.cs",
+      "sha256": "737dcf80ddf23064ea12bee9ebcd88762c1db60e2f28f377ab828d929c0242cc"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Sample.Tests/BlazorUI/SampleUiDaprTargetTests.cs",
+      "sha256": "a7391975dcb7bc13b05af644eb0f643b3acb2e67fc59c2eca75e70838e872a70"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Controllers/StreamsControllerTests.cs",
+      "sha256": "2b3f3eab071f0c180b1b196ac67b96a4ac653f972b93ad3638e496a5398b7463"
+    },
+    {
+      "correctionCommit": "03ef9f156c5590a81c5409fde601952ebfb58c21",
+      "path": "/home/administrator/projects/hexalith/eventstore/tests/Hexalith.EventStore.Server.Tests/Projections/GuardedTailProductionHarness.cs",
+      "sha256": "2bd4f9a3ce9d9acc71f0a6d6f2e5a94a5b9db1f1645e2d7f4bd419477d78d601"
+    }
+  ],
+  "currentComponentVerification": [
+    {
+      "name": "app-channel-build",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.AppHost.Tests/Hexalith.EventStore.AppHost.Tests.csproj",
+          "-c",
+          "Debug",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/tmp/ext-protection-snapshot-7229ca34.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:31:23.873556+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 95.021,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/app-channel-build.log",
+        "sha256": "f5732c08e72f77666171e8993212dd5d16ce5cc74b3f72383421d9518ddbbeb5"
+      }
+    },
+    {
+      "name": "app-channel-tests",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.AppHost.Tests/bin/Debug/net10.0/Hexalith.EventStore.AppHost.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.AppHost.Tests.Configuration.AppChannelTokenAspireExtensionTests",
+          "-noColor"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:33:06.817111+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 1.142,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/app-channel-tests.log",
+        "sha256": "1b19c5d4b3370620709029499e17b256ee5d18d114ff7aa084f460a00d2f1609"
+      }
+    },
+    {
+      "name": "aspire-baseline",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "timeout",
+          "55",
+          "aspire",
+          "start",
+          "--non-interactive",
+          "--no-build",
+          "--apphost",
+          "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:19:42.519523+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 2.72,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/aspire-baseline.log",
+        "sha256": "c8446ae9af884ab3aa7ef13701f80b26b608a52556161d08be767a4e843471dc"
+      }
+    },
+    {
+      "name": "aspire-describe",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "timeout",
+          "25",
+          "aspire",
+          "describe",
+          "--non-interactive",
+          "--format",
+          "Json",
+          "--apphost",
+          "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:20:02.166889+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.423,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/aspire-describe.log",
+        "sha256": "10078be04ebd66ef83f5a78ac49a4d9b01928149931cf3f7e0cad90be3639acb"
+      }
+    },
+    {
+      "name": "aspire-stop",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "timeout",
+          "30",
+          "aspire",
+          "stop",
+          "--non-interactive",
+          "--apphost",
+          "src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:20:06.630705+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.731,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/aspire-stop.log",
+        "sha256": "e122616cb442df5e99ecbf0effb30d593310441376a97f585f12770f6977e570"
+      }
+    },
+    {
+      "name": "owner-verifier-tests",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "env",
+          "CustomAfterMicrosoftCommonProps=/tmp/ext-protection-snapshot-7229ca34.props",
+          "python3",
+          "-m",
+          "unittest",
+          "tools.tests.test_ext_protection_1",
+          "tools.tests.test_ext_protection_1_cross_language",
+          "-q"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:33:31.209031+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 14.658,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/owner-verifier-tests.log",
+        "sha256": "11184078c6a359b0566195b231bb7046c4fc98eaeec451b3aa4ccb922efb8a61"
+      }
+    },
+    {
+      "name": "snapshot-build-inputs",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "python3",
+          "-c",
+          "from pathlib import Path\nPath(\"/tmp/ext-protection-snapshot-7229ca34.props\").write_text(\"<Project><PropertyGroup><NuGetLockFilePath>/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/source-locks/$(MSBuildProjectName)/packages.lock.json</NuGetLockFilePath><RestoreLockedMode>false</RestoreLockedMode></PropertyGroup></Project>\\n\")\nprint(Path(\"/tmp/ext-protection-snapshot-7229ca34.props\").read_text())"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:25:54.873496+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.04,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-build-inputs.log",
+        "sha256": "e5f63ad2b0e3d66b7b31808901db8d5b332c285727265e16414dbee8b914f2d1"
+      }
+    },
+    {
+      "name": "snapshot-diff-check",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:29:42.340930+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.254,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-diff-check.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "snapshot-final-status",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "git",
+          "status",
+          "--short"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:30:03.090604+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.345,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-final-status.log",
+        "sha256": "704dad763c31f81684f0feb0bd32f9b4caaebc07e340a63db60b7843fe3e50f7"
+      }
+    },
+    {
+      "name": "snapshot-payload-build-01",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+          "-c",
+          "Debug",
+          "--no-restore",
+          "-p:UseHexalithProjectReferences=true",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:25:21.386628+00:00"
+      },
+      "result": {
+        "exitCode": 1,
+        "elapsedSeconds": 0.549,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-payload-build-01.log",
+        "sha256": "8a607324ac6eb963ff73e59baf8e5d8f0653023e7124cc414a16bbe619acaf0f"
+      }
+    },
+    {
+      "name": "snapshot-payload-build-02",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+          "-c",
+          "Debug",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/tmp/ext-protection-snapshot-7229ca34.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:25:57.893171+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 15.14,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-payload-build-02.log",
+        "sha256": "b3d388e29f3e08c2989c03f245eceb17a15cc4433473e74ba62e49a832480492"
+      }
+    },
+    {
+      "name": "snapshot-payload-build-03",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/Hexalith.EventStore.PayloadProtection.Tests.csproj",
+          "-c",
+          "Debug",
+          "--no-restore",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/tmp/ext-protection-snapshot-7229ca34.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:28:41.084864+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 18.389,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-payload-build-03.log",
+        "sha256": "574efdad8a18ae5225bf13081b83921feecabd1cbeaef0a7b565f9c11e68df09"
+      }
+    },
+    {
+      "name": "snapshot-payload-full-tests-01",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:29:09.312136+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 5.973,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-payload-full-tests-01.log",
+        "sha256": "b9fda2f3827efd3098f17b5c9a12b5e4b738bc3666e75de5e6ccb475ea2249db"
+      }
+    },
+    {
+      "name": "snapshot-payload-tests-01",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.PayloadProtection.Tests/bin/Debug/net10.0/Hexalith.EventStore.PayloadProtection.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionSnapshotProtectionTests",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionPayloadProtectionServiceTests",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionOccurrenceProtectorTests"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:26:39.126848+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 1.169,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-payload-tests-01.log",
+        "sha256": "5c9339dd3c53d9f12ae9fbc0e53e4fba5fbe1e256d5555c618cb709cd7b3d9e9"
+      }
+    },
+    {
+      "name": "snapshot-production-assessment",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "python3",
+          "-c",
+          "from pathlib import Path\nimport hashlib,json\nresult={\"status\":\"BlockedNotSubmitted\",\"scope\":\"Read-only assessment of current public source contracts; no installation or physical qualification\",\"missingLocators\":[{\"api\":\"ICustodyKeyRegistrationSource.FindAsync(CustodyKeyObjectIdentity, CancellationToken)\",\"requiredIdentity\":[\"TenantId\",\"ObjectId\",\"Purpose\",\"KeyAlias\",\"KeyVersion\",\"LifecycleVersion\",\"StoreTarget\",\"ContractVersion\"],\"requiredOriginal\":[\"OperationId\",\"ExpectedRevision\",\"KekVersion\",\"OpaqueWrappedKeyReference\",\"WrapReceiptId\"]},{\"api\":\"ICustodyReservedManifestSource.FindAsync(string reservationReceiptId, CancellationToken)\",\"requiredOriginal\":[\"Capability\",\"DetachedJws\",\"CommittedIssuedGuardRevision\",\"DispatchReceiptId\",\"DispatchGuardRevision\",\"Targets\"],\"limitation\":\"IDeletionProtectionOwner.LookupAsync(tenantId,batchId) returns DeletionConsumptionOutcome, not the complete signed original or authenticated receipt-to-original mapping\"}],\"unimplementedComposition\":[\"IInteractionOccurrenceKeyDelivery delivery and holder lifecycle composition\",\"IInteractionProtectionBindingSource retained occurrence, completion-lease and erasure-witness composition\",\"Independent private lifecycle authorizer and owner-call permission service\",\"Durable guard hold/dispatch reservation and protection ConsumptionReserved original handoff\",\"Independent closure observer and physical restore/survivor qualification\",\"Authenticated receiving custody API/host, scoped enrollment/trust and original locators\"],\"deferredG4\":\"Single explicit complete target snapshots are supported; differing target snapshots deny before binding/key/registry effects. A multi-root format, completion representation and installed source/target restore/replay evidence remain absent.\"}\npaths=['../platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/source-dispositions.json','../platform/docs/implementation/custody-lifecycle-foundation-2026-10-25/installation-input-ledger-after-review.json','../platform/src/Hexalith.Platform.Secrets.Runtime/DaprCustodyKeyLifecycleAuthority.cs','../platform/src/Hexalith.Platform.Secrets.Runtime/DaprCustodyKeyLifecycleProvider.cs','../platform/src/Hexalith.Platform.Secrets.Runtime/CustodyLifecycleClient.cs','../platform/src/Hexalith.Platform.Protection/DaprAtomicDeletionManifestProvider.cs','src/Hexalith.EventStore.Contracts/Security/IDeletionProtectionOwner.cs']\nresult['observedSourceFiles']=[{'path':str(Path(p).resolve()),'sha256':hashlib.sha256(Path(p).read_bytes()).hexdigest()} for p in paths]\noutput=Path('/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-production-assessment.json')\nwith output.open('x') as f: json.dump(result,f,indent=2)\nprint(output)\nprint(json.dumps(result,indent=2))"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:31:03.138490+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.06,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-production-assessment.log",
+        "sha256": "63f17528614fb7689742a21eeaef48d4732f1fdf5a2bf7117ea45d9a298711a1"
+      }
+    },
+    {
+      "name": "snapshot-server-build-01",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+          "-c",
+          "Debug",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/tmp/ext-protection-snapshot-7229ca34.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:26:48.255405+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 78.417,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-server-build-01.log",
+        "sha256": "b54fe496684d5acbbb66c1e89632ac9f66d576f232fb87b336b5241f5304bb42"
+      }
+    },
+    {
+      "name": "snapshot-server-build-02",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "build",
+          "tests/Hexalith.EventStore.Server.Tests/Hexalith.EventStore.Server.Tests.csproj",
+          "-c",
+          "Debug",
+          "--no-restore",
+          "-p:UseHexalithProjectReferences=true",
+          "-p:CustomAfterMicrosoftCommonProps=/tmp/ext-protection-snapshot-7229ca34.props",
+          "-m:1"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:29:21.694997+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 94.889,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-server-build-02.log",
+        "sha256": "6fa8a587694de76f0717d992c7a6f6201c4772fc6f18e9e757b7011826463aa8"
+      }
+    },
+    {
+      "name": "snapshot-server-tests-01",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionPayloadProtectionServiceTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionProtectionPersistenceTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionProtectionActorRecoveryTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:28:31.874114+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 1.465,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-server-tests-01.log",
+        "sha256": "08b69cf3607955128121b66a51a549c8570eb29ef8465575ac97e69a045de561"
+      }
+    },
+    {
+      "name": "snapshot-server-tests-02",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "dotnet",
+          "tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll",
+          "-class",
+          "Hexalith.EventStore.PayloadProtection.Tests.InteractionPayloadProtectionServiceTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionProtectionPersistenceTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.InteractionProtectionActorRecoveryTests",
+          "-class",
+          "Hexalith.EventStore.Server.Tests.Security.PayloadProtectionHookTests"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:31:10.077128+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 1.896,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/snapshot-server-tests-02.log",
+        "sha256": "857ea1e79a9b9dfaac5c30bcffa3a20b7ede57d60b42c4d6213ff8f4f2c40a5e"
+      }
+    },
+    {
+      "name": "source-plan",
+      "classification": "OfflineOrLocalDevelopmentOnly",
+      "command": {
+        "argv": [
+          "python3",
+          "tools/verify-ext-protection-1.py",
+          "--mode",
+          "Source"
+        ],
+        "cwd": "/home/administrator/projects/hexalith/eventstore",
+        "startedAt": "2026-10-25T11:29:50.633198+00:00"
+      },
+      "result": {
+        "exitCode": 0,
+        "elapsedSeconds": 0.103,
+        "log": "/home/administrator/hexalith-protection-evidence/ext-protection-1/resume-20261025T111935Z-7229ca34/source-plan.log",
+        "sha256": "b331043bc1b4ef5a172a6a5a89501e59ac85ec72adc1efe6608d8f249e07549a"
+      }
+    }
+  ]
+}

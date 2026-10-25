@@ -73,6 +73,25 @@ public sealed record WorkloadAuthorizationDetails
                 && (operation != EventStoreWorkloadOperations.DomainServiceQuery || result.Count != 3
                     || digest.Length != 64 || !digest.All(static character => character is >= '0' and <= '9' or >= 'A' and <= 'F')
                     || result.Values.Any(static binding => binding.Contains('*')))) return null;
+            bool commandSource = result.TryGetValue(CommandSourceAuthorityBinding.DigestClaim, out string? commandDigest);
+            bool publication = result.TryGetValue(SourcePublicationWorkloadBinding.DigestClaim, out string? publicationDigest);
+            if (commandSource || publication)
+            {
+                if (commandSource && publication || result.ContainsKey(QueryCallerAuthorityBinding.DigestClaim) || result.Count != 6
+                    || result.Values.Any(binding => binding.Contains('*'))) return null;
+                string selected = (commandSource ? commandDigest : publicationDigest)!;
+                if (selected.Length != 64 || !selected.All(character => character is >= '0' and <= '9' or >= 'A' and <= 'F')) return null;
+                if (commandSource && (operation != EventStoreWorkloadOperations.DomainServiceProcess
+                    || !result.ContainsKey(CommandSourceAuthorityBinding.SourceClaim) || !result.ContainsKey(CommandSourceAuthorityBinding.EpochClaim)
+                    || !result.TryGetValue(CommandSourceAuthorityBinding.MethodClaim, out string? method) || method != "process")) return null;
+                const string prefix = EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix;
+                if (publication && (!result.ContainsKey(prefix + "publication-scope") || !result.ContainsKey(prefix + "publication-epoch")
+                    || !result.TryGetValue(prefix + "publication-method", out string? publicationMethod)
+                    || (operation == SourcePublicationWorkloadBinding.AuthorityOperation
+                        ? !new[] { "enroll", "renew-enrollment", "read", "lookup", "transition-admit", "transition-commit", "transition-recover", "reconciliation", "dispatch" }.Contains(publicationMethod, StringComparer.Ordinal)
+                        : operation != SourcePublicationWorkloadBinding.PrimaryOperation
+                            || !new[] { "read-namespace", "install-namespace", "register-source", "read-index", "write-index", "read-dispatch", "advance-dispatch", "read-reconciliation", "advance-reconciliation" }.Contains(publicationMethod, StringComparer.Ordinal)))) return null;
+            }
             return new WorkloadAuthorizationDetails { Audience = audience, Operation = operation, Bindings = result };
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or KeyNotFoundException)

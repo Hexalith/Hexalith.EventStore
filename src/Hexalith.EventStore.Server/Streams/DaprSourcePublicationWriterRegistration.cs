@@ -13,9 +13,10 @@ public sealed class DaprSourcePublicationWriterRegistration : ISourcePublication
     private readonly IActorProxyFactory _proxies;
     private readonly ISourcePublicationNamespaceAuthority _authority;
     private readonly TimeProvider _clock;
+    private readonly SourcePublicationPrimaryClient? _authenticated;
     /// <summary>Copies bounded explicit host scope configuration; it does not install or qualify legacy coverage.</summary>
     public DaprSourcePublicationWriterRegistration(IReadOnlyList<SourcePublicationScope> scopes, IActorProxyFactory proxies,
-        ISourcePublicationNamespaceAuthority authority, TimeProvider clock)
+        ISourcePublicationNamespaceAuthority authority, TimeProvider clock, SourcePublicationPrimaryClient? authenticated = null)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         var owned = new List<SourcePublicationScope>();
@@ -24,7 +25,7 @@ public sealed class DaprSourcePublicationWriterRegistration : ISourcePublication
             if (owned.Count >= 1000 || scope is null || owned.Contains(scope)) { throw new ArgumentException("Invalid writer scopes.", nameof(scopes)); }
             owned.Add(scope);
         }
-        _scopes = owned.ToArray(); _proxies = proxies; _authority = authority; _clock = clock;
+        _scopes = owned.ToArray(); _proxies = proxies; _authority = authority; _clock = clock; _authenticated = authenticated;
     }
     /// <inheritdoc/>
     public async Task RegisterBeforeWriteAsync(AggregateIdentity identity, CancellationToken cancellationToken = default)
@@ -39,14 +40,17 @@ public sealed class DaprSourcePublicationWriterRegistration : ISourcePublication
                 bool registered = false;
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
-                    var state = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
+                    var state = await deadline.ReadAsync(token => _authenticated is null ? actor.ReadAsync(scope)
+                        : _authenticated.InvokeAsync<SourcePublicationNamespaceState>(scope, "read-namespace", scope, token)).ConfigureAwait(false);
                     if (state is null) { throw new InvalidOperationException("Namespace is not installed."); }
                     state = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(state))).ConfigureAwait(false);
                     var authorized = await deadline.ReadAsync(token => _authority.AuthorizeAsync(state, token)).ConfigureAwait(false);
                     if (state.Scope != scope || authorized is null || string.IsNullOrWhiteSpace(authorized.AuthorityRevision)
                         || authorized.ValidUntil <= _clock.GetUtcNow()) { throw new InvalidOperationException("Namespace writer qualification unavailable."); }
-                    if (!await deadline.ReadAsync(_ => actor.RegisterAsync(scope, state.Revision, identity)).ConfigureAwait(false)) { continue; }
-                    var persisted = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
+                    if (!await deadline.ReadAsync(token => _authenticated is null ? actor.RegisterAsync(scope, state.Revision, identity)
+                        : _authenticated.InvokeAsync<bool>(scope, "register-source", new SourcePublicationSourceRegistration(scope, state.Revision, identity), token)).ConfigureAwait(false)) { continue; }
+                    var persisted = await deadline.ReadAsync(token => _authenticated is null ? actor.ReadAsync(scope)
+                        : _authenticated.InvokeAsync<SourcePublicationNamespaceState>(scope, "read-namespace", scope, token)).ConfigureAwait(false);
                     if (persisted is null) { throw new InvalidOperationException("Namespace registration outcome unknown."); }
                     persisted = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(persisted))).ConfigureAwait(false);
                     var finalAuthorization = await deadline.ReadAsync(token => _authority.AuthorizeAsync(persisted, token)).ConfigureAwait(false);

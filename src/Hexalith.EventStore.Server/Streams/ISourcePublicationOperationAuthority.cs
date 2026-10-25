@@ -8,6 +8,8 @@ namespace Hexalith.EventStore.Server.Streams;
 /// Missing credentials deny raw actors; actor address and stored receipt strings never authenticate a caller.</summary>
 public interface ISourcePublicationOperationAuthority : IAnchoredStateTransitionAuthority
 {
+    /// <summary>Independently validates exact durable namespace state, including the explicit absent state.</summary>
+    Task<bool> ValidateNamespaceStateAsync(SourcePublicationScope scope, long revision, string stateDigest) => Task.FromResult(false);
     /// <summary>Authenticates this independently retained original consecutive acknowledgement proof and exact current installation/complete-cut/target/delivery authority. A stored digest or caller status alone is insufficient. Omission disables resume.</summary>
     Task<bool> VerifyDispatchProgressAsync(SourcePublicationCheckpoint cut, SourcePublicationDispatchProgress progress) => Task.FromResult(false);
     /// <summary>Independently reads actual durable original source acknowledgements for the bounded advance, verifies predecessor proof and fresh complete cut/current delivery target and authority, then issues their exact conditional prefix proof. Missing, Unknown, Quarantined or changed authority denies; omission disables progress.</summary>

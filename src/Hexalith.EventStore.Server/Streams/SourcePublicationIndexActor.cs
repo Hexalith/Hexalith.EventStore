@@ -16,6 +16,30 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
     public const string ActorTypeName = "SourcePublicationIndexActor";
 
     /// <inheritdoc/>
+    public async Task<byte[]?> InvokeAuthenticatedAsync(SourcePublicationAuthorityCall call)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+        call = call with { Body = call.Body.ToArray() };
+        if (operations is not SourcePublicationAuthority authority || !await authority.AuthenticateAsync(call).ConfigureAwait(false)) return null;
+        var previous = SourcePublicationOperationContext.Set(call);
+        try
+        {
+            object? result = call.Method switch
+            {
+                "read-index" => await ReadAsync(JsonSerializer.Deserialize<SourcePublicationScope>(call.Body)!).ConfigureAwait(false),
+                "write-index" => await TryWriteAsync(JsonSerializer.Deserialize<SourcePublicationIndexWrite>(call.Body)!).ConfigureAwait(false),
+                "read-dispatch" => await ReadDispatchProgressAsync(JsonSerializer.Deserialize<SourcePublicationCheckpoint>(call.Body)!).ConfigureAwait(false),
+                "advance-dispatch" => await AdvanceDispatchProgressAsync(JsonSerializer.Deserialize<SourcePublicationDispatchAdvance>(call.Body)!).ConfigureAwait(false),
+                "read-reconciliation" => await ReadReconciliationProgressAsync(JsonSerializer.Deserialize<SourcePublicationCut>(call.Body)!).ConfigureAwait(false),
+                "advance-reconciliation" => await AdvanceReconciliationProgressAsync(JsonSerializer.Deserialize<SourcePublicationReconciliationAdvance>(call.Body)!).ConfigureAwait(false),
+                _ => null,
+            };
+            return result is null ? null : JsonSerializer.SerializeToUtf8Bytes(result, result.GetType());
+        }
+        finally { SourcePublicationOperationContext.Set(previous); }
+    }
+
+    /// <inheritdoc/>
     public async Task<SourcePublicationIndexState?> ReadAsync(SourcePublicationScope scope)
     {
         ArgumentNullException.ThrowIfNull(scope);
@@ -54,7 +78,7 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
             && retainedOriginal.TargetDigest == Digest(owned) && Digest(current) == Digest(owned))
         { return await operations.WriteIndexAsync(request).ConfigureAwait(false); }
         if ((current?.Revision ?? 0) != write.ExpectedRevision || current?.PoisonCode is not null) { return false; }
-        if (owned.ReconciliationProgress is { } reconciliation
+        if (owned.PoisonCode is null && owned.ReconciliationProgress is { } reconciliation
             && !await operations.VerifyReconciliationProgressAsync(reconciliation).ConfigureAwait(false)) { return false; }
         if (current?.ReconciliationProgress is not null && owned.ReconciliationProgress is null && owned.PoisonCode is null) { return false; }
         if (owned.DispatchProgress != current?.DispatchProgress && owned.DispatchProgress is { } progress
@@ -141,7 +165,8 @@ public sealed class SourcePublicationIndexActor(ActorHost host, ISourcePublicati
         if (approved is null) { return null; }
         approved = SourcePublicationReconciliationProgress.Capture(approved);
         if (approved.Version != expected.Version || approved.VerifiedSources != expected.VerifiedSources || !approved.MatchesCut(cut)
-            || !approved.Publications.SequenceEqual(expected.Publications) || !SameOriginalCut(approved.OriginalCut, expected.OriginalCut)
+            || !approved.Publications.SequenceEqual(expected.Publications) || approved.OriginalCut is null || expected.OriginalCut is null
+                || !SameReconciliationCut(approved.OriginalCut, expected.OriginalCut)
             || !await CurrentReconciliationAsync(approved, currentCut).ConfigureAwait(false)) { return null; }
         var next = state is null ? new SourcePublicationIndexState(cut.Scope, 1, cut.AuthorityRevision, [], []) { ReconciliationProgress = approved }
             : state with { Revision = checked(state.Revision + 1), ReconciliationProgress = approved };

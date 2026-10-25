@@ -11,7 +11,7 @@ namespace Hexalith.EventStore.Server.Streams;
 /// <summary>Produces a qualified finite source-head vector from a durable installed roster and actual committed actor metadata.</summary>
 /// <remarks>Independent coverage/all-writer evidence and restricted actor credentials are mandatory; no default claims completeness.</remarks>
 public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory proxies, ISourcePublicationNamespaceAuthority authority,
-    TimeProvider clock) : ISourcePublicationNamespaceSource
+    TimeProvider clock, SourcePublicationPrimaryClient? authenticated = null) : ISourcePublicationNamespaceSource
 {
     /// <inheritdoc/>
     public async Task<SourcePublicationCut?> ReadAsync(SourcePublicationScope scope, CancellationToken cancellationToken = default)
@@ -23,7 +23,8 @@ public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory prox
             try
             {
                 var actor = proxies.CreateActorProxy<ISourcePublicationNamespaceActor>(new(scope.ActorId), SourcePublicationNamespaceActor.ActorTypeName);
-                var installed = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
+                var installed = await deadline.ReadAsync(token => authenticated is null ? actor.ReadAsync(scope)
+                    : authenticated.InvokeAsync<SourcePublicationNamespaceState>(scope, "read-namespace", scope, token)).ConfigureAwait(false);
                 if (installed is null) { return null; }
                 installed = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(installed))).ConfigureAwait(false);
                 if (installed.Scope != scope) { return null; }
@@ -54,7 +55,8 @@ public sealed class DaprSourcePublicationNamespaceSource(IActorProxyFactory prox
                     SourceProofInspection current = await deadline.ReadAsync(_ => source.InspectSourceProofAsync()).ConfigureAwait(false);
                     if (!Valid(head.Identity, current) || current != inspections[head.Identity]) { return null; }
                 }
-                var final = await deadline.ReadAsync(_ => actor.ReadAsync(scope)).ConfigureAwait(false);
+                var final = await deadline.ReadAsync(token => authenticated is null ? actor.ReadAsync(scope)
+                    : authenticated.InvokeAsync<SourcePublicationNamespaceState>(scope, "read-namespace", scope, token)).ConfigureAwait(false);
                 if (final is null) { return null; }
                 final = await deadline.ReadAsync(_ => Task.FromResult(SourcePublicationNamespaceActor.Capture(final))).ConfigureAwait(false);
                 if (final.Scope != scope || final.Revision != installed.Revision || final.AuthorityRevision != installed.AuthorityRevision

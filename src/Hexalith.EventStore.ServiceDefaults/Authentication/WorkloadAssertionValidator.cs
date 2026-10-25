@@ -18,6 +18,15 @@ public sealed class WorkloadAssertionValidator(
     IOptionsMonitor<WorkloadAuthenticationOptions> workloadOptions,
     WorkloadSecurityClock clock)
 {
+    /// <summary>Validates locally using installed public signing keys. Refuses metadata-network verifiers inside a journal-owner turn.</summary>
+    public Task<WorkloadAssertionEvaluation> ValidateLocallyAsync(string schemeName, string? assertion,
+        string requiredOperation, IReadOnlyCollection<string> allowedCallers, string audience, CancellationToken cancellationToken = default)
+    {
+        if (bearerOptions.Get(schemeName).ConfigurationManager is not null)
+            return Task.FromResult(WorkloadAssertionEvaluation.Failure(WorkloadAuthenticationReasons.VerifierUnconfigured));
+        return ValidateCoreAsync(schemeName, assertion, requiredOperation, allowedCallers, audience, cancellationToken);
+    }
+
     /// <summary>
     /// Validates one assertion and requires one operation.
     /// </summary>

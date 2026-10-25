@@ -6,10 +6,12 @@ using Dapr.Client;
 using Hexalith.EventStore.Contracts.Commands;
 using Hexalith.EventStore.Contracts.Results;
 using Hexalith.EventStore.Contracts.Security;
+using Hexalith.EventStore.Contracts.Snapshots;
 using Hexalith.EventStore.PayloadProtection.Tests;
 using Hexalith.EventStore.Server.Configuration;
 using Hexalith.EventStore.Server.Events;
 using Hexalith.EventStore.Server.Projections;
+using Hexalith.EventStore.Server.Tests.Actors;
 using Hexalith.EventStore.Testing.Fakes;
 
 using Microsoft.Extensions.Configuration;
@@ -154,6 +156,85 @@ public sealed class InteractionProtectionPersistenceTests
             document.RootElement, TestContext.Current.CancellationToken));
         (await noOp.TryUnprotectSnapshotAsync(fixture.Binding.Identity.Owner, document.RootElement, null,
             TestContext.Current.CancellationToken)).IsUnreadable.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DirectorySnapshotPersistsOnlyCiphertextAndRetryKeepsTheOriginalInteractionRoot()
+    {
+        var fixture = SnapshotFixture();
+        var state = new InMemoryStateManager();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), NullLogger<SnapshotManager>.Instance, fixture.Service);
+        using JsonDocument content = JsonDocument.Parse(InteractionPayloadProtectionHookFixture.Payload());
+        using JsonDocument source = JsonDocument.Parse("{\"Nested\":[{\"Request\":" + content.RootElement.GetProperty("ProtectedContent").GetRawText() + "}]}");
+        List<PayloadProtectionCompletionContext> completions = [];
+        (await manager.StageSnapshotAsync(fixture.Binding.Identity.Owner, 1, source.RootElement, state, JsonSerializerOptions.Web,
+            SnapshotTestLimits.ForState(), "correlation", TestContext.Current.CancellationToken, true, completions)).ShouldBeTrue();
+        state.CommittedState.ShouldBeEmpty();
+        PayloadProtectionCompletionContext original = completions.ShouldHaveSingleItem();
+        await fixture.Service.AcquirePayloadProtectionCompletionLeaseAsync(original, TestContext.Current.CancellationToken);
+        await state.SaveStateAsync(TestContext.Current.CancellationToken);
+        await fixture.Service.CompletePayloadProtectionAsync(original, PayloadProtectionPersistenceOutcome.Persisted,
+            TestContext.Current.CancellationToken);
+        var stored = state.CommittedState[fixture.Binding.Identity.Owner.SnapshotKey].ShouldBeOfType<SnapshotRecord>();
+        JsonSerializer.Serialize(stored).ShouldNotContain("confidential-canary");
+        stored.State.ShouldBeOfType<ProtectedSnapshotPayloadV2>().Envelope.ShouldNotBeNullOrWhiteSpace();
+        fixture.Occurrences.Record!.Request.Identity.Target.AgentInteractionId.ShouldBe("interaction-a");
+        fixture.Occurrences.Record.Request.Identity.Owner.AggregateId.ShouldBe("directory");
+        fixture.Occurrences.Record.WriterState.ShouldBe(InteractionOccurrenceWriterState.Active);
+        SnapshotUnprotectionOutcome read = await fixture.Service.TryUnprotectSnapshotAsync(fixture.Binding.Identity.Owner,
+            stored.State, stored.ProtectionMetadata, SnapshotStateJsonContext.Default.JsonElement, fixture.Occurrence,
+            TestContext.Current.CancellationToken);
+        read.IsReadable.ShouldBeTrue();
+        read.State.ShouldBeOfType<JsonElement>().GetProperty("Nested")[0].GetProperty("Request")
+            .GetProperty("Value").GetProperty("Secret").GetString().ShouldBe("confidential-canary");
+
+        completions.Clear();
+        (await manager.StageSnapshotAsync(fixture.Binding.Identity.Owner, 1, source.RootElement, state, JsonSerializerOptions.Web,
+            SnapshotTestLimits.ForState(), "retry", TestContext.Current.CancellationToken, true, completions)).ShouldBeTrue();
+        completions.ShouldHaveSingleItem().ShouldBe(original);
+        await state.SaveStateAsync(TestContext.Current.CancellationToken);
+        state.CommittedState[fixture.Binding.Identity.Owner.SnapshotKey].ShouldBeOfType<SnapshotRecord>().State.ShouldBe(stored.State);
+        fixture.Occurrences.Keys.Leases.ShouldBe(1);
+        fixture.Occurrences.Keys.WriteRoots.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("interaction-a", "interaction-b")]
+    [InlineData("alias-a", "alias-b")]
+    [InlineData("tenant-a", "tenant-b")]
+    public async Task MixedTargetDirectorySnapshotStagesNothingAndConsultsNoAuthority(string before, string after)
+    {
+        var fixture = SnapshotFixture();
+        var state = new InMemoryStateManager();
+        var manager = new SnapshotManager(Options.Create(new SnapshotOptions()), NullLogger<SnapshotManager>.Instance, fixture.Service);
+        string first = Encoding.UTF8.GetString(InteractionPayloadProtectionHookFixture.Payload());
+        using JsonDocument source = JsonDocument.Parse("{\"Nested\":[" + first + "," + first.Replace(before, after, StringComparison.Ordinal) + "]}");
+        List<PayloadProtectionCompletionContext> completions = [];
+        (await manager.StageSnapshotAsync(fixture.Binding.Identity.Owner, 1, source.RootElement, state, JsonSerializerOptions.Web,
+            SnapshotTestLimits.ForState(), "correlation", TestContext.Current.CancellationToken, false, completions)).ShouldBeFalse();
+        await state.SaveStateAsync(TestContext.Current.CancellationToken);
+        state.CommittedState.ShouldBeEmpty();
+        completions.ShouldBeEmpty();
+        fixture.Bindings.ReceivedCalls().ShouldBeEmpty();
+        fixture.Occurrences.Registry.ReceivedCalls().ShouldBeEmpty();
+        fixture.Occurrences.Record.ShouldBeNull();
+        fixture.Occurrences.OwnedBuffers.ShouldBeEmpty();
+        fixture.Occurrences.Keys.Leases.ShouldBe(0);
+    }
+
+    private static InteractionPayloadProtectionHookFixture SnapshotFixture()
+    {
+        var fixture = new InteractionPayloadProtectionHookFixture();
+        fixture.Binding = fixture.Binding with
+        {
+            Identity = fixture.Binding.Identity with
+            {
+                Owner = new("tenant-a", "agents", "directory"),
+                Kind = PayloadProtectionPayloadKind.Snapshot,
+                PayloadTypeId = "hx-snapshot-v1:folded-state",
+            },
+        };
+        return fixture;
     }
 
     private static Task<EventPersistResult> Persist(InteractionPayloadProtectionHookFixture fixture, EventPersister persister)

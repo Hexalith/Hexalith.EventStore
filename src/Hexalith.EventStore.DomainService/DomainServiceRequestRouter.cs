@@ -40,6 +40,16 @@ public static class DomainServiceRequestRouter {
                 "CapabilityMismatch: this domain route has no authenticated versioned command-state intake.");
         }
 
+        CompleteCommandSource? completeSource = null;
+        if (request.CompleteSource is not null)
+        {
+            var http = serviceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()?.HttpContext;
+            string? platform = serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>()?["EventStore:CompleteCommandSource:PlatformWorkloadId"];
+            if (http is null || string.IsNullOrWhiteSpace(platform)) throw new UnauthorizedAccessException("CompleteCommandSourceDenied");
+            completeSource = new CompleteCommandSourceVerifier(serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System)
+                .Verify(request, http.User, platform);
+        }
+        CompleteCommandSource? previousSource = CompleteCommandSourceContext.Set(completeSource);
         try
         {
             return await ProcessCoreAsync(serviceProvider, request, null, cancellationToken).ConfigureAwait(false);
@@ -52,6 +62,7 @@ public static class DomainServiceRequestRouter {
             await DomainServiceTrustedEffectOrigin.RecordAdapterDenialAsync(serviceProvider, request, cancellationToken).ConfigureAwait(false);
             throw;
         }
+        finally { CompleteCommandSourceContext.Set(previousSource); }
     }
 
     private static async Task<DomainServiceWireResult> ProcessCoreAsync(IServiceProvider serviceProvider,

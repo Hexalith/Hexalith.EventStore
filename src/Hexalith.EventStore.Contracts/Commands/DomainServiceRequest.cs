@@ -11,6 +11,10 @@ namespace Hexalith.EventStore.Contracts.Commands;
 /// that carries snapshot state plus tail events for snapshot-aware rehydration.
 /// </param>
 public record DomainServiceRequest(CommandEnvelope Command, object? CurrentState) {
+    /// <summary>Platform-created complete native source. It grants no authority without an exact signed workload binding.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public CompleteCommandSource? CompleteSource { get; init; }
+
     /// <summary>Ephemeral effect origin supplied only by the admitted target over authenticated workload transport.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin? TrustedEffectOrigin { get; init; }

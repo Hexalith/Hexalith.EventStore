@@ -23,6 +23,10 @@ public sealed class WorkloadAuthorityGrant
     public bool AllowUnbound { get; set; }
     /// <summary>Gets or sets whether exact Tenant/domain query requests may carry a canonical per-request SHA-256 digest. Disabled by default.</summary>
     public bool AllowQueryAuthorityDigest { get; set; }
+    /// <summary>Gets or sets whether this exact source/method/epoch grant permits complete-command request digests. Disabled by default.</summary>
+    public bool AllowCompleteCommandSourceDigest { get; set; }
+    /// <summary>Gets or sets whether this exact namespace/method/epoch grant permits publication request digests. Disabled by default.</summary>
+    public bool AllowSourcePublicationDigest { get; set; }
     /// <summary>Gets or sets the actual grant's inclusive start.</summary>
     public DateTimeOffset NotBefore { get; set; }
     /// <summary>Gets or sets the actual grant's exclusive end.</summary>

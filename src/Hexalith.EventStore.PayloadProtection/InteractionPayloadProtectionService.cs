@@ -177,10 +177,11 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateOccurrence(identity, occurrenceContext, PayloadProtectionPayloadKind.Snapshot);
-        InteractionProtectionBinding binding = await ResolveAsync(identity, occurrenceContext, null, true, cancellationToken).ConfigureAwait(false);
         byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(state, stateTypeInfo);
         try
         {
+            ProtectionTarget? target = SnapshotProtectionTargetReader.Read(bytes, identity.TenantId, cancellationToken);
+            InteractionProtectionBinding binding = await ResolveAsync(identity, occurrenceContext, target, true, cancellationToken).ConfigureAwait(false);
             InteractionOccurrenceSealedResult result = await _protector.ProtectSnapshotAsync(bytes, binding.Identity,
                 binding.DigestKeyVersion, binding.ReservationAttemptOrdinal, binding.KeyReference, cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException("ProtectionAuthorityUnavailable");
@@ -209,14 +210,22 @@ public sealed class InteractionPayloadProtectionService : IEventPayloadProtectio
             if (!result.IsReadable) { return SnapshotUnprotectionOutcome.Unreadable(result.UnreadableReason!.Value, metadata); }
             try
             {
+                ProtectionTarget? target = SnapshotProtectionTargetReader.Read(result.PayloadBytes!, identity.TenantId, cancellationToken);
+                if (target is not null && target != binding.Identity.Target)
+                { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.BytesMetadataMismatch, metadata); }
                 object unprotected = JsonSerializer.Deserialize(result.PayloadBytes!, stateTypeInfo)
                     ?? throw new InvalidOperationException("ProtectionSnapshotInvalid");
+                cancellationToken.ThrowIfCancellationRequested();
                 return SnapshotUnprotectionOutcome.Readable(unprotected, metadata!);
             }
             finally { CryptographicOperations.ZeroMemory(result.PayloadBytes!); }
         }
         catch (OperationCanceledException) { throw; }
-        catch { return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata); }
+        catch
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return SnapshotUnprotectionOutcome.Unreadable(UnreadableProtectedDataReason.ProviderUnavailable, metadata);
+        }
     }
 
     /// <inheritdoc/>

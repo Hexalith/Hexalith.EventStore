@@ -1313,6 +1313,10 @@ public partial class AggregateActor(
                 RehydrationResult? rehydrationResult;
                 long lastSnapshotSequence;
                 object? currentState;
+                Hexalith.EventStore.Server.Streams.ICompleteCommandSourceAuthority? completeSourceAuthority =
+                    serviceProvider?.GetService<Hexalith.EventStore.Server.Streams.ICompleteCommandSourceAuthority>();
+                bool completeSourceRequired = completeSourceAuthority?.Requires(command.AggregateIdentity) == true;
+                CompleteCommandSource? completeSource = null;
 
                 using (Activity? activity = EventStoreActivitySource.Instance.StartActivity(
                     EventStoreActivitySource.StateRehydration,
@@ -1345,7 +1349,12 @@ public partial class AggregateActor(
                             throw new InvalidOperationException("SourceHeadChanged: actor metadata has an invalid stream head or retained floor.");
                         }
 
-                        if (snapshotManager is SnapshotManager classifiedSnapshotManager)
+                        if (completeSourceRequired)
+                        {
+                            snapshotLoadResult = null;
+                            existingSnapshot = null;
+                        }
+                        else if (snapshotManager is SnapshotManager classifiedSnapshotManager)
                         {
                             snapshotLoadResult = await classifiedSnapshotManager
                                 .LoadSnapshotForCommandAsync(command.AggregateIdentity, StateManager,
@@ -1363,7 +1372,7 @@ public partial class AggregateActor(
                                 .ConfigureAwait(false);
                         }
 
-                        DaprProductionLogicalEventReader? productionReader = TryCreateProductionReader(command.Domain);
+                        DaprProductionLogicalEventReader? productionReader = completeSourceRequired ? null : TryCreateProductionReader(command.Domain);
                         string? replayAggregateType = productionReader is null
                             ? null
                             : await ResolveAggregateTypeAsync(command, cancellationToken).ConfigureAwait(false);
@@ -1396,7 +1405,15 @@ public partial class AggregateActor(
                                 cancellationToken).ConfigureAwait(false);
                         IReadOnlyList<EventEnvelope> domainEvents = rehydrationResult?.EffectiveEvents ?? readableEvents;
 
-                        currentState = rehydrationResult is null
+                        if (completeSourceRequired)
+                        {
+                            completeSource = await CaptureCompleteCommandSourceAsync(command, streamHead,
+                                rehydrationResult?.Events ?? [], readableEvents, completeSourceAuthority!, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        currentState = completeSource is not null
+                            ? new DomainServiceCurrentState(null, [.. readableEvents.Select(ToContractEventEnvelope)], 0, completeSource.Proof.HeadSequence)
+                            : rehydrationResult is null
                             ? null
                             : new DomainServiceCurrentState(
                                 rehydrationResult.SnapshotState,
@@ -1482,7 +1499,12 @@ public partial class AggregateActor(
                             }
                         }
                         await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
-                        domainResult = effectAdmission is not null
+                        domainResult = completeSource is not null
+                            ? await domainServiceInvoker.InvokeCompleteSourceAsync(command, currentState!, completeSource, humanAuthorityReceipt,
+                                effectAdmission is null ? null : new TrustedEffectOrigin(effectAdmission.Submission.Identity, effectAdmission.Context.Workload,
+                                    effectAdmission.Context.Purpose, effectAdmission.Context.CausationId, command.CommandType,
+                                    EffectIdentityCodec.RenderDigest(System.Security.Cryptography.SHA256.HashData(command.Payload))), cancellationToken).ConfigureAwait(false)
+                            : effectAdmission is not null
                             ? await domainServiceInvoker.InvokeTrustedEffectAsync(command, currentState, snapshotRequestDue,
                                 snapshotQualification?.ProfileId,
                                 new TrustedEffectOrigin(effectAdmission.Submission.Identity, effectAdmission.Context.Workload,
@@ -1529,6 +1551,7 @@ public partial class AggregateActor(
                 // Handle no-op path (AC #12): Processing -> Completed directly
                 if (domainResult.IsNoOp) {
                     await EnsureExecutionFenceAsync(executionContext, command, cancellationToken).ConfigureAwait(false);
+                    await CompareCompleteCommandSourceAsync(completeSource, completeSourceAuthority, cancellationToken).ConfigureAwait(false);
                     return await CompleteTerminalAsync(
                         command, causationId, idempotencyChecker, stateMachine, pipelineKeyPrefix,
                         accepted: true, eventCount: 0, errorMessage: null,
@@ -1586,6 +1609,7 @@ public partial class AggregateActor(
                                 throw;
                             }
                         }
+                        await CompareCompleteCommandSourceAsync(completeSource, completeSourceAuthority, cancellationToken).ConfigureAwait(false);
                         persistResult = await eventPersister
                             .PersistEventsAsync(
                                 identity: command.AggregateIdentity,

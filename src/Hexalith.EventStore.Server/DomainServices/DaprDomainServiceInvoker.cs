@@ -83,9 +83,16 @@ public partial class DaprDomainServiceInvoker(
         string? snapshotCaptureProfileId, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin origin, CancellationToken cancellationToken = default)
         => InvokeCoreAsync(command, currentState, includePostCommandState, snapshotCaptureProfileId, null, origin, cancellationToken);
 
+    /// <inheritdoc/>
+    public Task<DomainResult> InvokeCompleteSourceAsync(CommandEnvelope command, object currentState, CompleteCommandSource source,
+        string? humanAuthorityReceipt, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin? origin,
+        CancellationToken cancellationToken = default)
+        => InvokeCoreAsync(command, currentState, false, null, humanAuthorityReceipt, origin, cancellationToken, source);
+
     private async Task<DomainResult> InvokeCoreAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
         string? snapshotCaptureProfileId, string? humanAuthorityReceipt,
-        Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin? origin, CancellationToken cancellationToken) {
+        Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin? origin, CancellationToken cancellationToken,
+        CompleteCommandSource? completeSource = null) {
         ArgumentNullException.ThrowIfNull(command);
 
         // Extract version from command extensions, default to "v1" (AC #7, ADR-4)
@@ -116,11 +123,15 @@ public partial class DaprDomainServiceInvoker(
                 SnapshotCaptureProfileId = includePostCommandState ? snapshotCaptureProfileId : null,
                 HumanAuthorityReceipt = humanAuthorityReceipt,
                 TrustedEffectOrigin = origin,
+                CompleteSource = completeSource,
             };
             using HttpRequestMessage httpRequest = daprClient.CreateInvokeMethodRequest(
                 registration.AppId,
                 registration.MethodName,
                 request);
+            if (completeSource is not null)
+                httpRequest.Options.Set(Hexalith.EventStore.ServiceDefaults.Authentication.CommandSourceAuthorityBinding.RequestBindings,
+                    Hexalith.EventStore.ServiceDefaults.Authentication.CommandSourceAuthorityBinding.Bind(request));
             HttpClient httpClient = httpClientFactory.CreateClient(HttpClientName);
             using HttpResponseMessage httpResponse = await httpClient
                 .SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, invocationCancellation.Token)

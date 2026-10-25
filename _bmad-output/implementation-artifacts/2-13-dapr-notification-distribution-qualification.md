@@ -1285,3 +1285,227 @@ After the documentation corrections, `bash scripts/check-committed-files.sh`
 again exited 0 (**9,039** tracked entries). The first `git diff --check` found
 space-before-tab/trailing-whitespace in the embedded diff context (exit 2); the
 snippets now use exact zero-context diffs. The final `git diff --check` exited 0.
+
+## Verification — October 25 7012502b Continuation
+
+Source revision: `7012502bc094484eb2d4687badb98cb3b5e52b73`; CI run/link: none.
+The Debug build and focused restart passed. All six distribution cases passed
+their assertions, but **21 measured DLLs changed during that command**, leaving
+stable-binary distribution qualification unproven. A separately copied server
+output passed 102 controls. This task changes only this Verification section;
+no behavioral correction or production qualification is claimed.
+
+The starting tree was clean; Builds was
+`6e40ea5f6243391bea80084b8ddd695df58fb1ff`. The complete incremental Debug
+source-reference build covered both host graphs, changed 56 selected output files,
+and changed none of 12,677 measured source/configuration files or runtime/CLI
+executables. This is not clean reproducibility or complete compiler-input proof.
+The initial Aspire baseline used existing outputs; proof commands followed the
+recorded build. HEAD stayed unchanged through the recorded commands.
+
+By build completion, `build.json` already recorded
+`_bmad-output/implementation-artifacts/spec-ext-protection-1-owner-delivery.md`
+modified; that spec was outside the measured source inventory. Later concurrent
+edits appeared in payload-protection source and
+`tests/Hexalith.EventStore.Server.Tests/Security/InteractionProtectionPersistenceTests.cs`.
+Status also recorded untracked `SnapshotProtectionTargetReader.cs` and
+`InteractionSnapshotProtectionTests.cs`; they were visible in status but outside
+the tracked-source hash inventory. These changes and the later DLL outputs were
+preserved. No rebuild followed that drift, and its DLL writer was not traced.
+Results do not establish correspondence to the later source tree.
+
+The fixture-only runtime remained
+`/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement`, version
+`1.18.7-local-2-13-retirement`, SHA-256
+`a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6`.
+Installed daprd `1.18.7` remained
+`e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488`.
+Observed SDK/.NET/xUnit/Dapr CLI/Aspire CLI versions were
+`10.0.402`/`10.0.13`/`4.0.2`/`1.18.2`/`13.6.1`.
+No runtime or dependency was rebuilt, installed or updated. Temporary output is
+under `/tmp/story-2-13-20261025-7012502b-vabwqdna`; no packet or validator was
+added to the repository. Recorder-managed commands used:
+
+```sh
+export EnableKeycloak=false
+export HEXALITH_STORY_2_13_DAPRD_PATH=/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement
+export HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY=/tmp/story-2-13-20261025-7012502b-vabwqdna/scenario-output
+export R10A2_EVIDENCE_DIRECTORY=/tmp/story-2-13-20261025-7012502b-vabwqdna/redis-output
+```
+
+The candidate applies only to the two proof sidecars; AppHosts retain installed
+daprd. Build/tests ran sequentially; read-only inspections also ran during tests.
+
+| Exact command | Result and UTC interval on 2026-10-25 |
+| --- | --- |
+| `dotnet build Hexalith.EventStore.slnx -c Debug -m:1 -p:UseHexalithProjectReferences=true` | Passed, 0 warnings/errors; `11:18:46.463866–11:22:04.204078`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -method '*DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState'` | 1 passed, 0 failures/errors/skips; `11:25:12.923427–11:26:00.237873`. Selected binaries/runtime hashes stayed unchanged; one unrelated tracked source changed. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRDaprDistributionRuntimeProofTests'` | 6 passed, 0 failures/errors/skips; `11:26:03.719922–11:28:46.625642`; no `-stopOnFail`. **Identity-ambiguous:** 21 DLL changes; no stable-binary qualification. |
+| `/tmp/story-2-13-20261025-7012502b-vabwqdna/isolated-server-controls/Hexalith.EventStore.Server.Tests -class '*ETagActorTests' -class '*SignalRProjectionChangedBroadcasterTests' -class '*DaprProjectionChangeNotifierTests' -class '*DaprProjectionChangeNotifierSignalRTests' -class '*ProjectionChangedNotificationValidatorTests' -class '*DomainServiceWorkloadAssertionHandlerTests'` | Separate copied-output subject: 102 passed, 0 failures/errors/skips; `11:33:24.420819–11:33:25.367752`; cwd was the copied output directory. |
+
+The stable focused restart proved initial second-host actor ownership, host/
+sidecar PIDs `27812`/`27869` replaced by `28654`/`43150`, retained internal gRPC
+port `45091`, and Dapr persisted version/ETag `1` → `2`. Both hosts accepted
+2,048 serialized metadata bytes and rejected 2,129/2,050/2,060-byte vectors.
+Authorization, caller budgets and the 15-second signal wait were unchanged.
+This is synthetic-state recovery, not real projection completion or UI freshness.
+The exact capture is
+`scenario-output/replica-restart-reused-internal-endpoint-20261025T1125132062878Z-6af80e27d2704fc3bda1054fc2de5a2b/manifest.json`
+under the temporary parent above. Its observations identify logical read-model key
+`story-2-13:tenant-a-126d31059aa4:restart-126d31059aa4-1` for shared app ID
+`eventstore`: Dapr `statestore` readback of the synthetic `version` object records
+`InitialVersion=1`, `InitialETag="1"`, `FinalVersion=2`, `FinalETag="2"`.
+
+The ambiguous full class covers reused/fresh endpoint restart, reset/blackhole,
+exact-topic catalog rollout and scoped delivery/readback. Runtime and integration
+runner hashes stayed unchanged, but host/Gateway/Server/Server.Tests outputs
+changed. Representative before → after SHA-256 values are:
+
+| Output | Completed-build / focused identity | Full-class after identity |
+| --- | --- | --- |
+| Root host `Hexalith.EventStore.dll` | `a68eda7c3cb15c1e94b411e5786ac8000ec82c9eaf6d200d02ac5684ff14697c` | `3519644be58274bf6e969b916db5a39958f4f758ead4bae6c12ab0a82f4403a9` |
+| Root host copy of `Hexalith.EventStore.Server.dll` | `995642b4ebdb589ce4b1c13fa1c81e3f4d11536a2dd1457913f9352ffa72afd9` | `a12bf0b57d0fb3bdcb88e03958833070356895c279b5b670595a599fce1fb19d` |
+| Integration runner DLL | `6196f9734b820e9c32a12dea319536ccb45a095b3d01e2f2c140c8fa167e965e` | unchanged |
+
+For bounded isolation, the then-current Server.Tests output was copied into `/tmp`
+after the drift. All **682** files matched stable before/after source-copy
+inventories and stayed unchanged during the 102 controls. Its runner DLL/deps
+hashes were `4c4f50b28ee07a2c9de057860bfff9d03164ffc84349ee9a959981fedf3a84d2` /
+`902d267452353b89570dbb43da8eb4aae9ee82fa1b0e7f2771aff9ac4d3e83ac`;
+its Server DLL was `3d9af9948ecfef74338719ea49a62849a91b70b94351ce08f1dd750589f3a523`.
+This separately identifies observed output, without compiler-input/source
+correspondence or repair of the ambiguous distribution run.
+
+The following are **equivalent preparation/replay steps**, derived from the
+recorded inline Python copy command, `server-copy.json` and `isolated-server.json`.
+They were not additional copy or test executions during this documentation fix.
+Run from the repository root; a replay creates a new temporary subject rather
+than overwriting the measured copy:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import hashlib, json, shutil, tempfile
+def inventory(root):
+    return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(root.rglob('*')) if p.is_file()}
+source = Path('tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0').resolve()
+parent = Path(tempfile.mkdtemp(prefix='story-2-13-server-replay-'))
+destination = parent / 'isolated-server-controls'
+before = inventory(source)
+shutil.copytree(source, destination, copy_function=shutil.copy2)
+after, copied = inventory(source), inventory(destination)
+if before != after or copied != before:
+    raise SystemExit('Unstable source or copy mismatch; do not run tests')
+(parent / 'copied-files.json').write_text(json.dumps(copied, indent=2) + '\n')
+print(destination)
+PY
+```
+
+For a replay, run the exact six-filter server command in the table with its
+executable prefix and cwd changed to the printed destination. Compare its
+post-run `inventory(destination)` with `copied-files.json`; any difference fails
+the stability check. The following read-only comparison describes validation of
+the **existing measured receipts and copy**, not another test execution:
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import hashlib, json
+parent = Path('/tmp/story-2-13-20261025-7012502b-vabwqdna')
+copy = json.loads((parent / 'server-copy.json').read_text())
+run = json.loads((parent / 'isolated-server.json').read_text())
+destination = Path(copy['destination'])
+current = {str(p.relative_to(destination)): hashlib.sha256(p.read_bytes()).hexdigest()
+           for p in sorted(destination.rglob('*')) if p.is_file()}
+if not (copy['source_before'] == copy['source_after'] == copy['copied']
+        == run['before'] == run['after'] == current):
+    raise SystemExit('Copy or execution inventory mismatch')
+if run['exit_code'] != 0 or run['changes'] or len(current) != 682:
+    raise SystemExit('Recorded result or file count mismatch')
+print('682 matching files; recorded execution exit 0')
+PY
+```
+
+The real-projection/Direct pair and Redis regression were **not run**. Compiled
+AppHost `obj/Debug/net10.0/Aspire/references/*ProjectMetadata.g.cs` embeds absolute
+shared EventStore/sample/Admin/Tenants project paths; `AspireContractTestFixture`
+uses that AppHost, so copying outputs alone cannot isolate launches. Redis resolves
+its project from `AppContext.BaseDirectory` and invokes `dotnet run --no-build`;
+11 top-level integration-output identities differ from the captured host cohort,
+including gRPC, Protobuf and Admin dependencies. No existing override redirects
+those launches, and no path patching, mixed-cohort reconstruction or shared-output
+overwrite was performed. These regressions remain required.
+
+These are the ordered lifecycle commands and results from the existing receipts
+(receipt basenames are comments). The three untimed diagnostic describes are also
+listed; their successful outputs were observed in the original tool calls. No
+topology command was rerun for this documentation correction:
+
+```sh
+APPHOST=src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # untimed initial observation: exit 0; no AppHost
+aspire run --apphost "$APPHOST" --detach --no-build --non-interactive --format Json # baseline-start: exit 0
+aspire wait eventstore --timeout 45 --apphost "$APPHOST" --non-interactive # baseline-ready: exit 0
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # baseline-state: exit 0
+aspire stop --apphost "$APPHOST" --non-interactive # baseline-stop: exit 0
+# The recorded Debug build ran here.
+aspire run --apphost "$APPHOST" --detach --no-build --non-interactive --format Json # support-start: exit 0
+aspire wait sample --timeout 45 --apphost "$APPHOST" --non-interactive # support-sample-ready: exit 0
+aspire wait sample-dapr-cli --status up --timeout 45 --apphost "$APPHOST" --non-interactive # support-sidecar-ready: exit 0
+aspire resource eventstore stop --apphost "$APPHOST" --non-interactive # support-eventstore-stop: exit 16
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # untimed: exit 0; support-stop-diagnostic.json
+aspire resource eventstore stop --apphost "$APPHOST" --non-interactive # support-eventstore-stop-retry: exit 16
+aspire stop --apphost "$APPHOST" --non-interactive # support-recovery-stop: exit 0
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # untimed: exit 0; no AppHost
+aspire run --apphost "$APPHOST" --detach --no-build --non-interactive --format Json # support-recovery-start: exit 0
+aspire wait eventstore --timeout 45 --apphost "$APPHOST" --non-interactive # support-recovery-eventstore-ready: exit 0
+aspire wait sample --timeout 45 --apphost "$APPHOST" --non-interactive # support-recovery-sample-ready: exit 0
+aspire wait sample-dapr-cli --status up --timeout 45 --apphost "$APPHOST" --non-interactive # support-recovery-sidecar-ready: exit 0
+aspire resource eventstore stop --apphost "$APPHOST" --non-interactive # support-recovery-eventstore-stop: exit 0
+aspire resource eventstore-dapr-cli stop --apphost "$APPHOST" --non-interactive # support-recovery-eventstore-sidecar-stop: exit 0
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # support-recovery-state: exit 0
+# Focused restart ran; full distribution was active during the next observation.
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # support-state-during: exit 0
+# Full distribution finished before cleanup.
+aspire stop --apphost "$APPHOST" --non-interactive # final-stop: exit 0
+aspire describe --apphost "$APPHOST" --format Json --non-interactive # final-state: exit 0
+```
+
+The baseline was Running/Healthy and stopped before build. First auxiliary
+`aspire wait sample --timeout 45` and
+`aspire wait sample-dapr-cli --status up --timeout 45` passed, but
+`aspire resource eventstore stop` failed twice with exit **16**, at
+`11:22:34.405707–11:22:53.889040` and `11:23:17.351533–11:23:35.720047 UTC`,
+leaving `eventstore-ywfdjexm` Unknown. Every wait/resource command used the explicit
+AppHost and `--non-interactive`; no scenario had started. Full `aspire stop`
+succeeded. A fresh start added the EventStore wait before the sample waits;
+EventStore and `eventstore-dapr-cli` resource stops then passed. The `11:25:00`
+and in-class `11:26:27 UTC` describes showed sample/sidecar Running/Healthy and
+EventStore/sidecar Finished. Later success does not explain the retained failures.
+
+Final explicit-AppHost stop/describe at `11:29 UTC` found no owned AppHost.
+The `11:33:54 UTC` independent scan found no owned proof host or candidate sidecar;
+it preserved unrelated ChatBot EventStore Dapr peers `66358`/`66760`, observed to
+have started at `11:33:16 UTC`, after distribution ended. Pre/post Docker inspection
+found Redis/placement/scheduler container IDs, start times, image IDs and digests
+unchanged, matching the earlier support table; Redis reported `6.2.21` and Docker
+`29.8.2`. This continuation made no shared-service or unrelated-process changes;
+these observations do not exclude changes by other workspace activity. Inotify remained
+`1,048,576`; cleanup counted 3,614 watch lines with one inaccessible fdinfo entry,
+so no sysctl restoration was needed.
+
+Prior Go full-suite failures, historical projection/Redis identity failures,
+the separate Contracts validator blocker and missing CI remain unresolved; no
+exemption was added. Production runtime/broker/enrolled issuer, shipped enrollment,
+canonical freshness faults, atomic both-host transition/rollback and authorized
+disposition remain gated. Original story `backlog`, spec/sprint `in-progress`,
+frozen intent, unchecked whole-story tasks and `accepted_exceptions: []` are unchanged.
+
+Documentation checks: `bash scripts/check-committed-files.sh` passed (9,041 tracked
+files checked); `git diff --check` passed. Final parent checks after review also
+passed (9,050 tracked entries), and confirmed all 682 copied-output hashes, frozen
+intent, sprint status and prior story contents. Concurrent HEAD
+`fd083a91b67a3bca10016f1f645da913c7ef526e` was observed after the measured runs;
+no runtime result is attributed to that revision. This continuation staged or
+committed no files.

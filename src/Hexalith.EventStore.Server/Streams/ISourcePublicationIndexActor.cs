@@ -6,6 +6,8 @@ namespace Hexalith.EventStore.Server.Streams;
 /// <summary>Private technical actor transport. Host registration/ACL and namespace authority must be qualified before use.</summary>
 public interface ISourcePublicationIndexActor : IActor
 {
+    /// <summary>Executes an exact authenticated invocation. Legacy entry points carry no workload credential.</summary>
+    Task<byte[]?> InvokeAuthenticatedAsync(SourcePublicationAuthorityCall call);
     /// <summary>Reads independently authenticated original source reconciliation under the exact fresh complete cut; missing proof denies reuse.</summary>
     Task<SourcePublicationReconciliationProgress?> ReadReconciliationProgressAsync(SourcePublicationCut cut);
     /// <summary>Independently authenticates one original protected source prefix and conditionally retains exact bounded work; omission denies progress.</summary>

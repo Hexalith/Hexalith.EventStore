@@ -151,6 +151,25 @@ public sealed class WorkloadBindingAuthority(IOptionsMonitor<WorkloadAuthorityOp
 
     private static bool PermitsBindings(WorkloadAuthorityGrant grant, WorkloadAuthorizationDetails details)
     {
+        bool commandDigest = details.Bindings.ContainsKey(CommandSourceAuthorityBinding.DigestClaim);
+        bool publicationDigest = details.Bindings.ContainsKey(SourcePublicationWorkloadBinding.DigestClaim);
+        if (grant.AllowCompleteCommandSourceDigest && details.Operation == EventStoreWorkloadOperations.DomainServiceProcess && !commandDigest) return false;
+        if (grant.AllowSourcePublicationDigest && details.Operation is SourcePublicationWorkloadBinding.PrimaryOperation or SourcePublicationWorkloadBinding.AuthorityOperation && !publicationDigest) return false;
+        if (commandDigest || publicationDigest)
+        {
+            string dynamicClaim = commandDigest ? CommandSourceAuthorityBinding.DigestClaim : SourcePublicationWorkloadBinding.DigestClaim;
+            string[] required = commandDigest
+                ? [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType, EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType,
+                    CommandSourceAuthorityBinding.SourceClaim, CommandSourceAuthorityBinding.EpochClaim, CommandSourceAuthorityBinding.MethodClaim]
+                : [EventStoreWorkloadAuthenticationDefaults.TenantBindingClaimType, EventStoreWorkloadAuthenticationDefaults.DomainBindingClaimType,
+                    EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix + "publication-scope", EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix + "publication-method",
+                    EventStoreWorkloadAuthenticationDefaults.BindingClaimPrefix + "publication-epoch"];
+            return commandDigest != publicationDigest && (commandDigest ? grant.AllowCompleteCommandSourceDigest : grant.AllowSourcePublicationDigest)
+                && !grant.AllowQueryAuthorityDigest && grant.Bindings.Count == required.Length && required.All(grant.Bindings.ContainsKey)
+                && grant.Bindings.All(binding => binding.Value is { Length: > 0 } && binding.Value.All(value => !string.IsNullOrWhiteSpace(value) && !value.Contains('*')))
+                && details.Bindings.Count == required.Length + 1 && details.Bindings.All(binding => binding.Key == dynamicClaim
+                    || grant.Bindings.TryGetValue(binding.Key, out string[]? allowed) && allowed.Contains(binding.Value, StringComparer.Ordinal));
+        }
         bool queryDigest = details.Bindings.ContainsKey(QueryCallerAuthorityBinding.DigestClaim);
         if (grant.AllowQueryAuthorityDigest && details.Operation == EventStoreWorkloadOperations.DomainServiceQuery && !queryDigest) return false;
         if (details.Bindings.Count == 0) return grant.AllowUnbound;

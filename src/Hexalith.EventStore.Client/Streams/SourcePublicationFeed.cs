@@ -157,7 +157,8 @@ public sealed class SourcePublicationFeed(ISourcePublicationNamespaceSource name
             long revision = prior?.Revision ?? 0;
             var updated = new SourcePublicationIndexState(scope, checked(revision + 1), initial.AuthorityRevision,
                 conflict is not null && prior is not null ? prior.Sources : initial.Sources,
-                conflict is not null ? prior?.Entries ?? Array.Empty<SourcePublicationIndexEntry>() : entries.AsReadOnly(), conflict) { DispatchProgress = prior?.DispatchProgress, ReconciliationProgress = retained };
+                conflict is not null ? prior?.Entries ?? Array.Empty<SourcePublicationIndexEntry>() : entries.AsReadOnly(), conflict) { DispatchProgress = prior?.DispatchProgress,
+                    ReconciliationProgress = conflict is not null ? prior?.ReconciliationProgress : retained };
             bool unchanged = prior is not null && prior.AuthorityRevision == updated.AuthorityRevision && prior.PoisonCode == updated.PoisonCode
                 && prior.Sources.SequenceEqual(updated.Sources) && prior.Entries.SequenceEqual(updated.Entries);
             if (unchanged) { updated = prior!; }

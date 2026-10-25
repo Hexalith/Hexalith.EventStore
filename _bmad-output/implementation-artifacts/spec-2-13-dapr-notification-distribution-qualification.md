@@ -384,6 +384,35 @@ These corrections use existing command receipts and scenario captures. No runtim
 tests were repeated for documentation edits. Review logging is the only change to
 this spec; local passes supply no CI result, production qualification or approval.
 
+### October 25 7012502b continuation review
+
+Review covers only this continuation's Verification append in the original story,
+against run-start `7012502bc094484eb2d4687badb98cb3b5e52b73`. Concurrent
+payload-protection changes are outside this review. The frozen baseline, intent,
+statuses and whole-story gates remain unchanged. The edge-case and verification-gap
+reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| 7012502b Blind 1: drift chronology | low | patch | The build's after-status already records the concurrent owner-delivery spec edit, outside the measured source inventory. Corrected its chronology separately from the later payload-protection source edits. |
+| 7012502b Blind 2: focused readback identity | medium | patch | Added the focused restart manifest's exact scenario and logical read-model key beside version/ETag 1 to 2, preserving the synthetic-state limitation. |
+| 7012502b Blind 3: copied-output replay | medium | patch | Added receipt-backed preparation/comparison replay steps, without another measured execution or source-correspondence claim. Parent verification confirmed all 682 copied file identities and the recorded zero exit. |
+| 7012502b Blind 4: lifecycle command sequence | low | patch | Added the existing receipts' ordered sample waits, both failed stops and recovery commands/results without rerunning the topology. |
+| 7012502b Parent 1: cleanup wording | low | patch | Limited cleanup claims to this continuation's actions and preserved the observed unrelated process start times. |
+
+These are documentation corrections from existing measurements. The six-case
+distribution run remains identity-ambiguous, the copied 102-control result remains
+a separately identified output subject, and the unrun regressions and earlier Go
+failures remain open. No production qualification, approval or status advancement
+is supplied.
+
+Final parent checks passed the tracked-file policy (9,050 entries), whitespace,
+copied-output inventory, frozen-intent preservation, unchanged sprint status and
+append-only story history. Concurrent HEAD
+`fd083a91b67a3bca10016f1f645da913c7ef526e` was observed afterward; it is outside
+the tested revision and this continuation's reviewed changes. No runtime tests
+were repeated for documentation corrections.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations

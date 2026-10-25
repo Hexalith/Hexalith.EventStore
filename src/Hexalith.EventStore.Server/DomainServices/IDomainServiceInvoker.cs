@@ -8,6 +8,12 @@ namespace Hexalith.EventStore.Server.DomainServices;
 /// The server calls domain services via DAPR; in tests, this is faked.
 /// </summary>
 public interface IDomainServiceInvoker {
+    /// <summary>Conveys platform-created complete-source evidence over exact authenticated workload transport; unsupported transports deny.</summary>
+    Task<DomainResult> InvokeCompleteSourceAsync(CommandEnvelope command, object currentState, CompleteCommandSource source,
+        string? humanAuthorityReceipt, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin? origin,
+        CancellationToken cancellationToken = default)
+        => throw new InvalidOperationException("CompleteCommandSourceUnavailable: invoker lacks bound native-source transport.");
+
     /// <summary>Invokes with ephemeral target-admitted effect origin; unsupported invokers fail closed.</summary>
     Task<DomainResult> InvokeTrustedEffectAsync(CommandEnvelope command, object? currentState, bool includePostCommandState,
         string? snapshotCaptureProfileId, Hexalith.EventStore.Contracts.Effects.TrustedEffectOrigin origin,
