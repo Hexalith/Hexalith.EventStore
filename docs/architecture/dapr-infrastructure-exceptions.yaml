@@ -1,66 +1,102 @@
 # Preliminary planning register; Story 3.17 owns the final validated schema/guard.
 schema_version: 1
-updated: '2026-10-21'
+updated: '2026-10-25'
 status: preliminary-unqualified
 policy: _bmad-output/planning-artifacts/prd.md#84-dapr-infrastructure-boundary
 inventory_owner_story: 3-17-dapr-boundary-inventory-and-enforcement
-accepted_exceptions: []
-unresolved:
+accepted_exceptions:
   - id: signalr-replica-distribution
-    disposition: unresolved-retained-runtime-integration
-    owner: SignalR transport owner with Architecture and Test owners
+    disposition: accepted-scoped-exception
+    accepted: '2026-10-25'
+    owner: SignalR transport owner (project owner)
     owner_story: 2-13-dapr-notification-distribution-qualification
+    decision: >-
+      Owner decision 2026-10-25, single-maintainer-attested (the project has one
+      maintainer; no independent review): keep the opt-in self-hosted SignalR Redis
+      backplane for cross-replica hub messages instead of a Dapr replacement.
+    retroactive: true
+    retroactive_note: >-
+      The backplane shipped before AD-34 was adopted. This decision accepts an existing
+      dependency; it does not authorize introducing a new one.
+    purpose: >-
+      Covers the opt-in backplane already compiled into the EventStore and Gateway
+      packages, used for Development/test multi-instance runs, so Story 3.17 treats it
+      as an accepted row instead of an unresolved bypass. Production runs one EventStore
+      replica with no multi-replica freshness claim (AD-26), which needs no exception.
     operations:
       - self-hosted-hub-cross-replica-distribution
-      - authenticated-connection-and-group-membership
-    observed_paths:
+    not_in_scope: >-
+      Connection negotiation, authentication, tenant authorization and group joins
+      stay in the application hub and are not covered by this exception. Shared-Redis
+      use with channelPrefix is configuration of the allowed keys; it follows
+      docs/operations/redis-signalr-channel-isolation.md and grants nothing beyond this entry.
+    missing_guarantees:
+      - >-
+        Tenant enrollment: CFD-1 topics are {tenantId}.{projectionType}.projection-changed.
+        pubsub.redis (Redis Streams) treats the shipped wildcard subscription
+        *.*.projection-changed as one literal stream, so no tenant topic is delivered.
+        Fan-out worked only with exact per-tenant subscriptions and an operator sidecar
+        reload; new tenants are not enrolled automatically.
+      - >-
+        Replica restart: with stock daprd 1.18.7 (the only stock runtime tested), the
+        surviving host's remote actor call fails after a peer restarts on the same internal
+        endpoint. Only a disposable patched daprd built outside the repository passed; no
+        released runtime with the fix was identified.
+      - >-
+        Production profile: the MVP target (self-hosted Kubernetes, 192.168.1.30) runs
+        Dapr 1.18.1, below the AD-26 1.18.3 floor, with no durable broker, runtime or
+        binding-capable AD-36 issuer selected.
+    alternatives:
+      - Dapr pub/sub fan-out with a per-replica consumer group; blocked by the three gaps above.
+      - bindings.azure.signalr output binding; not run, because the owner excluded Azure from MVP on 2026-10-20, and the binding does not own self-hosted negotiation or group membership.
+      - One fixed topic with tenant filtering in the application; avoids enrollment but changes the Story 2.8 / CFD-1 topic contract and AD-36 topic-bound provenance.
+      - One EventStore replica with no multi-replica freshness claim (AD-26); needs no exception.
+    isolated_adapter: >-
+      ConfigureBackplane in SignalRServiceCollectionExtensions.cs calls
+      AddStackExchangeRedis only when a backplane connection string is configured;
+      otherwise the hub runs single-instance. No Dapr failure falls back to Redis.
+    outage_behavior: >-
+      AbortOnConnectFail is false, so an unreachable Redis does not stop the host:
+      cross-replica messages are dropped while HTTP requests still succeed (measured:
+      HTTP 200 with a FailOpenFailure diagnostic after about 6 s). Signals are hints;
+      clients re-query persisted state, and no freshness claim relies on the backplane.
+    credential_boundary: >-
+      The Redis connection string, including any password, reaches the EventStore and
+      Gateway host processes through the allowed configuration keys. Supply it from the
+      deployment's secret source and never commit it. The Development-only runtime-proof
+      endpoint reports it redacted.
+    allowed_paths:
       - src/Hexalith.EventStore/SignalRHub/SignalRServiceCollectionExtensions.cs
+      - src/Hexalith.EventStore/SignalRHub/SignalROptions.cs
+      - src/Hexalith.EventStore/SignalRHub/ValidateSignalROptions.cs
+      - src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofEndpoints.cs
+      - src/Hexalith.EventStore/SignalRHub/SignalRRuntimeProofIdentity.cs
       - src/Hexalith.EventStore/Hexalith.EventStore.csproj
       - src/Hexalith.EventStore.Gateway/Hexalith.EventStore.Gateway.csproj
-    observed_configuration:
+    allowed_package:
+      id: Microsoft.AspNetCore.SignalR.StackExchangeRedis
+      version: 10.0.13
+      version_pin: references/Hexalith.Builds/Props/Directory.Packages.props
+    tested_redis_server: 6.2.21 (local Development/test)
+    allowed_configuration:
       - EventStore:SignalR:BackplaneRedisConnectionString
       - EVENTSTORE_SIGNALR_REDIS
-    candidate_interfaces:
-      - Dapr pub/sub fan-out to local hubs
-      - Dapr bindings.azure.signalr output binding
-    qualification_record: _bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md
-    observed_gap: >-
-      Local Dapr Redis Streams delivered through test-only exact-topic subscriptions,
-      but the shipped *.*.projection-changed wildcard subscribed to a literal Redis
-      stream and delivered no concrete tenant-topic notification. Dynamic tenant
-      enrollment, production identity/profile gates, and Azure
-      SignalR equivalence remain unproven. A test-only exact-topic profile delivered
-      a real projection signal to two hosts with matching readback. The October 19
-      continuation records fresh profile-bound scenarios and the serialized versus
-      keys-plus-values metadata-bound discrepancy. The October 20 user decision
-      enforces the serialized contract across producer, receiver, and broadcaster;
-      its continuation adds complete replica restart and Dapr reconciliation.
-      Neither continuation grants a production profile or accepted exception.
-      A separate network-fault continuation exercises a fixture-only provider
-      connection-reset profile and Dapr reconciliation. The user-selected MVP
-      target is self-hosted Kubernetes at 192.168.1.30; Azure/AWS are comparison
-      only and outside MVP. Observed isolated cluster Dapr 1.18.1 is not the
-      locally tested 1.18.7 profile and does not meet the AD-26 runtime floor.
-      Fixture-only exact-topic catalog rollout and optional legacy-projection
-      detail now have local evidence, including persisted actor hints, old/new
-      wire compatibility and real two-host signal/detail readback. Shipped
-      enrollment, canonical freshness/completion under faults, a selected
-      production durable broker/runtime/enrolled issuer and full transition,
-      rollback and disposition remain unresolved. The October 21 continuation
-      adds passing reset and silent byte-discard fault cases with a declared
-      auxiliary local AppHost/sample dependency. Standalone startup failures
-      and intermittent post-restart signal timeouts remain retained; a focused
-      restart pass does not resolve the two broader-run failures. Current
-      Story 3.21 candidate inputs still select no production broker/profile.
-      No exception is accepted.
-    required_evidence:
-      - real-two-host-independent-sidecar-delivery-to-all-relevant-hubs
-      - negotiation-group-membership-reconnect-rejoin-and-tenant-denial
-      - ordering-duplicates-outage-freshness-compatibility-and-rollback
-    decision: pending-qualification-and-architecture-owner-decision
+    not_granted:
+      - Production eligibility; AD-26 profile ratification still decides the freshness-signal replica posture.
+      - Any other Redis client, operation, path or configuration key.
+      - Fallback from a failed Dapr operation.
+    evidence: _bmad-output/implementation-artifacts/2-13-dapr-notification-distribution-qualification.md#disposition--2026-10-25
+    guard_handoff: 3-17-dapr-boundary-inventory-and-enforcement
     review_removal_trigger: >-
-      Resolve in Story 2.13 before extending or retiring the backplane; a runtime,
-      component, distribution, or topology change requires renewed qualification.
+      Review this entry when any of the following changes, and remove it only when all
+      hold: (1) an unpatched daprd at or above the AD-26 floor passes
+      DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState (today it
+      passes only with HEXALITH_STORY_2_13_DAPRD_PATH pointing at the patched build);
+      (2) a tenant-topic enrollment design exists; (3) an AD-26 profile names a durable
+      broker and binding-capable issuer. Any change to the allowed paths, package
+      version, configuration keys, Redis server major version or replica topology, or
+      any production use of the backplane, needs a new decision.
+unresolved:
   - id: payload-production-key-operations
     disposition: unresolved-planned-integration
     owner: Payload owner with Architecture, Security, Operations, and Release owners

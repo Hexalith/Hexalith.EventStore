@@ -36,7 +36,7 @@ flowchart TB
         Client -->|REST| EventStore
         ReadClient -->|REST queries| EventStore
         ReadClient <-.->|browser SignalR; tenant-scoped groups| SignalRHub
-        SignalRHub -.->|current direct adapter; 2.13 unresolved| RedisBackplane
+        SignalRHub -.->|direct adapter; 2.13 accepted exception| RedisBackplane
         EventStore --> Admission
         Admission -. signed current fence .-> Actor
         EventStore --> Actor
@@ -80,7 +80,7 @@ All services, sidecars, and infrastructure connections run within the Aspire App
 
 DAPR (Distributed Application Runtime) sits alongside your application as a sidecar process, providing building blocks such as state management, pub/sub messaging, and service invocation through HTTP/gRPC APIs. Hexalith keeps domain behavior independent of backend clients and requires suitable Dapr interfaces for runtime infrastructure operations. Backend changes must preserve the required semantics and pass profile-specific qualification.
 
-State, pub/sub, and configuration edges use Dapr APIs/components. Public HTTP, browser SignalR, and governed telemetry exports are separate transport edges. The current optional SignalR scale-out adapter directly uses Redis and remains unresolved under Story 2.13; no accepted exception or Dapr replacement is claimed. The [Dapr infrastructure-boundary guide](dapr-infrastructure-boundary.md) records the preliminary classifications and qualification gates.
+State, pub/sub, and configuration edges use Dapr APIs/components. Public HTTP, browser SignalR, and governed telemetry exports are separate transport edges. The optional SignalR scale-out adapter directly uses Redis under a scoped exception accepted in Story 2.13 (2026-10-25); no Dapr replacement is claimed, and the exception grants no production eligibility. The [Dapr infrastructure-boundary guide](dapr-infrastructure-boundary.md) records the preliminary classifications and qualification gates.
 
 ## DAPR Building Blocks
 
@@ -200,7 +200,7 @@ DAPR enforces component-level scoping so domain services cannot access infrastru
 
 EventStore uses Dapr for infrastructure operations supported by qualified components. Backend selection is expressed through component configuration; each change must preserve required semantics and pass the supported-profile tests, with data migration where necessary. Operation-specific exceptions require evidence, owner, exact paths, and review/removal trigger in the [boundary inventory and exception register](dapr-infrastructure-boundary.md#preliminary-classification). Domain behavior remains independent of backend clients.
 
-The inventory is preliminary, and the accepted-exception register is empty. Direct Redis notification distribution and crypto key-operation suitability remain owned qualification work under Stories 2.13 and 8.6. Story 3.17 owns the final evaluated inventory and enforcement guard; adopting the policy does not establish full runtime conformance or production readiness.
+The inventory is preliminary. The accepted-exception register holds one entry, the Story 2.13 SignalR Redis backplane. Crypto key-operation suitability remains owned qualification work under Story 8.6. Story 3.17 owns the final evaluated inventory and enforcement guard; adopting the policy does not establish full runtime conformance or production readiness.
 
 ### Domain Service Resolution
 
