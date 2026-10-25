@@ -63,6 +63,65 @@ public class ReadModelBatchStoreTests {
         store.BatchOptions.MaxCanonicalManifestBytes.ShouldBe(1_048_576);
     }
 
+    [Theory]
+    [InlineData("key")]
+    [InlineData("manifest")]
+    [InlineData("operations")]
+    [InlineData("null-etag")]
+    public async Task GenerationPreflightsEffectiveLimitsAndLateInvalidGroupsBeforeAnyWrite(string defect)
+    {
+        var store = new InMemoryReadModelStore();
+        var operations = Enumerable.Range(0, 33).Select(i => ReadModelBatchOperation.Write("generation:" + i,
+            new Detail(i), ReadModelBatchConcurrency.CreateOnly)).ToArray();
+        if (defect == "key")
+        {
+            store.BatchOptions.MaxKeyByteLength = 20;
+            operations[^1] = ReadModelBatchOperation.Write(new string('k', 21), new Detail(1), ReadModelBatchConcurrency.CreateOnly);
+        }
+        if (defect == "manifest")
+        {
+            store.BatchOptions.MaxCanonicalManifestBytes = 12_000;
+            operations[^1] = ReadModelBatchOperation.Write("generation:32", new string('x', 12_000), ReadModelBatchConcurrency.CreateOnly);
+        }
+        if (defect == "operations") store.BatchOptions.MaxOperations = 10;
+        if (defect == "null-etag") operations[^1] = ReadModelBatchOperation.Write("generation-32", new { count = 32 }, new(ReadModelBatchConcurrencyMode.ExpectedETag, null!));
+        await Should.ThrowAsync<ArgumentException>(() => ReadModelGenerationStaging.StageAsync(store, Scope("preflight"), operations));
+        store.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task DaprGenerationPreflightUsesTheAdaptersConfiguredLimitsBeforeAnyStorageWrite()
+    {
+        using var client = new RecordingDaprClient();
+        var store = new DaprReadModelStore(client, Microsoft.Extensions.Options.Options.Create(new ReadModelBatchOptions { MaxKeyByteLength = 20 }));
+        var operations = Enumerable.Range(0, 33).Select(i => ReadModelBatchOperation.Write(i == 32 ? new string('k', 21) : "generation-" + i,
+            new Detail(i), ReadModelBatchConcurrency.CreateOnly)).ToArray();
+        await Should.ThrowAsync<ArgumentException>(() => ReadModelGenerationStaging.StageAsync(store, Scope("configured-adapter"), operations));
+        client.SaveByteStateCallCount.ShouldBe(0);
+        client.ExecuteStateTransactionCallCount.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(380, true)]
+    [InlineData(384, false)]
+    [InlineData(400, false)]
+    public async Task GenerationBudgetMeasuresActualBase64ManifestAndScope(int kibibytes, bool valid)
+    {
+        var store = new InMemoryReadModelStore();
+        var scope = Scope(new string('b', 512)) with { TenantId = new string('t', 512), AggregateId = new string('a', 512) };
+        var operations = new[] { ReadModelBatchOperation.Write("generation:value", new string('x', kibibytes * 1024), ReadModelBatchConcurrency.CreateOnly) };
+        if (valid)
+        {
+            await ReadModelGenerationStaging.StageAsync(store, scope, operations);
+            (await store.GetAsync<string>(Store, "generation:value")).Value!.Length.ShouldBe(kibibytes * 1024);
+        }
+        else
+        {
+            await Should.ThrowAsync<ArgumentException>(() => ReadModelGenerationStaging.StageAsync(store, scope, operations));
+            store.Count.ShouldBe(0);
+        }
+    }
+
     // ----- Checkpoint boundary (AC7 / decision 6) -----
 
     [Fact]

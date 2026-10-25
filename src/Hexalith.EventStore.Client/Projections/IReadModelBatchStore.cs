@@ -22,6 +22,11 @@ namespace Hexalith.EventStore.Client.Projections;
 /// </para>
 /// </remarks>
 public interface IReadModelBatchStore {
+    /// <summary>Validates a complete batch against the effective owning-store limits without storage access.</summary>
+    /// <param name="batch">The immutable batch to preflight.</param>
+    /// <remarks>Implementations with deployment-specific limits must apply the same limits as execution.</remarks>
+    void ValidateBatch(ReadModelBatch batch) => ReadModelBatchValidation.Validate(batch, new ReadModelBatchOptions());
+
     /// <summary>
     /// Executes a coordinated read-model batch against its configured store component.
     /// </summary>

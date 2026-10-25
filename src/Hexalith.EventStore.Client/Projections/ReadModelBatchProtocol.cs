@@ -65,6 +65,10 @@ internal sealed partial class ReadModelBatchProtocol {
                 ? await RunTransactionAsync(cancellationToken).ConfigureAwait(false)
                 : await RunResumableAsync(cancellationToken).ConfigureAwait(false);
         }
+        catch (ReadModelBatchSnapshotConflictException)
+        {
+            return ReadModelBatchResult.OptimisticConflict(_fingerprint, "recovery-snapshot-conflict");
+        }
         catch (ReadModelBatchRaceException) {
             // A concurrent same-identity run advanced the marker past Prepared: resolve to a structured
             // result through bounded reconciliation instead of throwing.
@@ -93,6 +97,10 @@ internal sealed partial class ReadModelBatchProtocol {
 
         try {
             return await RunStageAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (ReadModelBatchSnapshotConflictException)
+        {
+            return Staging(ReadModelBatchStagingStatus.Conflict, "recovery-snapshot-conflict");
         }
         catch (ReadModelBatchRaceException) {
             return await ReconcileStagingAsync("prepare-race").ConfigureAwait(false);
@@ -371,7 +379,7 @@ internal sealed partial class ReadModelBatchProtocol {
                     if (_batch.RetainManifestForRecovery) return ReadModelBatchResult.OptimisticConflict(_fingerprint, "compensated");
                     (marker, markerEtag, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
                     break;
-                case ReadModelBatchMarkerStatus.Aborted when _batch.RetainManifestForRecovery:
+                case ReadModelBatchMarkerStatus.Aborted when _batch.RetainManifestForRecovery || _batch.DiscoverableRecovery:
                     return await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false)
                         ? ReadModelBatchResult.OptimisticConflict(_fingerprint, "compensated")
                         : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
@@ -411,6 +419,13 @@ internal sealed partial class ReadModelBatchProtocol {
         string existingEtag,
         CancellationToken cancellationToken) {
         if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false)) throw new ReadModelBatchRaceException();
+        if (_batch.DiscoverableRecovery && !await ReadModelRecoveryDiscovery.EnrollAsync(_accessor, _batch, _fingerprint,
+            async () =>
+            {
+                foreach (ReadModelBatchOperation operation in _batch.Operations)
+                    if (!SatisfiesConcurrency(operation, await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false))) return false;
+                return true;
+            }, cancellationToken).ConfigureAwait(false)) throw new ReadModelBatchRaceException();
         var marker = new ReadModelBatchMarker {
             ScopeHash = _scopeHash,
             BatchId = _batch.Scope.BatchId,
@@ -435,10 +450,12 @@ internal sealed partial class ReadModelBatchProtocol {
             if (!await _accessor.TryWriteAsync(marker.OriginalManifestKey, manifest, string.Empty, cancellationToken).ConfigureAwait(false))
             {
                 RawStateEntry original = await _accessor.ReadAsync(marker.OriginalManifestKey, cancellationToken).ConfigureAwait(false);
+                if (original.Value.Span.SequenceEqual(ReadModelRecoveryDiscovery.RetiredManifest)) throw new ReadModelBatchRaceException();
                 if (!original.Exists || !original.Value.Span.SequenceEqual(manifest))
                     throw new ArgumentException("The original immutable batch manifest conflicts with this identity.");
             }
         }
+        if (_injector is not null) await _injector.InjectAsync(ReadModelBatchPhase.ManifestPrepared, -1, cancellationToken).ConfigureAwait(false);
         if (await IsRetiredAsync(cancellationToken).ConfigureAwait(false))
         {
             _ = await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
@@ -494,7 +511,7 @@ internal sealed partial class ReadModelBatchProtocol {
             RawStateEntry current = await _accessor.ReadAsync(operation.Key, cancellationToken).ConfigureAwait(false);
 
             if (TryGetOwnEnvelope(current, ordinal, out ReadModelBatchEnvelope? originalEnvelope)) {
-                if (_batch.RetainManifestForRecovery && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
+                if ((_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
                     _batch.Scope, _fingerprint, CreateRecoveryAnchor(ordinal, originalEnvelope!), operation.Concurrency,
                     cancellationToken).ConfigureAwait(false)) return ReadModelBatchResult.Indeterminate(_fingerprint, "participant-proof-race");
                 // Already installed on a prior attempt (resume): leave as-is.
@@ -533,7 +550,7 @@ internal sealed partial class ReadModelBatchProtocol {
 
             ReadModelBatchResult? retired = await CheckInstallerDecisionAsync(cancellationToken).ConfigureAwait(false);
             if (retired is not null) return retired;
-            if (_batch.RetainManifestForRecovery
+            if ((_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery)
                 && !await ReadModelBatchParticipantProof.SealAsync(_accessor, _batch.Scope, _fingerprint,
                     CreateRecoveryAnchor(ordinal, envelope), operation.Concurrency, cancellationToken).ConfigureAwait(false))
                 return ReadModelBatchResult.Indeterminate(_fingerprint, "participant-proof-race");
@@ -571,7 +588,7 @@ internal sealed partial class ReadModelBatchProtocol {
         return null;
     }
 
-    private bool MayHavePrivateFence => _batch.RetainManifestForRecovery
+    private bool MayHavePrivateFence => _batch.RetainManifestForRecovery || _batch.DiscoverableRecovery
         || _batch.Operations.Count == 2 && _batch.Scope.AggregateId == _batch.Scope.ProjectionType;
 
     private async Task<bool> IsRetiredAsync(CancellationToken token) => MayHavePrivateFence
@@ -664,7 +681,7 @@ internal sealed partial class ReadModelBatchProtocol {
             }
 
             if (TryGetOwnEnvelope(current, ordinal, out ReadModelBatchEnvelope? envelope)) {
-                if (_batch.RetainManifestForRecovery && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
+                if ((_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
                     _batch.Scope, _fingerprint, CreateRecoveryAnchor(ordinal, envelope!), operation.Concurrency,
                     cancellationToken).ConfigureAwait(false)) return false;
                 if (_batch.RetainManifestForRecovery && ordinal == _batch.Operations.Count - 1)
@@ -729,7 +746,7 @@ internal sealed partial class ReadModelBatchProtocol {
             OwnerSelection = _ownerSelection,
             OwnerSelections = _ownerSelections,
             RecoveryAnchor = anchor,
-            RetainedParticipantCount = _batch.RetainManifestForRecovery ? _batch.Operations.Count : 0,
+            RetainedParticipantCount = _batch.RetainManifestForRecovery || _batch.DiscoverableRecovery ? _batch.Operations.Count : 0,
             Operations = null,
             TerminalTimeUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
         };
@@ -787,7 +804,7 @@ internal sealed partial class ReadModelBatchProtocol {
             }
         }
         else if (marker.Status == ReadModelBatchMarkerStatus.Aborted) {
-            return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
+            return !(_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         }
         else if (marker.Status != ReadModelBatchMarkerStatus.Aborting) {
             return false;
@@ -807,7 +824,7 @@ internal sealed partial class ReadModelBatchProtocol {
                 continue;
             }
 
-            if (_batch.RetainManifestForRecovery && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
+            if ((_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) && !await ReadModelBatchParticipantProof.SealAsync(_accessor,
                 _batch.Scope, _fingerprint, CreateRecoveryAnchor(ordinal, envelope!), operation.Concurrency,
                 cancellationToken).ConfigureAwait(false)) return false;
             if (_batch.RetainManifestForRecovery && ordinal == 0)
@@ -837,7 +854,7 @@ internal sealed partial class ReadModelBatchProtocol {
         }
 
         if (aborting.Status == ReadModelBatchMarkerStatus.Aborted) {
-            return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
+            return !(_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         }
 
         if (aborting.Status != ReadModelBatchMarkerStatus.Aborting) {
@@ -845,7 +862,7 @@ internal sealed partial class ReadModelBatchProtocol {
         }
 
         aborting.Status = ReadModelBatchMarkerStatus.Aborted;
-        if (_batch.RetainManifestForRecovery)
+        if (_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery)
         {
             aborting.RecoveryAnchor = anchor;
             aborting.RetainedParticipantCount = _batch.Operations.Count;
@@ -857,14 +874,14 @@ internal sealed partial class ReadModelBatchProtocol {
             .TryWriteAsync(_markerKey, SerializeMarker(aborting), abortingEtag, cancellationToken)
             .ConfigureAwait(false);
         if (aborted) {
-            return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
+            return !(_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false);
         }
 
         (aborting, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
         return aborting is not null
             && aborting.Status == ReadModelBatchMarkerStatus.Aborted
             && string.Equals(aborting.Fingerprint, _fingerprint, StringComparison.Ordinal)
-            && (!_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false));
+            && (!(_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) || await CleanupOriginalManifestAsync(cancellationToken).ConfigureAwait(false));
     }
 
     private async Task<ReadModelBatchResult> RunTransactionAsync(CancellationToken cancellationToken) {
@@ -1110,7 +1127,7 @@ internal sealed partial class ReadModelBatchProtocol {
                         ? ReadModelBatchResult.OptimisticConflict(_fingerprint, reason)
                         : ReadModelBatchResult.Indeterminate(_fingerprint, "compensation-race");
                 case ReadModelBatchMarkerStatus.Aborted:
-                    return !_batch.RetainManifestForRecovery || await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
+                    return !(_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery) || await CleanupOriginalManifestAsync(token).ConfigureAwait(false)
                         ? ReadModelBatchResult.OptimisticConflict(_fingerprint, reason)
                         : ReadModelBatchResult.Indeterminate(_fingerprint, "manifest-cleanup-pending");
                 default:
@@ -1261,7 +1278,7 @@ internal sealed partial class ReadModelBatchProtocol {
 
     private async Task<bool> CleanupOriginalManifestAsync(CancellationToken cancellationToken)
     {
-        if (_batch.RetainManifestForRecovery)
+        if (_batch.RetainManifestForRecovery || _batch.DiscoverableRecovery)
         {
             (ReadModelBatchMarker? marker, _, _) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);
             if (marker?.Status is ReadModelBatchMarkerStatus.Aborted or ReadModelBatchMarkerStatus.Completed
@@ -1269,10 +1286,17 @@ internal sealed partial class ReadModelBatchProtocol {
                     marker.Status, _batch.Operations.Count).SealAsync(_accessor, cancellationToken).ConfigureAwait(false))
                 return false;
             if (marker?.RecoveryAnchor is not null)
-                return await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
+            {
+                bool finished = await FinishRecoveryAnchorAsync(_accessor, marker, _batch.Scope, _injector, cancellationToken, _options.TimeProvider).ConfigureAwait(false);
+                if (finished && _batch.DiscoverableRecovery)
+                    await ReadModelRecoveryDiscovery.RemoveAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
+                return finished;
+            }
         }
         bool reclaimed = _ownerSelection is null && _ownerSelections is null && !_batch.RetainManifestForRecovery
             || await ReclaimOriginalManifestAsync(_accessor, _scopeHash, _fingerprint, cancellationToken).ConfigureAwait(false);
+        if (reclaimed && _batch.DiscoverableRecovery)
+            await ReadModelRecoveryDiscovery.RemoveAsync(_accessor, _batch.Scope, _fingerprint, cancellationToken).ConfigureAwait(false);
         return reclaimed && await PublishCompletionProofAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -1284,6 +1308,14 @@ internal sealed partial class ReadModelBatchProtocol {
         try
         {
             RawStateEntry stored = await accessor.ReadAsync(key, cancellationToken).ConfigureAwait(false);
+            RawStateEntry discovery = await accessor.ReadAsync(key + ":discovery", cancellationToken).ConfigureAwait(false);
+            if (discovery.Exists)
+            {
+                if (stored.Exists && stored.Value.Span.SequenceEqual(ReadModelRecoveryDiscovery.RetiredManifest)) return true;
+                if (stored.Exists && ReadModelBatchFingerprint.ComputeFromManifest(stored.Value.Span) != fingerprint) return false;
+                return await accessor.TryWriteAsync(key, ReadModelRecoveryDiscovery.RetiredManifest,
+                    stored.Exists ? stored.ETag : string.Empty, cancellationToken).ConfigureAwait(false);
+            }
             if (!stored.Exists) return true;
             if (stored.Value.Length > 1_048_576
                 || ReadModelBatchFingerprint.ComputeFromManifest(stored.Value.Span) != fingerprint) return false;

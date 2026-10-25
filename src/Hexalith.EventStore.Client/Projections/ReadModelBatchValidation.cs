@@ -10,6 +10,11 @@ public static class ReadModelBatchValidation
         ArgumentNullException.ThrowIfNull(batch);
         ArgumentNullException.ThrowIfNull(options);
         options.Validate();
+        if (batch.RecoveryRequestDigest is not null && (!batch.DiscoverableRecovery
+            || batch.RecoveryRequestDigest.Length != 64 || batch.RecoveryRequestDigest.Any(static ch => !char.IsAsciiHexDigit(ch))))
+            throw new ArgumentException("Invalid private recovery request digest.", nameof(batch));
+        if (batch.DiscoverableRecovery && !batch.RetainManifestForRecovery && batch.OwnerSelection is null && batch.OwnerSelections is null)
+            throw new ArgumentException("Discoverable preparation requires a retained recovery manifest.", nameof(batch));
         if (batch.Operations.Count > options.MaxOperations
             || batch.RetainManifestForRecovery && batch.Operations.Count > ReadModelBatchOptions.DefaultMaxOperations) {
             throw new ArgumentException(

@@ -165,7 +165,9 @@ internal static class DomainProjectionRebuildTransport
             restored[ordinal] = batch.Operations[ordinal]
                 .WithConcurrency(plan.Operations[ordinal].Concurrency);
         }
-        return new ReadModelBatch(batch.Scope, restored) { OwnerSelection = batch.OwnerSelection, OwnerSelections = batch.OwnerSelections };
+        return new ReadModelBatch(batch.Scope, restored) { OwnerSelection = batch.OwnerSelection, OwnerSelections = batch.OwnerSelections,
+            RetainManifestForRecovery = batch.RetainManifestForRecovery, DiscoverableRecovery = batch.DiscoverableRecovery,
+            RecoveryRequestDigest = batch.RecoveryRequestDigest };
     }
 
     internal static string ValidateAndGetStore(IServiceProvider services, ProjectionDispatchRequest header,

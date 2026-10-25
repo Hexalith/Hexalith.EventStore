@@ -367,6 +367,10 @@ public static class DomainProjectionDispatcher {
         DomainProjectionEvolutionAdmission.RequireLegacy(dispatchRequest.Request);
         ProjectionDispatchRequest transportHeader = dispatchRequest;
         var guarded = DomainProjectionGuardedReplay.Resolve(serviceProvider, transportHeader, options, identityOptions);
+        if (guarded is { } completedRoute && action is DomainProjectionRebuildBatchAction.Commit or DomainProjectionRebuildBatchAction.Verify
+            && await DomainProjectionGuardedReplay.IsDiscoverableCompletedAsync(serviceProvider, transportHeader, completedRoute.Store, cancellationToken).ConfigureAwait(false))
+            return new(ProjectionDispatchProtocol.Version, [.. completedRoute.Handlers.Select(handler =>
+                new ProjectionDispatchOutcome(handler.ProjectionType, ProjectionDispatchStatus.Completed, null, null))]);
         ReadModelBatch? original = guarded is { } route
             ? await DomainProjectionGuardedReplay.ReadAsync(serviceProvider, transportHeader, route.Store, cancellationToken).ConfigureAwait(false)
             : null;
@@ -500,6 +504,7 @@ public static class DomainProjectionDispatcher {
         ProjectionRequest? fullReplayRequest = null;
         var operations = new List<ReadModelBatchOperation>();
         var stagedOperations = new List<ReadModelBatchOperation>();
+        bool discoverableRecovery = false;
         var failures = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         foreach (IAsyncDomainProjectionHandler handler in handlers)
         {
@@ -543,6 +548,7 @@ public static class DomainProjectionDispatcher {
                         ProjectionDispatchReasonCodes.UnsupportedCapability);
                 operations.AddRange(plan.Operations);
                 stagedOperations.AddRange(plan.StagedOperations);
+                discoverableRecovery |= plan.DiscoverableRecovery;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (ProjectionDispatchValidationException) { throw; }
@@ -563,7 +569,7 @@ public static class DomainProjectionDispatcher {
                     ? outcome : new ProjectionDispatchOutcome(handler.ProjectionType,
                         ProjectionDispatchStatus.Retryable, null, ProjectionDispatchReasonCodes.PartialRetry))]));
         return await CompleteGenerationPreparationAsync(services, header, identity, handlers, storeName,
-            operations, stagedOperations, cancellationToken).ConfigureAwait(false);
+            operations, stagedOperations, discoverableRecovery, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
@@ -615,6 +621,7 @@ public static class DomainProjectionDispatcher {
         var outcomes = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         var operations = new List<ReadModelBatchOperation>();
         var stagedOperations = new List<ReadModelBatchOperation>();
+        bool discoverableRecovery = false;
         string? storeName = null;
         foreach (IAsyncDomainProjectionHandler handler in handlers) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -647,6 +654,7 @@ public static class DomainProjectionDispatcher {
                 storeName ??= plan.StoreName;
                 operations.AddRange(plan.Operations);
                 stagedOperations.AddRange(plan.StagedOperations);
+                discoverableRecovery |= plan.DiscoverableRecovery;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
@@ -688,22 +696,28 @@ public static class DomainProjectionDispatcher {
         }
 
         return await CompleteGenerationPreparationAsync(serviceProvider, dispatchRequest, identityOptions, handlers,
-            storeName, operations, stagedOperations, cancellationToken).ConfigureAwait(false);
+            storeName, operations, stagedOperations, discoverableRecovery, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<DomainProjectionRebuildPreparation> CompleteGenerationPreparationAsync(
         IServiceProvider services, ProjectionDispatchRequest request, DomainProjectionIdentityOptions identity,
         IAsyncDomainProjectionHandler[] handlers, string storeName, List<ReadModelBatchOperation> operations,
-        List<ReadModelBatchOperation> stagedOperations, CancellationToken token)
+        List<ReadModelBatchOperation> stagedOperations, bool discoverableRecovery, CancellationToken token)
     {
         try
         {
             if (stagedOperations.Any(staged => operations.Any(live => StringComparer.Ordinal.Equals(live.Key, staged.Key))))
                 throw new ArgumentException("Generation values must be disjoint from canonical promotion keys.");
             var batch = new ReadModelBatch(new ReadModelBatchScope(storeName, request.Request.TenantId,
-                request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId), operations);
+                request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId), operations)
+            { DiscoverableRecovery = discoverableRecovery, RetainManifestForRecovery = discoverableRecovery };
             batch = DomainProjectionOwnerProof.BindRebuildBatch(services, request, batch, identity);
+            if (batch.DiscoverableRecovery && batch.OwnerSelections is not null)
+                batch = new ReadModelBatch(batch.Scope, batch.Operations) { DiscoverableRecovery = true,
+                    OwnerSelection = batch.OwnerSelection, OwnerSelections = batch.OwnerSelections,
+                    RecoveryRequestDigest = DomainProjectionGuardedReplay.RequestDigest(request) };
             ReadModelBatchValidation.Validate(batch, services.GetService<Microsoft.Extensions.Options.IOptions<ReadModelBatchOptions>>()?.Value ?? new());
+            services.GetService<IReadModelBatchStore>()?.ValidateBatch(batch);
             if (stagedOperations.Count != 0)
                 await ReadModelGenerationStaging.StageAsync(services.GetRequiredService<IReadModelBatchStore>(),
                     batch.Scope, stagedOperations, token).ConfigureAwait(false);

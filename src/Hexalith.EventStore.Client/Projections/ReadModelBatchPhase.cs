@@ -9,6 +9,9 @@ public enum ReadModelBatchPhase {
     /// <summary>Before any state access.</summary>
     BeforeDispatch,
 
+    /// <summary>After private manifest preparation, before the marker or first participant.</summary>
+    ManifestPrepared,
+
     /// <summary>After the prepared marker is durable.</summary>
     MarkerPrepared,
 

@@ -27,6 +27,10 @@ public sealed class DomainProjectionRebuildPlan {
         CompletionState = completionState.ToArray();
     }
 
+    /// <summary>Opts this plan into aggregate-discoverable private preparation and erasure fences.
+    /// Other owners retain their existing private recovery policy by default.</summary>
+    public bool DiscoverableRecovery { get; init; }
+
     /// <summary>Gets the state-store component that owns the candidate operations.</summary>
     public string StoreName { get; }
 
