@@ -55,6 +55,7 @@ public class CommandStatusController(
     /// <response code="401">Authentication required.</response>
     /// <response code="403">Forbidden. No tenant authorization claims found.</response>
     /// <response code="404">No command status found for the given message or correlation identifier.</response>
+    /// <response code="409">The identifier matches multiple commands or authorized tenant scopes.</response>
     /// <response code="429">Rate limit exceeded. Retry after the Retry-After interval.</response>
     [HttpGet("{messageId}")]
     [Authorize]
@@ -63,6 +64,7 @@ public class CommandStatusController(
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests, "application/problem+json")]
     public async Task<IActionResult> GetStatus(string messageId, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(messageId);
@@ -243,7 +245,7 @@ public class CommandStatusController(
             StatusCodes.Status409Conflict,
             ProblemTypeUris.CommandCorrelationAmbiguous,
             "Ambiguous Command Correlation",
-            "The correlation identifier maps to multiple commands. Query again using the command MessageId.",
+            "The identifier matches multiple commands or authorized tenant scopes. Verify the command MessageId and authorized tenant scope; contact support if a MessageId lookup remains ambiguous.",
             requestCorrelationId);
     }
 

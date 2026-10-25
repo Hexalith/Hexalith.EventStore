@@ -36,6 +36,10 @@ public sealed class CommandDocumentationTransformer : IOpenApiOperationTransform
                 operation,
                 "404",
                 "No command status found for the given message or correlation identifier.");
+            SetResponseDescription(
+                operation,
+                "409",
+                "The identifier matches multiple commands or authorized tenant scopes.");
         }
 
         return Task.CompletedTask;

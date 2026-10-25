@@ -228,6 +228,8 @@ Open the Swagger UI (append `/swagger` to the `eventstore` URL in the Aspire das
 
 ```json
 {
+    "messageId": "01HKQXYZ0000000000000000A1",
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "tenant": "tenant-a",
     "domain": "inventory",
     "aggregateId": "product-1",
@@ -238,13 +240,16 @@ Open the Swagger UI (append `/swagger` to the `eventstore` URL in the Aspire das
 
 `commandType` uses the short class name (`AddStock`), not the fully-qualified namespace. The `domain` field (`inventory`) tells the system which aggregate handles the command. The `payload` property names must match the C# record constructor parameters (case-insensitive). Unlike the Counter commands in the quickstart (which sent an empty `{}` payload), Inventory commands carry data — this is the first time you send a non-empty payload.
 
-The API returns `202 Accepted` with a correlation ID:
+Each new command needs a distinct `messageId`; replace the sample IDs with fresh values for your own commands. The API returns `202 Accepted` with the message identity for polling and a correlation ID for tracing:
 
 ```json
 {
-    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "correlationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "messageId": "01HKQXYZ0000000000000000A1"
 }
 ```
+
+The `Location` response header points to `/api/v1/commands/status/01HKQXYZ0000000000000000A1` on your EventStore host. Poll that URL with the same authorized token.
 
 > **Tip:** If the command returns 404 or "unknown domain", verify that `"domain": "inventory"` is lowercase with no "Aggregate" suffix.
 
@@ -254,6 +259,7 @@ Send a `RemoveStock` command to take 3 units out:
 
 ```json
 {
+    "messageId": "01HKQXYZ0000000000000000A2",
     "tenant": "tenant-a",
     "domain": "inventory",
     "aggregateId": "product-1",
@@ -266,6 +272,7 @@ After `AddStock(10)` and `RemoveStock(3)`, the aggregate's state has 7 units. Se
 
 ```json
 {
+    "messageId": "01HKQXYZ0000000000000000A3",
     "tenant": "tenant-a",
     "domain": "inventory",
     "aggregateId": "product-1",
@@ -274,7 +281,7 @@ After `AddStock(10)` and `RemoveStock(3)`, the aggregate's state has 7 units. Se
 }
 ```
 
-This command still returns `202 Accepted`. The API accepted and processed your command — the rejection is the _result_ of that processing, not a failure to process. The rejection is visible in the command status endpoint (`/api/v1/commands/status/{correlationId}`) and in the Aspire dashboard traces.
+This command still returns `202 Accepted`. The API accepted and processed your command — the rejection is the _result_ of that processing, not a failure to process. Retain the submitted `messageId`: the rejection is visible in the command status endpoint (`/api/v1/commands/status/{messageId}`) and in the Aspire dashboard traces.
 
 > **Tips:**
 >

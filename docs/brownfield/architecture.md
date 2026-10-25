@@ -144,12 +144,13 @@ orchestrator over a checkpointed 5-step pipeline — `PipelineState` persisted f
    `SaveStateAsync` themselves).
 
 **Resilience features:**
+
 - **Backpressure** (Story 4.3): per-aggregate pending-command cap (`BackpressureOptions.MaxPendingCommandsPerAggregate`, default 100) → `BackpressureExceededException` → HTTP **429** + `Retry-After`.
 - **Event drain recovery** (Story 4.2): on publish failure the actor records unpublished events and registers an `IRemindable` reminder to retry publishing (`EventDrainOptions`).
 - **Concurrency retry**: optimistic concurrency via metadata ETag; retries on `ConcurrencyConflictException` up to `CommandConcurrencyOptions.MaxPersistenceConflictRetries`; surfaced as HTTP **409**.
 - **Dead-letter routing**: infrastructure failures at steps 3–5 route to `IDeadLetterPublisher` (CloudEvents type `deadletter.command.failed`).
 
-**Command status lifecycle** (`CommandStatus` enum): `Received → Processing → EventsStored → EventsPublished → Completed`, or terminal `Rejected / PublishFailed / TimedOut`. Clients poll `GET /api/v1/commands/status/{correlationId}`; non-terminal states return `Retry-After`.
+**Command status lifecycle** (`CommandStatus` enum): `Received → Processing → EventsStored → EventsPublished → Completed`, or terminal `Rejected / PublishFailed / TimedOut`. Clients retain the submitted `messageId` and poll `GET /api/v1/commands/status/{messageId}`; non-terminal states return `Retry-After`.
 
 ## 6. Query Pipeline & Caching
 

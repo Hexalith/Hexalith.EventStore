@@ -33,6 +33,7 @@ Some responses include Hexalith-specific extension fields:
 | 403    | [forbidden](./forbidden.md) | Tenant or domain authorization denied |
 | 404    | [not-found](./not-found.md) | Requested resource not found |
 | 404    | [command-status-not-found](./command-status-not-found.md) | No command status for the given correlation ID |
+| 409    | [command-correlation-ambiguous](./command-correlation-ambiguous.md) | Status identifier matches multiple commands or authorized tenant scopes |
 | 409    | [concurrency-conflict](./concurrency-conflict.md) | Optimistic concurrency conflict (retry recommended) |
 | 429    | [rate-limit-exceeded](./rate-limit-exceeded.md) | Per-tenant or per-consumer rate limit exceeded |
 | 429    | [backpressure-exceeded](./backpressure-exceeded.md) | Per-resource capacity limit exceeded |
