@@ -106,6 +106,12 @@ internal sealed class SourcePublicationAuthorityFixture
         Enrollment.Epoch, Enrollment.InventoryEvidenceId, Enrollment.WriterEnforcementEvidenceId, Enrollment.InitialSources, Enrollment.InitialSources));
     internal Task<SourcePublicationNamespaceState?> ReadNamespaceAsync() => Primary.InvokeAsync<SourcePublicationNamespaceState>(Scope, "read-namespace", Scope);
     internal Task<SourcePublicationIndexState?> ReadIndexAsync() => Primary.InvokeAsync<SourcePublicationIndexState>(Scope, "read-index", Scope);
+    internal SourcePublicationAuthorityCall SignedCall(string method, object body, string caller = "reader")
+    {
+        var call = new SourcePublicationAuthorityCall(method, Scope, Enrollment.Epoch, JsonSerializer.SerializeToUtf8Bytes(body, body.GetType()), "");
+        return call with { Assertion = WorkloadAssertionTestTokens.Create(Installation.PrimaryAudience, caller,
+            [SourcePublicationWorkloadBinding.PrimaryOperation], bindings: SourcePublicationWorkloadBinding.Bind(call), signingKey: SigningKey) };
+    }
     internal static T Clone<T>(T item) => JsonSerializer.Deserialize<T>(JsonSerializer.SerializeToUtf8Bytes(item))!;
     private static IWorkloadAssertionIssuer Issuer(string caller)
     {

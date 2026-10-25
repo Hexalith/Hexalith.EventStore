@@ -10,6 +10,28 @@ namespace Hexalith.EventStore.Server.Tests.Streams;
 
 public sealed class SourcePublicationAuthorityTests
 {
+    [Theory]
+    [InlineData("body")]
+    [InlineData("method")]
+    [InlineData("scope")]
+    [InlineData("epoch")]
+    [InlineData("caller")]
+    public async Task AuthenticatedPrimaryMethodsRejectChangedBytesScopeEpochAndRole(string change)
+    {
+        var fixture = new SourcePublicationAuthorityFixture();
+        (await fixture.Journal.EnrollAsync(fixture.Enrollment)).ShouldBeTrue(); (await fixture.InstallAsync()).ShouldBeTrue();
+        var call = fixture.SignedCall("read-namespace", fixture.Scope, change == "caller" ? "producer" : "reader");
+        call = change switch
+        {
+            "body" => call with { Body = "{}"u8.ToArray() },
+            "method" => call with { Method = "install-namespace" },
+            "scope" => call with { Scope = new("foreign", fixture.Scope.Domain, "deletion", "installation-1") },
+            "epoch" => call with { Epoch = "epoch-2" },
+            _ => call,
+        };
+        (await fixture.Namespace.InvokeAuthenticatedAsync(call)).ShouldBeNull();
+        fixture.NamespaceBackend.CommittedState.Values.OfType<SourcePublicationNamespaceState>().Single().Revision.ShouldBe(1);
+    }
     [Fact]
     public async Task MissingEnrollmentOrCurrentEvidenceDeniesAndLegacyActorCallsHaveNoAuthority()
     {
@@ -121,6 +143,37 @@ public sealed class SourcePublicationAuthorityTests
         (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldBeNull();
         fixture.IndexBackend.CommittedState.ShouldBeEmpty();
         fixture.JournalBackend.CommittedState.Values.OfType<SourcePublicationAuthorityState>().Single().Records.ShouldContain(item => item.Key.StartsWith("transition:", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("incarnation")]
+    [InlineData("same-id")]
+    public async Task ChangedPredecessorOrPublicationIdQuarantinesDurablyWithoutAdvancingReceipts(string change)
+    {
+        var fixture = await PreparedAsync(); (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldNotBeNull();
+        var original = (await fixture.ReadIndexAsync()).ShouldNotBeNull();
+        if (change == "incarnation")
+        {
+            var source = fixture.Sources.Values.Single(item => item.Head == 1);
+            var proof = NativeSourceProofCodec.CreateSeed(source.Identity, "01ARZ3NDEKTSV4RRFFQ69G5FAX");
+            proof = NativeSourceProofCodec.ExtendDigest(proof, source.Identity, 1, source.Events[0].MessageId, source.Events[0].NativeEventDigest!);
+            fixture.Sources[source.Identity.ActorId] = source with { NativeProof = proof };
+        }
+        else
+        {
+            var zero = fixture.Sources.Values.Single(item => item.Head == 0);
+            var item = new StreamReadEvent(1, "DeletionApproved", "{}"u8.ToArray(), "json", 1, "foreign-original", "correlation", "cause", DateTimeOffset.UtcNow, "worker") { NativeEventDigest = new string('b', 64) };
+            var proof = NativeSourceProofCodec.ExtendDigest(zero.NativeProof!, zero.Identity, 1, item.MessageId, item.NativeEventDigest);
+            fixture.Sources[zero.Identity.ActorId] = zero with { Head = 1, Events = [item], NativeProof = proof };
+            fixture.Publications = fixture.Publications.Append(new("signal-1", zero.Identity, 1, item.MessageId, new string('B', 64))).ToArray();
+        }
+        (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldBeNull();
+        fixture.Recreate();
+        var poisoned = (await fixture.ReadIndexAsync()).ShouldNotBeNull();
+        poisoned.PoisonCode.ShouldBe(change == "incarnation" ? "publication-source-incompatible" : "publication-reference-conflict");
+        poisoned.Entries.ShouldBe(original.Entries); poisoned.DispatchProgress.ShouldBeNull();
+        (await Feed(fixture).ReadAsync(fixture.Scope)).Page.ShouldBeNull();
+        (await fixture.ReadIndexAsync()).ShouldNotBeNull().Revision.ShouldBe(poisoned.Revision);
     }
 
     private static async Task<SourcePublicationAuthorityFixture> PreparedAsync()
