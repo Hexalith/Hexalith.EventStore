@@ -347,6 +347,25 @@ All four corrections are documentation additions sourced from existing receipts;
 no runtime tests were repeated. The production/disposition gates and missing Go
 requalification remain open. Review logging is the only change to this spec.
 
+### October 25 current-revision continuation review
+
+Review covers only this run's Verification append in the original story. Results
+remain bound to `340b1d1a9f5f259d70ade0aa88e969d5a5e855c5`; concurrent commit
+`245ded36b78b960b57728f845f9a8aae62275908` is outside the tested revision and
+reviewed change. The frozen baseline, statuses and whole-story gates are preserved.
+The edge-case and verification-gap reviewers found no additional issues.
+
+| Finding | Verdict | Route | Evidence / action |
+| --- | --- | --- | --- |
+| Current-revision Blind 1: sequential-command claim | low | patch | The in-distribution support-state receipt records read-only inspection during the distribution test. Limit sequencing to the build and five test commands and identify the concurrent observations. |
+| Current-revision Blind 2: reused-endpoint observations omitted | medium | patch | Both restart manifests prove initial second-host actor ownership, unchanged internal ports and persisted version/ETag 1 to 2. Retain these observations beside the pass counts so recovery evidence survives temporary output expiry. |
+| Current-revision Blind 3: fault-effect and cancellation observations omitted | medium | patch | The reset and blackhole manifests retain actual disconnect/reconnect/discard counters, bounded cancelled reads and restored/final persisted versions. Add their compact measurements and preserve the synthetic-state/freshness limits. |
+| Current-revision Blind 4: tenant-denial observation window omitted | low | patch | The real-projection proof checks four other-tenant channels concurrently using one-second reads. State that bound beside the negative delivery flags. |
+
+These are documentation corrections using existing measurements; they require no
+runtime rerun and confer no production qualification or approval. Review logging
+is the only change to this spec.
+
 ## Verification
 
 The October 25 executed commands, counts, UTC intervals and local-only limitations

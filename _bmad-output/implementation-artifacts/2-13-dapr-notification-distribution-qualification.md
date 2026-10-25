@@ -501,3 +501,229 @@ durable broker, binding-capable issuer, shipped enrollment, canonical freshness
 fault behavior, atomic both-host transition/rollback and authorized disposition
 remain gated. Original story `backlog`, active spec/sprint `in-progress`, unchecked
 whole-story tasks and `accepted_exceptions: []` remain unchanged.
+
+## Verification — October 25 Current-Revision Continuation
+
+Source revision: `340b1d1a9f5f259d70ade0aa88e969d5a5e855c5`. CI run link: none;
+these are local checks under AD-12, with no CI, approval or production authority.
+The working tree was clean at run start. HEAD and all root-declared submodule
+checkouts stayed unchanged through the build and five runtime test commands; Builds was
+`1783c0a377615063f3222c1d28f3ab513af4e72f`, Commons
+`1663028fb6d9f46a0bf17919edeb21bb99be1587`, Tenants
+`14133e96d2c5efb13270580f920133079707398b` and Platform
+`1b7a00381794bb7ecf40caf643c63c50758a81eb`. Implementation changes are limited to
+this Verification section; the active spec separately records the continuation's
+review log. Neither changes application, fixture, runtime, dependency or deployment
+sources, frozen intent, statuses or exception register.
+This task staged or committed no files and updated no branch or submodule.
+
+After the tests and cleanup, concurrent activity advanced HEAD to
+`245ded36b78b960b57728f845f9a8aae62275908`. The `09:52:37 UTC` observation found
+nine measured product/test source paths changed by that separate projection-work
+commit, plus this Verification append; measured binaries and runtime executables
+were unchanged. The new commit also changes README outside the selected source
+inventory. This task preserved that work. The results below remain bound to
+`340b1d1a9f5f259d70ade0aa88e969d5a5e855c5`; no runtime run at the later HEAD or
+correspondence between its changed sources and the tested binaries is claimed.
+
+The complete Debug source-reference solution build passed with zero warnings and
+errors. The before/after inventory found 57 changed selected output files and no
+measured source or runtime executable changes. At every command boundary, the
+local recorder measured 12,553 source/configuration files across the root and its
+root-declared submodules, 545 assembly/deps/runtimeconfig/executable files in the
+selected host, Gateway, Server, sample, AppHost and test directories, and the
+installed daprd, selected daprd and Aspire executables. All measured bytes stayed
+stable during the five test commands below. These are incremental build and
+before/after observations, not clean reproducibility, complete compiler-input or
+atomic launch-identity proof. Historical failed builds and binary-identity
+measurements remain unchanged.
+
+The explicitly selected fixture-only runtime remained
+`/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement`, version
+`1.18.7-local-2-13-retirement`, SHA-256
+`a2721c252fffee9ba529826cca4ab7050c4367d994f8c4916730046a7a276df6`.
+Installed daprd `1.18.7` remained
+`e988a6f53abec017fc9ebcb4f89de9bed11bce005eb49bd8e85e8d3d6adbf488`;
+Aspire CLI remained
+`82d2aacd2432040cb3f9391e39e3ea7ed3d6e6c0143c4e0dfe38cfbb04b02bc0`.
+Observed tools were SDK `10.0.402`, .NET `10.0.13`, Dapr CLI `1.18.2`, Aspire
+`13.6.1+3751e615ad660621f2a7aa4c390ef48e08a0eed8` and xUnit runner `4.0.2`.
+`go version` again exited 127 (`go: command not found`), and
+`rg --files /tmp/eventstore-2-13-retirement-oduc267u -g 'go.mod' -g 'go.sum'`
+returned no matches. Current Go concurrency/source requalification remains unrun;
+the earlier reconstruction limitations still apply. No missing inputs were
+reconstructed and no runtime was rebuilt or installed.
+
+The build and five test commands ran sequentially; read-only inspections,
+including the in-distribution `aspire describe`, also ran while tests were active.
+The recorded build, lifecycle and test environments set `EnableKeycloak=false` and
+prepended `/tmp/story-2-13-20261025-current-l8gqsdns/cli` to `PATH`. Its temporary
+`docker` adapter executed the existing
+`/mnt/c/Program Files/Docker/Docker/resources/bin/docker.exe` with unchanged
+arguments. Integration commands set
+`HEXALITH_STORY_2_13_DAPRD_PATH=/tmp/eventstore-2-13-retirement-oduc267u/daprd-retirement`,
+`HEXALITH_STORY_2_13_EVIDENCE_DIRECTORY=/tmp/story-2-13-20261025-current-l8gqsdns/scenario-output`
+and `R10A2_EVIDENCE_DIRECTORY=/tmp/story-2-13-20261025-current-l8gqsdns/redis-output`.
+The selected runtime applies only to the two distribution proof sidecars; the
+composed AppHost and ordinary Direct fixture retain installed daprd. Commands,
+logs and observations remain temporary local output under that parent directory,
+not committed evidence or a CI result.
+
+Baseline lifecycle used the following exact commands before the build:
+
+```sh
+aspire run --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --detach --no-build --non-interactive --format Json
+aspire wait eventstore --timeout 45 --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+aspire describe --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --format Json --non-interactive
+aspire stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+```
+
+Baseline AppHost PID `64442` and CLI PID `64079` started successfully; inspected
+project and sidecar resources were Running/Healthy. This local observation grants
+no production-profile qualification. After the build, the same detached no-build
+start created auxiliary AppHost PID `3588` and CLI PID `3151`, followed by:
+
+```sh
+aspire wait sample --timeout 45 --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+aspire wait sample-dapr-cli --status up --timeout 45 --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+aspire resource eventstore stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+aspire resource eventstore-dapr-cli stop --apphost src/Hexalith.EventStore.AppHost/Hexalith.EventStore.AppHost.csproj --non-interactive
+```
+
+Each start/wait/stop has a separate local command receipt. At `09:42:53 UTC`,
+during the distribution class, `aspire describe` recorded `sample-cyqkvsmk` and
+`sample-dapr-cli-mpfrczfc` Running/Healthy, with `eventstore-uhkfjatz` and
+`eventstore-dapr-cli-pdcezqbr` Finished. Explicit-AppHost `aspire stop` ended the
+auxiliary topology before the projection/Direct pair, whose fixtures owned their
+own AppHosts.
+
+Pre-test support inspection at `09:34:38 UTC` and post-test inspection at
+`09:48:19 UTC` returned the same container IDs, image IDs and start times:
+Redis `8d0788f8322fdb91a51f3960cb9a0ceab4a7b892f27bacf2147e97fc4d471922`,
+placement `f1e0a30a3a93a1542ee5ad74856e44d483a94f7a8e5ef769f398827815cc1da6`
+and scheduler `8623af8b7bbd8ebd3d73221af72615162475f3f8a7190432e09e64e51befc826`.
+Their configured images and pre-test repository digests matched the earlier support table
+(`redis:6` / `c35b83ce044bb6d148c484d36e059ad28e02d5714ba6731fb55b6421e2ed0ccf`,
+`daprio/dapr:1.18.7` / `0ac4fadf0016be85065cdebab952a8350e468cf9283d26777b0307a14a10aecc`).
+No shared container or daemon was created, stopped or reconfigured.
+
+| Exact command | Result and UTC interval on 2026-10-25 |
+| --- | --- |
+| `dotnet build Hexalith.EventStore.slnx -c Debug -m:1 -p:UseHexalithProjectReferences=true` | Passed, 0 warnings/errors; `09:35:21.344499–09:39:10.622712 UTC`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -method '*DaprRedisStreams_ReplicaRestart_ReauthorizesAndReconcilesPersistedState'` | 1 passed, 0 failed/skipped/errors; `09:40:03.132763–09:40:52.943200 UTC`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRDaprDistributionRuntimeProofTests'` | 6 passed, 0 failed/skipped/errors; `09:41:00.248772–09:43:22.970352 UTC`; no `-stopOnFail`. |
+| `tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests -class '*ETagActorTests' -class '*SignalRProjectionChangedBroadcasterTests' -class '*DaprProjectionChangeNotifierTests' -class '*DaprProjectionChangeNotifierSignalRTests' -class '*ProjectionChangedNotificationValidatorTests' -class '*DomainServiceWorkloadAssertionHandlerTests'` | 102 passed, 0 failed/skipped/errors; `09:43:34.725959–09:43:35.953143 UTC`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRDaprProjectionDispatchProofTests' -class '*ValidProjectionRoundTripE2ETests'` | 2 passed, 0 failed/skipped/errors; `09:43:53.478650–09:45:00.653653 UTC`. |
+| `tests/Hexalith.EventStore.IntegrationTests/bin/Debug/net10.0/Hexalith.EventStore.IntegrationTests -class '*SignalRRedisBackplaneRuntimeProofTests'` | 1 passed, 0 failed/skipped/errors; `09:45:13.789260–09:48:04.678152 UTC`. |
+
+The six distribution cases retain reused/fresh internal-endpoint restart,
+provider reset/blackhole, exact-topic catalog rollout and scoped signal/detail
+with Dapr persisted readback. Their test-only profile remains `pubsub.redis` v1
+with `consumerID: "{uuid}"`, `state.redis` v1, exact `dapr.io/v2alpha1`
+subscriptions, shared app ID `eventstore` and independent sidecars. Metadata
+bounds, authorization, caller cancellation/readback budgets and the 15-second
+signal wait are unchanged. No shipped topic enrollment or production profile is
+selected. The generated Redis report's static `dotnet test ... --filter` template
+was not executed; the direct executable command above is authoritative.
+
+The focused and full-class reused-endpoint scenario manifests record initial
+`ETagActor` ownership on the second proof host before stopping it, followed by
+Dapr persisted version `1` → `2` and ETag `"1"` → `"2"` in both runs:
+
+| Run | Initial second-host owner PID | Original → restored internal gRPC port |
+| --- | --- | --- |
+| Focused restart | `23909` | `46741` → `46741` |
+| Full distribution class | `49400` | `41193` → `41193` |
+
+Both manifests record `RenewInternalGrpcEndpoint=false`. This remains synthetic
+state recovery, not real projection completion, canonical UI freshness,
+production-profile qualification or transition/rollback approval.
+
+The retained network manifests record 28 disconnected connections and 1,764
+rejected reconnects for reset/refusal, and 4,961 discarded bytes for the silent
+bidirectional blackhole. Both cases' reads on both proof hosts ended with
+`OperationCanceledException` in about two seconds (2,001.5303–2,006.4609 ms),
+with a 2,000 ms caller cancellation budget and below the 5,000 ms outer assertion bound.
+After restore, Dapr reads returned versions `[1,1]` and ETags `["1","1"]`;
+the final persisted version/ETag was `2` / `"2"` in both cases. Outage publication
+remains unknown until reconciliation. These synthetic read-model checks prove no
+real projection completion, canonical UI freshness, saturation/backpressure or
+retention guarantee, production profile, or transition/rollback approval.
+
+The real-projection capture records `09:44:47.5316445–09:44:52.6263983 UTC`,
+command `Completed`, event count `1`, query provenance `ProjectionBacked`, and
+scoped detail `counter-status` / `change-kind=counter-projection-updated`. A and B
+below alias synthetic tenants; tenant, topic, aggregate and correlation values
+are omitted. Both A clients received signal and detail;
+`OtherTenantReceivedSignalOnEitherHost` and
+`OtherTenantReceivedDetailOnEitherHost` were both false. All four other-tenant
+signal/detail channels were checked concurrently with one-second bounded reads;
+the negative observations cover those windows only.
+
+| Proof node | Host / sidecar PID | Tenant A connection | Tenant B connection | Persisted count | Authoritative ETag |
+| --- | --- | --- | --- | --- | --- |
+| First | `47574` / `47675` | `wjWrtUVbY_MrE1A1xvtYuw` | `eYB1zxjPSy_W5RPoepCJpQ` | `1` | `"Y291bnRlcg.Sq5RSegP_0SXG2Ro7GCKDQ"` |
+| Second | `48526` / `48581` | `94wEHMKN54FdkR3J6Wcqog` | `Fjyn-v6cTlMgdti2QLbNqg` | `1` | `"Y291bnRlcg.Sq5RSegP_0SXG2Ro7GCKDQ"` |
+
+That scenario's generated bytes have SHA-256 `pubsub.yaml` =
+`483c2de2d90aa876a80efe6499edc98a82903a46ddd98a79a9f610ec2719b001`,
+`statestore.yaml` = `8cfd8564018ac754f5d3f14acfc215f3d2caf186cb1e14b7b377b1d4660d023a`
+and `subscription-0.yaml` =
+`cd62ad3ca42512990c5cc1683dfa43f570828836f6158945cb2418377379e9be`.
+These identities apply only to this scenario. Its limitations remain the
+exact-topic Development profile, optional legacy projection-response detail,
+no production issuer/profile, no dynamic-topic coverage and no transition or
+rollback approval.
+
+Key output SHA-256 values agree before/after all five test commands. Paths below
+are relative to each project's `bin/Debug/net10.0/`; the separate Server.Tests
+runner is included. Integration-directory copies of the host, Server, sample
+and AppHost assemblies match their owning outputs.
+
+| Project / output | SHA-256 |
+| --- | --- |
+| `src/Hexalith.EventStore` / `Hexalith.EventStore.dll` | `f9ca20b92d9e65c714a240c87f60fbf2c47a20d66152bee0b3964f66532f9903` |
+| `src/Hexalith.EventStore` / `Hexalith.EventStore.deps.json` | `89e89b25a82349d764ede5a7cf238e713c34cce9bbdb1900f5e07c5034379388` |
+| `src/Hexalith.EventStore.Server` / `Hexalith.EventStore.Server.dll` | `4689669731ea8e7fbfc6ed4c97f6ca91f2aa89de1e24449a59ecb4eaa74f591d` |
+| `src/Hexalith.EventStore.Gateway` / `Hexalith.EventStore.Gateway.dll` | `7162ec34b79f1dd43744f6c8b0d4ec1727904cb03b7d47e4a4ee54514d098e8a` |
+| `samples/Hexalith.EventStore.Sample` / `Hexalith.EventStore.Sample.dll` | `f71e7d9dc7c404a2f8a0e4db2808733d359ea40ffa42613ee8b74896805a877b` |
+| `samples/Hexalith.EventStore.Sample` / `Hexalith.EventStore.Sample.deps.json` | `231e7d0b311eb55a2693b79c88e63a79393d584a1238db6c7c6b9b45c3f46538` |
+| `tests/Hexalith.EventStore.IntegrationTests` / `Hexalith.EventStore.IntegrationTests.dll` | `8a3c7b7865964a152d63c55b23ad0d639c5226b5c16ea547bf79e0b9ade42222` |
+| `tests/Hexalith.EventStore.IntegrationTests` / `Hexalith.EventStore.IntegrationTests.deps.json` | `f9fdd5d585d2d60782a67f09f9f5f68717f364e97c73daa29c7b5ed9ad6f071e` |
+| `src/Hexalith.EventStore.AppHost` / `Hexalith.EventStore.AppHost.dll` | `1368e15aec09eb65e23cbc4388c8da2267fc174fd65f7091e0481b8b1a4a0052` |
+| `src/Hexalith.EventStore.AppHost` / `Hexalith.EventStore.AppHost.deps.json` | `1db1fae3dfafb0ec5252cf317baab996a925e47b91b0ae8ab60161a79d90c7c1` |
+| `tests/Hexalith.EventStore.Server.Tests` / `Hexalith.EventStore.Server.Tests.dll` | `df6d0ff9c1b0beaf3ebab9138a0c6f9ad59747606aa0f53e27a6f1fd314b854a` |
+| `tests/Hexalith.EventStore.Server.Tests` / `Hexalith.EventStore.Server.Tests.deps.json` | `902d267452353b89570dbb43da8eb4aae9ee82fa1b0e7f2771aff9ac4d3e83ac` |
+
+Final explicit-AppHost `aspire stop` and `aspire describe` found no running
+AppHost for this repository. The executable-filtered workspace scan at
+`09:48:34 UTC` found no proof host or selected candidate sidecar remaining.
+The initial broad scan matched its own short-lived Bash probe; that observation
+was retained separately and the shell had exited before the corrected scan.
+An expanded app-ID scan at `09:50:37 UTC` found pre-existing Dapr CLIs
+`31705`/`31841` and installed-runtime children `32002`/`32196`, owned by DCP
+`21166` in `/home/administrator/projects/hexalith/frontcomposer/src/Hexalith.FrontComposer.AppHost`.
+Their cwd/config paths belong to that separate workspace; they started at
+`09:30:13 UTC`, before these commands, with app IDs `eventstore`/`sample` and
+placement/scheduler `localhost:50005`/`localhost:50006`. They were preserved.
+These additional peers limit topology isolation: the two proof hosts' assertions
+passed, but this run supplies no isolated two-replica placement or exclusive
+sample-dispatch claim. Their source/binary and in-run behavior were not qualified.
+The temporary Docker adapter was removed. The inotify
+ceiling remained `1,048,576` at every command boundary; the accessible final scan
+found 3,319 watch lines in 13,896 readable fdinfo files, with one inaccessible
+entry. No sysctl write or unrelated-process interruption occurred.
+
+No historical failure was reproduced, so no behavioral correction or explanation
+is claimed. Prior projection regressions and Redis binary-identity ambiguity
+remain unresolved historical measurements. Current Go concurrency/source
+requalification and CI are absent; the separate Contracts validator blocker was
+not rerun, reclassified or exempted. Production runtime/durable broker/enrolled
+issuer, shipped topic enrollment, canonical completion/freshness fault behavior,
+atomic both-host transition/rollback and authorized disposition remain gated.
+Story 2.16 retains NFR5 primary ownership. Original story `backlog`, active
+spec/sprint `in-progress`, unchecked whole-story tasks and
+`accepted_exceptions: []` are unchanged.
+
+Final documentation checks: `bash scripts/check-committed-files.sh` passed
+(9,039 tracked files checked), and `git diff --check` passed.
