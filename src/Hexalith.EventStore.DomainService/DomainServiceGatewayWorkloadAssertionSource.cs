@@ -3,7 +3,7 @@ using Hexalith.EventStore.ServiceDefaults.Authentication;
 
 namespace Hexalith.EventStore.DomainService;
 
-/// <summary>Issues only the gateway command/stream grants of one configured domain host.</summary>
+/// <summary>Issues only the gateway command, status and stream grants of one configured domain host.</summary>
 internal sealed class DomainServiceGatewayWorkloadAssertionSource(
     IWorkloadAssertionIssuer issuer,
     IReadOnlySet<string> domains,
@@ -22,7 +22,7 @@ internal sealed class DomainServiceGatewayWorkloadAssertionSource(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenant);
         ArgumentException.ThrowIfNullOrWhiteSpace(domain);
-        return domains.Contains(domain) && (operation is EventStoreGatewayWorkloadOperations.CommandSubmit or EventStoreGatewayWorkloadOperations.StreamRead)
+        return domains.Contains(domain) && (operation is EventStoreGatewayWorkloadOperations.CommandSubmit or EventStoreGatewayWorkloadOperations.CommandStatus or EventStoreGatewayWorkloadOperations.StreamRead)
             ? issuer.IssueAsync(new WorkloadAssertionRequest(audience, operation,
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
