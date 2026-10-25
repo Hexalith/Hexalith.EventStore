@@ -499,6 +499,7 @@ public static class DomainProjectionDispatcher {
 
         ProjectionRequest? fullReplayRequest = null;
         var operations = new List<ReadModelBatchOperation>();
+        var stagedOperations = new List<ReadModelBatchOperation>();
         var failures = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         foreach (IAsyncDomainProjectionHandler handler in handlers)
         {
@@ -541,6 +542,7 @@ public static class DomainProjectionDispatcher {
                     throw new DomainProjectionRebuildRejectedException(
                         ProjectionDispatchReasonCodes.UnsupportedCapability);
                 operations.AddRange(plan.Operations);
+                stagedOperations.AddRange(plan.StagedOperations);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (ProjectionDispatchValidationException) { throw; }
@@ -560,9 +562,8 @@ public static class DomainProjectionDispatcher {
                 [.. handlers.Select(handler => failures.TryGetValue(handler.ProjectionType, out var outcome)
                     ? outcome : new ProjectionDispatchOutcome(handler.ProjectionType,
                         ProjectionDispatchStatus.Retryable, null, ProjectionDispatchReasonCodes.PartialRetry))]));
-        var batch = new ReadModelBatch(new ReadModelBatchScope(storeName, header.Request.TenantId,
-            header.Request.Domain, header.Request.AggregateId, "rebuild", header.DispatchId), operations);
-        return new(handlers, DomainProjectionOwnerProof.BindRebuildBatch(services, header, batch, identity), null);
+        return await CompleteGenerationPreparationAsync(services, header, identity, handlers, storeName,
+            operations, stagedOperations, cancellationToken).ConfigureAwait(false);
     }
 
     internal static async Task<DomainProjectionRebuildPreparation> PrepareRebuildBatchAsync(
@@ -613,6 +614,7 @@ public static class DomainProjectionDispatcher {
             .VerifyAsync(serviceProvider, dispatchRequest.Request, cancellationToken).ConfigureAwait(false));
         var outcomes = new Dictionary<string, ProjectionDispatchOutcome>(StringComparer.Ordinal);
         var operations = new List<ReadModelBatchOperation>();
+        var stagedOperations = new List<ReadModelBatchOperation>();
         string? storeName = null;
         foreach (IAsyncDomainProjectionHandler handler in handlers) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -644,6 +646,7 @@ public static class DomainProjectionDispatcher {
 
                 storeName ??= plan.StoreName;
                 operations.AddRange(plan.Operations);
+                stagedOperations.AddRange(plan.StagedOperations);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
@@ -684,24 +687,41 @@ public static class DomainProjectionDispatcher {
                 FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.UnsupportedCapability));
         }
 
-        try {
-            var batch = new ReadModelBatch(
-                new ReadModelBatchScope(
-                    storeName,
-                    dispatchRequest.Request.TenantId,
-                    dispatchRequest.Request.Domain,
-                    dispatchRequest.Request.AggregateId,
-                    "rebuild",
-                    dispatchRequest.DispatchId),
-                operations);
-            return new DomainProjectionRebuildPreparation(handlers,
-                DomainProjectionOwnerProof.BindRebuildBatch(serviceProvider, dispatchRequest, batch, identityOptions), null);
+        return await CompleteGenerationPreparationAsync(serviceProvider, dispatchRequest, identityOptions, handlers,
+            storeName, operations, stagedOperations, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<DomainProjectionRebuildPreparation> CompleteGenerationPreparationAsync(
+        IServiceProvider services, ProjectionDispatchRequest request, DomainProjectionIdentityOptions identity,
+        IAsyncDomainProjectionHandler[] handlers, string storeName, List<ReadModelBatchOperation> operations,
+        List<ReadModelBatchOperation> stagedOperations, CancellationToken token)
+    {
+        try
+        {
+            if (stagedOperations.Any(staged => operations.Any(live => StringComparer.Ordinal.Equals(live.Key, staged.Key))))
+                throw new ArgumentException("Generation values must be disjoint from canonical promotion keys.");
+            var batch = new ReadModelBatch(new ReadModelBatchScope(storeName, request.Request.TenantId,
+                request.Request.Domain, request.Request.AggregateId, "rebuild", request.DispatchId), operations);
+            batch = DomainProjectionOwnerProof.BindRebuildBatch(services, request, batch, identity);
+            ReadModelBatchValidation.Validate(batch, services.GetService<Microsoft.Extensions.Options.IOptions<ReadModelBatchOptions>>()?.Value ?? new());
+            if (stagedOperations.Count != 0)
+                await ReadModelGenerationStaging.StageAsync(services.GetRequiredService<IReadModelBatchStore>(),
+                    batch.Scope, stagedOperations, token).ConfigureAwait(false);
+            return new(handlers, batch, null);
         }
-        catch (Exception exception) when (exception is ArgumentException or ArgumentNullException) {
-            return new DomainProjectionRebuildPreparation(
-                handlers,
-                null,
-                FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.MalformedOutcome));
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch (ArgumentException)
+        {
+            return new(handlers, null, FailureForEveryRoute(handlers, ProjectionDispatchReasonCodes.MalformedOutcome));
+        }
+        catch (Exception error)
+        {
+            DomainProjectionHandlerResult result = error is ReadModelGenerationStagingException staging
+                ? ReadModelBatchProjectionResultMapper.Map(staging.Result)
+                : DomainProjectionHandlerResult.Indeterminate(ProjectionDispatchReasonCodes.HandlerFailure);
+            return new(handlers, null, new ProjectionDispatchResponse(ProjectionDispatchProtocol.Version,
+                [.. handlers.Select(handler => new ProjectionDispatchOutcome(handler.ProjectionType,
+                    result.Status, null, result.ReasonCode))]));
         }
     }
 

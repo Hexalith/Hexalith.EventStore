@@ -341,41 +341,7 @@ internal sealed partial class ReadModelBatchProtocol {
             : ReadModelBatchExpiringValue.Resolve(new RawStateEntry(true, envelope.PreviousBytes(), string.Empty), clock);
     }
 
-    private void ValidateLimits(ReadModelBatch batch) {
-        if (batch.Operations.Count > _options.MaxOperations
-            || batch.RetainManifestForRecovery && batch.Operations.Count > ReadModelBatchOptions.DefaultMaxOperations) {
-            throw new ArgumentException(
-                $"Read-model batch has {batch.Operations.Count} operations, exceeding the configured maximum of {_options.MaxOperations}.",
-                nameof(batch));
-        }
-
-        foreach (ReadModelBatchOperation operation in batch.Operations) {
-            int keyBytes = System.Text.Encoding.UTF8.GetByteCount(operation.Key);
-            if (keyBytes > _options.MaxKeyByteLength
-                || batch.RetainManifestForRecovery && keyBytes > ReadModelBatchOptions.DefaultMaxKeyByteLength) {
-                throw new ArgumentException(
-                    $"Read-model batch logical key exceeds the configured maximum of {_options.MaxKeyByteLength} UTF-8 bytes.",
-                    nameof(batch));
-            }
-
-            // Guard against a concurrency policy built through the raw record constructor with a null
-            // expected ETag (the factory methods guard, but the public constructor cannot). Fail before
-            // any state access rather than dereferencing a null ETag mid-install.
-            if (operation.Concurrency.ExpectedETag is null) {
-                throw new ArgumentException(
-                    "Read-model batch operation has a null expected ETag; use the ReadModelBatchConcurrency factory methods.",
-                    nameof(batch));
-            }
-        }
-
-        byte[] manifest = ReadModelBatchFingerprint.BuildCanonicalManifest(batch);
-        if (manifest.Length > _options.MaxCanonicalManifestBytes
-            || batch.RetainManifestForRecovery && manifest.Length > ReadModelBatchOptions.DefaultMaxCanonicalManifestBytes) {
-            throw new ArgumentException(
-                $"Read-model batch canonical manifest is {manifest.Length} bytes, exceeding the configured maximum of {_options.MaxCanonicalManifestBytes}.",
-                nameof(batch));
-        }
-    }
+    private void ValidateLimits(ReadModelBatch batch) => ReadModelBatchValidation.Validate(batch, _options);
 
     private async Task<ReadModelBatchResult> RunResumableAsync(CancellationToken cancellationToken) {
         (ReadModelBatchMarker? marker, string markerEtag, bool exists) = await ReadMarkerAsync(cancellationToken).ConfigureAwait(false);

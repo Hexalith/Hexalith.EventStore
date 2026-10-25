@@ -166,3 +166,21 @@ Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md)
 This project is licensed under the [MIT License](LICENSE).
 
 See the [Changelog](CHANGELOG.md) for release history and notable changes.
+
+
+### Bounded aggregate generation staging
+
+`DomainProjectionRebuildPlan.StagedOperations` carries disjoint, create-only,
+nonexpiring generation values prepared without side effects. After all handlers
+prepare successfully, the dispatcher persists these through
+`ReadModelGenerationStaging` in resumable groups below the normal batch limits,
+then coordinates only the canonical authority operations. Domain pointers must
+select the generation only in that final commit and retain optimistic concurrency
+and erasure protections. A staged generation alone grants no read authority.
+
+The dispatcher constructs and validates the complete canonical batch, including
+guarded ownership, before staging any generation. Every generation group is
+validated before the first storage write. Malformed combined plans therefore
+leave no staged values. Staging storage failures preserve their structured SDK
+retryable or indeterminate outcomes in both ordinary and streamed rebuild
+routes; preparation exceptions do not escape the dispatch outcome protocol.

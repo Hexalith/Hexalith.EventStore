@@ -30,6 +30,39 @@ public class ReadModelBatchStoreTests {
                 ReadModelBatchOperation.Write("index:counterView", new IndexEntry(2), ReadModelBatchConcurrency.LastWrite),
             ]);
 
+    [Fact]
+    public async Task ImmutableGenerationResumesBoundedGroupsBeforeCanonicalAuthorityChanges()
+    {
+        var store = new InMemoryReadModelStore();
+        await store.SaveAsync(Store, "authority", new Detail(0));
+        var authority = await store.GetAsync<Detail>(Store, "authority");
+        var operations = Enumerable.Range(0, 300).Select(number => ReadModelBatchOperation.Write(
+            "generation:" + number, new Detail(number), ReadModelBatchConcurrency.CreateOnly)).ToArray();
+        using var interrupted = new CancellationTokenSource();
+        int groups = 0;
+        store.BatchFaultHook = (phase, _, token) =>
+        {
+            if (phase == ReadModelBatchPhase.BeforeDispatch && ++groups == 3) interrupted.Cancel();
+            token.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        };
+        await Should.ThrowAsync<OperationCanceledException>(() => ReadModelGenerationStaging.StageAsync(store,
+            Scope("large-generation"), operations, interrupted.Token));
+        (await store.GetAsync<Detail>(Store, "generation:0")).Value.ShouldNotBeNull().Version.ShouldBe(0);
+        (await store.GetAsync<Detail>(Store, "generation:299")).Value.ShouldBeNull();
+        store.Snapshot<Detail>(Store, "authority")!.Version.ShouldBe(0);
+        store.BatchFaultHook = null;
+        await ReadModelGenerationStaging.StageAsync(store, Scope("large-generation"), operations);
+        foreach (int number in Enumerable.Range(0, 300))
+            (await store.GetAsync<Detail>(Store, "generation:" + number)).Value.ShouldNotBeNull().Version.ShouldBe(number);
+        store.Snapshot<Detail>(Store, "authority")!.Version.ShouldBe(0);
+        (await store.ExecuteAsync(new ReadModelBatch(Scope("promote-generation"),
+            [ReadModelBatchOperation.Write("authority", new Detail(300), ReadModelBatchConcurrency.Match(authority.ETag!))]))).IsSuccess.ShouldBeTrue();
+        store.Snapshot<Detail>(Store, "authority")!.Version.ShouldBe(300);
+        store.BatchOptions.MaxOperations.ShouldBe(100);
+        store.BatchOptions.MaxCanonicalManifestBytes.ShouldBe(1_048_576);
+    }
+
     // ----- Checkpoint boundary (AC7 / decision 6) -----
 
     [Fact]

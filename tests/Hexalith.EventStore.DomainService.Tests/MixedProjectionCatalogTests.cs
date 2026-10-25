@@ -9,6 +9,7 @@ using Hexalith.EventStore.Testing.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
+using NSubstitute;
 
 namespace Hexalith.EventStore.DomainService.Tests;
 
@@ -131,6 +132,38 @@ public sealed class MixedProjectionCatalogTests
         disabled.Calls.ShouldBe(0); enabled.Calls.ShouldBe(0);
     }
 
+    [Theory]
+    [InlineData("malformed", ProjectionDispatchStatus.Failed)]
+    [InlineData("incomplete", ProjectionDispatchStatus.Retryable)]
+    [InlineData("indeterminate", ProjectionDispatchStatus.Indeterminate)]
+    public async Task StreamedGenerationPreparationValidatesBeforeWritesAndReturnsStorageOutcomes(string failure, ProjectionDispatchStatus expected)
+    {
+        var token = TestContext.Current.CancellationToken;
+        var canonical = ReadModelBatchOperation.Write("canonical", new[] { 1 }, ReadModelBatchConcurrency.CreateOnly);
+        var handler = new Handler("enabled", true) { SuppliedPlan = new DomainProjectionRebuildPlan("statestore",
+            failure == "malformed" ? [canonical, canonical] : [canonical])
+            { StagedOperations = [ReadModelBatchOperation.Write("generation", new[] { 1 }, ReadModelBatchConcurrency.CreateOnly)] } };
+        var state = new InMemoryReadModelStore();
+        var batches = Substitute.For<IReadModelBatchStore>();
+        batches.ExecuteAsync(Arg.Any<ReadModelBatch>(), Arg.Any<CancellationToken>()).Returns(failure == "incomplete"
+            ? ReadModelBatchResult.Incomplete("test") : ReadModelBatchResult.Indeterminate("test"));
+        using var services = new ServiceCollection().AddSingleton<IReadModelStore>(state)
+            .AddSingleton<IReadModelBatchStore>(batches).AddSingleton<IReadModelBatchStagingStore>(state)
+            .AddSingleton<IAsyncDomainProjectionHandler>(handler).BuildServiceProvider();
+        var options = new ProjectionDispatchOptions();
+        var identity = new DomainProjectionIdentityOptions { AppId = "widget-service", ServiceVersion = "v1" };
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute(identity.AppId, identity.ServiceVersion, [new("widget", "enabled")]);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(new ProjectionEventDto[] { new("event", "{}"u8.ToArray(), "json", 1, DateTimeOffset.UnixEpoch, "corr") }, JsonSerializerOptions.Web);
+        var header = new ProjectionDispatchRequest(new("tenant-a", "widget", "owner", []) { RebuildSourceHeadSequence = 1 },
+            ["enabled"], "stream-generation", fingerprint) { RebuildTransport = new(1, Convert.ToHexString(SHA256.HashData(bytes))) };
+        await DomainProjectionRebuildTransport.StoreAsync(services, new(header, 0, bytes), options, identity, token);
+        var response = await DomainProjectionDispatcher.StageRebuildAsync(services, header, options, identity, token);
+        response.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(expected);
+        if (failure == "malformed") _ = batches.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
+        (await state.GetAsync<int[]>("statestore", "canonical", token)).Value.ShouldBeNull();
+        (await state.GetAsync<int[]>("statestore", "generation", token)).Value.ShouldBeNull();
+    }
+
     private static ServiceProvider Provider(InMemoryReadModelStore store, params Handler[] handlers)
     {
         var services = new ServiceCollection();
@@ -150,6 +183,7 @@ public sealed class MixedProjectionCatalogTests
         public DomainProjectionRebuildSemantics RebuildSemantics => DomainProjectionRebuildSemantics.FullReplay;
         public string RebuildTransportStoreName => "statestore";
         public int Calls { get; private set; }
+        public DomainProjectionRebuildPlan? SuppliedPlan { get; init; }
         public Task<DomainProjectionHandlerResult> ProjectAsync(ProjectionRequest request, string dispatchId, CancellationToken cancellationToken)
         { Calls++; return Task.FromResult(DomainProjectionHandlerResult.Completed(JsonSerializer.SerializeToElement(1))); }
         public Task<DomainProjectionHandlerResult> ReconcileAsync(ProjectionRequest request, string dispatchId, CancellationToken cancellationToken)
@@ -163,7 +197,7 @@ public sealed class MixedProjectionCatalogTests
             await foreach (var item in events.WithCancellation(cancellationToken).ConfigureAwait(false)) count++;
             Calls++; return Plan(count);
         }
-        private DomainProjectionRebuildPlan Plan(int count) => new("statestore",
+        private DomainProjectionRebuildPlan Plan(int count) => SuppliedPlan ?? new("statestore",
             [ReadModelBatchOperation.Write("view-" + type, new[] { count }, ReadModelBatchConcurrency.LastWrite)]);
     }
 }

@@ -450,6 +450,52 @@ public sealed class DomainProjectionDispatcherV2Tests {
         _ = index.DidNotReceiveWithAnyArgs().ProjectAsync(default!, default!, default);
     }
 
+    [Theory]
+    [InlineData("duplicate-canonical")]
+    [InlineData("canonical-over-limit")]
+    [InlineData("late-invalid-generation")]
+    public async Task RebuildRejectsMalformedCombinedPlansBeforeAnyGenerationWrites(string defect)
+    {
+        var handler = CreateRebuildHandler("widget", "widget-detail");
+        ReadModelBatchOperation write = ReadModelBatchOperation.Write("canonical", new { count = 1 }, ReadModelBatchConcurrency.CreateOnly);
+        ReadModelBatchOperation[] operations = defect == "duplicate-canonical" ? [write, write]
+            : defect == "canonical-over-limit" ? Enumerable.Range(0, 101).Select(i => ReadModelBatchOperation.Write("canonical-" + i, new { count = i }, ReadModelBatchConcurrency.CreateOnly)).ToArray()
+            : [write];
+        ReadModelBatchOperation[] staged = Enumerable.Range(0, 33).Select(i => ReadModelBatchOperation.Write("generation-" + i,
+            new { count = i }, ReadModelBatchConcurrency.CreateOnly)).ToArray();
+        if (defect == "late-invalid-generation") staged[^1] = staged[^1].WithConcurrency(ReadModelBatchConcurrency.LastWrite);
+        handler.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainProjectionRebuildPlan("statestore", operations) { StagedOperations = staged });
+        var store = Substitute.For<IReadModelBatchStore>();
+        using var services = BuildRebuildProvider(store, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute("widget-service", "v1", [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        var result = await DomainProjectionDispatcher.RebuildAsync(services, CreateRequest(fingerprint, "widget-detail"),
+            new(), new() { AppId = "widget-service", ServiceVersion = "v1" }, TestContext.Current.CancellationToken);
+        result.Outcomes.ShouldHaveSingleItem().ReasonCode.ShouldBe(ProjectionDispatchReasonCodes.MalformedOutcome);
+        _ = store.DidNotReceiveWithAnyArgs().ExecuteAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData(ReadModelBatchStatus.Incomplete, ProjectionDispatchStatus.Retryable)]
+    [InlineData(ReadModelBatchStatus.Indeterminate, ProjectionDispatchStatus.Indeterminate)]
+    [InlineData(ReadModelBatchStatus.Conflict, ProjectionDispatchStatus.Retryable)]
+    public async Task RebuildPreservesStructuredGenerationStorageOutcomes(ReadModelBatchStatus status, ProjectionDispatchStatus expected)
+    {
+        var handler = CreateRebuildHandler("widget", "widget-detail");
+        handler.PrepareRebuildAsync(Arg.Any<ProjectionRequest>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DomainProjectionRebuildPlan("statestore", [ReadModelBatchOperation.Write("canonical", new { count = 1 }, ReadModelBatchConcurrency.CreateOnly)])
+                { StagedOperations = [ReadModelBatchOperation.Write("generation", new { count = 1 }, ReadModelBatchConcurrency.CreateOnly)] });
+        var store = Substitute.For<IReadModelBatchStore>();
+        store.ExecuteAsync(Arg.Any<ReadModelBatch>(), Arg.Any<CancellationToken>()).Returns(new ReadModelBatchResult(status, "fingerprint",
+            status == ReadModelBatchStatus.Conflict ? ReadModelBatchConflictKind.Optimistic : ReadModelBatchConflictKind.None, null));
+        using var services = BuildRebuildProvider(store, handler);
+        string fingerprint = ProjectionRouteCatalogFingerprint.Compute("widget-service", "v1", [new ProjectionDispatchRoute("widget", "widget-detail")]);
+        var result = await DomainProjectionDispatcher.RebuildAsync(services, CreateRequest(fingerprint, "widget-detail"),
+            new(), new() { AppId = "widget-service", ServiceVersion = "v1" }, TestContext.Current.CancellationToken);
+        result.Outcomes.ShouldHaveSingleItem().Status.ShouldBe(expected);
+        _ = store.DidNotReceive().ExecuteAsync(Arg.Is<ReadModelBatch>(batch => batch.Scope.ProjectionType == "rebuild"), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task RebuildAsync_OnePreparationFailureDoesNotPromoteAnyRoute() {
         IAsyncDomainProjectionRebuildHandler detail = CreateRebuildHandler("widget", "widget-detail");
