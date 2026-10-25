@@ -22,6 +22,7 @@ public static class HexalithEventStoreAppChannelExtensions
 
     /// <summary>
     /// Generates a per-run secret app-channel token and gives it to the project and to its Dapr sidecar.
+    /// Reuses an existing SDK-generated token without rotating it or adding another resource.
     /// </summary>
     /// <param name="project">A project resource that already has a Dapr sidecar.</param>
     /// <returns>The project resource builder.</returns>
@@ -29,12 +30,27 @@ public static class HexalithEventStoreAppChannelExtensions
         this IResourceBuilder<ProjectResource> project)
     {
         ArgumentNullException.ThrowIfNull(project);
+        IDaprSidecarResource sidecar = GetSidecar(project);
+        if (project.Resource.TryGetLastAnnotation<EventStoreAppChannelTokenBindingAnnotation>(out var binding))
+        {
+            if (!ReferenceEquals(binding.Sidecar, sidecar)
+                || !project.ApplicationBuilder.Resources.Any(resource => ReferenceEquals(resource, binding.Token)))
+            {
+                throw new InvalidOperationException(
+                    $"Resource '{project.Resource.Name}' no longer has its configured app-channel token binding.");
+            }
+
+            return project;
+        }
+
         string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         IResourceBuilder<ParameterResource> parameter = project.ApplicationBuilder.AddParameter(
             project.Resource.Name + "-app-api-token",
             () => token,
             secret: true);
-        return project.WithEventStoreAppChannelToken(parameter);
+        _ = project.WithEventStoreAppChannelToken(parameter);
+        project.Resource.Annotations.Add(new EventStoreAppChannelTokenBindingAnnotation(parameter.Resource, sidecar));
+        return project;
     }
 
     /// <summary>
@@ -50,12 +66,24 @@ public static class HexalithEventStoreAppChannelExtensions
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(token);
-        DaprSidecarAnnotation sidecar = project.Resource.Annotations.OfType<DaprSidecarAnnotation>().SingleOrDefault()
-            ?? throw new InvalidOperationException(
-                $"Resource '{project.Resource.Name}' must have a Dapr sidecar before its app-channel token is wired.");
+        IDaprSidecarResource sidecar = GetSidecar(project);
         ParameterResource tokenResource = token.Resource;
-        sidecar.Sidecar.Annotations.Add(new EnvironmentCallbackAnnotation(
+        if (project.Resource.TryGetLastAnnotation<EventStoreAppChannelTokenBindingAnnotation>(out var binding)
+            && (!ReferenceEquals(binding.Token, tokenResource) || !ReferenceEquals(binding.Sidecar, sidecar)))
+        {
+            _ = project.Resource.Annotations.Remove(binding);
+        }
+
+        sidecar.Annotations.Add(new EnvironmentCallbackAnnotation(
             context => context.EnvironmentVariables[AppChannelTokenVariable] = tokenResource));
         return project.WithEnvironment(AppChannelTokenVariable, token);
     }
+
+    /// <summary>Finds the one sidecar that shares the project's private application channel.</summary>
+    /// <param name="project">The project whose sidecar is required.</param>
+    /// <returns>The project's sidecar.</returns>
+    private static IDaprSidecarResource GetSidecar(IResourceBuilder<ProjectResource> project)
+        => project.Resource.Annotations.OfType<DaprSidecarAnnotation>().SingleOrDefault()?.Sidecar
+            ?? throw new InvalidOperationException(
+                $"Resource '{project.Resource.Name}' must have a Dapr sidecar before its app-channel token is wired.");
 }
