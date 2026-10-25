@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using Hexalith.EventStore.Client.Projections;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -15,9 +16,9 @@ public partial class DaprReadModelBatchTests
     {
         using var client = new RecordingDaprClient();
         var scope = Scope();
-        string secret = "private-before-participant-" + new string('x', 18_000);
+        string secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(9_014));
         var batch = new ReadModelBatch(scope,
-            [ReadModelBatchOperation.Write("detail", new { Secret = secret }, ReadModelBatchConcurrency.CreateOnly),
+            [ReadModelBatchOperation.Write("detail", new { Secret = secret, }, ReadModelBatchConcurrency.CreateOnly),
              ReadModelBatchOperation.Write("processing", new Detail(2), ReadModelBatchConcurrency.CreateOnly)])
              { RetainManifestForRecovery = true, DiscoverableRecovery = true };
         var protocol = new ReadModelBatchProtocol(new DaprReadModelBatchStateAccessor(client, Store), new(), NullLogger.Instance);
@@ -28,8 +29,8 @@ public partial class DaprReadModelBatchTests
 
         var restarted = CreateStore(client);
         (await ((IReadModelRecoveryScopeStore)restarted).RetireRecoveryScopeAsync(scope)).IsResolved.ShouldBeTrue();
-        Encoding.UTF8.GetString(client.ByteStoreValue(manifestKey)).ShouldNotContain("private-before-participant");
-        Encoding.UTF8.GetString(client.ByteStoreValue(scope.ComputeMarkerKey())).ShouldNotContain("private-before-participant");
+        Encoding.UTF8.GetString(client.ByteStoreValue(manifestKey)).ShouldNotContain(secret[..26]);
+        Encoding.UTF8.GetString(client.ByteStoreValue(scope.ComputeMarkerKey())).ShouldNotContain(secret[..26]);
         client.ByteStoreContains("detail").ShouldBeFalse();
         client.ByteStoreContains("processing").ShouldBeFalse();
         (await restarted.ExecuteAsync(batch)).IsSuccess.ShouldBeFalse();
