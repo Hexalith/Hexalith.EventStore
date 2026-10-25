@@ -55,8 +55,8 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
         string caller = call.Method == "install-namespace" ? state.Enrollment.RegistrarWorkload
             : call.Method == "register-source" || call.Method.StartsWith("write-", StringComparison.Ordinal)
                 || call.Method.StartsWith("advance-", StringComparison.Ordinal) ? state.Enrollment.ProducerWorkload : state.Enrollment.ReaderWorkload;
-        var authenticated = await validator.ValidateForAudienceAsync(installation.WorkloadScheme, call.Assertion,
-            SourcePublicationWorkloadBinding.PrimaryOperation, [caller], installation.PrimaryAudience).ConfigureAwait(false);
+        var authenticated = await ReadExternalAsync(token => validator.ValidateForAudienceAsync(installation.WorkloadScheme, call.Assertion,
+            SourcePublicationWorkloadBinding.PrimaryOperation, [caller], installation.PrimaryAudience, token)).ConfigureAwait(false);
         return SourcePublicationWorkloadBinding.Verify(call, authenticated);
     }
     /// <inheritdoc/>
@@ -186,7 +186,8 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     {
         var enrollment = EnrollmentForTransition(transition);
         if (enrollment is null || await CurrentAsync(enrollment.Scope, cancellationToken).ConfigureAwait(false) is null) return false;
-        var retained = await journal.LookupAsync<AnchoredStateTransition>(enrollment, "transition:" + SourcePublicationAuthorityActor.TransitionId(transition), cancellationToken).ConfigureAwait(false);
+        var retained = await ReadExternalAsync(token => journal.LookupAsync<AnchoredStateTransition>(enrollment,
+            "transition:" + SourcePublicationAuthorityActor.TransitionId(transition), token), cancellationToken).ConfigureAwait(false);
         return retained is not null && RecoverableAnchoredState.Digest(retained) == RecoverableAnchoredState.Digest(transition);
     }
     /// <inheritdoc/>
@@ -215,7 +216,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
             && issued.MatchesCut(advance.Cut) && issued.Publications.SequenceEqual(proposed.Publications)
             && await VerifyReconciliationProgressAsync(issued).ConfigureAwait(false)) return issued;
         if (await CurrentAsync(advance.Cut.Scope).ConfigureAwait(false) is null) return null;
-        return await journal.CallAsync<SourcePublicationReconciliationProgress>(state.Enrollment, "reconciliation", proposed).ConfigureAwait(false);
+        return await ReadExternalAsync(token => journal.CallAsync<SourcePublicationReconciliationProgress>(state.Enrollment, "reconciliation", proposed, token)).ConfigureAwait(false);
     }
     /// <inheritdoc/>
     public async Task<bool> VerifyReconciliationProgressAsync(SourcePublicationReconciliationProgress progress)
@@ -270,7 +271,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
         var proof = new SourcePublicationDispatchProof(progress, predecessor, predecessor == 0 ? null : current.DispatchProgress!.ReceiptId, receipts.AsReadOnly());
         progress = progress with { ReceiptId = RecoverableAnchoredState.Digest(proof) }; proof = proof with { Progress = progress };
         if (await CurrentAsync(progress.Scope).ConfigureAwait(false) is null) return null;
-        return await journal.CallAsync<SourcePublicationDispatchProgress>(state.Enrollment, "dispatch", proof).ConfigureAwait(false);
+        return await ReadExternalAsync(token => journal.CallAsync<SourcePublicationDispatchProgress>(state.Enrollment, "dispatch", proof, token)).ConfigureAwait(false);
     }
     /// <inheritdoc/>
     public async Task<bool> VerifyDispatchProgressAsync(SourcePublicationCheckpoint cut, SourcePublicationDispatchProgress progress)
@@ -357,7 +358,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     {
         var enrollment = EnrollmentForTransition(transition);
         if (enrollment is null || !await PermitAsync(enrollment.Scope, "write-index", "advance-dispatch", "advance-reconciliation", "install-namespace", "register-source").ConfigureAwait(false)) return false;
-        return await journal.CallAsync<bool>(enrollment, method, transition, cancellationToken).ConfigureAwait(false);
+        return await ReadExternalAsync(token => journal.CallAsync<bool>(enrollment, method, transition, token), cancellationToken).ConfigureAwait(false);
     }
     private SourcePublicationAuthorityEnrollment? EnrollmentForTransition(AnchoredStateTransition transition)
         => enrollments.SingleOrDefault(item => transition.ScopeId == item.Scope.ActorId + SourcePublicationAuthorityActor.IndexPurpose

@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Shouldly;
@@ -39,17 +40,6 @@ public partial class DaprDomainServiceInvokerTests
         var state = new DomainServiceCurrentState(null, [new(new(item.MessageId, identity.AggregateId, "Aggregate", identity.TenantId, identity.Domain, 1, 0,
             item.Timestamp, "correlation", "cause", "worker", "v1", item.EventTypeName, 1, "json"), payload, null)], 0, 1);
         const string key = "complete-source-component-key-at-least-thirty-two-bytes";
-        var bearerOptions = Substitute.For<IOptionsMonitor<JwtBearerOptions>>();
-        bearerOptions.Get(Arg.Any<string>()).Returns(new JwtBearerOptions { TokenValidationParameters = new()
-        {
-            ValidIssuer = WorkloadAssertionTestTokens.Issuer, ValidAudience = "test-app", ValidateIssuer = true, ValidateAudience = true,
-            ValidateLifetime = true, RequireSignedTokens = true, RequireExpirationTime = true, ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), ValidAlgorithms = [SecurityAlgorithms.HmacSha256], ClockSkew = TimeSpan.Zero,
-            PropertyBag = new Dictionary<string, object> { [ConfigureWorkloadJwtBearerOptions.ConfiguredMarkerKey] = true },
-        } });
-        var workloadOptions = Substitute.For<IOptionsMonitor<WorkloadAuthenticationOptions>>();
-        workloadOptions.Get(Arg.Any<string>()).Returns(new WorkloadAuthenticationOptions { Audience = "test-app", AllowedCallers = ["eventstore"] });
-        var validator = new WorkloadAssertionValidator(bearerOptions, workloadOptions, WorkloadSecurityClock.System);
         var processor = Substitute.For<IDomainProcessor>(); bool invoked = false;
         processor.ProcessAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(async _ =>
         {
@@ -59,18 +49,17 @@ public partial class DaprDomainServiceInvokerTests
             return DomainResult.NoOp();
         });
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
-        builder.WebHost.UseTestServer(); builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
-        builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", [command.Domain]); builder.Services.AddKeyedSingleton(command.Domain, processor);
-        builder.Services.AddAuthorization(options => options.AddPolicy(EventStoreDomainServicePolicies.Process, policy => policy.RequireAssertion(context => context.User.Identity?.IsAuthenticated == true)));
-        await using var app = builder.Build();
-        app.Use(async (context, next) =>
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            var result = await validator.ValidateLocallyAsync(EventStoreWorkloadAuthenticationDefaults.WorkloadScheme,
-                context.Request.Headers[EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName].SingleOrDefault(), EventStoreWorkloadOperations.DomainServiceProcess,
-                ["eventstore"], "test-app", context.RequestAborted);
-            if (result.Succeeded) context.User = result.Principal!;
-            await next(context);
+            ["Authentication:JwtBearer:Authority"] = "", ["Authentication:JwtBearer:Issuer"] = WorkloadAssertionTestTokens.Issuer,
+            ["Authentication:JwtBearer:Audience"] = "test-app", ["Authentication:JwtBearer:SigningKey"] = key,
+            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false", ["Authentication:Workload:Audience"] = "test-app",
+            ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = "component-channel",
         });
+        builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
+        builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", [command.Domain]); builder.Services.AddKeyedSingleton(command.Domain, processor);
+        await using var app = builder.Build();
         app.UseEventStoreDomainService(); await app.StartAsync(TestContext.Current.CancellationToken);
         var issuer = Substitute.For<IWorkloadAssertionIssuer>(); issuer.CanBindResources.Returns(true);
         issuer.IssueAsync(Arg.Any<WorkloadAssertionRequest>(), Arg.Any<CancellationToken>()).Returns(call =>

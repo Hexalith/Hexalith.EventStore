@@ -11,6 +11,7 @@ internal sealed class CompleteCommandSourceForwardingHandler(HttpMessageHandler 
     {
         RequestBytes = (await request.Content!.ReadAsByteArrayAsync(cancellationToken)).LongLength;
         Assertion = request.Headers.GetValues(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName).Single();
+        request.Headers.Add(DaprAppChannelToken.HeaderName, "component-channel");
         request.RequestUri = new("http://localhost/process");
         return await base.SendAsync(request, cancellationToken);
     }

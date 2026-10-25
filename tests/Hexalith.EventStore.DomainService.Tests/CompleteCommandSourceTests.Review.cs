@@ -8,6 +8,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using Hexalith.EventStore.ServiceDefaults.Authentication;
+using System.Text;
 using NSubstitute;
 using Shouldly;
 
@@ -69,17 +75,35 @@ public sealed partial class CompleteCommandSourceTests
             if (change != "removed") command.Extensions.Keys.ShouldBe(new[] { "keep", "actor:globalAdmin" });
             return DomainResult.NoOp();
         });
-        var builder = WebApplication.CreateBuilder(); builder.WebHost.UseTestServer(); builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
+        const string key = "component-process-authentication-key-at-least-thirty-two-bytes";
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development }); builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:JwtBearer:Authority"] = "", ["Authentication:JwtBearer:Issuer"] = "component-issuer",
+            ["Authentication:JwtBearer:Audience"] = "receiver", ["Authentication:JwtBearer:SigningKey"] = key,
+            ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false", ["Authentication:Workload:Audience"] = "receiver",
+            ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = "component-channel",
+        });
+        builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
         builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", ["conversation"]);
         builder.Services.AddKeyedSingleton("conversation", processor);
         var administrator = Substitute.For<IDomainServiceAdministratorVerifier>();
         administrator.IsCurrentGlobalAdministratorAsync(Arg.Any<DomainServiceAdministratorClaim>(), Arg.Any<CancellationToken>()).Returns(change != "removed");
         builder.Services.AddSingleton(administrator);
-        builder.Services.AddAuthorization(options => options.AddPolicy(EventStoreDomainServicePolicies.Process, policy => policy.RequireAssertion(context => context.User.Identity?.IsAuthenticated == true)));
         await using var app = builder.Build();
-        app.Use(async (context, next) => { context.User = Principal(request); await next(context); });
         app.UseEventStoreDomainService(); await app.StartAsync(TestContext.Current.CancellationToken);
         using var client = app.GetTestClient();
+        var claims = CommandSourceAuthorityBinding.Bind(request).ToDictionary(pair => pair.Key, pair => (object)pair.Value, StringComparer.Ordinal);
+        claims[EventStoreWorkloadAuthenticationDefaults.CallerClaimType] = "eventstore";
+        claims[EventStoreWorkloadAuthenticationDefaults.OperationClaimType] = EventStoreWorkloadOperations.DomainServiceProcess;
+        string assertion = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = "component-issuer", Audience = "receiver", IssuedAt = DateTime.UtcNow, NotBefore = DateTime.UtcNow,
+            Expires = DateTime.UtcNow.AddMinutes(2), Claims = claims,
+            SigningCredentials = new(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256),
+        });
+        client.DefaultRequestHeaders.Add(EventStoreWorkloadAuthenticationDefaults.AssertionHeaderName, assertion);
+        client.DefaultRequestHeaders.Add(DaprAppChannelToken.HeaderName, "component-channel");
         using var response = await client.PostAsJsonAsync("/process", request, TestContext.Current.CancellationToken);
         response.StatusCode.ShouldBe(HttpStatusCode.OK); observed.ShouldBeTrue();
         await administrator.Received(1).IsCurrentGlobalAdministratorAsync(Arg.Is<DomainServiceAdministratorClaim>(claim => claim.UserId == request.Command.UserId), Arg.Any<CancellationToken>());
