@@ -107,11 +107,16 @@ public sealed class DaprInternalAuthenticationHandlerTests : IClassFixture<DaprI
                 "InvalidTimeEntryRejection", null, null, message, correlation) { Domain = "timesheets" });
         var services = new ServiceCollection();
         services.AddLogging();
+        string? signingKey = null;
+        if (scenario != "missing-credentials")
+        {
+            signingKey = AuthenticationTestEnvironment.SigningKey;
+        }
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Authentication:JwtBearer:Issuer"] = WorkloadAssertionTestTokens.Issuer,
             ["Authentication:JwtBearer:Audience"] = "hexalith-eventstore",
-            ["Authentication:JwtBearer:SigningKey"] = scenario == "missing-credentials" ? null : AuthenticationTestEnvironment.SigningKey,
+            ["Authentication:JwtBearer:SigningKey"] = signingKey,
             ["Authentication:JwtBearer:AllowedAlgorithms:0"] = "HS256",
             ["Authentication:WorkloadIssuer:Workload"] = AllowedCaller,
         }).Build());

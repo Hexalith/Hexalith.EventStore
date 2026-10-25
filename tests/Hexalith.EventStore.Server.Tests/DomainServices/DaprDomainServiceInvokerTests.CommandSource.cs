@@ -40,6 +40,7 @@ public partial class DaprDomainServiceInvokerTests
         var state = new DomainServiceCurrentState(null, [new(new(item.MessageId, identity.AggregateId, "Aggregate", identity.TenantId, identity.Domain, 1, 0,
             item.Timestamp, "correlation", "cause", "worker", "v1", item.EventTypeName, 1, "json"), payload, null)], 0, 1);
         const string key = "complete-source-component-key-at-least-thirty-two-bytes";
+        string appChannelToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         var processor = Substitute.For<IDomainProcessor>(); bool invoked = false;
         processor.ProcessAsync(Arg.Any<CommandEnvelope>(), Arg.Any<object?>()).Returns(async _ =>
         {
@@ -55,7 +56,7 @@ public partial class DaprDomainServiceInvokerTests
             ["Authentication:JwtBearer:Authority"] = "", ["Authentication:JwtBearer:Issuer"] = WorkloadAssertionTestTokens.Issuer,
             ["Authentication:JwtBearer:Audience"] = "test-app", ["Authentication:JwtBearer:SigningKey"] = key,
             ["Authentication:JwtBearer:RequireHttpsMetadata"] = "false", ["Authentication:Workload:Audience"] = "test-app",
-            ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = "component-channel",
+            ["Authentication:Workload:AllowedCallers:0"] = "eventstore", ["APP_API_TOKEN"] = appChannelToken,
         });
         builder.AddEventStoreDomainService(typeof(CommandEnvelope).Assembly);
         builder.Services.AddEventStoreCompleteCommandSourceVerification("eventstore", [command.Domain]); builder.Services.AddKeyedSingleton(command.Domain, processor);
@@ -68,7 +69,7 @@ public partial class DaprDomainServiceInvokerTests
             return ValueTask.FromResult<string?>(WorkloadAssertionTestTokens.Create(request.Audience, "eventstore", [request.Operation], bindings: request.Bindings, signingKey: key));
         });
         using var services = new ServiceCollection().AddSingleton(issuer).BuildServiceProvider();
-        using var forward = new CompleteCommandSourceForwardingHandler(app.GetTestServer().CreateHandler());
+        using var forward = new CompleteCommandSourceForwardingHandler(app.GetTestServer().CreateHandler(), appChannelToken);
         using var handler = new DomainServiceWorkloadAssertionHandler(services) { InnerHandler = forward };
         using var client = new HttpClient(handler); using var dapr = new DaprClientBuilder().Build();
         var clients = Substitute.For<IHttpClientFactory>(); clients.CreateClient(DaprDomainServiceInvoker.HttpClientName).Returns(client);
