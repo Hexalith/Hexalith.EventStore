@@ -122,6 +122,27 @@ public sealed class AppChannelTokenAspireExtensionTests
         builder.Resources.OfType<ParameterResource>().ShouldHaveSingleItem().ShouldBeSameAs(replacement.Resource);
     }
 
+    /// <summary>A replacement sidecar cannot inherit the original application's generated credential.</summary>
+    [Fact]
+    public async Task ReplacedSidecarCannotInheritTheGeneratedBindingAsync()
+    {
+        IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder();
+        IResourceBuilder<ProjectResource> gateway = builder.AddProject<EventStoreProjectMetadata>("eventstore").WithDaprSidecar().WithGeneratedEventStoreAppChannelToken();
+        IResourceBuilder<ProjectResource> other = builder.AddProject<EventStoreProjectMetadata>("other").WithDaprSidecar();
+        DaprSidecarAnnotation original = gateway.Resource.Annotations.OfType<DaprSidecarAnnotation>().Single();
+        DaprSidecarAnnotation replacement = other.Resource.Annotations.OfType<DaprSidecarAnnotation>().Single();
+        ParameterResource token = builder.Resources.OfType<ParameterResource>().Single();
+        _ = gateway.Resource.Annotations.Remove(original);
+        gateway.Resource.Annotations.Add(replacement);
+
+        Should.Throw<InvalidOperationException>(() => gateway.WithGeneratedEventStoreAppChannelToken()).Message.ShouldContain("no longer has its configured app-channel token binding");
+
+        builder.Resources.OfType<ParameterResource>().ShouldHaveSingleItem().ShouldBeSameAs(token);
+        (await EnvironmentAsync(builder, original.Sidecar).ConfigureAwait(true))["APP_API_TOKEN"].ShouldBeSameAs(token);
+        (await EnvironmentAsync(builder, replacement.Sidecar).ConfigureAwait(true)).ShouldNotContainKey("APP_API_TOKEN");
+        (await EnvironmentAsync(builder, other.Resource).ConfigureAwait(true)).ShouldNotContainKey("APP_API_TOKEN");
+    }
+
     /// <summary>Finds the application's one Dapr sidecar.</summary>
     /// <param name="project">The application resource.</param>
     /// <returns>The sidecar resource.</returns>
