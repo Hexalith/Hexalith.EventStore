@@ -12,6 +12,8 @@ using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using Shouldly;
 
+using static Hexalith.EventStore.ServiceDefaults.Authentication.ConfigureWorkloadJwtBearerOptions;
+
 namespace Hexalith.EventStore.ServiceDefaults.Tests.Authentication;
 
 public sealed class CommandSourceAuthorityTests
@@ -44,7 +46,7 @@ public sealed class CommandSourceAuthorityTests
             using var certificate = certificateRequest.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
             string path = Path.Combine(directory, "issuer.pfx");
             await File.WriteAllBytesAsync(path, certificate.Export(X509ContentType.Pfx), TestContext.Current.CancellationToken);
-            const string secret = "component-test-secret-at-least-thirty-two-bytes";
+            string secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
             var grant = new WorkloadAuthorityGrant
             {
                 GrantId = "grant-1", Revision = 1, ClientId = "producer", Workload = "producer", Audience = "receiver",
@@ -66,7 +68,7 @@ public sealed class CommandSourceAuthorityTests
                 ValidateIssuer = true, ValidIssuer = options.Issuer, ValidateAudience = true, ValidAudience = "receiver",
                 ValidateIssuerSigningKey = true, IssuerSigningKey = new RsaSecurityKey(rsa.ExportParameters(false)), ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
                 ValidateLifetime = true, RequireExpirationTime = true, RequireSignedTokens = true, ClockSkew = TimeSpan.Zero,
-                PropertyBag = new Dictionary<string, object> { [ConfigureWorkloadJwtBearerOptions.ConfiguredMarkerKey] = true },
+                PropertyBag = new Dictionary<string, object> { [ConfiguredMarkerKey] = true },
             } };
             var bearerMonitor = Substitute.For<IOptionsMonitor<JwtBearerOptions>>(); bearerMonitor.Get(Arg.Any<string>()).Returns(bearer);
             var workloadMonitor = Substitute.For<IOptionsMonitor<WorkloadAuthenticationOptions>>();
