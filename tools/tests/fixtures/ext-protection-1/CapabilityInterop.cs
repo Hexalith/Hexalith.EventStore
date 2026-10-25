@@ -47,6 +47,34 @@ internal static class CapabilityInterop
             ["nativeCaptureAccepted"] = captured.Capability == payload,
             ["nativeCaptureChecks"] = captureChecks,
         };
+        if (root.TryGetProperty("NativeSigningOriginals", out var rawOriginals))
+        {
+            var originals = rawOriginals.Deserialize<DeletionCapabilitySigningOutcome[]>()!;
+            var receipts = root.GetProperty("NativeNoIssueOriginals").Deserialize<GovernanceProtocolReceipt[]>()!;
+            var recoveries = root.GetProperty("NativeSigningRecoveries").Deserialize<GovernanceSigningRecovery[]>()!;
+            result["nativeNoIssueIntents"] = root.GetProperty("NativeNoIssueIntents").EnumerateArray().Select(value =>
+            {
+                byte[] bytes = Convert.FromBase64String(value.GetProperty("BytesBase64").GetString()!);
+                using var document = JsonDocument.Parse(bytes);
+                var transition = document.RootElement.GetProperty("Transition").Deserialize<GovernanceGuardTransition>()!;
+                string targetMutationDigest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(Array.Empty<GuardedStateMutation>())));
+                return new { BytesBase64 = Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(new { Transition = transition, TargetMutationDigest = targetMutationDigest })) };
+            }).ToArray();
+            result["nativeSigningOriginals"] = originals;
+            result["nativeNoIssueOriginals"] = receipts;
+            result["nativeSigningRecoveries"] = recoveries;
+            result["nativeIssueOperationIds"] = originals.Take(originals.Length - 1).Select(original =>
+                "issue-" + Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new[]
+                {
+                    original.SigningRequestId,
+                    Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(original.DetachedJws!))),
+                })))).ToArray();
+            result["nativeSuccessors"] = originals.Take(originals.Length - 1).Zip(recoveries).Select(pair =>
+                DeletionCapabilitySigningSuccessor.Create(pair.First,
+                    new DeletionCapabilityNoIssueProof(pair.Second.Payload, pair.Second.SigningRequestId, pair.Second.DetachedJwsDigest,
+                        pair.Second.NoIssueReceiptId, pair.Second.CurrentGuardRevision, pair.Second.CurrentHealthyKeyVersion,
+                        pair.Second.AuthorityRevision, pair.Second.ObservedAt, pair.Second.ValidUntil), pair.Second.ObservedAt)).ToArray();
+        }
         Console.WriteLine(JsonSerializer.Serialize(result));
     }
 }

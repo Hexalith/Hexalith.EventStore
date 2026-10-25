@@ -1,5 +1,7 @@
 # EXT-PROTECTION-1 owner acceptance packet
 
+**Latest delivery audit — 2026-10-25:** [source corrections, exact unresolved fields and retained verification](ext-protection-1-delivery-2026-10-25.md), with [machine-readable blocked packet](ext-protection-1-delivery-2026-10-25.json). G1–G7 remain open; no complete canonical target or accepted installed bindings exist. Earlier dated sections below remain historical evidence.
+
 **Disposition: incomplete delivery; do not accept as Committed.** The partial implementation contains occurrence-aware interaction field protection, safe actor completion and idle recovery wiring, sealed distribution, default-provider refusal, typed erased aggregate replay, and an owner-verifier harness with actual capability-signature and native-original correlation. It does not contain the complete production artifact required by the Agents register. The missing custody/authority implementations are source delivery gaps, not merely missing environment variables. No Live verification ran; no Agents consumer was enabled; no register/status was changed by this continuation.
 
 ## Owner observation — 2026-10-23: immutable target remains unbound

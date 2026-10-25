@@ -31,7 +31,9 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
         if configuration not in ('Debug', 'Release') or project_references not in ('true', 'false'):
             raise ValueError('Invalid offline interop build configuration')
         sources = [FIXTURES / 'CapabilityInterop.cs', ROOT / 'src/Hexalith.EventStore.Server/Security/DeletionConsumptionIdentity.cs', *[platform / name for name in
-                   ('DeletionBatchCapabilityCodec.cs', 'DeletionCapabilityTrustProfile.cs', 'DetachedEs256JwsCore.cs')]]
+                   ('DeletionBatchCapabilityCodec.cs', 'DeletionCapabilityTrustProfile.cs', 'DetachedEs256JwsCore.cs',
+                    'DeletionCapabilitySigningOutcome.cs', 'DeletionCapabilitySigningState.cs', 'DeletionCapabilityNoIssueProof.cs',
+                    'DeletionCapabilitySigningSuccessor.cs')]]
         contracts = ROOT / 'src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj'
         project = cls.directory / 'Interop.csproj'
         project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
@@ -126,6 +128,43 @@ class CapabilityCrossLanguageTests(unittest.TestCase):
                 print(json.dumps({'vector': vector['id'], **expected, 'pythonSignatureVerified': True,
                                   'dotnetSignatureVerified': True, 'changedPayloadRejected': True,
                                   'nativeCaptureAccepted': True, 'nativeCaptureChecks': actual['nativeCaptureChecks']}, sort_keys=True))
+
+    def test_native_signing_originals_no_issue_receipts_and_fresh_successors_roundtrip_actual_csharp_types(self):
+        self.native_signing_roundtrip()
+
+    def test_native_replacement_signing_intents_and_successors_retain_attestation_and_block_set_revision(self):
+        self.native_signing_roundtrip(attestation_ordinal=2, block_set_revision=7)
+
+    def native_signing_roundtrip(self, attestation_ordinal=1, block_set_revision=0):
+        import tools.tests.test_ext_protection_1 as fixtures
+        fixture = fixtures.CapabilityOriginalEvidenceTests('test_nontrivial_separately_signed_request_and_native_originals_pass')
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        observed = fixture.signing_chain(attestation_ordinal=attestation_ordinal, block_set_revision=block_set_revision)
+        trust = fixture.trust[0]
+        input_value = {**observed['consumptionRequests'][0], 'PublicAnchorId': trust['publicAnchorId'], 'PublicAnchorVersion': trust['publicAnchorVersion'],
+                       'PublicAnchorFile': str(fixture.public), 'OfflinePrivateKeyFile': str(fixture.private), 'CaptureCandidates': [],
+                       'NativeSigningOriginals': observed['signingOriginals'], 'NativeNoIssueOriginals': observed['noIssueOriginals'],
+                       'NativeSigningRecoveries': observed['signingRecoveries'], 'NativeNoIssueIntents': observed['noIssueIntents']}
+        result = subprocess.run(['dotnet', str(self.assembly)], input=v.canonical(input_value), capture_output=True, check=True)
+        actual = v.strict_json(result.stdout)
+        for native, field in (('nativeSigningOriginals', 'signingOriginals'), ('nativeNoIssueOriginals', 'noIssueOriginals'),
+                              ('nativeSigningRecoveries', 'signingRecoveries'), ('nativeNoIssueIntents', 'noIssueIntents')):
+            self.assertEqual(observed[field], actual[native])
+            observed[field] = actual[native]
+        self.assertEqual([receipt['OperationId'] for receipt in observed['noIssueOriginals']], actual['nativeIssueOperationIds'])
+        self.assertEqual([original['Payload'] for original in observed['signingOriginals'][1:]], actual['nativeSuccessors'])
+        for value in actual['nativeNoIssueIntents']:
+            command = v.strict_json(base64.b64decode(value['BytesBase64']))['Transition']
+            self.assertEqual(23 if attestation_ordinal > 1 else 18, command['Operation'])
+            self.assertEqual(attestation_ordinal, command['Batch']['AttestationOrdinal'])
+            self.assertEqual(block_set_revision, command['Batch']['BlockSetRevision'])
+        v.evaluate(observed, {'steps': [], 'checks': ['erased', 'receipts', 'signing-attempts']}, fixture.targets,
+                   b'offline-canary', 'a' * 40, 'b' * 64, fixture.trust, fixture.roles)
+        print(json.dumps({'nativeSigningOriginalCount': len(actual['nativeSigningOriginals']),
+                          'nativeNoIssueOriginalCount': len(actual['nativeNoIssueOriginals']),
+                          'nativeFreshSuccessorCount': len(actual['nativeSuccessors']), 'attestationOrdinal': attestation_ordinal,
+                          'retainedBlockSetRevision': block_set_revision, 'sourceComponentOnly': True}))
 
 
 if __name__ == '__main__':

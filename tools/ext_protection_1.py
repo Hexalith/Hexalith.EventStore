@@ -322,9 +322,16 @@ def decode_base64url(value):
     return raw
 
 
-def native_json_string(value):
+def native_json_string(value, identity=True):
     """Default System.Text.Json/JavaScriptEncoder string bytes, not RFC8785 bytes."""
-    identity_text(value, 'TARGET_IDENTITY_INVALID', byte_bound=True)
+    if identity:
+        identity_text(value, 'TARGET_IDENTITY_INVALID', byte_bound=True)
+    else:
+        require(isinstance(value, str), 'NATIVE_JSON_STRING_INVALID')
+        try:
+            value.encode('utf-8')
+        except UnicodeError:
+            raise Failed('NATIVE_JSON_STRING_INVALID') from None
     result = ['"']
     short = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\f': '\\f', '\r': '\\r', '\\': '\\\\'}
     for char in value:
@@ -374,10 +381,16 @@ def capture_consumption_request(request):
 
 
 def validate_consumption_request(request, trust, roles, snapshot=None):
-    payload_bytes = capture_consumption_request(request)
+    capture_consumption_request(request)
     payload = request['Capability']
     require(request['DispatchGuardRevision'] > request['CommittedIssuedGuardRevision'] == payload['IntendedIssuedGuardRevision'] + 1,
             'ISSUE_DISPATCH_REVISION_MISMATCH')
+    return validate_capability_signature(payload, request['DetachedJws'], trust, roles, snapshot)
+
+
+def validate_capability_signature(payload, jws, trust, roles, snapshot=None):
+    """Verify the original signed artifact directly; obsolete unissued artifacts have no dispatch."""
+    payload_bytes = capability_bytes(payload)
     owned_snapshot = snapshot is None
     snapshot = snapshot or validate_capability_trust(trust, roles)
     snapshot.budget.remaining()
@@ -386,7 +399,6 @@ def validate_consumption_request(request, trust, roles, snapshot=None):
     entry, public_bytes = snapshot.index[identity]
     header = {'alg': 'ES256', 'anchorVersion': entry['publicAnchorVersion'], 'keyVersion': entry['keyVersion'],
               'kid': entry['publicAnchorId'], 'typ': 'DeletionBatchCapabilityV1'}
-    jws = request['DetachedJws']
     require(isinstance(jws, str) and len(jws) <= 16384 and len(jws.split('.')) == 3, 'DETACHED_JWS_INVALID')
     encoded, middle, signature = jws.split('.')
     # Parsing is duplicate-safe, and byte equality rejects reordered, extra or noncanonical headers.
@@ -464,11 +476,11 @@ def retained_owner_batches(observation, requests, outcomes, snapshot):
             require(canonical(original) == canonical(current), 'RETAINED_ORIGINAL_ATTESTATION_CHANGED')
 
 
-def original_evidence(observation, targets, trust, roles, consumed=False, budget=None):
+def original_evidence(observation, targets, trust, roles, consumed=False, budget=None, snapshot=None):
     """Correlate original contract records; transport signatures do not prove currentness."""
     requests = observation.get('consumptionRequests')
     require(isinstance(requests, list) and 1 <= len(requests) <= 1000, 'CONSUMPTION_REQUESTS_MISSING')
-    snapshot = validate_capability_trust(trust, roles, budget)
+    snapshot = snapshot or validate_capability_trust(trust, roles, budget)
     batches = observation.get('guardBatches')
     receipts = observation.get('guardReceipts')
     require(isinstance(batches, list) and len(batches) == len(requests) and isinstance(receipts, list) and len(receipts) <= 2000, 'GUARD_ORIGINALS_MISSING')
@@ -584,6 +596,231 @@ def original_evidence(observation, targets, trust, roles, consumed=False, budget
     snapshot.recheck_pins()
     return request_map, sorted(all_receipts, key=lambda receipt: tuple(value.encode('utf-16-be') for value in target_key(receipt['Target'])))
 
+
+
+def native_json_bytes(value):
+    """Default native record serialization in its declared property order, after closed-schema validation."""
+    if value is None:
+        return b'null'
+    if isinstance(value, str):
+        return native_json_string(value, identity=False).encode('ascii')
+    if type(value) is int:
+        return str(value).encode('ascii')
+    if isinstance(value, list):
+        return b'[' + b','.join(native_json_bytes(item) for item in value) + b']'
+    require(isinstance(value, dict), 'NATIVE_JSON_VALUE_INVALID')
+    return b'{' + b','.join(native_json_bytes(key) + b':' + native_json_bytes(item) for key, item in value.items()) + b'}'
+
+
+def native_issue_intent(value):
+    """Read the retained native intent bytes themselves; receipt summaries cannot supply a missing command."""
+    native_record(value, 'BytesBase64', 'NO_ISSUE_INTENT_ORIGINAL_SCHEMA_INVALID')
+    require(isinstance(value['BytesBase64'], str), 'NO_ISSUE_INTENT_BYTES_INVALID')
+    try:
+        raw = base64.b64decode(value['BytesBase64'], validate=True)
+    except ValueError:
+        raise Failed('NO_ISSUE_INTENT_BYTES_INVALID') from None
+    require(0 < len(raw) <= MAX_OBSERVATION_BYTES and base64.b64encode(raw).decode('ascii') == value['BytesBase64'], 'NO_ISSUE_INTENT_BYTES_INVALID')
+    try:
+        intent = strict_json(raw)
+    except (ValueError, UnicodeError):
+        raise Failed('NO_ISSUE_INTENT_BYTES_INVALID') from None
+    native_record(intent, 'Transition TargetMutationDigest', 'NO_ISSUE_INTENT_ORIGINAL_SCHEMA_INVALID')
+    command_fields = 'TenantId OperationId Operation ExpectedGuardRevision EpochId DeletionRequestId Scope Write Repair Ordinal Hold Batch AuthorizationId ReferenceId BridgeOriginal RevocationReceipt'.split()
+    batch_fields = 'BatchId BatchKind BatchOrdinal Targets ManifestDigest AttestationOrdinal CapabilityKeyVersion AttestationDigest ProtectionOutcome ProtectionReceiptId TargetReceiptIds BlockSetRevision Capability DetachedJws SigningRequestId'.split()
+    capability_fields = 'Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId IntendedIssuedGuardRevision AttestationOrdinal SigningAttemptOrdinal CapabilityKeyVersion'.split()
+    command = native_record(intent['Transition'], ' '.join(command_fields), 'NO_ISSUE_COMMAND_SCHEMA_INVALID')
+    batch = native_record(command['Batch'], ' '.join(batch_fields), 'NO_ISSUE_BATCH_COMMAND_SCHEMA_INVALID')
+    capability_bytes(batch['Capability'])
+    require(isinstance(batch['Targets'], list) and 1 <= len(batch['Targets']) <= 1000, 'NO_ISSUE_COMMAND_TARGETS_INVALID')
+    for target in batch['Targets']:
+        target_key(target)
+    require(type(command['Operation']) is int and command['Operation'] in (18, 19, 23), 'NO_ISSUE_COMMAND_OPERATION_INVALID')
+    ordinal(command['ExpectedGuardRevision'], maximum=MAX_NATIVE_LONG)
+    ordinal(batch['BatchOrdinal'], 0)
+    ordinal(batch['AttestationOrdinal'])
+    ordinal(batch['BlockSetRevision'], 0, MAX_NATIVE_LONG)
+    require(all(command[key] is None for key in ('Scope', 'Write', 'Repair', 'Ordinal', 'Hold', 'BridgeOriginal', 'RevocationReceipt'))
+            and command['EpochId'] == '' and command['ReferenceId'] == ''
+            and batch['ProtectionOutcome'] == '' and batch['ProtectionReceiptId'] == '' and batch['TargetReceiptIds'] == [], 'NO_ISSUE_COMMAND_UNRELATED_EFFECT')
+    if command['Operation'] == 19:
+        identity_text(command['AuthorizationId'], 'NO_ISSUE_COMMAND_AUTHORIZATION_INVALID')
+    else:
+        require(command['AuthorizationId'] == '', 'NO_ISSUE_COMMAND_AUTHORIZATION_INVALID')
+    require(intent['TargetMutationDigest'] == digest(b'[]').upper(), 'NO_ISSUE_COMMAND_TARGET_MUTATION_INVALID')
+    # Reorder the supplied native record only to verify its exact original serializer bytes.
+    ordered = {key: command[key] for key in command_fields}
+    ordered_batch = {key: batch[key] for key in batch_fields}
+    ordered_batch['Capability'] = {key: batch['Capability'][key] for key in capability_fields}
+    ordered_batch['Targets'] = [{key: target[key] for key in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias')} for target in batch['Targets']]
+    ordered['Batch'] = ordered_batch
+    require(raw == native_json_bytes({'Transition': ordered, 'TargetMutationDigest': intent['TargetMutationDigest']}), 'NO_ISSUE_INTENT_NATIVE_BYTES_MISMATCH')
+    return command, digest(raw).upper()
+
+
+def native_timestamp(value):
+    """Exact DateTimeOffset-shaped historical instants in 100 ns ticks, without asserting a live lease."""
+    require(isinstance(value, str), 'SIGNING_TIMESTAMP_INVALID')
+    match = re.fullmatch(r'(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,7}))?(Z|[+-]\d{2}:\d{2})', value)
+    require(match is not None, 'SIGNING_TIMESTAMP_INVALID')
+    try:
+        zone = match[3]
+        if zone != 'Z':
+            hours, minutes = map(int, zone[1:].split(':'))
+            require(hours <= 14 and minutes < 60 and (hours < 14 or minutes == 0), 'SIGNING_TIMESTAMP_INVALID')
+        instant = datetime.fromisoformat(match[1] + ('+00:00' if zone == 'Z' else zone))
+        delta = instant - datetime(1, 1, 1, tzinfo=timezone.utc)
+        ticks = (delta.days * 86400 + delta.seconds) * 10000000 + int((match[2] or '').ljust(7, '0'))
+        require(0 < ticks <= 3155378975999999999, 'SIGNING_TIMESTAMP_INVALID')
+        return ticks
+    except (ValueError, OverflowError):
+        raise Failed('SIGNING_TIMESTAMP_INVALID') from None
+
+
+def signing_attempt_evidence(observation, requests, snapshot):
+    """Native signed originals plus exact terminal no-issue and fresh successor bases; no invented dispatches."""
+    summaries, originals = observation.get('signingAttempts'), observation.get('signingOriginals')
+    no_issues, recoveries, intents = observation.get('noIssueOriginals'), observation.get('signingRecoveries'), observation.get('noIssueIntents')
+    require(isinstance(summaries, list) and 3 <= len(summaries) <= 1000
+            and isinstance(originals, list) and len(originals) == len(summaries)
+            and isinstance(no_issues, list) and len(no_issues) == len(summaries) - 1
+            and isinstance(recoveries, list) and len(recoveries) == len(no_issues)
+            and isinstance(intents, list) and len(intents) == len(no_issues), 'SIGNING_NATIVE_ORIGINALS_MISSING')
+    original_fields = set('SigningRequestId Payload State DetachedJws PublicAnchorId PublicAnchorVersion'.split())
+    summary_fields = 'DestructionSealId BatchId ManifestDigest AttestationOrdinal SigningAttemptOrdinal status exactNoIssueReceiptId'
+    receipt_fields = 'OperationId IntentDigest Status GuardHighWater AcceptedAtAdmissionFenceOrdinal ReferenceId ReceiptId AdmissionAttributionsJson AcceptedWriteResourceId AcceptedWriteFacts AcceptedTargetMutationDigest Capability SigningRequestId DetachedJwsDigest'
+    proof_fields = 'Payload SigningRequestId DetachedJwsDigest ProofId CurrentGuardRevision CurrentHealthyKeyVersion AuthorityRevision ObservedAt ValidUntil'
+    recovery_fields = proof_fields.replace('ProofId', 'NoIssueReceiptId')
+    by_attempt, receipt_map, recovery_map, receipt_signing_ids, intent_map = {}, {}, {}, set(), {}
+    for original in originals:
+        snapshot.budget.remaining()
+        require(isinstance(original, dict) and original_fields <= set(original) <= original_fields | {'NoIssueProof'}, 'SIGNING_OUTCOME_SCHEMA_INVALID')
+        payload = original['Payload']
+        signing_id, signature_digest = validate_capability_signature(payload, original['DetachedJws'], None, None, snapshot)
+        require(original['SigningRequestId'] == signing_id, 'SIGNING_ORIGINAL_IDENTITY_MISMATCH')
+        entry = snapshot.index[tuple(payload[key] for key in ('Issuer', 'Audience', 'TenantId', 'CapabilityKeyVersion'))][0]
+        require(original['PublicAnchorId'] == entry['publicAnchorId'] and original['PublicAnchorVersion'] == entry['publicAnchorVersion'], 'SIGNING_ORIGINAL_ANCHOR_MISMATCH')
+        require(type(original['State']) is int and original['State'] in (0, 5), 'SIGNING_ORIGINAL_STATE_INVALID')
+        attempt = payload['SigningAttemptOrdinal']
+        require(attempt not in by_attempt, 'SIGNING_ORIGINAL_AMBIGUOUS')
+        by_attempt[attempt] = (original, signing_id, signature_digest)
+    for receipt in no_issues:
+        native_record(receipt, receipt_fields, 'NO_ISSUE_ORIGINAL_SCHEMA_INVALID')
+        identity_text(receipt['ReceiptId'], byte_bound=True)
+        identity_text(receipt['OperationId'], byte_bound=True)
+        require(isinstance(receipt['IntentDigest'], str) and re.fullmatch(r'[A-F0-9]{64}', receipt['IntentDigest']), 'NO_ISSUE_INTENT_INVALID')
+        ordinal(receipt['GuardHighWater'], maximum=MAX_NATIVE_LONG)
+        ordinal(receipt['AcceptedAtAdmissionFenceOrdinal'], 0, MAX_NATIVE_LONG)
+        identity_text(receipt['SigningRequestId'])
+        require(receipt['ReceiptId'] not in receipt_map and receipt['SigningRequestId'] not in receipt_signing_ids, 'NO_ISSUE_ORIGINAL_AMBIGUOUS')
+        receipt_map[receipt['ReceiptId']] = receipt
+        receipt_signing_ids.add(receipt['SigningRequestId'])
+    for recovery in recoveries:
+        native_record(recovery, recovery_fields, 'SIGNING_RECOVERY_SCHEMA_INVALID')
+        identity_text(recovery['NoIssueReceiptId'], byte_bound=True)
+        require(recovery['NoIssueReceiptId'] not in recovery_map, 'SIGNING_RECOVERY_AMBIGUOUS')
+        recovery_map[recovery['NoIssueReceiptId']] = recovery
+    for value in intents:
+        snapshot.budget.remaining()
+        command, intent_digest = native_issue_intent(value)
+        identity_text(command['OperationId'], byte_bound=True)
+        require(command['OperationId'] not in intent_map, 'NO_ISSUE_INTENT_ORIGINAL_AMBIGUOUS')
+        intent_map[command['OperationId']] = (command, intent_digest)
+    # Independently observed guard and no-issue inventories must retain one immutable
+    # result for every receipt/operation identity, even when an old attempt never issued.
+    inventory_receipts, inventory_operations = {}, {}
+    for receipt in [*observation['guardReceipts'], *no_issues]:
+        snapshot.budget.remaining()
+        native_record(receipt, receipt_fields, 'GUARD_RECEIPT_SCHEMA_INVALID')
+        identity_text(receipt['ReceiptId'], byte_bound=True)
+        identity_text(receipt['OperationId'], byte_bound=True)
+        for field, inventory in (('ReceiptId', inventory_receipts), ('OperationId', inventory_operations)):
+            identity = receipt[field]
+            original = canonical(receipt)
+            require(identity not in inventory or inventory[identity] == original, 'SIGNING_GUARD_ORIGINAL_IDENTITY_REUSED')
+            inventory[identity] = original
+    ordered, used_receipts, used_recoveries = [], set(), set()
+    immutable = CAPABILITY_FIELDS - {'SigningAttemptOrdinal', 'IntendedIssuedGuardRevision', 'CapabilityKeyVersion'}
+    original_observations = []
+    for index, summary in enumerate(summaries):
+        snapshot.budget.remaining()
+        native_record(summary, summary_fields, 'SIGNING_SUMMARY_SCHEMA_INVALID')
+        attempt = ordinal(summary['SigningAttemptOrdinal'])
+        ordinal(summary['AttestationOrdinal'])
+        require(attempt in by_attempt and (not ordered or attempt == ordered[-1][0]['Payload']['SigningAttemptOrdinal'] + 1), 'SIGNING_ATTEMPT_ORDER_INVALID')
+        original, signing_id, signature_digest = by_attempt[attempt]
+        payload = original['Payload']
+        require(all(summary[key] == payload[key] for key in ('DestructionSealId', 'BatchId', 'ManifestDigest', 'AttestationOrdinal')), 'SIGNING_SUMMARY_ORIGINAL_MISMATCH')
+        if ordered:
+            previous = ordered[-1][0]['Payload']
+            require(all(payload[key] == previous[key] for key in immutable), 'SIGNING_SUCCESSOR_CHANGED_LOGICAL_IDENTITY')
+        ordered.append((original, signing_id, signature_digest))
+        if index == len(summaries) - 1:
+            require(original['State'] == 0 and original.get('NoIssueProof') is None and summary['status'] == 'Signed'
+                    and summary['exactNoIssueReceiptId'] is None, 'FINAL_SIGNING_ORIGINAL_INVALID')
+            require(payload['BatchId'] in requests and capability_bytes(payload) == capability_bytes(requests[payload['BatchId']]['Capability'])
+                    and original['DetachedJws'] == requests[payload['BatchId']]['DetachedJws'], 'FINAL_SIGNING_CONSUMPTION_MISMATCH')
+            continue
+        require(original['State'] == 5 and summary['status'] == 'SignedAttestationObsoleteUnissued', 'STALE_SIGNING_NO_ISSUE_PROOF_MISSING')
+        proof = native_record(original.get('NoIssueProof'), proof_fields, 'NO_ISSUE_PROOF_SCHEMA_INVALID')
+        identity_text(proof['ProofId'], byte_bound=True)
+        require(summary['exactNoIssueReceiptId'] == proof['ProofId'] and proof['ProofId'] in receipt_map
+                and proof['ProofId'] in recovery_map and proof['ProofId'] not in used_receipts, 'NO_ISSUE_ORIGINAL_IDENTITY_MISMATCH')
+        receipt, recovery = receipt_map[proof['ProofId']], recovery_map[proof['ProofId']]
+        used_receipts.add(proof['ProofId'])
+        used_recoveries.add(proof['ProofId'])
+        for current in (proof, recovery):
+            require(capability_bytes(current['Payload']) == capability_bytes(payload) and current['SigningRequestId'] == signing_id
+                    and current['DetachedJwsDigest'] == signature_digest, 'SIGNING_PROOF_ORIGINAL_MISMATCH')
+            ordinal(current['CurrentGuardRevision'], maximum=MAX_NATIVE_LONG)
+            identity_text(current['CurrentHealthyKeyVersion'])
+            identity_text(current['AuthorityRevision'])
+            require(current['CurrentGuardRevision'] > payload['IntendedIssuedGuardRevision'], 'SIGNING_SUCCESSOR_REVISION_INVALID')
+        observed, valid_until = native_timestamp(proof['ObservedAt']), native_timestamp(proof['ValidUntil'])
+        recovered, recovery_until = native_timestamp(recovery['ObservedAt']), native_timestamp(recovery['ValidUntil'])
+        require(observed < valid_until and recovered < recovery_until and recovered >= observed
+                and recovery['CurrentGuardRevision'] >= proof['CurrentGuardRevision'], 'SIGNING_PROOF_OBSERVATION_INVALID')
+        original_observations.append((observed, recovered))
+        issue_operation = 'issue-' + digest(('[' + ','.join(native_json_string(value) for value in (signing_id, signature_digest)) + ']').encode('ascii')).upper()
+        require(receipt['OperationId'] == issue_operation and receipt['ReceiptId'] == recovery['NoIssueReceiptId']
+                and receipt['SigningRequestId'] == signing_id and receipt['DetachedJwsDigest'] == signature_digest
+                and capability_bytes(receipt['Capability']) == capability_bytes(payload)
+                and receipt['Status'] in ('Stale', 'IssuanceStale')
+                and receipt['ReferenceId'] == ('' if receipt['Status'] == 'Stale' else payload['BatchId'])
+                and receipt['GuardHighWater'] <= proof['CurrentGuardRevision']
+                and (receipt['Status'] != 'Stale' or receipt['AcceptedAtAdmissionFenceOrdinal'] == 0)
+                and receipt['AdmissionAttributionsJson'] == '[]' and receipt['AcceptedWriteResourceId'] == ''
+                and receipt['AcceptedWriteFacts'] is None and receipt['AcceptedTargetMutationDigest'] == '', 'NO_ISSUE_GUARD_ORIGINAL_MISMATCH')
+        require(receipt['Status'] != 'IssuanceStale' or receipt['AcceptedAtAdmissionFenceOrdinal'] > 0, 'NO_ISSUE_DELETION_ORDINAL_INVALID')
+        require(issue_operation in intent_map, 'NO_ISSUE_INTENT_ORIGINAL_MISSING')
+        command, intent_digest = intent_map[issue_operation]
+        carrier = command['Batch']
+        require(receipt['IntentDigest'] == intent_digest, 'NO_ISSUE_INTENT_DIGEST_MISMATCH')
+        require(command['TenantId'] == payload['TenantId'] and command['DeletionRequestId'] == payload['DeletionRequestId']
+                and command['ExpectedGuardRevision'] == payload['IntendedIssuedGuardRevision']
+                and carrier['SigningRequestId'] == signing_id and carrier['DetachedJws'] == original['DetachedJws']
+                and carrier['AttestationDigest'] == signature_digest and capability_bytes(carrier['Capability']) == capability_bytes(payload)
+                and payload['BatchId'] in requests and canonical(carrier['Targets']) == canonical(requests[payload['BatchId']]['Targets'])
+                and all(carrier[key] == payload[key] for key in ('BatchId', 'BatchKind', 'BatchOrdinal', 'ManifestDigest', 'AttestationOrdinal', 'CapabilityKeyVersion'))
+                and (command['Operation'] != 18 or payload['AttestationOrdinal'] == 1 and carrier['BlockSetRevision'] == 0)
+                and (command['Operation'] != 23 or payload['AttestationOrdinal'] > 1)
+                and (receipt['Status'] != 'IssuanceStale' or command['Operation'] == 19 and command['ExpectedGuardRevision'] == receipt['GuardHighWater'])
+                and (receipt['Status'] != 'Stale' or command['ExpectedGuardRevision'] != receipt['GuardHighWater']), 'NO_ISSUE_COMMAND_BINDING_MISMATCH')
+        for retained in observation['guardReceipts']:
+            if retained['Status'] == 'Committed':
+                require(retained['SigningRequestId'] != signing_id and retained['DetachedJwsDigest'] != signature_digest
+                        and retained['OperationId'] != issue_operation
+                        and (retained['Capability'] is None or capability_bytes(retained['Capability']) != capability_bytes(payload)), 'OBSOLETE_SIGNING_ATTEMPT_ISSUED')
+        next_summary = summaries[index + 1]
+        require(isinstance(next_summary, dict) and type(next_summary.get('SigningAttemptOrdinal')) is int
+                and next_summary['SigningAttemptOrdinal'] in by_attempt, 'SIGNING_ATTEMPT_ORDER_INVALID')
+        successor = by_attempt[next_summary['SigningAttemptOrdinal']][0]['Payload']
+        require(successor['IntendedIssuedGuardRevision'] == recovery['CurrentGuardRevision']
+                and successor['CapabilityKeyVersion'] == recovery['CurrentHealthyKeyVersion'], 'SIGNING_RECOVERY_SUCCESSOR_MISMATCH')
+    require(len(by_attempt) == len(ordered) and used_receipts == set(receipt_map) and used_recoveries == set(recovery_map)
+            and set(intent_map) == {receipt['OperationId'] for receipt in no_issues}, 'SIGNING_ORIGINAL_INVENTORY_MISMATCH')
+    require(all(following[0] >= previous[1] for previous, following in zip(original_observations, original_observations[1:])), 'SIGNING_PROOF_OBSERVATION_INVALID')
+    snapshot.recheck_pins()
 
 def p1363_der(signature):
     if len(signature) != 64:
@@ -852,9 +1089,10 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
     roots = observation['roots']
     require(sorted(target_key(r['target']) for r in roots) == sorted(map(target_key, targets)), 'ROOT_INVENTORY_MISMATCH')
     checks = set(case['checks'])
-    native_receipts = []
-    if 'capability' in checks or 'receipts' in checks or observation.get('consumptionRequests') is not None:
-        _, native_receipts = original_evidence(observation, targets, capability_trust, role_configs or {}, 'receipts' in checks, budget)
+    native_receipts, requests, capability_snapshot = [], {}, None
+    if 'capability' in checks or 'receipts' in checks or 'signing-attempts' in checks or observation.get('consumptionRequests') is not None:
+        capability_snapshot = validate_capability_trust(capability_trust, role_configs or {}, budget)
+        requests, native_receipts = original_evidence(observation, targets, capability_trust, role_configs or {}, 'receipts' in checks, budget, capability_snapshot)
     states = [r['state'] for r in roots]
     require(all(s in ('Active', 'Pinned', 'Destroyed') for s in states), 'ROOT_STATE_UNKNOWN')
     for record in observation['records']:
@@ -974,10 +1212,7 @@ def _evaluate(observation, case, targets, canary, commit, binary_sha, capability
                 and value['expectedBlockSetRevision'] == value['activatedBlockSetRevision'], 'RE_ATTESTATION_AUTHORITY_INVALID')
         bind_activation_original(observation)
     if 'signing-attempts' in checks:
-        attempts = observation['signingAttempts']
-        require(len(attempts) >= 3 and len({(a['DestructionSealId'], a['BatchId'], a['ManifestDigest'], a['AttestationOrdinal']) for a in attempts}) == 1, 'SIGNING_SUCCESSOR_CHANGED_LOGICAL_IDENTITY')
-        require([a['SigningAttemptOrdinal'] for a in attempts] == list(range(attempts[0]['SigningAttemptOrdinal'], attempts[0]['SigningAttemptOrdinal'] + len(attempts))) \
-                and all(a['status'] == 'SignedAttestationObsoleteUnissued' and a['exactNoIssueReceiptId'] for a in attempts[:-1]), 'STALE_SIGNING_NO_ISSUE_PROOF_MISSING')
+        signing_attempt_evidence(observation, requests, capability_snapshot)
 
 
 def rejection_statuses(step, checks):

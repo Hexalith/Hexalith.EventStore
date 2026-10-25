@@ -759,6 +759,345 @@ class CapabilityOriginalEvidenceTests(unittest.TestCase):
             with self.assertRaises(v.Failed):
                 self.evaluate(observed)
 
+    def signing_chain(self, attestation_ordinal=1, block_set_revision=0):
+        observed = copy.deepcopy(self.observation)
+        final_request = copy.deepcopy(self.request)
+        if attestation_ordinal != final_request['Capability']['AttestationOrdinal']:
+            final_request['Capability']['AttestationOrdinal'] = attestation_ordinal
+            final_request['DetachedJws'] = self.sign(final_request['Capability'])
+        final_signing_id = v.digest(v.capability_bytes(final_request['Capability'])).upper()
+        final_signature_digest = v.digest(final_request['DetachedJws'].encode()).upper()
+        observed['consumptionRequests'] = [copy.deepcopy(final_request)]
+        observed['guardBatches'][0].update(Capability=copy.deepcopy(final_request['Capability']), DetachedJws=final_request['DetachedJws'],
+                                          AttestationOrdinal=attestation_ordinal, SigningRequestId=final_signing_id,
+                                          AttestationDigest=final_signature_digest, BlockSetRevision=block_set_revision)
+        for receipt in observed['guardReceipts']:
+            receipt.update(Capability=copy.deepcopy(final_request['Capability']), SigningRequestId=final_signing_id,
+                           DetachedJwsDigest=final_signature_digest)
+        for field in ('ownerResults', 'ownerRetryResults', 'ownerLookupResults'):
+            for outcome in observed[field]:
+                outcome['KeyBlockSetRevision'] = block_set_revision
+        observed['ownerBatches'][0].update(Original=copy.deepcopy(final_request), Current=copy.deepcopy(final_request))
+        observed['ownerBatches'][0]['Outcome']['KeyBlockSetRevision'] = block_set_revision
+        second_private, second_public = self.key('second-capability')
+        second_trust = {**self.trust[0], 'keyVersion': 'rotated-v2', 'publicAnchorId': 'public-anchor-2',
+                        'publicAnchorFile': str(second_public), 'publicAnchorSha256': v.digest(second_public.read_bytes())}
+        self.trust.append(second_trust)
+        observed.update(signingAttempts=[], signingOriginals=[], noIssueOriginals=[], signingRecoveries=[], noIssueIntents=[])
+        final = final_request['Capability']
+        for index, revision, key_version in ((0, 10, 'retained-v1'), (1, 16, 'rotated-v2'), (2, 23, 'retained-v1')):
+            payload = {**final, 'SigningAttemptOrdinal': index + 1, 'IntendedIssuedGuardRevision': revision,
+                       'CapabilityKeyVersion': key_version}
+            entry = self.trust[1 if index == 1 else 0]
+            if index == 2:
+                jws = final_request['DetachedJws']
+            else:
+                header = v.base64url(v.canonical({'alg': 'ES256', 'anchorVersion': entry['publicAnchorVersion'],
+                                                'keyVersion': key_version, 'kid': entry['publicAnchorId'], 'typ': 'DeletionBatchCapabilityV1'}))
+                jws = header + '..' + v.base64url(self.signature((header + '.' + v.base64url(v.capability_bytes(payload))).encode(),
+                                                               second_private if index == 1 else self.private))
+            signing_id, signature_digest = v.digest(v.capability_bytes(payload)).upper(), v.digest(jws.encode()).upper()
+            original = {'SigningRequestId': signing_id, 'Payload': payload, 'State': 5 if index < 2 else 0,
+                        'DetachedJws': jws, 'PublicAnchorId': entry['publicAnchorId'], 'PublicAnchorVersion': entry['publicAnchorVersion']}
+            proof_id = None if index == 2 else 'native-no-issue-' + str(index)
+            summary = {key: payload[key] for key in ('DestructionSealId', 'BatchId', 'ManifestDigest', 'AttestationOrdinal', 'SigningAttemptOrdinal')}
+            summary.update(status='Signed' if index == 2 else 'SignedAttestationObsoleteUnissued', exactNoIssueReceiptId=proof_id)
+            observed['signingAttempts'].append(summary)
+            observed['signingOriginals'].append(original)
+            if index == 2:
+                continue
+            proof = {'Payload': payload, 'SigningRequestId': signing_id, 'DetachedJwsDigest': signature_digest,
+                     'ProofId': proof_id, 'CurrentGuardRevision': revision + 2, 'CurrentHealthyKeyVersion': key_version,
+                     'AuthorityRevision': 'original-authority-' + str(index),
+                     'ObservedAt': '2026-10-18T12:00:0' + str(index * 2) + '.1234567+00:00',
+                     'ValidUntil': '2026-10-18T12:00:0' + str(index * 2 + 1) + '.1234567+00:00'}
+            original['NoIssueProof'] = proof
+            recovery = {key: value for key, value in proof.items() if key != 'ProofId'}
+            recovery.update(NoIssueReceiptId=proof_id, CurrentGuardRevision=16 if index == 0 else 23,
+                            CurrentHealthyKeyVersion='rotated-v2' if index == 0 else 'retained-v1',
+                            AuthorityRevision='fresh-authority-' + str(index),
+                            ObservedAt='2026-10-18T12:00:0' + str(index * 2 + 1) + '.1234567+00:00',
+                            ValidUntil='2026-10-18T12:00:0' + str(index * 2 + 2) + '.1234567+00:00')
+            receipt = copy.deepcopy(self.observation['guardReceipts'][0])
+            receipt.update(OperationId='issue-' + v.digest([signing_id, signature_digest]).upper(), Status='Stale',
+                           GuardHighWater=revision + 1, AcceptedAtAdmissionFenceOrdinal=0, ReferenceId='', ReceiptId=proof_id,
+                           Capability=payload, SigningRequestId=signing_id, DetachedJwsDigest=signature_digest)
+            intent = self.native_no_issue_intent(original, operation=23 if attestation_ordinal > 1 else 18, block_set_revision=block_set_revision)
+            receipt['IntentDigest'] = v.digest(base64.b64decode(intent['BytesBase64'])).upper()
+            observed['noIssueIntents'].append(intent)
+            observed['noIssueOriginals'].append(receipt)
+            observed['signingRecoveries'].append(recovery)
+        return observed
+
+    def native_no_issue_intent(self, original, operation=18, block_set_revision=0):
+        payload = original['Payload']
+        batch = {'BatchId': payload['BatchId'], 'BatchKind': payload['BatchKind'], 'BatchOrdinal': payload['BatchOrdinal'],
+                 'Targets': self.targets, 'ManifestDigest': payload['ManifestDigest'], 'AttestationOrdinal': payload['AttestationOrdinal'],
+                 'CapabilityKeyVersion': payload['CapabilityKeyVersion'], 'AttestationDigest': v.digest(original['DetachedJws'].encode()).upper(),
+                 'ProtectionOutcome': '', 'ProtectionReceiptId': '', 'TargetReceiptIds': [], 'BlockSetRevision': block_set_revision,
+                 'Capability': {key: payload[key] for key in ('Issuer Audience TenantId DeletionRequestId DestructionSealId BatchKind BatchOrdinal BatchId ManifestDigest GuardStreamId IntendedIssuedGuardRevision AttestationOrdinal SigningAttemptOrdinal CapabilityKeyVersion').split()},
+                 'DetachedJws': original['DetachedJws'], 'SigningRequestId': original['SigningRequestId']}
+        batch['Targets'] = [{key: target[key] for key in ('TenantId', 'AgentInteractionId', 'TargetProtectionKeyAlias')} for target in self.targets]
+        command = {'TenantId': payload['TenantId'], 'OperationId': 'issue-' + v.digest([original['SigningRequestId'], batch['AttestationDigest']]).upper(),
+                   'Operation': operation, 'ExpectedGuardRevision': payload['IntendedIssuedGuardRevision'], 'EpochId': '',
+                   'DeletionRequestId': payload['DeletionRequestId'], 'Scope': None, 'Write': None, 'Repair': None, 'Ordinal': None,
+                   'Hold': None, 'Batch': batch, 'AuthorizationId': '', 'ReferenceId': '', 'BridgeOriginal': None, 'RevocationReceipt': None}
+        raw = v.native_json_bytes({'Transition': command, 'TargetMutationDigest': v.digest(b'[]').upper()})
+        return {'BytesBase64': base64.b64encode(raw).decode()}
+
+    def rewrite_no_issue_intent(self, observed, index, intent):
+        raw = v.native_json_bytes(intent)
+        observed['noIssueIntents'][index] = {'BytesBase64': base64.b64encode(raw).decode()}
+        observed['noIssueOriginals'][index]['IntentDigest'] = v.digest(raw).upper()
+
+    def evaluate_signing(self, observed):
+        v.evaluate(observed, {'steps': [], 'checks': ['erased', 'receipts', 'signing-attempts']},
+                   self.targets, b'offline-canary', 'a' * 40, 'b' * 64, self.trust, self.roles)
+
+    def test_native_two_stale_then_signed_chain_with_fresh_successor_basis_passes(self):
+        observed = self.signing_chain()
+        self.evaluate_signing(observed)
+        # The signed original alone has no issue/dispatch and is verified directly.
+        first = observed['signingOriginals'][0]
+        self.assertEqual(first['SigningRequestId'], v.validate_capability_signature(first['Payload'], first['DetachedJws'], self.trust, self.roles)[0])
+        observed['noIssueOriginals'][1].update(Status='IssuanceStale', ReferenceId=self.request['Capability']['BatchId'], AcceptedAtAdmissionFenceOrdinal=1,
+                                             GuardHighWater=observed['signingOriginals'][1]['Payload']['IntendedIssuedGuardRevision'])
+        intent = v.strict_json(base64.b64decode(observed['noIssueIntents'][1]['BytesBase64']))
+        intent['Transition'].update(Operation=19, AuthorizationId='native-stale-authorization')
+        self.rewrite_no_issue_intent(observed, 1, intent)
+        self.evaluate_signing(observed)
+        for count, accepted in ((1024, True), (1025, False)):
+            bounded = copy.deepcopy(observed)
+            bounded_intent = v.strict_json(base64.b64decode(bounded['noIssueIntents'][1]['BytesBase64']))
+            bounded_intent['Transition']['AuthorizationId'] = '😀' * count
+            self.rewrite_no_issue_intent(bounded, 1, bounded_intent)
+            if accepted:
+                self.evaluate_signing(bounded)
+            else:
+                with self.assertRaisesRegex(v.Failed, 'NO_ISSUE_COMMAND_AUTHORIZATION_INVALID'):
+                    self.evaluate_signing(bounded)
+        observed['noIssueOriginals'][1]['AcceptedAtAdmissionFenceOrdinal'] = 0
+        with self.assertRaisesRegex(v.Failed, 'NO_ISSUE_DELETION_ORDINAL_INVALID'):
+            self.evaluate_signing(observed)
+
+    def test_native_replacement_signing_chain_retains_attestation_and_block_set_revision(self):
+        observed = self.signing_chain(attestation_ordinal=2, block_set_revision=7)
+        self.evaluate_signing(observed)
+        self.assertEqual([2, 2, 2], [original['Payload']['AttestationOrdinal'] for original in observed['signingOriginals']])
+        for value in observed['noIssueIntents']:
+            command = v.strict_json(base64.b64decode(value['BytesBase64']))['Transition']
+            self.assertEqual(23, command['Operation'])
+            self.assertEqual(2, command['Batch']['AttestationOrdinal'])
+            self.assertEqual(7, command['Batch']['BlockSetRevision'])
+        self.assertEqual(7, observed['guardBatches'][0]['BlockSetRevision'])
+        self.assertEqual(7, observed['ownerResults'][0]['KeyBlockSetRevision'])
+
+    def test_signing_chain_reuses_one_verification_budget_cache_and_rechecks_all_pins(self):
+        observed = self.signing_chain()
+        with patch.object(v.subprocess, 'run', wraps=subprocess.run) as run:
+            self.evaluate_signing(observed)
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(3, sum(command[:2] == ['openssl', 'dgst'] for command in commands))
+        with patch.object(v, 'OBSERVATION_VERIFICATION_SECONDS', 0), patch.object(v.subprocess, 'run') as run:
+            with self.assertRaisesRegex(v.Blocked, 'OBSERVATION_VERIFICATION_DEADLINE'):
+                self.evaluate_signing(observed)
+            run.assert_not_called()
+        actual_run = subprocess.run
+        def drift_after_stale_signature(command, **kwargs):
+            result = actual_run(command, **kwargs)
+            if command[:2] == ['openssl', 'dgst']:
+                self.public.write_bytes(self.public.read_bytes() + b'\nchanged')
+            return result
+        with patch.object(v.subprocess, 'run', side_effect=drift_after_stale_signature):
+            with self.assertRaisesRegex(v.Blocked, 'INSTALLED_FILE_MISSING_OR_CHANGED'):
+                self.evaluate_signing(observed)
+
+    def test_signing_native_missing_duplicate_summary_schema_and_typed_ordinals_reject(self):
+        baseline = self.signing_chain()
+        for field in ('signingOriginals', 'noIssueOriginals', 'signingRecoveries', 'noIssueIntents'):
+            for mutation in ('missing', 'empty', 'duplicate', 'unmatched'):
+                with self.subTest(field=field, mutation=mutation):
+                    observed = copy.deepcopy(baseline)
+                    if mutation == 'missing':
+                        observed.pop(field)
+                    elif mutation == 'empty':
+                        observed[field] = []
+                    elif mutation == 'duplicate':
+                        observed[field][1] = copy.deepcopy(observed[field][0])
+                    else:
+                        observed[field].append(copy.deepcopy(observed[field][0]))
+                    with self.assertRaises(v.Failed):
+                        self.evaluate_signing(observed)
+        mutations = [(['signingOriginals', 0, 'State'], True), (['signingOriginals', 0, 'State'], '5'),
+                     (['signingOriginals', 2, 'State'], 5), (['signingOriginals', 0, 'Extra'], 'forged'),
+                     (['signingOriginals', 0, 'Payload', 'SigningAttemptOrdinal'], True),
+                     (['signingAttempts', 0, 'SigningAttemptOrdinal'], True),
+                     (['signingAttempts', 0, 'AttestationOrdinal'], True),
+                     (['signingAttempts', 1, 'SigningAttemptOrdinal'], 3),
+                     (['signingAttempts', 0, 'status'], 'Signed'),
+                     (['signingAttempts', 2, 'exactNoIssueReceiptId'], 'invented'),
+                     (['signingOriginals', 2, 'NoIssueProof'], baseline['signingOriginals'][0]['NoIssueProof']),
+                     (['noIssueOriginals', 0, 'GuardHighWater'], True),
+                     (['noIssueOriginals', 0, 'AcceptedAtAdmissionFenceOrdinal'], False),
+                     (['signingRecoveries', 0, 'CurrentGuardRevision'], True)]
+        for path, value in mutations:
+            with self.subTest(path=path):
+                observed = copy.deepcopy(baseline)
+                destination = observed
+                for key in path[:-1]:
+                    destination = destination[key]
+                destination[path[-1]] = copy.deepcopy(value)
+                with self.assertRaises(v.Failed):
+                    self.evaluate_signing(observed)
+
+    def test_signing_native_coherent_payload_and_signature_substitutions_reject(self):
+        baseline = self.signing_chain()
+        for field, value in (('Issuer', 'other'), ('Audience', 'other'), ('TenantId', 'tenant-b'),
+                             ('DeletionRequestId', 'other'), ('DestructionSealId', 'other'), ('BatchKind', 'Containment'),
+                             ('BatchOrdinal', 1), ('BatchId', 'other-batch'), ('ManifestDigest', 'F' * 64),
+                             ('GuardStreamId', 'other-guard'), ('AttestationOrdinal', 2)):
+            with self.subTest(field=field):
+                observed = copy.deepcopy(baseline)
+                original = observed['signingOriginals'][0]
+                original['Payload'][field] = value
+                # Retain native correlations and a valid signature where the same trust applies.
+                original['DetachedJws'] = self.sign(original['Payload'])
+                original['SigningRequestId'] = v.digest(v.capability_bytes(original['Payload'])).upper()
+                proof = original['NoIssueProof']
+                proof.update(Payload=copy.deepcopy(original['Payload']), SigningRequestId=original['SigningRequestId'],
+                             DetachedJwsDigest=v.digest(original['DetachedJws'].encode()).upper())
+                observed['signingRecoveries'][0].update(Payload=copy.deepcopy(proof['Payload']), SigningRequestId=proof['SigningRequestId'], DetachedJwsDigest=proof['DetachedJwsDigest'])
+                receipt = observed['noIssueOriginals'][0]
+                receipt.update(Capability=copy.deepcopy(proof['Payload']), SigningRequestId=proof['SigningRequestId'], DetachedJwsDigest=proof['DetachedJwsDigest'],
+                               OperationId='issue-' + v.digest([proof['SigningRequestId'], proof['DetachedJwsDigest']]).upper())
+                for key in ('DestructionSealId', 'BatchId', 'ManifestDigest', 'AttestationOrdinal'):
+                    observed['signingAttempts'][0][key] = original['Payload'][key]
+                with self.assertRaises(v.Failed):
+                    self.evaluate_signing(observed)
+        observed = copy.deepcopy(baseline)
+        original = observed['signingOriginals'][0]
+        header = original['DetachedJws'].split('.')[0]
+        original['DetachedJws'] = header + '..' + v.base64url(bytes(64))
+        signature_digest = v.digest(original['DetachedJws'].encode()).upper()
+        original['NoIssueProof']['DetachedJwsDigest'] = signature_digest
+        observed['signingRecoveries'][0]['DetachedJwsDigest'] = signature_digest
+        observed['noIssueOriginals'][0].update(DetachedJwsDigest=signature_digest,
+                                            OperationId='issue-' + v.digest([original['SigningRequestId'], signature_digest]).upper())
+        with self.assertRaisesRegex(v.Failed, 'CAPABILITY_SIGNATURE_INVALID'):
+            self.evaluate_signing(observed)
+
+    def test_obsolete_signatures_cannot_also_be_committed_or_reuse_final_issue_receipt_identity(self):
+        baseline = self.signing_chain()
+        for match in ('SigningRequestId', 'DetachedJwsDigest', 'Capability', 'OperationId'):
+            with self.subTest(committed_match=match):
+                observed = copy.deepcopy(baseline)
+                stale = observed['noIssueOriginals'][0]
+                committed = copy.deepcopy(observed['guardReceipts'][0])
+                committed.update(OperationId='another-committed-operation', ReceiptId='another-committed-receipt')
+                committed[match] = copy.deepcopy(stale[match])
+                observed['guardReceipts'].append(committed)
+                with self.assertRaises(v.Failed):
+                    self.evaluate_signing(observed)
+        observed = copy.deepcopy(baseline)
+        reused = observed['guardReceipts'][0]['ReceiptId']
+        observed['noIssueOriginals'][0]['ReceiptId'] = reused
+        observed['signingOriginals'][0]['NoIssueProof']['ProofId'] = reused
+        observed['signingRecoveries'][0]['NoIssueReceiptId'] = reused
+        observed['signingAttempts'][0]['exactNoIssueReceiptId'] = reused
+        with self.assertRaisesRegex(v.Failed, 'SIGNING_GUARD_ORIGINAL_IDENTITY_REUSED'):
+            self.evaluate_signing(observed)
+        # The exact same immutable stale receipt may appear in both independent inventories.
+        observed = copy.deepcopy(baseline)
+        observed['guardReceipts'].extend(copy.deepcopy(observed['noIssueOriginals']))
+        self.evaluate_signing(observed)
+
+    def test_no_issue_intent_requires_native_original_bytes_and_rejects_coherent_command_substitutions(self):
+        baseline = self.signing_chain()
+        observed = copy.deepcopy(baseline)
+        observed['noIssueOriginals'][0]['IntentDigest'] = 'F' * 64
+        with self.assertRaisesRegex(v.Failed, 'NO_ISSUE_INTENT_DIGEST_MISMATCH'):
+            self.evaluate_signing(observed)
+        mutations = [(['Transition', 'TenantId'], 'tenant-b'), (['Transition', 'DeletionRequestId'], 'other-request'),
+                     (['Transition', 'OperationId'], 'caller-derived-issue'), (['Transition', 'Operation'], 21),
+                     (['Transition', 'Operation'], True), (['Transition', 'ExpectedGuardRevision'], 99),
+                     (['Transition', 'Write'], {}), (['Transition', 'EpochId'], 'unrelated-epoch'),
+                     (['Transition', 'AuthorizationId'], 'unexpected-authorization'),
+                     (['Transition', 'Batch', 'Targets', 0, 'TargetProtectionKeyAlias'], 'other-alias'),
+                     (['Transition', 'Batch', 'BatchId'], 'other-batch'),
+                     (['Transition', 'Batch', 'ManifestDigest'], 'F' * 64),
+                     (['Transition', 'Batch', 'SigningRequestId'], 'F' * 64),
+                     (['Transition', 'Batch', 'DetachedJws'], 'other-signature'),
+                     (['Transition', 'Batch', 'AttestationDigest'], 'F' * 64),
+                     (['Transition', 'Batch', 'ProtectionOutcome'], 'Consumed'),
+                     (['Transition', 'Batch', 'BlockSetRevision'], 1),
+                     (['Transition', 'Batch', 'Capability', 'TenantId'], 'tenant-b'),
+                     (['TargetMutationDigest'], 'F' * 64)]
+        for path, value in mutations:
+            with self.subTest(path=path):
+                observed = copy.deepcopy(baseline)
+                intent = v.strict_json(base64.b64decode(observed['noIssueIntents'][0]['BytesBase64']))
+                destination = intent
+                for key in path[:-1]:
+                    destination = destination[key]
+                destination[path[-1]] = value
+                # Keep the receipt hash coherent with the substituted full raw command.
+                if type(value) is bool:
+                    raw = v.canonical(intent)
+                    observed['noIssueIntents'][0]['BytesBase64'] = base64.b64encode(raw).decode()
+                    observed['noIssueOriginals'][0]['IntentDigest'] = v.digest(raw).upper()
+                else:
+                    self.rewrite_no_issue_intent(observed, 0, intent)
+                with self.assertRaises(v.Failed):
+                    self.evaluate_signing(observed)
+        observed = copy.deepcopy(baseline)
+        raw = base64.b64decode(observed['noIssueIntents'][0]['BytesBase64'])
+        observed['noIssueIntents'][0]['BytesBase64'] = base64.b64encode(raw + b' ').decode()
+        observed['noIssueOriginals'][0]['IntentDigest'] = v.digest(raw + b' ').upper()
+        with self.assertRaisesRegex(v.Failed, 'NO_ISSUE_INTENT_NATIVE_BYTES_MISMATCH'):
+            self.evaluate_signing(observed)
+
+    def test_signing_original_recovery_guard_identity_key_revision_and_time_substitutions_reject(self):
+        baseline = self.signing_chain()
+        mutations = [(['signingOriginals', 0, 'PublicAnchorId'], 'other'),
+                     (['signingOriginals', 0, 'PublicAnchorVersion'], 'other'),
+                     (['signingOriginals', 0, 'SigningRequestId'], 'F' * 64),
+                     (['signingOriginals', 0, 'NoIssueProof', 'ProofId'], 'other'),
+                     (['signingOriginals', 0, 'NoIssueProof', 'Payload', 'Audience'], 'other'),
+                     (['signingOriginals', 0, 'NoIssueProof', 'CurrentGuardRevision'], 10),
+                     (['signingOriginals', 0, 'NoIssueProof', 'ObservedAt'], 'not-a-timestamp'),
+                     (['signingOriginals', 0, 'NoIssueProof', 'ValidUntil'], '2026-10-18T12:00:00.1234567Z'),
+                     (['signingRecoveries', 0, 'NoIssueReceiptId'], 'other'),
+                     (['signingRecoveries', 0, 'SigningRequestId'], 'F' * 64),
+                     (['signingRecoveries', 0, 'DetachedJwsDigest'], 'F' * 64),
+                     (['signingRecoveries', 0, 'CurrentHealthyKeyVersion'], 'wrong-current-key'),
+                     (['signingRecoveries', 0, 'CurrentGuardRevision'], 17),
+                     (['signingRecoveries', 0, 'AuthorityRevision'], ''),
+                     (['signingRecoveries', 0, 'ObservedAt'], '2026-10-18T12:00:00.1234566Z'),
+                     (['signingRecoveries', 0, 'ObservedAt'], '2026-10-18T12:00:01.1234567+14:01'),
+                     (['signingRecoveries', 0, 'ValidUntil'], '2026-10-18T12:00:01.1234567Z'),
+                     (['noIssueOriginals', 0, 'OperationId'], 'caller-issue-operation'),
+                     (['noIssueOriginals', 0, 'ReceiptId'], 'other'), (['noIssueOriginals', 0, 'ReferenceId'], 'other-batch'),
+                     (['noIssueOriginals', 0, 'Capability', 'TenantId'], 'tenant-b'),
+                     (['noIssueOriginals', 0, 'Status'], 'Committed'), (['noIssueOriginals', 0, 'GuardHighWater'], 100),
+                     (['noIssueOriginals', 0, 'SigningRequestId'], 'F' * 64),
+                     (['noIssueOriginals', 0, 'DetachedJwsDigest'], 'F' * 64),
+                     (['noIssueOriginals', 0, 'AcceptedWriteResourceId'], 'effect'),
+                     (['signingAttempts', 0, 'exactNoIssueReceiptId'], 'other')]
+        for path, value in mutations:
+            with self.subTest(path=path):
+                observed = copy.deepcopy(baseline)
+                destination = observed
+                for key in path[:-1]:
+                    destination = destination[key]
+                destination[path[-1]] = value
+                with self.assertRaises(v.Failed):
+                    self.evaluate_signing(observed)
+        observed = copy.deepcopy(baseline)
+        # Another genuine signature over the same final payload is not the consumed original signature.
+        observed['signingOriginals'][2]['DetachedJws'] = self.sign(observed['signingOriginals'][2]['Payload'])
+        with self.assertRaisesRegex(v.Failed, 'FINAL_SIGNING_CONSUMPTION_MISMATCH'):
+            self.evaluate_signing(observed)
+
     def test_irreversible_flags_and_summary_capabilities_cannot_replace_native_originals(self):
         observed = copy.deepcopy(self.observation)
         observed.pop('consumptionRequests')

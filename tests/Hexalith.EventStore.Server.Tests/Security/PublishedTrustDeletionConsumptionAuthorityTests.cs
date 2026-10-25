@@ -540,11 +540,10 @@ public sealed class PublishedTrustDeletionConsumptionAuthorityTests
         const string goodDigest = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
         var journal = Substitute.For<IAnchoredStateTransitionAuthority>();
         string rejected = new string('B', 64);
-        bool rejectAuthorize = false;
         journal.VerifyTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             string text = Encoding.UTF8.GetString(call.Arg<AnchoredStateTransition>().TargetBytes);
-            return !(rejectAuthorize && text.StartsWith("authorize\n", StringComparison.Ordinal)) && !text.Contains(rejected, StringComparison.Ordinal);
+            return !text.Contains(rejected, StringComparison.Ordinal);
         });
         journal.AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true);
         var revocations = Substitute.For<IPublishedTrustRevocationEvidence>();
@@ -588,30 +587,17 @@ public sealed class PublishedTrustDeletionConsumptionAuthorityTests
         world.Guard.ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(ActivationState(world, "AdmissionBlocked"));
         (await authority.VerifyActivationAsync(activation, TestContext.Current.CancellationToken)).ShouldBeFalse();
 
-        world.Guard.ReadAsync("tenant-b", Arg.Any<CancellationToken>()).Returns(world.State);
-        (await authority.AuthorizeOperationAsync("tenant-b", "batch-a", "ReserveAndConsumeDeletionBatch", TestContext.Current.CancellationToken)).ShouldBeFalse();
-        world.Guard.ReadAsync("tenant-a", Arg.Any<CancellationToken>()).Returns(world.State);
-        (await authority.AuthorizeOperationAsync("tenant-a", "batch-a", "ReserveAndConsumeDeletionBatch", TestContext.Current.CancellationToken)).ShouldBeTrue();
-        rejectAuthorize = true;
+        // Separate restrictive evidence is not installation or owner-state authority.
         (await authority.AuthorizeOperationAsync("tenant-a", "batch-a", "ReserveAndConsumeDeletionBatch", TestContext.Current.CancellationToken)).ShouldBeFalse();
-        rejectAuthorize = false;
-        (await authority.ValidateStateAsync("tenant-a", 0, goodDigest, TestContext.Current.CancellationToken)).ShouldBeFalse();
-        (await authority.ValidateStateAsync("tenant-a", world.State.Revision, goodDigest, TestContext.Current.CancellationToken)).ShouldBeTrue();
-        (await authority.ValidateStateAsync("tenant-a", world.State.Revision, rejected, TestContext.Current.CancellationToken)).ShouldBeFalse();
-        (await authority.ValidateStateAsync("tenant-a", world.State.Revision - 1, goodDigest, TestContext.Current.CancellationToken)).ShouldBeFalse();
-        (await authority.RecordRevisionAsync("tenant-a", world.State.Revision - 1, world.State.Revision, goodDigest, TestContext.Current.CancellationToken)).ShouldBeTrue();
-        (await authority.AdmitTransitionAsync(SampleTransition(goodDigest.Select(static _ => (byte)_).Take(8).ToArray()), TestContext.Current.CancellationToken)).ShouldBeTrue();
+        (await authority.ValidateStateAsync("tenant-a", world.State.Revision, goodDigest, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.RecordRevisionAsync("tenant-a", world.State.Revision - 1, world.State.Revision, goodDigest, TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.AdmitTransitionAsync(SampleTransition(), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.RecordTransitionAsync(SampleTransition(), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.RecoverTransitionAsync(SampleTransition(), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        (await authority.VerifyTransitionAsync(SampleTransition(), TestContext.Current.CancellationToken)).ShouldBeFalse();
+        await journal.DidNotReceive().AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
         await journal.DidNotReceive().RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
-        await journal.Received(1).AdmitTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>());
-        journal.RecoverTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true, false);
-        journal.RecordTransitionAsync(Arg.Any<AnchoredStateTransition>(), Arg.Any<CancellationToken>()).Returns(true, false);
-        AnchoredStateTransition forwarded = SampleTransition();
-        (await authority.RecoverTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeTrue();
-        (await authority.RecordTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeTrue();
-        (await authority.VerifyTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeTrue();
-        (await authority.RecoverTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeFalse();
-        (await authority.RecordTransitionAsync(forwarded, TestContext.Current.CancellationToken)).ShouldBeFalse();
-        (await authority.VerifyTransitionAsync(SampleTransition(Encoding.UTF8.GetBytes(rejected)), TestContext.Current.CancellationToken)).ShouldBeFalse();
+
     }
 
     private static IProtectionAnchorStore AnchorStore(

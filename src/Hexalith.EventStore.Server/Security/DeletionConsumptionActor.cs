@@ -114,6 +114,10 @@ public sealed class DeletionConsumptionActor(ActorHost host, IDeletionConsumptio
     public const string ActorTypeName = "DeletionConsumptionActor";
     /// <summary>Gets the exact same-tenant actor shared by reserve, block, revocation and activation.</summary>
     public static string GetActorId(string tenantId) => new AggregateIdentity(tenantId, "protection", "deletion-consumption-v23").ActorId;
+    /// <summary>Returns the exact actor/private-ledger scope independently enrolled for owner currentness and transition proofs.</summary>
+    /// <param name="tenantId">Canonical tenant whose actor owns the ledger.</param>
+    /// <returns>The actor identity and private ledger purpose.</returns>
+    public static string GetOwnerScope(string tenantId) => GetActorId(tenantId) + "|" + StateKey;
     private async Task<DeletionConsumptionOutcome> RegisterEntryAsync(DeletionBatchConsumptionRequest request)
     {
         ArgumentNullException.ThrowIfNull(request); Check(request.Capability.TenantId);

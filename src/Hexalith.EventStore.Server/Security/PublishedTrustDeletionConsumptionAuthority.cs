@@ -20,17 +20,34 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     private readonly IGovernanceScopeGuard _guard;
     private readonly IAnchoredStateTransitionAuthority? _journal;
     private readonly IPublishedTrustRevocationEvidence? _revocations;
+    private readonly IDeletionConsumptionOwnerStateAuthority[] _ownerAuthorities;
 
-    /// <summary>Creates the authority from injected published trust and a guard that is reread on every check.</summary>
-    /// <param name="publishedTrust">Published trust entries. Dispatch requires one unrevoked match; exact independently authenticated successor reconciliation may use its retained verifier.</param>
-    /// <param name="guard">Fresh guard reader. Each dispatch check reads it twice and keeps neither result.</param>
-    /// <param name="journal">Independent transition journal. Null denies operation, state, revision, and the four transition methods. This authority does not mint anchors.</param>
-    /// <param name="revocations">Injected revocation evidence. Null denies revocation and activation.</param>
+    /// <summary>Creates the authority with the existing fail-closed public signature and no owner installation.</summary>
+    /// <param name="publishedTrust">Independently published retained capability trust.</param>
+    /// <param name="guard">Fresh exact guard reader.</param>
+    /// <param name="journal">Separate restrictive evidence journal; omission denies those checks.</param>
+    /// <param name="revocations">Independent revocation/successor evidence.</param>
     public PublishedTrustDeletionConsumptionAuthority(
         IReadOnlyList<PublishedDeletionCapabilityTrust> publishedTrust,
         IGovernanceScopeGuard guard,
         IAnchoredStateTransitionAuthority? journal = null,
         IPublishedTrustRevocationEvidence? revocations = null)
+        : this(publishedTrust, guard, journal, revocations, null)
+    {
+    }
+
+    /// <summary>Creates the authority from independently published trust and explicit owner installations.</summary>
+    /// <param name="publishedTrust">Published trust entries. Dispatch requires one unrevoked match; exact independently authenticated successor reconciliation may use its retained verifier.</param>
+    /// <param name="guard">Fresh guard reader. Each dispatch check reads it twice and keeps neither result.</param>
+    /// <param name="journal">Independent transition journal. Null denies the separate admission, revocation and successor evidence checks. This authority does not mint anchors.</param>
+    /// <param name="revocations">Injected revocation evidence. Null denies revocation and activation.</param>
+    /// <param name="ownerAuthorities">Independently installed tenant/actor-scope owner authorities. Missing or ambiguous enrollment denies owner operations, currentness and transitions.</param>
+    public PublishedTrustDeletionConsumptionAuthority(
+        IReadOnlyList<PublishedDeletionCapabilityTrust> publishedTrust,
+        IGovernanceScopeGuard guard,
+        IAnchoredStateTransitionAuthority? journal,
+        IPublishedTrustRevocationEvidence? revocations,
+        IReadOnlyList<IDeletionConsumptionOwnerStateAuthority>? ownerAuthorities)
     {
         ArgumentNullException.ThrowIfNull(publishedTrust);
         ArgumentNullException.ThrowIfNull(guard);
@@ -43,26 +60,24 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         _guard = guard;
         _journal = journal;
         _revocations = revocations;
+        _ownerAuthorities = ownerAuthorities?.ToArray() ?? [];
     }
 
     /// <inheritdoc />
     public async Task<bool> AuthorizeOperationAsync(string tenantId, string identity, string operation, CancellationToken cancellationToken = default)
     {
-        if (_journal is null || !Text(tenantId) || !Text(identity) || !Text(operation))
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!Text(identity) || !Text(operation))
         {
             return false;
         }
 
         try
         {
+            IDeletionConsumptionOwnerStateAuthority? owner = OwnerForTenant(tenantId);
+            bool authorized = owner is not null && await owner.AuthorizeOperationAsync(identity, operation, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            TenantGovernanceGuardState? state = await _guard.ReadAsync(tenantId, cancellationToken).ConfigureAwait(false);
-            if (state is null || state.TenantId != tenantId || state.Revision < 1)
-            {
-                return false;
-            }
-
-            return await _journal.VerifyTransitionAsync(Proof("authorize", tenantId, identity, state.Revision, operation), cancellationToken).ConfigureAwait(false);
+            return authorized;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -70,6 +85,7 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         }
         catch (Exception)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return false;
         }
     }
@@ -77,21 +93,20 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     /// <inheritdoc />
     public async Task<bool> ValidateStateAsync(string tenantId, long revision, string exactStateDigest, CancellationToken cancellationToken = default)
     {
-        if (_journal is null || !Text(tenantId) || revision < 1 || !Hex(exactStateDigest))
+        cancellationToken.ThrowIfCancellationRequested();
+        if (revision < 0 || !Hex(exactStateDigest))
         {
             return false;
         }
 
         try
         {
+            IDeletionConsumptionOwnerStateAuthority? owner = OwnerForTenant(tenantId);
+            // Revision zero is only a candidate: the independent owner must select the
+            // exact enrolled genesis. Local absence never enrolls or resets that owner.
+            bool current = owner is not null && await owner.ValidateStateAsync(revision, exactStateDigest, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            TenantGovernanceGuardState? state = await _guard.ReadAsync(tenantId, cancellationToken).ConfigureAwait(false);
-            if (state is null || state.TenantId != tenantId || state.Revision != revision)
-            {
-                return false;
-            }
-
-            return await _journal.VerifyTransitionAsync(Proof("state", tenantId, "state", revision, exactStateDigest), cancellationToken).ConfigureAwait(false);
+            return current;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -99,37 +114,19 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         }
         catch (Exception)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return false;
         }
     }
 
     /// <inheritdoc />
-    public async Task<bool> RecordRevisionAsync(string tenantId, long expectedRevision, long nextRevision, string exactStateDigest, CancellationToken cancellationToken = default)
+    public Task<bool> RecordRevisionAsync(string tenantId, long expectedRevision, long nextRevision, string exactStateDigest, CancellationToken cancellationToken = default)
     {
-        if (_journal is null || !Text(tenantId) || nextRevision < 1 || nextRevision != expectedRevision + 1 || !Hex(exactStateDigest))
-        {
-            return false;
-        }
-
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            TenantGovernanceGuardState? state = await _guard.ReadAsync(tenantId, cancellationToken).ConfigureAwait(false);
-            if (state is null || state.TenantId != tenantId || state.Revision != expectedRevision && state.Revision != nextRevision)
-            {
-                return false;
-            }
-
-            return await _journal.VerifyTransitionAsync(Proof("revision", tenantId, "revision", nextRevision, exactStateDigest), cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        // Compatibility is read-only: only an actual admitted transition may advance.
+        return expectedRevision < 0 || expectedRevision == long.MaxValue || nextRevision != expectedRevision + 1
+            ? Task.FromResult(false)
+            : ValidateStateAsync(tenantId, nextRevision, exactStateDigest, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -391,28 +388,30 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
     public Task<bool> VerifyTransitionAsync(AnchoredStateTransition transition, CancellationToken cancellationToken = default)
         => DelegateTransition(transition, static (journal, value, token) => journal.VerifyTransitionAsync(value, token), cancellationToken);
 
-    private Task<bool> DelegateTransition(
+    private async Task<bool> DelegateTransition(
         AnchoredStateTransition transition,
         Func<IAnchoredStateTransitionAuthority, AnchoredStateTransition, CancellationToken, Task<bool>> call,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (_journal is null || transition is null)
-        {
-            return Task.FromResult(false);
-        }
-
-        return InvokeTransition(call, transition, cancellationToken);
-    }
-
-    private async Task<bool> InvokeTransition(
-        Func<IAnchoredStateTransitionAuthority, AnchoredStateTransition, CancellationToken, Task<bool>> call,
-        AnchoredStateTransition transition,
-        CancellationToken cancellationToken)
-    {
         try
         {
-            return await call(_journal!, transition, cancellationToken).ConfigureAwait(false);
+            if (transition is null)
+            {
+                return false;
+            }
+
+            IDeletionConsumptionOwnerStateAuthority[] owners = _ownerAuthorities
+                .Where(owner => owner is not null && owner.ScopeId == transition.ScopeId && OwnerForTenant(owner.TenantId) == owner).ToArray();
+            if (owners.Length != 1)
+            {
+                return false;
+            }
+
+            // Forward the actor's original scope, predecessor, target and bytes unchanged.
+            bool accepted = await call(owners[0], transition, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return accepted;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -420,8 +419,28 @@ public sealed class PublishedTrustDeletionConsumptionAuthority : IDeletionConsum
         }
         catch (Exception)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return false;
         }
+    }
+
+    private IDeletionConsumptionOwnerStateAuthority? OwnerForTenant(string tenantId)
+    {
+        if (!Text(tenantId))
+        {
+            return null;
+        }
+
+        string scope = DeletionConsumptionActor.GetOwnerScope(tenantId);
+        // Actor identities canonicalize tenants; callers must already use that canonical tenant.
+        if (!scope.StartsWith(tenantId + ":", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        IDeletionConsumptionOwnerStateAuthority[] matches = _ownerAuthorities
+            .Where(owner => owner is not null && owner.TenantId == tenantId).ToArray();
+        return matches.Length == 1 && matches[0].ScopeId == scope ? matches[0] : null;
     }
 
     private static AnchoredStateTransition Proof(string kind, string tenantId, string identity, long revision, string material)

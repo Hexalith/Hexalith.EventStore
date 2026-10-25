@@ -10,7 +10,7 @@ public interface IDeletionConsumptionAuthority : IAnchoredStateTransitionAuthori
 {
     /// <summary>Authenticates current private caller/credential for exact tenant/batch-or-revocation identity and named actor method, independently of immutable outcome retention.</summary>
     Task<bool> AuthorizeOperationAsync(string tenantId, string identity, string operation, CancellationToken cancellationToken = default);
-    /// <summary>Authenticates the independently installed protection owner and exact tenant/revision/owned safe-state digest, including initial absence. Rollback or divergent restore denies all reads and effects.</summary>
+    /// <summary>Authenticates the independently installed protection owner and exact tenant/revision/owned safe-state digest, including independently enrolled revision-zero genesis. Local absence never enrolls authority; rollback or divergent restore denies all reads and effects.</summary>
     Task<bool> ValidateStateAsync(string tenantId, long revision, string exactStateDigest, CancellationToken cancellationToken = default);
     /// <summary>Deprecated compatibility-only legacy anchor hook; current recoverable actors do not invoke it.
     /// Qualified implementations must implement the mandatory inherited IAnchoredStateTransitionAuthority admitted-original admission/recovery
