@@ -1,6 +1,6 @@
 # EXT-CONV-AI-1 EventStore authority handoff
 
-This delivery implements the EventStore components described by `spec-ext-conv-ai-1-eventstore-authorities.md`. It does not establish an installed Conversations catalogue, an accepted successor dependency target, or Live qualification. Installed targets, public-anchor hashes, credentials, storage bindings and inventory qualification remain **unverified**. No Live owner command or cohort attempt was executed; Agents Story 8.3 and RQ-1 Level 5 remain gated.
+This delivery implements the EventStore components described by [the approved specification](../../_bmad-output/implementation-artifacts/spec-ext-conv-ai-1-eventstore-authorities.md). It does not establish an installed Conversations catalogue, an accepted successor dependency target, or Live qualification. Installed targets, public-anchor hashes, credentials, storage bindings and inventory qualification remain **unverified**. No Live owner command or cohort attempt was executed; Agents Story 8.3 and RQ-1 Level 5 remain gated.
 
 ## Implemented providers
 
@@ -78,7 +78,7 @@ The dedicated service Party, worker/machine binding, approval issuer, delivery t
 
 ## HTTP request-size installation requirements
 
-The complete-source HTTP request carries event payloads in both current state and the native-source carrier. Base64 expansion means the 16 MiB application-event budget is not a 16 MiB HTTP budget. The concrete invoker/handler/SDK endpoint test measures actual serialized bytes for a near-limit event and records that count in its test output; this is an in-process HTTP component measurement, not installed sidecar or Kestrel qualification. Installation must measure the full approved worst-case request, including command bytes, event count and metadata, then explicitly bound every hop above that size with an accepted margin.
+The complete-source HTTP request carries event payloads in both current state and the native-source carrier. Base64 expansion means the 16 MiB application-event budget is not a 16 MiB HTTP budget. The concrete invoker/handler/SDK endpoint test measured **44,739,133 HTTP body bytes for 16,776,192 application-event bytes**; its small-event control measured 2,629 body bytes for a two-byte event. These are in-process HTTP component measurements, not installed sidecar or Kestrel qualification. Installation must measure the full approved worst-case request, including command bytes, event count and metadata, then explicitly bound every hop above that size with an accepted margin. The measured near-limit request already exceeds both defaults below.
 
 [Dapr's request-size documentation](https://docs.dapr.io/operations/configuration/increase-request-size/) specifies a 4 MB default and the current `--max-body-size` / `dapr.io/max-body-size` settings; the old HTTP request-size setting is deprecated. [Kestrel's request-size documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-10.0#maximum-request-body-size) specifies a default `MaxRequestBodySize` of 30,000,000 bytes and requires overrides before the body is read. The owner must qualify the EventStore-side and receiver-side Dapr limits, the receiving host's limit and any proxy limits against the measured request envelope. No runtime configuration, default limit, installed hash or Live probe was changed here.
 
@@ -91,15 +91,38 @@ dotnet build "tests/Hexalith.EventStore.${lane}.Tests/Hexalith.EventStore.${lane
 dotnet "tests/Hexalith.EventStore.${lane}.Tests/bin/Debug/net10.0/Hexalith.EventStore.${lane}.Tests.dll" -class '*CommandSource*' -class '*SourcePublication*' -class '*DomainServiceWorkloadAssertion*' -class '*DaprDomainServiceInvoker*'
 ```
 
-Pre-review run on 2026-10-25, serialized in the lane order above (the review fixes have focused evidence recorded separately; the owner runs final full verification):
+Final coordinating-owner run on 2026-10-25, after all review fixes, serialized in the lane order above against source observation `dee8497458bfc92e094ac66fb977b2eddabd6c93` and its current dependency graph. This observation is not an accepted installed target:
 
 | Lane | Build | Selected cases | Failures / skips |
 | --- | --- | ---: | --- |
-| Server | Exit 0; 0 warnings, 0 errors | 88 | 0 / 0 |
-| DomainService | Exit 0; 0 warnings, 0 errors | 13 | 0 / 0 |
-| ServiceDefaults | Exit 0; 0 warnings, 0 errors | 3 | 0 / 0 |
+| Server | Exit 0; 0 warnings, 0 errors | 116 | 0 / 0 |
+| DomainService | Exit 0; 0 warnings, 0 errors | 23 | 0 / 0 |
+| ServiceDefaults | Exit 0; 0 warnings, 0 errors | 4 | 0 / 0 |
 | Client | Exit 0; 0 warnings, 0 errors | 143 | 0 / 0 |
 
-All eight commands exited 0: **247 selected cases passed**. The ServiceDefaults cases exercise actual RSA signing-to-local-validator round trips for all three binding families, including disabled/revoked grant and exact-scope negatives. Server cases exercise the concrete provider and authenticated primary actors through serialized persisted state, competing registration, command reply loss/restart and consecutive heads, independent source/receiver lookup, receipt/anchor response loss, receiver and epoch successor registration, expired-cut fresh generations including lost unmirrored issuance, primary rollback, changed predecessors and durable no-skip poison. Existing Client and workload/invoker compatibility suites also pass. Native temporary logs are `/tmp/ext-conv-ai-1-{server,domainservice,servicedefaults,client}-{build,tests}.log`; the commands and counts here retain the repository proof summary.
+All eight commands exited 0: **286 selected cases passed**. The ServiceDefaults cases exercise actual RSA signing-to-local-validator round trips for all three binding families, including disabled/revoked grant and exact-scope negatives. Server cases exercise the concrete provider and authenticated primary actors through serialized persisted state, competing registration, command reply loss/restart and consecutive heads, independent source/receiver lookup, receipt/anchor response loss, receiver and epoch successor registration, expired-cut fresh generations including lost unmirrored issuance, primary rollback, changed predecessors and durable no-skip poison. Existing Client and workload/invoker compatibility suites also pass. Final native logs and command receipts are `/tmp/ext-conv-ai-1-root-final-nfxx9t5q/{server,domainservice,servicedefaults,client}-{build,tests}.log` and `results.json`; the commands and counts here retain the repository proof summary.
 
 These are component tests using serialized actor-state ownership, fault injection and synthetic trusted installation/observation ports. They do not qualify a production store, workload ACL, complete inventory or Live C1–C4 installation. No broad solution test, Live owner command, dependency acceptance or installation was run.
+
+### Focused review-fix verification
+
+The review-fix pass builds only the Server and DomainService test projects with the same Debug/project-reference/serialized build command above. Both builds exited 0 with zero warnings and errors. It then runs only the affected classes:
+
+```bash
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*SourcePublicationAuthorityTests' -class '*AggregateActorCommandSourceTests' -class '*InteractionProtectionPersistenceTests' -class '*DaprDomainServiceInvokerTests' -class '*CommandSourceAuthorityTests'
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll -class '*CompleteCommandSourceTests'
+```
+
+Results: **109 Server and 23 DomainService cases passed; zero failures or skips**. The RSA source also compiles into the already configured Server CI lane via the existing linked-source pattern, while its standalone focused project remains. The sealed CI workflow was not edited. Additional cases cover acknowledged source/roster growth, late revocation/expiry before actual save, original-body verification before administrator normalization through the real JWT/app-channel SDK endpoint, independent journal rejection of fabricated or incomplete index vectors, uncertain observations without poison, finite cancellation/timeout with released actor turns, actual serialized journal capacity, maximum joint source identities, and processor context lifetime. Logs use `/tmp/ext-conv-ai-1-review-{server,domainservice}-{build,tests}.log`. The final coordinating-owner four-lane result above supersedes these intermediate counts. All review findings were patched; none was deferred. Additional root checks cover cancellation forwarding on the current graph.
+
+
+### Shared-path regression verification
+
+The coordinator also ran the built DomainService assembly without class filters, then the shared actor and authentication classes:
+
+```bash
+dotnet tests/Hexalith.EventStore.DomainService.Tests/bin/Debug/net10.0/Hexalith.EventStore.DomainService.Tests.dll
+dotnet tests/Hexalith.EventStore.Server.Tests/bin/Debug/net10.0/Hexalith.EventStore.Server.Tests.dll -class '*AggregateActor*' -class '*Administrator*' -class '*Workload*' -class '*QueryCallerAuthority*'
+```
+
+Both commands exited 0. DomainService: 1,241 total, **1,240 passed**, zero failed, one existing opt-in test skipped (`ContentPersistenceQualificationTests.PersistedBytesSurviveSidecarProcessReplacementAndRejectCorruption`). Its `EVENTSTORE_CONTENT_LIVE=1` switch was not enabled. Actor/authentication: **488 passed**, zero failures/skips. Logs and exact commands are retained in `/tmp/ext-conv-ai-1-root-final-nfxx9t5q/{domainservice,server}-regressions.log` and `regressions.json`. The focused 286-case requirement has no skips. These broader counts overlap the focused classes and are not a unique-case aggregate.

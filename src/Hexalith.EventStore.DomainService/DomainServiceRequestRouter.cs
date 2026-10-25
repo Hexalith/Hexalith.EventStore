@@ -30,6 +30,7 @@ public static class DomainServiceRequestRouter {
         CancellationToken cancellationToken = default)
         => await ProcessAdmittedSourceAsync(serviceProvider, request, AdmitCompleteSource(serviceProvider, request), cancellationToken).ConfigureAwait(false);
 
+    /// <summary>Authenticates the original request before trusted administrator normalization.</summary>
     internal static CompleteCommandSource? AdmitCompleteSource(IServiceProvider serviceProvider, DomainServiceRequest request)
     {
         ArgumentNullException.ThrowIfNull(serviceProvider); ArgumentNullException.ThrowIfNull(request);
@@ -42,6 +43,7 @@ public static class DomainServiceRequestRouter {
         return new CompleteCommandSourceVerifier(serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System).Verify(request, http.User, platform);
     }
 
+    /// <summary>Routes trusted normalized input while exposing its previously admitted source only for this invocation.</summary>
     internal static async Task<DomainServiceWireResult> ProcessAdmittedSourceAsync(IServiceProvider serviceProvider,
         DomainServiceRequest request, CompleteCommandSource? completeSource, CancellationToken cancellationToken)
     {

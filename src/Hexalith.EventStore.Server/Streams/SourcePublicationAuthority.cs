@@ -19,6 +19,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
     Microsoft.AspNetCore.Http.IHttpContextAccessor? httpContextAccessor = null)
     : ISourcePublicationNamespaceAuthority, ISourcePublicationOperationAuthority, ICompleteCommandSourceAuthority
 {
+    /// <summary>Creates one finite observation budget for an authenticated primary owner turn.</summary>
     internal AuthoritativeStreamReadDeadline CreateObservationDeadline(CancellationToken cancellationToken = default)
         => new(TimeSpan.FromSeconds(30), clock, cancellationToken.CanBeCanceled ? cancellationToken
             : httpContextAccessor?.HttpContext?.RequestAborted ?? CancellationToken.None, clock.GetTimestamp());
@@ -48,6 +49,7 @@ public sealed class SourcePublicationAuthority(SourcePublicationAuthorityClient 
             installed.Revision, RecoverableAnchoredState.Digest(installed))) return null;
         return new(current.Enrollment.Epoch, current.Enrollment.ValidUntil);
     }
+    /// <summary>Verifies current enrollment and the exact primary operation assertion.</summary>
     internal async Task<bool> AuthenticateAsync(SourcePublicationAuthorityCall call)
     {
         var state = await CurrentAsync(call.Scope).ConfigureAwait(false);

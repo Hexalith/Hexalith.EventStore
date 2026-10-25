@@ -2,7 +2,7 @@
 title: 'EXT-CONV-AI-1 EventStore source and publication authorities'
 type: 'feature'
 created: '2026-10-25'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'fd083a91b67a3bca10016f1f645da913c7ef526e'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -76,6 +76,12 @@ Matrix audit: command/tampering → CompleteCommandSourceTests and AggregateActo
 
 Installation evidence/current-epoch verification and domain-specific source/receiver observation remain mandatory external bindings. The handoff identifies the Conversations adapter and provisional-empty catalogue boundary; no installed bindings, owner acceptance, Live qualification, Story 8.3 or RQ-1 attainment was fabricated.
 
+2026-10-25 completion: All review entries B01–B10, E01–E05, V01–V02 and R18 were patched within the approved intent; none was deferred. Fixes distinguish retained history from current-cut authority, check authority after awaited preparation immediately before save, admit original HTTP bytes before trusted normalization, validate journal proposals independently, deny uncertain observations, bound provider work/cancellation, preflight serialized capacity, support maximum canonical identities, and exercise the real SDK endpoint/context lifecycle. The existing Server CI project compiles the RSA test source without changing the sealed workflow.
+
+Final coordinating-owner verification on the current graph passed all four required builds with zero warnings/errors and 286 focused cases: Server 116, DomainService 23, ServiceDefaults 4, Client 143; zero failures/skips. Broader regressions passed 1,240 DomainService cases plus 488 actor/authentication cases; one existing opt-in Dapr/Redis test remained skipped, with no Live switch enabled. Exact commands and receipts are in the installation handoff and `/tmp/ext-conv-ai-1-root-final-nfxx9t5q/`. New internal production seams received XML summaries after testing; executable statements were unchanged. The completion workflow records a task-only local documentation commit after pinned commitlint validation, with no push or acceptance mutation.
+
+Pinned commit-message preflight: `node node_modules/@commitlint/cli/cli.js --edit /tmp/ext-conv-ai-1-root-final-nfxx9t5q/commit-message.txt --verbose` passed with exit 0, zero problems/warnings using CLI 21.1.0; evidence retained in `commitlint.log` alongside the verification receipts.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -101,7 +107,6 @@ Installation evidence/current-epoch verification and domain-specific source/rece
 | E05 | high / patch | Same verified serialized-state comparability defect as B08; preflight actual bounded serialization before staging or saving. |
 | V01 | medium / patch | Regression gap: actor tests substitute InvokeCompleteSourceAsync and existing HTTP tests use ordinary process requests; deleting the new request-option assignment leaves all selected tests green. Add the concrete invoker/handler/receiver path. |
 | V02 | medium / patch | Regression gap: successful verifier tests bypass the router, and the only new router case rejects missing evidence. No processor observes CompleteCommandSourceContext after an await; add that successful path. |
-
 
 | R18 | medium / patch | RequiredDomains registration accepts noncanonical case/invalid identifiers (and lengths above AggregateIdentity's 64-character domain bound), but routing uses ordinal equality against canonical domains. Registering Conversation silently leaves conversation outside mandatory intake. Validate canonical domain identifiers at registration and cover refusal. |
 
