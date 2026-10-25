@@ -627,26 +627,60 @@ public partial class QueriesControllerTests {
     }
 
     [Theory]
-    [InlineData("empty")]
+    [InlineData("whitespace")]
     [InlineData("oversized")]
     [InlineData("control")]
-    public async Task Submit_InvalidProducerVersion_OmitsVersionAndRetains304Metadata(string kind) {
+    [InlineData("unicode")]
+    [InlineData("leading-space")]
+    [InlineData("trailing-space")]
+    public async Task Submit_NonRoundTrippableProducerVersion_Retains200PayloadAndVersion(string kind) {
         string version = kind switch {
             "oversized" => new string('x', 4097),
             "control" => "version\r\ninjected",
+            "unicode" => "modèle-v42",
+            "leading-space" => " version-42",
+            "trailing-space" => "version-42 ",
             _ => " ",
         };
         DateTimeOffset servedAt = DateTimeOffset.Parse("2026-10-25T08:30:00+00:00", System.Globalization.CultureInfo.InvariantCulture);
         IMediator mediator = Substitute.For<IMediator>();
         _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
-            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(
+            .Returns(CreateProjectionResult(JsonSerializer.SerializeToElement(new { value = 42 }), metadata: new QueryResponseMetadata(
                 ETag: "opaque-producer", ProjectionVersion: version, ServedAt: servedAt)));
+        QueriesController controller = CreateController(mediator);
+
+        SubmitQueryResponse response = (await controller.Submit(CreateTestRequest(), "\"opaque-producer\"", CancellationToken.None))
+            .ShouldBeOfType<OkObjectResult>().Value.ShouldBeOfType<SubmitQueryResponse>();
+        response.Payload.GetProperty("value").GetInt32().ShouldBe(42);
+        response.Metadata.ShouldNotBeNull().ProjectionVersion.ShouldBe(version);
+        response.Metadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
+        response.Metadata.IsNotModified.ShouldBe(false);
+        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBeEmpty();
+        controller.Response.Headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Theory]
+    [InlineData("absent")]
+    [InlineData("empty")]
+    [InlineData("max-length")]
+    [InlineData("comma")]
+    [InlineData("internal-space")]
+    public async Task Submit_AbsentOrLosslessProducerVersion_Preserves304Behavior(string kind) {
+        string? version = kind switch {
+            "absent" => null,
+            "empty" => string.Empty,
+            "max-length" => new string('x', 4096),
+            "comma" => "model,version-42",
+            _ => "model version-42",
+        };
+        IMediator mediator = Substitute.For<IMediator>();
+        _ = mediator.Send(Arg.Any<SubmitQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CreateProjectionResult(metadata: new QueryResponseMetadata(ETag: "opaque-producer", ProjectionVersion: version)));
         QueriesController controller = CreateController(mediator);
 
         (await controller.Submit(CreateTestRequest(), "\"opaque-producer\"", CancellationToken.None))
             .ShouldBeOfType<StatusCodeResult>().StatusCode.ShouldBe(StatusCodes.Status304NotModified);
-        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBeEmpty();
-        controller.Response.Headers["X-Hexalith-Served-At"].ToString().ShouldBe(servedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+        controller.Response.Headers["X-Hexalith-Projection-Version"].ToString().ShouldBe(version ?? string.Empty);
     }
 
     [Fact]

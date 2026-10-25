@@ -248,8 +248,10 @@ public partial class QueriesController(
             servedAt);
         EnforceFreshnessPolicy(request, correlationId, producerMetadata, metadata, servedAt);
 
+        string? projectionVersionHeader = GetLosslessProjectionVersionHeader(metadata.ProjectionVersion);
         string? warningCodes = FormatWarningCodes(metadata.WarningCodes);
-        bool conditionalMatch = (metadata.WarningCodes is not { Count: > 0 } || warningCodes is not null)
+        bool conditionalMatch = (string.IsNullOrEmpty(metadata.ProjectionVersion) || projectionVersionHeader is not null)
+            && (metadata.WarningCodes is not { Count: > 0 } || warningCodes is not null)
             && ShouldEvaluateConditionalRequest(request, ifNoneMatch, correlationId, hasProducerETag)
             && currentETag is not null
             && ETagMatches(ifNoneMatch, currentETag, hasProducerETag);
@@ -260,10 +262,8 @@ public partial class QueriesController(
             Response.Headers[ProjectionLifecyclePolicy.HeaderName] = metadata.Lifecycle.ToString();
         }
 
-        if (projectionBacked && !string.IsNullOrWhiteSpace(metadata.ProjectionVersion)
-            && metadata.ProjectionVersion.Length <= MaxMetadataHeaderValueLength
-            && !metadata.ProjectionVersion.Any(static character => char.IsControl(character) || character > 0x7e)) {
-            Response.Headers["X-Hexalith-Projection-Version"] = metadata.ProjectionVersion;
+        if (projectionBacked && projectionVersionHeader is not null) {
+            Response.Headers["X-Hexalith-Projection-Version"] = projectionVersionHeader;
         }
 
         if (metadata.ServedAt is { } metadataServedAt) {
@@ -557,6 +557,15 @@ public partial class QueriesController(
         return validators.All(static validator => validator.StartsWith('"')
             || SelfRoutingETag.TryDecode(validator, out _, out _));
     }
+
+    private static string? GetLosslessProjectionVersionHeader(string? version)
+        => !string.IsNullOrEmpty(version)
+            && version.Length <= MaxMetadataHeaderValueLength
+            && !char.IsWhiteSpace(version[0])
+            && !char.IsWhiteSpace(version[^1])
+            && !version.Any(static character => char.IsControl(character) || character > 0x7e)
+                ? version
+                : null;
 
     private static string? FormatWarningCodes(IReadOnlyList<string>? warningCodes) {
         if (warningCodes is null || warningCodes.Count == 0 || warningCodes.Count > MaxWarningCodeCount

@@ -37,19 +37,23 @@ public sealed class QueryResponseProvenancePersistenceTests(
     ActorBasedAuthWebApplicationFactory factory) : IClassFixture<ActorBasedAuthWebApplicationFactory>
 {
     [Theory]
-    [InlineData(-1, ProjectionLifecycleState.Current, false, "model-v42")]
-    [InlineData(-10, ProjectionLifecycleState.Stale, true, "model,v42")]
-    [InlineData(-1, ProjectionLifecycleState.Current, false, "modèle-v42")]
-    [InlineData(-10, ProjectionLifecycleState.Stale, true, "version-☃")]
+    [InlineData(-1, ProjectionLifecycleState.Current, false, "model-v42", true)]
+    [InlineData(-10, ProjectionLifecycleState.Stale, true, "model,v42", true)]
+    [InlineData(-1, ProjectionLifecycleState.Current, false, "modèle-v42", false)]
+    [InlineData(-10, ProjectionLifecycleState.Stale, true, "version-☃", false)]
+    [InlineData(-1, ProjectionLifecycleState.Current, false, " model-v42", false)]
+    [InlineData(-10, ProjectionLifecycleState.Stale, true, "model-v42 ", false)]
+    [InlineData(-1, ProjectionLifecycleState.Current, false, " ", false)]
     public async Task PersistedFreshness_TraversesRouterHandlerControllerAndGatewayClient(
         int projectedMinutes,
         ProjectionLifecycleState expectedLifecycle,
         bool expectedIsStale,
-        string expectedVersion)
+        string expectedVersion,
+        bool expectedNotModified)
     {
         const string StoreName = "test-readmodels";
         const string Key = "freshness:index";
-        string? expectedHeaderVersion = expectedVersion.All(static character => character <= 0x7e) ? expectedVersion : null;
+        string? expectedHeaderVersion = expectedNotModified ? expectedVersion : null;
         DateTimeOffset now = new(2026, 7, 11, 12, 0, 0, TimeSpan.Zero);
         var thresholds = ReadModelFreshnessThresholds.Create(
             TimeSpan.FromMinutes(1),
@@ -175,13 +179,18 @@ public sealed class QueryResponseProvenancePersistenceTests(
             request,
             result.ETag,
             TestContext.Current.CancellationToken);
-        conditional.IsNotModified.ShouldBeTrue();
-        conditional.Payload.ShouldBeNull();
+        conditional.IsNotModified.ShouldBe(expectedNotModified);
+        if (expectedNotModified) {
+            conditional.Payload.ShouldBeNull();
+        }
+        else {
+            conditional.Payload.ShouldNotBeNull().GetProperty("Value").GetInt32().ShouldBe(42);
+        }
         conditional.ETag.ShouldBe(persistedEntry.ETag);
         QueryResponseMetadata conditionalMetadata = conditional.Metadata.ShouldNotBeNull();
         conditionalMetadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         conditionalMetadata.Lifecycle.ShouldBe(expectedLifecycle);
-        conditionalMetadata.ProjectionVersion.ShouldBe(expectedHeaderVersion);
+        conditionalMetadata.ProjectionVersion.ShouldBe(expectedVersion);
         conditionalMetadata.ServedAt.ShouldBe(now);
         conditionalMetadata.IsStale.ShouldBe(expectedIsStale);
         conditionalMetadata.WarningCodes.ShouldBe([QueryWarningCodes.DegradedSearch, "source.warning-2"]);
@@ -190,12 +199,20 @@ public sealed class QueryResponseProvenancePersistenceTests(
             request,
             result.ETag,
             TestContext.Current.CancellationToken);
-        typedConditional.IsNotModified.ShouldBeTrue();
-        typedConditional.Payload.ShouldBeNull();
+        typedConditional.IsNotModified.ShouldBe(expectedNotModified);
+        if (expectedNotModified) {
+            typedConditional.Payload.ShouldBeNull();
+        }
+        else {
+            typedConditional.Payload.ShouldNotBeNull().Value.ShouldBe(42);
+        }
         typedConditional.ETag.ShouldBe(persistedEntry.ETag);
         QueryResponseMetadata typedConditionalMetadata = typedConditional.Metadata.ShouldNotBeNull();
-        typedConditionalMetadata.ProjectionVersion.ShouldBe(expectedHeaderVersion);
+        typedConditionalMetadata.ProjectionVersion.ShouldBe(expectedVersion);
+        typedConditionalMetadata.Provenance.ShouldBe(QueryResponseProvenance.ProjectionBacked);
         typedConditionalMetadata.Lifecycle.ShouldBe(expectedLifecycle);
+        typedConditionalMetadata.IsStale.ShouldBe(expectedIsStale);
+        typedConditionalMetadata.ServedAt.ShouldBe(now);
         typedConditionalMetadata.WarningCodes.ShouldBe(conditionalMetadata.WarningCodes);
         _ = await eTagService.DidNotReceiveWithAnyArgs().GetCurrentETagAsync(default!, default!, default);
 
